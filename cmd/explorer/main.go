@@ -28,14 +28,15 @@ func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	flag.Parse()
 
+	log.Printf("Config file path: %v", *configPath)
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
 
 	if err != nil {
-		log.Fatalf("Error reading config: %v", err)
+		log.Fatalf("Error reading config file: %v", err)
 	}
 
-	dbConn, err := sqlx.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s:%s/%s", cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name))
+	dbConn, err := sqlx.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name))
 	if err != nil {
 		log.Fatal(err)
 	}

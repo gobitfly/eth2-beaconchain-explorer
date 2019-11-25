@@ -8,4 +8,5 @@ RUN cd /src && make all
 FROM alpine
 WORKDIR /app
 COPY --from=build-env /src/bin /app/
-ENTRYPOINT ./explorer
+COPY ./config-example.yml /app/config.yml
+CMD ["./explorer"]
