@@ -1,47 +1,55 @@
 # Eth2 Beacon Chain Explorer
+
 The explorer provides a comprehensive and easy to use interface for the upcoming Eth2 beacon chain. It makes it easy to view proposed blocks, follow attestations and monitor your staking activity.
 
 ## About
-The explorer is built using golang und utilizes a PostgreSQL database for storing and indexing data. In order to avoid the situation we currently have with the Eth1 chain where closed source block explorers dominate the market we decided to make our explorer open source and available for everybody. We du run an production instance of the explorer at [beaconcha.in](beaconcha.in).
+
+The explorer is built using golang und utilizes a PostgreSQL database for storing and indexing data. In order to avoid the situation we currently have with the Eth1 chain where closed source block explorers dominate the market we decided to make our explorer open source and available for everybody. We do run our own production instance of the explorer available at [beaconcha.in](beaconcha.in).
 
 **Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger grantees about the updatability of the explorer.
+
 ## Features
-* Index page
-    * Basic chain statistics (current epoch, current slot, active validators, pending validators, staked ether)
-    * Information on the 20 most recent blocks (epoch, slot, time, proposer, hash, number of attestations, depostis, slahsings and voluntary exits)
-* Epochs page
-    * Pageable tabular view of all epochs (epoch, time, blocks, attestations, slashings, exits, finalization status, voting statistics)
-* Blocks page
-    * Pageable tabular view of all blocks (epoch, time, proposer, hash, attestations, slashings, exits)
-* Block page
-    * Basic block info (epoch, slot, status, time, proposer, root hash, parent hash, state root hash, signature, randao reveal, graffiti, eth1 data)
-    * List of attestations included in the block
-    * List of deposits included in the block
-* Validators page
-    * Pageable tabular view of all pending, active and ejected validators
-* Validator page
-    * Basic validator info (index, current balance, current effective balance, status, slashed, active since, exited on)
-    * Historic balance evolution chart
-    * List of proposed blocks
-    
+
+- Index page
+  - Basic chain statistics (current epoch, current slot, active validators, pending validators, staked ether)
+  - Information on the 20 most recent blocks (epoch, slot, time, proposer, hash, number of attestations, depostis, slahsings and voluntary exits)
+- Epochs page
+  - Pageable tabular view of all epochs (epoch, time, blocks, attestations, slashings, exits, finalization status, voting statistics)
+- Blocks page
+  - Pageable tabular view of all blocks (epoch, time, proposer, hash, attestations, slashings, exits)
+- Block page
+  - Basic block info (epoch, slot, status, time, proposer, root hash, parent hash, state root hash, signature, randao reveal, graffiti, eth1 data)
+  - List of attestations included in the block
+  - List of deposits included in the block
+- Validators page
+  - Pageable tabular view of all pending, active and ejected validators
+- Validator page
+  - Basic validator info (index, current balance, current effective balance, status, slashed, active since, exited on)
+  - Historic balance evolution chart
+  - List of proposed blocks
+
 ## ToDo
-* Show blocks that were not proposed by their assigned validators
-* Show included validators for each attestation
-* Add chain statistic charts
-* Improve design, move away from stock bootstrap 4
-* Use a proper open source charting library
-* Come up with a smarter exporter logic (the current logic is stupid as it simply dumps the contents of the RPC calls into the database without doing any pre-aggregation or cleanups)
+
+- Show blocks that were not proposed by their assigned validators
+- Show included validators for each attestation
+- Add chain statistic charts
+- Improve design, move away from stock bootstrap 4
+- Use a proper open source charting library
+- Come up with a smarter exporter logic (the current logic is stupid as it simply dumps the contents of the RPC calls into the database without doing any pre-aggregation or cleanups)
 
 ## Getting started
+
 We currently do not provide any pre-built binaries of the explorer
-* Download the latest version of the Prysm beacon chain client and start it with the `--archive` flag set
-* Wait till the client finishes the initial sync
-* Setup a PostgreSQL DB and import the `tables.sql` file from the root of this repository
-* Install go version 1.13 or higher
-* Clone the repository and run `make all` to build the indexer and frontend binaries
-* Copy the config-example.yml file an adapt it to your environment
-* Start the explorer binary and pass the path to the config file as argument
+
+- Download the latest version of the Prysm beacon chain client and start it with the `--archive` flag set
+- Wait till the client finishes the initial sync
+- Setup a PostgreSQL DB and import the `tables.sql` file from the root of this repository
+- Install go version 1.13 or higher
+- Clone the repository and run `make all` to build the indexer and frontend binaries
+- Copy the config-example.yml file an adapt it to your environment
+- Start the explorer binary and pass the path to the config file as argument
 
 ## Commercial usage
+
 The explorer uses Highsoft charts which are not free for commercial and governmental use. If you plan to use the explorer for commercial purposes you currently need to purchase an appropriate HighSoft license.
 We are planning to switch out the Highsoft chart library with a less restrictive charting library (suggestions are welcome).
