@@ -3,6 +3,5 @@ cmd/playground
 modd.conf
 bin/
 docker/
-Dockerfile
 templates/imprint.html
 config.yml
