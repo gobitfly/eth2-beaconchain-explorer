@@ -1,0 +1,23 @@
+# Database credentials
+database:
+  user: "<dbuser>"
+  name: "<dbname>"
+  host: "<dbhost>"
+  port: "<dbport>"
+  password: "<dbpassword>"
+
+# Note: It is possible to run either the frontend or the indexer or both at the same time
+# Frontend config
+frontend:
+  enabled: true # Enable or disable to web frontend
+  imprint: "templates/imprint.example.html" # Path to the imprint page content
+  server:
+    host: "localhost" # Address to listen on
+    port: "3333" # Port to listen on
+
+# Indexer config
+indexer:
+  enabled: true # Enable or disable the indexing service
+  node:
+    host: "localhost" # Address of the prysm backend archive node
+    port: "4000" # gRPC port of the prysm backend archive node

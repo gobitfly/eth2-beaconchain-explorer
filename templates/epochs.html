@@ -1,0 +1,52 @@
+{{ define "js"}}
+
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#epochs').DataTable({
+                "processing": true,
+                "serverSide": true,
+                "ordering": false,
+                "searching": false,
+                "ajax": "/epochs/data",
+                "pagingType": "full",
+                "columnDefs": [{
+                    "targets": 1,
+                    "data": "1",
+                    "render": function (data, type, row, meta) {
+                        return moment.unix(data).format("L LTS");
+                    }
+                }]
+            });
+        });
+    </script>
+{{end}}
+
+{{ define "css"}}
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
+{{end}}
+
+{{ define "content"}}
+    <h1 class="mt-4 text-center"><i class="fas fa-history"></i> Epochs overvie</h1>
+    <div class="table-responsive col-sm-12">
+        <table class="table" id="epochs">
+            <thead>
+            <tr>
+                <th>Epoch</th>
+                <th>Time</th>
+                <th>Blocks</th>
+                <th>Attestations</th>
+                <th>Deposits</th>
+                <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span
+                            data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                <th>Finalized</th>
+                <th>Eligible</th>
+                <th>Voted</th>
+                <th>Rate</th>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+{{end}}

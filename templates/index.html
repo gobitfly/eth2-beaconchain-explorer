@@ -1,0 +1,247 @@
+{{ define "js"}}
+    <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+
+    <script>
+        Highcharts.stockChart('stakedetherchart', {
+            exporting: {
+                scale: 1
+            },
+            rangeSelector: {
+                enabled: false
+            },
+            navigator: {
+                enabled: true
+            },
+            chart: {
+                type: 'line',
+                animation: false,
+                style: {
+                    fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
+                },
+                backgroundColor: 'rgb(255, 255, 255)'
+            },
+            title: {
+                text: 'Network History'
+            },
+            subtitle: {
+            },
+            xAxis: {
+                type: 'datetime',
+                labels: {
+                    style: {
+                        color: 'black'
+                    }
+                },
+                range: 7 * 24 * 60 * 60 * 1000
+            },
+            yAxis: [{
+                title: {
+                    text: 'Balance [ETH]',
+                    style: {
+                        color: 'black'
+                    }
+                },
+                labels: {
+                    formatter: function () {
+                        return this.value.toFixed(0);
+                    },
+                    style: {
+                        color: 'black'
+                    }
+                },
+                opposite: false
+            }, {
+                title: {
+                    text: 'Active Validators',
+                    style: {
+                        color: 'black'
+                    }
+                },
+                labels: {
+                    formatter: function () {
+                        return this.value.toFixed(0);
+                    },
+                    style: {
+                        color: 'black'
+                    }
+                },
+                opposite: true
+            }],
+            series: [{
+                name: "Staked Ether",
+                yAxis: 0,
+                data: {{.StakedEtherChartData}}
+            }, {
+                name: "Active Validators",
+                yAxis: 1,
+                data: {{.ActiveValidatorsChartData}}
+            }],
+            plotOptions: {
+                line: {
+                    animation: false,
+                    lineWidth: 2.5,
+                }
+            },
+            legend: {
+                enabled: true
+            },
+            credits: {
+                text: 'Source: beaconcha.in',
+                style: {
+                    color: 'black'
+                },
+                href: 'https://www.beaconcha.in'
+            }
+        });
+
+    </script>
+{{end}}
+
+{{ define "css"}}
+{{end}}
+
+{{ define "content"}}
+    <h1 class="mt-4 text-center">Ethereum 2.0 Beacon Chain Explorer</h1>
+    <h5 class="text-center">Showing the <a href="https://prylabs.net/">💎 Prysm Eth2 Testnet</a></h5>
+    <h5 class="text-center">Do you have any feedback for us? Feel free to join our <a href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a></h5>
+    <form action="/search" class="mb-2 mt-2" method="POST">
+        <div class="input-group">
+            <input class="form-control mr-2 form-control-md" type="text" name="search"
+                   placeholder="Search by Public Key / Block Number / Block Hash">
+            <button type="submit" class="btn btn-primary btn-md">
+                <span class="fas fa-search"></span>
+            </button>
+        </div>
+    </form>
+    <div class="card-group">
+        <div class="card">
+            <div class="card-header text-center">
+                Current Epoch
+            </div>
+            <div class="card-body">
+                <h5 class="card-title text-center" data-toggle="tooltip" data-placement="top"
+                    title="The most recent epoch of the beacon chain">{{.CurrentEpoch}}</h5>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header text-center">
+                Current Slot
+            </div>
+            <div class="card-body">
+                <h5 class="card-title text-center" data-toggle="tooltip" data-placement="top"
+                    title="The most recent slot of the beacon chain">{{.CurrentSlot}}</h5>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header text-center">
+                Active Validators
+            </div>
+            <div class="card-body">
+                <h5 class="card-title text-center" data-toggle="tooltip" data-placement="top"
+                    title="The number of currently active validators">{{.ActiveValidators}}</h5>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header text-center">
+                Pending Validators
+            </div>
+            <div class="card-body">
+                <h5 class="card-title text-center">
+                    <span data-toggle="tooltip" data-placement="top"
+                          title="Validators waiting to be activated">{{.EnteringValidators}}</span> /
+                    <span data-toggle="tooltip" data-placement="top"
+                          title="Validators waiting to exit">{{.ExitingValidators}}</span>
+                </h5>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header text-center">
+                Staked Ether
+            </div>
+            <div class="card-body">
+                <h5 class="card-title text-center">
+                    <span data-toggle="tooltip" data-placement="top"
+                          title="Amount of Ether currently staked">{{.StakedEther}}</span>
+                </h5>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header text-center">
+                Avg. Balance
+            </div>
+            <div class="card-body">
+                <h5 class="card-title text-center">
+                    <span data-toggle="tooltip" data-placement="top"
+                          title="Average staked balance of all validators">{{.AverageBalance}}</span>
+                </h5>
+            </div>
+        </div>
+    </div>
+    <div class="card mt-2">
+        <div class="card-header">
+            <h3 class="card-titler">
+                <i class="fas fa-chart-bar"></i> Statistics
+            </h3>
+        </div>
+        <div class="card-body">
+            <div id="stakedetherchart" height="200px"></div>
+        </div>
+    </div>
+    <div class="card mt-2">
+        <div class="card-header">
+            <h3 class="card-titler">
+                <i class="fa fa-cubes"></i> Most recent blocks
+                <a class="btn btn-secondary btn-sm float-right" href="/blocks">View more</a>
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Epoch</th>
+                        <th>Slot</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                        <th>Proposed by</th>
+                        <th>Root Hash</th>
+                        <th>Attestations</th>
+                        <th>Deposits</th>
+                        <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
+                            <span
+                                    data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                        <th>Exits</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{range .Blocks}}
+                        <tr>
+                            <td>{{.Epoch}}</td>
+                            <td><a href="/block/{{.Slot}}">{{.Slot}}</a></td>
+                            <td class="text-capitalize">{{.Status}}</td>
+                            <td aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
+                            <td class="text-monospace"><a
+                                        href="/validator/{{printf "%x" .Proposer}}">0x{{printf "%.4x" .Proposer}}...</a>
+                            </td>
+                            <td class="text-monospace">
+                                {{ if eq .Status "Proposed"}}
+                                    <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}...</a>
+                                {{else}}
+                                    N/A
+                                {{end}}
+                            </td>
+                            <td>{{.Attestations}}</td>
+                            <td>{{.Deposits}}</td>
+                            <td>{{.Proposerslashings}} / {{.Attesterslashings}}</td>
+                            <td>{{.Exits}}</td>
+                        </tr>
+                    {{end}}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+{{end}}

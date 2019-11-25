@@ -1,0 +1,132 @@
+{{define "layout"}}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+        <meta name="keywords"
+              content="ethereum 2.0 block explorer, eth2 block explorer, beacon chain explorer, ethereum blockchain explorer"/>
+        <meta name="description" content={{.Meta.Description}}/>
+        <meta property="og:title" content="{{.Meta.Title}}"/>
+        <meta property="og:type" content="website"/>
+        <meta property="og:image" content="https://beaconcha.in/img/logo.png"/>
+        <meta property="og:description" content="{{.Meta.Description}}"/>
+        <meta property="og:url" content="https://beaconcha.in{{.Meta.Path}}"/>
+        <meta property="og:site_name" content="beaconcha.in"/>
+        <meta name="twitter:card" content="summary"/>
+        <meta name="twitter:creator" content="@etherchain_org"/>
+        <meta property="og:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal."/>
+        <link rel="canonical" href="https://beaconcha.in{{.Meta.Path}}"/>
+        <meta name="twitter:label1" value="{{.Meta.Tlabel1}}">
+        <meta name="twitter:data1" value="{{.Meta.Tdata1}}">
+        <meta name="twitter:label2" value="{{.Meta.Tlabel2}}">
+        <meta name="twitter:data2" value="{{.Meta.Tdata2}}">
+
+        <title>{{.Meta.Title}}</title>
+        <link rel="shortcut icon" type="image/png" href="/favicon.ico"/>
+
+        <link rel="stylesheet" href="/css/all.min.css">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+              integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+              crossorigin="anonymous">
+
+        {{ template "css" }}
+
+    </head>
+
+    <body ontouchstart="">
+    <noscript>
+        <strong>We're sorry but beaconcha.in doesn't work properly without JavaScript enabled. Please enable it to
+            continue.</strong>
+    </noscript>
+
+    <nav class="navbar bg-dark navbar-dark navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/"><i class="fas fa-satellite-dish mr-1"></i>beaconcha.in</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+                    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item {{ if eq .Active "index"}}active{{end}}">
+                        <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
+                    </li>
+                    <li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
+                        <a class="nav-link" href="/epochs"><i class="fas fa-history"></i> Epochs</a>
+                    </li>
+                    <li class="nav-item {{ if eq .Active "blocks"}}active{{end}}">
+                        <a class="nav-link" href="/blocks"><i class="fas fa-cubes"></i> Blocks</a>
+                    </li>
+                    <li class="nav-item {{ if eq .Active "validators"}}active{{end}}">
+                        <a class="nav-link" href="/validators"><i class="fas fa-thumbs-up"></i> Validators</a>
+                    </li>
+                </ul>
+                <form class="form-inline ml-auto" action="/search" , method="POST">
+                    <input class="form-control mr-2" name="search" type="search"
+                           placeholder="Public Key / Block Number / Block Hash" aria-label="Search">
+                    <button class="btn btn-primary" type="submit"><span class="fas fa-search"></span></button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="alert alert-primary mt-4" role="alert">
+            We are currently re-indexing our database. Displayed data might be inaccurate and outdated.
+        </div>
+    </div>
+
+    <div class="container">
+        {{ template "content" .Data }}
+    </div>
+
+    <div class="text-center my-5">
+        <hr/>
+        <footer>© bitfly gmbh 2019 | <a href="/imprint">Imprint</a> | <a href="https://twitter.com/etherchain_org">
+                <i class="fab fa-twitter mr-1"></i>Twitter</a> | <a href="https://www.reddit.com/u/etherchain/">
+                <i class="fab fa-reddit mr-1"></i>Reddit</a> | <a
+                    href="https://github.com/gobitfly/eth2-beaconchain-explorer">
+                <i class="fab fa-github mr-1"></i>Github</a> | v1.0.0
+        </footer>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+            crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+            integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+            crossorigin="anonymous"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+        });
+
+        moment.locale((window.navigator.userLanguage || window.navigator.language).toLowerCase());
+        $("[aria-ethereum-date]").each(function (item) {
+            var dt = $(this).attr("aria-ethereum-date");
+            var format = $(this).attr("aria-ethereum-date-format");
+
+            if (!format) {
+                format = "L LTS";
+            }
+
+            if (format === "FROMNOW") {
+                $(this).text(moment.unix(dt).fromNow());
+            } else {
+                $(this).text(moment.unix(dt).format(format));
+            }
+        });
+
+    </script>
+
+    {{ template "js" .Data }}
+
+    </body>
+    </html>
+{{end}}
