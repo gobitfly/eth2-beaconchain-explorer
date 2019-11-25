@@ -37,8 +37,7 @@ The explorer is built using golang und utilizes a PostgreSQL database for storin
 - Come up with a smarter exporter logic (the current logic is stupid as it simply dumps the contents of the RPC calls into the database without doing any pre-aggregation or cleanups)
 
 ## Getting started
-
-We currently do not provide any pre-built binaries of the explorer
+We currently do not provide any pre-built binaries of the explorer. Docker images are available at https://hub.docker.com/repository/docker/gobitfly/eth2-beaconchain-explorer.
 
 - Download the latest version of the Prysm beacon chain client and start it with the `--archive` flag set
 - Wait till the client finishes the initial sync
