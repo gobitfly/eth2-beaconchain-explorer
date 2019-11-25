@@ -1,5 +1,4 @@
 # Eth2 Beacon Chain Explorer
-
 The explorer provides a comprehensive and easy to use interface for the upcoming Eth2 beacon chain. It makes it easy to view proposed blocks, follow attestations and monitor your staking activity.
 
 ## About
@@ -8,7 +7,6 @@ The explorer is built using golang und utilizes a PostgreSQL database for storin
 **Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger grantees about the updatability of the explorer.
 
 ## Features
-
 - Index page
   - Basic chain statistics (current epoch, current slot, active validators, pending validators, staked ether)
   - Information on the 20 most recent blocks (epoch, slot, time, proposer, hash, number of attestations, deposits, slahsings and voluntary exits)
@@ -25,11 +23,9 @@ The explorer is built using golang und utilizes a PostgreSQL database for storin
 - Validator page
   - Basic validator info (index, current balance, current effective balance, status, slashed, active since, exited on)
   - Historic balance evolution chart
-  - List of proposed blocks
+  - List of proposed and missed blocks
 
 ## ToDo
-
-- Show blocks that were not proposed by their assigned validators
 - Show included validators for each attestation
 - Add chain statistic charts
 - Improve design, move away from stock bootstrap 4
@@ -48,6 +44,5 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 - Start the explorer binary and pass the path to the config file as argument
 
 ## Commercial usage
-
 The explorer uses Highsoft charts which are not free for commercial and governmental use. If you plan to use the explorer for commercial purposes you currently need to purchase an appropriate HighSoft license.
 We are planning to switch out the Highsoft chart library with a less restrictive charting library (suggestions are welcome).
