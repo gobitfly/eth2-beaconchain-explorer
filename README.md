@@ -4,7 +4,7 @@ The explorer provides a comprehensive and easy to use interface for the upcoming
 
 ## About
 
-The explorer is built using golang und utilizes a PostgreSQL database for storing and indexing data. In order to avoid the situation we currently have with the Eth1 chain where closed source block explorers dominate the market we decided to make our explorer open source and available for everybody. We do run our own production instance of the explorer available at [beaconcha.in](beaconcha.in).
+The explorer is built using golang and utilizes a PostgreSQL database for storing and indexing data. In order to avoid the situation we currently have with the Eth1 chain where closed source block explorers dominate the market we decided to make our explorer open source and available for everybody. We do run our own production instance of the explorer available at [beaconcha.in](beaconcha.in).
 
 **Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger grantees about the updatability of the explorer.
 
@@ -12,7 +12,7 @@ The explorer is built using golang und utilizes a PostgreSQL database for storin
 
 - Index page
   - Basic chain statistics (current epoch, current slot, active validators, pending validators, staked ether)
-  - Information on the 20 most recent blocks (epoch, slot, time, proposer, hash, number of attestations, depostis, slahsings and voluntary exits)
+  - Information on the 20 most recent blocks (epoch, slot, time, proposer, hash, number of attestations, deposits, slahsings and voluntary exits)
 - Epochs page
   - Pageable tabular view of all epochs (epoch, time, blocks, attestations, slashings, exits, finalization status, voting statistics)
 - Blocks page
@@ -45,7 +45,7 @@ We currently do not provide any pre-built binaries of the explorer
 - Wait till the client finishes the initial sync
 - Setup a PostgreSQL DB and import the `tables.sql` file from the root of this repository
 - Install go version 1.13 or higher
-- Clone the repository and run `make all` to build the indexer and frontend binaries
+- Clone the repository and run `make all` to build the indexer and front-end binaries
 - Copy the config-example.yml file an adapt it to your environment
 - Start the explorer binary and pass the path to the config file as argument
 
