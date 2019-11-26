@@ -63,7 +63,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 
 	var blocksCount uint64
 
-	err = db.DB.Get(&blocksCount, "SELECT MAX(slot) FROM blocks")
+	err = db.DB.Get(&blocksCount, "SELECT MAX(slot) + 1 FROM blocks")
 	if err != nil {
 		logger.Printf("Error retrieving max slot number: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -77,8 +77,10 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		startSlot = blocksCount
 	}
 	if endSlot > 9223372036854775807 {
-		endSlot = blocksCount
+		endSlot = 0
 	}
+
+	logger.Println(blocksCount, start, length, startSlot, endSlot)
 
 	var blocks []*types.IndexPageDataBlocks
 	err = db.DB.Select(&blocks, `SELECT blocks.epoch, 

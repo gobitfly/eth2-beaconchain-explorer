@@ -26,7 +26,6 @@ The explorer is built using golang und utilizes a PostgreSQL database for storin
   - List of proposed and missed blocks
 
 ## ToDo
-- Include genesis block in the export
 - Show included validators for each attestation
 - Add chain statistic charts
 - Improve design, move away from stock bootstrap 4

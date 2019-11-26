@@ -93,8 +93,10 @@ func Start(client ethpb.BeaconChainClient) error {
 			for i := epochs[len(epochs)-1]; i <= head.HeadBlockEpoch; i++ {
 				epochsToExport[i] = true
 			}
+		} else if len(epochs) > 0 && epochs[0] != 0 { // Export the genesis epoch if not yet present in the db
+			epochsToExport[0] = true
 		} else if len(epochs) == 0 { // No epochs are present int the db
-			for i := uint64(1); i <= head.HeadBlockEpoch; i++ {
+			for i := uint64(0); i <= head.HeadBlockEpoch; i++ {
 				epochsToExport[i] = true
 			}
 		}
@@ -182,6 +184,16 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 		}
 
 		for _, block := range blocksResponse.BlockContainers {
+
+			// Make sure that blocks from the genesis epoch have their Eth1Data field set
+			if epoch == 0 && block.Block.Body.Eth1Data == nil {
+				block.Block.Body.Eth1Data = &ethpb.Eth1Data{
+					DepositRoot:  []byte{},
+					DepositCount: 0,
+					BlockHash:    []byte{},
+				}
+			}
+
 			data.Blocks[block.Block.Slot] = &types.BlockContainer{
 				Status:   "Proposed",
 				Proposer: nil,
