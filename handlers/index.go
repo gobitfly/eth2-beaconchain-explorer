@@ -86,6 +86,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		for i := len(epochHistory) - 1; i >= 0; i-- {
 			if epochHistory[i].Finalized {
 				indexPageData.CurrentFinalizedEpoch = epochHistory[i].Epoch
+				indexPageData.FinalityDelay = indexPageData.CurrentEpoch - indexPageData.CurrentFinalizedEpoch
 				break
 			}
 		}

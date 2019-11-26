@@ -103,6 +103,11 @@
 {{end}}
 
 {{ define "content"}}
+    {{if gt .FinalityDelay 3}}
+        <div class="alert alert-danger mt-4" role="alert">
+            <b>Warning:</b> The testnet is currently experiencing issues achieving finality. The last finalized epoch was {{.FinalityDelay}} epoch{{if ne .FinalityDelay 1}}s{{end}} ago.
+        </div>
+    {{end}}
     <h1 class="mt-4 text-center">Ethereum 2.0 Beacon Chain Explorer</h1>
     <h5 class="text-center">Showing the <a href="https://prylabs.net/">💎 Prysm Eth2 Testnet</a></h5>
     <h5 class="text-center">Do you have any feedback for us? Feel free to join our <a href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a></h5>

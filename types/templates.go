@@ -23,6 +23,7 @@ type IndexPageData struct {
 	CurrentEpoch              uint64
 	CurrentFinalizedEpoch     uint64
 	CurrentSlot               uint64
+	FinalityDelay             uint64
 	ActiveValidators          uint64
 	EnteringValidators        uint64
 	ExitingValidators         uint64
