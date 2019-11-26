@@ -55,7 +55,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	WHERE slot = $1 OR blockroot = $2`,
 		slotOrHash, blockRootHash)
 
-	logger.Println(slotOrHash, blockRootHash)
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("Slot %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", slotOrHash, time.Now().Year()),

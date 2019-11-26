@@ -80,8 +80,6 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		endSlot = 0
 	}
 
-	logger.Println(blocksCount, start, length, startSlot, endSlot)
-
 	var blocks []*types.IndexPageDataBlocks
 	err = db.DB.Select(&blocks, `SELECT blocks.epoch, 
 											    blocks.slot, 
