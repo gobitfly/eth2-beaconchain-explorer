@@ -26,7 +26,7 @@ func Start(client ethpb.BeaconChainClient) error {
 			logger.Fatal(err)
 		}
 
-		dbBlocks, err := db.GetLastBlocks(head.FinalizedEpoch, head.HeadBlockEpoch)
+		dbBlocks, err := db.GetLastPendingAndProposedBlocks(head.FinalizedEpoch, head.HeadBlockEpoch)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -274,7 +274,7 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 					},
 				}
 
-				if utils.SlotToTime(a.ProposerSlot).After(time.Now().Add(time.Second * -15)) {
+				if utils.SlotToTime(a.ProposerSlot).After(time.Now().Add(time.Second * -60)) {
 					// Block is in the future, set status to scheduled
 					data.Blocks[a.ProposerSlot].Status = "Scheduled"
 					data.Blocks[a.ProposerSlot].Block.BlockRoot = []byte{0x0}

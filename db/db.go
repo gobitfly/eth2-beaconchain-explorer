@@ -38,10 +38,11 @@ func GetAllEpochs() ([]uint64, error) {
 	return epochs, nil
 }
 
-func GetLastBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
+func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	var blocks []*types.MinimalBlock
 
-	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 ORDER BY slot DESC", startEpoch, endEpoch)
+	// Will return all proposed and pending blocks. Ignores missed slots.
+	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND blockroot != '\x01' ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving last blocks from DB: %v", err)
