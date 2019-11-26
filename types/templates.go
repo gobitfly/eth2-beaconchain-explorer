@@ -21,6 +21,7 @@ type Meta struct {
 
 type IndexPageData struct {
 	CurrentEpoch              uint64
+	CurrentFinalizedEpoch     uint64
 	CurrentSlot               uint64
 	ActiveValidators          uint64
 	EnteringValidators        uint64
@@ -51,6 +52,7 @@ type IndexPageEpochHistory struct {
 	Epoch           uint64 `db:"epoch"`
 	ValidatorsCount uint64 `db:"validatorscount"`
 	EligibleEther   uint64 `db:"eligibleether"`
+	Finalized       bool   `db:"finalized"`
 }
 
 type ValidatorsPageData struct {

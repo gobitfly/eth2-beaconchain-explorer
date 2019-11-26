@@ -121,8 +121,11 @@
                 Current Epoch
             </div>
             <div class="card-body">
-                <h5 class="card-title text-center" data-toggle="tooltip" data-placement="top"
-                    title="The most recent epoch of the beacon chain">{{.CurrentEpoch}}</h5>
+                <h5 class="card-title text-center">
+                    <span  data-toggle="tooltip" data-placement="top" title="The most recent finalized epoch">{{.CurrentFinalizedEpoch}}</span>
+                     /
+                    <span  data-toggle="tooltip" data-placement="top" title="The most recent epoch">{{.CurrentEpoch}}</span>
+                </h5>
             </div>
         </div>
         <div class="card">

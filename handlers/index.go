@@ -42,7 +42,6 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	indexPageData.Blocks = blocks
 
 	if len(blocks) > 0 {
-		indexPageData.CurrentEpoch = blocks[0].Epoch
 		indexPageData.CurrentSlot = blocks[0].Slot
 	}
 
@@ -74,11 +73,22 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	indexPageData.AverageBalance = utils.FormatBalance(uint64(averageBalance))
 
 	var epochHistory []*types.IndexPageEpochHistory
-	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount FROM epochs WHERE epoch < $1 ORDER BY epoch", services.LatestEpoch())
+	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 ORDER BY epoch", services.LatestEpoch())
 	if err != nil {
 		logger.Printf("Error retrieving staked ether history: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
+	}
+
+	if len(epochHistory) > 0 {
+		indexPageData.CurrentEpoch = epochHistory[len(epochHistory)-1].Epoch
+
+		for i := len(epochHistory) - 1; i >= 0; i-- {
+			if epochHistory[i].Finalized {
+				indexPageData.CurrentFinalizedEpoch = epochHistory[i].Epoch
+				break
+			}
+		}
 	}
 
 	indexPageData.StakedEther = utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther)
