@@ -93,7 +93,7 @@ func Start(client ethpb.BeaconChainClient) error {
 			for i := epochs[len(epochs)-1]; i <= head.HeadBlockEpoch; i++ {
 				epochsToExport[i] = true
 			}
-		} else { // No epochs are present int the db
+		} else if len(epochs) == 0 { // No epochs are present int the db
 			for i := uint64(1); i <= head.HeadBlockEpoch; i++ {
 				epochsToExport[i] = true
 			}
