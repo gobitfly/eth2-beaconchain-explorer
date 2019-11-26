@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -24,8 +25,9 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/blocks",
 		},
-		Active: "blocks",
-		Data:   nil,
+		ShowSyncingMessage: services.IsSyncing(),
+		Active:             "blocks",
+		Data:               nil,
 	}
 
 	err := blocksTemplate.ExecuteTemplate(w, "layout", data)

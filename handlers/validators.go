@@ -52,8 +52,9 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/validators",
 		},
-		Active: "validators",
-		Data:   validatorsPageData,
+		ShowSyncingMessage: services.IsSyncing(),
+		Active:             "validators",
+		Data:               validatorsPageData,
 	}
 
 	err = validatorsTemplate.ExecuteTemplate(w, "layout", data)

@@ -72,11 +72,13 @@
         </div>
     </nav>
 
-    <div class="container">
-        <div class="alert alert-primary mt-4" role="alert">
-            We are currently re-indexing our database. Displayed data might be inaccurate and outdated.
+    {{if .ShowSyncingMessage}}
+        <div class="container">
+            <div class="alert alert-primary mt-4" role="alert">
+                We are currently re-indexing our database. Displayed data might be inaccurate and outdated.
+            </div>
         </div>
-    </div>
+    {{end}}
 
     <div class="container">
         {{ template "content" .Data }}

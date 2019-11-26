@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
@@ -24,8 +25,9 @@ func Imprint(w http.ResponseWriter, r *http.Request) {
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/imprint",
 		},
-		Active: "imprint",
-		Data:   nil,
+		ShowSyncingMessage: services.IsSyncing(),
+		Active:             "imprint",
+		Data:               nil,
 	}
 
 	err = imprintTemplate.ExecuteTemplate(w, "layout", data)

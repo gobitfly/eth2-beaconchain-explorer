@@ -97,8 +97,9 @@ func Index(w http.ResponseWriter, r *http.Request) {
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "",
 		},
-		Active: "index",
-		Data:   indexPageData,
+		ShowSyncingMessage: services.IsSyncing(),
+		Active:             "index",
+		Data:               indexPageData,
 	}
 
 	err = indexTemplate.ExecuteTemplate(w, "layout", data)

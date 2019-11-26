@@ -25,8 +25,9 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/epochs",
 		},
-		Active: "epochs",
-		Data:   nil,
+		ShowSyncingMessage: services.IsSyncing(),
+		Active:             "epochs",
+		Data:               nil,
 	}
 
 	err := epochsTemplate.ExecuteTemplate(w, "layout", data)

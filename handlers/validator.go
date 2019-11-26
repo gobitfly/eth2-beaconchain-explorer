@@ -34,8 +34,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        fmt.Sprintf("/validator/%v", publicKeyRaw),
 		},
-		Active: "validators",
-		Data:   nil,
+		ShowSyncingMessage: services.IsSyncing(),
+		Active:             "validators",
+		Data:               nil,
 	}
 
 	if err != nil {

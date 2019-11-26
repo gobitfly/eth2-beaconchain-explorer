@@ -2,6 +2,7 @@ package services
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/utils"
 	"github.com/sirupsen/logrus"
 	"sync/atomic"
 	"time"
@@ -30,4 +31,8 @@ func epochUpdater() {
 
 func LatestEpoch() uint64 {
 	return atomic.LoadUint64(&latestEpoch)
+}
+
+func IsSyncing() bool {
+	return time.Now().Add(time.Minute * -5).After(utils.EpochToTime(LatestEpoch()))
 }

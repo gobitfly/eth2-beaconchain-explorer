@@ -3,9 +3,10 @@ package types
 import "time"
 
 type PageData struct {
-	Active string
-	Meta   *Meta
-	Data   interface{}
+	Active             string
+	Meta               *Meta
+	ShowSyncingMessage bool
+	Data               interface{}
 }
 
 type Meta struct {
