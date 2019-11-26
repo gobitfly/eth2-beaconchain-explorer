@@ -204,7 +204,8 @@ func SaveEpoch(data *types.EpochData) error {
 												voluntaryexitscount, 
 												validatorscount, 
 												averagevalidatorbalance, 
-												finalized, eligibleether, 
+												finalized, 
+                    							eligibleether, 
 												globalparticipationrate, 
 												votedether
 												)
@@ -497,4 +498,15 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
 	}
 
 	return nil
+}
+
+func UpdateEpochStatus(stats *ethpb.ValidatorParticipationResponse) error {
+	_, err := DB.Exec(`UPDATE epochs SET 
+                  finalized = $1, 
+                  eligibleether = $2, 
+                  globalparticipationrate = $3, 
+                  votedether = $4
+			WHERE epoch = $5`, stats.Finalized, stats.Participation.EligibleEther, stats.Participation.GlobalParticipationRate, stats.Participation.VotedEther, stats.Epoch)
+
+	return err
 }

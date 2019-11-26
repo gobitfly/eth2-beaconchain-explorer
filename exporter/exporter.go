@@ -121,6 +121,16 @@ func Start(client ethpb.BeaconChainClient) error {
 			logger.Printf("Finished export for epoch %v", epoch)
 		}
 
+		// Update epoch statistics up to 10 epochs after the last finalized epoch
+		startEpoch := uint64(0)
+		if head.FinalizedEpoch > 10 {
+			startEpoch = head.FinalizedEpoch - 10
+		}
+		err = updateEpochStatus(client, startEpoch, head.HeadBlockEpoch)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
 		err = exportAttestationPool(client)
 		if err != nil {
 			logger.Fatal(err)
@@ -361,4 +371,21 @@ func exportValidatorQueue(client ethpb.BeaconChainClient) error {
 	logger.Printf("Retrieved %v validators to enter and %v validators to leave from the validator queue", len(validators.ActivationPublicKeys), len(validators.ExitPublicKeys))
 
 	return db.SaveValidatorQueue(validators)
+}
+
+func updateEpochStatus(client ethpb.BeaconChainClient, startEpoch, endEpoch uint64) error {
+	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
+		epochParticipationStats, err := client.GetValidatorParticipation(context.Background(), &ethpb.GetValidatorParticipationRequest{QueryFilter: &ethpb.GetValidatorParticipationRequest_Epoch{Epoch: epoch}})
+		if err != nil {
+			logger.Printf("Error retrieving epoch participation statistics: %v", err)
+		} else {
+			logger.Printf("Updating epoch %v with status finalized = %v", epoch, epochParticipationStats.Finalized)
+			err := db.UpdateEpochStatus(epochParticipationStats)
+
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
