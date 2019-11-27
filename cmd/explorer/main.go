@@ -9,19 +9,20 @@ import (
 	"eth2-exporter/utils"
 	"flag"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/jmoiron/sqlx"
-	"github.com/phyber/negroni-gzip/gzip"
-	"github.com/sirupsen/logrus"
-	"github.com/urfave/negroni"
-	"github.com/meatballhat/negroni-logrus"
-	"github.com/zesik/proxyaddr"
-	"google.golang.org/grpc"
 	"log"
 	"net/http"
 	"time"
 
-	ethpb "github.com/prysmaticlabs/prysm/proto/eth/v1alpha1"
+	"github.com/gorilla/mux"
+	"github.com/jmoiron/sqlx"
+	negronilogrus "github.com/meatballhat/negroni-logrus"
+	"github.com/phyber/negroni-gzip/gzip"
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/negroni"
+	"github.com/zesik/proxyaddr"
+	"google.golang.org/grpc"
+
+	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
 )
 
 func main() {
@@ -112,7 +113,7 @@ func main() {
 		n.UseHandler(router)
 
 		srv := &http.Server{
-			Addr: cfg.Frontend.Server.Host + ":" + cfg.Frontend.Server.Port,
+			Addr:         cfg.Frontend.Server.Host + ":" + cfg.Frontend.Server.Port,
 			WriteTimeout: time.Second * 15,
 			ReadTimeout:  time.Second * 15,
 			IdleTimeout:  time.Second * 60,

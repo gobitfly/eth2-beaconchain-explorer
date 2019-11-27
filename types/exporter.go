@@ -1,7 +1,7 @@
 package types
 
 import (
-	ethpb "github.com/prysmaticlabs/prysm/proto/eth/v1alpha1"
+	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
 )
 
 type EpochData struct {
@@ -28,6 +28,6 @@ type MinimalBlock struct {
 
 type BlockComparisonContainer struct {
 	Epoch uint64
-	Db *MinimalBlock
-	Node *MinimalBlock
+	Db    *MinimalBlock
+	Node  *MinimalBlock
 }

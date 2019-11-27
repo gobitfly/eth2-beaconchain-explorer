@@ -5,11 +5,13 @@ import (
 	"database/sql"
 	"eth2-exporter/types"
 	"fmt"
+	"math/big"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
-	ethpb "github.com/prysmaticlabs/prysm/proto/eth/v1alpha1"
+	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
+	bitfield "github.com/prysmaticlabs/go-bitfield"
 	"github.com/sirupsen/logrus"
-	"math/big"
 )
 
 var DB *sqlx.DB
@@ -71,7 +73,7 @@ func SaveAttestationPool(attestations []*ethpb.Attestation) error {
 	defer stmtAttestationPool.Close()
 
 	for _, attestation := range attestations {
-		_, err := stmtAttestationPool.Exec(attestation.AggregationBits.Bytes(), attestation.CustodyBits.Bytes(), attestation.Signature, attestation.Data.Slot, attestation.Data.Index, attestation.Data.BeaconBlockRoot, attestation.Data.Source.Epoch, attestation.Data.Source.Root, attestation.Data.Target.Epoch, attestation.Data.Target.Root)
+		_, err := stmtAttestationPool.Exec(bitfield.Bitlist(attestation.AggregationBits).Bytes(), bitfield.Bitlist(attestation.CustodyBits).Bytes(), attestation.Signature, attestation.Data.Slot, attestation.Data.CommitteeIndex, attestation.Data.BeaconBlockRoot, attestation.Data.Source.Epoch, attestation.Data.Source.Root, attestation.Data.Target.Epoch, attestation.Data.Target.Root)
 		if err != nil {
 			return fmt.Errorf("error executing stmtAttestationPool: %v", err)
 		}
@@ -469,14 +471,14 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
 		}
 
 		for i, as := range b.Block.Block.Body.AttesterSlashings {
-			_, err := stmtAttesterSlashing.Exec(b.Block.Block.Slot, i, pq.Array(as.Attestation_1.CustodyBit_0Indices), pq.Array(as.Attestation_1.CustodyBit_1Indices), as.Attestation_1.Signature, as.Attestation_1.Data.Slot, as.Attestation_1.Data.Index, as.Attestation_1.Data.BeaconBlockRoot, as.Attestation_1.Data.Source.Epoch, as.Attestation_1.Data.Source.Root, as.Attestation_1.Data.Target.Epoch, as.Attestation_1.Data.Target.Root, pq.Array(as.Attestation_2.CustodyBit_0Indices), pq.Array(as.Attestation_2.CustodyBit_1Indices), as.Attestation_2.Signature, as.Attestation_2.Data.Slot, as.Attestation_2.Data.Index, as.Attestation_2.Data.BeaconBlockRoot, as.Attestation_2.Data.Source.Epoch, as.Attestation_2.Data.Source.Root, as.Attestation_2.Data.Target.Epoch, as.Attestation_2.Data.Target.Root)
+			_, err := stmtAttesterSlashing.Exec(b.Block.Block.Slot, i, pq.Array(as.Attestation_1.CustodyBit_0Indices), pq.Array(as.Attestation_1.CustodyBit_1Indices), as.Attestation_1.Signature, as.Attestation_1.Data.Slot, as.Attestation_1.Data.CommitteeIndex, as.Attestation_1.Data.BeaconBlockRoot, as.Attestation_1.Data.Source.Epoch, as.Attestation_1.Data.Source.Root, as.Attestation_1.Data.Target.Epoch, as.Attestation_1.Data.Target.Root, pq.Array(as.Attestation_2.CustodyBit_0Indices), pq.Array(as.Attestation_2.CustodyBit_1Indices), as.Attestation_2.Signature, as.Attestation_2.Data.Slot, as.Attestation_2.Data.CommitteeIndex, as.Attestation_2.Data.BeaconBlockRoot, as.Attestation_2.Data.Source.Epoch, as.Attestation_2.Data.Source.Root, as.Attestation_2.Data.Target.Epoch, as.Attestation_2.Data.Target.Root)
 			if err != nil {
 				return fmt.Errorf("error executing stmtAttesterSlashing: %v", err)
 			}
 		}
 
 		for i, a := range b.Block.Block.Body.Attestations {
-			_, err := stmtAttestations.Exec(b.Block.Block.Slot, i, a.AggregationBits.Bytes(), a.CustodyBits.Bytes(), a.Signature, a.Data.Slot, a.Data.Index, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
+			_, err := stmtAttestations.Exec(b.Block.Block.Slot, i, bitfield.Bitlist(a.AggregationBits).Bytes(), bitfield.Bitlist(a.CustodyBits).Bytes(), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
 			if err != nil {
 				return fmt.Errorf("error executing stmtAttestations: %v", err)
 			}

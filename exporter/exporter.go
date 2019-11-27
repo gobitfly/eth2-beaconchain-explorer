@@ -7,11 +7,12 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	ptypes "github.com/gogo/protobuf/types"
-	ethpb "github.com/prysmaticlabs/prysm/proto/eth/v1alpha1"
-	"github.com/sirupsen/logrus"
 	"sort"
 	"time"
+
+	ptypes "github.com/golang/protobuf/ptypes/empty"
+	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
+	"github.com/sirupsen/logrus"
 )
 
 const PageSize = 500
