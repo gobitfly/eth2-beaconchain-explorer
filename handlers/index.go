@@ -51,22 +51,22 @@ func Index(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Get(&indexPageData.EnteringValidators, "SELECT COUNT(*) FROM validatorqueue_activation")
 	if err != nil {
-		logger.Printf("Error retrieving active validator count: %v", err)
+		logger.Printf("Error retrieving entering validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
 	err = db.DB.Get(&indexPageData.ExitingValidators, "SELECT COUNT(*) FROM validatorqueue_exit")
 	if err != nil {
-		logger.Printf("Error retrieving active validator count: %v", err)
+		logger.Printf("Error retrieving exiting validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
 	var averageBalance float64
-	err = db.DB.Get(&averageBalance, "SELECT AVG(balance) FROM validator_balances WHERE epoch = $1", services.LatestEpoch())
+	err = db.DB.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validator_balances WHERE epoch = $1", services.LatestEpoch())
 	if err != nil {
-		logger.Printf("Error retrieving active validator count: %v", err)
+		logger.Printf("Error retrieving validator balance: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -90,10 +90,10 @@ func Index(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-	}
 
-	indexPageData.StakedEther = utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther)
-	indexPageData.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
+		indexPageData.StakedEther = utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther)
+		indexPageData.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
+	}
 
 	indexPageData.StakedEtherChartData = make([][]float64, len(epochHistory))
 	indexPageData.ActiveValidatorsChartData = make([][]float64, len(epochHistory))

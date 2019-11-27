@@ -3,9 +3,10 @@ package services
 import (
 	"eth2-exporter/db"
 	"eth2-exporter/utils"
-	"github.com/sirupsen/logrus"
 	"sync/atomic"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 var latestEpoch uint64
@@ -18,7 +19,7 @@ func Init() {
 func epochUpdater() {
 	for true {
 		var epoch uint64
-		err := db.DB.Get(&epoch, "SELECT MAX(epoch)FROM epochs")
+		err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 
 		if err != nil {
 			logger.Printf("Error retrieving latest epoch from the database: %v", err)
