@@ -58,7 +58,7 @@ func main() {
 	}()
 	select {
 	case <-ctx.Done():
-		logrus.Error("PingContext is Done:", ctx.Err())
+		logrus.Fatal("PingContext is Done:", ctx.Err())
 	case <-waitCh:
 	}
 
