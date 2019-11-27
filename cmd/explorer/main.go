@@ -49,7 +49,7 @@ func main() {
 	go func() {
 		err = dbConn.PingContext(ctx)
 		if err != nil {
-			log.Fatal("Cannot Ping database Server")
+			log.Fatal("Cannot Ping database Server", err)
 			waitCh <- false
 		} else {
 			log.Println("Connection to DB establised")
@@ -60,7 +60,6 @@ func main() {
 	case <-ctx.Done():
 		logrus.Error("PingContext is Done:", ctx.Err())
 	case <-waitCh:
-		return
 	}
 
 	db.DB = dbConn
