@@ -43,24 +43,27 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	waitCh := make(chan bool)
-	go func() {
-		err = dbConn.PingContext(ctx)
-		if err != nil {
-			log.Fatal("Cannot Ping database Server", err)
-			waitCh <- false
-		} else {
-			logrus.Info("Connection to DB establised")
-			waitCh <- true
+	func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		waitCh := make(chan bool)
+		go func() {
+			err = dbConn.PingContext(ctx)
+			if err != nil {
+				logrus.Panic("Cannot Ping database Server", err)
+				// waitCh <- false
+			} else {
+				logrus.Info("Connection to DB establised")
+				waitCh <- true
+			}
+		}()
+		select {
+		case <-ctx.Done():
+			logrus.Panic("PingContext is Done:", ctx.Err())
+		case <-waitCh:
+			return
 		}
 	}()
-	select {
-	case <-ctx.Done():
-		logrus.Fatal("PingContext is Done:", ctx.Err())
-	case <-waitCh:
-	}
 
 	db.DB = dbConn
 	defer db.DB.Close()
