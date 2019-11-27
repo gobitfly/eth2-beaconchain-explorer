@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
@@ -42,9 +43,24 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = dbConn.Ping()
-	if err != nil {
-		log.Fatal(err)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	waitCh := make(chan bool)
+	go func() {
+		err = dbConn.PingContext(ctx)
+		if err != nil {
+			log.Fatal("Cannot Ping database Server")
+			waitCh <- false
+		} else {
+			log.Println("Connection to DB establised")
+			waitCh <- true
+		}
+	}()
+	select {
+	case <-ctx.Done():
+		logrus.Error("PingContext is Done:", ctx.Err())
+	case <-waitCh:
+		return
 	}
 
 	db.DB = dbConn
