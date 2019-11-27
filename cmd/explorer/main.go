@@ -42,10 +42,18 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// The golang sql driver does not properly implement PingContext
+	// therefore we use a timer to catch db connection timeouts
+	dbConnectionTimeout := time.NewTimer(15 * time.Second)
+	go func() {
+		<-dbConnectionTimeout.C
+		log.Fatal("Timeout while connecting to the database")
+	}()
 	err = dbConn.Ping()
 	if err != nil {
 		log.Fatal(err)
 	}
+	dbConnectionTimeout.Stop()
 
 	db.DB = dbConn
 	defer db.DB.Close()
