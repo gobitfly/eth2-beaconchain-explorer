@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
@@ -43,27 +42,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		waitCh := make(chan bool)
-		go func() {
-			err = dbConn.PingContext(ctx)
-			if err != nil {
-				logrus.Panic("Cannot Ping database Server", err)
-				// waitCh <- false
-			} else {
-				logrus.Info("Connection to DB establised")
-				waitCh <- true
-			}
-		}()
-		select {
-		case <-ctx.Done():
-			logrus.Panic("PingContext is Done:", ctx.Err())
-		case <-waitCh:
-			return
-		}
+	// The golang sql driver does not properly implement PingContext
+	// therefore we use a timer to catch db connection timeouts
+	dbConnectionTimeout := time.NewTimer(15 * time.Second)
+	go func() {
+		<-dbConnectionTimeout.C
+		log.Fatal("Timeout while connecting to the database")
 	}()
+	err = dbConn.Ping()
+	if err != nil {
+		log.Fatal(err)
+	}
+	dbConnectionTimeout.Stop()
 
 	db.DB = dbConn
 	defer db.DB.Close()
