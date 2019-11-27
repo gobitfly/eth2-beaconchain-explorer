@@ -52,7 +52,7 @@ func main() {
 			log.Fatal("Cannot Ping database Server", err)
 			waitCh <- false
 		} else {
-			log.Println("Connection to DB establised")
+			logrus.Info("Connection to DB establised")
 			waitCh <- true
 		}
 	}()
