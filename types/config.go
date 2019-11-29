@@ -9,16 +9,17 @@ type Config struct {
 		Port     string `yaml:"port", envconfig:"DB_PORT"`
 	} `yaml:"database"`
 	Indexer struct {
-		Enabled bool `yaml:"enabled", envconfig:"INDEXER_ENABLED"`
-		Node struct {
+		Enabled            bool `yaml:"enabled", envconfig:"INDEXER_ENABLED"`
+		FullIndexOnStartup bool `yaml:"fullIndexOnStartup", envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`
+		Node               struct {
 			Port string `yaml:"port", envconfig:"INDEXER_NODE_PORT"`
 			Host string `yaml:"host", envconfig:"INDEXER_NODE_HOST"`
 		} `yaml:"node"`
 	} `yaml:"indexer"`
 	Frontend struct {
-		Enabled bool `yaml:"enabled", envconfig:"FRONTEND_ENABLED"`
+		Enabled bool   `yaml:"enabled", envconfig:"FRONTEND_ENABLED"`
 		Imprint string `yaml:"imprint", envconfig:"FRONTEND_IMPRINT"`
-		Server struct {
+		Server  struct {
 			Port string `yaml:"port", envconfig:"FRONTEND_SERVER_PORT"`
 			Host string `yaml:"host", envconfig:"FRONTEND_SERVER_HOST"`
 		} `yaml:"server"`

@@ -20,6 +20,25 @@ const PageSize = 500
 var logger = logrus.New().WithField("module", "exporter")
 
 func Start(client ethpb.BeaconChainClient) error {
+
+	if utils.Config.Indexer.FullIndexOnStartup {
+		logger.Printf("Performing one time full db reindex")
+		head, err := client.GetChainHead(context.Background(), &ptypes.Empty{})
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		for epoch := uint64(0); epoch <= head.HeadBlockEpoch; epoch++ {
+			logger.Printf("Exporting epoch %v of %v", epoch, head.HeadBlockEpoch)
+			err := exportEpoch(epoch, client)
+
+			if err != nil {
+				logger.Fatal(err)
+			}
+			logger.Printf("Finished export for epoch %v", epoch)
+		}
+	}
+
 	for true {
 
 		head, err := client.GetChainHead(context.Background(), &ptypes.Empty{})
