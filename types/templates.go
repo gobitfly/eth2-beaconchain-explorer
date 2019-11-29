@@ -96,7 +96,8 @@ type ValidatorPageData struct {
 	Status                     string
 	ProposedBlocksCount        uint64
 
-	BalanceHistoryChartData [][]float64
+	BalanceHistoryChartData          [][]float64
+	EffectiveBalanceHistoryChartData [][]float64
 }
 
 type ValidatorBalanceHistory struct {

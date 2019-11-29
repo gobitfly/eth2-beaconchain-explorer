@@ -9,7 +9,7 @@ create table validator_set (
     activationeligibilityepoch bigint not null,
     activationepoch bigint not null,
     exitepoch bigint not null,
-    primary key (epoch, pubkey)
+    primary key (pubkey, epoch)
 );
 
 drop table if exists validator_assignments;

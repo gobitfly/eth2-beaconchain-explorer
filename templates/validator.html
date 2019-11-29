@@ -78,7 +78,7 @@
                 },
                 range: 7 * 24 * 60 * 60 * 1000
             },
-            yAxis: {
+            yAxis: [{
                 title: {
                     text: 'Balance [ETH]',
                     style: {
@@ -87,17 +87,39 @@
                 },
                 labels: {
                     formatter: function () {
-                        return this.value.toFixed(2);
+                        return this.value.toFixed(0);
                     },
                     style: {
                         color: 'black'
                     }
                 },
                 opposite: false
-            },
+            }, {
+                title: {
+                    text: 'Effective Balance [ETH]',
+                    style: {
+                        color: 'black'
+                    }
+                },
+                labels: {
+                    formatter: function () {
+                        return this.value.toFixed(0);
+                    },
+                    style: {
+                        color: 'black'
+                    }
+                },
+                opposite: true
+            }],
             series: [{
                 name: "Balance",
+                yAxis: 0,
                 data: {{.BalanceHistoryChartData}}
+            },{
+                name: "Effective Balance",
+                yAxis: 1,
+                step: true,
+                data: {{.EffectiveBalanceHistoryChartData}}
             }],
             plotOptions: {
                 line: {

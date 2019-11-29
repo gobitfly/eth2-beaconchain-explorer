@@ -94,6 +94,19 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
 	}
 
+	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
+	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, effectivebalance as balance FROM validator_set WHERE pubkey = $1 ORDER BY epoch", publicKey)
+	if err != nil {
+		logger.Printf("Error retrieving validator effective balance history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	validatorPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(effectiveBalanceHistory))
+	for i, balance := range effectiveBalanceHistory {
+		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
+	}
+
 	if validatorPageData.Epoch > validatorPageData.ExitEpoch {
 		validatorPageData.Status = "Ejected"
 	} else if validatorPageData.Epoch < validatorPageData.ActivationEpoch {
