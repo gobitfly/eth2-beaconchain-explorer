@@ -1,10 +1,10 @@
 # Database credentials
 database:
-  user: "<dbuser>"
-  name: "<dbname>"
-  host: "<dbhost>"
-  port: "<dbport>"
-  password: "<dbpassword>"
+  user: "postgres"
+  name: "eth2"
+  host: "127.0.0.1"
+  port: "5432"
+  password: "postgres"
 
 # Note: It is possible to run either the frontend or the indexer or both at the same time
 # Frontend config
@@ -17,7 +17,7 @@ frontend:
 
 # Indexer config
 indexer:
-  enabled: true # Enable or disable the indexing service
+  enabled: false # Enable or disable the indexing service
   node:
     host: "localhost" # Address of the prysm backend archive node
     port: "4000" # gRPC port of the prysm backend archive node

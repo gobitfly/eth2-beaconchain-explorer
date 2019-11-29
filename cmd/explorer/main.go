@@ -26,7 +26,7 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "", "Path to the config file")
+	configPath := flag.String("config", "/home/stefan/Documents/projects/explorer/eth2-beaconchain-explorer/config-example.yml", "Path to the config file")
 	flag.Parse()
 
 	log.Printf("Config file path: %v", *configPath)
@@ -36,12 +36,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error reading config file: %v", err)
 	}
-
 	dbConn, err := sqlx.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name))
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	log.Println("connecting to db")
 	// The golang sql driver does not properly implement PingContext
 	// therefore we use a timer to catch db connection timeouts
 	dbConnectionTimeout := time.NewTimer(15 * time.Second)
