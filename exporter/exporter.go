@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	ptypes "github.com/golang/protobuf/ptypes/empty"
@@ -28,14 +29,25 @@ func Start(client ethpb.BeaconChainClient) error {
 			logger.Fatal(err)
 		}
 
+		var wg sync.WaitGroup
 		for epoch := uint64(0); epoch <= head.HeadBlockEpoch; epoch++ {
-			logger.Printf("Exporting epoch %v of %v", epoch, head.HeadBlockEpoch)
-			err := exportEpoch(epoch, client)
+			wg.Add(1)
 
-			if err != nil {
-				logger.Fatal(err)
+			go func(e uint64) {
+				logger.Printf("Exporting epoch %v of %v", e, head.HeadBlockEpoch)
+				err := exportEpoch(e, client)
+
+				if err != nil {
+					logger.Fatal(err)
+				}
+				logger.Printf("Finished export for epoch %v", e)
+				wg.Done()
+			}(epoch)
+
+			if epoch%10 == 0 {
+				logger.Printf("Waiting...")
+				wg.Wait()
 			}
-			logger.Printf("Finished export for epoch %v", epoch)
 		}
 	}
 
