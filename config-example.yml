@@ -18,6 +18,7 @@ frontend:
 # Indexer config
 indexer:
   enabled: true # Enable or disable the indexing service
+  fullIndexOnStartup: false # Perform a one time full db index on startup
   node:
     host: "localhost" # Address of the prysm backend archive node
     port: "4000" # gRPC port of the prysm backend archive node
