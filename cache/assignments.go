@@ -26,6 +26,8 @@ func GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 	assignmentsCacheMux.Lock()
 	defer assignmentsCacheMux.Unlock()
 
+	var err error
+
 	cachedValue, found := assignmentsCache.Get(epoch)
 	if found {
 		return cachedValue.(*types.EpochAssignments), nil
@@ -40,7 +42,7 @@ func GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 	validatorAssignmentes := make([]*ethpb.ValidatorAssignments_CommitteeAssignment, 0)
 	validatorAssignmentResponse := &ethpb.ValidatorAssignments{}
 	for validatorAssignmentResponse.NextPageToken == "" || len(validatorAssignmentes) < int(validatorAssignmentResponse.TotalSize) {
-		validatorAssignmentResponse, err := client.ListValidatorAssignments(context.Background(), &ethpb.ListValidatorAssignmentsRequest{PageToken: validatorAssignmentResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorAssignmentsRequest_Epoch{Epoch: epoch}})
+		validatorAssignmentResponse, err = client.ListValidatorAssignments(context.Background(), &ethpb.ListValidatorAssignmentsRequest{PageToken: validatorAssignmentResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorAssignmentsRequest_Epoch{Epoch: epoch}})
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving validator assignment response for caching: %v", err)
 		}
