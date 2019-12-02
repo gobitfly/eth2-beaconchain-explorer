@@ -65,7 +65,7 @@ func GetValidatorPublicKey(index uint64) ([]byte, error) {
 
 func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	var index uint64
-	err := DB.Get(&publicKey, "SELECT validatorindex FROM validators WHERE pubkey = $1", publicKey)
+	err := DB.Get(&index, "SELECT validatorindex FROM validators WHERE pubkey = $1", publicKey)
 
 	return index, err
 }
