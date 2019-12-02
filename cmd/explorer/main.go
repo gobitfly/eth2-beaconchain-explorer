@@ -90,6 +90,7 @@ func main() {
 		router.HandleFunc("/epochs/data", handlers.EpochsData).Methods("GET")
 		router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")
 		router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
+		router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
 		router.HandleFunc("/validators", handlers.Validators).Methods("GET")
 		router.HandleFunc("/validators/data/pending", handlers.ValidatorsDataPending).Methods("GET")
 		router.HandleFunc("/validators/data/active", handlers.ValidatorsDataActive).Methods("GET")

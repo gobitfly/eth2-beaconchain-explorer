@@ -33,6 +33,18 @@ func FormatBlockStatus(status uint64) string {
 	}
 }
 
+func FormatAttestationStatus(status uint64) string {
+	if status == 0 {
+		return "Scheduled"
+	} else if status == 1 {
+		return "Attested"
+	} else if status == 2 {
+		return "Missed"
+	} else {
+		return "Unknown"
+	}
+}
+
 func SlotToTime(slot uint64) time.Time {
 	return time.Unix(GenesisTimestamp+int64(slot)*SecondsPerSlot, 0)
 }

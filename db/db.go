@@ -543,7 +543,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
 			aggregationBits := bitfield.Bitlist(a.AggregationBits)
 			assignments, err := cache.GetEpochAssignments(a.Data.Slot / utils.SlotsPerEpoch)
 			if err != nil {
-				return fmt.Errorf("error receiving epoch assignment for epoch %v: %v", epoch, err)
+				return fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.SlotsPerEpoch, err)
 			}
 
 			attester := make([]uint64, 0)
@@ -555,7 +555,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
 					}
 					attester = append(attester, validator)
 
-					_, err = stmtAttestationAssignments.Exec(epoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1)
+					_, err = stmtAttestationAssignments.Exec(a.Data.Slot/utils.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1)
 					if err != nil {
 						return fmt.Errorf("error executing stmtAttestationAssignments: %v", err)
 					}

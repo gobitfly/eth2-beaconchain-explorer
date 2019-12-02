@@ -34,6 +34,14 @@
                     }
                 }]
             });
+            $('#attestations').DataTable({
+                "processing": true,
+                "serverSide": true,
+                "ordering": false,
+                "searching": false,
+                "ajax": "/validator/{{.Index}}/attestations",
+                "pagingType": "full"
+            });
         });
     </script>
 
@@ -167,8 +175,8 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" id="pills-attestations-tab" data-toggle="pill" href="#pills-attestations"
-                           role="tab" aria-controls="pills-attestations" aria-selected="false"> <span
-                                    class="badge badge-secondary"></span></a>
+                           role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span
+                                    class="badge badge-secondary">{{.AttestationsCount}}</span></a>
                     </li>
                     {{/*                    <li class="nav-item">*/}}
                     {{/*                        <a class="nav-link" href="#">Deposits <span class="badge badge-secondary">{{.DepositsCount}}</span></a>*/}}
@@ -251,7 +259,20 @@
                 </div>
             </div>
             <div class="tab-pane fade" id="pills-attestations" role="tabpanel" aria-labelledby="pills-attestations-tab">
-
+                <div class="table-responsive mt-4">
+                    <table class="table" id="attestations" width="100%">
+                        <thead>
+                        <tr>
+                            <th>Epoch</th>
+                            <th>Slot</th>
+                            <th>Committee Index</th>
+                            <th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

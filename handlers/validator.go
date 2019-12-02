@@ -40,7 +40,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		Data:               nil,
 	}
 
-	if strings.Contains(vars["index"], "0x") {
+	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
 			logger.Printf("Error parsing validator public key %v: %v", vars["index"], err)
@@ -102,6 +102,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	err = db.DB.Get(&validatorPageData.ProposedBlocksCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", index)
 	if err != nil {
 		logger.Printf("Error retrieving proposed blocks count: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	err = db.DB.Get(&validatorPageData.AttestationsCount, "SELECT COUNT(*) FROM attestation_assignments WHERE validatorindex = $1", index)
+	if err != nil {
+		logger.Printf("Error retrieving attestation count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -224,6 +231,86 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v", b.Deposits),
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
 			fmt.Sprintf("%v", b.Exits),
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+	}
+}
+
+func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Printf("Error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	q := r.URL.Query()
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Printf("Error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var totalCount uint64
+
+	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM attestation_assignments WHERE validatorindex = $1", index)
+	if err != nil {
+		logger.Printf("Error retrieving proposed blocks count: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var blocks []*types.ValidatorAttestation
+	err = db.DB.Select(&blocks, `SELECT attestation_assignments.epoch, 
+											    attestation_assignments.attesterslot,  
+											    attestation_assignments.committeeindex,  
+											    attestation_assignments.status
+										FROM attestation_assignments 
+										WHERE validatorindex = $1
+										ORDER BY epoch desc, attesterslot DESC
+										LIMIT $2 OFFSET $3`, index, length, start)
+
+	if err != nil {
+		logger.Printf("Error retrieving validator attestations data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]string, len(blocks))
+	for i, b := range blocks {
+		tableData[i] = []string{
+			fmt.Sprintf("%v", b.Epoch),
+			fmt.Sprintf("%v", b.AttesterSlot),
+			fmt.Sprintf("%v", b.CommitteeIndex),
+			fmt.Sprintf("%v", utils.FormatAttestationStatus(b.Status)),
 		}
 	}
 

@@ -99,6 +99,7 @@ type ValidatorPageData struct {
 	EffectiveBalanceFormatted  string
 	Status                     string
 	ProposedBlocksCount        uint64
+	AttestationsCount          uint64
 
 	BalanceHistoryChartData          [][]float64
 	EffectiveBalanceHistoryChartData [][]float64
@@ -107,6 +108,13 @@ type ValidatorPageData struct {
 type ValidatorBalanceHistory struct {
 	Epoch   uint64 `db:"epoch"`
 	Balance uint64 `db:"balance"`
+}
+
+type ValidatorAttestation struct {
+	Epoch          uint64 `db:"epoch"`
+	AttesterSlot   uint64 `db:"attesterslot"`
+	CommitteeIndex uint64 `db:"committeeindex"`
+	Status         uint64 `db:"status"`
 }
 
 type BlockPageData struct {
