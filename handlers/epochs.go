@@ -60,6 +60,9 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+	if length > 100 {
+		length = 100
+	}
 
 	epochsCount := services.LatestEpoch()
 

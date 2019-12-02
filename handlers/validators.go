@@ -87,6 +87,9 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+	if length > 100 {
+		length = 100
+	}
 
 	var totalCount uint64
 
@@ -176,6 +179,9 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
+	}
+	if length > 100 {
+		length = 100
 	}
 
 	var totalCount uint64
@@ -269,6 +275,9 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
+	}
+	if length > 100 {
+		length = 100
 	}
 
 	var totalCount uint64
