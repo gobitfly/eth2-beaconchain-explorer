@@ -78,14 +78,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 											 validator_set.activationeligibilityepoch, 
 											 validator_set.activationepoch, 
 											 validator_set.exitepoch,
-       										 validator_balances.balance,
-       										 validator_balances.index
+       										 validator_balances.balance
 										FROM validator_set
 										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch 
 										                                    AND validator_set.validatorindex = validator_balances.validatorindex
 										WHERE validator_set.epoch = $1 
 										  AND validator_set.validatorindex = $2
 										LIMIT 1`, services.LatestEpoch(), index)
+	if err != nil {
+		logger.Printf("Error retrieving validator page data: %v", err)
+
+		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+
+		if err != nil {
+			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		}
+		return
+	}
 
 	validatorPageData.Index = index
 	validatorPageData.PublicKey, err = db.GetValidatorPublicKey(index)
