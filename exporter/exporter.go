@@ -152,7 +152,7 @@ func Start(client ethpb.BeaconChainClient) error {
 			err = exportEpoch(epoch, client)
 
 			if err != nil {
-				logger.Fatal(err)
+				logger.Errorf("error exporting epoch: %v", err)
 			}
 			logger.Printf("Finished export for epoch %v", epoch)
 		}
