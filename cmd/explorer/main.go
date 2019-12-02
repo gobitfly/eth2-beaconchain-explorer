@@ -96,6 +96,7 @@ func main() {
 		router.HandleFunc("/validators/data/active", handlers.ValidatorsDataActive).Methods("GET")
 		router.HandleFunc("/validators/data/ejected", handlers.ValidatorsDataEjected).Methods("GET")
 		router.HandleFunc("/search", handlers.Search).Methods("POST")
+		router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 		router.HandleFunc("/faq", handlers.Faq).Methods("GET")
 		router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
 

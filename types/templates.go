@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/lib/pq"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type PageData struct {
@@ -195,4 +196,14 @@ type EpochsPageData struct {
 	EligibleEther           uint64  `db:"eligibleether"`
 	GlobalParticipationRate float64 `db:"globalparticipationrate"`
 	VotedEther              uint64  `db:"votedether"`
+}
+
+type SearchAheadBlocksResult []struct {
+	Slot string `db:"slot" json:"slot,omitempty"`
+	Root string `db:"blockroot" json:"blockroot,omitempty"`
+}
+
+type SearchAheadValidatorsResult []struct {
+	Index  string `db:"index" json:"index,omitempty"`
+	Pubkey string `db:"pubkey" json:"pubkey,omitempty"`
 }

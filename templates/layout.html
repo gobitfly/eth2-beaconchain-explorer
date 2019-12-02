@@ -33,6 +33,56 @@
 
         {{ template "css" }}
 
+        <style>
+            .tt-menu {
+                margin-top: 4px;
+                background-color: #fff;
+                border: 1px solid #ccc;
+                border: 1px solid rgba(0, 0, 0, 0.2);
+                -webkit-border-radius: 4px;
+                -moz-border-radius: 4px;
+                border-radius: 4px;
+                box-shadow: 0 5px 10px rgba(0,0,0,.2);
+                overflow-y: auto;
+                max-height: 300px;
+                cursor: pointer;
+                right: -44px;
+            }
+
+            .tt-query {
+                -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+                -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+                box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+            }
+
+            .tt-suggestion {
+                padding: 5px 20px;
+                line-height: 34px;
+            }
+
+            .tt-suggestion.tt-cursor,.tt-suggestion:hover {
+                color: #fff;
+                background-color: #007bff;;
+            }
+
+            .tt-suggestion p {
+                margin: 0;
+            }
+
+            .tt-dataset h3 {
+                padding: 5px 20px;
+                font-size: 1.5em;
+            }
+
+            .input-group > span.twitter-typeahead {
+                position: relative;
+                -ms-flex: 1 1 auto;
+                flex: 1 1 auto;
+                width: 1%;
+                margin-bottom: 0;
+                margin-right: .5rem !important;
+            }
+        </style>
     </head>
 
     <body ontouchstart="">
@@ -63,8 +113,8 @@
                         <a class="nav-link" href="/validators"><i class="fas fa-thumbs-up"></i> Validators</a>
                     </li>
                 </ul>
-                <form class="form-inline ml-auto" action="/search" , method="POST">
-                    <input class="form-control mr-2" name="search" type="search"
+                <form class="form-inline ml-auto" action="/search" method="POST">
+                    <input class="form-control mr-2 typeahead" name="search" type="search"
                            placeholder="Public Key / Block Number / Block Hash" aria-label="Search">
                     <button class="btn btn-primary" type="submit"><span class="fas fa-search"></span></button>
                 </form>
@@ -105,6 +155,7 @@
             crossorigin="anonymous"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
 
     <script>
         $(document).ready(function () {
@@ -124,6 +175,89 @@
                 $(this).text(moment.unix(dt).fromNow());
             } else {
                 $(this).text(moment.unix(dt).format(format));
+            }
+        });
+
+        var bhValidators = new Bloodhound({
+            datumTokenizer: Bloodhound.tokenizers.whitespace,
+            queryTokenizer: Bloodhound.tokenizers.whitespace,
+            identify: function(obj) {
+                return obj.index
+            },
+            remote: {
+                url: '/search/validators/%QUERY',
+                wildcard: '%QUERY',
+            }
+        });
+
+        var bhBlocks = new Bloodhound({
+            datumTokenizer: Bloodhound.tokenizers.whitespace,
+            queryTokenizer: Bloodhound.tokenizers.whitespace,
+            identify: function(obj) {
+                return obj.blockroot
+            },
+            remote: {
+                url: '/search/blocks/%QUERY',
+                wildcard: '%QUERY',
+            }
+        });
+
+        $(".typeahead").typeahead({
+            minLength: 1,
+            highlight: true,
+            hint: false,
+            autoselect: false,
+        }, {
+            limit: 5,
+            name: "validators",
+            source: bhValidators,
+            display: 'pubkey',
+            templates: {
+                header: '<h3>Validators</h3>',
+                suggestion: function(data) {
+                    return `<div>${data.index}: ${data.pubkey.substring(0,16)}…</div>`;
+                }
+            }
+        }, {
+            limit: 5,
+            name: "blocks",
+            source: bhBlocks,
+            display: 'blockroot',
+            templates: {
+                header: '<h3>Blocks</h3>',
+                suggestion: function(data) {
+                    return `<div>${data.slot}: ${data.blockroot.substring(0,16)}…</div>`;
+                }
+            }
+        });
+
+        $('.typeahead').on('focus', function(event) {
+            if(event.target.value !== '') {
+                $(this).trigger($.Event('keydown', {
+                    keyCode: 40
+                }));
+            }
+        });
+
+        $('.typeahead').on('input', function() {
+            $('.tt-suggestion').first().addClass('tt-cursor');
+        });
+
+        $('.tt-menu').on('mouseenter', function() {
+            $('.tt-suggestion').first().removeClass('tt-cursor');
+        });
+
+        $('.tt-menu').on('mouseleave', function() {
+            $('.tt-suggestion').first().addClass('tt-cursor');
+        });
+
+        $('.typeahead').on('typeahead:select', function(ev, sug) {
+            if (sug.blockroot !== undefined) {
+                window.location = '/block/' + sug.blockroot;
+            } else if (sug.index !== undefined) {
+                window.location = '/validator/' + sug.index;
+            } else {
+                console.log('invalid typeahead-selection', sug);
             }
         });
 
