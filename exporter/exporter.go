@@ -221,7 +221,7 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	if err != nil {
 		return fmt.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
 	}
-	logger.Printf("Retrieved data for %v validators for epoch %v", len(data.Validators), epoch)
+	logger.Printf("Retrieved validator assignment data for epoch %v", epoch)
 
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]*types.BlockContainer)
@@ -255,26 +255,7 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	}
 	logger.Printf("Retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
 
-	// Retrieve the validator set for the epoch
-	data.Validators = make([]*ethpb.Validator, 0)
-
-	validatorResponse := &ethpb.Validators{}
-	for validatorResponse.NextPageToken == "" || (len(validatorResponse.Validators) >= utils.PageSize) {
-		validatorResponse, err = client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
-		if err != nil {
-			logger.Printf("error retrieving validator response: %v", err)
-			break
-		}
-		if validatorResponse.TotalSize == 0 {
-			break
-		}
-
-		for _, validator := range validatorResponse.Validators {
-			data.Validators = append(data.Validators, validator)
-		}
-
-	}
-
+	// Fill up missed and scheduled blocks
 	for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {
 		_, found := data.Blocks[slot]
 		if !found {
@@ -321,7 +302,25 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 		}
 	}
 
-	logger.Printf("Retrieved data for %v assignments for epoch %v", len(data.ValidatorAssignmentes.ProposerAssignments), epoch)
+	// Retrieve the validator set for the epoch
+	data.Validators = make([]*ethpb.Validator, 0)
+
+	validatorResponse := &ethpb.Validators{}
+	for validatorResponse.NextPageToken == "" || (len(validatorResponse.Validators) >= utils.PageSize) {
+		validatorResponse, err = client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
+		if err != nil {
+			logger.Printf("error retrieving validator response: %v", err)
+			break
+		}
+		if validatorResponse.TotalSize == 0 {
+			break
+		}
+
+		for _, validator := range validatorResponse.Validators {
+			data.Validators = append(data.Validators, validator)
+		}
+	}
+	logger.Printf("Retrieved validator data for epoch %v", epoch)
 
 	// Retrieve the beacon committees for the epoch
 	data.BeaconCommittees = make([]*ethpb.BeaconCommittees_CommitteeItem, 0)
