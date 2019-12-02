@@ -47,6 +47,7 @@ func GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 		if validatorAssignmentResponse.TotalSize == 0 || len(validatorAssignmentes) == int(validatorAssignmentResponse.TotalSize) {
 			break
 		}
+		logger.Printf("Retrieved %v assignments for epoch %v", len(validatorAssignmentes), epoch)
 		validatorAssignmentes = append(validatorAssignmentes, validatorAssignmentResponse.Assignments...)
 	}
 
