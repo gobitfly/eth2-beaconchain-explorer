@@ -115,7 +115,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.DB.Get(&validatorPageData.AttestationsCount, "SELECT COUNT(*) FROM attestation_assignments WHERE validatorindex = $1", index)
+	err = db.DB.Get(&validatorPageData.AttestationsCount, "SELECT LEAST(COUNT(*), 10000) FROM attestation_assignments WHERE validatorindex = $1", index)
 	if err != nil {
 		logger.Printf("Error retrieving attestation count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -290,7 +290,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM attestation_assignments WHERE validatorindex = $1", index)
+	err = db.DB.Get(&totalCount, "SELECT LEAST(COUNT(*), 10000) FROM attestation_assignments WHERE validatorindex = $1", index)
 	if err != nil {
 		logger.Printf("Error retrieving proposed blocks count: %v", err)
 		http.Error(w, "Internal server error", 503)
