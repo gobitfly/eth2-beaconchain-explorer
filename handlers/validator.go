@@ -31,9 +31,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.PageData{
 		Meta: &types.Meta{
-			Title:       fmt.Sprintf("Validator %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", index, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        fmt.Sprintf("/validator/%v", index),
 		},
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "validators",
@@ -50,6 +48,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
+			data.Meta.Title = fmt.Sprintf("Validator %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", index, time.Now().Year())
+			data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 			err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 			if err != nil {
@@ -65,6 +65,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	data.Meta.Title = fmt.Sprintf("Validator %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", index, time.Now().Year())
+	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
 	err = db.DB.Get(&validatorPageData, `SELECT 
 											 validator_set.epoch, 
@@ -84,10 +87,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 										  AND validator_set.validatorindex = $2
 										LIMIT 1`, services.LatestEpoch(), index)
 
+	validatorPageData.Index = index
 	validatorPageData.PublicKey, err = db.GetValidatorPublicKey(index)
 	if err != nil {
-		logger.Printf("Error retrieving validator public key: %v", err)
-		http.Error(w, "Internal server error", 503)
+		logger.Printf("Error retrieving validator public key %v: %v", index, err)
+
+		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+
+		if err != nil {
+			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		}
 		return
 	}
 
