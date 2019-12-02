@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var indexTemplate = template.Must(template.New("index").ParseFiles("templates/layout.html", "templates/index.html"))
+var indexTemplate = template.Must(template.New("index").Funcs(template.FuncMap{"formatBlockStatus": utils.FormatBlockStatus}).ParseFiles("templates/layout.html", "templates/index.html"))
 
 func Index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")

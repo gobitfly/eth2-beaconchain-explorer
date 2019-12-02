@@ -1,0 +1,76 @@
+package cache
+
+import (
+	"context"
+	"eth2-exporter/types"
+	"eth2-exporter/utils"
+	"fmt"
+	lru "github.com/hashicorp/golang-lru"
+	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
+	"github.com/sirupsen/logrus"
+	"sync"
+)
+
+var logger = logrus.New().WithField("module", "cache")
+
+// LRU Cache to store recently used epoch assignments
+var assignmentsCache, _ = lru.New(128)
+var client ethpb.BeaconChainClient
+var assignmentsCacheMux = &sync.Mutex{}
+
+func Init(chainClient ethpb.BeaconChainClient) {
+	client = chainClient
+}
+
+func GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
+	assignmentsCacheMux.Lock()
+	defer assignmentsCacheMux.Unlock()
+
+	cachedValue, found := assignmentsCache.Get(epoch)
+	if found {
+		return cachedValue.(*types.EpochAssignments), nil
+	}
+
+	assignments := &types.EpochAssignments{
+		ProposerAssignments: make(map[uint64]uint64),
+		AttestorAssignments: make(map[string]uint64),
+	}
+
+	// Retrieve the validator assignments for the epoch
+	validatorAssignmentes := make([]*ethpb.ValidatorAssignments_CommitteeAssignment, 0)
+	validatorAssignmentResponse := &ethpb.ValidatorAssignments{}
+	for validatorAssignmentResponse.NextPageToken == "" || len(validatorAssignmentes) < int(validatorAssignmentResponse.TotalSize) {
+		validatorAssignmentResponse, err := client.ListValidatorAssignments(context.Background(), &ethpb.ListValidatorAssignmentsRequest{PageToken: validatorAssignmentResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorAssignmentsRequest_Epoch{Epoch: epoch}})
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving validator assignment response for caching: %v", err)
+		}
+		if validatorAssignmentResponse.TotalSize == 0 || len(validatorAssignmentes) == int(validatorAssignmentResponse.TotalSize) {
+			break
+		}
+		validatorAssignmentes = append(validatorAssignmentes, validatorAssignmentResponse.Assignments...)
+	}
+
+	// Extract the proposer & attestation assignments from the response and cache them for later use
+	// Proposer assignments are cached by the proposer slot
+	// Attestation assignments are cached by the slot & committee key
+	for index, assignment := range validatorAssignmentes {
+		if assignment.ProposerSlot > 0 {
+			assignments.ProposerAssignments[assignment.ProposerSlot] = uint64(index)
+		}
+		if assignment.AttesterSlot > 0 {
+			for memberIndex, validatorIndex := range assignment.BeaconCommittees {
+				assignments.AttestorAssignments[FormatAttestorAssignmentKey(assignment.AttesterSlot, assignment.CommitteeIndex, uint64(memberIndex))] = validatorIndex
+			}
+		}
+	}
+
+	if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 {
+		assignmentsCache.Add(epoch, assignments)
+	}
+
+	return assignments, nil
+}
+
+func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint64) string {
+	return fmt.Sprintf("%v-%v-%v", AttesterSlot, CommitteeIndex, MemberIndex)
+}

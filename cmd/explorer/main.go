@@ -1,6 +1,7 @@
 package main
 
 import (
+	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
@@ -72,6 +73,7 @@ func main() {
 		defer conn.Close()
 
 		chainClient := ethpb.NewBeaconChainClient(conn)
+		cache.Init(chainClient)
 
 		go exporter.Start(chainClient)
 	}
@@ -86,8 +88,8 @@ func main() {
 		router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 		router.HandleFunc("/epochs", handlers.Epochs).Methods("GET")
 		router.HandleFunc("/epochs/data", handlers.EpochsData).Methods("GET")
-		router.HandleFunc("/validator/{publicKey}", handlers.Validator).Methods("GET")
-		router.HandleFunc("/validator/{publicKey}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
+		router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")
+		router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
 		router.HandleFunc("/validators", handlers.Validators).Methods("GET")
 		router.HandleFunc("/validators/data/pending", handlers.ValidatorsDataPending).Methods("GET")
 		router.HandleFunc("/validators/data/active", handlers.ValidatorsDataActive).Methods("GET")

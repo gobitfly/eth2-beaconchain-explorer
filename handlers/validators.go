@@ -28,7 +28,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 												   exitepoch 
 											FROM validator_set 
 											WHERE epoch = $1 
-											ORDER BY pubkey`, services.LatestEpoch())
+											ORDER BY validatorindex`, services.LatestEpoch())
 
 	if err != nil {
 		logger.Printf("Error retrieving validators data: %v", err)
@@ -99,19 +99,20 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators, `SELECT 
-											 validator_set.epoch, 
-											 validator_set.pubkey, 
+											 validator_set.epoch,
+       										 validator_set.validatorindex, 
+											 validators.pubkey, 
 											 validator_set.withdrawableepoch, 
 											 validator_set.effectivebalance, 
 											 validator_set.slashed, 
 											 validator_set.activationeligibilityepoch, 
 											 validator_set.activationepoch, 
 											 validator_set.exitepoch,
-       										 validator_balances.balance,
-       										 validator_balances.index
+       										 validator_balances.balance
 										FROM validator_set
 										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch
-											AND validator_set.pubkey = validator_balances.pubkey
+											AND validator_set.validatorindex = validator_balances.validatorindex
+										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
 										WHERE validator_set.epoch = $1 AND validator_set.epoch < activationepoch
 										ORDER BY activationepoch DESC 
 										LIMIT $2 OFFSET $3`, services.LatestEpoch(), length, start)
@@ -126,7 +127,7 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 	for i, v := range validators {
 		tableData[i] = []string{
 			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.Index),
+			fmt.Sprintf("%v", v.ValidatorIndex),
 			utils.FormatBalance(v.CurrentBalance),
 			utils.FormatBalance(v.EffectiveBalance),
 			fmt.Sprintf("%v", v.Slashed),
@@ -189,22 +190,23 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators, `SELECT 
 											 validator_set.epoch, 
-											 validator_set.pubkey, 
+											 validator_set.validatorindex, 
+											 validators.pubkey, 
 											 validator_set.withdrawableepoch, 
 											 validator_set.effectivebalance, 
 											 validator_set.slashed, 
 											 validator_set.activationeligibilityepoch, 
 											 validator_set.activationepoch, 
 											 validator_set.exitepoch,
-       										 validator_balances.balance,
-       										 validator_balances.index
+       										 validator_balances.balance
 										FROM validator_set
 										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch
-											AND validator_set.pubkey = validator_balances.pubkey
+											AND validator_set.validatorindex = validator_balances.validatorindex
+										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
 										WHERE validator_set.epoch = $1 
 										  AND validator_set.epoch > activationepoch 
 										  AND validator_set.epoch < exitepoch 
-										  AND encode(validator_set.pubkey::bytea, 'hex') LIKE $2
+										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 										ORDER BY activationepoch DESC 
 										LIMIT $3 OFFSET $4`, services.LatestEpoch(), "%"+search+"%", length, start)
 
@@ -218,7 +220,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	for i, v := range validators {
 		tableData[i] = []string{
 			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.Index),
+			fmt.Sprintf("%v", v.ValidatorIndex),
 			utils.FormatBalance(v.CurrentBalance),
 			utils.FormatBalance(v.EffectiveBalance),
 			fmt.Sprintf("%v", v.Slashed),
@@ -280,22 +282,23 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators, `SELECT 
-											 validator_set.epoch, 
-											 validator_set.pubkey, 
+											 validator_set.epoch,
+       										 validator_set.validatorindex, 
+											 validators.pubkey, 
 											 validator_set.withdrawableepoch, 
 											 validator_set.effectivebalance, 
 											 validator_set.slashed, 
 											 validator_set.activationeligibilityepoch, 
 											 validator_set.activationepoch, 
 											 validator_set.exitepoch,
-       										 validator_balances.balance,
-       										 validator_balances.index
+       										 validator_balances.balance
 										FROM validator_set 
 										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch
-											AND validator_set.pubkey = validator_balances.pubkey
+											AND validator_set.validatorindex = validator_balances.validatorindex
+										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
 										WHERE validator_set.epoch = $1 
 										  AND validator_set.epoch > exitepoch
-										  AND encode(validator_set.pubkey::bytea, 'hex') LIKE $2
+										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 										ORDER BY activationepoch DESC 
 										LIMIT $3 OFFSET $4`, services.LatestEpoch(), "%"+search+"%", length, start)
 
@@ -309,7 +312,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	for i, v := range validators {
 		tableData[i] = []string{
 			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.Index),
+			fmt.Sprintf("%v", v.ValidatorIndex),
 			utils.FormatBalance(v.CurrentBalance),
 			utils.FormatBalance(v.EffectiveBalance),
 			fmt.Sprintf("%v", v.Slashed),

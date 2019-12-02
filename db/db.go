@@ -3,9 +3,12 @@ package db
 import (
 	"bytes"
 	"database/sql"
+	"eth2-exporter/cache"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -51,6 +54,20 @@ func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.Mini
 	}
 
 	return blocks, nil
+}
+
+func GetValidatorPublicKey(index uint64) ([]byte, error) {
+	var publicKey []byte
+	err := DB.Get(&publicKey, "SELECT pubkey FROM validators WHERE validatorindex = $1", index)
+
+	return publicKey, err
+}
+
+func GetValidatorIndex(publicKey []byte) (uint64, error) {
+	var index uint64
+	err := DB.Get(&publicKey, "SELECT validatorindex FROM validators WHERE pubkey = $1", publicKey)
+
+	return index, err
 }
 
 func SaveAttestationPool(attestations []*ethpb.Attestation) error {
@@ -148,7 +165,12 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving validator set to db: %v", err)
 	}
 
-	err = saveValidatorAssignments(data.Epoch, data.ValidatorAssignmentes, tx)
+	err = saveValidatorProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments, tx)
+	if err != nil {
+		return fmt.Errorf("error saving validator assignments to db: %v", err)
+	}
+
+	err = saveValidatorAttestationAssignments(data.Epoch, data.ValidatorAssignmentes.AttestorAssignments, tx)
 	if err != nil {
 		return fmt.Errorf("error saving validator assignments to db: %v", err)
 	}
@@ -249,16 +271,22 @@ func SaveEpoch(data *types.EpochData) error {
 	return nil
 }
 
-func saveValidatorSet(epoch uint64, validators map[string]*ethpb.Validator, tx *sql.Tx) error {
+func saveValidatorSet(epoch uint64, validators []*ethpb.Validator, tx *sql.Tx) error {
 
-	stmt, err := tx.Prepare(`INSERT INTO validator_set (epoch, pubkey, withdrawableepoch, withdrawalcredentials, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (epoch, pubkey) DO NOTHING`)
+	stmtValidatorSet, err := tx.Prepare(`INSERT INTO validator_set (epoch, validatorindex, withdrawableepoch, withdrawalcredentials, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch)
+ 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (epoch, validatorindex) DO NOTHING`)
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer stmtValidatorSet.Close()
 
-	for _, v := range validators {
+	stmtValidators, err := tx.Prepare(`INSERT INTO validators (validatorindex, pubkey) VALUES ($1, $2) ON CONFLICT (validatorindex) DO NOTHING`)
+	if err != nil {
+		return err
+	}
+	defer stmtValidators.Close()
+
+	for index, v := range validators {
 		if v.WithdrawableEpoch == 18446744073709551615 {
 			v.WithdrawableEpoch = 9223372036854775807
 		}
@@ -271,29 +299,53 @@ func saveValidatorSet(epoch uint64, validators map[string]*ethpb.Validator, tx *
 		if v.ActivationEpoch == 18446744073709551615 {
 			v.ActivationEpoch = 9223372036854775807
 		}
-		_, err := stmt.Exec(epoch, v.PublicKey, v.WithdrawableEpoch, v.WithdrawalCredentials, v.EffectiveBalance, v.Slashed, v.ActivationEligibilityEpoch, v.ActivationEpoch, v.ExitEpoch)
+		_, err := stmtValidatorSet.Exec(epoch, index, v.WithdrawableEpoch, v.WithdrawalCredentials, v.EffectiveBalance, v.Slashed, v.ActivationEligibilityEpoch, v.ActivationEpoch, v.ExitEpoch)
 		if err != nil {
 			return fmt.Errorf("error executing save validator set statement: %v", err)
 		}
-		//logger.Printf("Exported validator %x for epoch %v", v.PublicKey, epoch)
+		_, err = stmtValidators.Exec(index, v.PublicKey)
+		if err != nil {
+			return fmt.Errorf("error executing save validator statement: %v", err)
+		}
 	}
 
 	return nil
 }
 
-func saveValidatorAssignments(epoch uint64, assignments []*ethpb.ValidatorAssignments_CommitteeAssignment, tx *sql.Tx) error {
+func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint64, tx *sql.Tx) error {
 
-	stmt, err := tx.Prepare(`INSERT INTO validator_assignments (epoch, pubkey, beaconcommittees, committeeindex, attesterslot, proposerslot)
- 													VALUES    ($1, $2, $3, $4, $5, $6) ON CONFLICT (epoch, pubkey) DO NOTHING`)
+	stmt, err := tx.Prepare(`INSERT INTO proposal_assignments (epoch, validatorindex, proposerslot, status)
+ 													VALUES    ($1, $2, $3, $4) ON CONFLICT (epoch, validatorindex, proposerslot) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	for _, a := range assignments {
-		_, err := stmt.Exec(epoch, a.PublicKey, pq.Array(a.BeaconCommittees), a.CommitteeIndex, a.AttesterSlot, a.ProposerSlot)
+	for slot, validator := range assignments {
+		_, err := stmt.Exec(epoch, validator, slot, 0)
 		if err != nil {
-			return fmt.Errorf("error executing save validator assignment statement: %v", err)
+			return fmt.Errorf("error executing save validator proposal assignment statement: %v", err)
+		}
+	}
+
+	return nil
+}
+
+func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sql.Tx) error {
+
+	stmtAttestationAssignments, err := tx.Prepare(`INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
+ 													VALUES    ($1, $2, $3, $4, $5) ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO NOTHING`)
+	if err != nil {
+		return err
+	}
+	defer stmtAttestationAssignments.Close()
+
+	for key, validator := range assignments {
+		keySplit := strings.Split(key, "-")
+
+		_, err := stmtAttestationAssignments.Exec(epoch, validator, keySplit[0], keySplit[1], 0)
+		if err != nil {
+			return fmt.Errorf("error executing save validator attestation assignment statement: %v", err)
 		}
 	}
 
@@ -314,29 +366,25 @@ func saveBeaconCommittees(epoch uint64, committees []*ethpb.BeaconCommittees_Com
 		if err != nil {
 			return fmt.Errorf("error executing save beacon committee statement: %v", err)
 		}
-
-		//logger.Printf("Exported validator %x assignments for epoch %v", a.PublicKey, epoch)
 	}
 
 	return nil
 }
 
-func saveValidatorBalances(epoch uint64, balances map[string]*ethpb.ValidatorBalances_Balance, tx *sql.Tx) error {
+func saveValidatorBalances(epoch uint64, balances []*ethpb.ValidatorBalances_Balance, tx *sql.Tx) error {
 
-	stmt, err := tx.Prepare(`INSERT INTO validator_balances (epoch, pubkey, balance, index)
- 													VALUES    ($1, $2, $3, $4) ON CONFLICT (epoch, pubkey) DO UPDATE SET balance = excluded.balance`)
+	stmt, err := tx.Prepare(`INSERT INTO validator_balances (epoch, validatorindex, balance)
+ 													VALUES    ($1, $2, $3) ON CONFLICT (epoch, validatorindex) DO UPDATE SET balance = excluded.balance`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	for _, b := range balances {
-		_, err := stmt.Exec(epoch, b.PublicKey, b.Balance, b.Index)
+	for index, b := range balances {
+		_, err := stmt.Exec(epoch, index, b.Balance)
 		if err != nil {
 			return fmt.Errorf("error executing save validator balance statement: %v", err)
 		}
-
-		//logger.Printf("Exported validator %x assignments for epoch %v", a.PublicKey, epoch)
 	}
 
 	return nil
@@ -383,8 +431,8 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
 	}
 	defer stmtAttesterSlashing.Close()
 
-	stmtAttestations, err := tx.Prepare(`INSERT INTO blocks_attestations (block_slot, block_index, aggregationbits, custodybits, signature, slot, index, beaconblockroot, source_epoch, source_root, target_epoch, target_root)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (block_slot, block_index) DO NOTHING`)
+	stmtAttestations, err := tx.Prepare(`INSERT INTO blocks_attestations (block_slot, block_index, aggregationbits, validators, custodybits, signature, slot, committeeindex, beaconblockroot, source_epoch, source_root, target_epoch, target_root)
+ 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -403,6 +451,20 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
 		return err
 	}
 	defer stmtVoluntaryExits.Close()
+
+	stmtProposalAssignments, err := tx.Prepare(`INSERT INTO proposal_assignments (epoch, validatorindex, proposerslot, status)
+ 													VALUES    ($1, $2, $3, $4) ON CONFLICT (epoch, validatorindex, proposerslot) DO UPDATE SET status = excluded.status`)
+	if err != nil {
+		return err
+	}
+	defer stmtProposalAssignments.Close()
+
+	stmtAttestationAssignments, err := tx.Prepare(`INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
+ 													VALUES    ($1, $2, $3, $4, $5) ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status`)
+	if err != nil {
+		return err
+	}
+	defer stmtAttestationAssignments.Close()
 
 	for _, b := range blocks {
 
@@ -478,7 +540,29 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
 		}
 
 		for i, a := range b.Block.Block.Body.Attestations {
-			_, err := stmtAttestations.Exec(b.Block.Block.Slot, i, bitfield.Bitlist(a.AggregationBits).Bytes(), bitfield.Bitlist(a.CustodyBits).Bytes(), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
+			aggregationBits := bitfield.Bitlist(a.AggregationBits)
+			assignments, err := cache.GetEpochAssignments(a.Data.Slot / utils.SlotsPerEpoch)
+			if err != nil {
+				return fmt.Errorf("error receiving epoch assignment for epoch %v: %v", epoch, err)
+			}
+
+			attester := make([]uint64, 0)
+			for i := uint64(0); i < aggregationBits.Len(); i++ {
+				if aggregationBits.BitAt(i) {
+					validator, found := assignments.AttestorAssignments[cache.FormatAttestorAssignmentKey(a.Data.Slot, a.Data.CommitteeIndex, i)]
+					if !found { // This should never happen!
+						logger.Fatalf("error retrieving assigned validator for slot %v commitee index %v member index %v", a.Data.Slot, a.Data.CommitteeIndex, i)
+					}
+					attester = append(attester, validator)
+
+					_, err = stmtAttestationAssignments.Exec(epoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1)
+					if err != nil {
+						return fmt.Errorf("error executing stmtAttestationAssignments: %v", err)
+					}
+				}
+			}
+
+			_, err = stmtAttestations.Exec(b.Block.Block.Slot, i, bitfield.Bitlist(a.AggregationBits).Bytes(), pq.Array(attester), bitfield.Bitlist(a.CustodyBits).Bytes(), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
 			if err != nil {
 				return fmt.Errorf("error executing stmtAttestations: %v", err)
 			}
@@ -496,6 +580,11 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
 			if err != nil {
 				return fmt.Errorf("error executing stmtVoluntaryExits: %v", err)
 			}
+		}
+
+		_, err = stmtProposalAssignments.Exec(epoch, b.Proposer, b.Block.Block.Slot, b.Status)
+		if err != nil {
+			return fmt.Errorf("error executing stmtProposalAssignments: %v", err)
 		}
 	}
 

@@ -25,8 +25,7 @@
             title: {
                 text: 'Network History'
             },
-            subtitle: {
-            },
+            subtitle: {},
             xAxis: {
                 type: 'datetime',
                 labels: {
@@ -105,12 +104,15 @@
 {{ define "content"}}
     {{if gt .FinalityDelay 3}}
         <div class="alert alert-danger mt-4" role="alert">
-            <b>Warning:</b> The testnet is currently experiencing issues achieving finality. The last finalized epoch was {{.FinalityDelay}} epoch{{if ne .FinalityDelay 1}}s{{end}} ago.
+            <b>Warning:</b> The testnet is currently experiencing issues achieving finality. The last finalized epoch
+            was {{.FinalityDelay}} epoch{{if ne .FinalityDelay 1}}s{{end}} ago.
         </div>
     {{end}}
     <h1 class="mt-4 text-center">Ethereum 2.0 Beacon Chain Explorer</h1>
     <h5 class="text-center">Showing the <a href="https://prylabs.net/">💎 Prysm Eth2 Testnet</a></h5>
-    <h5 class="text-center">Do you have any feedback for us? Feel free to join our <a href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a></h5>
+    <h5 class="text-center">Do you have any feedback for us? Feel free to join our <a
+                href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a>
+    </h5>
     <form action="/search" class="mb-2 mt-2" method="POST">
         <div class="input-group">
             <input class="form-control mr-2 form-control-md" type="text" name="search"
@@ -127,9 +129,11 @@
             </div>
             <div class="card-body">
                 <h5 class="card-title text-center">
-                    <span  data-toggle="tooltip" data-placement="top" title="The most recent finalized epoch">{{.CurrentFinalizedEpoch}}</span>
-                     /
-                    <span  data-toggle="tooltip" data-placement="top" title="The most recent epoch">{{.CurrentEpoch}}</span>
+                    <span data-toggle="tooltip" data-placement="top"
+                          title="The most recent finalized epoch">{{.CurrentFinalizedEpoch}}</span>
+                    /
+                    <span data-toggle="tooltip" data-placement="top"
+                          title="The most recent epoch">{{.CurrentEpoch}}</span>
                 </h5>
             </div>
         </div>
@@ -218,8 +222,7 @@
                         <th>Attestations</th>
                         <th>Deposits</th>
                         <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
-                            <span
-                                    data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                            <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
                         <th>Exits</th>
                     </tr>
                     </thead>
@@ -228,13 +231,14 @@
                         <tr>
                             <td>{{.Epoch}}</td>
                             <td><a href="/block/{{.Slot}}">{{.Slot}}</a></td>
-                            <td class="text-capitalize">{{.Status}}</td>
-                            <td aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
-                            <td class="text-monospace"><a
-                                        href="/validator/{{printf "%x" .Proposer}}">0x{{printf "%.4x" .Proposer}}...</a>
+                            <td class="text-capitalize">{{formatBlockStatus .Status}}</td>
+                            <td aria-ethereum-date="{{.Ts.Unix}}"
+                                aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
+                            <td><a
+                                        href="/validator/{{.Proposer}}">{{.Proposer}}</a>
                             </td>
                             <td class="text-monospace">
-                                {{ if eq .Status "Proposed"}}
+                                {{ if eq .Status 1}}
                                     <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}...</a>
                                 {{else}}
                                     N/A

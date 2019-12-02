@@ -6,17 +6,17 @@ import (
 
 type EpochData struct {
 	Epoch                   uint64
-	Validators              map[string]*ethpb.Validator
-	ValidatorAssignmentes   []*ethpb.ValidatorAssignments_CommitteeAssignment
+	Validators              []*ethpb.Validator
+	ValidatorAssignmentes   *EpochAssignments
 	BeaconCommittees        []*ethpb.BeaconCommittees_CommitteeItem
-	ValidatorBalances       map[string]*ethpb.ValidatorBalances_Balance
+	ValidatorBalances       []*ethpb.ValidatorBalances_Balance
 	Blocks                  map[uint64]*BlockContainer
 	EpochParticipationStats *ethpb.ValidatorParticipationResponse
 }
 
 type BlockContainer struct {
-	Status   string
-	Proposer []byte
+	Status   uint64
+	Proposer uint64
 	Block    *ethpb.BeaconBlockContainer
 }
 
@@ -30,4 +30,9 @@ type BlockComparisonContainer struct {
 	Epoch uint64
 	Db    *MinimalBlock
 	Node  *MinimalBlock
+}
+
+type EpochAssignments struct {
+	ProposerAssignments map[uint64]uint64
+	AttestorAssignments map[string]uint64
 }

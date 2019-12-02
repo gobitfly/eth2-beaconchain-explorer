@@ -23,34 +23,52 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	vars := mux.Vars(r)
-	publicKeyRaw := strings.Replace(vars["publicKey"], "0x", "", -1)
+
+	var index uint64
+	var err error
 
 	validatorPageData := types.ValidatorPageData{}
-	publicKey, err := hex.DecodeString(publicKeyRaw)
 
 	data := &types.PageData{
 		Meta: &types.Meta{
-			Title:       fmt.Sprintf("Validator 0x%x - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", publicKey, time.Now().Year()),
+			Title:       fmt.Sprintf("Validator %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", index, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        fmt.Sprintf("/validator/%v", publicKeyRaw),
+			Path:        fmt.Sprintf("/validator/%v", index),
 		},
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "validators",
 		Data:               nil,
 	}
 
-	if err != nil {
-		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-
+	if strings.Contains(vars["index"], "0x") {
+		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
-			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+			logger.Printf("Error parsing validator public key %v: %v", vars["index"], err)
+			http.Error(w, "Internal server error", 503)
+			return
 		}
-		return
+
+		index, err = db.GetValidatorIndex(pubKey)
+		if err != nil {
+			err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+
+			if err != nil {
+				logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+			}
+			return
+		}
+	} else {
+		index, err = strconv.ParseUint(vars["index"], 10, 64)
+		if err != nil {
+			logger.Printf("Error parsing validator index: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 	}
 
 	err = db.DB.Get(&validatorPageData, `SELECT 
 											 validator_set.epoch, 
-											 validator_set.pubkey, 
+											 validator_set.validatorindex, 
 											 validator_set.withdrawableepoch, 
 											 validator_set.effectivebalance, 
 											 validator_set.slashed, 
@@ -61,10 +79,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
        										 validator_balances.index
 										FROM validator_set
 										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch 
-										                                    AND validator_set.pubkey = validator_balances.pubkey
+										                                    AND validator_set.validatorindex = validator_balances.validatorindex
 										WHERE validator_set.epoch = $1 
-										  AND validator_set.pubkey = $2
-										LIMIT 1`, services.LatestEpoch(), publicKey)
+										  AND validator_set.validatorindex = $2
+										LIMIT 1`, services.LatestEpoch(), index)
+
+	validatorPageData.PublicKey, err = db.GetValidatorPublicKey(index)
+	if err != nil {
+		logger.Printf("Error retrieving validator public key: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
 	validatorPageData.CurrentBalanceFormatted = utils.FormatBalance(validatorPageData.CurrentBalance)
 	validatorPageData.EffectiveBalanceFormatted = utils.FormatBalance(validatorPageData.EffectiveBalance)
@@ -74,7 +99,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)
 	validatorPageData.WithdrawableTs = utils.EpochToTime(validatorPageData.WithdrawableEpoch)
 
-	err = db.DB.Get(&validatorPageData.ProposedBlocksCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", publicKey)
+	err = db.DB.Get(&validatorPageData.ProposedBlocksCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", index)
 	if err != nil {
 		logger.Printf("Error retrieving proposed blocks count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -82,7 +107,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance FROM validator_balances WHERE pubkey = $1 ORDER BY epoch", publicKey)
+	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
 	if err != nil {
 		logger.Printf("Error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -95,7 +120,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, effectivebalance as balance FROM validator_set WHERE pubkey = $1 ORDER BY epoch", publicKey)
+	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, effectivebalance as balance FROM validator_set WHERE validatorindex = $1 ORDER BY epoch", index)
 	if err != nil {
 		logger.Printf("Error retrieving validator effective balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -127,8 +152,12 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
-	publicKeyRaw := strings.Replace(vars["publicKey"], "0x", "", -1)
-	publicKey, err := hex.DecodeString(publicKeyRaw)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Printf("Error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
 	q := r.URL.Query()
 
@@ -153,7 +182,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", publicKey)
+	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", index)
 	if err != nil {
 		logger.Printf("Error retrieving proposed blocks count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -175,7 +204,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 										FROM blocks 
 										WHERE blocks.proposer = $1
 										ORDER BY blocks.slot DESC
-										LIMIT $2 OFFSET $3`, publicKey, length, start)
+										LIMIT $2 OFFSET $3`, index, length, start)
 
 	if err != nil {
 		logger.Printf("Error retrieving proposed blocks data: %v", err)
@@ -188,7 +217,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []string{
 			fmt.Sprintf("%v", b.Epoch),
 			fmt.Sprintf("%v", b.Slot),
-			fmt.Sprintf("%v", b.Status),
+			fmt.Sprintf("%v", utils.FormatBlockStatus(b.Status)),
 			fmt.Sprintf("%v", utils.SlotToTime(b.Slot).Unix()),
 			fmt.Sprintf("%x", b.BlockRoot),
 			fmt.Sprintf("%v", b.Attestations),

@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-var blockTemplate = template.Must(template.New("block").ParseFiles("templates/layout.html", "templates/block.html"))
+var blockTemplate = template.Must(template.New("block").Funcs(template.FuncMap{"formatBlockStatus": utils.FormatBlockStatus}).ParseFiles("templates/layout.html", "templates/block.html"))
 var blockNotFoundTemplate = template.Must(template.New("blocknotfound").ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
 
 func Block(w http.ResponseWriter, r *http.Request) {
@@ -98,10 +98,11 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var attestations []*types.BlockPageAttestation
-	err = db.DB.Select(&attestations, `SELECT aggregationbits, 
+	rows, err := db.DB.Query(`SELECT aggregationbits, 
+												     validators, 
 												     signature, 
 												     slot, 
-												     index, 
+												     committeeindex, 
 												     beaconblockroot, 
 												     source_epoch, 
 												     source_root, 
@@ -109,12 +110,34 @@ func Block(w http.ResponseWriter, r *http.Request) {
 												     target_root 
 												FROM blocks_attestations 
 												WHERE block_slot = $1 
-												ORDER BY slot, index`,
+												ORDER BY block_index`,
 		blockPageData.Slot)
 	if err != nil {
 		logger.Printf("Error retrieving block attestation data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		attestation := &types.BlockPageAttestation{}
+
+		err := rows.Scan(&attestation.AggregationBits,
+			&attestation.Validators,
+			&attestation.Signature,
+			&attestation.Slot,
+			&attestation.CommitteeIndex,
+			&attestation.BeaconBlockRoot,
+			&attestation.SourceEpoch,
+			&attestation.SourceRoot,
+			&attestation.TargetEpoch,
+			&attestation.TargetRoot)
+		if err != nil {
+			logger.Printf("Error retrieving block attestation data: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		attestations = append(attestations, attestation)
 	}
 	blockPageData.Attestations = attestations
 

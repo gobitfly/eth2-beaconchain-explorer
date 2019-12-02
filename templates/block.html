@@ -70,9 +70,9 @@
                 </div>
                 <div class="row border-bottom p-3">
                     <div class="col-md-2">Proposed by:</div>
-                    <div class="col-md-10 text-monospace text-break"><a href="/validator/{{printf "%x" .Proposer}}">0x{{printf "%.8x" .Proposer}}...</a></div>
+                    <div class="col-md-10"><a href="/validator/{{.Proposer}}">{{.Proposer}}</a></div>
                 </div>
-                {{ if or (eq .Status "Proposed") (eq .Status "proposed") }}
+                {{ if eq .Status 1 }}
                     <div class="row border-bottom p-3">
                         <div class="col-md-2">Block Root:</div>
                         <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}}</div>
@@ -147,8 +147,20 @@
                         <div class="col-md-10"><a href="/block/{{$attestation.Slot}}">{{$attestation.Slot}}</a></div>
                     </div>
                     <div class="row border-bottom p-1">
-                        <div class="col-md-2">Index:</div>
-                        <div class="col-md-10">{{$attestation.Index}}</div>
+                        <div class="col-md-2">Committee Index:</div>
+                        <div class="col-md-10">{{$attestation.CommitteeIndex}}</div>
+                    </div>
+                    <div class="row border-bottom p-1">
+                        <div class="col-md-2">Aggregation Bits:</div>
+                        <div class="col-md-10">{{printf "%8b" $attestation.AggregationBits}}</div>
+                    </div>
+                    <div class="row border-bottom p-1">
+                        <div class="col-md-2">Validators:</div>
+                        <div class="col-md-10">
+                            {{range $validator := $attestation.Validators}}
+                                <span><a href="/validator/{{$validator}}">{{$validator}}</a> </span>
+                            {{end}}
+                        </div>
                     </div>
                     <div class="row border-bottom p-1">
                         <div class="col-md-2">Beacon Block Root:</div>

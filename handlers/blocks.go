@@ -107,9 +107,9 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []string{
 			fmt.Sprintf("%v", b.Epoch),
 			fmt.Sprintf("%v", b.Slot),
-			fmt.Sprintf("%v", b.Status),
+			fmt.Sprintf("%v", utils.FormatBlockStatus(b.Status)),
 			fmt.Sprintf("%v", utils.SlotToTime(b.Slot).Unix()),
-			fmt.Sprintf("%x", b.Proposer),
+			fmt.Sprintf("%v", b.Proposer),
 			fmt.Sprintf("%x", b.BlockRoot),
 			fmt.Sprintf("%v", b.Attestations),
 			fmt.Sprintf("%v", b.Deposits),

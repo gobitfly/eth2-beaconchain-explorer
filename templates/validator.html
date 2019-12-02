@@ -8,7 +8,7 @@
                 "serverSide": true,
                 "ordering": false,
                 "searching": false,
-                "ajax": "/validator/{{printf "%x" .PublicKey}}/proposedblocks",
+                "ajax": "/validator/{{.Index}}/proposedblocks",
                 "pagingType": "full",
                 "columnDefs": [{
                     "targets": 3,

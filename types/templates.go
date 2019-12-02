@@ -1,6 +1,9 @@
 package types
 
-import "time"
+import (
+	"github.com/lib/pq"
+	"time"
+)
 
 type PageData struct {
 	Active             string
@@ -38,7 +41,7 @@ type IndexPageDataBlocks struct {
 	Epoch             uint64
 	Slot              uint64
 	Ts                time.Time
-	Proposer          []byte `db:"proposer"`
+	Proposer          uint64 `db:"proposer"`
 	BlockRoot         []byte `db:"blockroot"`
 	ParentRoot        []byte `db:"parentroot"`
 	Attestations      uint64 `db:"attestationscount"`
@@ -46,7 +49,7 @@ type IndexPageDataBlocks struct {
 	Exits             uint64 `db:"voluntaryexitscount"`
 	Proposerslashings uint64 `db:"proposerslashingscount"`
 	Attesterslashings uint64 `db:"attesterslashingscount"`
-	Status            string `db:"status"`
+	Status            uint64 `db:"status"`
 }
 
 type IndexPageEpochHistory struct {
@@ -65,6 +68,7 @@ type ValidatorsPageData struct {
 type ValidatorsPageDataValidators struct {
 	Epoch                      uint64 `db:"epoch"`
 	PublicKey                  []byte `db:"pubkey"`
+	ValidatorIndex             uint64 `db:"validatorindex"`
 	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
 	CurrentBalance             uint64 `db:"balance"`
 	EffectiveBalance           uint64 `db:"effectivebalance"`
@@ -72,13 +76,13 @@ type ValidatorsPageDataValidators struct {
 	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
-	Index                      uint64 `db:"index"`
 	Status                     string
 }
 
 type ValidatorPageData struct {
 	Epoch                      uint64 `db:"epoch"`
-	PublicKey                  []byte `db:"pubkey"`
+	ValidatorIndex             uint64 `db:"validatorindex"`
+	PublicKey                  []byte
 	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
 	CurrentBalance             uint64 `db:"balance"`
 	EffectiveBalance           uint64 `db:"effectivebalance"`
@@ -111,8 +115,8 @@ type BlockPageData struct {
 	Ts                     time.Time
 	NextSlot               uint64
 	PreviousSlot           uint64
-	Proposer               []byte `db:"proposer"`
-	Status                 string `db:"status"`
+	Proposer               uint64 `db:"proposer"`
+	Status                 uint64 `db:"status"`
 	BlockRoot              []byte `db:"blockroot"`
 	ParentRoot             []byte `db:"parentroot"`
 	StateRoot              []byte `db:"stateroot"`
@@ -139,15 +143,16 @@ type BlockPageMinMaxSlot struct {
 }
 
 type BlockPageAttestation struct {
-	AggregationBits []byte `db:"aggregationbits"`
-	Signature       []byte `db:"signature"`
-	Slot            uint64 `db:"slot"`
-	Index           uint64 `db:"index"`
-	BeaconBlockRoot []byte `db:"beaconblockroot"`
-	SourceEpoch     uint64 `db:"source_epoch"`
-	SourceRoot      []byte `db:"source_root"`
-	TargetEpoch     uint64 `db:"target_epoch"`
-	TargetRoot      []byte `db:"target_root"`
+	AggregationBits []byte        `db:"aggregationbits"`
+	Validators      pq.Int64Array `db:"validators"`
+	Signature       []byte        `db:"signature"`
+	Slot            uint64        `db:"slot"`
+	CommitteeIndex  uint64        `db:"committeeindex"`
+	BeaconBlockRoot []byte        `db:"beaconblockroot"`
+	SourceEpoch     uint64        `db:"source_epoch"`
+	SourceRoot      []byte        `db:"source_root"`
+	TargetEpoch     uint64        `db:"target_epoch"`
+	TargetRoot      []byte        `db:"target_root"`
 }
 
 type BlockPageDeposit struct {

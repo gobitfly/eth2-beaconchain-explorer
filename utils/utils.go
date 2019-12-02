@@ -16,8 +16,22 @@ const SecondsPerSlot = 12
 const SlotsPerEpoch = 8
 const GenesisTimestamp = 1573489682
 
+const PageSize = 500
+
 // Global accessible configs
 var Config *types.Config
+
+func FormatBlockStatus(status uint64) string {
+	if status == 0 {
+		return "Scheduled"
+	} else if status == 1 {
+		return "Proposed"
+	} else if status == 2 {
+		return "Missed"
+	} else {
+		return "Unknown"
+	}
+}
 
 func SlotToTime(slot uint64) time.Time {
 	return time.Unix(GenesisTimestamp+int64(slot)*SecondsPerSlot, 0)

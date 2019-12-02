@@ -1,7 +1,20 @@
+/*
+Lookup table to store the index - pubkey association
+In order to save db space we only use the unique validator index in all other tables
+In the future it is better to replace this table with an in memory cache (redis)
+*/
+drop table if exists validators;
+create table validators (
+   validatorindex int not null,
+   pubkey bytea not null,
+   primary key (validatorindex)
+);
+create index idx_validators_pubkey on validators (pubkey);
+
 drop table if exists validator_set;
 create table validator_set (
     epoch int not null,
-    pubkey bytea not null,
+    validatorindex int not null,
     withdrawableepoch bigint not null,
     withdrawalcredentials bytea not null,
     effectivebalance bigint not null,
@@ -9,18 +22,37 @@ create table validator_set (
     activationeligibilityepoch bigint not null,
     activationepoch bigint not null,
     exitepoch bigint not null,
-    primary key (pubkey, epoch)
+    primary key (validatorindex, epoch)
 );
 
-drop table if exists validator_assignments;
-create table validator_assignments (
-    epoch int not null,
-    pubkey bytea not null,
-    beaconcommittees int[] not null,
-    committeeindex int not null,
-    attesterslot int not null,
-    proposerslot int not null,
-    primary key (epoch, pubkey)
+-- drop table if exists validator_assignments;
+-- create table validator_assignments (
+--     epoch int not null,
+--     validatorindex int not null,
+--     beaconcommittees int[] not null,
+--     committeeindex int not null,
+--     attesterslot int not null,
+--     proposerslot int not null,
+--     primary key (epoch, validatorindex)
+-- );
+
+drop table if exists proposal_assignments;
+create table proposal_assignments (
+      epoch int not null,
+      validatorindex int not null,
+      proposerslot int not null,
+      status int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
+      primary key (epoch, validatorindex, proposerslot)
+);
+
+drop table if exists attestation_assignments;
+create table attestation_assignments (
+      epoch int not null,
+      validatorindex int not null,
+      attesterslot int not null,
+      committeeindex int not null,
+      status int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
+      primary key (epoch, validatorindex, attesterslot, committeeindex)
 );
 
 drop table if exists beacon_committees;
@@ -35,10 +67,9 @@ create table beacon_committees (
 drop table if exists validator_balances;
 create table validator_balances (
     epoch int not null,
-    pubkey bytea not null,
+    validatorindex int not null,
     balance bigint not null,
-    index int not null,
-    primary key (pubkey, epoch)
+    primary key (validatorindex, epoch)
 );
 
 drop table if exists attestationpool;
@@ -106,11 +137,11 @@ create table blocks (
     attestationscount int not null,
     depositscount int not null,
     voluntaryexitscount int not null,
-    proposer bytea not null,
+    proposer int not null,
     status text not null,
     primary key (slot)
 );
-create index idx_proposer on blocks (proposer);
+create index idx_blocks_proposer on blocks (proposer);
 
 drop table if exists blocks_proposerslashings;
 create table blocks_proposerslashings (
@@ -162,10 +193,11 @@ create table blocks_attestations (
     block_slot int not null,
     block_index int not null,
     aggregationbits bytea not null,
+    validators int[] not null,
     custodybits bytea not null,
     signature bytea not null,
     slot int not null,
-    index int not null,
+    committeeindex int not null,
     beaconblockroot bytea not null,
     source_epoch int not null,
     source_root bytea not null,
