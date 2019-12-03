@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/lib/pq"
@@ -116,6 +118,24 @@ type ValidatorAttestation struct {
 	AttesterSlot   uint64 `db:"attesterslot"`
 	CommitteeIndex uint64 `db:"committeeindex"`
 	Status         uint64 `db:"status"`
+}
+
+type BlocksTreeData struct {
+	Slot       uint64 `db:"slot" json:"slot"`
+	BlockRoot  []byte `db:"blockroot" json:"blockroot"`
+	ParentRoot []byte `db:"parentroot" json:"parentroot"`
+}
+
+func (u *BlocksTreeData) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Slot       uint64 `json:"slot"`
+		BlockRoot  string `json:"blockroot"`
+		ParentRoot string `json:"parentroot"`
+	}{
+		Slot:       u.Slot,
+		BlockRoot:  fmt.Sprintf("%x", u.BlockRoot),
+		ParentRoot: fmt.Sprintf("%x", u.ParentRoot),
+	})
 }
 
 type BlockPageData struct {
