@@ -57,9 +57,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.PageData{
 		Meta: &types.Meta{
-			Title:       fmt.Sprintf("Slot %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", slotOrHash, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/block/" + slotOrHash,
 		},
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "blocks",
@@ -67,6 +65,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
+		data.Meta.Title = fmt.Sprintf("Slot %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", slotOrHash, time.Now().Year())
+		data.Meta.Path = "/block/" + slotOrHash
 		logger.Printf("Error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -75,6 +75,9 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	data.Meta.Title = fmt.Sprintf("Slot %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", blockPageData.Slot, time.Now().Year())
+	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
 	blockPageData.NextSlot = blockPageData.Slot + 1
@@ -89,6 +92,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Println(blockPageData.NextSlot, slots.MaxSlot)
+	logger.Println(blockPageData.PreviousSlot, slots.MinSlot)
 	if blockPageData.NextSlot > slots.MaxSlot {
 		blockPageData.NextSlot = 0
 	}
@@ -98,17 +103,19 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var attestations []*types.BlockPageAttestation
-	rows, err := db.DB.Query(`SELECT aggregationbits, 
-												     validators, 
-												     signature, 
-												     slot, 
-												     committeeindex, 
-												     beaconblockroot, 
-												     source_epoch, 
-												     source_root, 
-												     target_epoch, 
-												     target_root 
-												FROM blocks_attestations 
+	rows, err := db.DB.Query(`SELECT    block_slot,
+											 block_index,
+											 aggregationbits, 
+											 validators, 
+											 signature, 
+											 slot, 
+											 committeeindex, 
+											 beaconblockroot, 
+											 source_epoch, 
+											 source_root, 
+											 target_epoch, 
+											 target_root 
+										FROM blocks_attestations 
 												WHERE block_slot = $1 
 												ORDER BY block_index`,
 		blockPageData.Slot)
@@ -122,7 +129,10 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		attestation := &types.BlockPageAttestation{}
 
-		err := rows.Scan(&attestation.AggregationBits,
+		err := rows.Scan(
+			&attestation.BlockSlot,
+			&attestation.BlockIndex,
+			&attestation.AggregationBits,
 			&attestation.Validators,
 			&attestation.Signature,
 			&attestation.Slot,
@@ -133,13 +143,62 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			&attestation.TargetEpoch,
 			&attestation.TargetRoot)
 		if err != nil {
-			logger.Printf("Error retrieving block attestation data: %v", err)
+			logger.Printf("Error scanning block attestation data: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
 		attestations = append(attestations, attestation)
 	}
 	blockPageData.Attestations = attestations
+
+	var votes []*types.BlockPageAttestation
+	rows, err = db.DB.Query(`SELECT    block_slot,
+											 block_index,
+											 aggregationbits, 
+											 validators, 
+											 signature, 
+											 slot, 
+											 committeeindex, 
+											 beaconblockroot, 
+											 source_epoch, 
+											 source_root, 
+											 target_epoch, 
+											 target_root 
+										FROM blocks_attestations 
+										WHERE beaconblockroot = $1 
+										ORDER BY committeeindex`,
+		blockPageData.BlockRoot)
+	if err != nil {
+		logger.Printf("Error retrieving block votes data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		attestation := &types.BlockPageAttestation{}
+
+		err := rows.Scan(
+			&attestation.BlockSlot,
+			&attestation.BlockIndex,
+			&attestation.AggregationBits,
+			&attestation.Validators,
+			&attestation.Signature,
+			&attestation.Slot,
+			&attestation.CommitteeIndex,
+			&attestation.BeaconBlockRoot,
+			&attestation.SourceEpoch,
+			&attestation.SourceRoot,
+			&attestation.TargetEpoch,
+			&attestation.TargetRoot)
+		if err != nil {
+			logger.Printf("Error scanning block votes data: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		votes = append(votes, attestation)
+	}
+	blockPageData.Votes = votes
 
 	var deposits []*types.BlockPageDeposit
 	err = db.DB.Select(&deposits, `SELECT publickey, 

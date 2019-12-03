@@ -141,8 +141,9 @@ type BlockPageData struct {
 	VoluntaryExitscount    uint64 `db:"voluntaryexitscount"`
 	SlashingsCount         uint64
 
-	Attestations []*BlockPageAttestation
+	Attestations []*BlockPageAttestation // Attestations included in this block
 	Deposits     []*BlockPageDeposit
+	Votes        []*BlockPageAttestation // Attestations that voted for that block
 }
 
 type BlockPageMinMaxSlot struct {
@@ -151,6 +152,8 @@ type BlockPageMinMaxSlot struct {
 }
 
 type BlockPageAttestation struct {
+	BlockSlot       uint64        `db:"block_slot"`
+	BlockIndex      uint64        `db:"block_index"`
 	AggregationBits []byte        `db:"aggregationbits"`
 	Validators      pq.Int64Array `db:"validators"`
 	Signature       []byte        `db:"signature"`

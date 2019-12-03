@@ -10,11 +10,11 @@
             <div class="col-md-12">
                 <h1>
                     {{if gt .PreviousSlot 0}}
-                        <a href="/block/{{.PreviousSlot}}"><i class="fas fa-chevron-double-left"></i></a>
+                        <a href="/block/{{.PreviousSlot}}"><i class="fa fa-chevron-left"></i></a>
                     {{end}}
                     <span class="ml-1 mr-1">Block at Slot {{.Slot}}</span>
                     {{if gt .NextSlot 0}}
-                        <a href="/block/{{.NextSlot}}"><i class="fas fa-chevron-double-right"></i></a>
+                        <a href="/block/{{.NextSlot}}"><i class="fa fa-chevron-right"></i></a>
                     {{end}}
                 </h1>
             </div>
@@ -66,7 +66,9 @@
                 </div>
                 <div class="row border-bottom p-3">
                     <div class="col-md-2">Time:</div>
-                    <div class="col-md-10"><span aria-ethereum-date="{{.Ts.Unix}}">{{.Ts}}</span> (<span aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW"></span>)</div>
+                    <div class="col-md-10"><span aria-ethereum-date="{{.Ts.Unix}}">{{.Ts}}</span> (<span
+                                aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW"></span>)
+                    </div>
                 </div>
                 <div class="row border-bottom p-3">
                     <div class="col-md-2">Proposed by:</div>
@@ -74,12 +76,28 @@
                 </div>
                 {{ if eq .Status 1 }}
                     <div class="row border-bottom p-3">
+                        <div class="col-md-2">Votes:</div>
+                        <div class="col-md-10">
+                            {{range $vote := .Votes}}
+                                <div class="row border-bottom p-1">
+                                    <div class="col-md-12">Voted on by
+                                        validator{{if ne (len $vote.Validators) 1}}s{{end}} {{range $validator := $vote.Validators}}<a
+                                            href="/validator/{{$validator}}">{{$validator}}</a> {{end}}of
+                                        committee {{$vote.CommitteeIndex}} included in block <a
+                                                href="/block/{{$vote.BlockSlot}}">{{$vote.BlockSlot}}</a></div>
+                                </div>
+                            {{end}}
+
+                        </div>
+                    </div>
+                    <div class="row border-bottom p-3">
                         <div class="col-md-2">Block Root:</div>
                         <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}}</div>
                     </div>
                     <div class="row border-bottom p-3">
                         <div class="col-md-2">Parent Root:</div>
-                        <div class="col-md-10 text-monospace text-break"><a href="/block/{{printf "%x" .ParentRoot}}">0x{{printf "%x" .ParentRoot}}</a></div>
+                        <div class="col-md-10 text-monospace text-break"><a
+                                    href="/block/{{printf "%x" .ParentRoot}}">0x{{printf "%x" .ParentRoot}}</a></div>
                     </div>
                     <div class="row border-bottom p-3">
                         <div class="col-md-2">State Root:</div>
@@ -164,15 +182,21 @@
                     </div>
                     <div class="row border-bottom p-1">
                         <div class="col-md-2">Beacon Block Root:</div>
-                        <div class="col-md-10 text-monospace text-break"><a href="/block/{{printf "%x" $attestation.BeaconBlockRoot}}">0x{{printf "%x" $attestation.BeaconBlockRoot}}</a></div>
+                        <div class="col-md-10 text-monospace text-break"><a
+                                    href="/block/{{printf "%x" $attestation.BeaconBlockRoot}}">0x{{printf "%x" $attestation.BeaconBlockRoot}}</a>
+                        </div>
                     </div>
                     <div class="row border-bottom p-1">
                         <div class="col-md-2">Source:</div>
-                        <div class="col-md-10">Epoch {{$attestation.SourceEpoch}} (<span class="text-monospace text-break"><a href="{{printf "%x" $attestation.SourceRoot}}">0x{{printf "%x" $attestation.SourceRoot}}</a>)</span></div>
+                        <div class="col-md-10">Epoch {{$attestation.SourceEpoch}} (<span
+                                    class="text-monospace text-break"><a href="{{printf "%x" $attestation.SourceRoot}}">0x{{printf "%x" $attestation.SourceRoot}}</a>)</span>
+                        </div>
                     </div>
                     <div class="row border-bottom p-1">
                         <div class="col-md-2">Target:</div>
-                        <div class="col-md-10">Epoch {{$attestation.TargetEpoch}} (<span class="text-monospace text-break"><a href="{{printf "%x" $attestation.TargetRoot}}">0x{{printf "%x" $attestation.TargetRoot}}</a>)</span></div>
+                        <div class="col-md-10">Epoch {{$attestation.TargetEpoch}} (<span
+                                    class="text-monospace text-break"><a href="{{printf "%x" $attestation.TargetRoot}}">0x{{printf "%x" $attestation.TargetRoot}}</a>)</span>
+                        </div>
                     </div>
                     <div class="row border-bottom p-1">
                         <div class="col-md-2">Signature:</div>
@@ -197,7 +221,8 @@
                     </div>
                     <div class="row border-bottom p-1">
                         <div class="col-md-2">Withdrawal Credentials:</div>
-                        <div class="col-md-10 text-monospace text-break">0x{{printf "%x" $deposit.WithdrawalCredentials}}</div>
+                        <div class="col-md-10 text-monospace text-break">
+                            0x{{printf "%x" $deposit.WithdrawalCredentials}}</div>
                     </div>
                     <div class="row border-bottom p-1">
                         <div class="col-md-2">Signature:</div>
