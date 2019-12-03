@@ -54,7 +54,6 @@ func Start(client ethpb.BeaconChainClient) error {
 			}
 		}
 	}
-
 	for true {
 
 		head, err := client.GetChainHead(context.Background(), &ptypes.Empty{})
@@ -189,13 +188,10 @@ func getLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) 
 
 	for i := startEpoch; i <= endEpoch; i++ {
 		blocksResponse := &ethpb.ListBlocksResponse{}
-		for blocksResponse.NextPageToken == "" || len(blocksResponse.BlockContainers) >= utils.PageSize {
+		for {
 			blocksResponse, err = client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageToken: blocksResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Epoch{Epoch: i}})
 			if err != nil {
 				logger.Fatal(err)
-			}
-			if blocksResponse.TotalSize == 0 {
-				break
 			}
 
 			for _, block := range blocksResponse.BlockContainers {
@@ -204,6 +200,10 @@ func getLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) 
 					Slot:     block.Block.Slot,
 					BockRoot: block.BlockRoot,
 				})
+			}
+
+			if blocksResponse.NextPageToken == "" {
+				break
 			}
 		}
 	}
@@ -226,11 +226,12 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]*types.BlockContainer)
 	blocksResponse := &ethpb.ListBlocksResponse{}
-	for blocksResponse.NextPageToken == "" || len(blocksResponse.BlockContainers) >= utils.PageSize {
+	for {
 		blocksResponse, err = client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageToken: blocksResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Epoch{Epoch: epoch}})
 		if err != nil {
 			logger.Fatal(err)
 		}
+
 		if blocksResponse.TotalSize == 0 {
 			break
 		}
@@ -251,6 +252,10 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 				Proposer: data.ValidatorAssignmentes.ProposerAssignments[block.Block.Slot],
 				Block:    block,
 			}
+		}
+
+		if blocksResponse.NextPageToken == "" {
+			break
 		}
 	}
 	logger.Printf("Retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
@@ -306,7 +311,7 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	data.Validators = make([]*ethpb.Validator, 0)
 
 	validatorResponse := &ethpb.Validators{}
-	for validatorResponse.NextPageToken == "" || (len(validatorResponse.Validators) >= utils.PageSize) {
+	for {
 		validatorResponse, err = client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
 		if err != nil {
 			logger.Printf("error retrieving validator response: %v", err)
@@ -319,13 +324,17 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 		for _, validator := range validatorResponse.Validators {
 			data.Validators = append(data.Validators, validator)
 		}
+
+		if validatorResponse.NextPageToken == "" {
+			break
+		}
 	}
 	logger.Printf("Retrieved validator data for epoch %v", epoch)
 
 	// Retrieve the beacon committees for the epoch
 	data.BeaconCommittees = make([]*ethpb.BeaconCommittees_CommitteeItem, 0)
 	beaconCommitteesResponse := &ethpb.BeaconCommittees{}
-	for beaconCommitteesResponse.NextPageToken == "" || len(beaconCommitteesResponse.Committees) >= utils.PageSize {
+	for {
 		beaconCommitteesResponse, err = client.ListBeaconCommittees(context.Background(), &ethpb.ListCommitteesRequest{PageToken: beaconCommitteesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListCommitteesRequest_Epoch{Epoch: epoch}})
 		if err != nil {
 			logger.Printf("error retrieving beacon committees response: %v", err)
@@ -336,12 +345,16 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 		}
 
 		data.BeaconCommittees = append(data.BeaconCommittees, beaconCommitteesResponse.Committees...)
+
+		if beaconCommitteesResponse.NextPageToken == "" {
+			break
+		}
 	}
 
 	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
 	data.ValidatorBalances = make([]*ethpb.ValidatorBalances_Balance, 0)
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
-	for validatorBalancesResponse.NextPageToken == "" || len(validatorBalancesResponse.Balances) >= utils.PageSize {
+	for {
 		validatorBalancesResponse, err = client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
 		if err != nil {
 			logger.Printf("error retrieving validator balances response: %v", err)
@@ -353,6 +366,10 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 
 		for _, balance := range validatorBalancesResponse.Balances {
 			data.ValidatorBalances = append(data.ValidatorBalances, balance)
+		}
+
+		if validatorBalancesResponse.NextPageToken == "" {
+			break
 		}
 	}
 	logger.Printf("Retrieved data for %v validator balances for epoch %v", len(data.ValidatorBalances), epoch)
