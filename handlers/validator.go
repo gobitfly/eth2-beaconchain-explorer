@@ -8,12 +8,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/gorilla/mux"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var validatorTemplate = template.Must(template.New("validator").ParseFiles("templates/layout.html", "templates/validator.html"))
@@ -139,6 +140,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err != nil {
+		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+	}
+
+	if err := db.DB.Get(&validatorPageData.StatusProposedCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1 and status = 'Proposed'", publicKey); err != nil {
+		logger.Printf("Error retrieving StatusProposedCount: %v", err)
+	}
+
+	if err := db.DB.Get(&validatorPageData.StatusMissedCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1 and status = 'Missed'", publicKey); err != nil {
+		logger.Printf("Error retrieving StatusProposedCount: %v", err)
+	}
+
 	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
 	for i, balance := range balanceHistory {
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
@@ -168,9 +181,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 
-	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
-	}
 }
 
 func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {

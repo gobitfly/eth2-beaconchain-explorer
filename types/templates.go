@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/lib/pq"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type PageData struct {
@@ -100,6 +101,8 @@ type ValidatorPageData struct {
 	Status                     string
 	ProposedBlocksCount        uint64
 	AttestationsCount          uint64
+	StatusProposedCount        uint64
+	StatusMissedCount          uint64
 
 	BalanceHistoryChartData          [][]float64
 	EffectiveBalanceHistoryChartData [][]float64
