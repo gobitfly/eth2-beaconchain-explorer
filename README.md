@@ -2,7 +2,7 @@
 The explorer provides a comprehensive and easy to use interface for the upcoming Eth2 beacon chain. It makes it easy to view proposed blocks, follow attestations and monitor your staking activity.
 
 ## About
-The explorer is built using golang und utilizes a PostgreSQL database for storing and indexing data. In order to avoid the situation we currently have with the Eth1 chain where closed source block explorers dominate the market we decided to make our explorer open source and available for everybody. We d run an production instance of the explorer at [beaconcha.in](beaconcha.in).
+The explorer is built using golang und utilizes a PostgreSQL database for storing and indexing data. In order to avoid the situation we currently have with the Eth1 chain where closed source block explorers dominate the market we decided to make our explorer open source and available for everybody. We d run an production instance of the explorer at [beaconcha.in](https://beaconcha.in).
 
 **Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger grantees about the updatability of the explorer.
 
@@ -18,6 +18,7 @@ The explorer is built using golang und utilizes a PostgreSQL database for storin
   - Basic block info (epoch, slot, status, time, proposer, root hash, parent hash, state root hash, signature, randao reveal, graffiti, eth1 data)
   - List of attestations included in the block
   - List of deposits included in the block
+  - List of LMD GHOST votes
 - Validators page
   - Pageable tabular view of all pending, active and ejected validators
 - Validator page
@@ -26,7 +27,6 @@ The explorer is built using golang und utilizes a PostgreSQL database for storin
   - List of proposed and missed blocks
 
 ## ToDo
-- Show included validators for each attestation
 - Add chain statistic charts
 - Improve design, move away from stock bootstrap 4
 - Use a proper open source charting library
