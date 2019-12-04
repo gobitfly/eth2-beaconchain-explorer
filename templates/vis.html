@@ -235,7 +235,8 @@
                 .domain([new Date(latest * 1000), new Date(earliest * 1000)])
                 .range([0, ymax]);
             var timeAxis = d3.axisLeft(timeScale)
-                .ticks(d3.timeMinute.every(1));
+                .ticks(d3.timeMinute.every(1))
+                .tickFormat(d3.timeFormat("%H:%M"));
             var axisG = svg.select("#axis");
             axisG.enter()
                 .call(timeAxis);
