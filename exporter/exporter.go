@@ -66,12 +66,12 @@ func Start(client ethpb.BeaconChainClient) error {
 			logger.Fatal(err)
 		}
 
-		dbBlocks, err := db.GetLastPendingAndProposedBlocks(head.FinalizedEpoch, head.HeadEpoch)
+		dbBlocks, err := db.GetLastPendingAndProposedBlocks(head.FinalizedEpoch-1, head.HeadEpoch)
 		if err != nil {
 			logger.Fatal(err)
 		}
 
-		nodeBlocks, err := getLastBlocks(head.FinalizedEpoch, head.HeadEpoch, client)
+		nodeBlocks, err := getLastBlocks(head.FinalizedEpoch-1, head.HeadEpoch, client)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -116,16 +116,6 @@ func Start(client ethpb.BeaconChainClient) error {
 		epochs, err := db.GetAllEpochs()
 		if err != nil {
 			logger.Fatal(err)
-		}
-
-		for i := 0; i < len(epochs)-1; i++ {
-			if epochs[i] != epochs[i+1]-1 && epochs[i] != epochs[i+1] {
-				logger.Println("Epochs between", epochs[i], "and", epochs[i+1], "are missing!")
-
-				for j := epochs[i]; j <= epochs[i+1]; j++ {
-					epochsToExport[j] = true
-				}
-			}
 		}
 
 		// Add not yet exported epochs to the export set (for example during the initial sync)
