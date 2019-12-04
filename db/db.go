@@ -352,7 +352,7 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 	return nil
 }
 
-func saveBeaconCommittees(epoch uint64, committees []*ethpb.BeaconCommittees_CommitteeItem, tx *sql.Tx) error {
+func saveBeaconCommittees(epoch uint64, committeesMap map[uint64][]*ethpb.BeaconCommittees_CommitteeItem, tx *sql.Tx) error {
 
 	stmt, err := tx.Prepare(`INSERT INTO beacon_committees (epoch, slot, slotindex, indices)
  													VALUES    ($1, $2, $3, $4) ON CONFLICT (epoch, slot, slotindex) DO NOTHING`)
@@ -361,10 +361,12 @@ func saveBeaconCommittees(epoch uint64, committees []*ethpb.BeaconCommittees_Com
 	}
 	defer stmt.Close()
 
-	for i, c := range committees {
-		_, err := stmt.Exec(epoch, c.Slot, i, pq.Array(c.Committee))
-		if err != nil {
-			return fmt.Errorf("error executing save beacon committee statement: %v", err)
+	for slot, comittees := range committeesMap {
+		for index, comittee := range comittees {
+			_, err := stmt.Exec(epoch, slot, index, pq.Array(comittee.ValidatorIndices))
+			if err != nil {
+				return fmt.Errorf("error executing save beacon committee statement: %v", err)
+			}
 		}
 	}
 

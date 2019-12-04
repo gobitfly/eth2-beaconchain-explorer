@@ -34,7 +34,7 @@ func Start(client ethpb.BeaconChainClient) error {
 		}
 
 		var wg sync.WaitGroup
-		for epoch := uint64(0); epoch <= head.HeadBlockEpoch; epoch++ {
+		for epoch := uint64(0); epoch <= head.HeadEpoch; epoch++ {
 			//err := exportEpoch(epoch, client)
 
 			if err != nil {
@@ -42,7 +42,7 @@ func Start(client ethpb.BeaconChainClient) error {
 			}
 			wg.Add(1)
 
-			logger.Printf("Exporting epoch %v of %v", epoch, head.HeadBlockEpoch)
+			logger.Printf("Exporting epoch %v of %v", epoch, head.HeadEpoch)
 			go func(e uint64) {
 				err := exportEpoch(e, client)
 
@@ -66,12 +66,12 @@ func Start(client ethpb.BeaconChainClient) error {
 			logger.Fatal(err)
 		}
 
-		dbBlocks, err := db.GetLastPendingAndProposedBlocks(head.FinalizedEpoch, head.HeadBlockEpoch)
+		dbBlocks, err := db.GetLastPendingAndProposedBlocks(head.FinalizedEpoch, head.HeadEpoch)
 		if err != nil {
 			logger.Fatal(err)
 		}
 
-		nodeBlocks, err := getLastBlocks(head.FinalizedEpoch, head.HeadBlockEpoch, client)
+		nodeBlocks, err := getLastBlocks(head.FinalizedEpoch, head.HeadEpoch, client)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -129,14 +129,14 @@ func Start(client ethpb.BeaconChainClient) error {
 		}
 
 		// Add not yet exported epochs to the export set (for example during the initial sync)
-		if len(epochs) > 0 && epochs[len(epochs)-1] < head.HeadBlockEpoch {
-			for i := epochs[len(epochs)-1]; i <= head.HeadBlockEpoch; i++ {
+		if len(epochs) > 0 && epochs[len(epochs)-1] < head.HeadEpoch {
+			for i := epochs[len(epochs)-1]; i <= head.HeadEpoch; i++ {
 				epochsToExport[i] = true
 			}
 		} else if len(epochs) > 0 && epochs[0] != 0 { // Export the genesis epoch if not yet present in the db
 			epochsToExport[0] = true
 		} else if len(epochs) == 0 { // No epochs are present int the db
-			for i := uint64(0); i <= head.HeadBlockEpoch; i++ {
+			for i := uint64(0); i <= head.HeadEpoch; i++ {
 				epochsToExport[i] = true
 			}
 		}
@@ -152,7 +152,7 @@ func Start(client ethpb.BeaconChainClient) error {
 		})
 
 		for _, epoch := range keys {
-			if epochBlacklist[epoch] > 10 {
+			if epochBlacklist[epoch] > 3 {
 				logger.Printf("Skipping export of epoch %v as it has errored %v times", epochBlacklist[epoch])
 				continue
 			}
@@ -163,7 +163,9 @@ func Start(client ethpb.BeaconChainClient) error {
 
 			if err != nil {
 				logger.Errorf("error exporting epoch: %v", err)
-				epochBlacklist[epoch]++
+				if utils.EpochToTime(epoch).Before(time.Now().Add(time.Hour * -24)) {
+					epochBlacklist[epoch]++
+				}
 			}
 			logger.Printf("Finished export for epoch %v", epoch)
 		}
@@ -173,7 +175,7 @@ func Start(client ethpb.BeaconChainClient) error {
 		if head.FinalizedEpoch > 10 {
 			startEpoch = head.FinalizedEpoch - 10
 		}
-		err = updateEpochStatus(client, startEpoch, head.HeadBlockEpoch)
+		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -195,29 +197,27 @@ func Start(client ethpb.BeaconChainClient) error {
 }
 
 func getLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) ([]*types.MinimalBlock, error) {
-	var err error
 	blocks := make([]*types.MinimalBlock, 0)
 
-	for i := startEpoch; i <= endEpoch; i++ {
-		blocksResponse := &ethpb.ListBlocksResponse{}
-		for {
-			blocksResponse, err = client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageToken: blocksResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Epoch{Epoch: i}})
+	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
+		startSlot := epoch * utils.SlotsPerEpoch
+		endSlot := (epoch+1)*utils.SlotsPerEpoch - 1
+		for slot := startSlot; slot <= endSlot; slot++ {
+			blocksResponse, err := client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}})
 			if err != nil {
 				logger.Fatal(err)
 			}
 
 			for _, block := range blocksResponse.BlockContainers {
 				blocks = append(blocks, &types.MinimalBlock{
-					Epoch:    i,
+					Epoch:    epoch,
 					Slot:     block.Block.Slot,
 					BockRoot: block.BlockRoot,
 				})
 			}
-
-			if blocksResponse.NextPageToken == "" {
-				break
-			}
 		}
+
+		logger.Printf("Retrieving all blocks for epoch %v. %v epochs remaining", epoch, endEpoch-epoch)
 	}
 
 	return blocks, nil
@@ -237,15 +237,14 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]*types.BlockContainer)
-	blocksResponse := &ethpb.ListBlocksResponse{}
-	for {
-		blocksResponse, err = client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageToken: blocksResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Epoch{Epoch: epoch}})
+	for slot := epoch * utils.SlotsPerEpoch; slot <= (epoch+1)*utils.SlotsPerEpoch-1; slot++ {
+		blocksResponse, err := client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}})
 		if err != nil {
 			logger.Fatal(err)
 		}
 
 		if blocksResponse.TotalSize == 0 {
-			break
+			continue
 		}
 
 		for _, block := range blocksResponse.BlockContainers {
@@ -264,10 +263,6 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 				Proposer: data.ValidatorAssignmentes.ProposerAssignments[block.Block.Slot],
 				Block:    block,
 			}
-		}
-
-		if blocksResponse.NextPageToken == "" {
-			break
 		}
 	}
 	logger.Printf("Retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
@@ -344,23 +339,23 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	logger.Printf("Retrieved validator data for epoch %v", epoch)
 
 	// Retrieve the beacon committees for the epoch
-	data.BeaconCommittees = make([]*ethpb.BeaconCommittees_CommitteeItem, 0)
+	data.BeaconCommittees = make(map[uint64][]*ethpb.BeaconCommittees_CommitteeItem)
 	beaconCommitteesResponse := &ethpb.BeaconCommittees{}
-	for {
-		beaconCommitteesResponse, err = client.ListBeaconCommittees(context.Background(), &ethpb.ListCommitteesRequest{PageToken: beaconCommitteesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListCommitteesRequest_Epoch{Epoch: epoch}})
-		if err != nil {
-			logger.Printf("error retrieving beacon committees response: %v", err)
-			break
-		}
-		if beaconCommitteesResponse.TotalSize == 0 {
-			break
-		}
+	beaconCommitteesResponse, err = client.ListBeaconCommittees(context.Background(), &ethpb.ListCommitteesRequest{QueryFilter: &ethpb.ListCommitteesRequest_Epoch{Epoch: epoch}})
+	if err != nil {
+		logger.Printf("error retrieving beacon committees response: %v", err)
+	} else {
 
-		data.BeaconCommittees = append(data.BeaconCommittees, beaconCommitteesResponse.Committees...)
+	}
 
-		if beaconCommitteesResponse.NextPageToken == "" {
-			break
+	for slot, committee := range beaconCommitteesResponse.Committees {
+		if committee == nil {
+			continue
 		}
+		if data.BeaconCommittees[slot] == nil {
+			data.BeaconCommittees[slot] = make([]*ethpb.BeaconCommittees_CommitteeItem, 0)
+		}
+		data.BeaconCommittees[slot] = append(data.BeaconCommittees[slot], committee.Committees...)
 	}
 
 	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
