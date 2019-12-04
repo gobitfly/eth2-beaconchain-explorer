@@ -479,9 +479,9 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
 		}
 
 		if len(b.Block.BlockRoot) == 64 {
-			_, err = tx.Exec("DELETE FROM blocks WHERE slot = $1 AND length(blockroot) == 1") // Delete placeholder blocks
+			_, err = tx.Exec("DELETE FROM blocks WHERE slot = $1 AND length(blockroot) = 1") // Delete placeholder block
 			if err != nil {
-				return fmt.Errorf("error executing stmtBlocks: %v", err)
+				return fmt.Errorf("error deleting placeholder block: %v", err)
 			}
 		}
 
