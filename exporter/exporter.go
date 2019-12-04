@@ -365,17 +365,15 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	if err != nil {
 		logger.Printf("error retrieving beacon committees response: %v", err)
 	} else {
-
-	}
-
-	for slot, committee := range beaconCommitteesResponse.Committees {
-		if committee == nil {
-			continue
+		for slot, committee := range beaconCommitteesResponse.Committees {
+			if committee == nil {
+				continue
+			}
+			if data.BeaconCommittees[slot] == nil {
+				data.BeaconCommittees[slot] = make([]*ethpb.BeaconCommittees_CommitteeItem, 0)
+			}
+			data.BeaconCommittees[slot] = append(data.BeaconCommittees[slot], committee.Committees...)
 		}
-		if data.BeaconCommittees[slot] == nil {
-			data.BeaconCommittees[slot] = make([]*ethpb.BeaconCommittees_CommitteeItem, 0)
-		}
-		data.BeaconCommittees[slot] = append(data.BeaconCommittees[slot], committee.Committees...)
 	}
 
 	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
