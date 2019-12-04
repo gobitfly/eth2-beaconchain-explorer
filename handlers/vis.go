@@ -51,7 +51,7 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 		since = time.Now().Add(time.Minute * -20).Unix()
 	}
 
-	sinceSlot := utils.TimeToSlot(uint64(since))
+	sinceSlot := utils.TimeToSlot(uint64(since - 120))
 
 	var chartData []*types.VisChartData
 
@@ -67,6 +67,9 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 		d.Number = d.Slot
 		d.Timestamp = uint64(utils.SlotToTime(d.Slot).Unix())
 		d.Hash = fmt.Sprintf("0x%x", d.BlockRoot)
+		if len(d.BlockRoot) == 1 {
+			d.Hash += fmt.Sprintf("%v", d.Slot)
+		}
 		d.Parents = []string{fmt.Sprintf("0x%x", d.ParentRoot)}
 		d.Difficulty = d.Slot
 	}

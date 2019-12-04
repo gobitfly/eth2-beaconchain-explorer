@@ -181,9 +181,7 @@
                 .attr("x", 8)
                 .style("text-anchor", "start")
                 .html(function(d) {
-                    if (d.block.hash === '0x00') {
-                        return 'Scheduled'
-                    } else if (d.block.hash === '0x01') {
+                    if (d.block.hash.length < 64) {
                         return 'Missed'
                     } else {
                         return '<a href="/block/' + d.block.hash + '">' + d.block.hash.substring(0, 10) + '</a>';
