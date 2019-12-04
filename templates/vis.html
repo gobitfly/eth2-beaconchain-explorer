@@ -180,13 +180,13 @@
                 .attr("dy", 13)
                 .attr("x", 8)
                 .style("text-anchor", "start")
-                .text(function(d) { return d.block.hash.substring(0, 10); });
+                .html(function(d) { return '<a href="/block/' + d.block.hash + '">' + d.block.hash.substring(0, 10) + '</a>'; });
             node.append("text")
                 .attr("class", "nodenum")
                 .attr("dy", -3)
                 .attr("x", 8)
                 .style("text-anchor", "start")
-                .text(function(d) { return d.block.number; });
+                .html(function(d) { return '<a href="/block/' + d.block.number + '">' + d.block.number + '</a>'; });
             nodeset.exit().remove();
 
             var link = g.selectAll(".link")
