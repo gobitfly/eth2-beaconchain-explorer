@@ -180,13 +180,23 @@
                 .attr("dy", 13)
                 .attr("x", 8)
                 .style("text-anchor", "start")
-                .html(function(d) { return '<a href="/block/' + d.block.hash + '">' + d.block.hash.substring(0, 10) + '</a>'; });
+                .html(function(d) {
+                    if (d.block.hash === '0x00') {
+                        return 'Scheduled'
+                    } else if (d.block.hash === '0x01') {
+                        return 'Missed'
+                    } else {
+                        return '<a href="/block/' + d.block.hash + '">' + d.block.hash.substring(0, 10) + '</a>';
+                    }
+                });
             node.append("text")
                 .attr("class", "nodenum")
                 .attr("dy", -3)
                 .attr("x", 8)
                 .style("text-anchor", "start")
-                .html(function(d) { return '<a href="/block/' + d.block.number + '">' + d.block.number + '</a>'; });
+                .html(function(d) {
+                    return '<a href="/block/' + d.block.number + '">' + d.block.number + '</a>';
+                });
             nodeset.exit().remove();
 
             var link = g.selectAll(".link")
