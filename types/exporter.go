@@ -8,7 +8,7 @@ type EpochData struct {
 	Epoch                   uint64
 	Validators              []*ethpb.Validator
 	ValidatorAssignmentes   *EpochAssignments
-	BeaconCommittees        []*ethpb.BeaconCommittees_CommitteeItem
+	BeaconCommittees        map[uint64][]*ethpb.BeaconCommittees_CommitteeItem
 	ValidatorBalances       []*ethpb.ValidatorBalances_Balance
 	Blocks                  map[uint64]*BlockContainer
 	EpochParticipationStats *ethpb.ValidatorParticipationResponse

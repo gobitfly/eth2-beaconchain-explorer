@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/lib/pq"
@@ -120,6 +122,24 @@ type ValidatorAttestation struct {
 	Status         uint64 `db:"status"`
 }
 
+type BlocksTreeData struct {
+	Slot       uint64 `db:"slot" json:"slot"`
+	BlockRoot  []byte `db:"blockroot" json:"blockroot"`
+	ParentRoot []byte `db:"parentroot" json:"parentroot"`
+}
+
+func (u *BlocksTreeData) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Slot       uint64 `json:"slot"`
+		BlockRoot  string `json:"blockroot"`
+		ParentRoot string `json:"parentroot"`
+	}{
+		Slot:       u.Slot,
+		BlockRoot:  fmt.Sprintf("%x", u.BlockRoot),
+		ParentRoot: fmt.Sprintf("%x", u.ParentRoot),
+	})
+}
+
 type BlockPageData struct {
 	Epoch                  uint64 `db:"epoch"`
 	Slot                   uint64 `db:"slot"`
@@ -198,4 +218,14 @@ type EpochsPageData struct {
 	EligibleEther           uint64  `db:"eligibleether"`
 	GlobalParticipationRate float64 `db:"globalparticipationrate"`
 	VotedEther              uint64  `db:"votedether"`
+}
+
+type SearchAheadBlocksResult []struct {
+	Slot string `db:"slot" json:"slot,omitempty"`
+	Root string `db:"blockroot" json:"blockroot,omitempty"`
+}
+
+type SearchAheadValidatorsResult []struct {
+	Index  string `db:"index" json:"index,omitempty"`
+	Pubkey string `db:"pubkey" json:"pubkey,omitempty"`
 }
