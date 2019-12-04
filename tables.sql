@@ -139,7 +139,7 @@ create table blocks (
     voluntaryexitscount int not null,
     proposer int not null,
     status text not null,
-    primary key (slot)
+    primary key (slot, blockroot)
 );
 create index idx_blocks_proposer on blocks (proposer);
 

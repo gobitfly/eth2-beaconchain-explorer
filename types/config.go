@@ -9,9 +9,10 @@ type Config struct {
 		Port     string `yaml:"port", envconfig:"DB_PORT"`
 	} `yaml:"database"`
 	Indexer struct {
-		Enabled            bool `yaml:"enabled", envconfig:"INDEXER_ENABLED"`
-		FullIndexOnStartup bool `yaml:"fullIndexOnStartup", envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`
-		Node               struct {
+		Enabled                     bool `yaml:"enabled", envconfig:"INDEXER_ENABLED"`
+		FullIndexOnStartup          bool `yaml:"fullIndexOnStartup", envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`
+		IndexMissingEpochsOnStartup bool `yaml:"indexMissingEpochsOnStartup", envconfig:"INDEXER_MISSING_INDEX_ON_STARTUP"`
+		Node                        struct {
 			Port string `yaml:"port", envconfig:"INDEXER_NODE_PORT"`
 			Host string `yaml:"host", envconfig:"INDEXER_NODE_HOST"`
 		} `yaml:"node"`

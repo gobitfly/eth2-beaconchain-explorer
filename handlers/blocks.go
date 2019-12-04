@@ -19,15 +19,6 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	var blocksTreeData []*types.BlocksTreeData
-	err := db.DB.Select(&blocksTreeData, "select slot, blockroot, parentroot from blocks where status = '1' order by slot desc limit 25;")
-
-	if err != nil {
-		logger.Printf("Error retrieving block tree data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("Blocks - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", time.Now().Year()),
@@ -36,10 +27,10 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 		},
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "blocks",
-		Data:               blocksTreeData,
+		Data:               nil,
 	}
 
-	err = blocksTemplate.ExecuteTemplate(w, "layout", data)
+	err := blocksTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
 		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)

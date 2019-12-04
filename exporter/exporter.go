@@ -59,6 +59,29 @@ func Start(client ethpb.BeaconChainClient) error {
 			}
 		}
 	}
+
+	if utils.Config.Indexer.IndexMissingEpochsOnStartup {
+		// Add any missing epoch to the export set (might happen if the indexer was stopped for a long period of time)
+		epochs, err := db.GetAllEpochs()
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		for i := 0; i < len(epochs)-1; i++ {
+			if epochs[i] != epochs[i+1]-1 && epochs[i] != epochs[i+1] {
+				logger.Println("Epochs between", epochs[i], "and", epochs[i+1], "are missing!")
+
+				for epoch := epochs[i]; epoch <= epochs[i+1]; epoch++ {
+					err := exportEpoch(epoch, client)
+					if err != nil {
+						logger.Error(err)
+					}
+					logger.Printf("Finished export for epoch %v", epoch)
+				}
+			}
+		}
+	}
+
 	for true {
 
 		head, err := client.GetChainHead(context.Background(), &ptypes.Empty{})
@@ -193,7 +216,7 @@ func getLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) 
 		startSlot := epoch * utils.SlotsPerEpoch
 		endSlot := (epoch+1)*utils.SlotsPerEpoch - 1
 		for slot := startSlot; slot <= endSlot; slot++ {
-			blocksResponse, err := client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}})
+			blocksResponse, err := client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}, IncludeNoncanonical: true})
 			if err != nil {
 				logger.Fatal(err)
 			}
@@ -227,8 +250,15 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]*types.BlockContainer)
+
+	logger.Println(epoch*utils.SlotsPerEpoch, (epoch+1)*utils.SlotsPerEpoch-1)
 	for slot := epoch * utils.SlotsPerEpoch; slot <= (epoch+1)*utils.SlotsPerEpoch-1; slot++ {
-		blocksResponse, err := client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}})
+
+		if slot == 0 { // Currently slot 0 returns all blocks
+			continue
+		}
+
+		blocksResponse, err := client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}, IncludeNoncanonical: true})
 		if err != nil {
 			logger.Fatal(err)
 		}

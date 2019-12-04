@@ -413,7 +413,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
                     voluntaryexitscount, 
                     proposer,
                     status)
- 					VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) ON CONFLICT (slot) DO NOTHING`)
+ 					VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) ON CONFLICT (slot, blockroot) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -471,37 +471,17 @@ func saveBlocks(epoch uint64, blocks map[uint64]*types.BlockContainer, tx *sql.T
 	for _, b := range blocks {
 
 		var dbBlockRootHash []byte
-		err := DB.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1", b.Block.Block.Slot)
+		err := DB.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Block.Block.Slot, b.Block.BlockRoot)
 
 		if err == nil && bytes.Compare(dbBlockRootHash, b.Block.BlockRoot) == 0 {
 			logger.Printf("Skipping export of block %v as it is already present in the db", b.Block.Block.Slot)
 			continue
-		} else if err == nil && bytes.Compare(dbBlockRootHash, b.Block.BlockRoot) != 0 {
-			logger.Printf("Deleting block %v as it has been changed due to a chain reorg", b.Block.Block.Slot)
+		}
 
-			_, err := tx.Exec("DELETE FROM blocks WHERE slot = $1", b.Block.Block.Slot)
+		if len(b.Block.BlockRoot) == 64 {
+			_, err = tx.Exec("DELETE FROM blocks WHERE slot = $1 AND length(blockroot) == 1") // Delete placeholder blocks
 			if err != nil {
-				return fmt.Errorf("error deleting block from blocks table: %v", err)
-			}
-			_, err = tx.Exec("DELETE FROM blocks_proposerslashings WHERE block_slot = $1", b.Block.Block.Slot)
-			if err != nil {
-				return fmt.Errorf("error deleting block from blocks_proposerslashings table: %v", err)
-			}
-			_, err = tx.Exec("DELETE FROM blocks_attesterslashings WHERE block_slot = $1", b.Block.Block.Slot)
-			if err != nil {
-				return fmt.Errorf("error deleting block from blocks_attesterslashings table: %v", err)
-			}
-			_, err = tx.Exec("DELETE FROM blocks_attestations WHERE block_slot = $1", b.Block.Block.Slot)
-			if err != nil {
-				return fmt.Errorf("error deleting block from blocks_attestations table: %v", err)
-			}
-			_, err = tx.Exec("DELETE FROM blocks_deposits WHERE block_slot = $1", b.Block.Block.Slot)
-			if err != nil {
-				return fmt.Errorf("error deleting block from blocks_deposits table: %v", err)
-			}
-			_, err = tx.Exec("DELETE FROM blocks_voluntaryexits WHERE block_slot = $1", b.Block.Block.Slot)
-			if err != nil {
-				return fmt.Errorf("error deleting block from blocks_voluntaryexits table: %v", err)
+				return fmt.Errorf("error executing stmtBlocks: %v", err)
 			}
 		}
 

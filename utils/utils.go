@@ -49,6 +49,10 @@ func SlotToTime(slot uint64) time.Time {
 	return time.Unix(GenesisTimestamp+int64(slot)*SecondsPerSlot, 0)
 }
 
+func TimeToSlot(timestamp uint64) uint64 {
+	return (timestamp - GenesisTimestamp) / SecondsPerSlot
+}
+
 func EpochToTime(epoch uint64) time.Time {
 	return time.Unix(GenesisTimestamp+int64(epoch)*SecondsPerSlot*SlotsPerEpoch, 0)
 }

@@ -1,8 +1,6 @@
 package types
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/lib/pq"
@@ -120,22 +118,22 @@ type ValidatorAttestation struct {
 	Status         uint64 `db:"status"`
 }
 
-type BlocksTreeData struct {
-	Slot       uint64 `db:"slot" json:"slot"`
-	BlockRoot  []byte `db:"blockroot" json:"blockroot"`
-	ParentRoot []byte `db:"parentroot" json:"parentroot"`
+type VisPageData struct {
+	ChartData  []*VisChartData
+	StartEpoch uint64
+	EndEpoch   uint64
 }
 
-func (u *BlocksTreeData) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		Slot       uint64 `json:"slot"`
-		BlockRoot  string `json:"blockroot"`
-		ParentRoot string `json:"parentroot"`
-	}{
-		Slot:       u.Slot,
-		BlockRoot:  fmt.Sprintf("%x", u.BlockRoot),
-		ParentRoot: fmt.Sprintf("%x", u.ParentRoot),
-	})
+type VisChartData struct {
+	Slot       uint64 `db:"slot" json:"-"`
+	BlockRoot  []byte `db:"blockroot" json:"-"`
+	ParentRoot []byte `db:"parentroot" json:"-"`
+
+	Number     uint64   `json:"number"`
+	Timestamp  uint64   `json:"timestamp"`
+	Hash       string   `json:"hash"`
+	Parents    []string `json:"parents"`
+	Difficulty uint64   `json:"difficulty"`
 }
 
 type BlockPageData struct {

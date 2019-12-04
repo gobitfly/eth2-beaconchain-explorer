@@ -52,7 +52,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			proposer,
 			status   
 	FROM blocks 
-	WHERE slot = $1 OR blockroot = $2`,
+	WHERE slot = $1 OR blockroot = $2 LIMIT 1`,
 		slotOrHash, blockRootHash)
 
 	data := &types.PageData{

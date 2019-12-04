@@ -1,36 +1,4 @@
 {{ define "js"}}
-
-    <script type="text/javascript" src="https://visjs.github.io/vis-network/standalone/umd/vis-network.min.js"></script>
-    <script>
-        var data = {{.}};
-
-        var nodesData = [];
-        var edgesData = [];
-
-        data.forEach(function(item) {
-            nodesData.push({id: item.blockroot, label: item.slot.toString(), size: 500})
-            edgesData.push({ from: item.blockroot, to: item.parentroot, smooth: { type: "continuous" } })
-        })
-
-        var nodes = new vis.DataSet(nodesData);
-        var edges = new vis.DataSet(edgesData);
-
-        var options = {
-            edges: {
-                arrows: "from"
-            }
-        };
-
-        var container = document.getElementById("blocktreechart");
-        var data = {
-            nodes: nodes,
-            edges: edges
-        };
-
-        var network = new vis.Network(container, data, options);
-
-    </script>
-
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
     <script>
         $(document).ready(function () {
@@ -108,10 +76,5 @@
             <tbody>
             </tbody>
         </table>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <div id="blocktreechart"></div>
-        </div>
     </div>
 {{end}}
