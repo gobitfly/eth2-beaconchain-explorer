@@ -19,6 +19,11 @@ import (
 
 var logger = logrus.New().WithField("module", "exporter")
 
+// If exporting an epoch fails for 10 consecutive times exporting this epoch will be disabled
+// This is a workaround for a bug in the prysm archive node that causes epochs without blocks
+// to not be archived properly (see https://github.com/prysmaticlabs/prysm/issues/4165)
+var epochBlacklist = make(map[uint64]uint64)
+
 func Start(client ethpb.BeaconChainClient) error {
 
 	if utils.Config.Indexer.FullIndexOnStartup {
@@ -147,11 +152,18 @@ func Start(client ethpb.BeaconChainClient) error {
 		})
 
 		for _, epoch := range keys {
+			if epochBlacklist[epoch] > 10 {
+				logger.Printf("Skipping export of epoch %v as it has errored %v times", epochBlacklist[epoch])
+				continue
+			}
+
 			logger.Printf("Exporting epoch %v", epoch)
+
 			err = exportEpoch(epoch, client)
 
 			if err != nil {
 				logger.Errorf("error exporting epoch: %v", err)
+				epochBlacklist[epoch]++
 			}
 			logger.Printf("Finished export for epoch %v", epoch)
 		}
