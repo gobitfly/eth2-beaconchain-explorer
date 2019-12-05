@@ -8,12 +8,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/gorilla/mux"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var validatorTemplate = template.Must(template.New("validator").ParseFiles("templates/layout.html", "templates/validator.html"))
@@ -117,6 +118,62 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)
 	validatorPageData.WithdrawableTs = utils.EpochToTime(validatorPageData.WithdrawableEpoch)
 
+	proposals := []struct {
+		Day    uint64
+		Status uint64
+		Count  uint
+	}{}
+
+	err = db.DB.Select(&proposals, "select slot / 7200 as day, status, count(*) FROM blocks WHERE proposer = $1 group by day, status order by day;", index)
+	if err != nil {
+		logger.Error("Error retrieving Daily Proposed Blocks blocks count: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	for i := 0; i < len(proposals); i++ {
+		if i == len(proposals)-1 {
+			if proposals[i].Status == 1 {
+				validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: proposals[i].Count,
+					Missed:   0,
+				})
+			} else if proposals[i].Status == 2 {
+				validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: 0,
+					Missed:   proposals[i].Count,
+				})
+			} else {
+				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", err)
+			}
+		} else {
+			if proposals[i].Day == proposals[i+1].Day {
+				validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: proposals[i].Count,
+					Missed:   proposals[i+1].Count,
+				})
+				i++
+			} else if proposals[i].Status == 1 {
+				validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: proposals[i].Count,
+					Missed:   0,
+				})
+			} else if proposals[i].Status == 2 {
+				validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: 0,
+					Missed:   proposals[i].Count,
+				})
+			} else {
+				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", err)
+			}
+		}
+	}
+
 	err = db.DB.Get(&validatorPageData.ProposedBlocksCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", index)
 	if err != nil {
 		logger.Printf("Error retrieving proposed blocks count: %v", err)
@@ -171,6 +228,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
 	}
+
 }
 
 func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
