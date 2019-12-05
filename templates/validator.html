@@ -1,352 +1,364 @@
 {{ define "js"}}
 
-<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
-<script>
-  $(document).ready(function() {
-    $('#blocks').DataTable({
-      processing: true,
-      serverSide: true,
-      ordering: false,
-      searching: false,
-      ajax: '/validator/{{.Index}}/proposedblocks',
-      pagingType: 'full',
-      columnDefs: [
-        {
-          targets: 3,
-          data: '3',
-          render: function(data, type, row, meta) {
-            return moment.unix(data).format('L LTS')
-          }
-        },
-        {
-          targets: 4,
-          data: '4',
-          render: function(data, type, row, meta) {
-            if (data.length < 64) {
-              return 'N/A'
-            } else {
-              return '<a href="/block/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-            }
-          }
-        },
-        {
-          targets: 1,
-          data: '1',
-          render: function(data, type, row, meta) {
-            return '<a href="/block/' + data + '">' + data + '</a>'
-          }
-        }
-      ]
-    })
-    $('#attestations').DataTable({
-      processing: true,
-      serverSide: true,
-      ordering: false,
-      searching: false,
-      ajax: '/validator/{{.Index}}/attestations',
-      pagingType: 'full'
-    })
-  })
-</script>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#blocks').DataTable({
+                processing: true,
+                serverSide: true,
+                ordering: false,
+                searching: false,
+                ajax: '/validator/{{.Index}}/proposedblocks',
+                pagingType: 'full',
+                columnDefs: [
+                    {
+                        targets: 3,
+                        data: '3',
+                        render: function (data, type, row, meta) {
+                            return moment.unix(data).format('L LTS')
+                        }
+                    },
+                    {
+                        targets: 4,
+                        data: '4',
+                        render: function (data, type, row, meta) {
+                            if (data.length < 64) {
+                                return 'N/A'
+                            } else {
+                                return '<a href="/block/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+                            }
+                        }
+                    },
+                    {
+                        targets: 1,
+                        data: '1',
+                        render: function (data, type, row, meta) {
+                            return '<a href="/block/' + data + '">' + data + '</a>'
+                        }
+                    }
+                ]
+            })
+            $('#attestations').DataTable({
+                processing: true,
+                serverSide: true,
+                ordering: false,
+                searching: false,
+                ajax: '/validator/{{.Index}}/attestations',
+                pagingType: 'full'
+            })
+        })
+    </script>
 
-<script src="https://code.highcharts.com/stock/highstock.js"></script>
-<script src="https://code.highcharts.com/modules/exporting.js"></script>
-<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+    <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 
-<script>
-  Highcharts.stockChart('balancechart', {
-      exporting: {
-          scale: 1
-      },
-      rangeSelector: {
-          enabled: false
-      },
-      navigator: {
-          enabled: true
-      },
-      chart: {
-          type: 'line',
-          animation: false,
-          style: {
-              fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
-          },
-          backgroundColor: 'rgb(255, 255, 255)'
-      },
-      title: {
-          text: 'Balance History for Validator {{.Index}}'
-      },
-      subtitle: {
-          text: 'Source: beaconcha.in',
-          style: {
-              color: 'black'
-          }
-      },
-      xAxis: {
-          type: 'datetime',
-          labels: {
-              style: {
-                  color: 'black'
-              }
-          },
-          range: 7 * 24 * 60 * 60 * 1000
-      },
-      yAxis: [{
-          title: {
-              text: 'Balance [ETH]',
-              style: {
-                  color: 'black'
-              }
-          },
-          labels: {
-              formatter: function () {
-                  return this.value.toFixed(0);
-              },
-              style: {
-                  color: 'black'
-              }
-          },
-          opposite: false
-      }, {
-          title: {
-              text: 'Effective Balance [ETH]',
-              style: {
-                  color: 'black'
-              }
-          },
-          labels: {
-              formatter: function () {
-                  return this.value.toFixed(0);
-              },
-              style: {
-                  color: 'black'
-              }
-          },
-          opposite: true
-      }],
-      series: [{
-          name: "Balance",
-          yAxis: 0,
-          data: {{.BalanceHistoryChartData}}
-      },{
-          name: "Effective Balance",
-          yAxis: 1,
-          step: true,
-          data: {{.EffectiveBalanceHistoryChartData}}
-      }],
-      plotOptions: {
-          line: {
-              animation: false,
-              lineWidth: 2.5,
-          }
-      },
-      legend: {
-          enabled: true
-      },
-      credits: {
-          enabled: false
-      }
-  });
-</script>
-<script>
-  var data = {{.DailyProposalCount}}
-  var proposed = data.map(d => [d.Day * 1000, d.Proposed])
-  var missed = data.map(d => [d.Day * 1000, d.Missed])
-  Highcharts.stockChart('proposedChart', {
-    exporting: {
-          scale: 1
-      },
-    credits: {
-      enabled: false
-    },
-    title: {
-          text: 'Proposal History for Validator {{.Index}}'
-      },
-      subtitle: {
-          text: 'Source: beaconcha.in',
-          style: {
-              color: 'black'
-          }
-      },
-    chart: {
-      type: 'column',
-      animation: false,
-      style: {
-          fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
-      },
-      backgroundColor: 'rgb(255, 255, 255)'
-    },
-    xAxis: {
-      lineWidth: 0,
-      tickColor: '#e5e1e1',
-      labels: {
-        style: {
-          color: '#26232780'
-        }
-      },
-      range: 7 * 24 * 3600 * 1000
-    },
-    yAxis: [
-      {
-        title: {
-          text: '# of Possible Proposals',
-          style: {
-            color: '#26232780',
-            'font-size': '0.8rem'
-          }
-        },
-        labels: {
-          style: {
-            color: '#26232780'
-          }
-        },
-        gridLineColor: '#e5e1e1',
-        opposite: false
-      }
-    ],
-    plotOptions: {
-      column: {
-        stacking: 'normal',
-        dataGrouping: {
-            enabled: true,
-            forced: true,
-            units: [
-                ['day', [1]]
-            ]
-        }
-      }
-    },
-    legend: {
-      enabled: true,
-      layout: 'horizontal',
-      align: 'center',
-      verticalAlign: 'bottom',
-      borderWidth: 0,
-      itemStyle: {
-        color: '#262327',
-        'font-size': '0.8rem',
-        'font-weight': 'lighter'
-      },
-      itemHoverStyle: {
-        color: '#ff8723'
-      }
-    },
-    series: [
-      {
-        name: 'Proposed',
-        data: proposed
-      },
-      {
-        name: 'Missed',
-        data: missed
-      }
-    ],
-    rangeSelector: {
-      enabled: false
-    },
-    navigator: {
-      maskFill: '#1473e631',
-      outlineColor: '#e5e1e1',
-      handles: {
-        backgroundColor: '#f5f3f3',
-        borderColor: '#26232780'
-      },
-      xAxis: {
-        gridLineColor: '#e5e1e1',
-        labels: {
-          style: {
-            color: '#26232780'
-          }
-        }
-      }
-    },
-    scrollbar: {
-      barBackgroundColor: '#ebe7e7',
-      barBorderWidth: 0,
-      buttonArrowColor: '#262327',
-      rifleColor: '#262327',
-      buttonBackgroundColor: '#ebe7e7',
-      buttonBorderColor: '#ebe7e7',
-      trackBackgroundColor: '#f5f3f3',
-      trackBorderColor: '#e5e1e180'
-    },
-    colors: ['#378ef0a0', '#fb8c13'],
-    responsive: {
-      rules: [
-        {
-          condition: {
-            maxWidth: 760
-          },
-          chartOptions: {
+    <script>
+        Highcharts.stockChart('balancechart', {
+            exporting: {
+                scale: 1
+            },
+            rangeSelector: {
+                enabled: false
+            },
+            navigator: {
+                enabled: true
+            },
             chart: {
-              marginRight: 45
+                type: 'line',
+                animation: false,
+                style: {
+                    fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
+                },
+                backgroundColor: 'rgb(255, 255, 255)'
+            },
+            title: {
+                text: 'Balance History for Validator {{.Index}}'
+            },
+            subtitle: {
+                text: 'Source: beaconcha.in',
+                style: {
+                    color: 'black'
+                }
+            },
+            xAxis: {
+                type: 'datetime',
+                labels: {
+                    style: {
+                        color: 'black'
+                    }
+                },
+                range: 7 * 24 * 60 * 60 * 1000
+            },
+            yAxis: [{
+                title: {
+                    text: 'Balance [ETH]',
+                    style: {
+                        color: 'black'
+                    }
+                },
+                labels: {
+                    formatter: function () {
+                        return this.value.toFixed(0);
+                    },
+                    style: {
+                        color: 'black'
+                    }
+                },
+                opposite: false
+            }, {
+                title: {
+                    text: 'Effective Balance [ETH]',
+                    style: {
+                        color: 'black'
+                    }
+                },
+                labels: {
+                    formatter: function () {
+                        return this.value.toFixed(0);
+                    },
+                    style: {
+                        color: 'black'
+                    }
+                },
+                opposite: true
+            }],
+            series: [{
+                name: "Balance",
+                yAxis: 0,
+                data: {{.BalanceHistoryChartData}}
+            }, {
+                name: "Effective Balance",
+                yAxis: 1,
+                step: true,
+                data: {{.EffectiveBalanceHistoryChartData}}
+            }],
+            plotOptions: {
+                line: {
+                    animation: false,
+                    lineWidth: 2.5,
+                }
+            },
+            legend: {
+                enabled: true
+            },
+            credits: {
+                enabled: false
+            }
+        });
+    </script>
+    <script>
+        var data = {{.DailyProposalCount}}
+        var proposed = data.map(d => [d.Day * 1000, d.Proposed])
+        var missed = data.map(d => [d.Day * 1000, d.Missed])
+        Highcharts.stockChart('proposedChart', {
+            exporting: {
+                scale: 1
+            },
+            credits: {
+                enabled: false
+            },
+            title: {
+                text: 'Proposal History for Validator {{.Index}}'
+            },
+            subtitle: {
+                text: 'Source: beaconcha.in',
+                style: {
+                    color: 'black'
+                }
+            },
+            chart: {
+                type: 'column',
+                animation: false,
+                style: {
+                    fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
+                },
+                backgroundColor: 'rgb(255, 255, 255)'
+            },
+            xAxis: {
+                lineWidth: 0,
+                tickColor: '#e5e1e1',
+                labels: {
+                    style: {
+                        color: '#26232780'
+                    }
+                },
+                range: 7 * 24 * 3600 * 1000
             },
             yAxis: [
-              {
-                title: {
-                  text: null
+                {
+                    title: {
+                        text: '# of Possible Proposals',
+                        style: {
+                            color: '#26232780',
+                            'font-size': '0.8rem'
+                        }
+                    },
+                    labels: {
+                        style: {
+                            color: '#26232780'
+                        }
+                    },
+                    gridLineColor: '#e5e1e1',
+                    opposite: false
                 }
-              },
-              {
-                title: {
-                  text: null
+            ],
+            plotOptions: {
+                column: {
+                    stacking: 'normal',
+                    dataGrouping: {
+                        enabled: true,
+                        forced: true,
+                        units: [
+                            ['day', [1]]
+                        ]
+                    }
                 }
-              }
-            ]
-          }
+            },
+            legend: {
+                enabled: true,
+                layout: 'horizontal',
+                align: 'center',
+                verticalAlign: 'bottom',
+                borderWidth: 0,
+                itemStyle: {
+                    color: '#262327',
+                    'font-size': '0.8rem',
+                    'font-weight': 'lighter'
+                },
+                itemHoverStyle: {
+                    color: '#ff8723'
+                }
+            },
+            series: [
+                {
+                    name: 'Proposed',
+                    data: proposed
+                },
+                {
+                    name: 'Missed',
+                    data: missed
+                }
+            ],
+            rangeSelector: {
+                enabled: false
+            },
+            navigator: {
+                maskFill: '#1473e631',
+                outlineColor: '#e5e1e1',
+                handles: {
+                    backgroundColor: '#f5f3f3',
+                    borderColor: '#26232780'
+                },
+                xAxis: {
+                    gridLineColor: '#e5e1e1',
+                    labels: {
+                        style: {
+                            color: '#26232780'
+                        }
+                    }
+                }
+            },
+            scrollbar: {
+                barBackgroundColor: '#ebe7e7',
+                barBorderWidth: 0,
+                buttonArrowColor: '#262327',
+                rifleColor: '#262327',
+                buttonBackgroundColor: '#ebe7e7',
+                buttonBorderColor: '#ebe7e7',
+                trackBackgroundColor: '#f5f3f3',
+                trackBorderColor: '#e5e1e180'
+            },
+            colors: ['#378ef0a0', '#fb8c13'],
+            responsive: {
+                rules: [
+                    {
+                        condition: {
+                            maxWidth: 760
+                        },
+                        chartOptions: {
+                            chart: {
+                                marginRight: 45
+                            },
+                            yAxis: [
+                                {
+                                    title: {
+                                        text: null
+                                    }
+                                },
+                                {
+                                    title: {
+                                        text: null
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        })
+    </script>
+
+{{end}}
+
+{{ define "css"}}
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
+
+    <style>
+        :root {
+            --var-color-grey: #898989;
         }
-      ]
-    }
-  })
-</script>
 
-{{end}} {{ define "css"}}
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+        text {
+            font-family: Helvetica;
+            color: var(--var-color-grey);
+        }
 
-<style>
-  :root {
-    --var-color-grey: #898989;
-  }
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: var(--var-color-grey);
+            shape-rendering: crispEdges;
+        }
 
-  text {
-    font-family: Helvetica;
-    color: var(--var-color-grey);
-  }
-  .axis path,
-  .axis line {
-    fill: none;
-    stroke: var(--var-color-grey);
-    shape-rendering: crispEdges;
-  }
-  .x.axis {
-    font-size: 15px;
-  }
-  .y.axis {
-    font-size: 12px;
-  }
-</style>
-{{end}} {{ define "content"}}
-<div class="shadow-lg p-3 mb-5 mt-5 bg-white rounded">
-  <div class="row border-bottom p-3 text-center">
-    <div class="col-md-12">
-      <h1>
-        <span class="ml-1 mr-1">Validator {{.Index}}</span>
-      </h1>
-      <h6 class="text-monospace text-break">0x{{printf "%x" .PublicKey}}</h6>
-    </div>
-  </div>
-  <div class="row border-bottom p-1">
-    <div class="col-md-12">
-      <ul class="nav nav-pills" id="pills-tab" role="tablist">
-        <li class="nav-item">
-          <a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview" role="tab" aria-controls="pills-overview" aria-selected="true">Overview</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="pills-blocks-tab" data-toggle="pill" href="#pills-blocks" role="tab" aria-controls="pills-blocks" aria-selected="false">Proposed Blocks <span class="badge badge-secondary">{{.ProposedBlocksCount}}</span></a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" id="pills-attestations-tab" data-toggle="pill" href="#pills-attestations" role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span class="badge badge-secondary">{{.AttestationsCount}}</span></a>
-        </li>
-        {{/*
+        .x.axis {
+            font-size: 15px;
+        }
+
+        .y.axis {
+            font-size: 12px;
+        }
+    </style>
+{{end}}
+
+{{ define "content"}}
+    <div class="shadow-lg p-3 mb-5 mt-5 bg-white rounded">
+        <div class="row border-bottom p-3 text-center">
+            <div class="col-md-12">
+                <h1>
+                    <span class="ml-1 mr-1">Validator {{.Index}}</span>
+                </h1>
+                <h6 class="text-monospace text-break">0x{{printf "%x" .PublicKey}}</h6>
+            </div>
+        </div>
+        <div class="row border-bottom p-1">
+            <div class="col-md-12">
+                <ul class="nav nav-pills" id="pills-tab" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview"
+                           role="tab" aria-controls="pills-overview" aria-selected="true">Overview</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="pills-blocks-tab" data-toggle="pill" href="#pills-blocks" role="tab"
+                           aria-controls="pills-blocks" aria-selected="false">Proposed Blocks <span
+                                    class="badge badge-secondary">{{.ProposedBlocksCount}}</span></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="pills-attestations-tab" data-toggle="pill" href="#pills-attestations"
+                           role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span
+                                    class="badge badge-secondary">{{.AttestationsCount}}</span></a>
+                    </li>
+                    {{/*
         <li class="nav-item"
           >*/}} {{/* <a class="nav-link" href="#">Deposits <span class="badge badge-secondary">{{.DepositsCount}}</span></a
           >*/}} {{/* </li
@@ -359,100 +371,112 @@
           >*/}} {{/* <a class="nav-link" href="#">Slashings <span class="badge badge-secondary">{{.SlashingsCount}}</span></a
           >*/}} {{/* </li
         >*/}}
-      </ul>
-    </div>
-  </div>
+                </ul>
+            </div>
+        </div>
 
-  <div class="tab-content" id="pills-tabContent">
-    <div class="tab-pane fade show active" id="pills-overview" role="tabpanel" aria-labelledby="pills-overview-tab">
-      <div class="row border-bottom p-3">
-        <div class="col-md-2">Unique Index:</div>
-        <div class="col-md-10">{{.Index}}</div>
-      </div>
-      <div class="row border-bottom p-3">
-        <div class="col-md-2">Current Balance:</div>
-        <div class="col-md-10">{{.CurrentBalanceFormatted}}</div>
-      </div>
-      <div class="row border-bottom p-3">
-        <div class="col-md-2">Effective Balance:</div>
-        <div class="col-md-10">{{.EffectiveBalanceFormatted}}</div>
-      </div>
-      <div class="row border-bottom p-3">
-        <div class="col-md-2">Status:</div>
-        <div class="col-md-10"><b>{{.Status}}</b></div>
-      </div>
-      <div class="row border-bottom p-3">
-        <div class="col-md-2">Slashed:</div>
-        <div class="col-md-10">{{.Slashed}}</div>
-      </div>
-      <div class="row border-bottom p-3">
-        <div class="col-md-2">Activation eligibility on:</div>
-        <div class="col-md-10"><span aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span> (Epoch {{.ActivationEligibilityEpoch}})</div>
-      </div>
-      <div class="row border-bottom p-3">
-        <div class="col-md-2">Activation on:</div>
-        <div class="col-md-10"><span aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> (Epoch {{.ActivationEpoch}})</div>
-      </div>
-      {{if eq .Status "Ejected"}}
-      <div class="row border-bottom p-3">
-        <div class="col-md-2">Exit on:</div>
-        <div class="col-md-10"><span aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span> (Epoch {{.ExitEpoch}})</div>
-      </div>
-      <div class="row border-bottom p-3">
-        <div class="col-md-2">Withdrawable on:</div>
-        <div class="col-md-10"><span aria-ethereum-date="{{.WithdrawableTs.Unix}}">{{.WithdrawableTs}}</span> (Epoch {{.WithdrawableEpoch}})</div>
-      </div>
-      {{end}}
-      <div class="row border-bottom p-3">
-        <div class="col-md-12">
-          <div id="balancechart" height="200px"></div>
+        <div class="tab-content" id="pills-tabContent">
+            <div class="tab-pane fade show active" id="pills-overview" role="tabpanel"
+                 aria-labelledby="pills-overview-tab">
+                <div class="row border-bottom p-3">
+                    <div class="col-md-2">Unique Index:</div>
+                    <div class="col-md-10">{{.Index}}</div>
+                </div>
+                <div class="row border-bottom p-3">
+                    <div class="col-md-2">Current Balance:</div>
+                    <div class="col-md-10">{{.CurrentBalanceFormatted}}</div>
+                </div>
+                <div class="row border-bottom p-3">
+                    <div class="col-md-2">Effective Balance:</div>
+                    <div class="col-md-10">{{.EffectiveBalanceFormatted}}</div>
+                </div>
+                <div class="row border-bottom p-3">
+                    <div class="col-md-2">Status:</div>
+                    <div class="col-md-10"><b>{{.Status}}</b></div>
+                </div>
+                <div class="row border-bottom p-3">
+                    <div class="col-md-2">Slashed:</div>
+                    <div class="col-md-10">{{.Slashed}}</div>
+                </div>
+                <div class="row border-bottom p-3">
+                    <div class="col-md-2">Activation eligibility on:</div>
+                    <div class="col-md-10"><span
+                                aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
+                        (Epoch {{.ActivationEligibilityEpoch}})
+                    </div>
+                </div>
+                <div class="row border-bottom p-3">
+                    <div class="col-md-2">Activation on:</div>
+                    <div class="col-md-10"><span aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
+                        (Epoch {{.ActivationEpoch}})
+                    </div>
+                </div>
+                {{if eq .Status "Ejected"}}
+                    <div class="row border-bottom p-3">
+                        <div class="col-md-2">Exit on:</div>
+                        <div class="col-md-10"><span aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
+                            (Epoch {{.ExitEpoch}})
+                        </div>
+                    </div>
+                    <div class="row border-bottom p-3">
+                        <div class="col-md-2">Withdrawable on:</div>
+                        <div class="col-md-10"><span
+                                    aria-ethereum-date="{{.WithdrawableTs.Unix}}">{{.WithdrawableTs}}</span>
+                            (Epoch {{.WithdrawableEpoch}})
+                        </div>
+                    </div>
+                {{end}}
+                <div class="row border-bottom p-3">
+                    <div class="col-md-12">
+                        <div id="balancechart" height="200px"></div>
+                    </div>
+                </div>
+                <div class="row border-bottom p-3">
+                    <div class="col-md-12">
+                        <div id="proposedChart" height="200px"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pills-blocks" role="tabpanel" aria-labelledby="pills-blocks-tab">
+                <div class="table-responsive mt-4">
+                    <table class="table" id="blocks" width="100%">
+                        <thead>
+                        <tr>
+                            <th>Epoch</th>
+                            <th>Slot</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                            <th>Root Hash</th>
+                            <th>Attestations</th>
+                            <th>Deposits</th>
+                            <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
+                                <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                            <th>Exits</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <div style="display: flex; align-items:center; flex-direction: column; justify-content: center;">
+                        <h5>Proposed Block History</h5>
+                        <div id="proposed-chart"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pills-attestations" role="tabpanel" aria-labelledby="pills-attestations-tab">
+                <div class="table-responsive mt-4">
+                    <table class="table" id="attestations" width="100%">
+                        <thead>
+                        <tr>
+                            <th>Epoch</th>
+                            <th>Slot</th>
+                            <th>Committee Index</th>
+                            <th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="row border-bottom p-3">
-        <div class="col-md-12">
-          <div id="proposedChart" height="200px"></div>
-        </div>
-      </div>
     </div>
-    <div class="tab-pane fade" id="pills-blocks" role="tabpanel" aria-labelledby="pills-blocks-tab">
-      <div class="table-responsive mt-4">
-        <table class="table" id="blocks" width="100%">
-          <thead>
-            <tr>
-              <th>Epoch</th>
-              <th>Slot</th>
-              <th>Status</th>
-              <th>Time</th>
-              <th>Root Hash</th>
-              <th>Attestations</th>
-              <th>Deposits</th>
-              <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-              <th>Exits</th>
-            </tr>
-          </thead>
-          <tbody> </tbody>
-        </table>
-        <div style="display: flex; align-items:center; flex-direction: column; justify-content: center;">
-          <h5>Proposed Block History</h5>
-          <div id="proposed-chart"></div>
-        </div>
-      </div>
-    </div>
-    <div class="tab-pane fade" id="pills-attestations" role="tabpanel" aria-labelledby="pills-attestations-tab">
-      <div class="table-responsive mt-4">
-        <table class="table" id="attestations" width="100%">
-          <thead>
-            <tr>
-              <th>Epoch</th>
-              <th>Slot</th>
-              <th>Committee Index</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody> </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
 {{end}}
