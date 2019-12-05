@@ -129,6 +129,8 @@ type VisChartData struct {
 	BlockRoot  []byte `db:"blockroot" json:"-"`
 	ParentRoot []byte `db:"parentroot" json:"-"`
 
+	Proposer uint64 `db:"proposer" json:"proposer"`
+
 	Number     uint64   `json:"number"`
 	Timestamp  uint64   `json:"timestamp"`
 	Hash       string   `json:"hash"`
