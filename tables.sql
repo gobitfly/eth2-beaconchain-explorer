@@ -206,6 +206,8 @@ create table blocks_attestations (
     primary key (block_slot, block_index)
 );
 create index idx_blocks_attestations_beaconblockroot on blocks_attestations (beaconblockroot);
+create index idx_blocks_attestations_source_root on blocks_attestations (source_root);
+create index idx_blocks_attestations_target_root on blocks_attestations (target_root);
 
 drop table if exists blocks_deposits;
 create table blocks_deposits (

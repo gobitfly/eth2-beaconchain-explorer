@@ -88,6 +88,7 @@ func main() {
 		router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 		router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 		router.HandleFunc("/vis/blocks", handlers.VisBlocks).Methods("GET")
+		router.HandleFunc("/epoch/{epoch}", handlers.Epoch).Methods("GET")
 		router.HandleFunc("/epochs", handlers.Epochs).Methods("GET")
 		router.HandleFunc("/epochs/data", handlers.EpochsData).Methods("GET")
 		router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")

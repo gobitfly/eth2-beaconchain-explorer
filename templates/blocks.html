@@ -10,6 +10,18 @@
                 "ajax": "/blocks/data",
                 "pagingType": "full",
                 "columnDefs": [{
+                    "targets": 0,
+                    "data": "0",
+                    "render": function (data, type, row, meta) {
+                        return '<a href="/epoch/' + data + '">' + data + '</a>';
+                    }
+                }, {
+                    "targets": 1,
+                    "data": "1",
+                    "render": function (data, type, row, meta) {
+                        return '<a href="/block/' + data + '">' + data + '</a>';
+                    }
+                }, {
                     "targets": 3,
                     "data": "3",
                     "render": function (data, type, row, meta) {
@@ -30,12 +42,6 @@
                         } else {
                             return '<a href="/block/' + data + '">0x' + data.substr(0, 8) + '...</a>';
                         }
-                    }
-                }, {
-                    "targets": 1,
-                    "data": "1",
-                    "render": function (data, type, row, meta) {
-                        return '<a href="/block/' + data + '">' + data + '</a>';
                     }
                 }]
             });

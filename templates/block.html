@@ -54,7 +54,7 @@
                  aria-labelledby="pills-overview-tab">
                 <div class="row border-bottom p-3">
                     <div class="col-md-2">Epoch:</div>
-                    <div class="col-md-10">{{.Epoch}}</div>
+                    <div class="col-md-10"><a href="/epoch/{{.Epoch}}">{{.Epoch}}</a></div>
                 </div>
                 <div class="row border-bottom p-3">
                     <div class="col-md-2">Slot:</div>
@@ -188,13 +188,13 @@
                     </div>
                     <div class="row border-bottom p-1">
                         <div class="col-md-2">Source:</div>
-                        <div class="col-md-10">Epoch {{$attestation.SourceEpoch}} (<span
+                        <div class="col-md-10">Epoch <a href="/epoch/{{$attestation.SourceEpoch}}">{{$attestation.SourceEpoch}}</a> (<span
                                     class="text-monospace text-break"><a href="{{printf "%x" $attestation.SourceRoot}}">0x{{printf "%x" $attestation.SourceRoot}}</a>)</span>
                         </div>
                     </div>
                     <div class="row border-bottom p-1">
                         <div class="col-md-2">Target:</div>
-                        <div class="col-md-10">Epoch {{$attestation.TargetEpoch}} (<span
+                        <div class="col-md-10">Epoch <a href="/epoch/{{$attestation.TargetEpoch}}">{{$attestation.TargetEpoch}}</a> (<span
                                     class="text-monospace text-break"><a href="{{printf "%x" $attestation.TargetRoot}}">0x{{printf "%x" $attestation.TargetRoot}}</a>)</span>
                         </div>
                     </div>

@@ -1,0 +1,103 @@
+{{ define "js"}}
+{{end}}
+
+{{ define "css"}}
+{{end}}
+
+{{ define "content"}}
+    <div class="shadow-lg p-3 mb-5 mt-5 bg-white rounded">
+        <div class="row border-bottom p-3 text-center">
+            <div class="col-md-12">
+                <h1>
+                    {{if gt .PreviousEpoch 0}}
+                        <a href="/epoch/{{.PreviousEpoch}}"><i class="fa fa-chevron-left"></i></a>
+                    {{end}}
+                    <span class="ml-1 mr-1">Epoch {{.Epoch}}</span>
+                    {{if gt .NextEpoch 0}}
+                        <a href="/epoch/{{.NextEpoch}}"><i class="fa fa-chevron-right"></i></a>
+                    {{end}}
+                </h1>
+            </div>
+        </div>
+
+
+        <div class="row border-bottom p-3">
+            <div class="col-md-2">Epoch:</div>
+            <div class="col-md-10">{{.Epoch}}</div>
+        </div>
+        <div class="row border-bottom p-3">
+            <div class="col-md-2">Time:</div>
+            <div class="col-md-10"><span aria-ethereum-date="{{.Ts.Unix}}">{{.Ts}}</span> (<span
+                        aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW"></span>)
+            </div>
+        </div>
+        <div class="row border-bottom p-3">
+            <div class="col-md-2">Attestations:</div>
+            <div class="col-md-10">{{.AttestationsCount}}</div>
+        </div>
+        <div class="row border-bottom p-3">
+            <div class="col-md-2">Deposits:</div>
+            <div class="col-md-10">{{.DepositsCount}}</div>
+        </div>
+        <div class="row border-bottom p-3">
+            <div class="col-md-2">Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span
+                        data-toggle="tooltip" data-placement="top" title="Attesters">A</span>:</div>
+            <div class="col-md-10">{{.ProposerSlashingsCount}} / {{.AttesterSlashingsCount}}</div>
+        </div>
+        <div class="row border-bottom p-3">
+            <div class="col-md-2">Finalized:</div>
+            <div class="col-md-10">{{.Finalized}}</div>
+        </div>
+        <div class="row border-bottom p-3">
+            <div class="col-md-2">Voting Participation:</div>
+            <div class="col-md-10">{{.GlobalParticipationRateFormatted}} - {{.VotedEtherFormatted}} of {{.EligibleEtherFormatted}}</div>
+        </div>
+        <div class="row border-bottom p-3">
+            <div class="col-md-2">{{.BlocksCount}} Blocks:</div>
+            <div class="col-md-10">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Slot</th>
+                            <th>Status</th>
+                            <th>Time</th>
+                            <th>Proposed by</th>
+                            <th>Root Hash</th>
+                            <th>Attestations</th>
+                            <th>Deposits</th>
+                            <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
+                                <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                            <th>Exits</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {{range .Blocks}}
+                            <tr>
+                                <td><a href="/block/{{.Slot}}">{{.Slot}}</a></td>
+                                <td class="text-capitalize">{{formatBlockStatus .Status}}</td>
+                                <td aria-ethereum-date="{{.Ts.Unix}}"
+                                    aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
+                                <td><a href="/validator/{{.Proposer}}">{{.Proposer}}</a></td>
+                                <td class="text-monospace">
+                                    {{ if eq .Status 1}}
+                                        <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}
+                                            ...</a>
+                                    {{else}}
+                                        N/A
+                                    {{end}}
+                                </td>
+                                <td>{{.Attestations}}</td>
+                                <td>{{.Deposits}}</td>
+                                <td>{{.Proposerslashings}} / {{.Attesterslashings}}</td>
+                                <td>{{.Exits}}</td>
+                            </tr>
+                        {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{{end}}

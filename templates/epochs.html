@@ -11,6 +11,12 @@
                 "ajax": "/epochs/data",
                 "pagingType": "full",
                 "columnDefs": [{
+                    "targets": 0,
+                    "data": "0",
+                    "render": function (data, type, row, meta) {
+                        return '<a href="/epoch/' + data + '">' + data + '</a>';
+                    }
+                }, {
                     "targets": 1,
                     "data": "1",
                     "render": function (data, type, row, meta) {
