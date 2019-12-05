@@ -211,7 +211,7 @@
                 .style("text-anchor", "start")
                 .html(function (d) {
                     if (d.block.hash.length < 64) {
-                        return 'Missed by validator <a href="/validator/' + d.block.proposer + '">#' + d.block.proposer + '</a>';
+                        return 'Missed by <a href="/validator/' + d.block.proposer + '">#' + d.block.proposer + '</a>';
                     } else {
                         return '<a href="/block/' + d.block.hash + '">' + d.block.hash.substring(0, 10) + '</a> by validator <a href="/validator/>' + d.block.proposer + '">#' + d.block.proposer + '</a>';
                     }
@@ -378,7 +378,7 @@
     <div class="row">
         <div class="col-md-12 text-center">
 
-            <svg width="600" height="1650">
+            <svg width="800" height="1650">
                 <g transform="translate(80, 40)" id="root"></g>
                 <g transform="translate(60, 40)" id="axis"></g>
             </svg>
