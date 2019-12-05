@@ -63,14 +63,17 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	lastMissedHash := ""
 	for _, d := range chartData {
 		d.Number = d.Slot
 		d.Timestamp = uint64(utils.SlotToTime(d.Slot).Unix())
 		d.Hash = fmt.Sprintf("0x%x", d.BlockRoot)
+		d.Parents = []string{fmt.Sprintf("0x%x", d.ParentRoot)}
 		if len(d.BlockRoot) == 1 {
 			d.Hash += fmt.Sprintf("%v", d.Slot)
+			d.Parents = []string{lastMissedHash}
+			lastMissedHash = d.Hash
 		}
-		d.Parents = []string{fmt.Sprintf("0x%x", d.ParentRoot)}
 		d.Difficulty = d.Slot
 	}
 
