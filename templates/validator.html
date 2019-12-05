@@ -61,9 +61,6 @@
             rangeSelector: {
                 enabled: false
             },
-            navigator: {
-                enabled: true
-            },
             chart: {
                 type: 'line',
                 animation: false,
@@ -94,7 +91,8 @@
                 title: {
                     text: 'Balance [ETH]',
                     style: {
-                        color: 'black'
+                        color: '#26232780',
+                        'font-size': '0.8rem'
                     }
                 },
                 labels: {
@@ -110,7 +108,8 @@
                 title: {
                     text: 'Effective Balance [ETH]',
                     style: {
-                        color: 'black'
+                        color: '#26232780',
+                        'font-size': '0.8rem'
                     }
                 },
                 labels: {
@@ -140,10 +139,74 @@
                 }
             },
             legend: {
-                enabled: true
+                enabled: true,
+                layout: 'horizontal',
+                align: 'center',
+                verticalAlign: 'bottom',
+                borderWidth: 0,
+                itemStyle: {
+                    color: '#262327',
+                    'font-size': '0.8rem',
+                    'font-weight': 'lighter'
+                },
+                itemHoverStyle: {
+                    color: '#ff8723'
+                }
             },
             credits: {
                 enabled: false
+            },
+            navigator: {
+                maskFill: '#1473e631',
+                outlineColor: '#e5e1e1',
+                handles: {
+                    backgroundColor: '#f5f3f3',
+                    borderColor: '#26232780'
+                },
+                xAxis: {
+                    gridLineColor: '#e5e1e1',
+                    labels: {
+                        style: {
+                            color: '#26232780'
+                        }
+                    }
+                }
+            },
+            scrollbar: {
+                barBackgroundColor: '#ebe7e7',
+                barBorderWidth: 0,
+                buttonArrowColor: '#262327',
+                rifleColor: '#262327',
+                buttonBackgroundColor: '#ebe7e7',
+                buttonBorderColor: '#ebe7e7',
+                trackBackgroundColor: '#f5f3f3',
+                trackBorderColor: '#e5e1e180'
+            },
+            responsive: {
+                rules: [
+                    {
+                        condition: {
+                            maxWidth: 760
+                        },
+                        chartOptions: {
+                            chart: {
+                                marginRight: 45
+                            },
+                            yAxis: [
+                                {
+                                    title: {
+                                        text: null
+                                    }
+                                },
+                                {
+                                    title: {
+                                        text: null
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
             }
         });
     </script>
