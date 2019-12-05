@@ -196,10 +196,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
-	}
-
 	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
 	for i, balance := range balanceHistory {
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
@@ -228,6 +224,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	data.Data = validatorPageData
 
 	err = validatorTemplate.ExecuteTemplate(w, "layout", data)
+
+	if err != nil {
+		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+	}
 
 }
 
