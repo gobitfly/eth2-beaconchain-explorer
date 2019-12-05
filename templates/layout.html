@@ -205,6 +205,18 @@
             }
         });
 
+        var bhEpochs = new Bloodhound({
+            datumTokenizer: Bloodhound.tokenizers.whitespace,
+            queryTokenizer: Bloodhound.tokenizers.whitespace,
+            identify: function(obj) {
+                return obj.blockroot
+            },
+            remote: {
+                url: '/search/epochs/%QUERY',
+                wildcard: '%QUERY',
+            }
+        });
+
         $(".typeahead").typeahead({
             minLength: 1,
             highlight: true,
@@ -230,6 +242,17 @@
                 header: '<h3>Blocks</h3>',
                 suggestion: function(data) {
                     return `<div>${data.slot}: ${data.blockroot.substring(0,16)}…</div>`;
+                }
+            }
+        }, {
+            limit: 5,
+            name: "epochs",
+            source: bhEpochs,
+            display: 'epoch',
+            templates: {
+                header: '<h3>Epochs</h3>',
+                suggestion: function(data) {
+                    return `<div>${data.epoch}</div>`;
                 }
             }
         });
@@ -259,6 +282,8 @@
                 window.location = '/block/' + sug.blockroot;
             } else if (sug.index !== undefined) {
                 window.location = '/validator/' + sug.index;
+            } else if (sug.epoch !== undefined) {
+                window.location = '/epoch/' + sug.epoch;
             } else {
                 console.log('invalid typeahead-selection', sug);
             }

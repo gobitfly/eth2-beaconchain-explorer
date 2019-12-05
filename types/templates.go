@@ -257,6 +257,10 @@ type EpochPageMinMaxSlot struct {
 	MaxEpoch uint64
 }
 
+type SearchAheadEpochsResult []struct {
+	Epoch string `db:"epoch" json:"epoch,omitempty"`
+}
+
 type SearchAheadBlocksResult []struct {
 	Slot string `db:"slot" json:"slot,omitempty"`
 	Root string `db:"blockroot" json:"blockroot,omitempty"`

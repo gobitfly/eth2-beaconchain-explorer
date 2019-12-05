@@ -55,6 +55,19 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			logger.WithError(err).Error("Failed encoding searchAhead-blocks-result")
 			http.Error(w, "Internal server error", 503)
 		}
+	case "epochs":
+		epochs := &types.SearchAheadEpochsResult{}
+		err := db.DB.Select(epochs, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 LIMIT 10", search+"%")
+		if err != nil {
+			logger.WithError(err).Error("Failed doing search-query")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = json.NewEncoder(w).Encode(epochs)
+		if err != nil {
+			logger.WithError(err).Error("Failed encoding searchAhead-epochs-result")
+			http.Error(w, "Internal server error", 503)
+		}
 	case "validators":
 		validators := &types.SearchAheadValidatorsResult{}
 		err := db.DB.Select(validators, "SELECT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey FROM validators WHERE ENCODE(pubkey::bytea, 'hex') LIKE $1 OR CAST(validatorindex AS text) LIKE $1 LIMIT 10", search+"%")
