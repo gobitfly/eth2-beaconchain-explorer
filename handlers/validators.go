@@ -126,9 +126,9 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]string, len(validators))
+	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
-		tableData[i] = []string{
+		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			utils.FormatBalance(v.CurrentBalance),
@@ -222,9 +222,9 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]string, len(validators))
+	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
-		tableData[i] = []string{
+		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			utils.FormatBalance(v.CurrentBalance),
@@ -317,9 +317,9 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]string, len(validators))
+	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
-		tableData[i] = []string{
+		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			utils.FormatBalance(v.CurrentBalance),

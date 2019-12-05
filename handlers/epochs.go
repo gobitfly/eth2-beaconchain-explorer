@@ -100,16 +100,16 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]string, len(epochs))
+	tableData := make([][]interface{}, len(epochs))
 	for i, b := range epochs {
-		tableData[i] = []string{
-			fmt.Sprintf("%v", b.Epoch),
-			fmt.Sprintf("%v", utils.EpochToTime(b.Epoch).Unix()),
-			fmt.Sprintf("%v", b.BlocksCount),
-			fmt.Sprintf("%v", b.AttestationsCount),
-			fmt.Sprintf("%v", b.DepositsCount),
+		tableData[i] = []interface{}{
+			b.Epoch,
+			utils.EpochToTime(b.Epoch).Unix(),
+			b.BlocksCount,
+			b.AttestationsCount,
+			b.DepositsCount,
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
-			fmt.Sprintf("%v", b.Finalized),
+			b.Finalized,
 			utils.FormatBalance(b.EligibleEther),
 			utils.FormatBalance(b.VotedEther),
 			fmt.Sprintf("%.0f%%", b.GlobalParticipationRate*100),

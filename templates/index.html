@@ -210,7 +210,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table">
+                <table class="table table-sm">
                     <thead>
                     <tr>
                         <th>Epoch</th>
@@ -229,7 +229,7 @@
                     <tbody>
                     {{range .Blocks}}
                         <tr>
-                            <td>{{.Epoch}}</td>
+                            <td><a href="/epoch/{{.Epoch}}">{{.Epoch}}</a></td>
                             <td><a href="/block/{{.Slot}}">{{.Slot}}</a></td>
                             <td class="text-capitalize">{{formatBlockStatus .Status}}</td>
                             <td aria-ethereum-date="{{.Ts.Unix}}"

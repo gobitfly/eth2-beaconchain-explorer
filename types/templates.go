@@ -205,10 +205,10 @@ type BlockPageDeposit struct {
 }
 
 type DataTableResponse struct {
-	Draw            uint64     `json:"draw"`
-	RecordsTotal    uint64     `json:"recordsTotal"`
-	RecordsFiltered uint64     `json:"recordsFiltered"`
-	Data            [][]string `json:"data"`
+	Draw            uint64          `json:"draw"`
+	RecordsTotal    uint64          `json:"recordsTotal"`
+	RecordsFiltered uint64          `json:"recordsFiltered"`
+	Data            [][]interface{} `json:"data"`
 }
 
 type EpochsPageData struct {

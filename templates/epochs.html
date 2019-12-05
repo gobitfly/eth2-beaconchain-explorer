@@ -23,6 +23,16 @@
                         return moment.unix(data).format("L LTS");
                     }
                 }, {
+                    "targets": 6,
+                    "data": "6",
+                    "render": function (data, type, row, meta) {
+                        if (data) {
+                            return '<span class="badge badge-success">Yes</span>';
+                        } else {
+                            return '<span class="badge badge-warning">No</span>';
+                        }
+                    }
+                }, {
                     "targets": 8,
                     "data": "8",
                     "render": function (data, type, row, meta) {
@@ -43,7 +53,7 @@
 {{ define "content"}}
     <h1 class="mt-4 text-center"><i class="fas fa-history"></i> Epochs overview</h1>
     <div class="table-responsive col-sm-12">
-        <table class="table" id="epochs">
+        <table class="table table-sm" id="epochs">
             <thead>
             <tr>
                 <th>Epoch</th>

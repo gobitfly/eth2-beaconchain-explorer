@@ -106,9 +106,9 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]string, len(blocks))
+	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
-		tableData[i] = []string{
+		tableData[i] = []interface{}{
 			fmt.Sprintf("%v", b.Epoch),
 			fmt.Sprintf("%v", b.Slot),
 			fmt.Sprintf("%v", utils.FormatBlockStatus(b.Status)),
