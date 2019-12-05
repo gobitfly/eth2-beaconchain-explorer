@@ -97,7 +97,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	epochPageData.VotedEtherFormatted = fmt.Sprintf("%.2f ETH", float64(epochPageData.VotedEther)/float64(1000000000))
 	epochPageData.EligibleEtherFormatted = fmt.Sprintf("%.2f ETH", float64(epochPageData.EligibleEther)/float64(1000000000))
-	epochPageData.GlobalParticipationRateFormatted = fmt.Sprintf("%.0f%%", epochPageData.GlobalParticipationRate*float64(100))
+	epochPageData.GlobalParticipationRateFormatted = fmt.Sprintf("%.0f", epochPageData.GlobalParticipationRate*float64(100))
 
 	epochs := types.EpochPageMinMaxSlot{}
 	err = db.DB.Get(&epochs, "SELECT MAX(epoch) AS maxepoch, MIN(epoch) as minepoch FROM epochs")

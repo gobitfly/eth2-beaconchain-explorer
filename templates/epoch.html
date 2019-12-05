@@ -40,17 +40,33 @@
             <div class="col-md-10">{{.DepositsCount}}</div>
         </div>
         <div class="row border-bottom p-3">
-            <div class="col-md-2">Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span
-                        data-toggle="tooltip" data-placement="top" title="Attesters">A</span>:</div>
+            <div class="col-md-2">Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span>
+                / <span
+                        data-toggle="tooltip" data-placement="top" title="Attesters">A</span>:
+            </div>
             <div class="col-md-10">{{.ProposerSlashingsCount}} / {{.AttesterSlashingsCount}}</div>
         </div>
         <div class="row border-bottom p-3">
             <div class="col-md-2">Finalized:</div>
-            <div class="col-md-10">{{.Finalized}}</div>
+            <div class="col-md-10">
+                {{if .Finalized}}
+                    <span class="badge badge-success">Yes</span>
+                {{else}}
+                    <span class="badge badge-warning">No</span>
+                {{end}}
+            </div>
         </div>
         <div class="row border-bottom p-3">
             <div class="col-md-2">Voting Participation:</div>
-            <div class="col-md-10">{{.GlobalParticipationRateFormatted}} - {{.VotedEtherFormatted}} of {{.EligibleEtherFormatted}}</div>
+            <div class="col-md-10">
+                <div>{{.VotedEtherFormatted}} of {{.EligibleEtherFormatted}}<small
+                            class="text-muted ml-1">({{.GlobalParticipationRateFormatted}}%)</small></div>
+                <div class="progress" style="height:5px; width: 250px;">
+                    <div class="progress-bar" role="progressbar" style="width: {{.GlobalParticipationRateFormatted}}%;"
+                         aria-valuenow="{{.GlobalParticipationRateFormatted}}" aria-valuemin="0"
+                         aria-valuemax="100"></div>
+                </div>
+            </div>
         </div>
         <div class="row border-bottom p-3">
             <div class="col-md-2">{{.BlocksCount}} Blocks:</div>
