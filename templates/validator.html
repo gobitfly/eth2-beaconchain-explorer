@@ -15,7 +15,7 @@
                         targets: 3,
                         data: '3',
                         render: function (data, type, row, meta) {
-                            return moment.unix(data).format('L LTS')
+                            return moment.unix(data).fromNow();
                         }
                     },
                     {

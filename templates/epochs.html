@@ -20,7 +20,7 @@
                     "targets": 1,
                     "data": "1",
                     "render": function (data, type, row, meta) {
-                        return moment.unix(data).format("L LTS");
+                        return moment.unix(data).fromNow();
                     }
                 }, {
                     "targets": 6,
