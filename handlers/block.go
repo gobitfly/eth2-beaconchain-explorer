@@ -52,7 +52,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			proposer,
 			status   
 	FROM blocks 
-	WHERE slot = $1 OR blockroot = $2`,
+	WHERE slot = $1 OR blockroot = $2 ORDER BY status desc LIMIT 1`,
 		slotOrHash, blockRootHash)
 
 	data := &types.PageData{
@@ -92,8 +92,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Println(blockPageData.NextSlot, slots.MaxSlot)
-	logger.Println(blockPageData.PreviousSlot, slots.MinSlot)
 	if blockPageData.NextSlot > slots.MaxSlot {
 		blockPageData.NextSlot = 0
 	}

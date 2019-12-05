@@ -112,6 +112,9 @@
                     <li class="nav-item {{ if eq .Active "validators"}}active{{end}}">
                         <a class="nav-link" href="/validators"><i class="fas fa-thumbs-up"></i> Validators</a>
                     </li>
+                    <li class="nav-item {{ if eq .Active "vis"}}active{{end}}">
+                        <a class="nav-link" href="/vis"><i class="fas fa-project-diagram"></i> Block Viz</a>
+                    </li>
                 </ul>
                 <form class="form-inline ml-auto" action="/search" method="POST">
                     <input class="form-control mr-2 typeahead" name="search" type="search"
