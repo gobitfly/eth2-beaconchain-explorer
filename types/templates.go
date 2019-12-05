@@ -83,31 +83,37 @@ type ValidatorsPageDataValidators struct {
 }
 
 type ValidatorPageData struct {
-	Epoch                      uint64 `db:"epoch"`
-	ValidatorIndex             uint64 `db:"validatorindex"`
-	PublicKey                  []byte
-	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
-	CurrentBalance             uint64 `db:"balance"`
-	EffectiveBalance           uint64 `db:"effectivebalance"`
-	Slashed                    bool   `db:"slashed"`
-	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
-	ActivationEpoch            uint64 `db:"activationepoch"`
-	ExitEpoch                  uint64 `db:"exitepoch"`
-	Index                      uint64 `db:"index"`
-	WithdrawableTs             time.Time
-	ActivationEligibilityTs    time.Time
-	ActivationTs               time.Time
-	ExitTs                     time.Time
-	CurrentBalanceFormatted    string
-	EffectiveBalanceFormatted  string
-	Status                     string
-	ProposedBlocksCount        uint64
-	AttestationsCount          uint64
-	StatusProposedCount        uint64
-	StatusMissedCount          uint64
-
+	Epoch                            uint64 `db:"epoch"`
+	ValidatorIndex                   uint64 `db:"validatorindex"`
+	PublicKey                        []byte
+	WithdrawableEpoch                uint64 `db:"withdrawableepoch"`
+	CurrentBalance                   uint64 `db:"balance"`
+	EffectiveBalance                 uint64 `db:"effectivebalance"`
+	Slashed                          bool   `db:"slashed"`
+	ActivationEligibilityEpoch       uint64 `db:"activationeligibilityepoch"`
+	ActivationEpoch                  uint64 `db:"activationepoch"`
+	ExitEpoch                        uint64 `db:"exitepoch"`
+	Index                            uint64 `db:"index"`
+	WithdrawableTs                   time.Time
+	ActivationEligibilityTs          time.Time
+	ActivationTs                     time.Time
+	ExitTs                           time.Time
+	CurrentBalanceFormatted          string
+	EffectiveBalanceFormatted        string
+	Status                           string
+	ProposedBlocksCount              uint64
+	AttestationsCount                uint64
+	StatusProposedCount              uint64
+	StatusMissedCount                uint64
+	DailyProposalCount               []DailyProposalCount
 	BalanceHistoryChartData          [][]float64
 	EffectiveBalanceHistoryChartData [][]float64
+}
+
+type DailyProposalCount struct {
+	Day      int64
+	Proposed uint
+	Missed   uint
 }
 
 type ValidatorBalanceHistory struct {
