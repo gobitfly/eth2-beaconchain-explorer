@@ -205,6 +205,7 @@ create table blocks_attestations (
     target_root bytea not null,
     primary key (block_slot, block_index)
 );
+create index idx_blocks_attestations_beaconblockroot on blocks_attestations (beaconblockroot);
 
 drop table if exists blocks_deposits;
 create table blocks_deposits (

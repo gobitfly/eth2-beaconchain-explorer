@@ -94,7 +94,8 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 											    blocks.voluntaryexitscount, 
 											    blocks.proposerslashingscount, 
 											    blocks.attesterslashingscount, 
-											    blocks.status 
+											    blocks.status,
+       											COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes
 										FROM blocks 
 										WHERE blocks.slot >= $1 AND blocks.slot <= $2
 										ORDER BY blocks.slot DESC`, endSlot, startSlot)
@@ -118,6 +119,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v", b.Deposits),
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
 			fmt.Sprintf("%v", b.Exits),
+			fmt.Sprintf("%v", b.Votes),
 		}
 	}
 

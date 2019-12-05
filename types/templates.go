@@ -51,6 +51,7 @@ type IndexPageDataBlocks struct {
 	Proposerslashings uint64 `db:"proposerslashingscount"`
 	Attesterslashings uint64 `db:"attesterslashingscount"`
 	Status            uint64 `db:"status"`
+	Votes             uint64 `db:"votes"`
 }
 
 type IndexPageEpochHistory struct {
