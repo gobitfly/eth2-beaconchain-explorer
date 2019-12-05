@@ -404,7 +404,7 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 		logger.Printf("error retrieving epoch participation statistics: %v", err)
 		data.EpochParticipationStats = &ethpb.ValidatorParticipationResponse{
 			Epoch:         epoch,
-			Finalized:     true,
+			Finalized:     false,
 			Participation: &ethpb.ValidatorParticipation{},
 		}
 	}

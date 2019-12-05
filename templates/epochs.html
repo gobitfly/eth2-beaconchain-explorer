@@ -22,6 +22,14 @@
                     "render": function (data, type, row, meta) {
                         return moment.unix(data).format("L LTS");
                     }
+                }, {
+                    "targets": 8,
+                    "data": "8",
+                    "render": function (data, type, row, meta) {
+                        return '<div>' + data + '<small class="text-muted ml-3">('+ row[9] + ')</small></div><div class="progress" style="height:5px;">\n' +
+                            '  <div class="progress-bar" role="progressbar" style="width: '+ row[9] + ';" aria-valuenow="'+ row[9] + '" aria-valuemin="0" aria-valuemax="100"></div>\n' +
+                            '</div>';
+                    }
                 }]
             });
         });
@@ -48,7 +56,6 @@
                 <th>Finalized</th>
                 <th>Eligible</th>
                 <th>Voted</th>
-                <th>Rate</th>
             </tr>
             </thead>
             <tbody>
