@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/types"
 	"fmt"
 	"gopkg.in/yaml.v2"
+	"html/template"
 	"os"
 	"os/signal"
 	"time"
@@ -21,13 +22,13 @@ const PageSize = 500
 // Global accessible configs
 var Config *types.Config
 
-func FormatBlockStatus(status uint64) string {
+func FormatBlockStatus(status uint64) template.HTML {
 	if status == 0 {
-		return "Scheduled"
+		return "<span class=\"badge badge-light\">Scheduled</span>"
 	} else if status == 1 {
-		return "Proposed"
+		return "<span class=\"badge badge-success\">Proposed</span>"
 	} else if status == 2 {
-		return "Missed"
+		return "<span class=\"badge badge-warning\">Missed</span>"
 	} else {
 		return "Unknown"
 	}

@@ -231,7 +231,7 @@
                         <tr>
                             <td><a href="/epoch/{{.Epoch}}">{{.Epoch}}</a></td>
                             <td><a href="/block/{{.Slot}}">{{.Slot}}</a></td>
-                            <td class="text-capitalize">{{formatBlockStatus .Status}}</td>
+                            <td>{{formatBlockStatus .Status}}</td>
                             <td aria-ethereum-date="{{.Ts.Unix}}"
                                 aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
                             <td><a
