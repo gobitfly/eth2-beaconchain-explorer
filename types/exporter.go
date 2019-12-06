@@ -10,7 +10,7 @@ type EpochData struct {
 	ValidatorAssignmentes   *EpochAssignments
 	BeaconCommittees        map[uint64][]*ethpb.BeaconCommittees_CommitteeItem
 	ValidatorBalances       []*ethpb.ValidatorBalances_Balance
-	Blocks                  map[uint64]*BlockContainer
+	Blocks                  map[uint64]map[string]*BlockContainer
 	EpochParticipationStats *ethpb.ValidatorParticipationResponse
 }
 

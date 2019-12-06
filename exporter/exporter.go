@@ -44,7 +44,7 @@ func Start(client ethpb.BeaconChainClient) error {
 
 			logger.Printf("Exporting epoch %v of %v", epoch, head.HeadEpoch)
 			go func(e uint64) {
-				err := exportEpoch(e, client)
+				err := ExportEpoch(e, client)
 
 				if err != nil {
 					logger.Fatal(err)
@@ -72,7 +72,7 @@ func Start(client ethpb.BeaconChainClient) error {
 				logger.Println("Epochs between", epochs[i], "and", epochs[i+1], "are missing!")
 
 				for epoch := epochs[i]; epoch <= epochs[i+1]; epoch++ {
-					err := exportEpoch(epoch, client)
+					err := ExportEpoch(epoch, client)
 					if err != nil {
 						logger.Error(err)
 					}
@@ -172,7 +172,7 @@ func Start(client ethpb.BeaconChainClient) error {
 
 			logger.Printf("Exporting epoch %v", epoch)
 
-			err = exportEpoch(epoch, client)
+			err = ExportEpoch(epoch, client)
 
 			if err != nil {
 				logger.Errorf("error exporting epoch: %v", err)
@@ -236,7 +236,7 @@ func getLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) 
 	return blocks, nil
 }
 
-func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
+func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	var err error
 
 	data := &types.EpochData{}
@@ -249,7 +249,7 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	logger.Printf("Retrieved validator assignment data for epoch %v", epoch)
 
 	// Retrieve all blocks for the epoch
-	data.Blocks = make(map[uint64]*types.BlockContainer)
+	data.Blocks = make(map[uint64]map[string]*types.BlockContainer)
 
 	logger.Println(epoch*utils.SlotsPerEpoch, (epoch+1)*utils.SlotsPerEpoch-1)
 	for slot := epoch * utils.SlotsPerEpoch; slot <= (epoch+1)*utils.SlotsPerEpoch-1; slot++ {
@@ -278,7 +278,10 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 				}
 			}
 
-			data.Blocks[block.Block.Slot] = &types.BlockContainer{
+			if data.Blocks[block.Block.Slot] == nil {
+				data.Blocks[block.Block.Slot] = make(map[string]*types.BlockContainer)
+			}
+			data.Blocks[block.Block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = &types.BlockContainer{
 				Status:   1,
 				Proposer: data.ValidatorAssignmentes.ProposerAssignments[block.Block.Slot],
 				Block:    block,
@@ -292,8 +295,8 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 		_, found := data.Blocks[slot]
 		if !found {
 			// Proposer was assigned but did not yet propose a block
-
-			data.Blocks[slot] = &types.BlockContainer{
+			data.Blocks[slot] = make(map[string]*types.BlockContainer)
+			data.Blocks[slot]["0x0"] = &types.BlockContainer{
 				Status:   0,
 				Proposer: proposer,
 				Block: &ethpb.BeaconBlockContainer{
@@ -322,15 +325,17 @@ func exportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 
 			if utils.SlotToTime(slot).After(time.Now().Add(time.Second * -60)) {
 				// Block is in the future, set status to scheduled
-				data.Blocks[slot].Status = 0
-				data.Blocks[slot].Block.BlockRoot = []byte{0x0}
+				data.Blocks[slot]["0x0"].Status = 0
+				data.Blocks[slot]["0x0"].Block.BlockRoot = []byte{0x0}
 			} else {
 				// Block is in the past, set status to missed
-				data.Blocks[slot].Status = 2
-				data.Blocks[slot].Block.BlockRoot = []byte{0x1}
+				data.Blocks[slot]["0x0"].Status = 2
+				data.Blocks[slot]["0x0"].Block.BlockRoot = []byte{0x1}
 			}
 		} else {
-			data.Blocks[slot].Proposer = proposer
+			for _, block := range data.Blocks[slot] {
+				block.Proposer = proposer
+			}
 		}
 	}
 

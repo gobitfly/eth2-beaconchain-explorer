@@ -1,4 +1,16 @@
 {{ define "js"}}
+    <script type="text/javascript">
+        function viewGraffitiAs(type) {
+            var graffitiHex = $("[aria-graffiti]").attr("aria-graffiti")
+
+            if (type === "hex") {
+                $("#graffiti").text("0x" + graffitiHex)
+            } else {
+                var r = decodeURIComponent(graffitiHex.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'));
+                $("#graffiti").text(r)
+            }
+        }
+    </script>
 {{end}}
 
 {{ define "css"}}
@@ -113,7 +125,17 @@
                     </div>
                     <div class="row border-bottom p-3">
                         <div class="col-md-2">Graffiti:</div>
-                        <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .Graffiti}}</div>
+                        <div class="col-md-8 text-monospace text-break" id="graffiti" aria-graffiti="{{printf "%x" .Graffiti}}">0x{{printf "%x" .Graffiti}}</div>
+                        <div class="col-md-2">
+                            <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                                <label class="btn btn-secondary active btn-sm" onclick="viewGraffitiAs('hex')">
+                                    <input type="radio" name="options" id="optionHex" checked> Hex
+                                </label>
+                                <label class="btn btn-secondary btn-sm" onclick="viewGraffitiAs('utf-8')">
+                                    <input type="radio" name="options" id="optionUTF8"> UTF-8
+                                </label>
+                            </div>
+                        </div>
                     </div>
                     <div class="row border-bottom p-3">
                         <div class="col-md-2">Eth 1 Data:</div>
