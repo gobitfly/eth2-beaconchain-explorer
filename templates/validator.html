@@ -362,6 +362,35 @@
         })
     </script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
+    <script type="text/javascript">
+
+        function setTooltip(message) {
+            $('#copy-button').tooltip('hide')
+                .attr('data-original-title', message)
+                .tooltip('show');
+        }
+
+        function hideTooltip() {
+            setTimeout(function() {
+                $('#copy-button').tooltip('hide')
+                    .attr('data-original-title', 'Copy public key to clipboard')
+            }, 1000);
+        }
+
+        var clipboard = new ClipboardJS('#copy-button');
+
+        clipboard.on('success', function(e) {
+            setTooltip('Public key copied!');
+            hideTooltip();
+        });
+
+        clipboard.on('error', function(e) {
+            setTooltip('Failed to copy public key!');
+            hideTooltip();
+        });
+    </script>
+
 {{end}}
 
 {{ define "css"}}
@@ -373,9 +402,15 @@
         <div class="row border-bottom p-3 text-center">
             <div class="col-md-12">
                 <h1>
-                    <span class="ml-1 mr-1">Validator {{.Index}}</span>
+                    <span>Validator {{.Index}}</span>
+                    <button class="btn btn-light" type="button" id="copy-button"
+                            data-toggle="tooltip" data-placement="right"
+                            title="Copy public key to clipboard"
+                            data-clipboard-text="0x{{printf "%x" .PublicKey}}">
+                        <i class="fa fa-copy"></i>
+                    </button>
                 </h1>
-                <h6 class="text-monospace text-break">0x{{printf "%x" .PublicKey}}</h6>
+                <h6 class="text-monospace text-break" id="copy-input">0x{{printf "%x" .PublicKey}}</h6>
             </div>
         </div>
         <div class="row border-bottom p-1">

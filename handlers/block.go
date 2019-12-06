@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-var blockTemplate = template.Must(template.New("block").Funcs(template.FuncMap{"formatBlockStatus": utils.FormatBlockStatus}).ParseFiles("templates/layout.html", "templates/block.html"))
+var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/block.html"))
 var blockNotFoundTemplate = template.Must(template.New("blocknotfound").ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
 
 func Block(w http.ResponseWriter, r *http.Request) {

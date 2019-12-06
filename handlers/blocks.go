@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var blocksTemplate = template.Must(template.New("blocks").ParseFiles("templates/layout.html", "templates/blocks.html"))
+var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocks.html"))
 
 func Blocks(w http.ResponseWriter, r *http.Request) {
 
@@ -109,17 +109,17 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
 		tableData[i] = []interface{}{
-			fmt.Sprintf("%v", b.Epoch),
-			fmt.Sprintf("%v", b.Slot),
-			fmt.Sprintf("%v", utils.FormatBlockStatus(b.Status)),
-			fmt.Sprintf("%v", utils.SlotToTime(b.Slot).Unix()),
-			fmt.Sprintf("%v", b.Proposer),
+			b.Epoch,
+			b.Slot,
+			utils.FormatBlockStatus(b.Status),
+			utils.SlotToTime(b.Slot).Unix(),
+			utils.FormatValidator(b.Proposer),
 			fmt.Sprintf("%x", b.BlockRoot),
-			fmt.Sprintf("%v", b.Attestations),
-			fmt.Sprintf("%v", b.Deposits),
+			b.Attestations,
+			b.Deposits,
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
-			fmt.Sprintf("%v", b.Exits),
-			fmt.Sprintf("%v", b.Votes),
+			b.Exits,
+			b.Votes,
 		}
 	}
 

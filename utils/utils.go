@@ -22,6 +22,13 @@ const PageSize = 500
 // Global accessible configs
 var Config *types.Config
 
+func GetTemplateFuncs() template.FuncMap {
+	return template.FuncMap{
+		"formatBlockStatus": FormatBlockStatus,
+		"formatValidator":   FormatValidator,
+	}
+}
+
 func FormatBlockStatus(status uint64) template.HTML {
 	if status == 0 {
 		return "<span class=\"badge badge-light\">Scheduled</span>"
@@ -44,6 +51,10 @@ func FormatAttestationStatus(status uint64) string {
 	} else {
 		return "Unknown"
 	}
+}
+
+func FormatValidator(validator uint64) template.HTML {
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
 func SlotToTime(slot uint64) time.Time {

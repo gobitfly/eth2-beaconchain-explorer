@@ -234,8 +234,7 @@
                             <td>{{formatBlockStatus .Status}}</td>
                             <td aria-ethereum-date="{{.Ts.Unix}}"
                                 aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
-                            <td><a
-                                        href="/validator/{{.Proposer}}">{{.Proposer}}</a>
+                            <td>{{formatValidator .Proposer}}
                             </td>
                             <td class="text-monospace">
                                 {{ if eq .Status 1}}
