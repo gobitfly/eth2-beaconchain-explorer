@@ -21,9 +21,10 @@ type BlockContainer struct {
 }
 
 type MinimalBlock struct {
-	Epoch    uint64
-	Slot     uint64
-	BockRoot []byte `db:"blockroot"`
+	Epoch      uint64 `db:"epoch"`
+	Slot       uint64 `db:"slot"`
+	BlockRoot  []byte `db:"blockroot"`
+	ParentRoot []byte `db:"parentroot"`
 }
 
 type BlockComparisonContainer struct {

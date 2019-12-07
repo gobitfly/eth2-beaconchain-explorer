@@ -82,6 +82,86 @@ func Start(client ethpb.BeaconChainClient) error {
 		}
 	}
 
+	if utils.Config.Indexer.CheckAllBlocksOnStartup {
+		// Make sure that all blocks are correct by comparing all block hashes in the database to the ones we have in the node
+		head, err := client.GetChainHead(context.Background(), &ptypes.Empty{})
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		dbBlocks, err := db.GetLastPendingAndProposedBlocks(1, head.HeadEpoch)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		nodeBlocks, err := getLastBlocks(1, head.HeadEpoch, client)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		blocksMap := make(map[string]*types.BlockComparisonContainer)
+
+		for _, block := range dbBlocks {
+			key := fmt.Sprintf("%v-%x", block.Slot, block.BlockRoot)
+			_, found := blocksMap[key]
+
+			if !found {
+				blocksMap[key] = &types.BlockComparisonContainer{Epoch: block.Epoch}
+			}
+
+			blocksMap[key].Db = block
+		}
+		for _, block := range nodeBlocks {
+			key := fmt.Sprintf("%v-%x", block.Slot, block.BlockRoot)
+			_, found := blocksMap[key]
+
+			if !found {
+				blocksMap[key] = &types.BlockComparisonContainer{Epoch: block.Epoch}
+			}
+
+			blocksMap[key].Node = block
+		}
+
+		epochsToExport := make(map[uint64]bool)
+
+		for key, block := range blocksMap {
+			if block.Db == nil {
+				logger.Printf("Queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
+				epochsToExport[block.Epoch] = true
+			} else if block.Node == nil {
+				logger.Printf("Queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
+				epochsToExport[block.Epoch] = true
+			} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
+				logger.Printf("Queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
+				epochsToExport[block.Epoch] = true
+			}
+		}
+
+		logger.Printf("Exporting %v epochs.", len(epochsToExport))
+
+		keys := make([]uint64, 0)
+		for k, _ := range epochsToExport {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool {
+			return keys[i] < keys[j]
+		})
+
+		for _, epoch := range keys {
+			logger.Printf("Exporting epoch %v", epoch)
+
+			err = ExportEpoch(epoch, client)
+
+			if err != nil {
+				logger.Errorf("error exporting epoch: %v", err)
+				if utils.EpochToTime(epoch).Before(time.Now().Add(time.Hour * -24)) {
+					epochBlacklist[epoch]++
+				}
+			}
+			logger.Printf("Finished export for epoch %v", epoch)
+		}
+	}
+
 	for true {
 
 		head, err := client.GetChainHead(context.Background(), &ptypes.Empty{})
@@ -99,38 +179,40 @@ func Start(client ethpb.BeaconChainClient) error {
 			logger.Fatal(err)
 		}
 
-		blocksMap := make(map[uint64]*types.BlockComparisonContainer)
+		blocksMap := make(map[string]*types.BlockComparisonContainer)
 
 		for _, block := range dbBlocks {
-			_, found := blocksMap[block.Slot]
+			key := fmt.Sprintf("%v-%x", block.Slot, block.BlockRoot)
+			_, found := blocksMap[key]
 
 			if !found {
-				blocksMap[block.Slot] = &types.BlockComparisonContainer{Epoch: block.Epoch}
+				blocksMap[key] = &types.BlockComparisonContainer{Epoch: block.Epoch}
 			}
 
-			blocksMap[block.Slot].Db = block
+			blocksMap[key].Db = block
 		}
 		for _, block := range nodeBlocks {
-			_, found := blocksMap[block.Slot]
+			key := fmt.Sprintf("%v-%x", block.Slot, block.BlockRoot)
+			_, found := blocksMap[key]
 
 			if !found {
-				blocksMap[block.Slot] = &types.BlockComparisonContainer{Epoch: block.Epoch}
+				blocksMap[key] = &types.BlockComparisonContainer{Epoch: block.Epoch}
 			}
 
-			blocksMap[block.Slot].Node = block
+			blocksMap[key].Node = block
 		}
 
 		epochsToExport := make(map[uint64]bool)
 
-		for slot, block := range blocksMap {
+		for key, block := range blocksMap {
 			if block.Db == nil {
-				logger.Printf("Queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, slot)
+				logger.Printf("Queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			} else if block.Node == nil {
-				logger.Printf("Queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, slot)
+				logger.Printf("Queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
-			} else if bytes.Compare(block.Db.BockRoot, block.Node.BockRoot) != 0 {
-				logger.Printf("Queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, slot)
+			} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
+				logger.Printf("Queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			}
 		}
@@ -209,6 +291,38 @@ func Start(client ethpb.BeaconChainClient) error {
 	return nil
 }
 
+func GetOrphanedBlocks(blocks []*types.MinimalBlock) []string {
+	blocksMap := make(map[string]bool)
+
+	for _, block := range blocks {
+		blocksMap[fmt.Sprintf("%x", block.BlockRoot)] = false
+	}
+
+	orphanedBlocks := make([]string, 0)
+	parentRoot := ""
+	for i := 0; i < len(blocks); i++ {
+		if len(blocks[i].BlockRoot) != 32 { // Skip all missed & scheduled blocks
+			continue
+		}
+		blockRoot := fmt.Sprintf("%x", blocks[i].BlockRoot)
+
+		if i == 0 { // First block is always canon
+			parentRoot = fmt.Sprintf("%x", blocks[i].ParentRoot)
+			blocksMap[blockRoot] = true
+			continue
+		}
+		if parentRoot != blockRoot { // Block is not part of the canonical chain
+			logger.Errorf("Block %x at slot %v in epoch %v has been orphaned", blocks[i].BlockRoot, blocks[i].Slot, blocks[i].Epoch)
+			orphanedBlocks = append(orphanedBlocks, blockRoot)
+			continue
+		}
+		blocksMap[blockRoot] = true
+		parentRoot = fmt.Sprintf("%x", blocks[i].ParentRoot)
+	}
+
+	return orphanedBlocks
+}
+
 func getLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) ([]*types.MinimalBlock, error) {
 	blocks := make([]*types.MinimalBlock, 0)
 
@@ -223,9 +337,9 @@ func getLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) 
 
 			for _, block := range blocksResponse.BlockContainers {
 				blocks = append(blocks, &types.MinimalBlock{
-					Epoch:    epoch,
-					Slot:     block.Block.Slot,
-					BockRoot: block.BlockRoot,
+					Epoch:     epoch,
+					Slot:      block.Block.Slot,
+					BlockRoot: block.BlockRoot,
 				})
 			}
 		}

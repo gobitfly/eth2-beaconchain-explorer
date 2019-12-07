@@ -56,6 +56,19 @@ func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.Mini
 	return blocks, nil
 }
 
+func GetBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
+	var blocks []*types.MinimalBlock
+
+	// Will return all proposed and pending blocks. Ignores missed slots.
+	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot, parentroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND length(blockroot) = 32 ORDER BY slot DESC", startEpoch, endEpoch)
+
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving blocks for epoch %v to %v from DB: %v", startEpoch, endEpoch, err)
+	}
+
+	return blocks, nil
+}
+
 func GetValidatorPublicKey(index uint64) ([]byte, error) {
 	var publicKey []byte
 	err := DB.Get(&publicKey, "SELECT pubkey FROM validators WHERE validatorindex = $1", index)
@@ -534,7 +547,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.BlockContainer
 						validator, found := assignments.AttestorAssignments[cache.FormatAttestorAssignmentKey(a.Data.Slot, a.Data.CommitteeIndex, i)]
 						if !found { // This should never happen!
 							validator = 0
-							logger.Errorf("error retrieving assigned validator for slot %v commitee index %v member index %v", a.Data.Slot, a.Data.CommitteeIndex, i)
+							logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v commitee index %v member index %v", i, b.Block.Block.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
 						}
 						attester = append(attester, validator)
 

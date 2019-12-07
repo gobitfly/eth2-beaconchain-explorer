@@ -12,6 +12,7 @@ type Config struct {
 		Enabled                     bool `yaml:"enabled", envconfig:"INDEXER_ENABLED"`
 		FullIndexOnStartup          bool `yaml:"fullIndexOnStartup", envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`
 		IndexMissingEpochsOnStartup bool `yaml:"indexMissingEpochsOnStartup", envconfig:"INDEXER_MISSING_INDEX_ON_STARTUP"`
+		CheckAllBlocksOnStartup     bool `yaml:"checkAllBlocksOnStartup", envconfig:"INDEXER_CHECK_ALL_BLOCKS_ON_STARTUP"`
 		Node                        struct {
 			Port string `yaml:"port", envconfig:"INDEXER_NODE_PORT"`
 			Host string `yaml:"host", envconfig:"INDEXER_NODE_HOST"`
