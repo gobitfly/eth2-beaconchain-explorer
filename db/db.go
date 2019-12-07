@@ -83,6 +83,32 @@ func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	return index, err
 }
 
+func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte) error {
+	if len(orphanedBlocks) == 0 {
+		return nil
+	}
+
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %v", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("UPDATE blocks SET status = 1 WHERE epoch >= $1 AND epoch <= $2 AND (status = '1' OR status = '3')", startEpoch, endEpoch)
+	if err != nil {
+		return err
+	}
+
+	for _, orphanedBlock := range orphanedBlocks {
+		logger.Printf("Marking block %x as orphaned", orphanedBlock)
+		_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = $1", orphanedBlock)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 func SaveAttestationPool(attestations []*ethpb.Attestation) error {
 	tx, err := DB.Begin()
 	if err != nil {

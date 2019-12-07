@@ -36,6 +36,8 @@ func FormatBlockStatus(status uint64) template.HTML {
 		return "<span class=\"badge badge-success\">Proposed</span>"
 	} else if status == 2 {
 		return "<span class=\"badge badge-warning\">Missed</span>"
+	} else if status == 3 {
+		return "<span class=\"badge badge-secondary\">Orphaned</span>"
 	} else {
 		return "Unknown"
 	}

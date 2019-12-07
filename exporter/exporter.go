@@ -94,7 +94,7 @@ func Start(client ethpb.BeaconChainClient) error {
 			logger.Fatal(err)
 		}
 
-		nodeBlocks, err := getLastBlocks(1, head.HeadEpoch, client)
+		nodeBlocks, err := GetLastBlocks(1, head.HeadEpoch, client)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -174,7 +174,7 @@ func Start(client ethpb.BeaconChainClient) error {
 			logger.Fatal(err)
 		}
 
-		nodeBlocks, err := getLastBlocks(head.FinalizedEpoch-1, head.HeadEpoch, client)
+		nodeBlocks, err := GetLastBlocks(head.FinalizedEpoch-1, head.HeadEpoch, client)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -285,45 +285,47 @@ func Start(client ethpb.BeaconChainClient) error {
 			logger.Fatal(err)
 		}
 
+		err = MarkOrphanedBlocks(head.FinalizedEpoch-1, head.HeadEpoch, nodeBlocks)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
 		time.Sleep(time.Second * 10)
 	}
 
 	return nil
 }
 
-func GetOrphanedBlocks(blocks []*types.MinimalBlock) []string {
+func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBlock) error {
 	blocksMap := make(map[string]bool)
 
 	for _, block := range blocks {
 		blocksMap[fmt.Sprintf("%x", block.BlockRoot)] = false
 	}
 
-	orphanedBlocks := make([]string, 0)
+	orphanedBlocks := make([][]byte, 0)
 	parentRoot := ""
-	for i := 0; i < len(blocks); i++ {
-		if len(blocks[i].BlockRoot) != 32 { // Skip all missed & scheduled blocks
-			continue
-		}
+	for i := len(blocks) - 1; i >= 0; i-- {
 		blockRoot := fmt.Sprintf("%x", blocks[i].BlockRoot)
 
-		if i == 0 { // First block is always canon
+		if i == len(blocks)-1 { // First block is always canon
 			parentRoot = fmt.Sprintf("%x", blocks[i].ParentRoot)
 			blocksMap[blockRoot] = true
 			continue
 		}
 		if parentRoot != blockRoot { // Block is not part of the canonical chain
 			logger.Errorf("Block %x at slot %v in epoch %v has been orphaned", blocks[i].BlockRoot, blocks[i].Slot, blocks[i].Epoch)
-			orphanedBlocks = append(orphanedBlocks, blockRoot)
+			orphanedBlocks = append(orphanedBlocks, blocks[i].BlockRoot)
 			continue
 		}
 		blocksMap[blockRoot] = true
 		parentRoot = fmt.Sprintf("%x", blocks[i].ParentRoot)
 	}
 
-	return orphanedBlocks
+	return db.UpdateCanonicalBlocks(startEpoch, endEpoch, orphanedBlocks)
 }
 
-func getLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) ([]*types.MinimalBlock, error) {
+func GetLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) ([]*types.MinimalBlock, error) {
 	blocks := make([]*types.MinimalBlock, 0)
 
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
@@ -337,9 +339,10 @@ func getLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) 
 
 			for _, block := range blocksResponse.BlockContainers {
 				blocks = append(blocks, &types.MinimalBlock{
-					Epoch:     epoch,
-					Slot:      block.Block.Slot,
-					BlockRoot: block.BlockRoot,
+					Epoch:      epoch,
+					Slot:       block.Block.Slot,
+					BlockRoot:  block.BlockRoot,
+					ParentRoot: block.Block.ParentRoot,
 				})
 			}
 		}
