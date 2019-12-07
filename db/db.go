@@ -533,7 +533,8 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.BlockContainer
 					if aggregationBits.BitAt(i) {
 						validator, found := assignments.AttestorAssignments[cache.FormatAttestorAssignmentKey(a.Data.Slot, a.Data.CommitteeIndex, i)]
 						if !found { // This should never happen!
-							logger.Fatalf("error retrieving assigned validator for slot %v commitee index %v member index %v", a.Data.Slot, a.Data.CommitteeIndex, i)
+							validator = 0
+							logger.Errorf("error retrieving assigned validator for slot %v commitee index %v member index %v", a.Data.Slot, a.Data.CommitteeIndex, i)
 						}
 						attester = append(attester, validator)
 
