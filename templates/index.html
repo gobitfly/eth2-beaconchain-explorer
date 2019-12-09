@@ -3,107 +3,108 @@
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
     <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 
-    <script>
-        Highcharts.stockChart('stakedetherchart', {
-            exporting: {
-                scale: 1
-            },
-            rangeSelector: {
-                enabled: false
-            },
-            navigator: {
-                enabled: true
-            },
-            chart: {
-                type: 'line',
-                animation: false,
-                style: {
-                    fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
-                },
-                backgroundColor: 'rgb(255, 255, 255)'
-            },
-            title: {
-                text: 'Network History'
-            },
-            subtitle: {},
-            xAxis: {
-                type: 'datetime',
-                labels: {
-                    style: {
-                        color: 'black'
-                    }
-                },
-                range: 7 * 24 * 60 * 60 * 1000
-            },
-            yAxis: [{
-                title: {
-                    text: 'Balance [ETH]',
-                    style: {
-                        color: 'black'
-                    }
-                },
-                labels: {
-                    formatter: function () {
-                        return this.value.toFixed(0);
-                    },
-                    style: {
-                        color: 'black'
-                    }
-                },
-                opposite: false
-            }, {
-                title: {
-                    text: 'Active Validators',
-                    style: {
-                        color: 'black'
-                    }
-                },
-                labels: {
-                    formatter: function () {
-                        return this.value.toFixed(0);
-                    },
-                    style: {
-                        color: 'black'
-                    }
-                },
-                opposite: true
-            }],
-            series: [{
-                name: "Staked Ether",
-                yAxis: 0,
-                data: {{.StakedEtherChartData}}
-            }, {
-                name: "Active Validators",
-                yAxis: 1,
-                data: {{.ActiveValidatorsChartData}}
-            }],
-            plotOptions: {
-                line: {
-                    animation: false,
-                    lineWidth: 2.5,
-                }
-            },
-            legend: {
-                enabled: true
-            },
-            credits: {
-                text: 'Source: beaconcha.in',
-                style: {
-                    color: 'black'
-                },
-                href: 'https://www.beaconcha.in'
-            }
-        });
-
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <script src="/js/highcharts-vue.min.js"></script>
     <script>
         var app = new Vue({
             el: '#app',
             delimiters: ['${', '}'], // Standard vuejs template syntax conflicts with golang template syntax
+            components: {
+                highcharts: HighchartsVue.Chart
+            },
             data: {
                 updateIn: -1,
-                page: {{.}}
+                page: {{.}},
+                chartOptions: {
+                    exporting: {
+                        scale: 1
+                    },
+                    rangeSelector: {
+                        enabled: false
+                    },
+                    navigator: {
+                        enabled: true
+                    },
+                    chart: {
+                        type: 'line',
+                        animation: false,
+                        style: {
+                            fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
+                        },
+                        backgroundColor: 'rgb(255, 255, 255)'
+                    },
+                    title: {
+                        text: 'Network History'
+                    },
+                    subtitle: {},
+                    xAxis: {
+                        type: 'datetime',
+                        labels: {
+                            style: {
+                                color: 'black'
+                            }
+                        },
+                        range: 7 * 24 * 60 * 60 * 1000
+                    },
+                    yAxis: [{
+                        title: {
+                            text: 'Balance [ETH]',
+                            style: {
+                                color: 'black'
+                            }
+                        },
+                        labels: {
+                            formatter: function () {
+                                return this.value.toFixed(0);
+                            },
+                            style: {
+                                color: 'black'
+                            }
+                        },
+                        opposite: false
+                    }, {
+                        title: {
+                            text: 'Active Validators',
+                            style: {
+                                color: 'black'
+                            }
+                        },
+                        labels: {
+                            formatter: function () {
+                                return this.value.toFixed(0);
+                            },
+                            style: {
+                                color: 'black'
+                            }
+                        },
+                        opposite: true
+                    }],
+                    series: [{
+                        name: "Staked Ether",
+                        yAxis: 0,
+                        data: {{.StakedEtherChartData}}
+                    }, {
+                        name: "Active Validators",
+                        yAxis: 1,
+                        data: {{.ActiveValidatorsChartData}}
+                    }],
+                    plotOptions: {
+                        line: {
+                            animation: false,
+                            lineWidth: 2.5,
+                        }
+                    },
+                    legend: {
+                        enabled: true
+                    },
+                    credits: {
+                        text: 'Source: beaconcha.in',
+                        style: {
+                            color: 'black'
+                        },
+                        href: 'https://www.beaconcha.in'
+                    }
+                }
             },
             filters: {
                 fromNow(date) {
@@ -147,7 +148,7 @@
 {{end}}
 
 {{ define "content"}}
-    <div id="app" v-cloak>
+    <div id="app">
         {{if gt .FinalityDelay 3}}
             <div class="alert alert-danger mt-4" role="alert">
                 <b>Warning:</b> The testnet is currently experiencing issues achieving finality. The last finalized
@@ -245,7 +246,7 @@
                 </h3>
             </div>
             <div class="card-body">
-                <div id="stakedetherchart" height="200px"></div>
+                <highcharts height="600px" :constructor-type="'stockChart'" :options="chartOptions"></highcharts>
             </div>
         </div>
         <div class="card mt-2">
