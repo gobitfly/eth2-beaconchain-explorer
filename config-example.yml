@@ -11,6 +11,7 @@ database:
 frontend:
   enabled: true # Enable or disable to web frontend
   imprint: "templates/imprint.example.html" # Path to the imprint page content
+  siteName: "Ethereum 2.0 Beacon Chain (Phase 0) Block Chain Explorer" # Name of the site, displayed in the title tag
   server:
     host: "localhost" # Address to listen on
     port: "3333" # Port to listen on

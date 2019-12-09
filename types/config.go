@@ -19,9 +19,10 @@ type Config struct {
 		} `yaml:"node"`
 	} `yaml:"indexer"`
 	Frontend struct {
-		Enabled bool   `yaml:"enabled", envconfig:"FRONTEND_ENABLED"`
-		Imprint string `yaml:"imprint", envconfig:"FRONTEND_IMPRINT"`
-		Server  struct {
+		Enabled  bool   `yaml:"enabled", envconfig:"FRONTEND_ENABLED"`
+		Imprint  string `yaml:"imprint", envconfig:"FRONTEND_IMPRINT"`
+		SiteName string `yaml:"siteName", envconfig:"FRONTEND_SITE_NAME"`
+		Server   struct {
 			Port string `yaml:"port", envconfig:"FRONTEND_SERVER_PORT"`
 			Host string `yaml:"host", envconfig:"FRONTEND_SERVER_HOST"`
 		} `yaml:"server"`

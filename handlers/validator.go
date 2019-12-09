@@ -49,7 +49,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
-			data.Meta.Title = fmt.Sprintf("Validator %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", index, time.Now().Year())
+			data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
 			data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 			err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -67,7 +67,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data.Meta.Title = fmt.Sprintf("Validator %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", index, time.Now().Year())
+	data.Meta.Title = fmt.Sprintf("%v - Validator %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
 	err = db.DB.Get(&validatorPageData, `SELECT 

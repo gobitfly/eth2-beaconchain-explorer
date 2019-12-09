@@ -35,7 +35,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	epoch, err := strconv.ParseUint(epochString, 10, 64)
 
 	if err != nil {
-		data.Meta.Title = fmt.Sprintf("Epoch %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", epochString, time.Now().Year())
+		data.Meta.Title = fmt.Sprintf("%v - Epoch %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, epochString, time.Now().Year())
 		data.Meta.Path = "/epoch/" + epochString
 		logger.Printf("Error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -46,7 +46,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data.Meta.Title = fmt.Sprintf("Epoch %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", epoch, time.Now().Year())
+	data.Meta.Title = fmt.Sprintf("%v - Epoch %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, epoch, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/epoch/%v", epoch)
 
 	epochPageData := types.EpochPageData{}

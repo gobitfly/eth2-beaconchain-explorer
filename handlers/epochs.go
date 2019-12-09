@@ -21,7 +21,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.PageData{
 		Meta: &types.Meta{
-			Title:       fmt.Sprintf("Epochs - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", time.Now().Year()),
+			Title:       fmt.Sprintf("%v - Epochs - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/epochs",
 		},

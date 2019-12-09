@@ -65,7 +65,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		data.Meta.Title = fmt.Sprintf("Slot %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", slotOrHash, time.Now().Year())
+		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
 		logger.Printf("Error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -76,7 +76,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data.Meta.Title = fmt.Sprintf("Slot %v - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", blockPageData.Slot, time.Now().Year())
+	data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, blockPageData.Slot, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
