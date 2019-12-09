@@ -83,11 +83,13 @@ func main() {
 
 		router := mux.NewRouter()
 		router.HandleFunc("/", handlers.Index).Methods("GET")
+		router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
 		router.HandleFunc("/block/{slotOrHash}", handlers.Block).Methods("GET")
 		router.HandleFunc("/blocks", handlers.Blocks).Methods("GET")
 		router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 		router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 		router.HandleFunc("/vis/blocks", handlers.VisBlocks).Methods("GET")
+		router.HandleFunc("/vis/votes", handlers.VisVotes).Methods("GET")
 		router.HandleFunc("/epoch/{epoch}", handlers.Epoch).Methods("GET")
 		router.HandleFunc("/epochs", handlers.Epochs).Methods("GET")
 		router.HandleFunc("/epochs/data", handlers.EpochsData).Methods("GET")

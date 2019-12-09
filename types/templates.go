@@ -1,6 +1,7 @@
 package types
 
 import (
+	"html/template"
 	"time"
 
 	"github.com/lib/pq"
@@ -24,34 +25,37 @@ type Meta struct {
 }
 
 type IndexPageData struct {
-	CurrentEpoch              uint64
-	CurrentFinalizedEpoch     uint64
-	CurrentSlot               uint64
-	FinalityDelay             uint64
-	ActiveValidators          uint64
-	EnteringValidators        uint64
-	ExitingValidators         uint64
-	StakedEther               string
-	AverageBalance            string
-	Blocks                    []*IndexPageDataBlocks
-	StakedEtherChartData      [][]float64
-	ActiveValidatorsChartData [][]float64
+	CurrentEpoch              uint64                 `json:"current_epoch"`
+	CurrentFinalizedEpoch     uint64                 `json:"current_finalized_epoch"`
+	CurrentSlot               uint64                 `json:"current_slot"`
+	FinalityDelay             uint64                 `json:"finality_delay"`
+	ActiveValidators          uint64                 `json:"active_validators"`
+	EnteringValidators        uint64                 `json:"entering_validators"`
+	ExitingValidators         uint64                 `json:"exiting_validators"`
+	StakedEther               string                 `json:"staked_ether"`
+	AverageBalance            string                 `json:"average_balance"`
+	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
+	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
+	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
 }
 
 type IndexPageDataBlocks struct {
-	Epoch             uint64
-	Slot              uint64
-	Ts                time.Time
-	Proposer          uint64 `db:"proposer"`
-	BlockRoot         []byte `db:"blockroot"`
-	ParentRoot        []byte `db:"parentroot"`
-	Attestations      uint64 `db:"attestationscount"`
-	Deposits          uint64 `db:"depositscount"`
-	Exits             uint64 `db:"voluntaryexitscount"`
-	Proposerslashings uint64 `db:"proposerslashingscount"`
-	Attesterslashings uint64 `db:"attesterslashingscount"`
-	Status            uint64 `db:"status"`
-	Votes             uint64 `db:"votes"`
+	Epoch              uint64        `json:"epoch"`
+	Slot               uint64        `json:"slot"`
+	Ts                 time.Time     `json:"ts"`
+	Proposer           uint64        `db:"proposer" json:"proposer"`
+	ProposerFormatted  template.HTML `json:"proposer_formatted"`
+	BlockRoot          []byte        `db:"blockroot" json:"block_root"`
+	BlockRootFormatted string        `json:"block_root_formatted"`
+	ParentRoot         []byte        `db:"parentroot" json:"parent_root"`
+	Attestations       uint64        `db:"attestationscount" json:"attestations"`
+	Deposits           uint64        `db:"depositscount" json:"deposits"`
+	Exits              uint64        `db:"voluntaryexitscount" json:"exits"`
+	Proposerslashings  uint64        `db:"proposerslashingscount" json:"proposerslashings"`
+	Attesterslashings  uint64        `db:"attesterslashingscount" json:"attesterslashings"`
+	Status             uint64        `db:"status" json:"status"`
+	StatusFormatted    template.HTML `json:"status_formatted"`
+	Votes              uint64        `db:"votes" json:"votes"`
 }
 
 type IndexPageEpochHistory struct {
@@ -145,6 +149,17 @@ type VisChartData struct {
 	Hash       string   `json:"hash"`
 	Parents    []string `json:"parents"`
 	Difficulty uint64   `json:"difficulty"`
+}
+
+type VisVotesPageData struct {
+	ChartData []*VotesVisChartData
+}
+
+type VotesVisChartData struct {
+	Slot       uint64        `db:"slot" json:"slot"`
+	BlockRoot  string        `db:"blockroot" json:"blockRoot"`
+	ParentRoot string        `db:"parentroot" json:"parentRoot"`
+	Validators pq.Int64Array `db:"validators" json:"validators"`
 }
 
 type BlockPageData struct {

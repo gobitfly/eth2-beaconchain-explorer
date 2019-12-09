@@ -1,0 +1,64 @@
+{{ define "js"}}
+    <script src="https://visjs.github.io/vis-network/standalone/umd/vis-network.min.js"></script>
+
+    <script>
+        var data = {{.ChartData}}
+
+        var nodes = []
+        var blocksMap = {}
+        var validatorsMap = {}
+        var edges = []
+
+        data.forEach(function (attestation) {
+            if (!blocksMap[attestation.blockRoot]) {
+                nodes.push({id: attestation.blockRoot, label: attestation.blockRoot.substr(0, 6)})
+                edges.push({from: attestation.blockRoot, to: attestation.parentRoot})
+
+                blocksMap[attestation.blockRoot] = true
+            }
+            if (!blocksMap[attestation.parentRoot]) {
+                nodes.push({id: attestation.parentRoot, label: attestation.parentRoot.substr(0, 6)})
+                blocksMap[attestation.parentRoot] = true
+            }
+
+            if (attestation.validators) {
+                attestation.validators.forEach(function (validator) {
+                    if (!validatorsMap[validator]) {
+                        nodes.push({id: validator, label: validator.toString()})
+                        validatorsMap[validator] = true
+                    }
+
+                    edges.push({from: validator.toString(), to: attestation.blockRoot})
+                })
+            }
+
+            var container = document.getElementById("graph");
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            var options = {
+                physics: false,
+            };
+            var network = new vis.Network(container, data, options);
+        })
+
+
+    </script>
+{{end}}
+
+{{ define "css"}}
+
+{{end}}
+
+{{ define "content"}}
+    <div class="text-center">
+        <h1 class="mt-4"><i class="fas fa-project-diagram"></i> Eth2 Blockchain Visualization</h1>
+        <small>By <a href="https://www.beaconcha.in">beaconcha.in</a></small>
+    </div>
+    <div class="row">
+        <div class="col-md-12 text-center">
+            <div id="graph" style="width: 100%; height: 600px"></div>
+        </div>
+    </div>
+{{end}}
