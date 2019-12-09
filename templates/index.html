@@ -132,13 +132,6 @@
                     } else {
                         this.updateIn--;
                     }
-                },
-                updateCodefund: function () {
-                    if (typeof document.hidden !== "undefined" && !document.hidden) {
-                        $.get('https://api.codefund.app/properties/303/funder.html', function (response) {
-                            document.getElementById("codefund").innerHTML = response;
-                        });
-                    }
                 }
             }
         })
