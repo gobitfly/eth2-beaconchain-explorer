@@ -148,7 +148,7 @@
 {{end}}
 
 {{ define "content"}}
-    <div id="app">
+    <div id="app" v-cloak>
         {{if gt .FinalityDelay 3}}
             <div class="alert alert-danger mt-4" role="alert">
                 <b>Warning:</b> The testnet is currently experiencing issues achieving finality. The last finalized
