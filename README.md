@@ -6,7 +6,8 @@ The explorer is built using golang und utilizes a PostgreSQL database for storin
 
 **Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger grantees about the updatability of the explorer.
 
-[Visualization](https://github.com/gobitfly/eth2-beaconchain-explorer/raw/master/static/img/blockchain_vis.gif "Beacon Chain Visualization")
+![Site](https://github.com/gobitfly/eth2-beaconchain-explorer/raw/master/static/img/site.png "Beacon Chain Web Interface Screenshot")
+![Visualization](https://github.com/gobitfly/eth2-beaconchain-explorer/raw/master/static/img/blockchain_vis.gif "Beacon Chain Visualization")
 
 ## Features
 - Bootstrap based and mobile first web interface
