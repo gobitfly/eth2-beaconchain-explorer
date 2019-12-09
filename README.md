@@ -6,8 +6,13 @@ The explorer is built using golang und utilizes a PostgreSQL database for storin
 
 **Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger grantees about the updatability of the explorer.
 
+[Visualization](https://github.com/gobitfly/eth2-beaconchain-explorer/raw/master/static/img/blockchain_vis.gif "Beacon Chain Visualization")
+
 ## Features
+- Bootstrap based and mobile first web interface
+- Fast and robust blockchain indexing engine, able to handle missed, duplicate & forked blocks
 - Index page
+  - Auto refresh - Index page data is automatically updated every 15 seconds
   - Basic chain statistics (current epoch, current slot, active validators, pending validators, staked ether)
   - Information on the 20 most recent blocks (epoch, slot, time, proposer, hash, number of attestations, deposits, slahsings and voluntary exits)
 - Epochs page
@@ -25,6 +30,8 @@ The explorer is built using golang und utilizes a PostgreSQL database for storin
   - Basic validator info (index, current balance, current effective balance, status, slashed, active since, exited on)
   - Historic balance evolution chart
   - List of proposed and missed blocks
+- Visualizations
+  - Live visualization of blocks being added to the blockchain
 
 ## ToDo
 - Add chain statistic charts

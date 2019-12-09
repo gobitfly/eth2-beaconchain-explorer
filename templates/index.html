@@ -156,11 +156,13 @@
                 was {{.FinalityDelay}} epoch{{if ne .FinalityDelay 1}}s{{end}} ago.
             </div>
         {{end}}
-        <h1 class="mt-4 text-center">Ethereum 2.0 Beacon Chain Explorer</h1>
+        <h1 class="mt-4 text-center">Open Source Ethereum 2.0 Beacon Chain Explorer</h1>
         <h5 class="text-center">Showing the <a href="https://prylabs.net/">💎 Prysm Eth2 Testnet</a></h5>
-        <h5 class="text-center">Do you have any feedback for us? Feel free to join our <a
+        <h6 class="text-center">Do you have any feedback for us? Feel free to join our <a
                     href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a>
-        </h5>
+            or create an issue on <a href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i
+                        class="fab fa-github"></i> Github</a>.
+        </h6>
         <form action="/search" class="mb-2 mt-2" method="POST">
             <div class="input-group typeahead-holder">
                 <input class="form-control mr-2 form-control-md typeahead" type="text" name="search"
@@ -294,7 +296,7 @@
                         </tr>
                         </tbody>
                     </table>
-                    <small class="float-right">  Next update in ${updateIn}s</small>
+                    <small class="float-right"> Next update in ${updateIn}s</small>
                 </div>
 
             </div>
