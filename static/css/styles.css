@@ -1,0 +1,17 @@
+:root {
+  --primary-color: #028D8F
+  --secondary-color: #033C43
+  --bg-color: #04090F
+  --blue: #237199
+  --orange: #EA943E
+  --red: #C4340f
+  --light-orange: #F2A955
+  --brown: #291A39
+  --dark-red: #A61809
+  --dark: #0E0C1A
+  --dark-orange: #DE6115
+}
+
+[data-theme='dark'] { 
+  
+}

@@ -6,3 +6,5 @@ docker/
 templates/imprint.html
 config.yml
 config-lighthouse.yml
+config-stefan.yml
+docker-compose.yml
