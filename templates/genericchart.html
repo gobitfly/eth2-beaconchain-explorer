@@ -1,0 +1,49 @@
+{{ define "js"}}
+    <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+
+    <script>
+        Highcharts.stockChart('chart', {
+            chart: {
+                type: 'column',
+                animation: false,
+                backgroundColor: 'rgb(255, 255, 255)'
+            },
+            title: {
+                text: {{.Title}}
+            },
+            subtitle: {
+                text: {{.Subtitle}}
+            },
+            xAxis: {
+                type: 'datetime',
+            },
+            plotOptions: {
+                column: {
+                    stacking: {{.StackingMode}},
+                }
+            },
+            yAxis: [{
+                title: {
+                    text: {{.YAxisTitle}}
+                }
+            }],
+            series: {{.Series}},
+            credits: {
+                href: "https://www.beaconcha.in",
+                text: "Source: beaconcha.in"
+            },
+        });
+    </script>
+{{end}}
+
+{{ define "css"}}
+{{end}}
+
+{{ define "content"}}
+    <div class="shadow-lg p-3 mb-5 mt-5 bg-white rounded">
+        <h1 class="text-center">Ethereum 2.0 Beacon Chain Chart</h1>
+        <div id="chart" height="600"></div>
+    </div>
+{{end}}

@@ -1,0 +1,47 @@
+{{ define "js"}}
+{{end}}
+
+{{ define "css"}}
+{{end}}
+
+{{ define "content"}}
+    <h1 class="mt-5 text-center"><i class="fas fa-chart-bar"></i> Charts from the Ethereum 2.0 Network</h1>
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card ml-3 mt-3">
+                <i class="far fa-chart-bar card-img-top fa-10x text-center p-1 border-bottom"></i>
+                <div class="card-body">
+                    <h4 class="card-title"><a href="/charts/blocks">Proposed Blocks</a></h4>
+                    <p class="card-text">Blocks produced for each epoch grouped by status (missed, orphaned, proposed)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card ml-3 mt-3">
+                <i class="far fa-chart-bar card-img-top fa-10x text-center p-1 border-bottom"></i>
+                <div class="card-body">
+                    <h4 class="card-title"><a href="/charts/validators">Validators</a></h4>
+                    <p class="card-text">History of the number of active validators on the network</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card ml-3 mt-3">
+                <i class="far fa-chart-bar card-img-top fa-10x text-center p-1 border-bottom"></i>
+                <div class="card-body">
+                    <h4 class="card-title"><a href="/charts/staked_ether">Staked Ether</a></h4>
+                    <p class="card-text">Evolution of the amount of Ether staked on the beacon chain</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card ml-3 mt-3">
+                <i class="far fa-chart-bar card-img-top fa-10x text-center p-1 border-bottom"></i>
+                <div class="card-body">
+                    <h4 class="card-title"><a href="/charts/average_balance">Average balance</a></h4>
+                    <p class="card-text">History of the average balance of all validators</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{{end}}

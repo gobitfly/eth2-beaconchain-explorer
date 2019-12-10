@@ -285,3 +285,17 @@ type SearchAheadValidatorsResult []struct {
 	Index  string `db:"index" json:"index,omitempty"`
 	Pubkey string `db:"pubkey" json:"pubkey,omitempty"`
 }
+
+type GenericChartData struct {
+	Title        string                    `json:"title"`
+	Subtitle     string                    `json:"subtitle"`
+	XAxisTitle   string                    `json:"x_axis_title"`
+	YAxisTitle   string                    `json:"y_axis_title"`
+	StackingMode string                    `json:"stacking_mode"`
+	Series       []*GenericChartDataSeries `json:"series"`
+}
+
+type GenericChartDataSeries struct {
+	Name string      `json:"name"`
+	Data [][]float64 `json:"data"`
+}
