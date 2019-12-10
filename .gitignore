@@ -5,3 +5,5 @@ bin/
 docker/
 templates/imprint.html
 config.yml
+config-stefan.yml
+docker-compose.yml
