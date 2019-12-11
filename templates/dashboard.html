@@ -2,7 +2,7 @@
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 <script>
   $(document).ready(function() {
-    $('#pending').DataTable({
+    var pendingTable = $('#pending').DataTable({
       processing: true,
       serverSide: true,
       ordering: false,
@@ -26,7 +26,7 @@
         }
       ]
     })
-    $('#active').DataTable({
+    var activeTable = $('#active').DataTable({
       processing: true,
       serverSide: true,
       ordering: false,
@@ -47,10 +47,19 @@
           render: function(data, type, row, meta) {
             return '<a href="/validator/' + data + '">' + data + '</a>'
           }
+        },
+        {
+          targets: -1,
+          data: null,
+          defaultContent: '<button class="removeValidator">Remove</button>'
+          // render: function(data, type, row, meta) {
+          //   console.log(data,type,row,meta)
+          //   return `<button onClick=removeValidator(${data[1]})>Remove</button>`
+          // }
         }
       ]
     })
-    $('#ejected').DataTable({
+    var ejectedTable = $('#ejected').DataTable({
       processing: true,
       serverSide: true,
       ordering: false,
@@ -127,16 +136,50 @@
       addValidator(sug.index)
     })
 
-    $('#validator-form').submit(function(event) {
-      event.preventDefault()
-      var search = $('#validator-form input').val()
-      addValidator(search)
+    $('#pending').on('click', 'button', function() {
+      var data = pendingTable.row($(this).parents('tr')).data()
+      removeValidator(data[1])
+    })
+    $('#active').on('click', 'button', function() {
+      var data = activeTable.row($(this).parents('tr')).data()
+      removeValidator(data[1])
+    })
+    $('#ejected').on('click', 'button', function() {
+      var data = ejectedTable.row($(this).parents('tr')).data()
+      removeValidator(data[1])
     })
 
-    function removeValidator(index) {}
+    function getValidators() {
+      var usp = new URLSearchParams(window.location.search)
+      var validatorsStr = usp.get('validators')
+      var validators = validatorsStr.split(',')
+      return validators
+    }
 
-    function getQueryStringValue(key) {
-      return decodeURIComponent(window.location.search.replace(new RegExp('^(?:.*[&\\?]' + encodeURIComponent(key).replace(/[\.\+\*]/g, '\\$&') + '(?:\\=([^&]*))?)?.*$', 'i'), '$1'))
+    function addValidator(index) {
+      for (var i = 0; i < validators.length; i++) {
+        if (validators[i] === index) return
+      }
+      validators.push(index)
+      validators.sort(sortValidators)
+      window.location.search = '?validators=' + validators.join(',')
+    }
+
+    function removeValidator(index) {
+      for (var i = 0; i < validators.length; i++) {
+        if (validators[i] === index) {
+          validators.splice(i, 1)
+          validators.sort(sortValidators)
+          window.location.search = '?validators=' + validators.join(',')
+          return
+        }
+      }
+    }
+
+    function sortValidators(a, b) {
+      var ai = parseInt(a)
+      var bi = parseInt(b)
+      return ai - bi
     }
   })
   var validators = getValidators()
@@ -554,6 +597,7 @@
             <th>Slashed</th>
             <th>Activation Eligibility Epoch</th>
             <th>Activation Epoch</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody> </tbody>
