@@ -38,6 +38,30 @@ func GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 		AttestorAssignments: make(map[string]uint64),
 	}
 
+	// Retrieve the currently active validator set in order to map public keys to indexes
+	validators := make(map[string]uint64)
+
+	validatorBalancesResponse := &ethpb.ValidatorBalances{}
+	for {
+		validatorBalancesResponse, err = client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
+		if err != nil {
+			logger.Printf("error retrieving validator balances response: %v", err)
+			break
+		}
+		if validatorBalancesResponse.TotalSize == 0 {
+			break
+		}
+
+		for _, balance := range validatorBalancesResponse.Balances {
+			logger.Debugf("%x - %v", balance.PublicKey, balance.Index)
+			validators[fmt.Sprintf("%x", balance.PublicKey)] = balance.Index
+		}
+
+		if validatorBalancesResponse.NextPageToken == "" {
+			break
+		}
+	}
+
 	// Retrieve the validator assignments for the epoch
 	validatorAssignmentes := make([]*ethpb.ValidatorAssignments_CommitteeAssignment, 0)
 	validatorAssignmentResponse := &ethpb.ValidatorAssignments{}
@@ -58,6 +82,7 @@ func GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 	// Attestation assignments are cached by the slot & committee key
 	for index, assignment := range validatorAssignmentes {
 		if assignment.ProposerSlot > 0 {
+			logger.Debugf("Slot %v to be proposed by %x - %v - %v", assignment.ProposerSlot, assignment.PublicKey, validators[fmt.Sprintf("%x", assignment.PublicKey)], index)
 			assignments.ProposerAssignments[assignment.ProposerSlot] = uint64(index)
 		}
 		if assignment.AttesterSlot > 0 {
