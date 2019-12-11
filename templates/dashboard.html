@@ -76,6 +76,161 @@
     })
   })
 </script>
+<script src="https://code.highcharts.com/stock/highstock.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+
+<script>
+  var data = {{.DailyProposalCount}}
+  var proposed = data.map(d => [d.Day * 1000, d.Proposed])
+  var missed = data.map(d => [d.Day * 1000, d.Missed])
+  Highcharts.stockChart('proposedChart', {
+      exporting: {
+          scale: 1
+      },
+      credits: {
+          enabled: false
+      },
+      title: {
+          text: 'Proposal History for all Validators'
+      },
+      subtitle: {
+          text: 'Source: beaconcha.in',
+          style: {
+              color: 'black'
+          }
+      },
+      chart: {
+          type: 'column',
+          animation: false,
+          style: {
+              fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
+          },
+          backgroundColor: 'rgb(255, 255, 255)'
+      },
+      xAxis: {
+          lineWidth: 0,
+          tickColor: '#e5e1e1',
+          labels: {
+              style: {
+                  color: '#26232780'
+              }
+          },
+          range: 7 * 24 * 3600 * 1000
+      },
+      yAxis: [
+          {
+              title: {
+                  text: '# of Possible Proposals',
+                  style: {
+                      color: '#26232780',
+                      'font-size': '0.8rem'
+                  }
+              },
+              labels: {
+                  style: {
+                      color: '#26232780'
+                  }
+              },
+              gridLineColor: '#e5e1e1',
+              opposite: false
+          }
+      ],
+      plotOptions: {
+          column: {
+              stacking: 'normal',
+              dataGrouping: {
+                  enabled: true,
+                  forced: true,
+                  units: [
+                      ['day', [1]]
+                  ]
+              }
+          }
+      },
+      legend: {
+          enabled: true,
+          layout: 'horizontal',
+          align: 'center',
+          verticalAlign: 'bottom',
+          borderWidth: 0,
+          itemStyle: {
+              color: '#262327',
+              'font-size': '0.8rem',
+              'font-weight': 'lighter'
+          },
+          itemHoverStyle: {
+              color: '#ff8723'
+          }
+      },
+      series: [
+          {
+              name: 'Proposed',
+              data: proposed
+          },
+          {
+              name: 'Missed',
+              data: missed
+          }
+      ],
+      rangeSelector: {
+          enabled: false
+      },
+      navigator: {
+          maskFill: '#1473e631',
+          outlineColor: '#e5e1e1',
+          handles: {
+              backgroundColor: '#f5f3f3',
+              borderColor: '#26232780'
+          },
+          xAxis: {
+              gridLineColor: '#e5e1e1',
+              labels: {
+                  style: {
+                      color: '#26232780'
+                  }
+              }
+          }
+      },
+      scrollbar: {
+          barBackgroundColor: '#ebe7e7',
+          barBorderWidth: 0,
+          buttonArrowColor: '#262327',
+          rifleColor: '#262327',
+          buttonBackgroundColor: '#ebe7e7',
+          buttonBorderColor: '#ebe7e7',
+          trackBackgroundColor: '#f5f3f3',
+          trackBorderColor: '#e5e1e180'
+      },
+      colors: ['#378ef0a0', '#fb8c13'],
+      responsive: {
+          rules: [
+              {
+                  condition: {
+                      maxWidth: 760
+                  },
+                  chartOptions: {
+                      chart: {
+                          marginRight: 45
+                      },
+                      yAxis: [
+                          {
+                              title: {
+                                  text: null
+                              }
+                          },
+                          {
+                              title: {
+                                  text: null
+                              }
+                          }
+                      ]
+                  }
+              }
+          ]
+      }
+  })
+</script>
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
 {{end}} {{ define "content"}}
@@ -151,6 +306,11 @@
       </table>
     </div>
     {{end}}
+    <div class="row border-bottom p-3">
+      <div class="col-md-12">
+        <div id="proposedChart" height="200px"></div>
+      </div>
+    </div>
   </div>
 </div>
 {{end}}
