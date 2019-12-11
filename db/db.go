@@ -13,7 +13,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
-	bitfield "github.com/prysmaticlabs/go-bitfield"
+	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/sirupsen/logrus"
 )
 
@@ -142,7 +142,7 @@ func SaveAttestationPool(attestations []*ethpb.Attestation) error {
 	return nil
 }
 
-func SaveValidatorQueue(validators *ethpb.ValidatorQueue) error {
+func SaveValidatorQueue(validators *ethpb.ValidatorQueue, validatorIndices map[string]uint64) error {
 	tx, err := DB.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
@@ -172,14 +172,14 @@ func SaveValidatorQueue(validators *ethpb.ValidatorQueue) error {
 	}
 	defer stmtValidatorQueueExit.Close()
 
-	for i, publickey := range validators.ActivationPublicKeys {
-		_, err := stmtValidatorQueueActivation.Exec(i, publickey)
+	for _, publickey := range validators.ActivationPublicKeys {
+		_, err := stmtValidatorQueueActivation.Exec(validatorIndices[utils.FormatPublicKey(publickey)], publickey)
 		if err != nil {
 			return fmt.Errorf("error executing stmtValidatorQueueActivation: %v", err)
 		}
 	}
-	for i, publickey := range validators.ExitPublicKeys {
-		_, err := stmtValidatorQueueExit.Exec(i, publickey)
+	for _, publickey := range validators.ExitPublicKeys {
+		_, err := stmtValidatorQueueExit.Exec(validatorIndices[utils.FormatPublicKey(publickey)], publickey)
 		if err != nil {
 			return fmt.Errorf("error executing stmtValidatorQueueExit: %v", err)
 		}
@@ -204,7 +204,7 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving blocks to db: %v", err)
 	}
 
-	err = saveValidatorSet(data.Epoch, data.Validators, tx)
+	err = saveValidatorSet(data.Epoch, data.Validators, data.ValidatorIndices, tx)
 	if err != nil {
 		return fmt.Errorf("error saving validator set to db: %v", err)
 	}
@@ -312,7 +312,7 @@ func SaveEpoch(data *types.EpochData) error {
 	return nil
 }
 
-func saveValidatorSet(epoch uint64, validators []*ethpb.Validator, tx *sql.Tx) error {
+func saveValidatorSet(epoch uint64, validators []*ethpb.Validator, validatorIndices map[string]uint64, tx *sql.Tx) error {
 
 	stmtValidatorSet, err := tx.Prepare(`INSERT INTO validator_set (epoch, validatorindex, withdrawableepoch, withdrawalcredentials, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch)
  													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (epoch, validatorindex) DO NOTHING`)
@@ -327,7 +327,7 @@ func saveValidatorSet(epoch uint64, validators []*ethpb.Validator, tx *sql.Tx) e
 	}
 	defer stmtValidators.Close()
 
-	for index, v := range validators {
+	for _, v := range validators {
 		if v.WithdrawableEpoch == 18446744073709551615 {
 			v.WithdrawableEpoch = 9223372036854775807
 		}
@@ -340,11 +340,11 @@ func saveValidatorSet(epoch uint64, validators []*ethpb.Validator, tx *sql.Tx) e
 		if v.ActivationEpoch == 18446744073709551615 {
 			v.ActivationEpoch = 9223372036854775807
 		}
-		_, err := stmtValidatorSet.Exec(epoch, index, v.WithdrawableEpoch, v.WithdrawalCredentials, v.EffectiveBalance, v.Slashed, v.ActivationEligibilityEpoch, v.ActivationEpoch, v.ExitEpoch)
+		_, err := stmtValidatorSet.Exec(epoch, validatorIndices[fmt.Sprintf("%x", v.PublicKey)], v.WithdrawableEpoch, v.WithdrawalCredentials, v.EffectiveBalance, v.Slashed, v.ActivationEligibilityEpoch, v.ActivationEpoch, v.ExitEpoch)
 		if err != nil {
 			return fmt.Errorf("error executing save validator set statement: %v", err)
 		}
-		_, err = stmtValidators.Exec(index, v.PublicKey)
+		_, err = stmtValidators.Exec(validatorIndices[fmt.Sprintf("%x", v.PublicKey)], v.PublicKey)
 		if err != nil {
 			return fmt.Errorf("error executing save validator statement: %v", err)
 		}
@@ -423,8 +423,8 @@ func saveValidatorBalances(epoch uint64, balances []*ethpb.ValidatorBalances_Bal
 	}
 	defer stmt.Close()
 
-	for index, b := range balances {
-		_, err := stmt.Exec(epoch, index, b.Balance)
+	for _, b := range balances {
+		_, err := stmt.Exec(epoch, b.Index, b.Balance)
 		if err != nil {
 			return fmt.Errorf("error executing save validator balance statement: %v", err)
 		}

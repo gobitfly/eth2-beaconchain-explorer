@@ -7,6 +7,7 @@ import (
 type EpochData struct {
 	Epoch                   uint64
 	Validators              []*ethpb.Validator
+	ValidatorIndices        map[string]uint64
 	ValidatorAssignmentes   *EpochAssignments
 	BeaconCommittees        map[uint64][]*ethpb.BeaconCommittees_CommitteeItem
 	ValidatorBalances       []*ethpb.ValidatorBalances_Balance

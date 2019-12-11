@@ -140,7 +140,7 @@ func Start(client ethpb.BeaconChainClient) error {
 		logger.Printf("Exporting %v epochs.", len(epochsToExport))
 
 		keys := make([]uint64, 0)
-		for k, _ := range epochsToExport {
+		for k := range epochsToExport {
 			keys = append(keys, k)
 		}
 		sort.Slice(keys, func(i, j int) bool {
@@ -239,7 +239,7 @@ func Start(client ethpb.BeaconChainClient) error {
 		logger.Printf("Exporting %v epochs.", len(epochsToExport))
 
 		keys := make([]uint64, 0)
-		for k, _ := range epochsToExport {
+		for k := range epochsToExport {
 			keys = append(keys, k)
 		}
 		sort.Slice(keys, func(i, j int) bool {
@@ -359,6 +359,32 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
+	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
+	data.ValidatorBalances = make([]*ethpb.ValidatorBalances_Balance, 0)
+	data.ValidatorIndices = make(map[string]uint64)
+
+	validatorBalancesResponse := &ethpb.ValidatorBalances{}
+	for {
+		validatorBalancesResponse, err = client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
+		if err != nil {
+			logger.Printf("error retrieving validator balances response: %v", err)
+			break
+		}
+		if validatorBalancesResponse.TotalSize == 0 {
+			break
+		}
+
+		for _, balance := range validatorBalancesResponse.Balances {
+			data.ValidatorBalances = append(data.ValidatorBalances, balance)
+			data.ValidatorIndices[fmt.Sprintf("%x")] = balance.Index
+		}
+
+		if validatorBalancesResponse.NextPageToken == "" {
+			break
+		}
+	}
+	logger.Printf("Retrieved data for %v validator balances for epoch %v", len(data.ValidatorBalances), epoch)
+
 	data.ValidatorAssignmentes, err = cache.GetEpochAssignments(epoch)
 	if err != nil {
 		return fmt.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
@@ -458,7 +484,6 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 
 	// Retrieve the validator set for the epoch
 	data.Validators = make([]*ethpb.Validator, 0)
-
 	validatorResponse := &ethpb.Validators{}
 	for {
 		validatorResponse, err = client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
@@ -470,9 +495,7 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 			break
 		}
 
-		for _, validator := range validatorResponse.Validators {
-			data.Validators = append(data.Validators, validator)
-		}
+		data.Validators = append(data.Validators, validatorResponse.Validators...)
 
 		if validatorResponse.NextPageToken == "" {
 			break
@@ -497,29 +520,6 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 			data.BeaconCommittees[slot] = append(data.BeaconCommittees[slot], committee.Committees...)
 		}
 	}
-
-	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
-	data.ValidatorBalances = make([]*ethpb.ValidatorBalances_Balance, 0)
-	validatorBalancesResponse := &ethpb.ValidatorBalances{}
-	for {
-		validatorBalancesResponse, err = client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
-		if err != nil {
-			logger.Printf("error retrieving validator balances response: %v", err)
-			break
-		}
-		if validatorBalancesResponse.TotalSize == 0 {
-			break
-		}
-
-		for _, balance := range validatorBalancesResponse.Balances {
-			data.ValidatorBalances = append(data.ValidatorBalances, balance)
-		}
-
-		if validatorBalancesResponse.NextPageToken == "" {
-			break
-		}
-	}
-	logger.Printf("Retrieved data for %v validator balances for epoch %v", len(data.ValidatorBalances), epoch)
 
 	data.EpochParticipationStats, err = client.GetValidatorParticipation(context.Background(), &ethpb.GetValidatorParticipationRequest{QueryFilter: &ethpb.GetValidatorParticipationRequest_Epoch{Epoch: epoch}})
 	if err != nil {

@@ -109,3 +109,7 @@ func readConfigFile(cfg *types.Config, path string) error {
 func readConfigEnv(cfg *types.Config) error {
 	return envconfig.Process("", cfg)
 }
+
+func FormatPublicKey(publicKey []byte) string {
+	return fmt.Sprintf("%x", publicKey)
+}

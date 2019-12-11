@@ -65,6 +65,7 @@ func GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 	// Retrieve the validator assignments for the epoch
 	validatorAssignmentes := make([]*ethpb.ValidatorAssignments_CommitteeAssignment, 0)
 	validatorAssignmentResponse := &ethpb.ValidatorAssignments{}
+
 	for validatorAssignmentResponse.NextPageToken == "" || len(validatorAssignmentes) < int(validatorAssignmentResponse.TotalSize) {
 		validatorAssignmentResponse, err = client.ListValidatorAssignments(context.Background(), &ethpb.ListValidatorAssignmentsRequest{PageToken: validatorAssignmentResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorAssignmentsRequest_Epoch{Epoch: epoch}})
 		if err != nil {
@@ -80,11 +81,11 @@ func GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 	// Extract the proposer & attestation assignments from the response and cache them for later use
 	// Proposer assignments are cached by the proposer slot
 	// Attestation assignments are cached by the slot & committee key
-	for index, assignment := range validatorAssignmentes {
+	for _, assignment := range validatorAssignmentes {
 		if assignment.ProposerSlot > 0 {
-			logger.Debugf("Slot %v to be proposed by %x - %v - %v", assignment.ProposerSlot, assignment.PublicKey, validators[fmt.Sprintf("%x", assignment.PublicKey)], index)
-			assignments.ProposerAssignments[assignment.ProposerSlot] = uint64(index)
+			assignments.ProposerAssignments[assignment.ProposerSlot] = validators[fmt.Sprintf("%x", assignment.PublicKey)]
 		}
+
 		if assignment.AttesterSlot > 0 {
 			for memberIndex, validatorIndex := range assignment.BeaconCommittees {
 				assignments.AttestorAssignments[FormatAttestorAssignmentKey(assignment.AttesterSlot, assignment.CommitteeIndex, uint64(memberIndex))] = validatorIndex
