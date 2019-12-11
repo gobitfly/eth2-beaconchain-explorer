@@ -20,6 +20,10 @@ var dashboardTemplate = template.Must(template.New("dashboard").ParseFiles("temp
 var dashboardNotFoundTemplate = template.Must(template.New("dashboardnotfound").ParseFiles("templates/layout.html", "templates/dashboardnotfound.html"))
 
 func parseValidatorsFromQueryString(str string) ([]uint64, error) {
+	if str == "" {
+		return []uint64{}, nil
+	}
+
 	strSplit := strings.Split(str, ",")
 	strSplitLen := len(strSplit)
 
@@ -62,7 +66,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 	dashboardPageData := types.DashboardPageData{}
-	dashboardPageData.Title = "Hello, World"
+	dashboardPageData.Title = "Dashboard"
 
 	var validators []*types.ValidatorsPageDataValidators
 
@@ -98,7 +102,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Select(&proposals, "select slot / 7200 as day, status, count(*) FROM blocks WHERE proposer = ANY($1) group by day, status order by day;", filter)
 	if err != nil {
-		logger.Error("Error retrieving Daily Proposed Blocks blocks count: %v", err)
+		logger.WithError(err).Error("Error retrieving Daily Proposed Blocks blocks count")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
