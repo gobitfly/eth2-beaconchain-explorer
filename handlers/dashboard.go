@@ -59,6 +59,62 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	dashboardPageData.Title = "Hello, World"
 
+	proposals := []struct {
+		Day    uint64
+		Status uint64
+		Count  uint
+	}{}
+
+	err = db.DB.Select(&proposals, "select slot / 7200 as day, status, count(*) FROM blocks WHERE proposer = ANY($1) group by day, status order by day;", filter)
+	if err != nil {
+		logger.Error("Error retrieving Daily Proposed Blocks blocks count: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	for i := 0; i < len(proposals); i++ {
+		if i == len(proposals)-1 {
+			if proposals[i].Status == 1 {
+				dashboardPageData.DailyProposalCount = append(dashboardPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: proposals[i].Count,
+					Missed:   0,
+				})
+			} else if proposals[i].Status == 2 {
+				dashboardPageData.DailyProposalCount = append(dashboardPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: 0,
+					Missed:   proposals[i].Count,
+				})
+			} else {
+				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", err)
+			}
+		} else {
+			if proposals[i].Day == proposals[i+1].Day {
+				dashboardPageData.DailyProposalCount = append(dashboardPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: proposals[i].Count,
+					Missed:   proposals[i+1].Count,
+				})
+				i++
+			} else if proposals[i].Status == 1 {
+				dashboardPageData.DailyProposalCount = append(dashboardPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: proposals[i].Count,
+					Missed:   0,
+				})
+			} else if proposals[i].Status == 2 {
+				dashboardPageData.DailyProposalCount = append(dashboardPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: 0,
+					Missed:   proposals[i].Count,
+				})
+			} else {
+				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", err)
+			}
+		}
+	}
+
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
