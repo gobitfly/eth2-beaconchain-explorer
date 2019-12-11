@@ -113,6 +113,7 @@ func main() {
 		router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 		router.HandleFunc("/faq", handlers.Faq).Methods("GET")
 		router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
+		router.HandleFunc("/dashboard", handlers.Dashboard).Methods("GET")
 
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 
