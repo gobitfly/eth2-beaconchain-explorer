@@ -117,6 +117,7 @@ type DailyProposalCount struct {
 	Day      int64
 	Proposed uint
 	Missed   uint
+	Orphaned uint
 }
 
 type ValidatorBalanceHistory struct {

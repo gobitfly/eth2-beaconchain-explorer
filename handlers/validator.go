@@ -138,15 +138,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
 					Proposed: proposals[i].Count,
 					Missed:   0,
+					Orphaned: 0,
 				})
 			} else if proposals[i].Status == 2 {
 				validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
 					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
 					Proposed: 0,
 					Missed:   proposals[i].Count,
+					Orphaned: 0,
+				})
+			} else if proposals[i].Status == 3 {
+				validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: 0,
+					Missed:   0,
+					Orphaned: proposals[i].Count,
 				})
 			} else {
-				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", err)
+				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", proposals[i].Status)
 			}
 		} else {
 			if proposals[i].Day == proposals[i+1].Day {
@@ -154,6 +163,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
 					Proposed: proposals[i].Count,
 					Missed:   proposals[i+1].Count,
+					Orphaned: proposals[i+1].Count,
 				})
 				i++
 			} else if proposals[i].Status == 1 {
@@ -161,15 +171,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
 					Proposed: proposals[i].Count,
 					Missed:   0,
+					Orphaned: 0,
 				})
 			} else if proposals[i].Status == 2 {
 				validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
 					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
 					Proposed: 0,
 					Missed:   proposals[i].Count,
+					Orphaned: 0,
+				})
+			} else if proposals[i].Status == 3 {
+				validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: 0,
+					Missed:   0,
+					Orphaned: proposals[i].Count,
 				})
 			} else {
-				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", err)
+				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", proposals[i].Status)
 			}
 		}
 	}
