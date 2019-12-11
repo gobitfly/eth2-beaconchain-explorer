@@ -23,6 +23,11 @@
           render: function(data, type, row, meta) {
             return '<a href="/validator/' + data + '">' + data + '</a>'
           }
+        },
+        {
+          targets: -1,
+          data: null,
+          defaultContent: '<button class="removeValidator">Remove</button>'
         }
       ]
     })
@@ -52,10 +57,6 @@
           targets: -1,
           data: null,
           defaultContent: '<button class="removeValidator">Remove</button>'
-          // render: function(data, type, row, meta) {
-          //   console.log(data,type,row,meta)
-          //   return `<button onClick=removeValidator(${data[1]})>Remove</button>`
-          // }
         }
       ]
     })
@@ -80,6 +81,11 @@
           render: function(data, type, row, meta) {
             return '<a href="/validator/' + data + '">' + data + '</a>'
           }
+        },
+        {
+          targets: -1,
+          data: null,
+          defaultContent: '<button class="removeValidator">Remove</button>'
         }
       ]
     })
@@ -616,6 +622,7 @@
             <th>Slashed</th>
             <th>Activation Eligibility Epoch</th>
             <th>Activation Epoch</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody> </tbody>
@@ -636,6 +643,7 @@
             <th>Activation Epoch</th>
             <th>Exit Epoch</th>
             <th>Withdrawable Epoch</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody> </tbody>
