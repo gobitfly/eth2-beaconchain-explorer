@@ -321,7 +321,7 @@ func saveValidatorSet(epoch uint64, validators []*ethpb.Validator, validatorIndi
 	}
 	defer stmtValidatorSet.Close()
 
-	stmtValidators, err := tx.Prepare(`INSERT INTO validators (validatorindex, pubkey) VALUES ($1, $2) ON CONFLICT (validatorindex) DO NOTHING`)
+	stmtValidators, err := tx.Prepare(`INSERT INTO validators (validatorindex, pubkey) VALUES ($1, $2) ON CONFLICT (validatorindex) DO UPDATE SET pubkey = excluded.pubkey`)
 	if err != nil {
 		return err
 	}
