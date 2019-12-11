@@ -8,3 +8,7 @@ config.yml
 config-lighthouse.yml
 config-stefan.yml
 docker-compose.yml
+docker-compose-staging.yml
+config-staging.yml
+config-*.yml
+imprint.html
