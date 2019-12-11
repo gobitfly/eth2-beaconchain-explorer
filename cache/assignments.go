@@ -54,7 +54,7 @@ func GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 
 		for _, balance := range validatorBalancesResponse.Balances {
 			logger.Debugf("%x - %v", balance.PublicKey, balance.Index)
-			validators[fmt.Sprintf("%x", balance.PublicKey)] = balance.Index
+			validators[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
 		}
 
 		if validatorBalancesResponse.NextPageToken == "" {
@@ -83,7 +83,7 @@ func GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 	// Attestation assignments are cached by the slot & committee key
 	for _, assignment := range validatorAssignmentes {
 		if assignment.ProposerSlot > 0 {
-			assignments.ProposerAssignments[assignment.ProposerSlot] = validators[fmt.Sprintf("%x", assignment.PublicKey)]
+			assignments.ProposerAssignments[assignment.ProposerSlot] = validators[utils.FormatPublicKey(assignment.PublicKey)]
 		}
 
 		if assignment.AttesterSlot > 0 {

@@ -376,7 +376,7 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 
 		for _, balance := range validatorBalancesResponse.Balances {
 			data.ValidatorBalances = append(data.ValidatorBalances, balance)
-			data.ValidatorIndices[fmt.Sprintf("%x")] = balance.Index
+			data.ValidatorIndices[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
 		}
 
 		if validatorBalancesResponse.NextPageToken == "" {
@@ -547,6 +547,30 @@ func exportAttestationPool(client ethpb.BeaconChainClient) error {
 }
 
 func exportValidatorQueue(client ethpb.BeaconChainClient) error {
+	var err error
+
+	validatorIndices := make(map[string]uint64)
+
+	validatorBalancesResponse := &ethpb.ValidatorBalances{}
+	for {
+		validatorBalancesResponse, err = client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize})
+		if err != nil {
+			logger.Printf("error retrieving validator balances response: %v", err)
+			break
+		}
+		if validatorBalancesResponse.TotalSize == 0 {
+			break
+		}
+
+		for _, balance := range validatorBalancesResponse.Balances {
+			validatorIndices[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
+		}
+
+		if validatorBalancesResponse.NextPageToken == "" {
+			break
+		}
+	}
+
 	validators, err := client.GetValidatorQueue(context.Background(), &ptypes.Empty{})
 
 	if err != nil {
@@ -555,7 +579,7 @@ func exportValidatorQueue(client ethpb.BeaconChainClient) error {
 
 	logger.Printf("Retrieved %v validators to enter and %v validators to leave from the validator queue", len(validators.ActivationPublicKeys), len(validators.ExitPublicKeys))
 
-	return db.SaveValidatorQueue(validators)
+	return db.SaveValidatorQueue(validators, validatorIndices)
 }
 
 func updateEpochStatus(client ethpb.BeaconChainClient, startEpoch, endEpoch uint64) error {
