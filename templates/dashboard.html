@@ -75,8 +75,6 @@
       ]
     })
 
-    var validators = getValidators()
-
     var bhValidators = new Bloodhound({
       datumTokenizer: Bloodhound.tokenizers.whitespace,
       queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -129,21 +127,11 @@
       addValidator(sug.index)
     })
 
-    function getValidators() {
-      var usp = new URLSearchParams(window.location.search)
-      var validatorsStr = usp.get('validators')
-      var validators = validatorsStr.split(',')
-      return validators
-    }
-
-    function addValidator(index) {
-      for (var i = 0; i < validators.length; i++) {
-        if (validators[i] === index) return
-      }
-      validators.push(index)
-      validators.sort()
-      window.location.search = '?validators=' + validators.join(',')
-    }
+    $('#validator-form').submit(function(event) {
+      event.preventDefault()
+      var search = $('#validator-form input').val()
+      addValidator(search)
+    })
 
     function removeValidator(index) {}
 
@@ -151,191 +139,221 @@
       return decodeURIComponent(window.location.search.replace(new RegExp('^(?:.*[&\\?]' + encodeURIComponent(key).replace(/[\.\+\*]/g, '\\$&') + '(?:\\=([^&]*))?)?.*$', 'i'), '$1'))
     }
   })
+  var validators = getValidators()
+
+  function getValidators() {
+    var usp = new URLSearchParams(window.location.search)
+    var validatorsStr = usp.get('validators')
+    var validators = validatorsStr
+    if (validators && validators.length) {
+      validators = validatorsStr.split(',')
+    } else {
+      validators = []
+    }
+    return validators
+  }
+
+  function addValidator(index) {
+    for (var i = 0; i < validators.length; i++) {
+      if (validators[i] === index) return
+    }
+    validators.push(index)
+    validators.sort()
+    window.location.search = '?validators=' + validators.join(',')
+  }
 </script>
 <script src="https://code.highcharts.com/stock/highstock.js"></script>
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
 <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 
 <script>
-  var effective = {{.EffectiveBalanceHistoryChartData}}
-  var balance = {{.BalanceHistoryChartData}}
+  $(document).ready(function() {
+    var effective = {{.EffectiveBalanceHistoryChartData}}
+    var balance = {{.BalanceHistoryChartData}}
+    var utilization = []
+    if(effective && effective.length && balance && balance.length) {
+      var len = effective.length < balance.length ? effective.length : balance.length;
 
-  var utilization = []
-
-  for(var i = 0; i < balance.length && i < effective.length; i++) {
-    if(effective[i][0] === balance[i][0])
-    utilization.push([effective[i][0], effective[i][1] / balance[i][1]])
-  }
-  Highcharts.stockChart('balancechart', {
-      exporting: {
-          scale: 1
-      },
-      rangeSelector: {
-          enabled: false
-      },
-      chart: {
-          type: 'line',
-          animation: false,
-          style: {
-              fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
-          },
-          backgroundColor: 'rgb(255, 255, 255)'
-      },
-      title: {
-          text: 'Balance History for all Validators'
-      },
-      subtitle: {
-          text: 'Source: beaconcha.in',
-          style: {
-              color: 'black'
-          }
-      },
-      xAxis: {
-          type: 'datetime',
-          labels: {
-              style: {
-                  color: 'black'
-              }
-          },
-          range: 7 * 24 * 60 * 60 * 1000
-      },
-      yAxis: [{
-          title: {
-              text: 'Balance [ETH]',
-              style: {
-                  color: '#26232780',
-                  'font-size': '0.8rem'
-              }
-          },
-          opposite: false,
-          labels: {
-              formatter: function () {
-                  return this.value.toFixed(0);
-              },
-              style: {
-                  color: 'black'
-              }
-          },
-      }, {
-          type: 'percentage',
-          title: {
-              text: 'Validator Effectiveness',
-              style: {
-                  color: '#26232780',
-                  'font-size': '0.8rem'
-              }
-          },
-          labels: {
-              formatter: function () {
-                  return (this.value * 100).toFixed(0) + '%';
-              },
-              style: {
-                  color: 'black'
-              }
-          },
-          opposite: true
-      }],
-      series: [{
-          name: "Balance",
-          yAxis: 0,
-          data: balance
-      }, {
-          name: "Effective Balance",
-          yAxis: 0,
-          step: true,
-          data: effective
-      },
-      {
-          name: "Validator Effectiveness",
-          yAxis: 1,
-          data: utilization,
-          tooltip: {
-            pointFormatter: function() {
-              return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${(this.y * 100).toFixed(2)}%</b><br/>`
+      console.log('len', len)
+    for(var i = 0; i < len; i++) {
+      var numOfValidators = effective[i][2]
+      var mostEffectiveBalance = numOfValidators * 3.2
+      utilization.push([effective[i][0], effective[i][1] / mostEffectiveBalance])
+    }
+    console.log('util', effective)
+    Highcharts.stockChart('balancechart', {
+        exporting: {
+            scale: 1
+        },
+        rangeSelector: {
+            enabled: false
+        },
+        chart: {
+            type: 'line',
+            animation: false,
+            style: {
+                fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
+            },
+            backgroundColor: 'rgb(255, 255, 255)'
+        },
+        title: {
+            text: 'Balance History for all Validators'
+        },
+        subtitle: {
+            text: 'Source: beaconcha.in',
+            style: {
+                color: 'black'
             }
-          }
-      }],
-      plotOptions: {
-          line: {
-              animation: false,
-              lineWidth: 2.5,
-          }
-      },
-      legend: {
-          enabled: true,
-          layout: 'horizontal',
-          align: 'center',
-          verticalAlign: 'bottom',
-          borderWidth: 0,
-          itemStyle: {
-              color: '#262327',
-              'font-size': '0.8rem',
-              'font-weight': 'lighter'
-          },
-          itemHoverStyle: {
-              color: '#ff8723'
-          }
-      },
-      credits: {
-          enabled: false
-      },
-      navigator: {
-          maskFill: '#1473e631',
-          outlineColor: '#e5e1e1',
-          handles: {
-              backgroundColor: '#f5f3f3',
-              borderColor: '#26232780'
-          },
-          xAxis: {
-              gridLineColor: '#e5e1e1',
-              labels: {
-                  style: {
-                      color: '#26232780'
-                  }
+        },
+        xAxis: {
+            type: 'datetime',
+            labels: {
+                style: {
+                    color: 'black'
+                }
+            },
+            range: 7 * 24 * 60 * 60 * 1000
+        },
+        yAxis: [{
+            title: {
+                text: 'Balance [ETH]',
+                style: {
+                    color: '#26232780',
+                    'font-size': '0.8rem'
+                }
+            },
+            opposite: false,
+            labels: {
+                formatter: function () {
+                    return this.value.toFixed(0);
+                },
+                style: {
+                    color: 'black'
+                }
+            },
+        }, {
+            softMax: 1,
+            title: {
+                text: 'Validator Effectiveness',
+                style: {
+                    color: '#26232780',
+                    'font-size': '0.8rem'
+                }
+            },
+            labels: {
+                formatter: function () {
+                    return (this.value * 100).toFixed(0) + '%';
+                },
+                style: {
+                    color: 'black'
+                }
+            },
+            opposite: true
+        }],
+        series: [{
+            name: "Balance",
+            yAxis: 0,
+            data: balance
+        }, {
+            name: "Effective Balance",
+            yAxis: 0,
+            step: true,
+            data: effective
+        },
+        {
+            name: "Validator Effectiveness",
+            yAxis: 1,
+            data: utilization,
+            tooltip: {
+              pointFormatter: function() {
+                return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${(this.y * 100).toFixed(2)}%</b><br/>`
               }
-          }
-      },
-      scrollbar: {
-          barBackgroundColor: '#ebe7e7',
-          barBorderWidth: 0,
-          buttonArrowColor: '#262327',
-          rifleColor: '#262327',
-          buttonBackgroundColor: '#ebe7e7',
-          buttonBorderColor: '#ebe7e7',
-          trackBackgroundColor: '#f5f3f3',
-          trackBorderColor: '#e5e1e180'
-      },
-      responsive: {
-          rules: [
-              {
-                  condition: {
-                      maxWidth: 760
-                  },
-                  chartOptions: {
-                      chart: {
-                          marginRight: 45
-                      },
-                      yAxis: [
-                          {
-                              title: {
-                                  text: null
-                              }
-                          },
-                          {
-                              title: {
-                                  text: null
-                              }
-                          }
-                      ]
-                  }
-              }
-          ]
-      }
-  });
+            }
+        }],
+        plotOptions: {
+            line: {
+                animation: false,
+                lineWidth: 2.5,
+            }
+        },
+        legend: {
+            enabled: true,
+            layout: 'horizontal',
+            align: 'center',
+            verticalAlign: 'bottom',
+            borderWidth: 0,
+            itemStyle: {
+                color: '#262327',
+                'font-size': '0.8rem',
+                'font-weight': 'lighter'
+            },
+            itemHoverStyle: {
+                color: '#ff8723'
+            }
+        },
+        credits: {
+            enabled: false
+        },
+        navigator: {
+            maskFill: '#1473e631',
+            outlineColor: '#e5e1e1',
+            handles: {
+                backgroundColor: '#f5f3f3',
+                borderColor: '#26232780'
+            },
+            xAxis: {
+                gridLineColor: '#e5e1e1',
+                labels: {
+                    style: {
+                        color: '#26232780'
+                    }
+                }
+            }
+        },
+        scrollbar: {
+            barBackgroundColor: '#ebe7e7',
+            barBorderWidth: 0,
+            buttonArrowColor: '#262327',
+            rifleColor: '#262327',
+            buttonBackgroundColor: '#ebe7e7',
+            buttonBorderColor: '#ebe7e7',
+            trackBackgroundColor: '#f5f3f3',
+            trackBorderColor: '#e5e1e180'
+        },
+        responsive: {
+            rules: [
+                {
+                    condition: {
+                        maxWidth: 760
+                    },
+                    chartOptions: {
+                        chart: {
+                            marginRight: 45
+                        },
+                        yAxis: [
+                            {
+                                title: {
+                                    text: null
+                                }
+                            },
+                            {
+                                title: {
+                                    text: null
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    });
+    }
+  })
 </script>
 
 <script>
   var data = {{.DailyProposalCount}}
+  if(data && data.length) {
   var proposed = data.map(d => [d.Day * 1000, d.Proposed])
   var missed = data.map(d => [d.Day * 1000, d.Missed])
   Highcharts.stockChart('proposedChart', {
@@ -484,11 +502,12 @@
           ]
       }
   })
+  }
 </script>
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
 {{end}} {{ define "content"}}
-<h1 class="mt-4 text-center">Manage Your Validators</h1>
+<h1 class="mt-4 text-center">Validator Dashboard</h1>
 <h5 class="text-center">Found {{.PendingCount}} pending, {{.ActiveCount}} active and {{.EjectedCount}} ejected validators</h5>
 
 <!-- <ul class="nav nav-pills" id="pills-tab" role="tablist">
@@ -502,21 +521,27 @@
 
 <div>
   <div>
-    <form class="form-inline ml-auto">
+    {{if eq .ActiveCount 0 }}
+    <h1 style="color:red">No Active Validators</h1>
+    <p>Add a validator by searching for the index below</p>
+    {{end}}
+    <form id="validator-form" class="form-inline ml-auto">
       <input class="form-control mr-2 typeahead-dashboard" name="add-validator" type="search" placeholder="Add Validator" aria-label="Search" />
-      <button class="btn btn-primary add-validator-to-dashboard"><span class="fas fa-plus"></span></button>
+      <button type="submit" class="btn btn-primary add-validator-to-dashboard"><span class="fas fa-plus"></span></button>
     </form>
+    {{if .BalanceHistoryChartData}}
     <div class="row border-bottom p-3">
       <div class="col-md-12">
         <div id="balancechart" height="200px"></div>
       </div>
     </div>
+    {{end}} {{if .DailyProposalCount}}
     <div class="row border-bottom p-3">
       <div class="col-md-12">
         <div id="proposedChart" height="200px"></div>
       </div>
     </div>
-    {{if gt .PendingCount 0}}
+    {{end}} {{if gt .PendingCount 0}}
     <h4 class="mt-5">Pending activation</h4>
     <div class="table-responsive col-sm-12">
       <table class="table table-sm" id="pending">

@@ -125,6 +125,12 @@ type ValidatorBalanceHistory struct {
 	Balance uint64 `db:"balance"`
 }
 
+type DashboardValidatorBalanceHistory struct {
+	Epoch          uint64  `db:"epoch"`
+	Balance        uint64  `db:"balance"`
+	ValidatorCount float64 `db:"validatorcount"`
+}
+
 type ValidatorAttestation struct {
 	Epoch          uint64 `db:"epoch"`
 	AttesterSlot   uint64 `db:"attesterslot"`
