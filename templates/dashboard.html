@@ -130,9 +130,8 @@
     }
 
     function addValidator(index) {
-        console.log("add validator", index)
-        for (var i=0;i<validators.length;i++) {
-            if (validators[i]===index) return
+        for (var i=0; i<validators.length; i++) {
+            if (validators[i] === index) return
         }
         validators.push(index)
         validators.sort()
@@ -319,8 +318,8 @@
 </ul>
 
 <div class="tab-content" id="pills-tabContent">
-  <div class="tab-pane fade show active" id="pills-overview" role="tabpanel"> Overview </div>
-  <div class="tab-pane fade" id="pills-validators" role="tabpanel">
+  <div class="tab-pane fade" id="pills-overview" role="tabpanel"> Overview </div>
+  <div class="tab-pane fade show active" id="pills-validators" role="tabpanel">
     <form class="form-inline ml-auto">
         <input class="form-control mr-2 typeahead-dashboard" name="add-validator" type="search"
                placeholder="Add Validator" aria-label="Search">
