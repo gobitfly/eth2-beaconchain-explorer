@@ -211,7 +211,7 @@
         });
     </script>
     <script>
-        var data =; {{.DailyProposalCount}}
+        var data = {{.DailyProposalCount}};
         var proposed = data.map(d => [d.Day * 1000, d.Proposed]);
         var missed = data.map(d => [d.Day * 1000, d.Missed]);
         var orphaned = data.map(d => [d.Day * 1000, d.Orphaned]);
