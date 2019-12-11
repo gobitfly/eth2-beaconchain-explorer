@@ -7,7 +7,7 @@
       serverSide: true,
       ordering: false,
       searching: false,
-      ajax: '/dashboard/data/pending',
+      ajax: '/dashboard/data/pending'+window.location.search,
       pagingType: 'full',
       columnDefs: [
         {
@@ -31,7 +31,7 @@
       serverSide: true,
       ordering: false,
       searching: true,
-      ajax: '/dashboard/data/active',
+      ajax: '/dashboard/data/active'+window.location.search,
       pagingType: 'full',
       columnDefs: [
         {
@@ -55,7 +55,7 @@
       serverSide: true,
       ordering: false,
       searching: true,
-      ajax: '/dashboard/data/ejected',
+      ajax: '/dashboard/data/ejected'+window.location.search,
       pagingType: 'full',
       columnDefs: [
         {
@@ -74,6 +74,78 @@
         }
       ]
     })
+
+    var validators = getValidators()
+
+    var bhValidators = new Bloodhound({
+        datumTokenizer: Bloodhound.tokenizers.whitespace,
+        queryTokenizer: Bloodhound.tokenizers.whitespace,
+        identify: function(obj) {
+            return obj.index;
+        },
+        remote: {
+            url: '/search/validators/%QUERY',
+            wildcard: '%QUERY',
+        }
+    })
+    
+    $('.typeahead-dashboard').typeahead({
+        minLength: 1,
+        highlight: true,
+        hint: false,
+        autoselect: false,
+    }, {
+        limit: 5,
+        name: 'validators',
+        source: bhValidators,
+        display: 'pubkey',
+        templates: {
+            // header: '<h3>Validators</h3>',
+            suggestion: function(data) {
+                return `<div>${data.index}: ${data.pubkey.substring(0,16)}…</div>`;
+            }
+        }
+    })
+    $('.typeahead-dashboard').on('focus', function(event) {
+        if (event.target.value !== '') {
+            $(this).trigger($.Event('keydown', {
+                keyCode: 40
+            }));
+        }
+    })
+    
+    $('.typeahead-dashboard').on('input', function() {
+        $('.tt-suggestion').first().addClass('tt-cursor');
+    })
+    
+    $('.typeahead-dashboard').on('typeahead:select', function(ev, sug) {
+        addValidator(sug.index)
+    })
+
+    function getValidators() {
+        var usp = new URLSearchParams(window.location.search)
+        var validatorsStr = usp.get('validators')
+        var validators = validatorsStr.split(',')
+        return validators
+    }
+
+    function addValidator(index) {
+        console.log("add validator", index)
+        for (var i=0;i<validators.length;i++) {
+            if (validators[i]===index) return
+        }
+        validators.push(index)
+        validators.sort()
+        window.location.search = '?validators='+validators.join(',')
+    }
+
+    function removeValidator(index) {
+
+    }
+
+    function getQueryStringValue (key) {  
+        return decodeURIComponent(window.location.search.replace(new RegExp("^(?:.*[&\\?]" + encodeURIComponent(key).replace(/[\.\+\*]/g, "\\$&") + "(?:\\=([^&]*))?)?.*$", "i"), "$1"));  
+    } 
   })
 </script>
 <script src="https://code.highcharts.com/stock/highstock.js"></script>
@@ -249,6 +321,11 @@
 <div class="tab-content" id="pills-tabContent">
   <div class="tab-pane fade show active" id="pills-overview" role="tabpanel"> Overview </div>
   <div class="tab-pane fade" id="pills-validators" role="tabpanel">
+    <form class="form-inline ml-auto">
+        <input class="form-control mr-2 typeahead-dashboard" name="add-validator" type="search"
+               placeholder="Add Validator" aria-label="Search">
+        <button class="btn btn-primary add-validator-to-dashboard"><span class="fas fa-plus"></span></button>
+    </form>
     {{if gt .PendingCount 0}}
     <h4 class="mt-5">Pending activation</h4>
     <div class="table-responsive col-sm-12">
