@@ -121,6 +121,9 @@
                     <li class="nav-item {{ if eq .Active "charts"}}active{{end}}">
                         <a class="nav-link" href="/charts"><i class="fas fa-chart-bar"></i> Charts</a>
                     </li>
+                    <li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
+                        <a class="nav-link" href="/dashboard"><i class="fas fa-chart-line"></i> Dashboard</a>
+                    </li>
                 </ul>
                 <form class="form-inline ml-auto" action="/search" method="POST">
                     <input class="form-control mr-2 typeahead" name="search" type="search"

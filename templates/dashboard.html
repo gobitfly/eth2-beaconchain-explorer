@@ -1,0 +1,154 @@
+{{ define "js"}}
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+<script>
+  $(document).ready(function() {
+    $('#pending').DataTable({
+      processing: true,
+      serverSide: true,
+      ordering: false,
+      searching: false,
+      ajax: '/validators/data/pending',
+      pagingType: 'full',
+      columnDefs: [
+        {
+          targets: 0,
+          data: '0',
+          render: function(data, type, row, meta) {
+            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+          }
+        },
+        {
+          targets: 1,
+          data: '1',
+          render: function(data, type, row, meta) {
+            return '<a href="/validator/' + data + '">' + data + '</a>'
+          }
+        }
+      ]
+    })
+    $('#active').DataTable({
+      processing: true,
+      serverSide: true,
+      ordering: false,
+      searching: true,
+      ajax: '/validators/data/active',
+      pagingType: 'full',
+      columnDefs: [
+        {
+          targets: 0,
+          data: '0',
+          render: function(data, type, row, meta) {
+            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+          }
+        },
+        {
+          targets: 1,
+          data: '1',
+          render: function(data, type, row, meta) {
+            return '<a href="/validator/' + data + '">' + data + '</a>'
+          }
+        }
+      ]
+    })
+    $('#ejected').DataTable({
+      processing: true,
+      serverSide: true,
+      ordering: false,
+      searching: true,
+      ajax: '/validators/data/ejected',
+      pagingType: 'full',
+      columnDefs: [
+        {
+          targets: 0,
+          data: '0',
+          render: function(data, type, row, meta) {
+            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+          }
+        },
+        {
+          targets: 1,
+          data: '1',
+          render: function(data, type, row, meta) {
+            return '<a href="/validator/' + data + '">' + data + '</a>'
+          }
+        }
+      ]
+    })
+  })
+</script>
+{{end}} {{ define "css"}}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+{{end}} {{ define "content"}}
+<h1 class="mt-4 text-center">Manage Your Validators</h1>
+<h5 class="text-center">Found {{.PendingCount}} pending, {{.ActiveCount}} active and {{.EjectedCount}} ejected validators</h5>
+
+<ul class="nav nav-pills" id="pills-tab" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview" aria-selected="true" role="tab" aria-controls="pills-overview">Overview</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="pills-validators-tab" data-toggle="pill" href="#pills-validators" aria-selected="false" role="tab" aria-controls="pills-validators">Validators</a>
+  </li>
+</ul>
+
+<div class="tab-content" id="pills-tabContent">
+  <div class="tab-pane fade show active" id="pills-overview" role="tabpanel"> Overview </div>
+  <div class="tab-pane fade" id="pills-validators" role="tabpanel">
+    {{if gt .PendingCount 0}}
+    <h4 class="mt-5">Pending activation</h4>
+    <div class="table-responsive col-sm-12">
+      <table class="table table-sm" id="pending">
+        <thead>
+          <tr>
+            <th>Public Key</th>
+            <th>Index</th>
+            <th>Current Balance</th>
+            <th>Effective Balance</th>
+            <th>Slashed</th>
+            <th>Activation Eligibility Epoch</th>
+            <th>Activation Epoch</th>
+          </tr>
+        </thead>
+        <tbody> </tbody>
+      </table>
+    </div>
+    {{end}}
+    <h4 class="mt-5">Active</h4>
+    <div class="table-responsive col-sm-12">
+      <table class="table table-sm" id="active">
+        <thead>
+          <tr>
+            <th>Public Key</th>
+            <th>Index</th>
+            <th>Current Balance</th>
+            <th>Effective Balance</th>
+            <th>Slashed</th>
+            <th>Activation Eligibility Epoch</th>
+            <th>Activation Epoch</th>
+          </tr>
+        </thead>
+        <tbody> </tbody>
+      </table>
+    </div>
+    <h4 class="mt-5">Ejected</h4>
+    <div class="table-responsive col-sm-12">
+      <table class="table table-sm" id="ejected">
+        <thead>
+          <tr>
+            <th>Public Key</th>
+            <th>Index</th>
+            <th>Current Balance</th>
+            <th>Effective Balance</th>
+            <th>Slashed</th>
+            <th>Activation Eligibility Epoch</th>
+            <th>Activation Epoch</th>
+            <th>Exit Epoch</th>
+            <th>Withdrawable Epoch</th>
+          </tr>
+        </thead>
+        <tbody> </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{{end}}
