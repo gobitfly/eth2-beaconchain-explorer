@@ -118,7 +118,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 					Missed:   proposals[i].Count,
 				})
 			} else {
-				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", err)
+				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
 			}
 		} else {
 			if proposals[i].Day == proposals[i+1].Day {
@@ -141,7 +141,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 					Missed:   proposals[i].Count,
 				})
 			} else {
-				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", err)
+				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
 			}
 		}
 	}
