@@ -159,14 +159,14 @@ func SaveValidatorQueue(validators *ethpb.ValidatorQueue, validatorIndices map[s
 	}
 
 	stmtValidatorQueueActivation, err := tx.Prepare(`INSERT INTO validatorqueue_activation (index, publickey)
- 													VALUES    ($1, $2)`)
+ 													VALUES    ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtValidatorQueueActivation.Close()
 
 	stmtValidatorQueueExit, err := tx.Prepare(`INSERT INTO validatorqueue_exit (index, publickey)
- 													VALUES    ($1, $2)`)
+ 													VALUES    ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
 	if err != nil {
 		return err
 	}
