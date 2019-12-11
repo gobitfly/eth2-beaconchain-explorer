@@ -146,6 +146,32 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var balanceHistory []*types.ValidatorBalanceHistory
+	err = db.DB.Select(&balanceHistory, "SELECT epoch, SUM(balance) as balance FROM validator_balances WHERE validatorindex = ANY($1) GROUP BY epoch ORDER BY epoch", filter)
+	if err != nil {
+		logger.Printf("Error retrieving validator balance history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	dashboardPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
+	for i, balance := range balanceHistory {
+		dashboardPageData.BalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
+	}
+
+	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
+	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, SUM(effectivebalance) as balance FROM validator_set WHERE validatorindex = ANY($1) GROUP BY epoch ORDER BY epoch", filter)
+	if err != nil {
+		logger.Printf("Error retrieving validator effective balance history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	dashboardPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(effectiveBalanceHistory))
+	for i, balance := range effectiveBalanceHistory {
+		dashboardPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
+	}
+
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
