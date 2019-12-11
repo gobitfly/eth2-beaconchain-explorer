@@ -19,7 +19,21 @@ import (
 var dashboardTemplate = template.Must(template.New("dashboard").ParseFiles("templates/layout.html", "templates/dashboard.html"))
 var dashboardNotFoundTemplate = template.Must(template.New("dashboardnotfound").ParseFiles("templates/layout.html", "templates/dashboardnotfound.html"))
 
-var filter = pq.Array([]int{1, 2, 3, 4})
+func parseValidatorsFromQueryString(str string) ([]uint64, error) {
+	strSplit := strings.Split(str, ",")
+	if len(strSplit) > 100 {
+		return []uint64{}, fmt.Errorf("Too much validators")
+	}
+	validators := make([]uint64, len(strSplit))
+	for i, vStr := range strSplit {
+		v, err := strconv.ParseUint(vStr, 10, 64)
+		if err != nil {
+			return []uint64{}, fmt.Errorf("Invalid query")
+		}
+		validators[i] = v
+	}
+	return validators, nil
+}
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
 	dashboardTemplate = template.Must(template.New("dashboard").ParseFiles("templates/layout.html", "templates/dashboard.html"))
@@ -139,6 +153,15 @@ func DashboardValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
+	qValidators := q.Get("validators")
+	filterArr, err := parseValidatorsFromQueryString(qValidators)
+	if err != nil {
+		logger.WithError(err).Errorf("Failed parsing validators from query string: %v", qValidators)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	filter := pq.Array(filterArr)
+
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
@@ -228,6 +251,15 @@ func DashboardValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
+
+	qValidators := q.Get("validators")
+	filterArr, err := parseValidatorsFromQueryString(qValidators)
+	if err != nil {
+		logger.WithError(err).Errorf("Failed parsing validators from query string: %v", qValidators)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	filter := pq.Array(filterArr)
 
 	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
 	if len(search) > 128 {
@@ -331,6 +363,15 @@ func DashboardValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
+
+	qValidators := q.Get("validators")
+	filterArr, err := parseValidatorsFromQueryString(qValidators)
+	if err != nil {
+		logger.WithError(err).Errorf("Failed parsing validators from query string: %v", qValidators)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	filter := pq.Array(filterArr)
 
 	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
 	if len(search) > 128 {
