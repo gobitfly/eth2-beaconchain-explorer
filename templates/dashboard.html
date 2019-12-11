@@ -7,7 +7,7 @@
       serverSide: true,
       ordering: false,
       searching: false,
-      ajax: '/validators/data/pending',
+      ajax: '/dashboard/data/pending',
       pagingType: 'full',
       columnDefs: [
         {
@@ -31,7 +31,7 @@
       serverSide: true,
       ordering: false,
       searching: true,
-      ajax: '/validators/data/active',
+      ajax: '/dashboard/data/active',
       pagingType: 'full',
       columnDefs: [
         {
@@ -55,7 +55,7 @@
       serverSide: true,
       ordering: false,
       searching: true,
-      ajax: '/validators/data/ejected',
+      ajax: '/dashboard/data/ejected',
       pagingType: 'full',
       columnDefs: [
         {
@@ -112,7 +112,7 @@
         <tbody> </tbody>
       </table>
     </div>
-    {{end}}
+    {{end}} {{if gt .ActiveCount 0}}
     <h4 class="mt-5">Active</h4>
     <div class="table-responsive col-sm-12">
       <table class="table table-sm" id="active">
@@ -130,6 +130,7 @@
         <tbody> </tbody>
       </table>
     </div>
+    {{end}} {{if gt .EjectedCount 0}}
     <h4 class="mt-5">Ejected</h4>
     <div class="table-responsive col-sm-12">
       <table class="table table-sm" id="ejected">
@@ -149,6 +150,7 @@
         <tbody> </tbody>
       </table>
     </div>
+    {{end}}
   </div>
 </div>
 {{end}}
