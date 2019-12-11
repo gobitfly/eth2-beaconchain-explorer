@@ -157,6 +157,15 @@
 <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 
 <script>
+  var effective = {{.EffectiveBalanceHistoryChartData}}
+  var balance = {{.BalanceHistoryChartData}}
+
+  var utilization = []
+
+  for(var i = 0; i < balance.length && i < effective.length; i++) {
+    if(effective[i][0] === balance[i][0])
+    utilization.push([effective[i][0], effective[i][1] / balance[i][1]])
+  }
   Highcharts.stockChart('balancechart', {
       exporting: {
           scale: 1
@@ -190,7 +199,7 @@
           },
           range: 7 * 24 * 60 * 60 * 1000
       },
-      yAxis: {
+      yAxis: [{
           title: {
               text: 'Balance [ETH]',
               style: {
@@ -198,6 +207,7 @@
                   'font-size': '0.8rem'
               }
           },
+          opposite: false,
           labels: {
               formatter: function () {
                   return this.value.toFixed(0);
@@ -206,35 +216,44 @@
                   color: 'black'
               }
           },
-      }
-      // {
-      //     title: {
-      //         text: 'Effective Balance [ETH]',
-      //         style: {
-      //             color: '#26232780',
-      //             'font-size': '0.8rem'
-      //         }
-      //     },
-      //     labels: {
-      //         formatter: function () {
-      //             return this.value.toFixed(0);
-      //         },
-      //         style: {
-      //             color: 'black'
-      //         }
-      //     },
-      //     opposite: true
-      // }
-      ,
+      }, {
+          type: 'percentage',
+          title: {
+              text: 'Validator Effectiveness',
+              style: {
+                  color: '#26232780',
+                  'font-size': '0.8rem'
+              }
+          },
+          labels: {
+              formatter: function () {
+                  return (this.value * 100).toFixed(0) + '%';
+              },
+              style: {
+                  color: 'black'
+              }
+          },
+          opposite: true
+      }],
       series: [{
           name: "Balance",
-          // yAxis: 0,
-          data: {{.BalanceHistoryChartData}}
+          yAxis: 0,
+          data: balance
       }, {
           name: "Effective Balance",
-          // yAxis: 1,
+          yAxis: 0,
           step: true,
-          data: {{.EffectiveBalanceHistoryChartData}}
+          data: effective
+      },
+      {
+          name: "Validator Effectiveness",
+          yAxis: 1,
+          data: utilization,
+          tooltip: {
+            pointFormatter: function() {
+              return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${(this.y * 100).toFixed(2)}%</b><br/>`
+            }
+          }
       }],
       plotOptions: {
           line: {
