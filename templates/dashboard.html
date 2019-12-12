@@ -632,23 +632,20 @@
     <h1 style="color:red">No Active Validators</h1>
     <p>Add a validator by searching for the index below</p>
     {{end}}
+    <!--
     <form id="validator-form" class="form-inline ml-auto">
       <ul id="selected-validators" class="multiselect">
         <li class="input"><input class="typeahead-dashboard" type="search" placeholder="Add Validator" aria-label="Search"/></li>
       </ul>
-      <!--
-      <input class="form-control mr-2 typeahead-dashboard" name="add-validator" type="search" placeholder="Add Validator" aria-label="Search" />
       <button type="submit" class="btn btn-primary add-validator-to-dashboard"><span class="fas fa-plus"></span></button>
-      -->
     </form>
+    -->
     {{if .BalanceHistoryChartData}}
-    <!--
     <div class="row border-bottom p-3">
       <ul id="selected-validators" class="multiselect">
         <li class="input"><input class="typeahead-dashboard" type="search" placeholder="Add Validator" aria-label="Search" /></li>
       </ul>
     </div>
-    -->
     <div class="row border-bottom p-3">
       <div class="col-md-12">
         <div id="balancechart" height="200px"></div>
