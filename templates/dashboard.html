@@ -29,29 +29,7 @@
 </script>
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
-<style>
-  ul.multiselect {
-    padding: 0;
-    border: 1px solid gray;
-    border-radius: 5px;
-  }
-  ul.multiselect li.input {
-    list-style: none;
-    float: left;
-    /*border: 1px solid black;*/
-  }
-  ul.multiselect li.item {
-    list-style: none;
-    float: left;
-    border: 1px solid black;
-    border-radius: 5px;
-    margin: 2px;
-    padding: 0 5px;
-  }
-  ul.multiselect li.item .remove-validator {
-    cursor: pointer;
-  }
-</style>
+<link rel="stylesheet" type="text/css" href="/css/dashboard.css" />
 {{end}} {{ define "content"}}
 <h1 class="mt-4 text-center">Validator Dashboard</h1>
 <h5 class="text-center">Found {{.PendingCount}} pending, {{.ActiveCount}} active and {{.EjectedCount}} ejected validators</h5>
