@@ -338,6 +338,11 @@ func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
+	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
+	if len(search) > 128 {
+		search = search[:128]
+	}
+
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
@@ -389,9 +394,10 @@ func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
 			ON validator_set.validatorindex = validators.validatorindex
 		WHERE validator_set.epoch = $1 
 			AND validator_set.epoch < activationepoch
+			AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 			AND validator_set.validatorindex = ANY($5)
 		ORDER BY activationepoch DESC 
-		LIMIT $2 OFFSET $3`, services.LatestEpoch(), length, start, filter)
+		LIMIT $3 OFFSET $4`, services.LatestEpoch(), "%"+search+"%", length, start, filter)
 
 	if err != nil {
 		logger.Printf("Error retrieving pending validator data: %v", err)
