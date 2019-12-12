@@ -1,0 +1,21 @@
+ul.multiselect {
+  padding: 0;
+  border: 1px solid gray;
+  border-radius: 5px;
+}
+ul.multiselect li.input {
+  list-style: none;
+  float: left;
+  /*border: 1px solid black;*/
+}
+ul.multiselect li.item {
+  list-style: none;
+  float: left;
+  border: 1px solid black;
+  border-radius: 5px;
+  margin: 2px;
+  padding: 0 5px;
+}
+ul.multiselect li.item .remove-validator {
+  cursor: pointer;
+}
