@@ -344,6 +344,7 @@ function createBalanceChart(effective, balance, utilization) {
       },
       {
         softMax: 1,
+        softMin: 0,
         title: {
           text: 'Validator Effectiveness',
           style: {
@@ -351,23 +352,9 @@ function createBalanceChart(effective, balance, utilization) {
             'font-size': '0.8rem'
           }
         },
-        {
-          softMax: 1,
-          softMin: 0,
-          title: {
-            text: 'Validator Effectiveness',
-            style: {
-              color: '#26232780',
-              'font-size': '0.8rem'
-            }
-          },
-          labels: {
-            formatter: function() {
-              return (this.value * 100).toFixed(0) + '%'
-            },
-            style: {
-              color: 'black'
-            }
+        labels: {
+          formatter: function() {
+            return (this.value * 100).toFixed(0) + '%'
           },
           style: {
             color: 'black'
