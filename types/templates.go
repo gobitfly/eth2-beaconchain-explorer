@@ -126,12 +126,6 @@ type ValidatorBalanceHistory struct {
 	Balance uint64 `db:"balance"`
 }
 
-type DashboardValidatorBalanceHistory struct {
-	Epoch          uint64  `db:"epoch"`
-	Balance        uint64  `db:"balance"`
-	ValidatorCount float64 `db:"validatorcount"`
-}
-
 type ValidatorAttestation struct {
 	Epoch          uint64 `db:"epoch"`
 	AttesterSlot   uint64 `db:"attesterslot"`
@@ -294,13 +288,22 @@ type SearchAheadValidatorsResult []struct {
 	Pubkey string `db:"pubkey" json:"pubkey,omitempty"`
 }
 
-type DashboardPageData struct {
-	Title                            string
-	Validators                       []*ValidatorsPageDataValidators
-	ActiveCount                      uint64
-	PendingCount                     uint64
-	EjectedCount                     uint64
-	DailyProposalCount               []DailyProposalCount
-	BalanceHistoryChartData          [][]float64
-	EffectiveBalanceHistoryChartData [][]float64
+type GenericChartData struct {
+	Title        string                    `json:"title"`
+	Subtitle     string                    `json:"subtitle"`
+	XAxisTitle   string                    `json:"x_axis_title"`
+	YAxisTitle   string                    `json:"y_axis_title"`
+	StackingMode string                    `json:"stacking_mode"`
+	Series       []*GenericChartDataSeries `json:"series"`
+}
+
+type GenericChartDataSeries struct {
+	Name string      `json:"name"`
+	Data [][]float64 `json:"data"`
+}
+
+type DashboardValidatorBalanceHistory struct {
+	Epoch          uint64  `db:"epoch"`
+	Balance        uint64  `db:"balance"`
+	ValidatorCount float64 `db:"validatorcount"`
 }
