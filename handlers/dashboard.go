@@ -17,7 +17,6 @@ import (
 )
 
 var dashboardTemplate = template.Must(template.New("dashboard").ParseFiles("templates/layout.html", "templates/dashboard.html"))
-var dashboardNotFoundTemplate = template.Must(template.New("dashboardnotfound").ParseFiles("templates/layout.html", "templates/dashboardnotfound.html"))
 
 func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 	if str == "" {
@@ -52,129 +51,7 @@ func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 }
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
-	dashboardTemplate = template.Must(template.New("dashboard").ParseFiles("templates/layout.html", "templates/dashboard.html"))
 	w.Header().Set("Content-Type", "text/html")
-
-	q := r.URL.Query()
-	qValidators := q.Get("validators")
-
-	filterArr, err := parseValidatorsFromQueryString(qValidators)
-	if err != nil {
-		logger.WithError(err).Error("Failed parsing validators from query string")
-		http.Error(w, err.Error(), 404)
-		return
-	}
-	filter := pq.Array(filterArr)
-	dashboardPageData := types.DashboardPageData{}
-	dashboardPageData.Title = "Hello, World"
-
-	var validators []*types.ValidatorsPageDataValidators
-
-	err = db.DB.Select(&validators, `SELECT 
-	epoch, 
-	activationepoch, 
-	exitepoch 
-	FROM validator_set 
-	WHERE epoch = $1 and validatorindex = ANY($2)
-	ORDER BY validatorindex`, services.LatestEpoch(), filter)
-
-	if err != nil {
-		logger.Printf("Error retrieving validators data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	for _, validator := range validators {
-		if validator.Epoch > validator.ExitEpoch {
-			dashboardPageData.EjectedCount++
-		} else if validator.Epoch < validator.ActivationEpoch {
-			dashboardPageData.PendingCount++
-		} else {
-			dashboardPageData.ActiveCount++
-		}
-	}
-
-	proposals := []struct {
-		Day    uint64
-		Status uint64
-		Count  uint
-	}{}
-
-	err = db.DB.Select(&proposals, "select slot / 7200 as day, status, count(*) FROM blocks WHERE proposer = ANY($1) group by day, status order by day;", filter)
-	if err != nil {
-		logger.Error("Error retrieving Daily Proposed Blocks blocks count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	for i := 0; i < len(proposals); i++ {
-		if i == len(proposals)-1 {
-			if proposals[i].Status == 1 {
-				dashboardPageData.DailyProposalCount = append(dashboardPageData.DailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: proposals[i].Count,
-					Missed:   0,
-				})
-			} else if proposals[i].Status == 2 {
-				dashboardPageData.DailyProposalCount = append(dashboardPageData.DailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: 0,
-					Missed:   proposals[i].Count,
-				})
-			} else {
-				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
-			}
-		} else {
-			if proposals[i].Day == proposals[i+1].Day {
-				dashboardPageData.DailyProposalCount = append(dashboardPageData.DailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: proposals[i].Count,
-					Missed:   proposals[i+1].Count,
-				})
-				i++
-			} else if proposals[i].Status == 1 {
-				dashboardPageData.DailyProposalCount = append(dashboardPageData.DailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: proposals[i].Count,
-					Missed:   0,
-				})
-			} else if proposals[i].Status == 2 {
-				dashboardPageData.DailyProposalCount = append(dashboardPageData.DailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: 0,
-					Missed:   proposals[i].Count,
-				})
-			} else {
-				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
-			}
-		}
-	}
-
-	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, SUM(balance) as balance FROM validator_balances WHERE validatorindex = ANY($1) GROUP BY epoch ORDER BY epoch", filter)
-	if err != nil {
-		logger.Printf("Error retrieving validator balance history: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	dashboardPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
-	for i, balance := range balanceHistory {
-		dashboardPageData.BalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
-	}
-
-	var effectiveBalanceHistory []*types.DashboardValidatorBalanceHistory
-	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, SUM(effectivebalance) as balance, COUNT(*) as validatorcount FROM validator_set WHERE validatorindex = ANY($1) GROUP BY epoch ORDER BY epoch", filter)
-	if err != nil {
-		logger.Printf("Error retrieving validator effective balance history: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	dashboardPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(effectiveBalanceHistory))
-	for i, balance := range effectiveBalanceHistory {
-		dashboardPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000, balance.ValidatorCount}
-	}
 
 	data := &types.PageData{
 		Meta: &types.Meta{
@@ -185,9 +62,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		Data:               nil,
 	}
 
-	data.Data = dashboardPageData
-
-	err = dashboardTemplate.ExecuteTemplate(w, "layout", data)
+	err := dashboardTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
 	}

@@ -56,3 +56,13 @@ ul.multiselect input {
 ul.multiselect input:focus {
   outline: none;
 }
+
+#pending-validators-table-holder,
+#active-validators-table-holder,
+#ejected-validators-table-holder {
+  display: none;
+}
+
+#chart-holder {
+  display: none;
+}

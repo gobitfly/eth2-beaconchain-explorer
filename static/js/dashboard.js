@@ -26,6 +26,8 @@ $(document).ready(function() {
     })
     .on('xhr.dt', function(e, settings, json, xhr) {
       // hide table if there are no data
+      validatorsCount.pending = json.recordsFiltered
+      renderDashboardInfo()
       document.getElementById('pending-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
   var activeTable = $('#active')
@@ -55,6 +57,8 @@ $(document).ready(function() {
     })
     .on('xhr.dt', function(e, settings, json, xhr) {
       // hide table if there are no data
+      validatorsCount.active = json.recordsFiltered
+      renderDashboardInfo()
       document.getElementById('active-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
   var ejectedTable = $('#ejected')
@@ -84,6 +88,8 @@ $(document).ready(function() {
     })
     .on('xhr.dt', function(e, settings, json, xhr) {
       // hide table if there are no data
+      validatorsCount.ejected = json.recordsFiltered
+      renderDashboardInfo()
       document.getElementById('ejected-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
 
@@ -155,6 +161,11 @@ $(document).ready(function() {
   // })
 
   var validators = []
+  var validatorsCount = {
+    pending: 0,
+    active: 0,
+    ejected: 0
+  }
   setValidatorsFromURL()
   renderSelectedValidators()
   renderCharts()
@@ -172,6 +183,11 @@ $(document).ready(function() {
       elsItems.push(elItem)
     }
     elHolder.prepend(...elsItems)
+  }
+
+  function renderDashboardInfo() {
+    var el = document.getElementById('dashboard-info')
+    el.innerText = `Found ${validatorsCount.pending} pending, ${validatorsCount.active} active and ${validatorsCount.ejected} ejected validators`
   }
 
   function setValidatorsFromURL() {
@@ -237,12 +253,10 @@ $(document).ready(function() {
 
   function renderCharts() {
     if (validators.length === 0) {
-      document.getElementById('balance-chart').style.display = 'none'
-      document.getElementById('proposed-chart').style.display = 'none'
+      document.getElementById('chart-holder').style.display = 'none'
       return
     }
-    document.getElementById('balance-chart').style.display = 'block'
-    document.getElementById('proposed-chart').style.display = 'block'
+    document.getElementById('chart-holder').style.display = 'block'
     var qryStr = '?validators=' + validators.join(',')
     $.ajax({
       url: '/dashboard/data/balance' + qryStr,
