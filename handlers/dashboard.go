@@ -82,7 +82,15 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	filter := pq.Array(filterArr)
 
 	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, SUM(balance) as balance FROM validator_balances WHERE validatorindex = ANY($1) GROUP BY epoch ORDER BY epoch", filter)
+	err = db.DB.Select(&balanceHistory, `SELECT validator_balances.epoch, SUM(validator_balances.balance) as balance 
+	FROM validator_balances
+	LEFT JOIN validator_set ON validator_set.epoch = validator_balances.epoch
+	AND validator_set.validatorindex = validator_balances.validatorindex
+	WHERE validator_balances.validatorindex = ANY($1)
+	AND validator_set.epoch > validator_set.activationepoch 
+  AND validator_set.epoch < validator_set.exitepoch
+	GROUP BY validator_balances.epoch 
+	ORDER BY validator_balances.epoch`, filter)
 	if err != nil {
 		logger.Printf("Error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -95,7 +103,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var effectiveBalanceHistory []*types.DashboardValidatorBalanceHistory
-	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, SUM(effectivebalance) as balance, COUNT(*) as validatorcount FROM validator_set WHERE validatorindex = ANY($1) GROUP BY epoch ORDER BY epoch", filter)
+	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, SUM(effectivebalance) as balance, COUNT(*) as validatorcount FROM validator_set WHERE validatorindex = ANY($1) AND epoch > activationepoch AND epoch < exitepoch GROUP BY epoch ORDER BY epoch", filter)
 	if err != nil {
 		logger.Printf("Error retrieving validator effective balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
