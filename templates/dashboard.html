@@ -27,6 +27,16 @@
   var data = {{.DailyProposalCount}}
   createProposedChart(data)
 </script>
+
+<script>
+  $('.multiselect-border input').on('focus', function(event) {
+    $('.multiselect-border').addClass('focused')
+  })
+
+  $('.multiselect-border input').on('blur', function(event) {
+    $('.multiselect-border').removeClass('focused')
+  })
+</script>
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
 <link rel="stylesheet" type="text/css" href="/css/dashboard.css" />
@@ -57,10 +67,12 @@
       <button type="submit" class="btn btn-primary add-validator-to-dashboard"><span class="fas fa-plus"></span></button>
     </form>
     -->
-    <div class="row border-bottom p-3">
-      <ul id="selected-validators" class="multiselect">
-        <li class="input"><input class="typeahead-dashboard" placeholder="Add Validator" aria-label="Search"/></li>
-      </ul>
+    <div class="multiselect-container" class="row border-bottom p-3">
+      <span class="multiselect-border">
+        <ul id="selected-validators" class="multiselect">
+          <li class="input"><input class="typeahead-dashboard" placeholder="Add Validator" aria-label="Search"/></li>
+        </ul>
+      </span>
     </div>
     <div id="chart-holder">
       <div class="row border-bottom p-3">

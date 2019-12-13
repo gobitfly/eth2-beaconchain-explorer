@@ -292,6 +292,7 @@ function createBalanceChart(effective, balance, utilization) {
         },
         {
           softMax: 1,
+          softMin: 0,
           title: {
             text: 'Validator Effectiveness',
             style: {
