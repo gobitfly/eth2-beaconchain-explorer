@@ -6,29 +6,6 @@
 <script src="/js/dashboard.js"></script>
 
 <script>
-  $(document).ready(function() {
-    var effective = {{.EffectiveBalanceHistoryChartData}}
-    var balance = {{.BalanceHistoryChartData}}
-    var utilization = []
-    if(effective && effective.length && balance && balance.length) {
-      var len = effective.length < balance.length ? effective.length : balance.length;
-
-    for(var i = 0; i < len; i++) {
-      var numOfValidators = effective[i][2]
-      var mostEffectiveBalance = numOfValidators * 3.2
-      utilization.push([effective[i][0], effective[i][1] / mostEffectiveBalance])
-    }
-      createBalanceChart(effective, balance, utilization)
-    }
-  })
-</script>
-
-<script>
-  var data = {{.DailyProposalCount}}
-  createProposedChart(data)
-</script>
-
-<script>
   $('.multiselect-border input').on('focus', function(event) {
     $('.multiselect-border').addClass('focused')
   })
@@ -37,6 +14,7 @@
     $('.multiselect-border').removeClass('focused')
   })
 </script>
+
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
 <link rel="stylesheet" type="text/css" href="/css/dashboard.css" />
@@ -55,10 +33,12 @@
 
 <div>
   <div>
+    <!--
     {{if eq .ActiveCount 0 }}
     <h1 style="color:red">No Active Validators</h1>
     <p>Add a validator by searching for the index below</p>
     {{end}}
+    -->
     <!--
     <form id="validator-form" class="form-inline ml-auto">
       <ul id="selected-validators" class="multiselect">
@@ -86,61 +66,67 @@
         </div>
       </div>
     </div>
-    <h4 class="mt-5">Pending activation</h4>
-    <div class="table-responsive col-sm-12">
-      <table class="table table-sm" id="pending">
-        <thead>
-          <tr>
-            <th>Public Key</th>
-            <th>Index</th>
-            <th>Current Balance</th>
-            <th>Effective Balance</th>
-            <th>Slashed</th>
-            <th>Activation Eligibility Epoch</th>
-            <th>Activation Epoch</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody> </tbody>
-      </table>
+    <div id="pending-validators-table-holder">
+      <h4 class="mt-5">Pending activation</h4>
+      <div class="table-responsive col-sm-12">
+        <table class="table table-sm" id="pending">
+          <thead>
+            <tr>
+              <th>Public Key</th>
+              <th>Index</th>
+              <th>Current Balance</th>
+              <th>Effective Balance</th>
+              <th>Slashed</th>
+              <th>Activation Eligibility Epoch</th>
+              <th>Activation Epoch</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody> </tbody>
+        </table>
+      </div>
     </div>
-    <h4 class="mt-5">Active</h4>
-    <div class="table-responsive col-sm-12">
-      <table class="table table-sm" id="active">
-        <thead>
-          <tr>
-            <th>Public Key</th>
-            <th>Index</th>
-            <th>Current Balance</th>
-            <th>Effective Balance</th>
-            <th>Slashed</th>
-            <th>Activation Eligibility Epoch</th>
-            <th>Activation Epoch</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody> </tbody>
-      </table>
+    <div id="active-validators-table-holder">
+      <h4 class="mt-5">Active</h4>
+      <div class="table-responsive col-sm-12">
+        <table class="table table-sm" id="active">
+          <thead>
+            <tr>
+              <th>Public Key</th>
+              <th>Index</th>
+              <th>Current Balance</th>
+              <th>Effective Balance</th>
+              <th>Slashed</th>
+              <th>Activation Eligibility Epoch</th>
+              <th>Activation Epoch</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody> </tbody>
+        </table>
+      </div>
     </div>
-    <h4 class="mt-5">Ejected</h4>
-    <div class="table-responsive col-sm-12">
-      <table class="table table-sm" id="ejected">
-        <thead>
-          <tr>
-            <th>Public Key</th>
-            <th>Index</th>
-            <th>Current Balance</th>
-            <th>Effective Balance</th>
-            <th>Slashed</th>
-            <th>Activation Eligibility Epoch</th>
-            <th>Activation Epoch</th>
-            <th>Exit Epoch</th>
-            <th>Withdrawable Epoch</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody> </tbody>
-      </table>
+    <div id="ejected-validators-table-holder">
+      <h4 class="mt-5">Ejected</h4>
+      <div class="table-responsive col-sm-12">
+        <table class="table table-sm" id="ejected">
+          <thead>
+            <tr>
+              <th>Public Key</th>
+              <th>Index</th>
+              <th>Current Balance</th>
+              <th>Effective Balance</th>
+              <th>Slashed</th>
+              <th>Activation Eligibility Epoch</th>
+              <th>Activation Epoch</th>
+              <th>Exit Epoch</th>
+              <th>Withdrawable Epoch</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody> </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
