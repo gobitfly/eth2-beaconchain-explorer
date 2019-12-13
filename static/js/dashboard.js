@@ -21,12 +21,6 @@ $(document).ready(function() {
           render: function(data, type, row, meta) {
             return '<a href="/validator/' + data + '">' + data + '</a>'
           }
-        },
-        {
-          targets: -1,
-          data: null,
-          orderable: false,
-          defaultContent: '<button class="removeValidator">Remove</button>'
         }
       ]
     })
@@ -56,12 +50,6 @@ $(document).ready(function() {
           render: function(data, type, row, meta) {
             return '<a href="/validator/' + data + '">' + data + '</a>'
           }
-        },
-        {
-          targets: -1,
-          data: null,
-          orderable: false,
-          defaultContent: '<button class="removeValidator">Remove</button>'
         }
       ]
     })
@@ -91,12 +79,6 @@ $(document).ready(function() {
           render: function(data, type, row, meta) {
             return '<a href="/validator/' + data + '">' + data + '</a>'
           }
-        },
-        {
-          targets: -1,
-          data: null,
-          orderable: false,
-          defaultContent: '<button class="removeValidator">Remove</button>'
         }
       ]
     })
