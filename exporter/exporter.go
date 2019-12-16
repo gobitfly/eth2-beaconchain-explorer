@@ -360,7 +360,7 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	data.Epoch = epoch
 
 	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
-	data.ValidatorBalances = make([]*ethpb.ValidatorBalances_Balance, 0)
+	data.ValidatorBalances = make([]*types.ValidatorBalance, 0)
 	data.ValidatorIndices = make(map[string]uint64)
 
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
@@ -375,7 +375,11 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 		}
 
 		for _, balance := range validatorBalancesResponse.Balances {
-			data.ValidatorBalances = append(data.ValidatorBalances, balance)
+			data.ValidatorBalances = append(data.ValidatorBalances, &types.ValidatorBalance{
+				PublicKey: balance.PublicKey,
+				Index:     balance.Index,
+				Balance:   balance.Balance,
+			})
 			data.ValidatorIndices[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
 		}
 
@@ -392,9 +396,8 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	logger.Printf("Retrieved validator assignment data for epoch %v", epoch)
 
 	// Retrieve all blocks for the epoch
-	data.Blocks = make(map[uint64]map[string]*types.BlockContainer)
+	data.Blocks = make(map[uint64]map[string]*types.Block)
 
-	logger.Println(epoch*utils.SlotsPerEpoch, (epoch+1)*utils.SlotsPerEpoch-1)
 	for slot := epoch * utils.SlotsPerEpoch; slot <= (epoch+1)*utils.SlotsPerEpoch-1; slot++ {
 
 		if slot == 0 { // Currently slot 0 returns all blocks
@@ -422,13 +425,131 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 			}
 
 			if data.Blocks[block.Block.Slot] == nil {
-				data.Blocks[block.Block.Slot] = make(map[string]*types.BlockContainer)
+				data.Blocks[block.Block.Slot] = make(map[string]*types.Block)
 			}
-			data.Blocks[block.Block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = &types.BlockContainer{
-				Status:   1,
-				Proposer: data.ValidatorAssignmentes.ProposerAssignments[block.Block.Slot],
-				Block:    block,
+
+			b := &types.Block{
+				Status:       1,
+				Proposer:     data.ValidatorAssignmentes.ProposerAssignments[block.Block.Slot],
+				BlockRoot:    block.BlockRoot,
+				Slot:         block.Block.Slot,
+				ParentRoot:   block.Block.ParentRoot,
+				StateRoot:    block.Block.StateRoot,
+				Signature:    block.Block.Signature,
+				RandaoReveal: block.Block.Body.RandaoReveal,
+				Graffiti:     block.Block.Body.Graffiti,
+				Eth1Data: &types.Eth1Data{
+					DepositRoot:  block.Block.Body.Eth1Data.DepositRoot,
+					DepositCount: block.Block.Body.Eth1Data.DepositCount,
+					BlockHash:    block.Block.Body.Eth1Data.BlockHash,
+				},
+				ProposerSlashings: make([]*types.ProposerSlashing, len(block.Block.Body.ProposerSlashings)),
+				AttesterSlashings: make([]*types.AttesterSlashing, len(block.Block.Body.AttesterSlashings)),
+				Attestations:      make([]*types.Attestation, len(block.Block.Body.Attestations)),
+				Deposits:          make([]*types.Deposit, len(block.Block.Body.Deposits)),
+				VoluntaryExits:    make([]*types.VoluntaryExit, len(block.Block.Body.VoluntaryExits)),
 			}
+
+			for i, proposerSlashing := range block.Block.Body.ProposerSlashings {
+				b.ProposerSlashings[i] = &types.ProposerSlashing{
+					ProposerIndex: proposerSlashing.ProposerIndex,
+					Header_1: &types.Block{
+						Slot:       proposerSlashing.Header_1.Slot,
+						ParentRoot: proposerSlashing.Header_1.ParentRoot,
+						StateRoot:  proposerSlashing.Header_1.StateRoot,
+						Signature:  proposerSlashing.Header_1.Signature,
+						BodyRoot:   proposerSlashing.Header_1.BodyRoot,
+					},
+					Header_2: &types.Block{
+						Slot:       proposerSlashing.Header_2.Slot,
+						ParentRoot: proposerSlashing.Header_2.ParentRoot,
+						StateRoot:  proposerSlashing.Header_2.StateRoot,
+						Signature:  proposerSlashing.Header_2.Signature,
+						BodyRoot:   proposerSlashing.Header_2.BodyRoot,
+					},
+				}
+			}
+
+			for i, attesterSlashing := range block.Block.Body.AttesterSlashings {
+				b.AttesterSlashings[i] = &types.AttesterSlashing{
+					Attestation_1: &types.IndexedAttestation{
+						CustodyBit_0Indices: attesterSlashing.Attestation_1.CustodyBit_0Indices,
+						CustodyBit_1Indices: attesterSlashing.Attestation_1.CustodyBit_1Indices,
+						Data: &types.AttestationData{
+							Slot:            attesterSlashing.Attestation_1.Data.Slot,
+							CommitteeIndex:  attesterSlashing.Attestation_1.Data.CommitteeIndex,
+							BeaconBlockRoot: attesterSlashing.Attestation_1.Data.BeaconBlockRoot,
+							Source: &types.Checkpoint{
+								Epoch: attesterSlashing.Attestation_1.Data.Source.Epoch,
+								Root:  attesterSlashing.Attestation_1.Data.Source.Root,
+							},
+							Target: &types.Checkpoint{
+								Epoch: attesterSlashing.Attestation_1.Data.Target.Epoch,
+								Root:  attesterSlashing.Attestation_1.Data.Target.Root,
+							},
+						},
+						Signature: attesterSlashing.Attestation_1.Signature,
+					},
+					Attestation_2: &types.IndexedAttestation{
+						CustodyBit_0Indices: attesterSlashing.Attestation_2.CustodyBit_0Indices,
+						CustodyBit_1Indices: attesterSlashing.Attestation_2.CustodyBit_1Indices,
+						Data: &types.AttestationData{
+							Slot:            attesterSlashing.Attestation_2.Data.Slot,
+							CommitteeIndex:  attesterSlashing.Attestation_2.Data.CommitteeIndex,
+							BeaconBlockRoot: attesterSlashing.Attestation_2.Data.BeaconBlockRoot,
+							Source: &types.Checkpoint{
+								Epoch: attesterSlashing.Attestation_2.Data.Source.Epoch,
+								Root:  attesterSlashing.Attestation_2.Data.Source.Root,
+							},
+							Target: &types.Checkpoint{
+								Epoch: attesterSlashing.Attestation_2.Data.Target.Epoch,
+								Root:  attesterSlashing.Attestation_2.Data.Target.Root,
+							},
+						},
+						Signature: attesterSlashing.Attestation_2.Signature,
+					},
+				}
+			}
+
+			for i, attestation := range block.Block.Body.Attestations {
+				b.Attestations[i] = &types.Attestation{
+					AggregationBits: attestation.AggregationBits,
+					Data: &types.AttestationData{
+						Slot:            attestation.Data.Slot,
+						CommitteeIndex:  attestation.Data.CommitteeIndex,
+						BeaconBlockRoot: attestation.Data.BeaconBlockRoot,
+						Source: &types.Checkpoint{
+							Epoch: attestation.Data.Source.Epoch,
+							Root:  attestation.Data.Source.Root,
+						},
+						Target: &types.Checkpoint{
+							Epoch: attestation.Data.Target.Epoch,
+							Root:  attestation.Data.Target.Root,
+						},
+					},
+					CustodyBits: attestation.CustodyBits,
+					Signature:   attestation.Signature,
+				}
+			}
+			for i, deposit := range block.Block.Body.Deposits {
+				b.Deposits[i] = &types.Deposit{
+					Proof:                 deposit.Proof,
+					PublicKey:             deposit.Data.PublicKey,
+					WithdrawalCredentials: deposit.Data.WithdrawalCredentials,
+					Amount:                deposit.Data.Amount,
+					Signature:             deposit.Data.Signature,
+				}
+			}
+
+			for i, voluntaryExit := range block.Block.Body.VoluntaryExits {
+				b.VoluntaryExits[i] = &types.VoluntaryExit{
+					Epoch:          voluntaryExit.Epoch,
+					ValidatorIndex: voluntaryExit.ValidatorIndex,
+					Signature:      voluntaryExit.Signature,
+				}
+			}
+
+			data.Blocks[block.Block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = b
 		}
 	}
 	logger.Printf("Retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
@@ -438,42 +559,34 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 		_, found := data.Blocks[slot]
 		if !found {
 			// Proposer was assigned but did not yet propose a block
-			data.Blocks[slot] = make(map[string]*types.BlockContainer)
-			data.Blocks[slot]["0x0"] = &types.BlockContainer{
-				Status:   0,
-				Proposer: proposer,
-				Block: &ethpb.BeaconBlockContainer{
-					Block: &ethpb.BeaconBlock{
-						Slot:       slot,
-						ParentRoot: []byte{},
-						StateRoot:  []byte{},
-						Body: &ethpb.BeaconBlockBody{
-							RandaoReveal: []byte{},
-							Eth1Data: &ethpb.Eth1Data{
-								DepositRoot:  []byte{},
-								DepositCount: 0,
-								BlockHash:    []byte{},
-							},
-							Graffiti:          []byte{},
-							ProposerSlashings: []*ethpb.ProposerSlashing{},
-							AttesterSlashings: []*ethpb.AttesterSlashing{},
-							Attestations:      []*ethpb.Attestation{},
-							Deposits:          []*ethpb.Deposit{},
-							VoluntaryExits:    []*ethpb.VoluntaryExit{},
-						},
-						Signature: []byte{},
-					},
-				},
+			data.Blocks[slot] = make(map[string]*types.Block)
+			data.Blocks[slot]["0x0"] = &types.Block{
+				Status:            0,
+				Proposer:          proposer,
+				BlockRoot:         []byte{0x0},
+				Slot:              slot,
+				ParentRoot:        []byte{},
+				StateRoot:         []byte{},
+				Signature:         []byte{},
+				RandaoReveal:      []byte{},
+				Graffiti:          []byte{},
+				BodyRoot:          []byte{},
+				Eth1Data:          &types.Eth1Data{},
+				ProposerSlashings: make([]*types.ProposerSlashing, 0),
+				AttesterSlashings: make([]*types.AttesterSlashing, 0),
+				Attestations:      make([]*types.Attestation, 0),
+				Deposits:          make([]*types.Deposit, 0),
+				VoluntaryExits:    make([]*types.VoluntaryExit, 0),
 			}
 
 			if utils.SlotToTime(slot).After(time.Now().Add(time.Second * -60)) {
 				// Block is in the future, set status to scheduled
 				data.Blocks[slot]["0x0"].Status = 0
-				data.Blocks[slot]["0x0"].Block.BlockRoot = []byte{0x0}
+				data.Blocks[slot]["0x0"].BlockRoot = []byte{0x0}
 			} else {
 				// Block is in the past, set status to missed
 				data.Blocks[slot]["0x0"].Status = 2
-				data.Blocks[slot]["0x0"].Block.BlockRoot = []byte{0x1}
+				data.Blocks[slot]["0x0"].BlockRoot = []byte{0x1}
 			}
 		} else {
 			for _, block := range data.Blocks[slot] {
@@ -483,7 +596,7 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	}
 
 	// Retrieve the validator set for the epoch
-	data.Validators = make([]*ethpb.Validator, 0)
+	data.Validators = make([]*types.Validator, 0)
 	validatorResponse := &ethpb.Validators{}
 	for {
 		validatorResponse, err = client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
@@ -495,7 +608,18 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 			break
 		}
 
-		data.Validators = append(data.Validators, validatorResponse.Validators...)
+		for _, validator := range validatorResponse.Validators {
+			data.Validators = append(data.Validators, &types.Validator{
+				PublicKey:                  validator.PublicKey,
+				WithdrawalCredentials:      validator.WithdrawalCredentials,
+				EffectiveBalance:           validator.EffectiveBalance,
+				Slashed:                    validator.Slashed,
+				ActivationEligibilityEpoch: validator.ActivationEligibilityEpoch,
+				ActivationEpoch:            validator.ActivationEpoch,
+				ExitEpoch:                  validator.ExitEpoch,
+				WithdrawableEpoch:          validator.WithdrawableEpoch,
+			})
+		}
 
 		if validatorResponse.NextPageToken == "" {
 			break
@@ -504,7 +628,7 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 	logger.Printf("Retrieved validator data for epoch %v", epoch)
 
 	// Retrieve the beacon committees for the epoch
-	data.BeaconCommittees = make(map[uint64][]*ethpb.BeaconCommittees_CommitteeItem)
+	data.BeaconCommittees = make(map[uint64][]*types.BeaconCommitteItem)
 	beaconCommitteesResponse := &ethpb.BeaconCommittees{}
 	beaconCommitteesResponse, err = client.ListBeaconCommittees(context.Background(), &ethpb.ListCommitteesRequest{QueryFilter: &ethpb.ListCommitteesRequest_Epoch{Epoch: epoch}})
 	if err != nil {
@@ -515,19 +639,32 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 				continue
 			}
 			if data.BeaconCommittees[slot] == nil {
-				data.BeaconCommittees[slot] = make([]*ethpb.BeaconCommittees_CommitteeItem, 0)
+				data.BeaconCommittees[slot] = make([]*types.BeaconCommitteItem, 0)
 			}
-			data.BeaconCommittees[slot] = append(data.BeaconCommittees[slot], committee.Committees...)
+
+			for _, beaconCommittee := range committee.Committees {
+				data.BeaconCommittees[slot] = append(data.BeaconCommittees[slot], &types.BeaconCommitteItem{ValidatorIndices: beaconCommittee.ValidatorIndices})
+			}
 		}
 	}
 
-	data.EpochParticipationStats, err = client.GetValidatorParticipation(context.Background(), &ethpb.GetValidatorParticipationRequest{QueryFilter: &ethpb.GetValidatorParticipationRequest_Epoch{Epoch: epoch}})
+	epochParticipationStatistics, err := client.GetValidatorParticipation(context.Background(), &ethpb.GetValidatorParticipationRequest{QueryFilter: &ethpb.GetValidatorParticipationRequest_Epoch{Epoch: epoch}})
 	if err != nil {
 		logger.Printf("error retrieving epoch participation statistics: %v", err)
-		data.EpochParticipationStats = &ethpb.ValidatorParticipationResponse{
-			Epoch:         epoch,
-			Finalized:     false,
-			Participation: &ethpb.ValidatorParticipation{},
+		data.EpochParticipationStats = &types.ValidatorParticipation{
+			Epoch:                   epoch,
+			Finalized:               false,
+			GlobalParticipationRate: 0,
+			VotedEther:              0,
+			EligibleEther:           0,
+		}
+	} else {
+		data.EpochParticipationStats = &types.ValidatorParticipation{
+			Epoch:                   epoch,
+			Finalized:               epochParticipationStatistics.Finalized,
+			GlobalParticipationRate: epochParticipationStatistics.Participation.GlobalParticipationRate,
+			VotedEther:              epochParticipationStatistics.Participation.VotedEther,
+			EligibleEther:           epochParticipationStatistics.Participation.EligibleEther,
 		}
 	}
 
@@ -535,15 +672,36 @@ func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
 }
 
 func exportAttestationPool(client ethpb.BeaconChainClient) error {
-	attestations, err := client.AttestationPool(context.Background(), &ptypes.Empty{})
+	attestationsResponse, err := client.AttestationPool(context.Background(), &ptypes.Empty{})
 
 	if err != nil {
 		return fmt.Errorf("error retrieving attestation pool data: %v", err)
 	}
 
-	logger.Printf("Retrieved %v attestations from the attestation pool", len(attestations.Attestations))
+	logger.Printf("Retrieved %v attestations from the attestation pool", len(attestationsResponse.Attestations))
 
-	return db.SaveAttestationPool(attestations.Attestations)
+	attestations := make([]*types.Attestation, len(attestationsResponse.Attestations))
+	for i, attestation := range attestationsResponse.Attestations {
+		attestations[i] = &types.Attestation{
+			AggregationBits: attestation.AggregationBits,
+			Data: &types.AttestationData{
+				Slot:            attestation.Data.Slot,
+				CommitteeIndex:  attestation.Data.CommitteeIndex,
+				BeaconBlockRoot: attestation.Data.BeaconBlockRoot,
+				Source: &types.Checkpoint{
+					Epoch: attestation.Data.Source.Epoch,
+					Root:  attestation.Data.Source.Root,
+				},
+				Target: &types.Checkpoint{
+					Epoch: attestation.Data.Target.Epoch,
+					Root:  attestation.Data.Target.Root,
+				},
+			},
+			CustodyBits: attestation.CustodyBits,
+			Signature:   attestation.Signature,
+		}
+	}
+	return db.SaveAttestationPool(attestations)
 }
 
 func exportValidatorQueue(client ethpb.BeaconChainClient) error {
@@ -579,7 +737,11 @@ func exportValidatorQueue(client ethpb.BeaconChainClient) error {
 
 	logger.Printf("Retrieved %v validators to enter and %v validators to leave from the validator queue", len(validators.ActivationPublicKeys), len(validators.ExitPublicKeys))
 
-	return db.SaveValidatorQueue(validators, validatorIndices)
+	return db.SaveValidatorQueue(&types.ValidatorQueue{
+		ChurnLimit:           validators.ChurnLimit,
+		ActivationPublicKeys: validators.ActivationPublicKeys,
+		ExitPublicKeys:       validators.ExitPublicKeys,
+	}, validatorIndices)
 }
 
 func updateEpochStatus(client ethpb.BeaconChainClient, startEpoch, endEpoch uint64) error {
@@ -589,7 +751,13 @@ func updateEpochStatus(client ethpb.BeaconChainClient, startEpoch, endEpoch uint
 			logger.Printf("error retrieving epoch participation statistics: %v", err)
 		} else {
 			logger.Printf("Updating epoch %v with status finalized = %v", epoch, epochParticipationStats.Finalized)
-			err := db.UpdateEpochStatus(epochParticipationStats)
+			err := db.UpdateEpochStatus(&types.ValidatorParticipation{
+				Epoch:                   epoch,
+				Finalized:               epochParticipationStats.Finalized,
+				GlobalParticipationRate: epochParticipationStats.Participation.GlobalParticipationRate,
+				VotedEther:              epochParticipationStats.Participation.VotedEther,
+				EligibleEther:           epochParticipationStats.Participation.EligibleEther,
+			})
 
 			if err != nil {
 				return err
