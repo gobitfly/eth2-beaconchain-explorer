@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sync"
 
 	"strconv"
 	"strings"
@@ -71,6 +72,10 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	var group sync.WaitGroup
+
+	group.Add(2)
+
 	q := r.URL.Query()
 
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
@@ -81,39 +86,54 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
-	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, `SELECT validator_balances.epoch, SUM(validator_balances.balance) as balance 
-	FROM validator_balances
-	LEFT JOIN validator_set ON validator_set.epoch = validator_balances.epoch
-	AND validator_set.validatorindex = validator_balances.validatorindex
-	WHERE validator_balances.validatorindex = ANY($1)
-	AND validator_set.epoch > validator_set.activationepoch 
-  AND validator_set.epoch < validator_set.exitepoch
-	GROUP BY validator_balances.epoch 
-	ORDER BY validator_balances.epoch`, filter)
-	if err != nil {
-		logger.Printf("Error retrieving validator balance history: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
+	balanceHistoryChartData := make([][]float64, 16800)
+	balanceHistory := []*types.ValidatorBalanceHistory{}
+	effectiveBalanceHistory := []*types.DashboardValidatorBalanceHistory{}
+	effectiveBalanceHistoryChartData := make([][]float64, 16800)
 
-	balanceHistoryChartData := make([][]float64, len(balanceHistory))
-	for i, balance := range balanceHistory {
-		balanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
-	}
+	go func() {
+		defer group.Done()
+		query := `SELECT validator_balances.epoch, SUM(validator_balances.balance) as balance
+		FROM validator_balances
+		LEFT JOIN validator_set ON validator_set.epoch = validator_balances.epoch
+		AND validator_set.validatorindex = validator_balances.validatorindex
+		WHERE validator_balances.validatorindex = ANY($1)
+		AND validator_set.epoch > validator_set.activationepoch
+		AND validator_set.epoch < validator_set.exitepoch
+		GROUP BY validator_balances.epoch
+		ORDER BY validator_balances.epoch desc limit 16800`
+		// query := `SELECT epoch, SUM(balance) as balance FROM validator_balances WHERE validatorindex = ANY($1) GROUP BY epoch ORDER BY epoch`
 
-	var effectiveBalanceHistory []*types.DashboardValidatorBalanceHistory
-	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, SUM(effectivebalance) as balance, COUNT(*) as validatorcount FROM validator_set WHERE validatorindex = ANY($1) AND epoch > activationepoch AND epoch < exitepoch GROUP BY epoch ORDER BY epoch", filter)
-	if err != nil {
-		logger.Printf("Error retrieving validator effective balance history: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
+		err := db.DB.Select(&balanceHistory, query, filter)
+		if err != nil {
+			logger.Printf("Error retrieving validator balance history: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 
-	effectiveBalanceHistoryChartData := make([][]float64, len(effectiveBalanceHistory))
-	for i, balance := range effectiveBalanceHistory {
-		effectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000, balance.ValidatorCount}
-	}
+		balanceHistoryChartData = make([][]float64, len(balanceHistory))
+		for i, balance := range balanceHistory {
+			balanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
+		}
+
+	}()
+
+	go func() {
+		defer group.Done()
+		err := db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, SUM(effectivebalance) as balance, COUNT(*) as validatorcount FROM validator_set WHERE validatorindex = ANY($1) AND epoch > activationepoch AND epoch < exitepoch GROUP BY epoch ORDER BY epoch desc limit 16800", filter)
+		if err != nil {
+			logger.Printf("Error retrieving validator effective balance history: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+
+		effectiveBalanceHistoryChartData = make([][]float64, len(effectiveBalanceHistory))
+		for i, balance := range effectiveBalanceHistory {
+			effectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000, balance.ValidatorCount}
+		}
+	}()
+
+	group.Wait()
 
 	type dataType struct {
 		BalanceHistory          [][]float64 `json:"balanceHistory"`
@@ -364,6 +384,9 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// attestation_assignments.status
+	//
+
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators, `SELECT 
 			validator_set.epoch, 
@@ -375,7 +398,9 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 			validator_set.activationeligibilityepoch, 
 			validator_set.activationepoch, 
 			validator_set.exitepoch,
-			validator_balances.balance
+			validator_balances.balance,
+			(select max(epoch) from attestation_assignments where validator_set.validatorindex = attestation_assignments.validatorindex and status = 1) as lastattested,
+			(select max(epoch) from proposal_assignments where validator_set.validatorindex = proposal_assignments.validatorindex and status = 1) as lastproposed
 		FROM validator_set
 		LEFT JOIN validator_balances 
 			ON validator_set.epoch = validator_balances.epoch
@@ -398,6 +423,14 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
+		if v.LastProposed == nil {
+			genesis := uint64(utils.GenesisTimestamp)
+			v.LastProposed = &genesis
+		}
+		if v.LastAttested == nil {
+			genesis := uint64(utils.GenesisTimestamp)
+			v.LastAttested = &genesis
+		}
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
@@ -406,6 +439,8 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v", v.Slashed),
 			fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
 			fmt.Sprintf("%v", v.ActivationEpoch),
+			utils.EpochToTime(*v.LastAttested).Unix(),
+			utils.EpochToTime(*v.LastProposed).Unix(),
 		}
 	}
 

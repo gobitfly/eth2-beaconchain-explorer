@@ -82,7 +82,8 @@ type ValidatorsPageDataValidators struct {
 	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
-	Status                     string
+	LastAttested               *uint64
+	LastProposed               *uint64
 }
 
 type ValidatorPageData struct {
