@@ -52,6 +52,20 @@ $(document).ready(function() {
           render: function(data, type, row, meta) {
             return '<a href="/validator/' + data + '">' + data + '</a>'
           }
+        },
+        {
+          targets: 7,
+          data: '7',
+          render: function(data, type, row, meta) {
+            return moment.unix(data).fromNow()
+          }
+        },
+        {
+          targets: 8,
+          data: '8',
+          render: function(data, type, row, meta) {
+            return moment.unix(data).fromNow()
+          }
         }
       ]
     })
@@ -266,12 +280,13 @@ $(document).ready(function() {
         var utilization = []
         if (effective && effective.length && balance && balance.length) {
           var len = effective.length < balance.length ? effective.length : balance.length
-
-          for (var i = 0; i < len; i++) {
-            var numOfValidators = effective[i][2]
+          effective = effective.reverse().map(point => {
+            var numOfValidators = point[2]
             var mostEffectiveBalance = numOfValidators * 3.2
-            utilization.push([effective[i][0], effective[i][1] / mostEffectiveBalance])
-          }
+            utilization.push([point[0], point[1] / mostEffectiveBalance])
+            return point
+          })
+          balance = balance.reverse()
           createBalanceChart(effective, balance, utilization)
         }
       }
