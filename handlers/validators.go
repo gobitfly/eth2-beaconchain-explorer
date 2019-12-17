@@ -73,6 +73,31 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	orderColumn := q.Get("order[0][column]")
+	var orderBy string
+	switch orderColumn {
+	case "0":
+		orderBy = "pubkey"
+	case "1":
+		orderBy = "validatorindex"
+	case "2":
+		orderBy = "balance"
+	case "3":
+		orderBy = "effectivebalance"
+	case "4":
+		orderBy = "slashed"
+	case "5":
+		orderBy = "activationeligibilityepoch"
+	case "6":
+		orderBy = "activationepoch"
+	default:
+		orderBy = "validatorindex"
+	}
+
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
@@ -105,7 +130,7 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `SELECT 
+	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
 											 validator_set.epoch,
        										 validator_set.validatorindex, 
 											 validators.pubkey, 
@@ -121,8 +146,8 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 											AND validator_set.validatorindex = validator_balances.validatorindex
 										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
 										WHERE validator_set.epoch = $1 AND validator_set.epoch < activationepoch
-										ORDER BY activationepoch DESC 
-										LIMIT $2 OFFSET $3`, services.LatestEpoch(), length, start)
+										ORDER BY %s %s 
+										LIMIT $2 OFFSET $3`, orderBy, orderDir), services.LatestEpoch(), length, start)
 
 	if err != nil {
 		logger.Printf("Error retrieving pending validator data: %v", err)
@@ -167,6 +192,31 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 		search = search[:128]
 	}
 
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	orderColumn := q.Get("order[0][column]")
+	var orderBy string
+	switch orderColumn {
+	case "0":
+		orderBy = "pubkey"
+	case "1":
+		orderBy = "validatorindex"
+	case "2":
+		orderBy = "balance"
+	case "3":
+		orderBy = "effectivebalance"
+	case "4":
+		orderBy = "slashed"
+	case "5":
+		orderBy = "activationeligibilityepoch"
+	case "6":
+		orderBy = "activationepoch"
+	default:
+		orderBy = "validatorindex"
+	}
+
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
@@ -199,7 +249,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `SELECT 
+	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
 											 validator_set.epoch, 
 											 validator_set.validatorindex, 
 											 validators.pubkey, 
@@ -218,8 +268,8 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 										  AND validator_set.epoch > activationepoch 
 										  AND validator_set.epoch < exitepoch 
 										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-										ORDER BY activationepoch DESC 
-										LIMIT $3 OFFSET $4`, services.LatestEpoch(), "%"+search+"%", length, start)
+										ORDER BY %s %s 
+										LIMIT $3 OFFSET $4`, orderBy, orderDir), services.LatestEpoch(), "%"+search+"%", length, start)
 
 	if err != nil {
 		logger.Printf("Error retrieving active validators data: %v", err)
@@ -259,6 +309,31 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	orderColumn := q.Get("order[0][column]")
+	var orderBy string
+	switch orderColumn {
+	case "0":
+		orderBy = "pubkey"
+	case "1":
+		orderBy = "validatorindex"
+	case "2":
+		orderBy = "balance"
+	case "3":
+		orderBy = "effectivebalance"
+	case "4":
+		orderBy = "slashed"
+	case "5":
+		orderBy = "activationeligibilityepoch"
+	case "6":
+		orderBy = "activationepoch"
+	default:
+		orderBy = "validatorindex"
+	}
+
 	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
 	if len(search) > 128 {
 		search = search[:128]
@@ -296,7 +371,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `SELECT 
+	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
 											 validator_set.epoch,
        										 validator_set.validatorindex, 
 											 validators.pubkey, 
@@ -314,8 +389,8 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 										WHERE validator_set.epoch = $1 
 										  AND validator_set.epoch > exitepoch
 										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-										ORDER BY activationepoch DESC 
-										LIMIT $3 OFFSET $4`, services.LatestEpoch(), "%"+search+"%", length, start)
+										ORDER BY %s %s 
+										LIMIT $3 OFFSET $4`, orderBy, orderDir), services.LatestEpoch(), "%"+search+"%", length, start)
 
 	if err != nil {
 		logger.Printf("Error retrieving ejected validators data: %v", err)
