@@ -511,7 +511,7 @@ function createProposedChart(data) {
       tickColor: '#e5e1e1',
       labels: {
         style: {
-          color: '#26232780'
+          color: 'black'
         }
       },
       range: 7 * 24 * 3600 * 1000
@@ -521,13 +521,13 @@ function createProposedChart(data) {
         title: {
           text: '# of Possible Proposals',
           style: {
-            color: '#26232780',
+            color: 'black',
             'font-size': '0.8rem'
           }
         },
         labels: {
           style: {
-            color: '#26232780'
+            color: 'black'
           }
         },
         gridLineColor: '#e5e1e1',
@@ -581,13 +581,13 @@ function createProposedChart(data) {
       outlineColor: '#e5e1e1',
       handles: {
         backgroundColor: '#f5f3f3',
-        borderColor: '#26232780'
+        borderColor: 'black'
       },
       xAxis: {
         gridLineColor: '#e5e1e1',
         labels: {
           style: {
-            color: '#26232780'
+            color: 'black'
           }
         }
       }
@@ -602,7 +602,6 @@ function createProposedChart(data) {
       trackBackgroundColor: '#f5f3f3',
       trackBorderColor: '#e5e1e180'
     },
-    colors: ['#378ef0a0', '#fb8c13'],
     responsive: {
       rules: [
         {
