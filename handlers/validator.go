@@ -156,7 +156,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					Orphaned: proposals[i].Count,
 				})
 			} else {
-				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", proposals[i].Status)
+				logger.Error("Error parsing Daily Proposed Blocks unknown status: %v", proposals[i].Status)
 			}
 		} else {
 			if proposals[i].Day == proposals[i+1].Day {
@@ -189,7 +189,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					Orphaned: proposals[i].Count,
 				})
 			} else {
-				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", proposals[i].Status)
+				logger.Error("Error parsing Daily Proposed Blocks unknown status: %v", proposals[i].Status)
 			}
 		}
 	}
