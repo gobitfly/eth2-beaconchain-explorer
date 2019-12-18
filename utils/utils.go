@@ -113,3 +113,7 @@ func readConfigEnv(cfg *types.Config) error {
 func FormatPublicKey(publicKey []byte) string {
 	return fmt.Sprintf("%x", publicKey)
 }
+
+func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint64) string {
+	return fmt.Sprintf("%v-%v-%v", AttesterSlot, CommitteeIndex, MemberIndex)
+}

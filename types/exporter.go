@@ -4,6 +4,21 @@ import (
 	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
 )
 
+type ChainHead struct {
+	HeadSlot                   uint64
+	HeadEpoch                  uint64
+	HeadBlockRoot              []byte
+	FinalizedSlot              uint64
+	FinalizedEpoch             uint64
+	FinalizedBlockRoot         []byte
+	JustifiedSlot              uint64
+	JustifiedEpoch             uint64
+	JustifiedBlockRoot         []byte
+	PreviousJustifiedSlot      uint64
+	PreviousJustifiedEpoch     uint64
+	PreviousJustifiedBlockRoot []byte
+}
+
 type EpochData struct {
 	Epoch                   uint64
 	Validators              []*Validator
@@ -95,6 +110,7 @@ type IndexedAttestation struct {
 
 type Attestation struct {
 	AggregationBits []byte
+	Attesters       []uint64
 	Data            *AttestationData
 	CustodyBits     []byte
 	Signature       []byte

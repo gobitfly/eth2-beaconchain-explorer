@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"database/sql"
-	"eth2-exporter/cache"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -560,30 +559,16 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 			}
 
 			for i, a := range b.Attestations {
-				aggregationBits := bitfield.Bitlist(a.AggregationBits)
-				assignments, err := cache.GetEpochAssignments(a.Data.Slot / utils.SlotsPerEpoch)
-				if err != nil {
-					return fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.SlotsPerEpoch, err)
-				}
 
-				attester := make([]uint64, 0)
-				for i := uint64(0); i < aggregationBits.Len(); i++ {
-					if aggregationBits.BitAt(i) {
-						validator, found := assignments.AttestorAssignments[cache.FormatAttestorAssignmentKey(a.Data.Slot, a.Data.CommitteeIndex, i)]
-						if !found { // This should never happen!
-							validator = 0
-							logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v commitee index %v member index %v", i, b.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
-						}
-						attester = append(attester, validator)
+				for _, validator := range a.Attesters {
+					_, err = stmtAttestationAssignments.Exec(a.Data.Slot/utils.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1)
 
-						_, err = stmtAttestationAssignments.Exec(a.Data.Slot/utils.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1)
-						if err != nil {
-							return fmt.Errorf("error executing stmtAttestationAssignments: %v", err)
-						}
+					if err != nil {
+						return fmt.Errorf("error executing stmtAttestationAssignments: %v", err)
 					}
 				}
 
-				_, err = stmtAttestations.Exec(b.Slot, i, bitfield.Bitlist(a.AggregationBits).Bytes(), pq.Array(attester), bitfield.Bitlist(a.CustodyBits).Bytes(), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
+				_, err = stmtAttestations.Exec(b.Slot, i, bitfield.Bitlist(a.AggregationBits).Bytes(), pq.Array(a.Attesters), bitfield.Bitlist(a.CustodyBits).Bytes(), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
 				if err != nil {
 					return fmt.Errorf("error executing stmtAttestations: %v", err)
 				}
