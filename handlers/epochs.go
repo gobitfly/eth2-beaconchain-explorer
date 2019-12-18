@@ -15,6 +15,7 @@ import (
 
 var epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/layout.html", "templates/epochs.html"))
 
+// Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
@@ -37,6 +38,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// EpochsData will return the epoch data using a go template
 func EpochsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

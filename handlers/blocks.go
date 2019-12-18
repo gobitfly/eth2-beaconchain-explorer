@@ -15,6 +15,7 @@ import (
 
 var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocks.html"))
 
+// Blocks will return information about blocks using a go template
 func Blocks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
@@ -37,6 +38,7 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// BlocksData will return information about blocks
 func BlocksData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

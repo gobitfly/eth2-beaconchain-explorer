@@ -5,6 +5,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// RpcClient provides an interface for RPC clients
 type RpcClient interface {
 	GetChainHead() (*types.ChainHead, error)
 	GetEpochData(epoch uint64) (*types.EpochData, error)

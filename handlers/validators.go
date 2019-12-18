@@ -16,6 +16,7 @@ import (
 
 var validatorsTemplate = template.Must(template.New("validators").ParseFiles("templates/layout.html", "templates/validators.html"))
 
+// Validators returns the validators using a go template
 func Validators(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -64,6 +65,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ValidatorsDataPending returns the validators that have data pending in json
 func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -152,6 +154,7 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ValidatorsDataActive will return the validators with active data in json
 func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -248,6 +251,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ValidatorsDataEjected returns the validators that have data ejected in json
 func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

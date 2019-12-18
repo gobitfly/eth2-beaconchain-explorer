@@ -14,6 +14,7 @@ import (
 var chartsTemplate = template.Must(template.New("charts").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/charts.html"))
 var genericChartTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/genericchart.html"))
 
+// Charts uses a go template for presenting the page to show charts
 func Charts(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
@@ -36,6 +37,7 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// BlocksChart will show the history of daily blocks proposed chart
 func BlocksChart(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -125,6 +127,7 @@ func BlocksChart(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ActiveValidatorChart will show the Active Validators Chart
 func ActiveValidatorChart(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -183,6 +186,7 @@ func ActiveValidatorChart(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// StakedEtherChart will show the Staked Ether Chart
 func StakedEtherChart(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -242,6 +246,7 @@ func StakedEtherChart(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// AverageBalanceChart will show the Average Validator Balance Chart
 func AverageBalanceChart(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 

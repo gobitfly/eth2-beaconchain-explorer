@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Search handles search requests
 func Search(w http.ResponseWriter, r *http.Request) {
 
 	search := r.FormValue("search")

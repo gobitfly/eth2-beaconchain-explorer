@@ -20,6 +20,7 @@ var logger = logrus.New().WithField("module", "exporter")
 // to not be archived properly (see https://github.com/prysmaticlabs/prysm/issues/4165)
 var epochBlacklist = make(map[uint64]uint64)
 
+// Start will start the export of data from rpc into the database
 func Start(client rpc.RpcClient) error {
 
 	if utils.Config.Indexer.FullIndexOnStartup {
@@ -274,6 +275,7 @@ func Start(client rpc.RpcClient) error {
 	return nil
 }
 
+// MarkOrphanedBlocks will mark the orphaned blocks in the database
 func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBlock) error {
 	blocksMap := make(map[string]bool)
 
@@ -303,6 +305,7 @@ func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBloc
 	return db.UpdateCanonicalBlocks(startEpoch, endEpoch, orphanedBlocks)
 }
 
+// GetLastBlocks will get all blocks for a range of epochs
 func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.RpcClient) ([]*types.MinimalBlock, error) {
 	wrappedBlocks := make([]*types.MinimalBlock, 0)
 
@@ -331,6 +334,7 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.RpcClient) ([]*types.
 	return wrappedBlocks, nil
 }
 
+// ExportEpoch will export an epoch from rpc into the database
 func ExportEpoch(epoch uint64, client rpc.RpcClient) error {
 	start := time.Now()
 

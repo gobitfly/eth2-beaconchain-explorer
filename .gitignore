@@ -6,3 +6,4 @@ docker/
 templates/imprint.html
 config.yml
 config-lighthouse.yml
+.*swp

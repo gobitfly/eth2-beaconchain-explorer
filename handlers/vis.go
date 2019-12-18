@@ -16,6 +16,7 @@ import (
 var visTemplate = template.Must(template.New("vis").ParseFiles("templates/layout.html", "templates/vis.html"))
 var visVotesTemplate = template.Must(template.New("vis").ParseFiles("templates/layout.html", "templates/vis_votes.html"))
 
+// Vis returns the visualizations using a go template
 func Vis(w http.ResponseWriter, r *http.Request) {
 
 	var err error
@@ -40,6 +41,7 @@ func Vis(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// VisBlocks returns the visualizations in json
 func VisBlocks(w http.ResponseWriter, r *http.Request) {
 	var err error
 
@@ -86,6 +88,7 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// VisVotes shows the votes visualizations using a go template
 func VisVotes(w http.ResponseWriter, r *http.Request) {
 	var err error
 

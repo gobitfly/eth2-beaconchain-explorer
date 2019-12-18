@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// Imprint will show the imprint data using a go template
 func Imprint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
