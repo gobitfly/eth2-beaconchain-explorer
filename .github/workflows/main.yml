@@ -10,7 +10,7 @@ jobs:
       - name: Publish to Dockerhub Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
-          name: qu0b/eth2-beaconchain-explorer
+          name: qu0b/eth2-beaconchain-explorer/tree/feature/dashboard
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Webhook
