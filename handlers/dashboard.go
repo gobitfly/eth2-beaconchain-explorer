@@ -258,15 +258,15 @@ func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
-	}
+	// length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	// if err != nil {
+	// 	logger.Printf("Error converting datatables length parameter from string to int: %v", err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
+	// if length > 100 {
+	// 	length = 100
+	// }
 
 	var totalCount uint64
 
@@ -298,9 +298,9 @@ func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
 		WHERE validator_set.epoch = $1 
 			AND validator_set.epoch < activationepoch
 			AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-			AND validator_set.validatorindex = ANY($5)
+			AND validator_set.validatorindex = ANY($4)
 		ORDER BY activationepoch DESC 
-		LIMIT $3 OFFSET $4`, services.LatestEpoch(), "%"+search+"%", length, start, filter)
+		LIMIT 100 OFFSET $3`, services.LatestEpoch(), "%"+search+"%", start, filter)
 
 	if err != nil {
 		logger.Printf("Error retrieving pending validator data: %v", err)
@@ -365,15 +365,15 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
-	}
+	// length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	// if err != nil {
+	// 	logger.Printf("Error converting datatables length parameter from string to int: %v", err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
+	// if length > 100 {
+	// 	length = 100
+	// }
 
 	var totalCount uint64
 
@@ -411,9 +411,9 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 			AND validator_set.epoch > activationepoch 
 			AND validator_set.epoch < exitepoch 
 			AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-			AND validator_set.validatorindex = ANY($5)
+			AND validator_set.validatorindex = ANY($4)
 		ORDER BY activationepoch DESC 
-		LIMIT $3 OFFSET $4`, services.LatestEpoch(), "%"+search+"%", length, start, filter)
+		LIMIT 100 OFFSET $3`, services.LatestEpoch(), "%"+search+"%", start, filter)
 
 	if err != nil {
 		logger.Printf("Error retrieving active validators data: %v", err)
@@ -488,15 +488,15 @@ func DashboardDataValidatorsEjected(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
-	}
+	// length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	// if err != nil {
+	// 	logger.Printf("Error converting datatables length parameter from string to int: %v", err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
+	// if length > 100 {
+	// 	length = 100
+	// }
 
 	var totalCount uint64
 
@@ -528,9 +528,9 @@ func DashboardDataValidatorsEjected(w http.ResponseWriter, r *http.Request) {
 		WHERE validator_set.epoch = $1 
 			AND validator_set.epoch > exitepoch
 			AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-			AND validator_set.validatorindex = ANY($5)
+			AND validator_set.validatorindex = ANY($4)
 		ORDER BY activationepoch DESC 
-		LIMIT $3 OFFSET $4`, services.LatestEpoch(), "%"+search+"%", length, start, filter)
+		LIMIT 100 OFFSET $3`, services.LatestEpoch(), "%"+search+"%", start, filter)
 
 	if err != nil {
 		logger.Printf("Error retrieving ejected validators data: %v", err)
