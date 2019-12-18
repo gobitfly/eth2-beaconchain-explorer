@@ -1,10 +1,10 @@
 package main
 
 import (
-	"eth2-exporter/cache"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
+	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -21,9 +21,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/negroni"
 	"github.com/zesik/proxyaddr"
-	"google.golang.org/grpc"
-
-	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
 )
 
 func main() {
@@ -61,21 +58,28 @@ func main() {
 
 	utils.Config = cfg
 
-	if cfg.Indexer.Enabled {
-		dialOpt := grpc.WithInsecure()
-		conn, err := grpc.Dial(cfg.Indexer.Node.Host+":"+cfg.Indexer.Node.Port, dialOpt)
+	if utils.Config.Chain.SlotsPerEpoch == 0 || utils.Config.Chain.SecondsPerSlot == 0 || utils.Config.Chain.GenesisTimestamp == 0 {
+		log.Fatal("Invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
+	}
 
-		if err != nil {
-			log.Fatal(err)
+	if cfg.Indexer.Enabled {
+		var rpcClient rpc.RpcClient
+
+		if utils.Config.Indexer.Node.Type == "prysm" {
+			rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if utils.Config.Indexer.Node.Type == "lighthouse" {
+			rpcClient, err = rpc.NewLighthouseClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			log.Fatalf("Invalid note type %v specified. Supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
 		}
 
-		log.Printf("gRPC connection to backend node established")
-		defer conn.Close()
-
-		chainClient := ethpb.NewBeaconChainClient(conn)
-		cache.Init(chainClient)
-
-		go exporter.Start(chainClient)
+		go exporter.Start(rpcClient)
 	}
 
 	if cfg.Frontend.Enabled {

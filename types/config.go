@@ -8,6 +8,11 @@ type Config struct {
 		Host     string `yaml:"host", envconfig:"DB_HOST"`
 		Port     string `yaml:"port", envconfig:"DB_PORT"`
 	} `yaml:"database"`
+	Chain struct {
+		SlotsPerEpoch    uint64 `yaml:"slotsPerEpoch", envconfig:"CHAIN_SLOTS_PER_EPOCH"`
+		SecondsPerSlot   uint64 `yaml:"secondsPerSlot", envconfig:"CHAIN_SECONDS_PER_SLOT"`
+		GenesisTimestamp uint64 `yaml:"genesisTimestamp", envconfig:"CHAIN_GENESIS_TIMESTAMP"`
+	} `yaml:"chain"`
 	Indexer struct {
 		Enabled                     bool `yaml:"enabled", envconfig:"INDEXER_ENABLED"`
 		FullIndexOnStartup          bool `yaml:"fullIndexOnStartup", envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`
@@ -16,13 +21,15 @@ type Config struct {
 		Node                        struct {
 			Port string `yaml:"port", envconfig:"INDEXER_NODE_PORT"`
 			Host string `yaml:"host", envconfig:"INDEXER_NODE_HOST"`
+			Type string `yaml:"type", envconfig:"INDEXER_NODE_TYPE"`
 		} `yaml:"node"`
 	} `yaml:"indexer"`
 	Frontend struct {
-		Enabled  bool   `yaml:"enabled", envconfig:"FRONTEND_ENABLED"`
-		Imprint  string `yaml:"imprint", envconfig:"FRONTEND_IMPRINT"`
-		SiteName string `yaml:"siteName", envconfig:"FRONTEND_SITE_NAME"`
-		Server   struct {
+		Enabled      bool   `yaml:"enabled", envconfig:"FRONTEND_ENABLED"`
+		Imprint      string `yaml:"imprint", envconfig:"FRONTEND_IMPRINT"`
+		SiteName     string `yaml:"siteName", envconfig:"FRONTEND_SITE_NAME"`
+		SiteSubtitle string `yaml:"siteSubtitle", envconfig:"FRONTEND_SITE_SUBTITLE"`
+		Server       struct {
 			Port string `yaml:"port", envconfig:"FRONTEND_SERVER_PORT"`
 			Host string `yaml:"host", envconfig:"FRONTEND_SERVER_HOST"`
 		} `yaml:"server"`

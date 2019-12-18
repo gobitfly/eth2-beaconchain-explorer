@@ -2,18 +2,14 @@ package exporter
 
 import (
 	"bytes"
-	"context"
-	"eth2-exporter/cache"
 	"eth2-exporter/db"
+	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"sort"
-	"sync"
 	"time"
 
-	ptypes "github.com/golang/protobuf/ptypes/empty"
-	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,38 +20,20 @@ var logger = logrus.New().WithField("module", "exporter")
 // to not be archived properly (see https://github.com/prysmaticlabs/prysm/issues/4165)
 var epochBlacklist = make(map[uint64]uint64)
 
-func Start(client ethpb.BeaconChainClient) error {
+func Start(client rpc.RpcClient) error {
 
 	if utils.Config.Indexer.FullIndexOnStartup {
 		logger.Printf("Performing one time full db reindex")
-		head, err := client.GetChainHead(context.Background(), &ptypes.Empty{})
+		head, err := client.GetChainHead()
 		if err != nil {
 			logger.Fatal(err)
 		}
 
-		var wg sync.WaitGroup
-		for epoch := uint64(0); epoch <= head.HeadEpoch; epoch++ {
-			//err := exportEpoch(epoch, client)
+		for epoch := uint64(1); epoch <= head.HeadEpoch; epoch++ {
+			err := ExportEpoch(epoch, client)
 
 			if err != nil {
-				logger.Fatal(err)
-			}
-			wg.Add(1)
-
-			logger.Printf("Exporting epoch %v of %v", epoch, head.HeadEpoch)
-			go func(e uint64) {
-				err := ExportEpoch(e, client)
-
-				if err != nil {
-					logger.Fatal(err)
-				}
-				logger.Printf("Finished export for epoch %v", e)
-				wg.Done()
-			}(epoch)
-
-			if epoch%10 == 0 {
-				logger.Printf("Waiting...")
-				wg.Wait()
+				logger.Error(err)
 			}
 		}
 	}
@@ -84,7 +62,7 @@ func Start(client ethpb.BeaconChainClient) error {
 
 	if utils.Config.Indexer.CheckAllBlocksOnStartup {
 		// Make sure that all blocks are correct by comparing all block hashes in the database to the ones we have in the node
-		head, err := client.GetChainHead(context.Background(), &ptypes.Empty{})
+		head, err := client.GetChainHead()
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -164,7 +142,7 @@ func Start(client ethpb.BeaconChainClient) error {
 
 	for true {
 
-		head, err := client.GetChainHead(context.Background(), &ptypes.Empty{})
+		head, err := client.GetChainHead()
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -325,24 +303,24 @@ func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBloc
 	return db.UpdateCanonicalBlocks(startEpoch, endEpoch, orphanedBlocks)
 }
 
-func GetLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) ([]*types.MinimalBlock, error) {
-	blocks := make([]*types.MinimalBlock, 0)
+func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.RpcClient) ([]*types.MinimalBlock, error) {
+	wrappedBlocks := make([]*types.MinimalBlock, 0)
 
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
-		startSlot := epoch * utils.SlotsPerEpoch
-		endSlot := (epoch+1)*utils.SlotsPerEpoch - 1
+		startSlot := epoch * utils.Config.Chain.SlotsPerEpoch
+		endSlot := (epoch+1)*utils.Config.Chain.SlotsPerEpoch - 1
 		for slot := startSlot; slot <= endSlot; slot++ {
-			blocksResponse, err := client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}, IncludeNoncanonical: true})
+			blocks, err := client.GetBlocksBySlot(slot)
 			if err != nil {
 				logger.Fatal(err)
 			}
 
-			for _, block := range blocksResponse.BlockContainers {
-				blocks = append(blocks, &types.MinimalBlock{
+			for _, block := range blocks {
+				wrappedBlocks = append(wrappedBlocks, &types.MinimalBlock{
 					Epoch:      epoch,
-					Slot:       block.Block.Slot,
+					Slot:       block.Slot,
 					BlockRoot:  block.BlockRoot,
-					ParentRoot: block.Block.ParentRoot,
+					ParentRoot: block.ParentRoot,
 				})
 			}
 		}
@@ -350,241 +328,47 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client ethpb.BeaconChainClient) 
 		logger.Printf("Retrieving all blocks for epoch %v. %v epochs remaining", epoch, endEpoch-epoch)
 	}
 
-	return blocks, nil
+	return wrappedBlocks, nil
 }
 
-func ExportEpoch(epoch uint64, client ethpb.BeaconChainClient) error {
-	var err error
+func ExportEpoch(epoch uint64, client rpc.RpcClient) error {
+	start := time.Now()
 
-	data := &types.EpochData{}
-	data.Epoch = epoch
+	logger.Printf("Retrieving data for epoch %v", epoch)
+	data, err := client.GetEpochData(epoch)
 
-	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
-	data.ValidatorBalances = make([]*ethpb.ValidatorBalances_Balance, 0)
-	data.ValidatorIndices = make(map[string]uint64)
-
-	validatorBalancesResponse := &ethpb.ValidatorBalances{}
-	for {
-		validatorBalancesResponse, err = client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
-		if err != nil {
-			logger.Printf("error retrieving validator balances response: %v", err)
-			break
-		}
-		if validatorBalancesResponse.TotalSize == 0 {
-			break
-		}
-
-		for _, balance := range validatorBalancesResponse.Balances {
-			data.ValidatorBalances = append(data.ValidatorBalances, balance)
-			data.ValidatorIndices[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
-		}
-
-		if validatorBalancesResponse.NextPageToken == "" {
-			break
-		}
-	}
-	logger.Printf("Retrieved data for %v validator balances for epoch %v", len(data.ValidatorBalances), epoch)
-
-	data.ValidatorAssignmentes, err = cache.GetEpochAssignments(epoch)
 	if err != nil {
-		return fmt.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
-	}
-	logger.Printf("Retrieved validator assignment data for epoch %v", epoch)
-
-	// Retrieve all blocks for the epoch
-	data.Blocks = make(map[uint64]map[string]*types.BlockContainer)
-
-	logger.Println(epoch*utils.SlotsPerEpoch, (epoch+1)*utils.SlotsPerEpoch-1)
-	for slot := epoch * utils.SlotsPerEpoch; slot <= (epoch+1)*utils.SlotsPerEpoch-1; slot++ {
-
-		if slot == 0 { // Currently slot 0 returns all blocks
-			continue
-		}
-
-		blocksResponse, err := client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}, IncludeNoncanonical: true})
-		if err != nil {
-			logger.Fatal(err)
-		}
-
-		if blocksResponse.TotalSize == 0 {
-			continue
-		}
-
-		for _, block := range blocksResponse.BlockContainers {
-
-			// Make sure that blocks from the genesis epoch have their Eth1Data field set
-			if epoch == 0 && block.Block.Body.Eth1Data == nil {
-				block.Block.Body.Eth1Data = &ethpb.Eth1Data{
-					DepositRoot:  []byte{},
-					DepositCount: 0,
-					BlockHash:    []byte{},
-				}
-			}
-
-			if data.Blocks[block.Block.Slot] == nil {
-				data.Blocks[block.Block.Slot] = make(map[string]*types.BlockContainer)
-			}
-			data.Blocks[block.Block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = &types.BlockContainer{
-				Status:   1,
-				Proposer: data.ValidatorAssignmentes.ProposerAssignments[block.Block.Slot],
-				Block:    block,
-			}
-		}
-	}
-	logger.Printf("Retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
-
-	// Fill up missed and scheduled blocks
-	for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {
-		_, found := data.Blocks[slot]
-		if !found {
-			// Proposer was assigned but did not yet propose a block
-			data.Blocks[slot] = make(map[string]*types.BlockContainer)
-			data.Blocks[slot]["0x0"] = &types.BlockContainer{
-				Status:   0,
-				Proposer: proposer,
-				Block: &ethpb.BeaconBlockContainer{
-					Block: &ethpb.BeaconBlock{
-						Slot:       slot,
-						ParentRoot: []byte{},
-						StateRoot:  []byte{},
-						Body: &ethpb.BeaconBlockBody{
-							RandaoReveal: []byte{},
-							Eth1Data: &ethpb.Eth1Data{
-								DepositRoot:  []byte{},
-								DepositCount: 0,
-								BlockHash:    []byte{},
-							},
-							Graffiti:          []byte{},
-							ProposerSlashings: []*ethpb.ProposerSlashing{},
-							AttesterSlashings: []*ethpb.AttesterSlashing{},
-							Attestations:      []*ethpb.Attestation{},
-							Deposits:          []*ethpb.Deposit{},
-							VoluntaryExits:    []*ethpb.VoluntaryExit{},
-						},
-						Signature: []byte{},
-					},
-				},
-			}
-
-			if utils.SlotToTime(slot).After(time.Now().Add(time.Second * -60)) {
-				// Block is in the future, set status to scheduled
-				data.Blocks[slot]["0x0"].Status = 0
-				data.Blocks[slot]["0x0"].Block.BlockRoot = []byte{0x0}
-			} else {
-				// Block is in the past, set status to missed
-				data.Blocks[slot]["0x0"].Status = 2
-				data.Blocks[slot]["0x0"].Block.BlockRoot = []byte{0x1}
-			}
-		} else {
-			for _, block := range data.Blocks[slot] {
-				block.Proposer = proposer
-			}
-		}
+		return fmt.Errorf("error retrieving epoch data: %v", err)
 	}
 
-	// Retrieve the validator set for the epoch
-	data.Validators = make([]*ethpb.Validator, 0)
-	validatorResponse := &ethpb.Validators{}
-	for {
-		validatorResponse, err = client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
-		if err != nil {
-			logger.Printf("error retrieving validator response: %v", err)
-			break
-		}
-		if validatorResponse.TotalSize == 0 {
-			break
-		}
-
-		data.Validators = append(data.Validators, validatorResponse.Validators...)
-
-		if validatorResponse.NextPageToken == "" {
-			break
-		}
-	}
-	logger.Printf("Retrieved validator data for epoch %v", epoch)
-
-	// Retrieve the beacon committees for the epoch
-	data.BeaconCommittees = make(map[uint64][]*ethpb.BeaconCommittees_CommitteeItem)
-	beaconCommitteesResponse := &ethpb.BeaconCommittees{}
-	beaconCommitteesResponse, err = client.ListBeaconCommittees(context.Background(), &ethpb.ListCommitteesRequest{QueryFilter: &ethpb.ListCommitteesRequest_Epoch{Epoch: epoch}})
-	if err != nil {
-		logger.Printf("error retrieving beacon committees response: %v", err)
-	} else {
-		for slot, committee := range beaconCommitteesResponse.Committees {
-			if committee == nil {
-				continue
-			}
-			if data.BeaconCommittees[slot] == nil {
-				data.BeaconCommittees[slot] = make([]*ethpb.BeaconCommittees_CommitteeItem, 0)
-			}
-			data.BeaconCommittees[slot] = append(data.BeaconCommittees[slot], committee.Committees...)
-		}
-	}
-
-	data.EpochParticipationStats, err = client.GetValidatorParticipation(context.Background(), &ethpb.GetValidatorParticipationRequest{QueryFilter: &ethpb.GetValidatorParticipationRequest_Epoch{Epoch: epoch}})
-	if err != nil {
-		logger.Printf("error retrieving epoch participation statistics: %v", err)
-		data.EpochParticipationStats = &ethpb.ValidatorParticipationResponse{
-			Epoch:         epoch,
-			Finalized:     false,
-			Participation: &ethpb.ValidatorParticipation{},
-		}
-	}
+	logger.Printf("Data for epoch %v retrieved, took %v", epoch, time.Since(start))
 
 	return db.SaveEpoch(data)
 }
 
-func exportAttestationPool(client ethpb.BeaconChainClient) error {
-	attestations, err := client.AttestationPool(context.Background(), &ptypes.Empty{})
+func exportAttestationPool(client rpc.RpcClient) error {
+	attestations, err := client.GetAttestationPool()
 
 	if err != nil {
 		return fmt.Errorf("error retrieving attestation pool data: %v", err)
 	}
 
-	logger.Printf("Retrieved %v attestations from the attestation pool", len(attestations.Attestations))
-
-	return db.SaveAttestationPool(attestations.Attestations)
+	return db.SaveAttestationPool(attestations)
 }
 
-func exportValidatorQueue(client ethpb.BeaconChainClient) error {
-	var err error
+func exportValidatorQueue(client rpc.RpcClient) error {
 
-	validatorIndices := make(map[string]uint64)
-
-	validatorBalancesResponse := &ethpb.ValidatorBalances{}
-	for {
-		validatorBalancesResponse, err = client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize})
-		if err != nil {
-			logger.Printf("error retrieving validator balances response: %v", err)
-			break
-		}
-		if validatorBalancesResponse.TotalSize == 0 {
-			break
-		}
-
-		for _, balance := range validatorBalancesResponse.Balances {
-			validatorIndices[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
-		}
-
-		if validatorBalancesResponse.NextPageToken == "" {
-			break
-		}
-	}
-
-	validators, err := client.GetValidatorQueue(context.Background(), &ptypes.Empty{})
-
+	validators, validatorIndices, err := client.GetValidatorQueue()
 	if err != nil {
 		return fmt.Errorf("error retrieving validator queue data: %v", err)
 	}
 
-	logger.Printf("Retrieved %v validators to enter and %v validators to leave from the validator queue", len(validators.ActivationPublicKeys), len(validators.ExitPublicKeys))
-
 	return db.SaveValidatorQueue(validators, validatorIndices)
 }
 
-func updateEpochStatus(client ethpb.BeaconChainClient, startEpoch, endEpoch uint64) error {
+func updateEpochStatus(client rpc.RpcClient, startEpoch, endEpoch uint64) error {
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
-		epochParticipationStats, err := client.GetValidatorParticipation(context.Background(), &ethpb.GetValidatorParticipationRequest{QueryFilter: &ethpb.GetValidatorParticipationRequest_Epoch{Epoch: epoch}})
+		epochParticipationStats, err := client.GetValidatorParticipation(epoch)
 		if err != nil {
 			logger.Printf("error retrieving epoch participation statistics: %v", err)
 		} else {

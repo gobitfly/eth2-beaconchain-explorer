@@ -1,21 +1,19 @@
 package utils
 
 import (
+	"encoding/hex"
 	"eth2-exporter/types"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"html/template"
+	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
 )
-
-// Specific to the Prysm testnet
-const SecondsPerSlot = 12
-const SlotsPerEpoch = 8
-const GenesisTimestamp = 1573489682
 
 const PageSize = 500
 
@@ -60,15 +58,15 @@ func FormatValidator(validator uint64) template.HTML {
 }
 
 func SlotToTime(slot uint64) time.Time {
-	return time.Unix(GenesisTimestamp+int64(slot)*SecondsPerSlot, 0)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.SecondsPerSlot), 0)
 }
 
 func TimeToSlot(timestamp uint64) uint64 {
-	return (timestamp - GenesisTimestamp) / SecondsPerSlot
+	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.SecondsPerSlot
 }
 
 func EpochToTime(epoch uint64) time.Time {
-	return time.Unix(GenesisTimestamp+int64(epoch)*SecondsPerSlot*SlotsPerEpoch, 0)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
 }
 
 func FormatBalance(balance uint64) string {
@@ -112,4 +110,16 @@ func readConfigEnv(cfg *types.Config) error {
 
 func FormatPublicKey(publicKey []byte) string {
 	return fmt.Sprintf("%x", publicKey)
+}
+
+func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint64) string {
+	return fmt.Sprintf("%v-%v-%v", AttesterSlot, CommitteeIndex, MemberIndex)
+}
+
+func MustParseHex(hexString string) []byte {
+	data, err := hex.DecodeString(strings.Replace(hexString, "0x", "", -1))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return data
 }

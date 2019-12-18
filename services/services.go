@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -153,6 +154,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.StakedEtherChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), float64(history.EligibleEther) / 1000000000}
 		data.ActiveValidatorsChartData[i] = []float64{float64(utils.EpochToTime(history.Epoch).Unix() * 1000), float64(history.ValidatorsCount)}
 	}
+
+	data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
 
 	return data, nil
 }
