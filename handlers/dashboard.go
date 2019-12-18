@@ -106,7 +106,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 
 		err := db.DB.Select(&balanceHistory, query, filter)
 		if err != nil {
-			logger.Printf("Error retrieving validator balance history: %v", err)
+			logger.Errorf("Error retrieving validator balance history: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -122,7 +122,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		defer group.Done()
 		err := db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, SUM(effectivebalance) as balance, COUNT(*) as validatorcount FROM validator_set WHERE validatorindex = ANY($1) AND epoch > activationepoch AND epoch < exitepoch GROUP BY epoch ORDER BY epoch desc limit 16800", filter)
 		if err != nil {
-			logger.Printf("Error retrieving validator effective balance history: %v", err)
+			logger.WithError(err).Error("Error retrieving validator effective balance history")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -202,7 +202,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 					Orphaned: proposals[i].Count,
 				})
 			} else {
-				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", proposals[i].Status)
+				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
 			}
 		} else {
 			if proposals[i].Day == proposals[i+1].Day {
@@ -235,7 +235,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 					Orphaned: proposals[i].Count,
 				})
 			} else {
-				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", proposals[i].Status)
+				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
 			}
 		}
 	}
@@ -267,31 +267,22 @@ func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
+		logger.Errorf("Error converting datatables data parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables start parameter from string to int: %v", err)
+		logger.Errorf("Error converting datatables start parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	// length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	// if err != nil {
-	// 	logger.Printf("Error converting datatables length parameter from string to int: %v", err)
-	// 	http.Error(w, "Internal server error", 503)
-	// 	return
-	// }
-	// if length > 100 {
-	// 	length = 100
-	// }
 
 	var totalCount uint64
 
 	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch < activationepoch AND validator_set.validatorindex = ANY($2)", services.LatestEpoch(), filter)
 	if err != nil {
-		logger.Printf("Error retrieving pending validator count: %v", err)
+		logger.Errorf("Error retrieving pending validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -322,7 +313,7 @@ func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
 		LIMIT 100 OFFSET $3`, services.LatestEpoch(), "%"+search+"%", start, filter)
 
 	if err != nil {
-		logger.Printf("Error retrieving pending validator data: %v", err)
+		logger.Errorf("Error retrieving pending validator data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -374,37 +365,25 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
+		logger.Errorf("Error converting datatables data parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables start parameter from string to int: %v", err)
+		logger.Errorf("Error converting datatables start parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	// length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	// if err != nil {
-	// 	logger.Printf("Error converting datatables length parameter from string to int: %v", err)
-	// 	http.Error(w, "Internal server error", 503)
-	// 	return
-	// }
-	// if length > 100 {
-	// 	length = 100
-	// }
 
 	var totalCount uint64
 
 	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch > activationepoch AND epoch < exitepoch AND validator_set.validatorindex = ANY($2)", services.LatestEpoch(), filter)
 	if err != nil {
-		logger.Printf("Error retrieving active validator count: %v", err)
+		logger.Errorf("Error retrieving active validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-
-	// attestation_assignments.status
-	//
 
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators, `SELECT 
@@ -435,7 +414,7 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 		LIMIT 100 OFFSET $3`, services.LatestEpoch(), "%"+search+"%", start, filter)
 
 	if err != nil {
-		logger.Printf("Error retrieving active validators data: %v", err)
+		logger.Errorf("Error retrieving active validators data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -497,31 +476,22 @@ func DashboardDataValidatorsEjected(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
+		logger.Errorf("Error converting datatables data parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables start parameter from string to int: %v", err)
+		logger.Errorf("Error converting datatables start parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	// length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	// if err != nil {
-	// 	logger.Printf("Error converting datatables length parameter from string to int: %v", err)
-	// 	http.Error(w, "Internal server error", 503)
-	// 	return
-	// }
-	// if length > 100 {
-	// 	length = 100
-	// }
 
 	var totalCount uint64
 
 	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch > exitepoch AND validator_set.validatorindex = ANY($2)", services.LatestEpoch(), filter)
 	if err != nil {
-		logger.Printf("Error retrieving ejected validator count: %v", err)
+		logger.Errorf("Error retrieving ejected validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -552,7 +522,7 @@ func DashboardDataValidatorsEjected(w http.ResponseWriter, r *http.Request) {
 		LIMIT 100 OFFSET $3`, services.LatestEpoch(), "%"+search+"%", start, filter)
 
 	if err != nil {
-		logger.Printf("Error retrieving ejected validators data: %v", err)
+		logger.Errorf("Error retrieving ejected validators data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
