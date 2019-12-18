@@ -87,6 +87,7 @@ $(document).ready(function() {
       serverSide: true,
       ordering: false,
       searching: true,
+      paging: false,
       ajax: '/dashboard/data/ejected' + window.location.search,
       columnDefs: [
         {
