@@ -17,15 +17,14 @@
 
 ul.multiselect {
   padding: 0;
-  /* border: 1px solid gray; */
   z-index: 99;
-  /* box-shadow: 5px 10px #777777; */
 }
+
 ul.multiselect li.input {
   list-style: none;
   float: left;
-  /*border: 1px solid black;*/
 }
+
 ul.multiselect li.item {
   list-style: none;
   float: left;
@@ -34,6 +33,16 @@ ul.multiselect li.item {
   margin: 2px;
   padding: 0 5px;
   background-color: lightblue;
+}
+
+ul.multiselect li.item[data-state='active'] {
+  background-color: lightgreen;
+}
+ul.multiselect li.item[data-state='pending'] {
+  background-color: lightyellow;
+}
+ul.multiselect li.item[data-state='ejected'] {
+  background-color: lightcoral;
 }
 
 ul.multiselect li.item .remove-validator {

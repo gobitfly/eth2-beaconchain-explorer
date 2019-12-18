@@ -6,7 +6,7 @@ $(document).ready(function() {
       ordering: false,
       searching: true,
       ajax: '/dashboard/data/pending' + window.location.search,
-      pagingType: 'full',
+      paging: false,
       columnDefs: [
         {
           targets: 0,
@@ -28,6 +28,9 @@ $(document).ready(function() {
       // hide table if there are no data
       validatorsCount.pending = json.recordsFiltered
       renderDashboardInfo()
+      for (var i = 0; i < json.data.length; i++) {
+        document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`).dataset.state = 'pending'
+      }
       document.getElementById('pending-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
   var activeTable = $('#active')
@@ -37,7 +40,6 @@ $(document).ready(function() {
       ordering: false,
       searching: true,
       ajax: '/dashboard/data/active' + window.location.search,
-      // pagingType: 'full',
       paging: false,
       columnDefs: [
         {
@@ -74,6 +76,9 @@ $(document).ready(function() {
       // hide table if there are no data
       validatorsCount.active = json.recordsFiltered
       renderDashboardInfo()
+      for (var i = 0; i < json.data.length; i++) {
+        document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`).dataset.state = 'active'
+      }
       document.getElementById('active-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
   var ejectedTable = $('#ejected')
@@ -83,7 +88,6 @@ $(document).ready(function() {
       ordering: false,
       searching: true,
       ajax: '/dashboard/data/ejected' + window.location.search,
-      // pagingType: 'full',
       columnDefs: [
         {
           targets: 0,
@@ -105,6 +109,9 @@ $(document).ready(function() {
       // hide table if there are no data
       validatorsCount.ejected = json.recordsFiltered
       renderDashboardInfo()
+      for (var i = 0; i < json.data.length; i++) {
+        document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`).dataset.state = 'ejected'
+      }
       document.getElementById('ejected-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
 
