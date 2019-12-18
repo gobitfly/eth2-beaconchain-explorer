@@ -37,7 +37,8 @@ $(document).ready(function() {
       ordering: false,
       searching: true,
       ajax: '/dashboard/data/active' + window.location.search,
-      pagingType: 'full',
+      // pagingType: 'full',
+      paging: false,
       columnDefs: [
         {
           targets: 0,
@@ -82,7 +83,7 @@ $(document).ready(function() {
       ordering: false,
       searching: true,
       ajax: '/dashboard/data/ejected' + window.location.search,
-      pagingType: 'full',
+      // pagingType: 'full',
       columnDefs: [
         {
           targets: 0,
