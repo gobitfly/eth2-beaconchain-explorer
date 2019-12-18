@@ -480,6 +480,7 @@ function createProposedChart(data) {
   // if (!data || !data.length) return
   var proposed = data.map(d => [d.Day * 1000, d.Proposed])
   var missed = data.map(d => [d.Day * 1000, d.Missed])
+  var orphaned = data.map(d => [d.Day * 1000, d.Orphaned])
   Highcharts.stockChart('proposed-chart', {
     exporting: {
       scale: 1
@@ -565,6 +566,10 @@ function createProposedChart(data) {
       {
         name: 'Missed',
         data: missed
+      },
+      {
+        name: 'Orphaned',
+        data: orphaned
       }
     ],
     rangeSelector: {

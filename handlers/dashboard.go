@@ -185,15 +185,24 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
 					Proposed: proposals[i].Count,
 					Missed:   0,
+					Orphaned: 0,
 				})
 			} else if proposals[i].Status == 2 {
 				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
 					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
 					Proposed: 0,
 					Missed:   proposals[i].Count,
+					Orphaned: 0,
+				})
+			} else if proposals[i].Status == 3 {
+				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: 0,
+					Missed:   0,
+					Orphaned: proposals[i].Count,
 				})
 			} else {
-				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
+				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", proposals[i].Status)
 			}
 		} else {
 			if proposals[i].Day == proposals[i+1].Day {
@@ -201,6 +210,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
 					Proposed: proposals[i].Count,
 					Missed:   proposals[i+1].Count,
+					Orphaned: proposals[i+1].Count,
 				})
 				i++
 			} else if proposals[i].Status == 1 {
@@ -208,15 +218,24 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
 					Proposed: proposals[i].Count,
 					Missed:   0,
+					Orphaned: 0,
 				})
 			} else if proposals[i].Status == 2 {
 				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
 					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
 					Proposed: 0,
 					Missed:   proposals[i].Count,
+					Orphaned: 0,
+				})
+			} else if proposals[i].Status == 3 {
+				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
+					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
+					Proposed: 0,
+					Missed:   0,
+					Orphaned: proposals[i].Count,
 				})
 			} else {
-				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
+				logger.Error("Error parsing Daily Proposed Blocks unkown status: %v", proposals[i].Status)
 			}
 		}
 	}
@@ -424,11 +443,11 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
 		if v.LastProposed == nil {
-			genesis := uint64(utils.GenesisTimestamp)
+			genesis := uint64(utils.Config.Chain.GenesisTimestamp)
 			v.LastProposed = &genesis
 		}
 		if v.LastAttested == nil {
-			genesis := uint64(utils.GenesisTimestamp)
+			genesis := uint64(utils.Config.Chain.GenesisTimestamp)
 			v.LastAttested = &genesis
 		}
 		tableData[i] = []interface{}{
