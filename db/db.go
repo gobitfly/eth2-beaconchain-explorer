@@ -561,7 +561,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 			for i, a := range b.Attestations {
 
 				for _, validator := range a.Attesters {
-					_, err = stmtAttestationAssignments.Exec(a.Data.Slot/utils.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1)
+					_, err = stmtAttestationAssignments.Exec(a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1)
 
 					if err != nil {
 						return fmt.Errorf("error executing stmtAttestationAssignments: %v", err)

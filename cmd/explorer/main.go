@@ -58,10 +58,25 @@ func main() {
 
 	utils.Config = cfg
 
+	if utils.Config.Chain.SlotsPerEpoch == 0 || utils.Config.Chain.SecondsPerSlot == 0 || utils.Config.Chain.GenesisTimestamp == 0 {
+		log.Fatal("Invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
+	}
+
 	if cfg.Indexer.Enabled {
-		rpcClient, err := rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
-		if err != nil {
-			log.Fatal(err)
+		var rpcClient rpc.RpcClient
+
+		if utils.Config.Indexer.Node.Type == "prysm" {
+			rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if utils.Config.Indexer.Node.Type == "lighthouse" {
+			rpcClient, err = rpc.NewLighthouseClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			log.Fatalf("Invalid note type %v specified. Supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
 		}
 
 		go exporter.Start(rpcClient)

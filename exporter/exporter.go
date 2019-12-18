@@ -8,7 +8,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -30,29 +29,11 @@ func Start(client rpc.RpcClient) error {
 			logger.Fatal(err)
 		}
 
-		var wg sync.WaitGroup
-		for epoch := uint64(0); epoch <= head.HeadEpoch; epoch++ {
-			//err := exportEpoch(epoch, client)
+		for epoch := uint64(1); epoch <= head.HeadEpoch; epoch++ {
+			err := ExportEpoch(epoch, client)
 
 			if err != nil {
-				logger.Fatal(err)
-			}
-			wg.Add(1)
-
-			logger.Printf("Exporting epoch %v of %v", epoch, head.HeadEpoch)
-			go func(e uint64) {
-				err := ExportEpoch(e, client)
-
-				if err != nil {
-					logger.Fatal(err)
-				}
-				logger.Printf("Finished export for epoch %v", e)
-				wg.Done()
-			}(epoch)
-
-			if epoch%10 == 0 {
-				logger.Printf("Waiting...")
-				wg.Wait()
+				logger.Error(err)
 			}
 		}
 	}
@@ -326,8 +307,8 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.RpcClient) ([]*types.
 	wrappedBlocks := make([]*types.MinimalBlock, 0)
 
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
-		startSlot := epoch * utils.SlotsPerEpoch
-		endSlot := (epoch+1)*utils.SlotsPerEpoch - 1
+		startSlot := epoch * utils.Config.Chain.SlotsPerEpoch
+		endSlot := (epoch+1)*utils.Config.Chain.SlotsPerEpoch - 1
 		for slot := startSlot; slot <= endSlot; slot++ {
 			blocks, err := client.GetBlocksBySlot(slot)
 			if err != nil {

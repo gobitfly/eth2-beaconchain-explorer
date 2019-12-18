@@ -263,7 +263,7 @@ func (self *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]map[string]*types.Block)
 
-	for slot := epoch * utils.SlotsPerEpoch; slot <= (epoch+1)*utils.SlotsPerEpoch-1; slot++ {
+	for slot := epoch * utils.Config.Chain.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.SlotsPerEpoch-1; slot++ {
 
 		if slot == 0 { // Currently slot 0 returns all blocks
 			continue
@@ -514,9 +514,9 @@ func (self *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 			}
 
 			aggregationBits := bitfield.Bitlist(a.AggregationBits)
-			assignments, err := self.GetEpochAssignments(a.Data.Slot / utils.SlotsPerEpoch)
+			assignments, err := self.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
 			if err != nil {
-				return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.SlotsPerEpoch, err)
+				return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
 			}
 
 			a.Attesters = make([]uint64, 0)
