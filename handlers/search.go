@@ -57,6 +57,23 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			logger.WithError(err).Error("Failed encoding searchAhead-blocks-result")
 			http.Error(w, "Internal server error", 503)
 		}
+	case "graffiti":
+		graffiti := &types.SearchAheadGraffitiResult{}
+
+		encoding := "UTF-8"
+
+		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE graffiti LIKE convert_to($1, $2) LIMIT 10", "%"+search+"%", encoding)
+
+		if err != nil {
+			logger.WithError(err).Error("Failed doing search-query")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = json.NewEncoder(w).Encode(graffiti)
+		if err != nil {
+			logger.WithError(err).Error("Failed encoding searchAhead-blocks-result")
+			http.Error(w, "Internal server error", 503)
+		}
 	case "epochs":
 		epochs := &types.SearchAheadEpochsResult{}
 		err := db.DB.Select(epochs, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 LIMIT 10", search+"%")
