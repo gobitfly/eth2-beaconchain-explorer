@@ -139,7 +139,7 @@ $(document).ready(function() {
       limit: 5,
       name: 'validators',
       source: bhValidators,
-      display: 'pubkey',
+      display: 'index',
       templates: {
         // header: '<h3>Validators</h3>',
         suggestion: function(data) {
