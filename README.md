@@ -55,6 +55,8 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 ## Development
 Install golint. (see https://github.com/golang/lint)
 
+- Install docker-compose and run `docker-compose up` if you want to spin up a complete environment based on prysm in docker. After the beacon node starts to sync, visit http://localhost:3333
+
 ## Commercial usage
 The explorer uses Highsoft charts which are not free for commercial and governmental use. If you plan to use the explorer for commercial purposes you currently need to purchase an appropriate HighSoft license.
 We are planning to switch out the Highsoft chart library with a less restrictive charting library (suggestions are welcome).
