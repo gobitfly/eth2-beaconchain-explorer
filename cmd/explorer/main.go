@@ -63,7 +63,7 @@ func main() {
 	}
 
 	if cfg.Indexer.Enabled {
-		var rpcClient rpc.RpcClient
+		var rpcClient rpc.Client
 
 		if utils.Config.Indexer.Node.Type == "prysm" {
 			rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)

@@ -194,9 +194,9 @@ type BlockPageData struct {
 	Signature              []byte `db:"signature"`
 	RandaoReveal           []byte `db:"randaoreveal"`
 	Graffiti               []byte `db:"graffiti"`
-	Eth1Data_DepositRoot   []byte `db:"eth1data_depositroot"`
-	Eth1Data_DepositCount  uint64 `db:"eth1data_depositcount"`
-	Eth1Data_BlockHash     []byte `db:"eth1data_blockhash"`
+	Eth1dataDepositroot    []byte `db:"eth1data_depositroot"`
+	Eth1dataDepositcount   uint64 `db:"eth1data_depositcount"`
+	Eth1dataBlockhash      []byte `db:"eth1data_blockhash"`
 	ProposerSlashingsCount uint64 `db:"proposerslashingscount"`
 	AttesterSlashingsCount uint64 `db:"attesterslashingscount"`
 	AttestationsCount      uint64 `db:"attestationscount"`

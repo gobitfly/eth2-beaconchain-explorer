@@ -554,14 +554,14 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 			}
 
 			for i, ps := range b.ProposerSlashings {
-				_, err := stmtProposerSlashing.Exec(b.Slot, i, ps.ProposerIndex, ps.Header_1.Slot, ps.Header_1.ParentRoot, ps.Header_1.StateRoot, ps.Header_1.BodyRoot, ps.Header_1.Signature, ps.Header_2.Slot, ps.Header_2.ParentRoot, ps.Header_2.StateRoot, ps.Header_2.BodyRoot, ps.Header_2.Signature)
+				_, err := stmtProposerSlashing.Exec(b.Slot, i, ps.ProposerIndex, ps.Header1.Slot, ps.Header1.ParentRoot, ps.Header1.StateRoot, ps.Header1.BodyRoot, ps.Header1.Signature, ps.Header2.Slot, ps.Header2.ParentRoot, ps.Header2.StateRoot, ps.Header2.BodyRoot, ps.Header2.Signature)
 				if err != nil {
 					return fmt.Errorf("error executing stmtProposerSlashing: %v", err)
 				}
 			}
 
 			for i, as := range b.AttesterSlashings {
-				_, err := stmtAttesterSlashing.Exec(b.Slot, i, pq.Array(as.Attestation_1.CustodyBit_0Indices), pq.Array(as.Attestation_1.CustodyBit_1Indices), as.Attestation_1.Signature, as.Attestation_1.Data.Slot, as.Attestation_1.Data.CommitteeIndex, as.Attestation_1.Data.BeaconBlockRoot, as.Attestation_1.Data.Source.Epoch, as.Attestation_1.Data.Source.Root, as.Attestation_1.Data.Target.Epoch, as.Attestation_1.Data.Target.Root, pq.Array(as.Attestation_2.CustodyBit_0Indices), pq.Array(as.Attestation_2.CustodyBit_1Indices), as.Attestation_2.Signature, as.Attestation_2.Data.Slot, as.Attestation_2.Data.CommitteeIndex, as.Attestation_2.Data.BeaconBlockRoot, as.Attestation_2.Data.Source.Epoch, as.Attestation_2.Data.Source.Root, as.Attestation_2.Data.Target.Epoch, as.Attestation_2.Data.Target.Root)
+				_, err := stmtAttesterSlashing.Exec(b.Slot, i, pq.Array(as.Attestation1.Custodybit0indices), pq.Array(as.Attestation1.Custodybit1indices), as.Attestation1.Signature, as.Attestation1.Data.Slot, as.Attestation1.Data.CommitteeIndex, as.Attestation1.Data.BeaconBlockRoot, as.Attestation1.Data.Source.Epoch, as.Attestation1.Data.Source.Root, as.Attestation1.Data.Target.Epoch, as.Attestation1.Data.Target.Root, pq.Array(as.Attestation2.Custodybit0indices), pq.Array(as.Attestation2.Custodybit1indices), as.Attestation2.Signature, as.Attestation2.Data.Slot, as.Attestation2.Data.CommitteeIndex, as.Attestation2.Data.BeaconBlockRoot, as.Attestation2.Data.Source.Epoch, as.Attestation2.Data.Source.Root, as.Attestation2.Data.Target.Epoch, as.Attestation2.Data.Target.Root)
 				if err != nil {
 					return fmt.Errorf("error executing stmtAttesterSlashing: %v", err)
 				}

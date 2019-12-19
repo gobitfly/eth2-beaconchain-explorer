@@ -102,22 +102,22 @@ type Eth1Data struct {
 // ProposerSlashing is a struct to hold proposer slashing data
 type ProposerSlashing struct {
 	ProposerIndex uint64
-	Header_1      *Block
-	Header_2      *Block
+	Header1       *Block
+	Header2       *Block
 }
 
 // AttesterSlashing is a struct to hold attester slashing
 type AttesterSlashing struct {
-	Attestation_1 *IndexedAttestation
-	Attestation_2 *IndexedAttestation
+	Attestation1 *IndexedAttestation
+	Attestation2 *IndexedAttestation
 }
 
 // IndexedAttestation is a struct to hold indexed attestation data
 type IndexedAttestation struct {
-	CustodyBit_0Indices []uint64
-	CustodyBit_1Indices []uint64
-	Data                *AttestationData
-	Signature           []byte
+	Custodybit0indices []uint64
+	Custodybit1indices []uint64
+	Data               *AttestationData
+	Signature          []byte
 }
 
 // Attestation is a struct to hold attestation header data

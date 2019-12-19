@@ -21,7 +21,7 @@ var logger = logrus.New().WithField("module", "exporter")
 var epochBlacklist = make(map[uint64]uint64)
 
 // Start will start the export of data from rpc into the database
-func Start(client rpc.RpcClient) error {
+func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.FullIndexOnStartup {
 		logger.Printf("Performing one time full db reindex")
@@ -306,7 +306,7 @@ func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBloc
 }
 
 // GetLastBlocks will get all blocks for a range of epochs
-func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.RpcClient) ([]*types.MinimalBlock, error) {
+func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.MinimalBlock, error) {
 	wrappedBlocks := make([]*types.MinimalBlock, 0)
 
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
@@ -335,7 +335,7 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.RpcClient) ([]*types.
 }
 
 // ExportEpoch will export an epoch from rpc into the database
-func ExportEpoch(epoch uint64, client rpc.RpcClient) error {
+func ExportEpoch(epoch uint64, client rpc.Client) error {
 	start := time.Now()
 
 	logger.Printf("Retrieving data for epoch %v", epoch)
@@ -350,7 +350,7 @@ func ExportEpoch(epoch uint64, client rpc.RpcClient) error {
 	return db.SaveEpoch(data)
 }
 
-func exportAttestationPool(client rpc.RpcClient) error {
+func exportAttestationPool(client rpc.Client) error {
 	attestations, err := client.GetAttestationPool()
 
 	if err != nil {
@@ -360,7 +360,7 @@ func exportAttestationPool(client rpc.RpcClient) error {
 	return db.SaveAttestationPool(attestations)
 }
 
-func exportValidatorQueue(client rpc.RpcClient) error {
+func exportValidatorQueue(client rpc.Client) error {
 
 	validators, validatorIndices, err := client.GetValidatorQueue()
 	if err != nil {
@@ -370,7 +370,7 @@ func exportValidatorQueue(client rpc.RpcClient) error {
 	return db.SaveValidatorQueue(validators, validatorIndices)
 }
 
-func updateEpochStatus(client rpc.RpcClient, startEpoch, endEpoch uint64) error {
+func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
 		epochParticipationStats, err := client.GetValidatorParticipation(epoch)
 		if err != nil {

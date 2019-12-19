@@ -34,6 +34,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// SearchAhead handles responses for the frontend search boxes
 func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

@@ -444,14 +444,14 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 		for i, proposerSlashing := range block.Block.Body.ProposerSlashings {
 			b.ProposerSlashings[i] = &types.ProposerSlashing{
 				ProposerIndex: proposerSlashing.ProposerIndex,
-				Header_1: &types.Block{
+				Header1: &types.Block{
 					Slot:       proposerSlashing.Header_1.Slot,
 					ParentRoot: proposerSlashing.Header_1.ParentRoot,
 					StateRoot:  proposerSlashing.Header_1.StateRoot,
 					Signature:  proposerSlashing.Header_1.Signature,
 					BodyRoot:   proposerSlashing.Header_1.BodyRoot,
 				},
-				Header_2: &types.Block{
+				Header2: &types.Block{
 					Slot:       proposerSlashing.Header_2.Slot,
 					ParentRoot: proposerSlashing.Header_2.ParentRoot,
 					StateRoot:  proposerSlashing.Header_2.StateRoot,
@@ -463,9 +463,9 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 
 		for i, attesterSlashing := range block.Block.Body.AttesterSlashings {
 			b.AttesterSlashings[i] = &types.AttesterSlashing{
-				Attestation_1: &types.IndexedAttestation{
-					CustodyBit_0Indices: attesterSlashing.Attestation_1.CustodyBit_0Indices,
-					CustodyBit_1Indices: attesterSlashing.Attestation_1.CustodyBit_1Indices,
+				Attestation1: &types.IndexedAttestation{
+					Custodybit0indices: attesterSlashing.Attestation_1.CustodyBit_0Indices,
+					Custodybit1indices: attesterSlashing.Attestation_1.CustodyBit_1Indices,
 					Data: &types.AttestationData{
 						Slot:            attesterSlashing.Attestation_1.Data.Slot,
 						CommitteeIndex:  attesterSlashing.Attestation_1.Data.CommitteeIndex,
@@ -481,9 +481,9 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 					},
 					Signature: attesterSlashing.Attestation_1.Signature,
 				},
-				Attestation_2: &types.IndexedAttestation{
-					CustodyBit_0Indices: attesterSlashing.Attestation_2.CustodyBit_0Indices,
-					CustodyBit_1Indices: attesterSlashing.Attestation_2.CustodyBit_1Indices,
+				Attestation2: &types.IndexedAttestation{
+					Custodybit0indices: attesterSlashing.Attestation_2.CustodyBit_0Indices,
+					Custodybit1indices: attesterSlashing.Attestation_2.CustodyBit_1Indices,
 					Data: &types.AttestationData{
 						Slot:            attesterSlashing.Attestation_2.Data.Slot,
 						CommitteeIndex:  attesterSlashing.Attestation_2.Data.CommitteeIndex,
