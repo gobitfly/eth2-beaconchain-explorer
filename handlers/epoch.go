@@ -94,6 +94,11 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 											    votedether
 										FROM epochs 
 										WHERE epoch = $1`, epoch)
+	if err != nil {
+		logger.Printf("Error getting epoch data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
 	epochPageData.NextEpoch = epochPageData.Epoch + 1
