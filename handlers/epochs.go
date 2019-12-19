@@ -44,6 +44,11 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
+	search, err := strconv.ParseInt(q.Get("search[value]"), 10, 64)
+	if err != nil {
+		search = -1
+	}
+
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
@@ -79,7 +84,9 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var epochs []*types.EpochsPageData
-	err = db.DB.Select(&epochs, `SELECT epoch, 
+
+	if search == -1 {
+		err = db.DB.Select(&epochs, `SELECT epoch, 
 											    blockscount, 
 											    proposerslashingscount, 
 											    attesterslashingscount, 
@@ -95,7 +102,24 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 										FROM epochs 
 										WHERE epoch >= $1 AND epoch <= $2
 										ORDER BY epoch DESC`, endEpoch, startEpoch)
-
+	} else {
+		err = db.DB.Select(&epochs, `SELECT epoch, 
+											    blockscount, 
+											    proposerslashingscount, 
+											    attesterslashingscount, 
+											    attestationscount, 
+											    depositscount, 
+											    voluntaryexitscount, 
+											    validatorscount, 
+											    averagevalidatorbalance, 
+											    finalized,
+											    eligibleether,
+											    globalparticipationrate,
+											    votedether
+										FROM epochs 
+										WHERE epoch = $1
+										ORDER BY epoch DESC`, search)
+	}
 	if err != nil {
 		logger.Printf("Error retrieving epoch data: %v", err)
 		http.Error(w, "Internal server error", 503)
