@@ -29,7 +29,8 @@ $(document).ready(function() {
       validatorsCount.pending = json.recordsFiltered
       renderDashboardInfo()
       for (var i = 0; i < json.data.length; i++) {
-        document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`).dataset.state = 'pending'
+        var el = document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`)
+        if (el) el.dataset.state = 'pending'
       }
       document.getElementById('pending-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
@@ -77,7 +78,8 @@ $(document).ready(function() {
       validatorsCount.active = json.recordsFiltered
       renderDashboardInfo()
       for (var i = 0; i < json.data.length; i++) {
-        document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`).dataset.state = 'active'
+        var el = document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`)
+        if (el) el.dataset.state = 'active'
       }
       document.getElementById('active-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
@@ -111,7 +113,8 @@ $(document).ready(function() {
       validatorsCount.ejected = json.recordsFiltered
       renderDashboardInfo()
       for (var i = 0; i < json.data.length; i++) {
-        document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`).dataset.state = 'ejected'
+        var el = document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`)
+        if (el) el.dataset.state = 'ejected'
       }
       document.getElementById('ejected-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
@@ -189,6 +192,9 @@ $(document).ready(function() {
     active: 0,
     ejected: 0
   }
+  var lastStateUpdate = Date.now()
+  var updatingState = false
+
   setValidatorsFromURL()
   renderSelectedValidators()
   renderCharts()
@@ -221,6 +227,7 @@ $(document).ready(function() {
       return
     }
     validators = validatorsStr.split(',')
+    validators = validators.filter((v, i) => validators.indexOf(v) === i)
   }
 
   function addValidator(index) {
@@ -256,6 +263,17 @@ $(document).ready(function() {
   }
 
   function updateState() {
+    // delay update if validator-set changes with high frequency
+    var now = Date.now()
+    var dt = now - lastStateUpdate
+    if (dt < 1000) {
+      if (updatingState) return
+      updatingState = true
+      setTimeout(updateState, 1000 - dt)
+      return
+    }
+    lastStateUpdate = Date.now()
+    updatingState = false
     var qryStr = '?validators=' + validators.join(',')
     var newUrl = window.location.pathname + qryStr
     window.history.pushState(null, 'Dashboard', newUrl)
