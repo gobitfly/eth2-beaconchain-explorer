@@ -39,7 +39,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		data.Meta.Title = fmt.Sprintf("%v - Epoch %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, epochString, time.Now().Year())
 		data.Meta.Path = "/epoch/" + epochString
 		logger.Printf("Error retrieving block data: %v", err)
-		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
 			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
