@@ -534,7 +534,7 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 					validator, found := assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(a.Data.Slot, a.Data.CommitteeIndex, i)]
 					if !found { // This should never happen!
 						validator = 0
-						logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v commitee index %v member index %v", i, b.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
+						logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v committee index %v member index %v", i, b.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
 					}
 					a.Attesters = append(a.Attesters, validator)
 				}

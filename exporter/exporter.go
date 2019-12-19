@@ -227,7 +227,7 @@ func Start(client rpc.Client) error {
 
 		for _, epoch := range keys {
 			if epochBlacklist[epoch] > 3 {
-				logger.Printf("Skipping export of epoch %v as it has errored %v times", epochBlacklist[epoch])
+				logger.Printf("Skipping export of epoch %v as it has errored %d times", epoch, epochBlacklist[epoch])
 				continue
 			}
 
