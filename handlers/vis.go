@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -32,6 +33,7 @@ func Vis(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "vis",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	err = visTemplate.ExecuteTemplate(w, "layout", data)

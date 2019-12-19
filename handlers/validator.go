@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -38,6 +39,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "validators",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {

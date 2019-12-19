@@ -5,13 +5,15 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"fmt"
-	"github.com/gorilla/mux"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var epochTemplate = template.Must(template.New("epoch").Funcs(template.FuncMap{"formatBlockStatus": utils.FormatBlockStatus}).ParseFiles("templates/layout.html", "templates/epoch.html"))
@@ -31,6 +33,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "epochs",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	epoch, err := strconv.ParseUint(epochString, 10, 64)

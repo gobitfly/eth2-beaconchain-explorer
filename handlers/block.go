@@ -6,12 +6,14 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"fmt"
-	"github.com/gorilla/mux"
 	"html/template"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/block.html"))
@@ -63,6 +65,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "blocks",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	if err != nil {

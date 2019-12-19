@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -28,6 +29,7 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "charts",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	err := chartsTemplate.ExecuteTemplate(w, "layout", data)
@@ -50,6 +52,7 @@ func BlocksChart(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "charts",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	rows := []struct {
@@ -140,6 +143,7 @@ func ActiveValidatorChart(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "charts",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	rows := []struct {
@@ -199,6 +203,7 @@ func StakedEtherChart(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "charts",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	rows := []struct {
@@ -259,6 +264,7 @@ func AverageBalanceChart(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "charts",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	rows := []struct {
