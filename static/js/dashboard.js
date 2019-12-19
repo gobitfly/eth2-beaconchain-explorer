@@ -60,14 +60,22 @@ $(document).ready(function() {
           targets: 7,
           data: '7',
           render: function(data, type, row, meta) {
-            return moment.unix(data).fromNow()
+            if (data !== null && data !== undefined && data !== 0) {
+              return moment.unix(data).fromNow()
+            } else {
+              return 'No Attestations Found'
+            }
           }
         },
         {
           targets: 8,
           data: '8',
           render: function(data, type, row, meta) {
-            return moment.unix(data).fromNow()
+            if (data !== null && data !== undefined && data !== 0) {
+              return moment.unix(data).fromNow()
+            } else {
+              return 'No Proposals Found'
+            }
           }
         }
       ]
@@ -303,7 +311,9 @@ $(document).ready(function() {
     $.ajax({
       url: '/dashboard/data/proposals' + qryStr,
       success: function(result) {
-        createProposedChart(result)
+        if (result && result.length) {
+          createProposedChart(result)
+        }
       }
     })
   }

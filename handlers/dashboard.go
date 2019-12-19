@@ -421,13 +421,19 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
-		if v.LastProposed == nil {
-			genesis := uint64(utils.Config.Chain.GenesisTimestamp)
-			v.LastProposed = &genesis
-		}
+		var proposed *int64
+		var attested *int64
 		if v.LastAttested == nil {
-			genesis := uint64(utils.Config.Chain.GenesisTimestamp)
-			v.LastAttested = &genesis
+			attested = new(int64)
+		} else {
+			att := utils.EpochToTime(uint64(*v.LastAttested)).Unix()
+			attested = &att
+		}
+		if v.LastProposed == nil {
+			proposed = new(int64)
+		} else {
+			pr := utils.EpochToTime(uint64(*v.LastProposed)).Unix()
+			proposed = &pr
 		}
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
@@ -437,8 +443,8 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v", v.Slashed),
 			fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
 			fmt.Sprintf("%v", v.ActivationEpoch),
-			utils.EpochToTime(*v.LastAttested).Unix(),
-			utils.EpochToTime(*v.LastProposed).Unix(),
+			attested,
+			proposed,
 		}
 	}
 
