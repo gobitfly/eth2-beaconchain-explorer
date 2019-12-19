@@ -308,6 +308,13 @@ type SearchAheadBlocksResult []struct {
 	Root string `db:"blockroot" json:"blockroot,omitempty"`
 }
 
+// SearchAheadGraffitiResult is a struct to hold the search ahead blocks results with a given graffiti
+type SearchAheadGraffitiResult []struct {
+	Slot     string `db:"slot" json:"slot,omitempty"`
+	Graffiti string `db:"graffiti" json:"graffiti,omitempty"`
+	Root     string `db:"blockroot" json:"blockroot,omitempty"`
+}
+
 // SearchAheadValidatorsResult is a struct to hold the search ahead validators results
 type SearchAheadValidatorsResult []struct {
 	Index  string `db:"index" json:"index,omitempty"`
