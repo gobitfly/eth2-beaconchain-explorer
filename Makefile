@@ -1,5 +1,8 @@
 all: explorer
 
+lint:
+	golint ./...
+
 explorer:
 	rm -rf bin/
 	mkdir -p bin/templates/

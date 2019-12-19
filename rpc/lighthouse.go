@@ -14,12 +14,14 @@ import (
 	"time"
 )
 
+// LighthouseClient holds the Lighthouse client info
 type LighthouseClient struct {
 	endpoint            string
 	assignmentsCache    *lru.Cache
 	assignmentsCacheMux *sync.Mutex
 }
 
+// NewLighthouseClient is used to create a new Lighthouse client
 func NewLighthouseClient(endpoint string) (*LighthouseClient, error) {
 	client := &LighthouseClient{
 		endpoint:            endpoint,
@@ -30,8 +32,9 @@ func NewLighthouseClient(endpoint string) (*LighthouseClient, error) {
 	return client, nil
 }
 
-func (self *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
-	resp, err := self.get(fmt.Sprintf("%v%v", self.endpoint, "/beacon/head"))
+// GetChainHead gets the chain head from Lighthouse
+func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
+	resp, err := lc.get(fmt.Sprintf("%v%v", lc.endpoint, "/beacon/head"))
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving chain head: %v", err)
@@ -60,8 +63,8 @@ func (self *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 	}, nil
 }
 
-// RPC api does not support receiving the validator queue
-func (self *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]uint64, error) {
+// GetValidatorQueue returns an empty validator queue as the Lighthouse RPC api does not support receiving the validator queue.
+func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]uint64, error) {
 	return &types.ValidatorQueue{
 		ChurnLimit:           0,
 		ActivationPublicKeys: [][]byte{},
@@ -69,23 +72,24 @@ func (self *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, map[st
 	}, make(map[string]uint64), nil
 }
 
-// RPC api does not support receiving the attestation pool
-func (self *LighthouseClient) GetAttestationPool() ([]*types.Attestation, error) {
+// GetAttestationPool returns an empty Attestation as the Lighthouse RPC api does not support receiving the attestation pool.
+func (lc *LighthouseClient) GetAttestationPool() ([]*types.Attestation, error) {
 	return []*types.Attestation{}, nil
 }
 
-func (self *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
-	self.assignmentsCacheMux.Lock()
-	defer self.assignmentsCacheMux.Unlock()
+// GetEpochAssignments will get the epoch assignments from Lighthouse RPC api
+func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
+	lc.assignmentsCacheMux.Lock()
+	defer lc.assignmentsCacheMux.Unlock()
 
 	var err error
 
-	cachedValue, found := self.assignmentsCache.Get(epoch)
+	cachedValue, found := lc.assignmentsCache.Get(epoch)
 	if found {
 		return cachedValue.(*types.EpochAssignments), nil
 	}
 
-	resp, err := self.get(fmt.Sprintf("%v%v?epoch=%v", self.endpoint, "/validator/duties/active", epoch))
+	resp, err := lc.get(fmt.Sprintf("%v%v?epoch=%v", lc.endpoint, "/validator/duties/active", epoch))
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator duties: %v", err)
@@ -113,19 +117,20 @@ func (self *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAss
 	}
 
 	if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 {
-		self.assignmentsCache.Add(epoch, assignments)
+		lc.assignmentsCache.Add(epoch, assignments)
 	}
 
 	return assignments, nil
 }
 
-func (self *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
+// GetEpochData will get the epoch data from Lighthouse RPC api
+func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	var err error
 
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	stateRoot, err := self.get(fmt.Sprintf("%v%v?slot=%v", self.endpoint, "/beacon/state_root", epoch*utils.Config.Chain.SlotsPerEpoch))
+	stateRoot, err := lc.get(fmt.Sprintf("%v%v?slot=%v", lc.endpoint, "/beacon/state_root", epoch*utils.Config.Chain.SlotsPerEpoch))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving state root for epoch %v: %v", epoch, err)
 	}
@@ -138,7 +143,7 @@ func (self *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, erro
 
 	var parsedResponse []*lighthouseValidatorResponse
 
-	resp, err := self.get(fmt.Sprintf("%v%v?state_root=%v", self.endpoint, "/beacon/validators/all", stateRootString))
+	resp, err := lc.get(fmt.Sprintf("%v%v?state_root=%v", lc.endpoint, "/beacon/validators/all", stateRootString))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving epoch validators: %v", err)
 	}
@@ -173,7 +178,7 @@ func (self *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, erro
 
 	logger.Printf("Retrieved data for %v validators for epoch %v", len(data.ValidatorBalances), epoch)
 
-	data.ValidatorAssignmentes, err = self.GetEpochAssignments(epoch)
+	data.ValidatorAssignmentes, err = lc.GetEpochAssignments(epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
 	}
@@ -188,7 +193,7 @@ func (self *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, erro
 			continue
 		}
 
-		blocks, err := self.GetBlocksBySlot(slot)
+		blocks, err := lc.GetBlocksBySlot(slot)
 
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving blocks for slot %v: %v", slot, err)
@@ -249,7 +254,7 @@ func (self *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, erro
 	// Unused for now
 	data.BeaconCommittees = make(map[uint64][]*types.BeaconCommitteItem)
 
-	data.EpochParticipationStats, err = self.GetValidatorParticipation(epoch)
+	data.EpochParticipationStats, err = lc.GetValidatorParticipation(epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
 	}
@@ -257,8 +262,9 @@ func (self *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, erro
 	return data, nil
 }
 
-func (self *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
-	resp, err := self.get(fmt.Sprintf("%v%v?slot=%v", self.endpoint, "/beacon/block", slot))
+// GetBlocksBySlot will get the blocks by slot from Lighthouse RPC api
+func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
+	resp, err := lc.get(fmt.Sprintf("%v%v?slot=%v", lc.endpoint, "/beacon/block", slot))
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block data at slot %v: %v", slot, err)
@@ -316,7 +322,7 @@ func (self *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, erro
 		}
 
 		aggregationBits := bitfield.Bitlist(a.AggregationBits)
-		assignments, err := self.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
+		assignments, err := lc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
 		if err != nil {
 			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
 		}
@@ -338,8 +344,9 @@ func (self *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, erro
 	return []*types.Block{block}, nil
 }
 
-func (self *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error) {
-	resp, err := self.get(fmt.Sprintf("%v%v?epoch=%v", self.endpoint, "/consensus/global_votes", epoch))
+// GetValidatorParticipation will get the validator participation from the Lighthouse RPC api
+func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error) {
+	resp, err := lc.get(fmt.Sprintf("%v%v?epoch=%v", lc.endpoint, "/consensus/global_votes", epoch))
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator participation data for epoch %v: %v", epoch, err)
@@ -362,7 +369,7 @@ func (self *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Va
 	}, nil
 }
 
-func (self *LighthouseClient) get(url string) ([]byte, error) {
+func (lc *LighthouseClient) get(url string) ([]byte, error) {
 	client := &http.Client{Timeout: time.Second * 30}
 
 	resp, err := client.Get(url)

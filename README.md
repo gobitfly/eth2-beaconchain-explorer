@@ -51,6 +51,9 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 - Copy the config-example.yml file an adapt it to your environment
 - Start the explorer binary and pass the path to the config file as argument
 
+## Development
+Install golint. (see https://github.com/golang/lint)
+
 ## Commercial usage
 The explorer uses Highsoft charts which are not free for commercial and governmental use. If you plan to use the explorer for commercial purposes you currently need to purchase an appropriate HighSoft license.
 We are planning to switch out the Highsoft chart library with a less restrictive charting library (suggestions are welcome).

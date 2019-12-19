@@ -15,9 +15,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// DB is a pointer to the database
 var DB *sqlx.DB
 var logger = logrus.New().WithField("module", "db")
 
+// GetLatestEpoch will return the latest epoch from the database
 func GetLatestEpoch() (uint64, error) {
 	var epoch uint64
 
@@ -30,6 +32,7 @@ func GetLatestEpoch() (uint64, error) {
 	return epoch, nil
 }
 
+// GetAllEpochs will return a collection of all of the epochs from the database
 func GetAllEpochs() ([]uint64, error) {
 	var epochs []uint64
 	err := DB.Select(&epochs, "SELECT epoch FROM epochs ORDER BY epoch")
@@ -41,10 +44,10 @@ func GetAllEpochs() ([]uint64, error) {
 	return epochs, nil
 }
 
+// GetLastPendingAndProposedBlocks will return all proposed and pending blocks (ignores missed slots) from the database
 func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	var blocks []*types.MinimalBlock
 
-	// Will return all proposed and pending blocks. Ignores missed slots.
 	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND blockroot != '\x01' ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
@@ -54,10 +57,10 @@ func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.Mini
 	return blocks, nil
 }
 
+// GetBlocks will return all blocks for a range of epochs from the database
 func GetBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	var blocks []*types.MinimalBlock
 
-	// Will return all proposed and pending blocks. Ignores missed slots.
 	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot, parentroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND length(blockroot) = 32 ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
@@ -67,6 +70,7 @@ func GetBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	return blocks, nil
 }
 
+// GetValidatorPublicKey will return the public key for a specific validator from the database
 func GetValidatorPublicKey(index uint64) ([]byte, error) {
 	var publicKey []byte
 	err := DB.Get(&publicKey, "SELECT pubkey FROM validators WHERE validatorindex = $1", index)
@@ -74,6 +78,7 @@ func GetValidatorPublicKey(index uint64) ([]byte, error) {
 	return publicKey, err
 }
 
+// GetValidatorIndex will return all of the validators for a public key from the database
 func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	var index uint64
 	err := DB.Get(&index, "SELECT validatorindex FROM validators WHERE pubkey = $1", publicKey)
@@ -81,6 +86,7 @@ func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	return index, err
 }
 
+// UpdateCanonicalBlocks will update the blocks for an epoch range in the database
 func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte) error {
 	if len(orphanedBlocks) == 0 {
 		return nil
@@ -107,6 +113,7 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte)
 	return tx.Commit()
 }
 
+// SaveAttestationPool will save the attestation pool into the database
 func SaveAttestationPool(attestations []*types.Attestation) error {
 	tx, err := DB.Begin()
 	if err != nil {
@@ -140,6 +147,7 @@ func SaveAttestationPool(attestations []*types.Attestation) error {
 	return nil
 }
 
+// SaveValidatorQueue will save the validator queue into the database
 func SaveValidatorQueue(validators *types.ValidatorQueue, validatorIndices map[string]uint64) error {
 	tx, err := DB.Begin()
 	if err != nil {
@@ -190,6 +198,7 @@ func SaveValidatorQueue(validators *types.ValidatorQueue, validatorIndices map[s
 	return nil
 }
 
+// SaveEpoch will stave the epoch data into the database
 func SaveEpoch(data *types.EpochData) error {
 	tx, err := DB.Begin()
 	if err != nil {
@@ -598,6 +607,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 	return nil
 }
 
+// UpdateEpochStatus will update the epoch status in the database
 func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 	_, err := DB.Exec(`UPDATE epochs SET 
                   finalized = $1, 

@@ -20,6 +20,7 @@ import (
 var validatorTemplate = template.Must(template.New("validator").ParseFiles("templates/layout.html", "templates/validator.html"))
 var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validatornotfound.html"))
 
+// Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -250,6 +251,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// ValidatorProposedBlocks returns a validator's proposed blocks in json
 func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -345,6 +347,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ValidatorAttestations returns a validators attestations in json
 func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

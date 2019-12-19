@@ -19,6 +19,7 @@ var ready = sync.WaitGroup{}
 
 var logger = logrus.New().WithField("module", "services")
 
+// Init will initialize the services
 func Init() {
 	ready.Add(2)
 	go epochUpdater()
@@ -160,14 +161,17 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	return data, nil
 }
 
+// LatestEpoch will return the latest epoch
 func LatestEpoch() uint64 {
 	return atomic.LoadUint64(&latestEpoch)
 }
 
+// LatestIndexPageData returns the latest index page data
 func LatestIndexPageData() *types.IndexPageData {
 	return indexPageData.Load().(*types.IndexPageData)
 }
 
+// IsSyncing returns true if the chain is still syncing
 func IsSyncing() bool {
 	return time.Now().Add(time.Minute * -5).After(utils.EpochToTime(LatestEpoch()))
 }

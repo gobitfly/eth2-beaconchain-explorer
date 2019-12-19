@@ -17,6 +17,7 @@ import (
 var epochTemplate = template.Must(template.New("epoch").Funcs(template.FuncMap{"formatBlockStatus": utils.FormatBlockStatus}).ParseFiles("templates/layout.html", "templates/epoch.html"))
 var epochNotFoundTemplate = template.Must(template.New("epochnotfound").ParseFiles("templates/layout.html", "templates/epochnotfound.html"))
 
+// Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 

@@ -1,5 +1,6 @@
 package types
 
+// Config is a struct to hold the configuration data
 type Config struct {
 	Database struct {
 		Username string `yaml:"user", envconfig:"DB_USERNAME"`

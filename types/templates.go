@@ -7,6 +7,7 @@ import (
 	"github.com/lib/pq"
 )
 
+// PageData is a struct to hold web page data
 type PageData struct {
 	Active             string
 	Meta               *Meta
@@ -14,6 +15,7 @@ type PageData struct {
 	Data               interface{}
 }
 
+// Meta is a struct to hold metadata about the page
 type Meta struct {
 	Title       string
 	Description string
@@ -24,6 +26,7 @@ type Meta struct {
 	Tdata2      string
 }
 
+// IndexPageData is a struct to hold info for the main web page
 type IndexPageData struct {
 	CurrentEpoch              uint64                 `json:"current_epoch"`
 	CurrentFinalizedEpoch     uint64                 `json:"current_finalized_epoch"`
@@ -40,6 +43,7 @@ type IndexPageData struct {
 	Subtitle                  template.HTML          `json:"-"`
 }
 
+// IndexPageDataBlocks is a struct to hold detail data for the main web page
 type IndexPageDataBlocks struct {
 	Epoch              uint64        `json:"epoch"`
 	Slot               uint64        `json:"slot"`
@@ -59,6 +63,7 @@ type IndexPageDataBlocks struct {
 	Votes              uint64        `db:"votes" json:"votes"`
 }
 
+// IndexPageEpochHistory is a struct to hold the epoch history for the main web page
 type IndexPageEpochHistory struct {
 	Epoch           uint64 `db:"epoch"`
 	ValidatorsCount uint64 `db:"validatorscount"`
@@ -66,12 +71,14 @@ type IndexPageEpochHistory struct {
 	Finalized       bool   `db:"finalized"`
 }
 
+// ValidatorsPageData is a struct to hold data about the validators page
 type ValidatorsPageData struct {
 	ActiveCount  uint64
 	PendingCount uint64
 	EjectedCount uint64
 }
 
+// ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
 type ValidatorsPageDataValidators struct {
 	Epoch                      uint64 `db:"epoch"`
 	PublicKey                  []byte `db:"pubkey"`
@@ -86,6 +93,7 @@ type ValidatorsPageDataValidators struct {
 	Status                     string
 }
 
+// ValidatorPageData is a struct to hold data for the validators page
 type ValidatorPageData struct {
 	Epoch                            uint64 `db:"epoch"`
 	ValidatorIndex                   uint64 `db:"validatorindex"`
@@ -114,6 +122,7 @@ type ValidatorPageData struct {
 	EffectiveBalanceHistoryChartData [][]float64
 }
 
+// DailyProposalCount is a struct for the daily proposal count data
 type DailyProposalCount struct {
 	Day      int64
 	Proposed uint
@@ -121,11 +130,13 @@ type DailyProposalCount struct {
 	Orphaned uint
 }
 
+// ValidatorBalanceHistory is a struct for the validator balance history data
 type ValidatorBalanceHistory struct {
 	Epoch   uint64 `db:"epoch"`
 	Balance uint64 `db:"balance"`
 }
 
+// ValidatorAttestation is a struct for the validators attestations data
 type ValidatorAttestation struct {
 	Epoch          uint64 `db:"epoch"`
 	AttesterSlot   uint64 `db:"attesterslot"`
@@ -133,12 +144,14 @@ type ValidatorAttestation struct {
 	Status         uint64 `db:"status"`
 }
 
+// VisPageData is a struct to hold the visualizations page data
 type VisPageData struct {
 	ChartData  []*VisChartData
 	StartEpoch uint64
 	EndEpoch   uint64
 }
 
+// VisChartData is a struct to hold the visualizations chart data
 type VisChartData struct {
 	Slot       uint64 `db:"slot" json:"-"`
 	BlockRoot  []byte `db:"blockroot" json:"-"`
@@ -153,10 +166,12 @@ type VisChartData struct {
 	Difficulty uint64   `json:"difficulty"`
 }
 
+// VisVotesPageData is a struct for the visualization votes page data
 type VisVotesPageData struct {
 	ChartData []*VotesVisChartData
 }
 
+// VotesVisChartData is a struct for the visualization chart data
 type VotesVisChartData struct {
 	Slot       uint64        `db:"slot" json:"slot"`
 	BlockRoot  string        `db:"blockroot" json:"blockRoot"`
@@ -164,6 +179,7 @@ type VotesVisChartData struct {
 	Validators pq.Int64Array `db:"validators" json:"validators"`
 }
 
+// BlockPageData is a struct block data used in the block page
 type BlockPageData struct {
 	Epoch                  uint64 `db:"epoch"`
 	Slot                   uint64 `db:"slot"`
@@ -193,11 +209,13 @@ type BlockPageData struct {
 	Votes        []*BlockPageAttestation // Attestations that voted for that block
 }
 
+// BlockPageMinMaxSlot is a struct to hold min/max slot data
 type BlockPageMinMaxSlot struct {
 	MinSlot uint64
 	MaxSlot uint64
 }
 
+// BlockPageAttestation is a struct to hold attestations on the block page
 type BlockPageAttestation struct {
 	BlockSlot       uint64        `db:"block_slot"`
 	BlockIndex      uint64        `db:"block_index"`
@@ -213,6 +231,7 @@ type BlockPageAttestation struct {
 	TargetRoot      []byte        `db:"target_root"`
 }
 
+// BlockPageDeposit is a struct to hold data for deposits on the block page
 type BlockPageDeposit struct {
 	PublicKey             []byte `db:"publickey"`
 	WithdrawalCredentials []byte `db:"withdrawalcredentials"`
@@ -221,6 +240,7 @@ type BlockPageDeposit struct {
 	Signature             []byte `db:"signature"`
 }
 
+// DataTableResponse is a struct to hold data for data table responses
 type DataTableResponse struct {
 	Draw            uint64          `json:"draw"`
 	RecordsTotal    uint64          `json:"recordsTotal"`
@@ -228,6 +248,7 @@ type DataTableResponse struct {
 	Data            [][]interface{} `json:"data"`
 }
 
+// EpochsPageData is a struct to hold epoch data for the epochs page
 type EpochsPageData struct {
 	Epoch                   uint64  `db:"epoch"`
 	BlocksCount             uint64  `db:"blockscount"`
@@ -244,6 +265,7 @@ type EpochsPageData struct {
 	VotedEther              uint64  `db:"votedether"`
 }
 
+// EpochPageData is a struct to hold detailed epoch data for the epoch page
 type EpochPageData struct {
 	Epoch                            uint64  `db:"epoch"`
 	BlocksCount                      uint64  `db:"blockscount"`
@@ -269,25 +291,30 @@ type EpochPageData struct {
 	PreviousEpoch uint64
 }
 
+// EpochPageMinMaxSlot is a struct for the min/max epoch data
 type EpochPageMinMaxSlot struct {
 	MinEpoch uint64
 	MaxEpoch uint64
 }
 
+// SearchAheadEpochsResult is a struct to hold the search ahead epochs results
 type SearchAheadEpochsResult []struct {
 	Epoch string `db:"epoch" json:"epoch,omitempty"`
 }
 
+// SearchAheadBlocksResult is a struct to hold the search ahead blocks results
 type SearchAheadBlocksResult []struct {
 	Slot string `db:"slot" json:"slot,omitempty"`
 	Root string `db:"blockroot" json:"blockroot,omitempty"`
 }
 
+// SearchAheadValidatorsResult is a struct to hold the search ahead validators results
 type SearchAheadValidatorsResult []struct {
 	Index  string `db:"index" json:"index,omitempty"`
 	Pubkey string `db:"pubkey" json:"pubkey,omitempty"`
 }
 
+// GenericChartData is a struct to hold chart data
 type GenericChartData struct {
 	Title        string                    `json:"title"`
 	Subtitle     string                    `json:"subtitle"`
@@ -297,6 +324,7 @@ type GenericChartData struct {
 	Series       []*GenericChartDataSeries `json:"series"`
 }
 
+// GenericChartDataSeries is a struct to hold chart series data
 type GenericChartDataSeries struct {
 	Name string      `json:"name"`
 	Data [][]float64 `json:"data"`

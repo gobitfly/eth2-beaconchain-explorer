@@ -13,6 +13,7 @@ import (
 
 var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/index.html"))
 
+// Index will return the main "index" page using a go template
 func Index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -34,6 +35,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// IndexPageData will show the main "index" page in json format
 func IndexPageData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
