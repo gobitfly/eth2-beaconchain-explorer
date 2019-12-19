@@ -194,6 +194,18 @@
                 }
             });
 
+            var bhGraffiti = new Bloodhound({
+                datumTokenizer: Bloodhound.tokenizers.whitespace,
+                queryTokenizer: Bloodhound.tokenizers.whitespace,
+                identify: function(obj) {
+                    return obj.graffiti;
+                },
+                remote: {
+                    url: '/search/graffiti/%QUERY',
+                    wildcard: '%QUERY',
+                }
+            });
+
             var bhEpochs = new Bloodhound({
                 datumTokenizer: Bloodhound.tokenizers.whitespace,
                 queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -242,6 +254,22 @@
                     header: '<h3>Epochs</h3>',
                     suggestion: function(data) {
                         return `<div>${data.epoch}</div>`;
+                    }
+                }
+            }, {
+                limit: 5,
+                name: 'graffiti',
+                source: bhGraffiti,
+                display: 'graffiti',
+                templates: {
+                    header: '<h3>Graffiti</h3>',
+                    suggestion: function(data) {
+                        if (data.graffiti) {
+                            data.graffiti = data.graffiti.replace(/(^\")|(\"$)'/, '').trim()
+                            return `<div>${data.graffiti}</div>`;
+                        } else {
+                            return `<div>${data.slot}<div>`
+                        }
                     }
                 }
             });
