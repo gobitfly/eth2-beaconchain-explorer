@@ -48,7 +48,7 @@ type ValidatorBalance struct {
 	Balance   uint64
 }
 
-// BeaconCommitteItem is a struct to hold beacon commitee data
+// BeaconCommitteItem is a struct to hold beacon committee data
 type BeaconCommitteItem struct {
 	ValidatorIndices []uint64
 }

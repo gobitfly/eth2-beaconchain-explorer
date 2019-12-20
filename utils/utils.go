@@ -52,9 +52,8 @@ func FormatAttestationStatus(status uint64) string {
 		return "Attested"
 	} else if status == 2 {
 		return "Missed"
-	} else {
-		return "Unknown"
 	}
+	return "Unknown"
 }
 
 // FormatValidator will return html formatted text for a validator

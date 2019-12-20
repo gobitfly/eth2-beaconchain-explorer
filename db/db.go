@@ -410,8 +410,8 @@ func saveBeaconCommittees(epoch uint64, committeesMap map[uint64][]*types.Beacon
 	defer stmt.Close()
 
 	for slot, comittees := range committeesMap {
-		for index, comittee := range comittees {
-			_, err := stmt.Exec(epoch, slot, index, pq.Array(comittee.ValidatorIndices))
+		for index, committee := range comittees {
+			_, err := stmt.Exec(epoch, slot, index, pq.Array(committee.ValidatorIndices))
 			if err != nil {
 				return fmt.Errorf("error executing save beacon committee statement: %v", err)
 			}

@@ -129,7 +129,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Select(&proposals, "select slot / 7200 as day, status, count(*) FROM blocks WHERE proposer = $1 group by day, status order by day;", index)
 	if err != nil {
-		logger.Error("Error retrieving Daily Proposed Blocks blocks count: %v", err)
+		logger.Errorf("Error retrieving Daily Proposed Blocks blocks count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -158,7 +158,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					Orphaned: proposals[i].Count,
 				})
 			} else {
-				logger.Error("Error parsing Daily Proposed Blocks unknown status: %v", proposals[i].Status)
+				logger.Errorf("Error parsing Daily Proposed Blocks unknown status: %v", proposals[i].Status)
 			}
 		} else {
 			if proposals[i].Day == proposals[i+1].Day {
@@ -191,7 +191,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 					Orphaned: proposals[i].Count,
 				})
 			} else {
-				logger.Error("Error parsing Daily Proposed Blocks unknown status: %v", proposals[i].Status)
+				logger.Errorf("Error parsing Daily Proposed Blocks unknown status: %v", proposals[i].Status)
 			}
 		}
 	}
