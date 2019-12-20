@@ -85,7 +85,8 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]ui
 	for {
 		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize})
 		if err != nil {
-			return nil, nil, fmt.Errorf("error retrieving validator balances response: %v", err)
+			logger.Errorf("error retrieving validator balances response: %v", err)
+			break
 		}
 		if validatorBalancesResponse.TotalSize == 0 {
 			break
@@ -241,7 +242,8 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	for {
 		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
 		if err != nil {
-			return nil, err
+			logger.Printf("error retrieving validator balances response: %v", err)
+			break
 		}
 		if validatorBalancesResponse.TotalSize == 0 {
 			break
@@ -534,7 +536,7 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 					validator, found := assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(a.Data.Slot, a.Data.CommitteeIndex, i)]
 					if !found { // This should never happen!
 						validator = 0
-						logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v commitee index %v member index %v", i, b.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
+						logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v committee index %v member index %v", i, b.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
 					}
 					a.Attesters = append(a.Attesters, validator)
 				}
