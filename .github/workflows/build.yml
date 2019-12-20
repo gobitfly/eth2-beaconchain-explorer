@@ -25,7 +25,7 @@ jobs:
           fi
 
       - name: Test
-        run: ./integration/run.sh run
+        run: go test ./...
 
       - name: Build
         run: make all
