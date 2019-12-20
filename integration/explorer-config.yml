@@ -1,0 +1,34 @@
+# Database credentials
+database:
+  user: beaconchain
+  name: beaconchain
+  host: db
+  port: 5432
+  password: xxx
+
+# Chain network configuration (example will work for the prysm testnet)
+chain:
+  slotsPerEpoch: 8
+  secondsPerSlot: 12
+  genesisTimestamp: 1573489682
+
+# Note: It is possible to run either the frontend or the indexer or both at the same time
+# Frontend config
+frontend:
+  enabled: true # Enable or disable to web frontend
+  imprint: 'templates/imprint.example.html' # Path to the imprint page content
+  siteName: 'Ethereum 2.0 Beacon Chain (Phase 0) Block Chain Explorer' # Name of the site, displayed in the title tag
+  siteSubtitle: "Showing the <a href='https://prylabs.net'>💎 Prysm Eth2 Testnet</a>" # Subtitle shown on the main page
+  server:
+    host: '0.0.0.0' # Address to listen on
+    port: '3333' # Port to listen on
+
+# Indexer config
+indexer:
+  enabled: false # Enable or disable the indexing service
+  fullIndexOnStartup: false # Perform a one time full db index on startup
+  indexMissingEpochsOnStartup: false # Check for missing epochs and export them after startup
+  node:
+    host: 'prysm' # Address of the prysm backend archive node
+    port: '4000' # gRPC port of the prysm backend archive node
+    type: 'prysm'
