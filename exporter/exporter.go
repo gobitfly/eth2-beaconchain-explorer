@@ -261,7 +261,7 @@ func Start(client rpc.Client) error {
 
 		err = exportValidatorQueue(client)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Error(err)
 		}
 
 		err = MarkOrphanedBlocks(head.FinalizedEpoch-1, head.HeadEpoch, nodeBlocks)
