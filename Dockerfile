@@ -1,6 +1,6 @@
 # The dockerfile is currently still WIP and might be broken
 FROM golang:alpine AS build-env
-RUN apk --no-cache add build-base git bzr mercurial gcc
+RUN apk --no-cache add build-base git bzr mercurial gcc npm
 ADD . /src
 RUN cd /src && make all
 
