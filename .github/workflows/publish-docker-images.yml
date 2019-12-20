@@ -1,4 +1,4 @@
-name: Build & Publish Docker images
+name: Publish Docker images
 
 on:
   # Trigger the workflow on push or pull request,
