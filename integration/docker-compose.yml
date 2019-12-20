@@ -1,0 +1,27 @@
+version: '2.4'
+services:
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_USER=beaconchain
+      - POSTGRES_PASSWORD=xxx
+      - POSTGRES_DB=beaconchain
+    volumes:
+      - ./docker-volumes/db:/var/lib/postgresql/data
+      - ./beaconchain_dump.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U explorer']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  explorer:
+    image: golang
+    volumes:
+      - ./..:/app
+    working_dir: /app
+    command: go run -race ./cmd/explorer/main.go -config /app/integration/explorer-config.yml
+    ports:
+      - 3333:3333
+    depends_on:
+      db:
+        condition: service_healthy
