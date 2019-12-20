@@ -30,12 +30,14 @@ fn_main() {
 }
 
 fn_run() {
+    cd $DIR
     sudo docker-compose down
     fn_init_db
     fn_test
 }
 
 fn_init_db() {
+    cd $DIR
     echo "dropping old database"
     sudo docker-compose stop db
     sudo rm -rf $DIR/docker-volumes/db
@@ -48,6 +50,7 @@ fn_init_db() {
 }
 
 fn_test() {
+    cd $DIR
     sudo docker-compose up -d explorer
     go run main.go
     sudo docker-compose down
