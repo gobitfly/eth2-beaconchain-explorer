@@ -115,8 +115,7 @@
                                     <td><a href="/validator/{{.Proposer}}">{{.Proposer}}</a></td>
                                     <td class="text-monospace">
                                         {{ if eq .Status 1}}
-                                            <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}
-                                                ...</a>
+                                            <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}...</a>
                                         {{else}}
                                             N/A
                                         {{end}}
