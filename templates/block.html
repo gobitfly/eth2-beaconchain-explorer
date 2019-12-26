@@ -18,12 +18,12 @@
 
 {{ define "content"}}
     <div class="mb-3">
-        <div class="d-md-flex border-bottom py-3 justify-content-md-between">
+        <div class="d-md-flex py-2 justify-content-md-between">
             <h1 class="h4 mb-1 mb-md-0">
                 {{if gt .PreviousSlot 0}}
                     <a href="/block/{{.PreviousSlot}}"><i class="fa fa-chevron-left"></i></a>
                 {{end}}
-                <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>at Slot {{.Slot}}</span>
+                <span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot {{.Slot}}</span>
                 {{if gt .NextSlot 0}}
                     <a href="/block/{{.NextSlot}}"><i class="fa fa-chevron-right"></i></a>
                 {{end}}
