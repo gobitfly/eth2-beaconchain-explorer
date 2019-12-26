@@ -284,6 +284,7 @@ type EpochPageData struct {
 	VotedEtherFormatted              string
 	EligibleEtherFormatted           string
 	GlobalParticipationRateFormatted string
+	AverageValidatorBalanceFormatted string
 
 	Blocks []*IndexPageDataBlocks
 
