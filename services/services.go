@@ -173,5 +173,5 @@ func LatestIndexPageData() *types.IndexPageData {
 
 // IsSyncing returns true if the chain is still syncing
 func IsSyncing() bool {
-	return time.Now().Add(time.Minute * -5).After(utils.EpochToTime(LatestEpoch()))
+	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
 }
