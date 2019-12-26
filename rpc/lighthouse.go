@@ -300,7 +300,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		VoluntaryExits:    make([]*types.VoluntaryExit, len(parsedResponse.BeaconBlock.Body.VoluntaryExits)),
 	}
 
-	if block.Eth1Data.DepositCount > 9223372036854775807 { // Sometimes the lighthouse node does return bogus data for the DepositCount value
+	if block.Eth1Data.DepositCount > 2147483647 { // Sometimes the lighthouse node does return bogus data for the DepositCount value
 		block.Eth1Data.DepositCount = 0
 	}
 
