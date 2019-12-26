@@ -550,20 +550,20 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				b.Proposer,
 				b.Status)
 			if err != nil {
-				return fmt.Errorf("error executing stmtBlocks: %v", err)
+				return fmt.Errorf("error executing stmtBlocks for block %v: %v", b.Slot, err)
 			}
 
 			for i, ps := range b.ProposerSlashings {
 				_, err := stmtProposerSlashing.Exec(b.Slot, i, ps.ProposerIndex, ps.Header1.Slot, ps.Header1.ParentRoot, ps.Header1.StateRoot, ps.Header1.BodyRoot, ps.Header1.Signature, ps.Header2.Slot, ps.Header2.ParentRoot, ps.Header2.StateRoot, ps.Header2.BodyRoot, ps.Header2.Signature)
 				if err != nil {
-					return fmt.Errorf("error executing stmtProposerSlashing: %v", err)
+					return fmt.Errorf("error executing stmtProposerSlashing for block %v: %v", b.Slot, err)
 				}
 			}
 
 			for i, as := range b.AttesterSlashings {
 				_, err := stmtAttesterSlashing.Exec(b.Slot, i, pq.Array(as.Attestation1.Custodybit0indices), pq.Array(as.Attestation1.Custodybit1indices), as.Attestation1.Signature, as.Attestation1.Data.Slot, as.Attestation1.Data.CommitteeIndex, as.Attestation1.Data.BeaconBlockRoot, as.Attestation1.Data.Source.Epoch, as.Attestation1.Data.Source.Root, as.Attestation1.Data.Target.Epoch, as.Attestation1.Data.Target.Root, pq.Array(as.Attestation2.Custodybit0indices), pq.Array(as.Attestation2.Custodybit1indices), as.Attestation2.Signature, as.Attestation2.Data.Slot, as.Attestation2.Data.CommitteeIndex, as.Attestation2.Data.BeaconBlockRoot, as.Attestation2.Data.Source.Epoch, as.Attestation2.Data.Source.Root, as.Attestation2.Data.Target.Epoch, as.Attestation2.Data.Target.Root)
 				if err != nil {
-					return fmt.Errorf("error executing stmtAttesterSlashing: %v", err)
+					return fmt.Errorf("error executing stmtAttesterSlashing for block %v: %v", b.Slot, err)
 				}
 			}
 
@@ -573,33 +573,33 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 					_, err = stmtAttestationAssignments.Exec(a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1)
 
 					if err != nil {
-						return fmt.Errorf("error executing stmtAttestationAssignments: %v", err)
+						return fmt.Errorf("error executing stmtAttestationAssignments for block %v: %v", b.Slot, err)
 					}
 				}
 
 				_, err = stmtAttestations.Exec(b.Slot, i, bitfield.Bitlist(a.AggregationBits).Bytes(), pq.Array(a.Attesters), bitfield.Bitlist(a.CustodyBits).Bytes(), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
 				if err != nil {
-					return fmt.Errorf("error executing stmtAttestations: %v", err)
+					return fmt.Errorf("error executing stmtAttestations for block %v: %v", b.Slot, err)
 				}
 			}
 
 			for i, d := range b.Deposits {
 				_, err := stmtDeposits.Exec(b.Slot, i, nil, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature)
 				if err != nil {
-					return fmt.Errorf("error executing stmtDeposits: %v", err)
+					return fmt.Errorf("error executing stmtDeposits for block %v: %v", b.Slot, err)
 				}
 			}
 
 			for i, ve := range b.VoluntaryExits {
 				_, err := stmtVoluntaryExits.Exec(b.Slot, i, ve.Epoch, ve.ValidatorIndex, ve.Signature)
 				if err != nil {
-					return fmt.Errorf("error executing stmtVoluntaryExits: %v", err)
+					return fmt.Errorf("error executing stmtVoluntaryExits for block %v: %v", b.Slot, err)
 				}
 			}
 
 			_, err = stmtProposalAssignments.Exec(epoch, b.Proposer, b.Slot, b.Status)
 			if err != nil {
-				return fmt.Errorf("error executing stmtProposalAssignments: %v", err)
+				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %v", b.Slot, err)
 			}
 		}
 	}
