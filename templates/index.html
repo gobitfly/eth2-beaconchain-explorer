@@ -1,11 +1,11 @@
 {{ define "js"}}
-    <script src="https://code.highcharts.com/stock/highstock.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+	<script src="https://code.highcharts.com/stock/highstock.js"></script>
+	<script src="https://code.highcharts.com/modules/exporting.js"></script>
+	<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
-    <script src="/js/highcharts-vue.min.js"></script>
-    <script>
+	<script src="https://cdn.jsdelivr.net/npm/vue"></script>
+	<script src="/js/highcharts-vue.min.js"></script>
+	<script>
         var app = new Vue({
             el: '#app',
             delimiters: ['${', '}'], // Standard vuejs template syntax conflicts with golang template syntax
@@ -136,170 +136,184 @@
                 }
             }
         })
-    </script>
+	</script>
 {{end}}
 
 {{ define "css"}}
-    <style>
-        [v-cloak] {
-            display: none;
-        }
-    </style>
+	<style>
+		[v-cloak] {
+			display: none;
+		}
+
+		.responsive-border-right {
+			border-right-color: rgb(222, 226, 230);
+			border-right-style: solid;
+			border-right-width: 1px;
+		}
+
+		@media (max-width: 767px) {
+			.responsive-border-right-l {
+				border: hidden;
+			}
+		}
+	</style>
 {{end}}
 
 {{ define "content"}}
-    <div id="app" v-cloak>
+	<div id="app" v-cloak>
         {{if gt .FinalityDelay 3}}
-            <div class="alert alert-danger mt-4" role="alert">
-                <b>Warning:</b> The testnet is currently experiencing issues achieving finality. The last finalized
-                epoch
-                was {{.FinalityDelay}} epoch{{if ne .FinalityDelay 1}}s{{end}} ago.
-            </div>
+			<div class="alert alert-danger mt-4" role="alert">
+				<b>Warning:</b> The testnet is currently experiencing issues achieving finality. The last finalized
+				epoch
+				was {{.FinalityDelay}} epoch{{if ne .FinalityDelay 1}}s{{end}} ago.
+			</div>
         {{end}}
-        <h1 class="mt-4 text-center">Open Source Ethereum 2.0 Beacon Chain Explorer</h1>
-        <h5 class="text-center">{{.Subtitle}}</h5>
-        <h6 class="text-center">Do you have any feedback for us? Feel free to join our <a
-                    href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a>
-            or create an issue on <a href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i
-                        class="fab fa-github"></i> Github</a>.
-        </h6>
-        <form action="/search" class="mb-2 mt-2" method="POST">
-            <div class="input-group typeahead-holder">
-                <input class="form-control mr-2 form-control-md typeahead" type="text" name="search"
-                       placeholder="Search by Public Key / Block Number / Block Hash">
-                <button type="submit" class="btn btn-primary btn-md">
-                    <span class="fas fa-search"></span>
-                </button>
-            </div>
-        </form>
-        <div class="card-group">
-            <div class="card">
-                <div class="card-header text-center">
-                    Current Epoch
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title text-center">
-                    <span data-toggle="tooltip" data-placement="top"
-                          title="The most recent finalized epoch">${ page.current_finalized_epoch }</span>
-                        /
-                        <span data-toggle="tooltip" data-placement="top"
-                              title="The most recent epoch">${ page.current_epoch }</span>
-                    </h5>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header text-center">
-                    Current Slot
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title text-center" data-toggle="tooltip" data-placement="top"
-                        title="The most recent slot of the beacon chain">${ page.current_slot }</h5>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header text-center">
-                    Active Validators
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title text-center" data-toggle="tooltip" data-placement="top"
-                        title="The number of currently active validators">${ page.active_validators }</h5>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header text-center">
-                    Pending Validators
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title text-center">
-                    <span data-toggle="tooltip" data-placement="top"
-                          title="Validators waiting to be activated">${ page.entering_validators }</span> /
-                        <span data-toggle="tooltip" data-placement="top"
-                              title="Validators waiting to exit">${ page.exiting_validators }</span>
-                    </h5>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header text-center">
-                    Staked Ether
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title text-center">
-                    <span data-toggle="tooltip" data-placement="top"
-                          title="Amount of Ether currently staked">${ page.staked_ether }</span>
-                    </h5>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header text-center">
-                    Avg. Balance
-                </div>
-                <div class="card-body">
-                    <h5 class="card-title text-center">
-                    <span data-toggle="tooltip" data-placement="top"
-                          title="Average staked balance of all validators">${ page.average_balance }</span>
-                    </h5>
-                </div>
-            </div>
-        </div>
-        <div class="card mt-2">
-            <div class="card-header">
-                <h3 class="card-titler">
-                    <i class="fas fa-chart-bar"></i> Statistics
-                </h3>
-            </div>
-            <div class="card-body">
-                <highcharts height="600px" :constructor-type="'stockChart'" :options="chartOptions"></highcharts>
-            </div>
-        </div>
-        <div class="card mt-2">
-            <div class="card-header">
-                <h3 class="card-titler">
-                    <i class="fa fa-cubes"></i> Most recent blocks
-                    <a class="btn btn-secondary btn-sm float-right" href="/blocks">View more</a>
-                </h3>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                        <tr>
-                            <th>Epoch</th>
-                            <th>Slot</th>
-                            <th>Status</th>
-                            <th>Time</th>
-                            <th>Proposed by</th>
-                            <th>Root Hash</th>
-                            <th>Attestations</th>
-                            <th>Deposits</th>
-                            <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
-                                <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-                            <th>Exits</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr v-for="block in page.blocks">
-                            <td><a v-bind:href="'/epoch/' + block.epoch">${ block.epoch }</a></td>
-                            <td><a v-bind:href="'/block/' + block.slot">${ block.slot }</a></td>
-                            <td v-html="block.status_formatted"></td>
-                            <td>${ block.ts | fromNow }</td>
-                            <td v-html="block.proposer_formatted"></td>
-                            <td class="text-monospace">
-                                <a v-if="block.status === 1 || block.status === 3"
-                                   v-bind:href="'/block/' + block.block_root_formatted">0x${
-                                    block.block_root_formatted.substr(0, 6) }...</a>
-                                <a v-if="block.status === 0 || block.status === 2">N/A</a>
-                            </td>
-                            <td>${ block.attestations }</td>
-                            <td>${ block.deposits }</td>
-                            <td>${ block.proposerslashings } / ${ block.attesterslashings }</td>
-                            <td>${ block.exits }</td>
-                        </tr>
-                        </tbody>
-                    </table>
-                    <small class="float-right"> Next update in ${updateIn}s</small>
-                </div>
+		<h1 class="mt-4 text-center">Open Source Ethereum 2.0 Beacon Chain Explorer</h1>
+		<h5 class="text-center">{{.Subtitle}}</h5>
+		<h6 class="text-center">Do you have any feedback for us? Feel free to join our <a
+					href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a>
+			or create an issue on <a href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i
+						class="fab fa-github"></i> Github</a>.
+		</h6>
+		<form action="/search" class="mb-2 mt-2" method="POST">
+			<div class="input-group typeahead-holder">
+				<input class="form-control mr-2 form-control-md typeahead" type="text" name="search"
+					   placeholder="Search by Public Key / Block Number / Block Hash">
+				<button type="submit" class="btn btn-primary btn-md">
+					<span class="fas fa-search"></span>
+				</button>
+			</div>
+		</form>
+		<div class="card">
+			<div class="card-body">
+				<div class="row">
+					<div class="col-md-4 responsive-border-right responsive-border-right-l">
+						<div class="d-flex justify-content-between">
+							<div class="p-2">
+								<div class="text-secondary mb-0">Epoch</div>
+								<h5 class="font-weight-normal mb-0">
+                                    <span data-toggle="tooltip" data-placement="top"
+										  title="The most recent epoch">${ page.current_epoch }</span> / <span
+											data-toggle="tooltip" data-placement="top"
+											title="The most recent finalized epoch">${ page.current_finalized_epoch }</span>
+								</h5>
+							</div>
+							<div class="text-right p-2">
+								<div class="text-secondary mb-0">Current
+									Slot
+								</div>
+								<h5 class="font-weight-normal mb-0">
+                                    <span data-toggle="tooltip" data-placement="top"
+										  title="The most recent slot">${ page.current_slot }</span>
+								</h5>
+							</div>
+						</div>
+					</div>
+					<div class="col-md-4 responsive-border-right responsive-border-right-l">
+						<div class="d-flex justify-content-between">
+							<div class="p-2">
+								<div class="text-secondary mb-0">Active
+									Validators
+								</div>
+								<h5 class="font-weight-normal mb-0">
+                                    <span data-toggle="tooltip" data-placement="top"
+										  title="The number of currently active validators">${ page.active_validators }</span>
+								</h5>
+							</div>
+							<div class="text-right p-2">
+								<div class="text-secondary mb-0">Pending
+									Validators
+								</div>
+								<h5 class="font-weight-normal mb-0">
+                                    <span data-toggle="tooltip" data-placement="top"
+										  title="The number of validators currently waiting to enter the active validator set">${ page.entering_validators }</span>
+									/ <span data-toggle="tooltip" data-placement="top"
+											title="The number of validators currently waiting to exit the active validator set">${ page.exiting_validators }</span>
+								</h5>
+							</div>
+						</div>
+					</div>
+					<div class="col-md-4">
+						<div class="d-flex justify-content-between">
+							<div class="p-2">
+								<div class="text-secondary mb-0">Staked
+									Ether
+								</div>
+								<h5 class="font-weight-normal mb-0">
+                                    <span data-toggle="tooltip" data-placement="top"
+										  title="Amount of Ether currently staked">${ page.staked_ether }</span>
+								</h5>
+							</div>
+							<div class="text-right p-2">
+								<div class="text-secondary mb-0">Average
+									Balance
+								</div>
+								<h5 class="font-weight-normal mb-0">
+                                    <span data-toggle="tooltip" data-placement="top"
+										  title="Average staked balance of all validators">${ page.average_balance }</span>
+								</h5>
+							</div>
+						</div>
+					</div>
+				</div>
+				<hr>
+				<div class="row">
+					<div class="col-lg-12">
+						<highcharts height="600px" :constructor-type="'stockChart'"
+									:options="chartOptions"></highcharts>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="card mt-2">
+			<div class="card-header">
+				<h3 class="card-titler">
+					<i class="fa fa-cubes"></i> Most recent blocks
+					<a class="btn btn-secondary btn-sm float-right" href="/blocks">View more</a>
+				</h3>
+			</div>
+			<div class="card-body">
+				<div class="table-responsive">
+					<table class="table table-sm">
+						<thead>
+						<tr>
+							<th>Epoch</th>
+							<th>Slot</th>
+							<th>Status</th>
+							<th>Time</th>
+							<th>Proposed by</th>
+							<th>Root Hash</th>
+							<th>Attestations</th>
+							<th>Deposits</th>
+							<th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
+								<span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+							<th>Exits</th>
+						</tr>
+						</thead>
+						<tbody>
+						<tr v-for="block in page.blocks">
+							<td><a v-bind:href="'/epoch/' + block.epoch">${ block.epoch }</a></td>
+							<td><a v-bind:href="'/block/' + block.slot">${ block.slot }</a></td>
+							<td v-html="block.status_formatted"></td>
+							<td>${ block.ts | fromNow }</td>
+							<td v-html="block.proposer_formatted"></td>
+							<td class="text-monospace">
+								<a v-if="block.status === 1 || block.status === 3"
+								   v-bind:href="'/block/' + block.block_root_formatted">0x${
+									block.block_root_formatted.substr(0, 6) }...</a>
+								<a v-if="block.status === 0 || block.status === 2">N/A</a>
+							</td>
+							<td>${ block.attestations }</td>
+							<td>${ block.deposits }</td>
+							<td>${ block.proposerslashings } / ${ block.attesterslashings }</td>
+							<td>${ block.exits }</td>
+						</tr>
+						</tbody>
+					</table>
+					<small class="float-right"> Next update in ${updateIn}s</small>
+				</div>
 
-            </div>
-        </div>
-    </div>
+			</div>
+		</div>
+	</div>
 {{end}}
