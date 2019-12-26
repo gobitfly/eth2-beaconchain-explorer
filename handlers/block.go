@@ -84,23 +84,16 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
-	blockPageData.NextSlot = blockPageData.Slot + 1
-	blockPageData.PreviousSlot = blockPageData.Slot - 1
 	blockPageData.SlashingsCount = blockPageData.AttesterSlashingsCount + blockPageData.ProposerSlashingsCount
 
-	slots := types.BlockPageMinMaxSlot{}
-	err = db.DB.Get(&slots, "SELECT MAX(slot) AS maxslot, MIN(slot) as minslot FROM blocks")
+	err = db.DB.Get(&blockPageData.NextSlot, "SELECT slot FROM blocks WHERE slot > $1 ORDER BY slot LIMIT 1", blockPageData.Slot)
 	if err != nil {
-		logger.Printf("Error retrieving block data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	if blockPageData.NextSlot > slots.MaxSlot {
+		logger.Printf("Error retrieving next slot for block %v: %v", blockPageData.Slot, err)
 		blockPageData.NextSlot = 0
 	}
-
-	if blockPageData.PreviousSlot < slots.MinSlot {
+	err = db.DB.Get(&blockPageData.PreviousSlot, "SELECT slot FROM blocks WHERE slot < $1 ORDER BY slot DESC LIMIT 1", blockPageData.Slot)
+	if err != nil {
+		logger.Printf("Error retrieving previous slot for block %v: %v", blockPageData.Slot, err)
 		blockPageData.PreviousSlot = 0
 	}
 
