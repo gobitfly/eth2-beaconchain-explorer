@@ -55,30 +55,6 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	epochPageData := types.EpochPageData{}
 
-	err = db.DB.Select(&epochPageData.Blocks, `SELECT blocks.slot, 
-											    blocks.proposer, 
-											    blocks.blockroot, 
-											    blocks.parentroot, 
-											    blocks.attestationscount, 
-											    blocks.depositscount, 
-											    blocks.voluntaryexitscount, 
-											    blocks.proposerslashingscount, 
-											    blocks.attesterslashingscount,
-       											blocks.status
-										FROM blocks 
-										WHERE epoch = $1
-										ORDER BY blocks.slot DESC`, epoch)
-
-	if err != nil {
-		logger.Printf("Error retrieving index block data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	for _, block := range epochPageData.Blocks {
-		block.Ts = utils.SlotToTime(block.Slot)
-	}
-
 	err = db.DB.Get(&epochPageData, `SELECT epoch, 
 											    blockscount, 
 											    proposerslashingscount, 
@@ -96,8 +72,40 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 										WHERE epoch = $1`, epoch)
 	if err != nil {
 		logger.Printf("Error getting epoch data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+
+		if err != nil {
+			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		}
 		return
+	}
+
+	err = db.DB.Select(&epochPageData.Blocks, `SELECT blocks.slot, 
+											    blocks.proposer, 
+											    blocks.blockroot, 
+											    blocks.parentroot, 
+											    blocks.attestationscount, 
+											    blocks.depositscount, 
+											    blocks.voluntaryexitscount, 
+											    blocks.proposerslashingscount, 
+											    blocks.attesterslashingscount,
+       											blocks.status
+										FROM blocks 
+										WHERE epoch = $1
+										ORDER BY blocks.slot DESC`, epoch)
+
+	if err != nil {
+		logger.Printf("Error epoch blocks data: %v", err)
+		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+
+		if err != nil {
+			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		}
+		return
+	}
+
+	for _, block := range epochPageData.Blocks {
+		block.Ts = utils.SlotToTime(block.Slot)
 	}
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
