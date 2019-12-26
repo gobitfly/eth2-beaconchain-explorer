@@ -256,7 +256,15 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 
 	data.EpochParticipationStats, err = lc.GetValidatorParticipation(epoch)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
+		logger.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
+
+		data.EpochParticipationStats = &types.ValidatorParticipation{
+			Epoch:                   epoch,
+			Finalized:               false,
+			GlobalParticipationRate: 0,
+			VotedEther:              0,
+			EligibleEther:           0,
+		}
 	}
 
 	return data, nil
