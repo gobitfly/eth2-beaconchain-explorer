@@ -196,7 +196,8 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 		blocks, err := lc.GetBlocksBySlot(slot)
 
 		if err != nil {
-			return nil, fmt.Errorf("error retrieving blocks for slot %v: %v", slot, err)
+			logger.Errorf("error retrieving blocks for slot %v: %v", slot, err)
+			continue
 		}
 
 		for _, block := range blocks {
