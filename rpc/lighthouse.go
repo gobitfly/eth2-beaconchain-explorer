@@ -189,7 +189,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 
 	for slot := epoch * utils.Config.Chain.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.SlotsPerEpoch-1; slot++ {
 
-		if slot == 0 { // Currently slot 0 returns all blocks
+		if slot == 0 || utils.SlotToTime(slot).After(time.Now()) { // Currently slot 0 returns all blocks, also skip asking for future blocks
 			continue
 		}
 
