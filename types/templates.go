@@ -204,10 +204,18 @@ type BlockPageData struct {
 	DepositsCount          uint64 `db:"depositscount"`
 	VoluntaryExitscount    uint64 `db:"voluntaryexitscount"`
 	SlashingsCount         uint64
+	VotesCount             uint64
 
 	Attestations []*BlockPageAttestation // Attestations included in this block
 	Deposits     []*BlockPageDeposit
-	Votes        []*BlockPageAttestation // Attestations that voted for that block
+	Votes        []*BlockVote // Attestations that voted for that block
+}
+
+// BlockVote stores a vote for a given block
+type BlockVote struct {
+	Validator      uint64
+	IncludedIn     uint64
+	CommitteeIndex uint64
 }
 
 // BlockPageMinMaxSlot is a struct to hold min/max slot data
