@@ -146,19 +146,10 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 	blockPageData.Attestations = attestations
 
-	var votes []*types.BlockPageAttestation
+	var votes []*types.BlockVote
 	rows, err = db.DB.Query(`SELECT    block_slot,
-											 block_index,
-											 aggregationbits, 
 											 validators, 
-											 signature, 
-											 slot, 
-											 committeeindex, 
-											 beaconblockroot, 
-											 source_epoch, 
-											 source_root, 
-											 target_epoch, 
-											 target_root 
+											 committeeindex
 										FROM blocks_attestations 
 										WHERE beaconblockroot = $1 
 										ORDER BY committeeindex`,
@@ -175,25 +166,23 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 		err := rows.Scan(
 			&attestation.BlockSlot,
-			&attestation.BlockIndex,
-			&attestation.AggregationBits,
 			&attestation.Validators,
-			&attestation.Signature,
-			&attestation.Slot,
-			&attestation.CommitteeIndex,
-			&attestation.BeaconBlockRoot,
-			&attestation.SourceEpoch,
-			&attestation.SourceRoot,
-			&attestation.TargetEpoch,
-			&attestation.TargetRoot)
+			&attestation.CommitteeIndex)
 		if err != nil {
 			logger.Printf("Error scanning block votes data: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-		votes = append(votes, attestation)
+		for _, validator := range attestation.Validators {
+			votes = append(votes, &types.BlockVote{
+				Validator:      uint64(validator),
+				IncludedIn:     attestation.BlockSlot,
+				CommitteeIndex: attestation.CommitteeIndex,
+			})
+		}
 	}
 	blockPageData.Votes = votes
+	blockPageData.VotesCount = uint64(len(blockPageData.Votes))
 
 	var deposits []*types.BlockPageDeposit
 	err = db.DB.Select(&deposits, `SELECT publickey, 
