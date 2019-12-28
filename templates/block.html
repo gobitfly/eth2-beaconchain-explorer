@@ -190,7 +190,7 @@
                                 {{end}}
                                 <td class="p-1" data-toggle="tooltip" data-placement="top"
                                     title="Voted on by validator {{$vote.Validator}} of committee {{$vote.CommitteeIndex}} included in block {{$vote.IncludedIn}}">
-									<a href="/validator/{{$vote.Validator}}">{{formatValidator $vote.Validator}}</a>
+									{{formatValidator $vote.Validator}}
 								</td>
                                 {{if or (mod (add $i 1) 10) (eq $i (sub (len $.Votes) 1))}}
                                     </tr>
