@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -182,6 +183,9 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	blockPageData.Votes = votes
+	sort.Slice(blockPageData.Votes, func(i, j int) bool {
+		return blockPageData.Votes[i].Validator < blockPageData.Votes[j].Validator
+	})
 	blockPageData.VotesCount = uint64(len(blockPageData.Votes))
 
 	var deposits []*types.BlockPageDeposit
