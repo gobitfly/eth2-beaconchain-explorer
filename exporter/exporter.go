@@ -264,7 +264,7 @@ func Start(client rpc.Client) error {
 			logger.Error(err)
 		}
 
-		err = MarkOrphanedBlocks(head.FinalizedEpoch-1, head.HeadEpoch, nodeBlocks)
+		err = MarkOrphanedBlocks(startEpoch, head.HeadEpoch, nodeBlocks)
 		if err != nil {
 			logger.Fatal(err)
 		}
