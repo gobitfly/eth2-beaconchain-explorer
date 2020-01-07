@@ -15,6 +15,81 @@ import (
 	"time"
 )
 
+type ValidatorDataQueryParams struct {
+	Search   string
+	OrderBy  string
+	OrderDir string
+	Draw     uint64
+	Start    uint64
+	Length   uint64
+}
+
+func parseDataQueryParams(r *http.Request) (*ValidatorDataQueryParams, error) {
+	q := r.URL.Query()
+
+	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
+	if len(search) > 128 {
+		search = search[:128]
+	}
+
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	orderColumn := q.Get("order[0][column]")
+	var orderBy string
+	switch orderColumn {
+	case "0":
+		orderBy = "pubkey"
+	case "1":
+		orderBy = "validatorindex"
+	case "2":
+		orderBy = "balance"
+	case "3":
+		orderBy = "effectivebalance"
+	case "4":
+		orderBy = "slashed"
+	case "5":
+		orderBy = "activationeligibilityepoch"
+	case "6":
+		orderBy = "activationepoch"
+	default:
+		orderBy = "validatorindex"
+	}
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("Error converting datatables data parameter from string to int: %v", err)
+		return nil, err
+	}
+
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("Error converting datatables start parameter from string to int: %v", err)
+		return nil, err
+	}
+
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("Error converting datatables length parameter from string to int: %v", err)
+		return nil, err
+	}
+	if length > 100 {
+		length = 100
+	}
+
+	res := &ValidatorDataQueryParams{
+		search,
+		orderBy,
+		orderDir,
+		draw,
+		start,
+		length,
+	}
+
+	return res, nil
+}
+
 var validatorsTemplate = template.Must(template.New("validators").ParseFiles("templates/layout.html", "templates/validators.html"))
 
 // Validators returns the validators using a go template
@@ -71,28 +146,10 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	q := r.URL.Query()
-
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	dataQuery, err := parseDataQueryParams(r)
 	if err != nil {
-		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
-	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Printf("Error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
 	}
 
 	var totalCount uint64
@@ -105,7 +162,7 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `SELECT 
+	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
 											 validator_set.epoch,
        										 validator_set.validatorindex, 
 											 validators.pubkey, 
@@ -121,8 +178,8 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 											AND validator_set.validatorindex = validator_balances.validatorindex
 										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
 										WHERE validator_set.epoch = $1 AND validator_set.epoch < activationepoch
-										ORDER BY activationepoch DESC 
-										LIMIT $2 OFFSET $3`, services.LatestEpoch(), length, start)
+										ORDER BY %s %s 
+										LIMIT $2 OFFSET $3`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
 		logger.Printf("Error retrieving pending validator data: %v", err)
@@ -144,7 +201,7 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.DataTableResponse{
-		Draw:            draw,
+		Draw:            dataQuery.Draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
 		Data:            tableData,
@@ -160,33 +217,10 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	q := r.URL.Query()
-
-	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
-	if len(search) > 128 {
-		search = search[:128]
-	}
-
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	dataQuery, err := parseDataQueryParams(r)
 	if err != nil {
-		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
-	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Printf("Error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
 	}
 
 	var totalCount uint64
@@ -199,7 +233,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `SELECT 
+	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
 											 validator_set.epoch, 
 											 validator_set.validatorindex, 
 											 validators.pubkey, 
@@ -218,8 +252,8 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 										  AND validator_set.epoch > activationepoch 
 										  AND validator_set.epoch < exitepoch 
 										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-										ORDER BY activationepoch DESC 
-										LIMIT $3 OFFSET $4`, services.LatestEpoch(), "%"+search+"%", length, start)
+										ORDER BY %s %s 
+										LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
 		logger.Printf("Error retrieving active validators data: %v", err)
@@ -241,7 +275,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.DataTableResponse{
-		Draw:            draw,
+		Draw:            dataQuery.Draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
 		Data:            tableData,
@@ -257,33 +291,10 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	q := r.URL.Query()
-
-	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
-	if len(search) > 128 {
-		search = search[:128]
-	}
-
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	dataQuery, err := parseDataQueryParams(r)
 	if err != nil {
-		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
-	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Printf("Error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
 	}
 
 	var totalCount uint64
@@ -296,7 +307,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `SELECT 
+	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
 											 validator_set.epoch,
        										 validator_set.validatorindex, 
 											 validators.pubkey, 
@@ -314,8 +325,8 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 										WHERE validator_set.epoch = $1 
 										  AND validator_set.epoch > exitepoch
 										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-										ORDER BY activationepoch DESC 
-										LIMIT $3 OFFSET $4`, services.LatestEpoch(), "%"+search+"%", length, start)
+										ORDER BY %s %s 
+										LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
 		logger.Printf("Error retrieving ejected validators data: %v", err)
@@ -339,7 +350,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.DataTableResponse{
-		Draw:            draw,
+		Draw:            dataQuery.Draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
 		Data:            tableData,
