@@ -15,8 +15,6 @@ import (
 	"time"
 )
 
-var validatorsTemplate = template.Must(template.New("validators").ParseFiles("templates/layout.html", "templates/validators.html"))
-
 type ValidatorDataQueryParams struct {
 	Search   string
 	OrderBy  string
@@ -91,6 +89,8 @@ func parseDataQueryParams(r *http.Request) (*ValidatorDataQueryParams, error) {
 
 	return res, nil
 }
+
+var validatorsTemplate = template.Must(template.New("validators").ParseFiles("templates/layout.html", "templates/validators.html"))
 
 // Validators returns the validators using a go template
 func Validators(w http.ResponseWriter, r *http.Request) {
