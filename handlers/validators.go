@@ -225,7 +225,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch > activationepoch AND epoch < exitepoch", services.LatestEpoch())
+	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch >= activationepoch AND epoch < exitepoch", services.LatestEpoch())
 	if err != nil {
 		logger.Printf("Error retrieving active validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -299,7 +299,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch > exitepoch", services.LatestEpoch())
+	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch >= exitepoch", services.LatestEpoch())
 	if err != nil {
 		logger.Printf("Error retrieving ejected validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
