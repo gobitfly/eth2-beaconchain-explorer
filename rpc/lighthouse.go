@@ -330,8 +330,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 					Root:  utils.MustParseHex(attestation.Data.Target.Root),
 				},
 			},
-			CustodyBits: []byte{},
-			Signature:   utils.MustParseHex(attestation.Signature),
+			Signature: utils.MustParseHex(attestation.Signature),
 		}
 
 		aggregationBits := bitfield.Bitlist(a.AggregationBits)
