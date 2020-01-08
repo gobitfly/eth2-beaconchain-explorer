@@ -292,7 +292,6 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 	for slot := epoch * utils.Config.Chain.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.SlotsPerEpoch-1; slot++ {
 
-		logger.Println(slot)
 		if slot == 0 { // Currently slot 0 returns all blocks
 			continue
 		}
