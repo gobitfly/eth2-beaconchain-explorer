@@ -15,9 +15,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// DB is a pointer to the database
 var DB *sqlx.DB
 var logger = logrus.New().WithField("module", "db")
 
+// GetLatestEpoch will return the latest epoch from the database
 func GetLatestEpoch() (uint64, error) {
 	var epoch uint64
 
@@ -30,6 +32,7 @@ func GetLatestEpoch() (uint64, error) {
 	return epoch, nil
 }
 
+// GetAllEpochs will return a collection of all of the epochs from the database
 func GetAllEpochs() ([]uint64, error) {
 	var epochs []uint64
 	err := DB.Select(&epochs, "SELECT epoch FROM epochs ORDER BY epoch")
@@ -41,10 +44,10 @@ func GetAllEpochs() ([]uint64, error) {
 	return epochs, nil
 }
 
+// GetLastPendingAndProposedBlocks will return all proposed and pending blocks (ignores missed slots) from the database
 func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	var blocks []*types.MinimalBlock
 
-	// Will return all proposed and pending blocks. Ignores missed slots.
 	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND blockroot != '\x01' ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
@@ -54,10 +57,10 @@ func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.Mini
 	return blocks, nil
 }
 
+// GetBlocks will return all blocks for a range of epochs from the database
 func GetBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	var blocks []*types.MinimalBlock
 
-	// Will return all proposed and pending blocks. Ignores missed slots.
 	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot, parentroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND length(blockroot) = 32 ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
@@ -67,6 +70,7 @@ func GetBlocks(startEpoch, endEpoch uint64) ([]*types.MinimalBlock, error) {
 	return blocks, nil
 }
 
+// GetValidatorPublicKey will return the public key for a specific validator from the database
 func GetValidatorPublicKey(index uint64) ([]byte, error) {
 	var publicKey []byte
 	err := DB.Get(&publicKey, "SELECT pubkey FROM validators WHERE validatorindex = $1", index)
@@ -74,6 +78,7 @@ func GetValidatorPublicKey(index uint64) ([]byte, error) {
 	return publicKey, err
 }
 
+// GetValidatorIndex will return all of the validators for a public key from the database
 func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	var index uint64
 	err := DB.Get(&index, "SELECT validatorindex FROM validators WHERE pubkey = $1", publicKey)
@@ -81,6 +86,7 @@ func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	return index, err
 }
 
+// UpdateCanonicalBlocks will update the blocks for an epoch range in the database
 func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte) error {
 	if len(orphanedBlocks) == 0 {
 		return nil
@@ -107,6 +113,7 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte)
 	return tx.Commit()
 }
 
+// SaveAttestationPool will save the attestation pool into the database
 func SaveAttestationPool(attestations []*types.Attestation) error {
 	tx, err := DB.Begin()
 	if err != nil {
@@ -140,6 +147,7 @@ func SaveAttestationPool(attestations []*types.Attestation) error {
 	return nil
 }
 
+// SaveValidatorQueue will save the validator queue into the database
 func SaveValidatorQueue(validators *types.ValidatorQueue, validatorIndices map[string]uint64) error {
 	tx, err := DB.Begin()
 	if err != nil {
@@ -190,6 +198,7 @@ func SaveValidatorQueue(validators *types.ValidatorQueue, validatorIndices map[s
 	return nil
 }
 
+// SaveEpoch will stave the epoch data into the database
 func SaveEpoch(data *types.EpochData) error {
 	tx, err := DB.Begin()
 	if err != nil {
@@ -401,8 +410,8 @@ func saveBeaconCommittees(epoch uint64, committeesMap map[uint64][]*types.Beacon
 	defer stmt.Close()
 
 	for slot, comittees := range committeesMap {
-		for index, comittee := range comittees {
-			_, err := stmt.Exec(epoch, slot, index, pq.Array(comittee.ValidatorIndices))
+		for index, committee := range comittees {
+			_, err := stmt.Exec(epoch, slot, index, pq.Array(committee.ValidatorIndices))
 			if err != nil {
 				return fmt.Errorf("error executing save beacon committee statement: %v", err)
 			}
@@ -541,20 +550,20 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				b.Proposer,
 				b.Status)
 			if err != nil {
-				return fmt.Errorf("error executing stmtBlocks: %v", err)
+				return fmt.Errorf("error executing stmtBlocks for block %v: %v", b.Slot, err)
 			}
 
 			for i, ps := range b.ProposerSlashings {
-				_, err := stmtProposerSlashing.Exec(b.Slot, i, ps.ProposerIndex, ps.Header_1.Slot, ps.Header_1.ParentRoot, ps.Header_1.StateRoot, ps.Header_1.BodyRoot, ps.Header_1.Signature, ps.Header_2.Slot, ps.Header_2.ParentRoot, ps.Header_2.StateRoot, ps.Header_2.BodyRoot, ps.Header_2.Signature)
+				_, err := stmtProposerSlashing.Exec(b.Slot, i, ps.ProposerIndex, ps.Header1.Slot, ps.Header1.ParentRoot, ps.Header1.StateRoot, ps.Header1.BodyRoot, ps.Header1.Signature, ps.Header2.Slot, ps.Header2.ParentRoot, ps.Header2.StateRoot, ps.Header2.BodyRoot, ps.Header2.Signature)
 				if err != nil {
-					return fmt.Errorf("error executing stmtProposerSlashing: %v", err)
+					return fmt.Errorf("error executing stmtProposerSlashing for block %v: %v", b.Slot, err)
 				}
 			}
 
 			for i, as := range b.AttesterSlashings {
-				_, err := stmtAttesterSlashing.Exec(b.Slot, i, pq.Array(as.Attestation_1.CustodyBit_0Indices), pq.Array(as.Attestation_1.CustodyBit_1Indices), as.Attestation_1.Signature, as.Attestation_1.Data.Slot, as.Attestation_1.Data.CommitteeIndex, as.Attestation_1.Data.BeaconBlockRoot, as.Attestation_1.Data.Source.Epoch, as.Attestation_1.Data.Source.Root, as.Attestation_1.Data.Target.Epoch, as.Attestation_1.Data.Target.Root, pq.Array(as.Attestation_2.CustodyBit_0Indices), pq.Array(as.Attestation_2.CustodyBit_1Indices), as.Attestation_2.Signature, as.Attestation_2.Data.Slot, as.Attestation_2.Data.CommitteeIndex, as.Attestation_2.Data.BeaconBlockRoot, as.Attestation_2.Data.Source.Epoch, as.Attestation_2.Data.Source.Root, as.Attestation_2.Data.Target.Epoch, as.Attestation_2.Data.Target.Root)
+				_, err := stmtAttesterSlashing.Exec(b.Slot, i, pq.Array(as.Attestation1.Custodybit0indices), pq.Array(as.Attestation1.Custodybit1indices), as.Attestation1.Signature, as.Attestation1.Data.Slot, as.Attestation1.Data.CommitteeIndex, as.Attestation1.Data.BeaconBlockRoot, as.Attestation1.Data.Source.Epoch, as.Attestation1.Data.Source.Root, as.Attestation1.Data.Target.Epoch, as.Attestation1.Data.Target.Root, pq.Array(as.Attestation2.Custodybit0indices), pq.Array(as.Attestation2.Custodybit1indices), as.Attestation2.Signature, as.Attestation2.Data.Slot, as.Attestation2.Data.CommitteeIndex, as.Attestation2.Data.BeaconBlockRoot, as.Attestation2.Data.Source.Epoch, as.Attestation2.Data.Source.Root, as.Attestation2.Data.Target.Epoch, as.Attestation2.Data.Target.Root)
 				if err != nil {
-					return fmt.Errorf("error executing stmtAttesterSlashing: %v", err)
+					return fmt.Errorf("error executing stmtAttesterSlashing for block %v: %v", b.Slot, err)
 				}
 			}
 
@@ -564,33 +573,33 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 					_, err = stmtAttestationAssignments.Exec(a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1)
 
 					if err != nil {
-						return fmt.Errorf("error executing stmtAttestationAssignments: %v", err)
+						return fmt.Errorf("error executing stmtAttestationAssignments for block %v: %v", b.Slot, err)
 					}
 				}
 
 				_, err = stmtAttestations.Exec(b.Slot, i, bitfield.Bitlist(a.AggregationBits).Bytes(), pq.Array(a.Attesters), bitfield.Bitlist(a.CustodyBits).Bytes(), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
 				if err != nil {
-					return fmt.Errorf("error executing stmtAttestations: %v", err)
+					return fmt.Errorf("error executing stmtAttestations for block %v: %v", b.Slot, err)
 				}
 			}
 
 			for i, d := range b.Deposits {
 				_, err := stmtDeposits.Exec(b.Slot, i, nil, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature)
 				if err != nil {
-					return fmt.Errorf("error executing stmtDeposits: %v", err)
+					return fmt.Errorf("error executing stmtDeposits for block %v: %v", b.Slot, err)
 				}
 			}
 
 			for i, ve := range b.VoluntaryExits {
 				_, err := stmtVoluntaryExits.Exec(b.Slot, i, ve.Epoch, ve.ValidatorIndex, ve.Signature)
 				if err != nil {
-					return fmt.Errorf("error executing stmtVoluntaryExits: %v", err)
+					return fmt.Errorf("error executing stmtVoluntaryExits for block %v: %v", b.Slot, err)
 				}
 			}
 
 			_, err = stmtProposalAssignments.Exec(epoch, b.Proposer, b.Slot, b.Status)
 			if err != nil {
-				return fmt.Errorf("error executing stmtProposalAssignments: %v", err)
+				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %v", b.Slot, err)
 			}
 		}
 	}
@@ -598,6 +607,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 	return nil
 }
 
+// UpdateEpochStatus will update the epoch status in the database
 func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 	_, err := DB.Exec(`UPDATE epochs SET 
                   finalized = $1, 

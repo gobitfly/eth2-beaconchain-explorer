@@ -20,7 +20,8 @@ var logger = logrus.New().WithField("module", "exporter")
 // to not be archived properly (see https://github.com/prysmaticlabs/prysm/issues/4165)
 var epochBlacklist = make(map[uint64]uint64)
 
-func Start(client rpc.RpcClient) error {
+// Start will start the export of data from rpc into the database
+func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.FullIndexOnStartup {
 		logger.Printf("Performing one time full db reindex")
@@ -226,7 +227,7 @@ func Start(client rpc.RpcClient) error {
 
 		for _, epoch := range keys {
 			if epochBlacklist[epoch] > 3 {
-				logger.Printf("Skipping export of epoch %v as it has errored %v times", epochBlacklist[epoch])
+				logger.Printf("Skipping export of epoch %v as it has errored %d times", epoch, epochBlacklist[epoch])
 				continue
 			}
 
@@ -260,10 +261,10 @@ func Start(client rpc.RpcClient) error {
 
 		err = exportValidatorQueue(client)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Error(err)
 		}
 
-		err = MarkOrphanedBlocks(head.FinalizedEpoch-1, head.HeadEpoch, nodeBlocks)
+		err = MarkOrphanedBlocks(startEpoch, head.HeadEpoch, nodeBlocks)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -274,6 +275,7 @@ func Start(client rpc.RpcClient) error {
 	return nil
 }
 
+// MarkOrphanedBlocks will mark the orphaned blocks in the database
 func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBlock) error {
 	blocksMap := make(map[string]bool)
 
@@ -303,7 +305,8 @@ func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBloc
 	return db.UpdateCanonicalBlocks(startEpoch, endEpoch, orphanedBlocks)
 }
 
-func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.RpcClient) ([]*types.MinimalBlock, error) {
+// GetLastBlocks will get all blocks for a range of epochs
+func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.MinimalBlock, error) {
 	wrappedBlocks := make([]*types.MinimalBlock, 0)
 
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
@@ -331,7 +334,8 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.RpcClient) ([]*types.
 	return wrappedBlocks, nil
 }
 
-func ExportEpoch(epoch uint64, client rpc.RpcClient) error {
+// ExportEpoch will export an epoch from rpc into the database
+func ExportEpoch(epoch uint64, client rpc.Client) error {
 	start := time.Now()
 
 	logger.Printf("Retrieving data for epoch %v", epoch)
@@ -346,7 +350,7 @@ func ExportEpoch(epoch uint64, client rpc.RpcClient) error {
 	return db.SaveEpoch(data)
 }
 
-func exportAttestationPool(client rpc.RpcClient) error {
+func exportAttestationPool(client rpc.Client) error {
 	attestations, err := client.GetAttestationPool()
 
 	if err != nil {
@@ -356,7 +360,7 @@ func exportAttestationPool(client rpc.RpcClient) error {
 	return db.SaveAttestationPool(attestations)
 }
 
-func exportValidatorQueue(client rpc.RpcClient) error {
+func exportValidatorQueue(client rpc.Client) error {
 
 	validators, validatorIndices, err := client.GetValidatorQueue()
 	if err != nil {
@@ -366,7 +370,7 @@ func exportValidatorQueue(client rpc.RpcClient) error {
 	return db.SaveValidatorQueue(validators, validatorIndices)
 }
 
-func updateEpochStatus(client rpc.RpcClient, startEpoch, endEpoch uint64) error {
+func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
 		epochParticipationStats, err := client.GetValidatorParticipation(epoch)
 		if err != nil {

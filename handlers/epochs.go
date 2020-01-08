@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 var epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/layout.html", "templates/epochs.html"))
 
+// Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
@@ -28,6 +30,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "epochs",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	err := epochsTemplate.ExecuteTemplate(w, "layout", data)
@@ -37,10 +40,16 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// EpochsData will return the epoch data using a go template
 func EpochsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
+
+	search, err := strconv.ParseInt(q.Get("search[value]"), 10, 64)
+	if err != nil {
+		search = -1
+	}
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
@@ -77,7 +86,9 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var epochs []*types.EpochsPageData
-	err = db.DB.Select(&epochs, `SELECT epoch, 
+
+	if search == -1 {
+		err = db.DB.Select(&epochs, `SELECT epoch, 
 											    blockscount, 
 											    proposerslashingscount, 
 											    attesterslashingscount, 
@@ -93,7 +104,24 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 										FROM epochs 
 										WHERE epoch >= $1 AND epoch <= $2
 										ORDER BY epoch DESC`, endEpoch, startEpoch)
-
+	} else {
+		err = db.DB.Select(&epochs, `SELECT epoch, 
+											    blockscount, 
+											    proposerslashingscount, 
+											    attesterslashingscount, 
+											    attestationscount, 
+											    depositscount, 
+											    voluntaryexitscount, 
+											    validatorscount, 
+											    averagevalidatorbalance, 
+											    finalized,
+											    eligibleether,
+											    globalparticipationrate,
+											    votedether
+										FROM epochs 
+										WHERE epoch = $1
+										ORDER BY epoch DESC`, search)
+	}
 	if err != nil {
 		logger.Printf("Error retrieving epoch data: %v", err)
 		http.Error(w, "Internal server error", 503)

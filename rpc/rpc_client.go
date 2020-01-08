@@ -5,7 +5,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type RpcClient interface {
+// Client provides an interface for RPC clients
+type Client interface {
 	GetChainHead() (*types.ChainHead, error)
 	GetEpochData(epoch uint64) (*types.EpochData, error)
 	GetValidatorQueue() (*types.ValidatorQueue, map[string]uint64, error)

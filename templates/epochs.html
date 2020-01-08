@@ -7,9 +7,13 @@
                 "processing": true,
                 "serverSide": true,
                 "ordering": false,
-                "searching": false,
+                "searching": true,
                 "ajax": "/epochs/data",
                 "pagingType": "full",
+                "language": {
+                    "searchPlaceholder": "Search by Epoch Number",
+                    "search": "",
+                },
                 "columnDefs": [{
                     "targets": 0,
                     "data": "0",
@@ -36,12 +40,13 @@
                     "targets": 8,
                     "data": "8",
                     "render": function (data, type, row, meta) {
-                        return '<div>' + data + '<small class="text-muted ml-3">('+ row[9] + ')</small></div><div class="progress" style="height:5px;">\n' +
-                            '  <div class="progress-bar" role="progressbar" style="width: '+ row[9] + ';" aria-valuenow="'+ row[9] + '" aria-valuemin="0" aria-valuemax="100"></div>\n' +
+                        return '<div>' + data + '<small class="text-muted ml-3">(' + row[9] + ')</small></div><div class="progress" style="height:5px;">\n' +
+                            '  <div class="progress-bar" role="progressbar" style="width: ' + row[9] + ';" aria-valuenow="' + row[9] + '" aria-valuemin="0" aria-valuemax="100"></div>\n' +
                             '</div>';
                     }
                 }]
             });
+            $("div.toolbar").html('<b>Custom tool bar! Text/images etc.</b>');
         });
     </script>
 {{end}}
@@ -51,25 +56,40 @@
 {{end}}
 
 {{ define "content"}}
-    <h1 class="mt-4 text-center"><i class="fas fa-history"></i> Epochs overview</h1>
-    <div class="table-responsive col-sm-12">
-        <table class="table table-sm" id="epochs">
-            <thead>
-            <tr>
-                <th>Epoch</th>
-                <th>Time</th>
-                <th>Blocks</th>
-                <th>Attestations</th>
-                <th>Deposits</th>
-                <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span
-                            data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-                <th>Finalized</th>
-                <th>Eligible</th>
-                <th>Voted</th>
-            </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
+    <div class="mb-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+            <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-history mr-2"></i>Epochs</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                    <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Epochs</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive col-sm-12">
+                <table class="table table-sm" id="epochs">
+                    <thead>
+                    <tr>
+                        <th>Epoch</th>
+                        <th>Time</th>
+                        <th>Blocks</th>
+                        <th>Attestations</th>
+                        <th>Deposits</th>
+                        <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
+                            <span
+                                    data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                        <th>Finalized</th>
+                        <th>Eligible</th>
+                        <th>Voted</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 {{end}}

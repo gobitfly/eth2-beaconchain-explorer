@@ -189,162 +189,162 @@
         });
     </script>
     {{if .DailyProposalCount}}
-    <script>
-        var data = {{.DailyProposalCount}};
-        var proposed = data.map(d => [d.Day * 1000, d.Proposed]);
-        var missed = data.map(d => [d.Day * 1000, d.Missed]);
-        var orphaned = data.map(d => [d.Day * 1000, d.Orphaned]);
+        <script>
+            var data = {{.DailyProposalCount}};
+            var proposed = data.map(d => [d.Day * 1000, d.Proposed]);
+            var missed = data.map(d => [d.Day * 1000, d.Missed]);
+            var orphaned = data.map(d => [d.Day * 1000, d.Orphaned]);
 
-        Highcharts.stockChart('proposedChart', {
-            exporting: {
-                scale: 1
-            },
-            credits: {
-                enabled: false
-            },
-            title: {
-                text: 'Proposal History for Validator {{.Index}}'
-            },
-            subtitle: {
-                text: 'Source: beaconcha.in',
-                style: {
-                    color: 'black'
-                }
-            },
-            chart: {
-                type: 'column',
-                animation: false,
-                style: {
-                    fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
+            Highcharts.stockChart('proposedChart', {
+                exporting: {
+                    scale: 1
                 },
-                backgroundColor: 'rgb(255, 255, 255)'
-            },
-            xAxis: {
-                lineWidth: 0,
-                tickColor: '#e5e1e1',
-                labels: {
+                credits: {
+                    enabled: false
+                },
+                title: {
+                    text: 'Proposal History for Validator {{.Index}}'
+                },
+                subtitle: {
+                    text: 'Source: beaconcha.in',
                     style: {
                         color: 'black'
                     }
                 },
-                range: 7 * 24 * 3600 * 1000
-            },
-            yAxis: [
-                {
-                    title: {
-                        text: '# of Possible Proposals',
-                        style: {
-                            color: '#26232780',
-                            'font-size': '0.8rem'
-                        }
+                chart: {
+                    type: 'column',
+                    animation: false,
+                    style: {
+                        fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
                     },
+                    backgroundColor: 'rgb(255, 255, 255)'
+                },
+                xAxis: {
+                    lineWidth: 0,
+                    tickColor: '#e5e1e1',
                     labels: {
                         style: {
                             color: 'black'
                         }
                     },
-                    gridLineColor: '#e5e1e1',
-                    opposite: false
-                }
-            ],
-            plotOptions: {
-                column: {
-                    stacking: 'normal',
-                    dataGrouping: {
-                        enabled: true,
-                        forced: true,
-                        units: [
-                            ['day', [1]]
-                        ]
-                    }
-                }
-            },
-            legend: {
-                enabled: true,
-                layout: 'horizontal',
-                align: 'center',
-                verticalAlign: 'bottom',
-                borderWidth: 0,
-                itemStyle: {
-                    color: '#262327',
-                    'font-size': '0.8rem',
-                    'font-weight': 'lighter'
+                    range: 7 * 24 * 3600 * 1000
                 },
-                itemHoverStyle: {
-                    color: '#ff8723'
-                }
-            },
-            series: [
-                {
-                    name: 'Proposed',
-                    data: proposed
-                },
-                {
-                    name: 'Missed',
-                    data: missed
-                },
-                {
-                    name: 'Orphaned',
-                    data: orphaned
-                }
-            ],
-            rangeSelector: {
-                enabled: false
-            },
-            navigator: {
-                maskFill: '#1473e631',
-                outlineColor: '#e5e1e1',
-                handles: {
-                    backgroundColor: '#f5f3f3',
-                    borderColor: '#26232780'
-                },
-                xAxis: {
-                    gridLineColor: '#e5e1e1',
-                    labels: {
-                        style: {
-                            color: '#26232780'
-                        }
-                    }
-                }
-            },
-            scrollbar: {
-                barBackgroundColor: '#ebe7e7',
-                barBorderWidth: 0,
-                buttonArrowColor: '#262327',
-                rifleColor: '#262327',
-                buttonBackgroundColor: '#ebe7e7',
-                buttonBorderColor: '#ebe7e7',
-                trackBackgroundColor: '#f5f3f3',
-                trackBorderColor: '#e5e1e180'
-            },
-            responsive: {
-                rules: [
+                yAxis: [
                     {
-                        condition: {
-                            maxWidth: 760
+                        title: {
+                            text: '# of Possible Proposals',
+                            style: {
+                                color: '#26232780',
+                                'font-size': '0.8rem'
+                            }
                         },
-                        chartOptions: {
-                            chart: {
-                                marginRight: 45
-                            },
-                            yAxis: [
-                                {
-                                    title: {
-                                        text: null
-                                    }
-                                },
-                                {
-                                    title: {
-                                        text: null
-                                    }
-                                }
+                        labels: {
+                            style: {
+                                color: 'black'
+                            }
+                        },
+                        gridLineColor: '#e5e1e1',
+                        opposite: false
+                    }
+                ],
+                plotOptions: {
+                    column: {
+                        stacking: 'normal',
+                        dataGrouping: {
+                            enabled: true,
+                            forced: true,
+                            units: [
+                                ['day', [1]]
                             ]
                         }
                     }
-                ]
-            }
-        })
-    </script>
+                },
+                legend: {
+                    enabled: true,
+                    layout: 'horizontal',
+                    align: 'center',
+                    verticalAlign: 'bottom',
+                    borderWidth: 0,
+                    itemStyle: {
+                        color: '#262327',
+                        'font-size': '0.8rem',
+                        'font-weight': 'lighter'
+                    },
+                    itemHoverStyle: {
+                        color: '#ff8723'
+                    }
+                },
+                series: [
+                    {
+                        name: 'Proposed',
+                        data: proposed
+                    },
+                    {
+                        name: 'Missed',
+                        data: missed
+                    },
+                    {
+                        name: 'Orphaned',
+                        data: orphaned
+                    }
+                ],
+                rangeSelector: {
+                    enabled: false
+                },
+                navigator: {
+                    maskFill: '#1473e631',
+                    outlineColor: '#e5e1e1',
+                    handles: {
+                        backgroundColor: '#f5f3f3',
+                        borderColor: '#26232780'
+                    },
+                    xAxis: {
+                        gridLineColor: '#e5e1e1',
+                        labels: {
+                            style: {
+                                color: '#26232780'
+                            }
+                        }
+                    }
+                },
+                scrollbar: {
+                    barBackgroundColor: '#ebe7e7',
+                    barBorderWidth: 0,
+                    buttonArrowColor: '#262327',
+                    rifleColor: '#262327',
+                    buttonBackgroundColor: '#ebe7e7',
+                    buttonBorderColor: '#ebe7e7',
+                    trackBackgroundColor: '#f5f3f3',
+                    trackBorderColor: '#e5e1e180'
+                },
+                responsive: {
+                    rules: [
+                        {
+                            condition: {
+                                maxWidth: 760
+                            },
+                            chartOptions: {
+                                chart: {
+                                    marginRight: 45
+                                },
+                                yAxis: [
+                                    {
+                                        title: {
+                                            text: null
+                                        }
+                                    },
+                                    {
+                                        title: {
+                                            text: null
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            })
+        </script>
     {{end}}
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
@@ -357,7 +357,7 @@
         }
 
         function hideTooltip() {
-            setTimeout(function() {
+            setTimeout(function () {
                 $('#copy-button').tooltip('hide')
                     .attr('data-original-title', 'Copy public key to clipboard')
             }, 1000);
@@ -365,12 +365,12 @@
 
         var clipboard = new ClipboardJS('#copy-button');
 
-        clipboard.on('success', function(e) {
+        clipboard.on('success', function (e) {
             setTooltip('Public key copied!');
             hideTooltip();
         });
 
-        clipboard.on('error', function(e) {
+        clipboard.on('error', function (e) {
             setTooltip('Failed to copy public key!');
             hideTooltip();
         });
@@ -383,10 +383,10 @@
 {{end}}
 
 {{ define "content"}}
-    <div class="shadow-lg p-3 mb-5 mt-5 bg-white rounded">
-        <div class="row border-bottom p-3 text-center">
-            <div class="col-md-12">
-                <h1>
+    <div class="mb-3 py-2">
+        <div class="d-md-flex justify-content-md-between">
+            <div class="d-flex mb-1">
+                <h1 class="h4 mb-1 mb-md-0">
                     <span>Validator {{.Index}}</span>
                     <button class="btn btn-light" type="button" id="copy-button"
                             data-toggle="tooltip" data-placement="right"
@@ -395,27 +395,39 @@
                         <i class="fa fa-copy"></i>
                     </button>
                 </h1>
-                <h6 class="text-monospace text-break" id="copy-input">0x{{printf "%x" .PublicKey}}</h6>
             </div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                    <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                    <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Validator details</li>
+                </ol>
+            </nav>
         </div>
-        <div class="row border-bottom p-1">
-            <div class="col-md-12">
-                <ul class="nav nav-pills" id="pills-tab" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview"
-                           role="tab" aria-controls="pills-overview" aria-selected="true">Overview</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="pills-blocks-tab" data-toggle="pill" href="#pills-blocks" role="tab"
-                           aria-controls="pills-blocks" aria-selected="false">Proposed Blocks <span
-                                    class="badge badge-secondary">{{.ProposedBlocksCount}}</span></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="pills-attestations-tab" data-toggle="pill" href="#pills-attestations"
-                           role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span
-                                    class="badge badge-secondary">{{.AttestationsCount}}</span></a>
-                    </li>
-                    {{/*
+        <span class="text-monospace text-secondary text-wrap text-sm mb-0"
+              id="copy-input">0x{{printf "%x" .PublicKey}}</span>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="row border-bottom p-1">
+                <div class="col-md-12">
+                    <ul class="nav nav-pills justify-content-center" id="pills-tab" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview"
+                               role="tab" aria-controls="pills-overview" aria-selected="true">Overview</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-blocks-tab" data-toggle="pill" href="#pills-blocks" role="tab"
+                               aria-controls="pills-blocks" aria-selected="false">Proposed Blocks <span
+                                        class="badge badge-secondary">{{.ProposedBlocksCount}}</span></a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-attestations-tab" data-toggle="pill"
+                               href="#pills-attestations"
+                               role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span
+                                        class="badge badge-secondary">{{.AttestationsCount}}</span></a>
+                        </li>
+                        {{/*
         <li class="nav-item"
           >*/}} {{/* <a class="nav-link" href="#">Deposits <span class="badge badge-secondary">{{.DepositsCount}}</span></a
           >*/}} {{/* </li
@@ -428,106 +440,110 @@
           >*/}} {{/* <a class="nav-link" href="#">Slashings <span class="badge badge-secondary">{{.SlashingsCount}}</span></a
           >*/}} {{/* </li
         >*/}}
-                </ul>
+                    </ul>
+                </div>
             </div>
-        </div>
 
-        <div class="tab-content" id="pills-tabContent">
-            <div class="tab-pane fade show active" id="pills-overview" role="tabpanel"
-                 aria-labelledby="pills-overview-tab">
-                <div class="row border-bottom p-3">
-                    <div class="col-md-2">Unique Index:</div>
-                    <div class="col-md-10">{{.Index}}</div>
-                </div>
-                <div class="row border-bottom p-3">
-                    <div class="col-md-2">Current Balance:</div>
-                    <div class="col-md-10">{{.CurrentBalanceFormatted}}</div>
-                </div>
-                <div class="row border-bottom p-3">
-                    <div class="col-md-2">Effective Balance:</div>
-                    <div class="col-md-10">{{.EffectiveBalanceFormatted}}</div>
-                </div>
-                <div class="row border-bottom p-3">
-                    <div class="col-md-2">Status:</div>
-                    <div class="col-md-10"><b>{{.Status}}</b></div>
-                </div>
-                <div class="row border-bottom p-3">
-                    <div class="col-md-2">Slashed:</div>
-                    <div class="col-md-10">{{.Slashed}}</div>
-                </div>
-                <div class="row border-bottom p-3">
-                    <div class="col-md-2">Activation eligibility on:</div>
-                    <div class="col-md-10"><span
-                                aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
-                        (Epoch {{.ActivationEligibilityEpoch}})
-                    </div>
-                </div>
-                <div class="row border-bottom p-3">
-                    <div class="col-md-2">Activation on:</div>
-                    <div class="col-md-10"><span aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
-                        (Epoch {{.ActivationEpoch}})
-                    </div>
-                </div>
-                {{if eq .Status "Ejected"}}
+            <div class="tab-content" id="pills-tabContent">
+                <div class="tab-pane fade show active" id="pills-overview" role="tabpanel"
+                     aria-labelledby="pills-overview-tab">
                     <div class="row border-bottom p-3">
-                        <div class="col-md-2">Exit on:</div>
-                        <div class="col-md-10"><span aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
-                            (Epoch {{.ExitEpoch}})
-                        </div>
+                        <div class="col-md-2">Unique Index:</div>
+                        <div class="col-md-10">{{.Index}}</div>
                     </div>
                     <div class="row border-bottom p-3">
-                        <div class="col-md-2">Withdrawable on:</div>
+                        <div class="col-md-2">Current Balance:</div>
+                        <div class="col-md-10">{{.CurrentBalanceFormatted}}</div>
+                    </div>
+                    <div class="row border-bottom p-3">
+                        <div class="col-md-2">Effective Balance:</div>
+                        <div class="col-md-10">{{.EffectiveBalanceFormatted}}</div>
+                    </div>
+                    <div class="row border-bottom p-3">
+                        <div class="col-md-2">Status:</div>
+                        <div class="col-md-10"><b>{{.Status}}</b></div>
+                    </div>
+                    <div class="row border-bottom p-3">
+                        <div class="col-md-2">Slashed:</div>
+                        <div class="col-md-10">{{.Slashed}}</div>
+                    </div>
+                    <div class="row border-bottom p-3">
+                        <div class="col-md-2">Activation eligibility on:</div>
                         <div class="col-md-10"><span
-                                    aria-ethereum-date="{{.WithdrawableTs.Unix}}">{{.WithdrawableTs}}</span>
-                            (Epoch {{.WithdrawableEpoch}})
+                                    aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
+                            (Epoch {{.ActivationEligibilityEpoch}})
                         </div>
                     </div>
-                {{end}}
-                <div class="row border-bottom p-3">
-                    <div class="col-md-12">
-                        <div id="balancechart" height="200px"></div>
+                    <div class="row border-bottom p-3">
+                        <div class="col-md-2">Activation on:</div>
+                        <div class="col-md-10"><span
+                                    aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
+                            (Epoch {{.ActivationEpoch}})
+                        </div>
+                    </div>
+                    {{if eq .Status "Ejected"}}
+                        <div class="row border-bottom p-3">
+                            <div class="col-md-2">Exit on:</div>
+                            <div class="col-md-10"><span aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
+                                (Epoch {{.ExitEpoch}})
+                            </div>
+                        </div>
+                        <div class="row border-bottom p-3">
+                            <div class="col-md-2">Withdrawable on:</div>
+                            <div class="col-md-10"><span
+                                        aria-ethereum-date="{{.WithdrawableTs.Unix}}">{{.WithdrawableTs}}</span>
+                                (Epoch {{.WithdrawableEpoch}})
+                            </div>
+                        </div>
+                    {{end}}
+                    <div class="row border-bottom p-3">
+                        <div class="col-md-12">
+                            <div id="balancechart" height="200px"></div>
+                        </div>
+                    </div>
+                    <div class="row border-bottom p-3">
+                        <div class="col-md-12">
+                            <div id="proposedChart" height="200px"></div>
+                        </div>
                     </div>
                 </div>
-                <div class="row border-bottom p-3">
-                    <div class="col-md-12">
-                        <div id="proposedChart" height="200px"></div>
+                <div class="tab-pane fade" id="pills-blocks" role="tabpanel" aria-labelledby="pills-blocks-tab">
+                    <div class="table-responsive mt-4">
+                        <table class="table table-sm" id="blocks" width="100%">
+                            <thead>
+                            <tr>
+                                <th>Epoch</th>
+                                <th>Slot</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                                <th>Root Hash</th>
+                                <th>Attestations</th>
+                                <th>Deposits</th>
+                                <th>Slashings <span data-toggle="tooltip" data-placement="top"
+                                                    title="Proposers">P</span> /
+                                    <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                                <th>Exits</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
                 </div>
-            </div>
-            <div class="tab-pane fade" id="pills-blocks" role="tabpanel" aria-labelledby="pills-blocks-tab">
-                <div class="table-responsive mt-4">
-                    <table class="table table-sm" id="blocks" width="100%">
-                        <thead>
-                        <tr>
-                            <th>Epoch</th>
-                            <th>Slot</th>
-                            <th>Status</th>
-                            <th>Time</th>
-                            <th>Root Hash</th>
-                            <th>Attestations</th>
-                            <th>Deposits</th>
-                            <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
-                                <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-                            <th>Exits</th>
-                        </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="tab-pane fade" id="pills-attestations" role="tabpanel" aria-labelledby="pills-attestations-tab">
-                <div class="table-responsive mt-4">
-                    <table class="table table-sm" id="attestations" width="100%">
-                        <thead>
-                        <tr>
-                            <th>Epoch</th>
-                            <th>Slot</th>
-                            <th>Committee Index</th>
-                            <th>Status</th>
-                        </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                <div class="tab-pane fade" id="pills-attestations" role="tabpanel"
+                     aria-labelledby="pills-attestations-tab">
+                    <div class="table-responsive mt-4">
+                        <table class="table table-sm" id="attestations" width="100%">
+                            <thead>
+                            <tr>
+                                <th>Epoch</th>
+                                <th>Slot</th>
+                                <th>Committee Index</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocks.html"))
 
+// Blocks will return information about blocks using a go template
 func Blocks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
@@ -28,6 +30,7 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "blocks",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	err := blocksTemplate.ExecuteTemplate(w, "layout", data)
@@ -37,10 +40,16 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// BlocksData will return information about blocks
 func BlocksData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
+
+	search, err := strconv.ParseInt(q.Get("search[value]"), 10, 64)
+	if err != nil {
+		search = -1
+	}
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
@@ -84,7 +93,8 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var blocks []*types.IndexPageDataBlocks
-	err = db.DB.Select(&blocks, `SELECT blocks.epoch, 
+	if search == -1 {
+		err = db.DB.Select(&blocks, `SELECT blocks.epoch, 
 											    blocks.slot, 
 											    blocks.proposer, 
 											    blocks.blockroot, 
@@ -99,6 +109,23 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 										FROM blocks 
 										WHERE blocks.slot >= $1 AND blocks.slot <= $2
 										ORDER BY blocks.slot DESC`, endSlot, startSlot)
+	} else {
+		err = db.DB.Select(&blocks, `SELECT blocks.epoch, 
+											    blocks.slot, 
+											    blocks.proposer, 
+											    blocks.blockroot, 
+											    blocks.parentroot, 
+											    blocks.attestationscount, 
+											    blocks.depositscount, 
+											    blocks.voluntaryexitscount, 
+											    blocks.proposerslashingscount, 
+											    blocks.attesterslashingscount, 
+											    blocks.status,
+       											COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes
+										FROM blocks 
+										WHERE blocks.slot = $1
+										ORDER BY blocks.slot DESC`, search)
+	}
 
 	if err != nil {
 		logger.Printf("Error retrieving block data: %v", err)

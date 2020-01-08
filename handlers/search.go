@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Search handles search requests
 func Search(w http.ResponseWriter, r *http.Request) {
 
 	search := r.FormValue("search")
@@ -33,6 +34,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// SearchAhead handles responses for the frontend search boxes
 func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -55,6 +57,23 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			logger.WithError(err).Error("Failed encoding searchAhead-blocks-result")
 			http.Error(w, "Internal server error", 503)
 		}
+	case "graffiti":
+		graffiti := &types.SearchAheadGraffitiResult{}
+
+		encoding := "UTF-8"
+
+		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE graffiti LIKE convert_to($1, $2) LIMIT 10", "%"+search+"%", encoding)
+
+		if err != nil {
+			logger.WithError(err).Error("Failed doing search-query")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = json.NewEncoder(w).Encode(graffiti)
+		if err != nil {
+			logger.WithError(err).Error("Failed encoding searchAhead-blocks-result")
+			http.Error(w, "Internal server error", 503)
+		}
 	case "epochs":
 		epochs := &types.SearchAheadEpochsResult{}
 		err := db.DB.Select(epochs, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
@@ -70,7 +89,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 	case "validators":
 		validators := &types.SearchAheadValidatorsResult{}
-		err := db.DB.Select(validators, "SELECT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey FROM validators WHERE CAST(validatorindex AS text) LIKE $1 OR ENCODE(pubkey::bytea, 'hex') LIKE $1 ORDER BY index LIMIT 10", search+"%")
+		err := db.DB.Select(validators, "SELECT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey FROM validators WHERE ENCODE(pubkey::bytea, 'hex') LIKE $1 OR CAST(validatorindex AS text) LIKE $1 ORDER BY index LIMIT 10", search+"%")
 		if err != nil {
 			logger.WithError(err).Error("Failed doing search-query")
 			http.Error(w, "Internal server error", 503)

@@ -16,6 +16,7 @@ import (
 	ptypes "github.com/golang/protobuf/ptypes/empty"
 )
 
+// PrysmClient holds information about the Prysm Client
 type PrysmClient struct {
 	client              ethpb.BeaconChainClient
 	conn                *grpc.ClientConn
@@ -23,6 +24,7 @@ type PrysmClient struct {
 	assignmentsCacheMux *sync.Mutex
 }
 
+// NewPrysmClient is used for a new Prysm client connection
 func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 	dialOpt := grpc.WithInsecure()
 	conn, err := grpc.Dial(endpoint, dialOpt)
@@ -44,12 +46,14 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 	return client, nil
 }
 
-func (self *PrysmClient) Close() {
-	self.conn.Close()
+// Close will close a Prysm client connection
+func (pc *PrysmClient) Close() {
+	pc.conn.Close()
 }
 
-func (self *PrysmClient) GetChainHead() (*types.ChainHead, error) {
-	headResponse, err := self.client.GetChainHead(context.Background(), &ptypes.Empty{})
+// GetChainHead will get the chain head from a Prysm client
+func (pc *PrysmClient) GetChainHead() (*types.ChainHead, error) {
+	headResponse, err := pc.client.GetChainHead(context.Background(), &ptypes.Empty{})
 
 	if err != nil {
 		return nil, err
@@ -71,16 +75,18 @@ func (self *PrysmClient) GetChainHead() (*types.ChainHead, error) {
 	}, nil
 }
 
-func (self *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]uint64, error) {
+// GetValidatorQueue will get the validator queue from a Prysm client
+func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]uint64, error) {
 	var err error
 
 	validatorIndices := make(map[string]uint64)
 
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
 	for {
-		validatorBalancesResponse, err = self.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize})
+		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize})
 		if err != nil {
-			return nil, nil, fmt.Errorf("error retrieving validator balances response: %v", err)
+			logger.Errorf("error retrieving validator balances response: %v", err)
+			break
 		}
 		if validatorBalancesResponse.TotalSize == 0 {
 			break
@@ -95,7 +101,7 @@ func (self *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]
 		}
 	}
 
-	validators, err := self.client.GetValidatorQueue(context.Background(), &ptypes.Empty{})
+	validators, err := pc.client.GetValidatorQueue(context.Background(), &ptypes.Empty{})
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error retrieving validator queue data: %v", err)
@@ -108,8 +114,9 @@ func (self *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]
 	}, validatorIndices, nil
 }
 
-func (self *PrysmClient) GetAttestationPool() ([]*types.Attestation, error) {
-	attestationsResponse, err := self.client.AttestationPool(context.Background(), &ptypes.Empty{})
+// GetAttestationPool will get the attestation pool from a Prysm client
+func (pc *PrysmClient) GetAttestationPool() ([]*types.Attestation, error) {
+	attestationsResponse, err := pc.client.AttestationPool(context.Background(), &ptypes.Empty{})
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving attestation pool data: %v", err)
@@ -140,14 +147,15 @@ func (self *PrysmClient) GetAttestationPool() ([]*types.Attestation, error) {
 	return attestations, nil
 }
 
-func (self *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
+// GetEpochAssignments will get the epoch assignments from a Prysm client
+func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 
-	self.assignmentsCacheMux.Lock()
-	defer self.assignmentsCacheMux.Unlock()
+	pc.assignmentsCacheMux.Lock()
+	defer pc.assignmentsCacheMux.Unlock()
 
 	var err error
 
-	cachedValue, found := self.assignmentsCache.Get(epoch)
+	cachedValue, found := pc.assignmentsCache.Get(epoch)
 	if found {
 		return cachedValue.(*types.EpochAssignments), nil
 	}
@@ -162,7 +170,7 @@ func (self *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignme
 
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
 	for {
-		validatorBalancesResponse, err = self.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
+		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
 		if err != nil {
 			logger.Printf("error retrieving validator balances response: %v", err)
 			break
@@ -186,7 +194,7 @@ func (self *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignme
 	validatorAssignmentResponse := &ethpb.ValidatorAssignments{}
 
 	for validatorAssignmentResponse.NextPageToken == "" || len(validatorAssignmentes) < int(validatorAssignmentResponse.TotalSize) {
-		validatorAssignmentResponse, err = self.client.ListValidatorAssignments(context.Background(), &ethpb.ListValidatorAssignmentsRequest{PageToken: validatorAssignmentResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorAssignmentsRequest_Epoch{Epoch: epoch}})
+		validatorAssignmentResponse, err = pc.client.ListValidatorAssignments(context.Background(), &ethpb.ListValidatorAssignmentsRequest{PageToken: validatorAssignmentResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorAssignmentsRequest_Epoch{Epoch: epoch}})
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving validator assignment response for caching: %v", err)
 		}
@@ -213,13 +221,14 @@ func (self *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignme
 	}
 
 	if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 {
-		self.assignmentsCache.Add(epoch, assignments)
+		pc.assignmentsCache.Add(epoch, assignments)
 	}
 
 	return assignments, nil
 }
 
-func (self *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
+// GetEpochData will get the epoch data from a Prysm client
+func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	var err error
 
 	data := &types.EpochData{}
@@ -231,9 +240,10 @@ func (self *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
 	for {
-		validatorBalancesResponse, err = self.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
+		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
 		if err != nil {
-			return nil, err
+			logger.Printf("error retrieving validator balances response: %v", err)
+			break
 		}
 		if validatorBalancesResponse.TotalSize == 0 {
 			break
@@ -254,7 +264,7 @@ func (self *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	}
 	logger.Printf("Retrieved data for %v validator balances for epoch %v", len(data.ValidatorBalances), epoch)
 
-	data.ValidatorAssignmentes, err = self.GetEpochAssignments(epoch)
+	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
 	}
@@ -269,7 +279,7 @@ func (self *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			continue
 		}
 
-		blocks, err := self.GetBlocksBySlot(slot)
+		blocks, err := pc.GetBlocksBySlot(slot)
 
 		if err != nil {
 			return nil, err
@@ -331,7 +341,7 @@ func (self *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	data.Validators = make([]*types.Validator, 0)
 	validatorResponse := &ethpb.Validators{}
 	for {
-		validatorResponse, err = self.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
+		validatorResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
 		if err != nil {
 			logger.Printf("error retrieving validator response: %v", err)
 			break
@@ -362,7 +372,7 @@ func (self *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	// Retrieve the beacon committees for the epoch
 	data.BeaconCommittees = make(map[uint64][]*types.BeaconCommitteItem)
 	beaconCommitteesResponse := &ethpb.BeaconCommittees{}
-	beaconCommitteesResponse, err = self.client.ListBeaconCommittees(context.Background(), &ethpb.ListCommitteesRequest{QueryFilter: &ethpb.ListCommitteesRequest_Epoch{Epoch: epoch}})
+	beaconCommitteesResponse, err = pc.client.ListBeaconCommittees(context.Background(), &ethpb.ListCommitteesRequest{QueryFilter: &ethpb.ListCommitteesRequest_Epoch{Epoch: epoch}})
 	if err != nil {
 		logger.Printf("error retrieving beacon committees response: %v", err)
 	} else {
@@ -380,7 +390,7 @@ func (self *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 	}
 
-	data.EpochParticipationStats, err = self.GetValidatorParticipation(epoch)
+	data.EpochParticipationStats, err = pc.GetValidatorParticipation(epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
 	}
@@ -388,10 +398,11 @@ func (self *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	return data, nil
 }
 
-func (self *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
+// GetBlocksBySlot will get blocks by slot from a Prysm client
+func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 
 	blocks := make([]*types.Block, 0)
-	blocksResponse, err := self.client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}, IncludeNoncanonical: true})
+	blocksResponse, err := pc.client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}, IncludeNoncanonical: true})
 	if err != nil {
 		return nil, err
 	}
@@ -435,14 +446,14 @@ func (self *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 		for i, proposerSlashing := range block.Block.Body.ProposerSlashings {
 			b.ProposerSlashings[i] = &types.ProposerSlashing{
 				ProposerIndex: proposerSlashing.ProposerIndex,
-				Header_1: &types.Block{
+				Header1: &types.Block{
 					Slot:       proposerSlashing.Header_1.Slot,
 					ParentRoot: proposerSlashing.Header_1.ParentRoot,
 					StateRoot:  proposerSlashing.Header_1.StateRoot,
 					Signature:  proposerSlashing.Header_1.Signature,
 					BodyRoot:   proposerSlashing.Header_1.BodyRoot,
 				},
-				Header_2: &types.Block{
+				Header2: &types.Block{
 					Slot:       proposerSlashing.Header_2.Slot,
 					ParentRoot: proposerSlashing.Header_2.ParentRoot,
 					StateRoot:  proposerSlashing.Header_2.StateRoot,
@@ -454,9 +465,9 @@ func (self *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 
 		for i, attesterSlashing := range block.Block.Body.AttesterSlashings {
 			b.AttesterSlashings[i] = &types.AttesterSlashing{
-				Attestation_1: &types.IndexedAttestation{
-					CustodyBit_0Indices: attesterSlashing.Attestation_1.CustodyBit_0Indices,
-					CustodyBit_1Indices: attesterSlashing.Attestation_1.CustodyBit_1Indices,
+				Attestation1: &types.IndexedAttestation{
+					Custodybit0indices: attesterSlashing.Attestation_1.CustodyBit_0Indices,
+					Custodybit1indices: attesterSlashing.Attestation_1.CustodyBit_1Indices,
 					Data: &types.AttestationData{
 						Slot:            attesterSlashing.Attestation_1.Data.Slot,
 						CommitteeIndex:  attesterSlashing.Attestation_1.Data.CommitteeIndex,
@@ -472,9 +483,9 @@ func (self *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 					},
 					Signature: attesterSlashing.Attestation_1.Signature,
 				},
-				Attestation_2: &types.IndexedAttestation{
-					CustodyBit_0Indices: attesterSlashing.Attestation_2.CustodyBit_0Indices,
-					CustodyBit_1Indices: attesterSlashing.Attestation_2.CustodyBit_1Indices,
+				Attestation2: &types.IndexedAttestation{
+					Custodybit0indices: attesterSlashing.Attestation_2.CustodyBit_0Indices,
+					Custodybit1indices: attesterSlashing.Attestation_2.CustodyBit_1Indices,
 					Data: &types.AttestationData{
 						Slot:            attesterSlashing.Attestation_2.Data.Slot,
 						CommitteeIndex:  attesterSlashing.Attestation_2.Data.CommitteeIndex,
@@ -514,7 +525,7 @@ func (self *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 			}
 
 			aggregationBits := bitfield.Bitlist(a.AggregationBits)
-			assignments, err := self.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
+			assignments, err := pc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
 			if err != nil {
 				return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
 			}
@@ -525,7 +536,7 @@ func (self *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 					validator, found := assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(a.Data.Slot, a.Data.CommitteeIndex, i)]
 					if !found { // This should never happen!
 						validator = 0
-						logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v commitee index %v member index %v", i, b.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
+						logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v committee index %v member index %v", i, b.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
 					}
 					a.Attesters = append(a.Attesters, validator)
 				}
@@ -557,8 +568,9 @@ func (self *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 	return blocks, nil
 }
 
-func (self *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error) {
-	epochParticipationStatistics, err := self.client.GetValidatorParticipation(context.Background(), &ethpb.GetValidatorParticipationRequest{QueryFilter: &ethpb.GetValidatorParticipationRequest_Epoch{Epoch: epoch}})
+// GetValidatorParticipation will get the validator participation from Prysm client
+func (pc *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error) {
+	epochParticipationStatistics, err := pc.client.GetValidatorParticipation(context.Background(), &ethpb.GetValidatorParticipationRequest{QueryFilter: &ethpb.GetValidatorParticipationRequest_Epoch{Epoch: epoch}})
 	if err != nil {
 		logger.Printf("error retrieving epoch participation statistics: %v", err)
 		return &types.ValidatorParticipation{
@@ -568,13 +580,12 @@ func (self *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.Validat
 			VotedEther:              0,
 			EligibleEther:           0,
 		}, nil
-	} else {
-		return &types.ValidatorParticipation{
-			Epoch:                   epoch,
-			Finalized:               epochParticipationStatistics.Finalized,
-			GlobalParticipationRate: epochParticipationStatistics.Participation.GlobalParticipationRate,
-			VotedEther:              epochParticipationStatistics.Participation.VotedEther,
-			EligibleEther:           epochParticipationStatistics.Participation.EligibleEther,
-		}, nil
 	}
+	return &types.ValidatorParticipation{
+		Epoch:                   epoch,
+		Finalized:               epochParticipationStatistics.Finalized,
+		GlobalParticipationRate: epochParticipationStatistics.Participation.GlobalParticipationRate,
+		VotedEther:              epochParticipationStatistics.Participation.VotedEther,
+		EligibleEther:           epochParticipationStatistics.Participation.EligibleEther,
+	}, nil
 }

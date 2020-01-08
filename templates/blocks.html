@@ -6,9 +6,13 @@
                 "processing": true,
                 "serverSide": true,
                 "ordering": false,
-                "searching": false,
+                "searching": true,
                 "ajax": "/blocks/data",
                 "pagingType": "full",
+                "language": {
+                    "searchPlaceholder": "Search by Block Number",
+                    "search": "",
+                },
                 "columnDefs": [{
                     "targets": 0,
                     "data": "0",
@@ -55,27 +59,42 @@
 {{end}}
 
 {{ define "content"}}
-    <h1 class="mt-4 text-center"><i class="fas fa-cubes"></i> Blocks overview</h1>
-    <div class="table-responsive col-sm-12">
-        <table class="table table-sm" id="blocks">
-            <thead>
-            <tr>
-                <th>Epoch</th>
-                <th>Slot</th>
-                <th>Status</th>
-                <th>Time</th>
-                <th>Proposed by</th>
-                <th>Root Hash</th>
-                <th>Attestations</th>
-                <th>Deposits</th>
-                <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span
-                            data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-                <th>Exits</th>
-                <th>Votes</th>
-            </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
+    <div class="mb-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+            <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Blocks</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                    <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Blocks</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive col-sm-12">
+                <table class="table table-sm" id="blocks">
+                    <thead>
+                    <tr>
+                        <th>Epoch</th>
+                        <th>Slot</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                        <th>Proposed by</th>
+                        <th>Root Hash</th>
+                        <th>Attestations</th>
+                        <th>Deposits</th>
+                        <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
+                            <span
+                                    data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                        <th>Exits</th>
+                        <th>Votes</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 {{end}}

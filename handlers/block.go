@@ -6,17 +6,21 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"fmt"
-	"github.com/gorilla/mux"
 	"html/template"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/block.html"))
 var blockNotFoundTemplate = template.Must(template.New("blocknotfound").ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
 
+// Block will return the data for a block
 func Block(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -62,6 +66,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "blocks",
 		Data:               nil,
+		Version:            version.Version,
 	}
 
 	if err != nil {
@@ -80,23 +85,16 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
-	blockPageData.NextSlot = blockPageData.Slot + 1
-	blockPageData.PreviousSlot = blockPageData.Slot - 1
 	blockPageData.SlashingsCount = blockPageData.AttesterSlashingsCount + blockPageData.ProposerSlashingsCount
 
-	slots := types.BlockPageMinMaxSlot{}
-	err = db.DB.Get(&slots, "SELECT MAX(slot) AS maxslot, MIN(slot) as minslot FROM blocks")
+	err = db.DB.Get(&blockPageData.NextSlot, "SELECT slot FROM blocks WHERE slot > $1 ORDER BY slot LIMIT 1", blockPageData.Slot)
 	if err != nil {
-		logger.Printf("Error retrieving block data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	if blockPageData.NextSlot > slots.MaxSlot {
+		logger.Printf("Error retrieving next slot for block %v: %v", blockPageData.Slot, err)
 		blockPageData.NextSlot = 0
 	}
-
-	if blockPageData.PreviousSlot < slots.MinSlot {
+	err = db.DB.Get(&blockPageData.PreviousSlot, "SELECT slot FROM blocks WHERE slot < $1 ORDER BY slot DESC LIMIT 1", blockPageData.Slot)
+	if err != nil {
+		logger.Printf("Error retrieving previous slot for block %v: %v", blockPageData.Slot, err)
 		blockPageData.PreviousSlot = 0
 	}
 
@@ -149,19 +147,10 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 	blockPageData.Attestations = attestations
 
-	var votes []*types.BlockPageAttestation
+	var votes []*types.BlockVote
 	rows, err = db.DB.Query(`SELECT    block_slot,
-											 block_index,
-											 aggregationbits, 
 											 validators, 
-											 signature, 
-											 slot, 
-											 committeeindex, 
-											 beaconblockroot, 
-											 source_epoch, 
-											 source_root, 
-											 target_epoch, 
-											 target_root 
+											 committeeindex
 										FROM blocks_attestations 
 										WHERE beaconblockroot = $1 
 										ORDER BY committeeindex`,
@@ -178,25 +167,26 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 		err := rows.Scan(
 			&attestation.BlockSlot,
-			&attestation.BlockIndex,
-			&attestation.AggregationBits,
 			&attestation.Validators,
-			&attestation.Signature,
-			&attestation.Slot,
-			&attestation.CommitteeIndex,
-			&attestation.BeaconBlockRoot,
-			&attestation.SourceEpoch,
-			&attestation.SourceRoot,
-			&attestation.TargetEpoch,
-			&attestation.TargetRoot)
+			&attestation.CommitteeIndex)
 		if err != nil {
 			logger.Printf("Error scanning block votes data: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-		votes = append(votes, attestation)
+		for _, validator := range attestation.Validators {
+			votes = append(votes, &types.BlockVote{
+				Validator:      uint64(validator),
+				IncludedIn:     attestation.BlockSlot,
+				CommitteeIndex: attestation.CommitteeIndex,
+			})
+		}
 	}
 	blockPageData.Votes = votes
+	sort.Slice(blockPageData.Votes, func(i, j int) bool {
+		return blockPageData.Votes[i].Validator < blockPageData.Votes[j].Validator
+	})
+	blockPageData.VotesCount = uint64(len(blockPageData.Votes))
 
 	var deposits []*types.BlockPageDeposit
 	err = db.DB.Select(&deposits, `SELECT publickey, 
