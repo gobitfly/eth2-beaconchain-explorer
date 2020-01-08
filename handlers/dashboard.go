@@ -102,7 +102,6 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		AND validator_set.epoch < validator_set.exitepoch
 		GROUP BY validator_balances.epoch
 		ORDER BY validator_balances.epoch desc limit 16800`
-		// query := `SELECT epoch, SUM(balance) as balance FROM validator_balances WHERE validatorindex = ANY($1) GROUP BY epoch ORDER BY epoch`
 
 		err := db.DB.Select(&balanceHistory, query, filter)
 		if err != nil {
@@ -115,7 +114,6 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		for i, balance := range balanceHistory {
 			balanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
 		}
-
 	}()
 
 	go func() {
@@ -157,8 +155,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
 	if err != nil {
-		logger.WithError(err).Error("Failed parsing validators from query string")
-		http.Error(w, err.Error(), 404)
+		http.Error(w, "Invalid query", 400)
 		return
 	}
 	filter := pq.Array(filterArr)
@@ -251,30 +248,16 @@ func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	qValidators := q.Get("validators")
-	filterArr, err := parseValidatorsFromQueryString(qValidators)
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
 	if err != nil {
-		logger.WithError(err).Error("Failed parsing validators from query string")
-		http.Error(w, err.Error(), 404)
+		http.Error(w, "Invalid query", 400)
 		return
 	}
 	filter := pq.Array(filterArr)
 
-	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
-	if len(search) > 128 {
-		search = search[:128]
-	}
-
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	dataQuery, err := parseDataQueryParams(r)
 	if err != nil {
-		logger.Errorf("Error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Errorf("Error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Invalid query", 400)
 		return
 	}
 
@@ -288,7 +271,7 @@ func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `SELECT 
+	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
 			validator_set.epoch,
 			validator_set.validatorindex, 
 			validators.pubkey, 
@@ -309,8 +292,8 @@ func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
 			AND validator_set.epoch < activationepoch
 			AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 			AND validator_set.validatorindex = ANY($4)
-		ORDER BY activationepoch DESC 
-		LIMIT 100 OFFSET $3`, services.LatestEpoch(), "%"+search+"%", start, filter)
+		ORDER BY %s %s 
+		LIMIT 100 OFFSET $3`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Start, filter)
 
 	if err != nil {
 		logger.Errorf("Error retrieving pending validator data: %v", err)
@@ -332,7 +315,7 @@ func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.DataTableResponse{
-		Draw:            draw,
+		Draw:            dataQuery.Draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
 		Data:            tableData,
@@ -349,30 +332,16 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	qValidators := q.Get("validators")
-	filterArr, err := parseValidatorsFromQueryString(qValidators)
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
 	if err != nil {
-		logger.WithError(err).Error("Failed parsing validators from query string")
-		http.Error(w, err.Error(), 404)
+		http.Error(w, "Invalid query", 400)
 		return
 	}
 	filter := pq.Array(filterArr)
 
-	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
-	if len(search) > 128 {
-		search = search[:128]
-	}
-
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	dataQuery, err := parseDataQueryParams(r)
 	if err != nil {
-		logger.Errorf("Error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Errorf("Error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Invalid query: "+err.Error(), 400)
 		return
 	}
 
@@ -386,7 +355,7 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `SELECT 
+	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
 			validator_set.epoch, 
 			validator_set.validatorindex, 
 			validators.pubkey, 
@@ -410,8 +379,8 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 			AND validator_set.epoch < exitepoch 
 			AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 			AND validator_set.validatorindex = ANY($4)
-		ORDER BY activationepoch DESC 
-		LIMIT 100 OFFSET $3`, services.LatestEpoch(), "%"+search+"%", start, filter)
+		ORDER BY %s %s 
+		LIMIT 100 OFFSET $3`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Start, filter)
 
 	if err != nil {
 		logger.Errorf("Error retrieving active validators data: %v", err)
@@ -449,7 +418,7 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.DataTableResponse{
-		Draw:            draw,
+		Draw:            dataQuery.Draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
 		Data:            tableData,
@@ -466,30 +435,16 @@ func DashboardDataValidatorsEjected(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	qValidators := q.Get("validators")
-	filterArr, err := parseValidatorsFromQueryString(qValidators)
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
 	if err != nil {
-		logger.WithError(err).Error("Failed parsing validators from query string")
-		http.Error(w, err.Error(), 404)
+		http.Error(w, "Invalid query", 400)
 		return
 	}
 	filter := pq.Array(filterArr)
 
-	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
-	if len(search) > 128 {
-		search = search[:128]
-	}
-
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	dataQuery, err := parseDataQueryParams(r)
 	if err != nil {
-		logger.Errorf("Error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Errorf("Error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Invalid query", 400)
 		return
 	}
 
@@ -503,7 +458,7 @@ func DashboardDataValidatorsEjected(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `SELECT 
+	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
 			validator_set.epoch,
 			validator_set.validatorindex, 
 			validators.pubkey, 
@@ -524,8 +479,8 @@ func DashboardDataValidatorsEjected(w http.ResponseWriter, r *http.Request) {
 			AND validator_set.epoch > exitepoch
 			AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 			AND validator_set.validatorindex = ANY($4)
-		ORDER BY activationepoch DESC 
-		LIMIT 100 OFFSET $3`, services.LatestEpoch(), "%"+search+"%", start, filter)
+		ORDER BY %s %s 
+		LIMIT 100 OFFSET $3`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Start, filter)
 
 	if err != nil {
 		logger.Errorf("Error retrieving ejected validators data: %v", err)
@@ -549,7 +504,7 @@ func DashboardDataValidatorsEjected(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.DataTableResponse{
-		Draw:            draw,
+		Draw:            dataQuery.Draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
 		Data:            tableData,

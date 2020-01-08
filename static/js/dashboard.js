@@ -3,7 +3,7 @@ $(document).ready(function() {
     .DataTable({
       processing: true,
       serverSide: true,
-      ordering: false,
+      ordering: true,
       searching: true,
       ajax: '/dashboard/data/pending' + window.location.search,
       paging: false,
@@ -38,7 +38,7 @@ $(document).ready(function() {
     .DataTable({
       processing: true,
       serverSide: true,
-      ordering: false,
+      ordering: true,
       searching: true,
       ajax: '/dashboard/data/active' + window.location.search,
       paging: false,
@@ -95,7 +95,7 @@ $(document).ready(function() {
     .DataTable({
       processing: true,
       serverSide: true,
-      ordering: false,
+      ordering: true,
       searching: true,
       paging: false,
       ajax: '/dashboard/data/ejected' + window.location.search,

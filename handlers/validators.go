@@ -21,7 +21,7 @@ type ValidatorDataQueryParams struct {
 	OrderDir string
 	Draw     uint64
 	Start    uint64
-	Length   uint64
+	Length   int64
 }
 
 func parseDataQueryParams(r *http.Request) (*ValidatorDataQueryParams, error) {
@@ -69,10 +69,13 @@ func parseDataQueryParams(r *http.Request) (*ValidatorDataQueryParams, error) {
 		return nil, err
 	}
 
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("Error converting datatables length parameter from string to int: %v", err)
 		return nil, err
+	}
+	if length < 0 {
+		length = 100
 	}
 	if length > 100 {
 		length = 100
