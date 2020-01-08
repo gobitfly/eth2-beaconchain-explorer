@@ -148,12 +148,17 @@ func Start(client rpc.Client) error {
 			logger.Fatal(err)
 		}
 
-		dbBlocks, err := db.GetLastPendingAndProposedBlocks(head.FinalizedEpoch-1, head.HeadEpoch)
+		startEpoch := uint64(0)
+		if head.FinalizedEpoch > 1 {
+			startEpoch = head.FinalizedEpoch - 1
+		}
+
+		dbBlocks, err := db.GetLastPendingAndProposedBlocks(startEpoch, head.HeadEpoch)
 		if err != nil {
 			logger.Fatal(err)
 		}
 
-		nodeBlocks, err := GetLastBlocks(head.FinalizedEpoch-1, head.HeadEpoch, client)
+		nodeBlocks, err := GetLastBlocks(startEpoch, head.HeadEpoch, client)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -245,7 +250,7 @@ func Start(client rpc.Client) error {
 		}
 
 		// Update epoch statistics up to 10 epochs after the last finalized epoch
-		startEpoch := uint64(0)
+		startEpoch = uint64(0)
 		if head.FinalizedEpoch > 10 {
 			startEpoch = head.FinalizedEpoch - 10
 		}

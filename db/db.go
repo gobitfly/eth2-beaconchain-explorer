@@ -126,15 +126,15 @@ func SaveAttestationPool(attestations []*types.Attestation) error {
 		return fmt.Errorf("error truncating attestationpool table: %v", err)
 	}
 
-	stmtAttestationPool, err := tx.Prepare(`INSERT INTO attestationpool (aggregationbits, custodybits, signature, slot, index, beaconblockroot, source_epoch, source_root, target_epoch, target_root)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (slot, index) DO NOTHING`)
+	stmtAttestationPool, err := tx.Prepare(`INSERT INTO attestationpool (aggregationbits, signature, slot, index, beaconblockroot, source_epoch, source_root, target_epoch, target_root)
+ 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (slot, index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtAttestationPool.Close()
 
 	for _, attestation := range attestations {
-		_, err := stmtAttestationPool.Exec(bitfield.Bitlist(attestation.AggregationBits).Bytes(), bitfield.Bitlist(attestation.CustodyBits).Bytes(), attestation.Signature, attestation.Data.Slot, attestation.Data.CommitteeIndex, attestation.Data.BeaconBlockRoot, attestation.Data.Source.Epoch, attestation.Data.Source.Root, attestation.Data.Target.Epoch, attestation.Data.Target.Root)
+		_, err := stmtAttestationPool.Exec(bitfield.Bitlist(attestation.AggregationBits).Bytes(), attestation.Signature, attestation.Data.Slot, attestation.Data.CommitteeIndex, attestation.Data.BeaconBlockRoot, attestation.Data.Source.Epoch, attestation.Data.Source.Root, attestation.Data.Target.Epoch, attestation.Data.Target.Root)
 		if err != nil {
 			return fmt.Errorf("error executing stmtAttestationPool: %v", err)
 		}
@@ -474,15 +474,15 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 	}
 	defer stmtProposerSlashing.Close()
 
-	stmtAttesterSlashing, err := tx.Prepare(`INSERT INTO blocks_attesterslashings (block_slot, block_index, attestation1_custodybit_0indices, attestation1_custodybit_1indices, attestation1_signature, attestation1_slot, attestation1_index, attestation1_beaconblockroot, attestation1_source_epoch, attestation1_source_root, attestation1_target_epoch, attestation1_target_root, attestation2_custodybit_0indices, attestation2_custodybit_1indices, attestation2_signature, attestation2_slot, attestation2_index, attestation2_beaconblockroot, attestation2_source_epoch, attestation2_source_root, attestation2_target_epoch, attestation2_target_root)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) ON CONFLICT (block_slot, block_index) DO NOTHING`)
+	stmtAttesterSlashing, err := tx.Prepare(`INSERT INTO blocks_attesterslashings (block_slot, block_index, attestation1_signature, attestation1_slot, attestation1_index, attestation1_beaconblockroot, attestation1_source_epoch, attestation1_source_root, attestation1_target_epoch, attestation1_target_root, attestation2_signature, attestation2_slot, attestation2_index, attestation2_beaconblockroot, attestation2_source_epoch, attestation2_source_root, attestation2_target_epoch, attestation2_target_root)
+ 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtAttesterSlashing.Close()
 
-	stmtAttestations, err := tx.Prepare(`INSERT INTO blocks_attestations (block_slot, block_index, aggregationbits, validators, custodybits, signature, slot, committeeindex, beaconblockroot, source_epoch, source_root, target_epoch, target_root)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT (block_slot, block_index) DO NOTHING`)
+	stmtAttestations, err := tx.Prepare(`INSERT INTO blocks_attestations (block_slot, block_index, aggregationbits, validators, signature, slot, committeeindex, beaconblockroot, source_epoch, source_root, target_epoch, target_root)
+ 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -561,7 +561,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 			}
 
 			for i, as := range b.AttesterSlashings {
-				_, err := stmtAttesterSlashing.Exec(b.Slot, i, pq.Array(as.Attestation1.Custodybit0indices), pq.Array(as.Attestation1.Custodybit1indices), as.Attestation1.Signature, as.Attestation1.Data.Slot, as.Attestation1.Data.CommitteeIndex, as.Attestation1.Data.BeaconBlockRoot, as.Attestation1.Data.Source.Epoch, as.Attestation1.Data.Source.Root, as.Attestation1.Data.Target.Epoch, as.Attestation1.Data.Target.Root, pq.Array(as.Attestation2.Custodybit0indices), pq.Array(as.Attestation2.Custodybit1indices), as.Attestation2.Signature, as.Attestation2.Data.Slot, as.Attestation2.Data.CommitteeIndex, as.Attestation2.Data.BeaconBlockRoot, as.Attestation2.Data.Source.Epoch, as.Attestation2.Data.Source.Root, as.Attestation2.Data.Target.Epoch, as.Attestation2.Data.Target.Root)
+				_, err := stmtAttesterSlashing.Exec(b.Slot, i, as.Attestation1.Signature, as.Attestation1.Data.Slot, as.Attestation1.Data.CommitteeIndex, as.Attestation1.Data.BeaconBlockRoot, as.Attestation1.Data.Source.Epoch, as.Attestation1.Data.Source.Root, as.Attestation1.Data.Target.Epoch, as.Attestation1.Data.Target.Root, as.Attestation2.Signature, as.Attestation2.Data.Slot, as.Attestation2.Data.CommitteeIndex, as.Attestation2.Data.BeaconBlockRoot, as.Attestation2.Data.Source.Epoch, as.Attestation2.Data.Source.Root, as.Attestation2.Data.Target.Epoch, as.Attestation2.Data.Target.Root)
 				if err != nil {
 					return fmt.Errorf("error executing stmtAttesterSlashing for block %v: %v", b.Slot, err)
 				}
@@ -577,7 +577,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 					}
 				}
 
-				_, err = stmtAttestations.Exec(b.Slot, i, bitfield.Bitlist(a.AggregationBits).Bytes(), pq.Array(a.Attesters), bitfield.Bitlist(a.CustodyBits).Bytes(), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
+				_, err = stmtAttestations.Exec(b.Slot, i, bitfield.Bitlist(a.AggregationBits).Bytes(), pq.Array(a.Attesters), a.Signature, a.Data.Slot, a.Data.CommitteeIndex, a.Data.BeaconBlockRoot, a.Data.Source.Epoch, a.Data.Source.Root, a.Data.Target.Epoch, a.Data.Target.Root)
 				if err != nil {
 					return fmt.Errorf("error executing stmtAttestations for block %v: %v", b.Slot, err)
 				}

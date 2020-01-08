@@ -114,10 +114,8 @@ type AttesterSlashing struct {
 
 // IndexedAttestation is a struct to hold indexed attestation data
 type IndexedAttestation struct {
-	Custodybit0indices []uint64
-	Custodybit1indices []uint64
-	Data               *AttestationData
-	Signature          []byte
+	Data      *AttestationData
+	Signature []byte
 }
 
 // Attestation is a struct to hold attestation header data
@@ -125,7 +123,6 @@ type Attestation struct {
 	AggregationBits []byte
 	Attesters       []uint64
 	Data            *AttestationData
-	CustodyBits     []byte
 	Signature       []byte
 }
 

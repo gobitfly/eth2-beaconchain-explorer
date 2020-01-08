@@ -8,7 +8,7 @@ database:
 
 # Chain network configuration (example will work for the prysm testnet)
 chain:
-  slotsPerEpoch: 8
+  slotsPerEpoch: 32
   secondsPerSlot: 12
   genesisTimestamp: 1573489682
 
