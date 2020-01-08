@@ -228,7 +228,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch > activationepoch AND epoch < exitepoch", services.LatestEpoch())
+	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch >= activationepoch AND epoch < exitepoch", services.LatestEpoch())
 	if err != nil {
 		logger.Printf("Error retrieving active validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -252,7 +252,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 											AND validator_set.validatorindex = validator_balances.validatorindex
 										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
 										WHERE validator_set.epoch = $1 
-										  AND validator_set.epoch > activationepoch 
+										  AND validator_set.epoch >= activationepoch 
 										  AND validator_set.epoch < exitepoch 
 										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 										ORDER BY %s %s 
@@ -302,7 +302,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch > exitepoch", services.LatestEpoch())
+	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch >= exitepoch", services.LatestEpoch())
 	if err != nil {
 		logger.Printf("Error retrieving ejected validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -326,7 +326,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 											AND validator_set.validatorindex = validator_balances.validatorindex
 										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
 										WHERE validator_set.epoch = $1 
-										  AND validator_set.epoch > exitepoch
+										  AND validator_set.epoch >= exitepoch
 										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 										ORDER BY %s %s 
 										LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
