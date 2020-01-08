@@ -249,7 +249,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 											AND validator_set.validatorindex = validator_balances.validatorindex
 										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
 										WHERE validator_set.epoch = $1 
-										  AND validator_set.epoch > activationepoch 
+										  AND validator_set.epoch >= activationepoch 
 										  AND validator_set.epoch < exitepoch 
 										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 										ORDER BY %s %s 
@@ -323,7 +323,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 											AND validator_set.validatorindex = validator_balances.validatorindex
 										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
 										WHERE validator_set.epoch = $1 
-										  AND validator_set.epoch > exitepoch
+										  AND validator_set.epoch >= exitepoch
 										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 										ORDER BY %s %s 
 										LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
