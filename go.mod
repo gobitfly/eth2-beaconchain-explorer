@@ -3,6 +3,7 @@ module eth2-exporter
 go 1.13
 
 require (
+	github.com/dgraph-io/dgo/v2 v2.1.0
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/gorilla/mux v1.7.3
@@ -18,13 +19,11 @@ require (
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52
 	github.com/prysmaticlabs/prysm v0.2.7
 	github.com/sirupsen/logrus v1.4.2
-	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f // indirect
 	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a // indirect
 	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e // indirect
-	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/tools v0.0.0-20191219041853-979b82bfef62 // indirect
 	google.golang.org/genproto v0.0.0-20191203220235-3fa9dbf08042 // indirect
 	google.golang.org/grpc v1.25.1

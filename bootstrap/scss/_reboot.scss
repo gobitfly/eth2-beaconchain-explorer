@@ -7,7 +7,6 @@
 //
 // Normalize is licensed MIT. https://github.com/necolas/normalize.css
 
-
 // Document
 //
 // Change from `box-sizing: content-box` so that `width` is not affected by `padding` or `border`.
@@ -38,9 +37,9 @@ body {
   @include font-size($font-size-base);
   font-weight: $font-weight-base;
   line-height: $line-height-base;
-  color: $body-color;
+  color: var(--font-color, $body-color);
   text-align: $body-text-align;
-  background-color: $body-bg; // 2
+  background-color: var(--bg-color, $body-bg); // 2
   -webkit-text-size-adjust: 100%; // 3
   -webkit-tap-highlight-color: rgba($black, 0); // 4
 }
@@ -59,7 +58,6 @@ body {
   outline: 0 !important;
 }
 
-
 // Content grouping
 //
 // 1. Reset Firefox's gray color
@@ -77,7 +75,6 @@ hr {
 hr:not([size]) {
   height: $hr-height; // 2
 }
-
 
 // Typography
 //
@@ -125,7 +122,6 @@ h6 {
   @include font-size($h6-font-size);
 }
 
-
 // Reset margins on paragraphs
 //
 // Similarly, the top margin on `<p>`s get reset. However, we also reset the
@@ -136,7 +132,6 @@ p {
   margin-bottom: $paragraph-margin-bottom;
 }
 
-
 // Abbreviations
 //
 // 1. Duplicate behavior to the data-* attribute for our tooltip plugin
@@ -145,13 +140,13 @@ p {
 // 4. Prevent the text-decoration to be skipped.
 
 abbr[title],
-abbr[data-original-title] { // 1
+abbr[data-original-title] {
+  // 1
   text-decoration: underline; // 2
   text-decoration: underline dotted; // 2
   cursor: help; // 3
   text-decoration-skip-ink: none; // 4
 }
-
 
 address {
   margin-bottom: 1rem;
@@ -185,7 +180,7 @@ dt {
 // 1. Undo browser default
 
 dd {
-  margin-bottom: .5rem;
+  margin-bottom: 0.5rem;
   margin-left: 0; // 1
 }
 
@@ -199,7 +194,6 @@ b,
 strong {
   font-weight: $font-weight-bolder;
 }
-
 
 // Add the correct font size in all browsers
 
@@ -218,9 +212,12 @@ sup {
   vertical-align: baseline;
 }
 
-sub { bottom: -.25em; }
-sup { top: -.5em; }
-
+sub {
+  bottom: -0.25em;
+}
+sup {
+  top: -0.5em;
+}
 
 // Links
 
@@ -246,7 +243,6 @@ a:not([href]) {
     text-decoration: none;
   }
 }
-
 
 // Code
 
@@ -303,7 +299,6 @@ kbd {
   }
 }
 
-
 // Figures
 
 // Apply a consistent margin strategy (matches our type styles).
@@ -311,7 +306,6 @@ kbd {
 figure {
   margin: 0 0 1rem;
 }
-
 
 // Images and content
 
@@ -326,7 +320,6 @@ svg {
   overflow: hidden; // 1
   vertical-align: middle;
 }
-
 
 // Tables
 
@@ -350,7 +343,6 @@ caption {
 th {
   text-align: inherit;
 }
-
 
 // Forms
 
@@ -441,14 +433,12 @@ button,
   }
 }
 
-
 // Remove inner border and padding from Firefox, but don't restore the outline like Normalize.
 
 ::-moz-focus-inner {
   padding: 0;
   border-style: none;
 }
-
 
 // Remove the default appearance of temporal inputs to avoid a Mobile Safari
 // bug where setting a custom line-height prevents text from being vertically
@@ -468,7 +458,7 @@ input[type="month"] {
 
 textarea {
   overflow: auto; // 1
-  resize: vertical;  // 2
+  resize: vertical; // 2
 }
 
 // 1. Browsers set a default `min-width: min-content;` on fieldsets,
@@ -480,11 +470,10 @@ textarea {
 
 fieldset {
   min-width: 0; // 1
-  padding: 0;  // 2
+  padding: 0; // 2
   margin: 0; // 2
   border: 0; // 2
 }
-
 
 // 1. By using `float: left`, the legend will behave like a block element
 // 2. Correct the color inheritance from `fieldset` elements in IE.
@@ -502,7 +491,6 @@ legend {
   white-space: normal; // 3
 }
 
-
 mark {
   padding: $mark-padding;
   background-color: $mark-bg;
@@ -514,7 +502,6 @@ progress {
   vertical-align: baseline;
 }
 
-
 // Fix height of inputs with a type of datetime-local, date, month, week, or time
 // See https://github.com/twbs/bootstrap/issues/18842
 
@@ -522,7 +509,6 @@ progress {
   overflow: visible;
   line-height: 0;
 }
-
 
 // 1. Correct the outline style in Safari.
 // 2. This overrides the extra rounded corners on search inputs in iOS so that our

@@ -164,15 +164,15 @@
 }
 
 .border-primary {
-  border-color: #ea943e !important;
+  border-color: #ee7112 !important;
 }
 
 .border-secondary {
-  border-color: #028d8f !important;
+  border-color: #37f0f044 !important;
 }
 
 .border-success {
-  border-color: #02ed8f !important;
+  border-color: #2d7533 !important;
 }
 
 .border-info {
@@ -184,7 +184,7 @@
 }
 
 .border-danger {
-  border-color: #c4340f !important;
+  border-color: #ff5858 !important;
 }
 
 .border-light {
@@ -192,7 +192,15 @@
 }
 
 .border-dark {
-  border-color: #04090f !important;
+  border-color: #343a40 !important;
+}
+
+.border-bg-color-nav {
+  border-color: #e1d8d8 !important;
+}
+
+.border-bg-color {
+  border-color: #f5f3f3 !important;
 }
 
 .border-white {
@@ -1048,15 +1056,15 @@
 }
 
 .text-primary {
-  color: #ea943e !important;
+  color: #ee7112 !important;
 }
 
 .text-secondary {
-  color: #028d8f !important;
+  color: #37f0f044 !important;
 }
 
 .text-success {
-  color: #02ed8f !important;
+  color: #2d7533 !important;
 }
 
 .text-info {
@@ -1068,7 +1076,7 @@
 }
 
 .text-danger {
-  color: #c4340f !important;
+  color: #ff5858 !important;
 }
 
 .text-light {
@@ -1076,7 +1084,15 @@
 }
 
 .text-dark {
-  color: #04090f !important;
+  color: #343a40 !important;
+}
+
+.text-bg-color-nav {
+  color: #e1d8d8 !important;
+}
+
+.text-bg-color {
+  color: #f5f3f3 !important;
 }
 
 .text-white {
@@ -1120,15 +1136,15 @@
 }
 
 .bg-primary {
-  background-color: #ea943e !important;
+  background-color: #ee7112 !important;
 }
 
 .bg-secondary {
-  background-color: #028d8f !important;
+  background-color: #37f0f044 !important;
 }
 
 .bg-success {
-  background-color: #02ed8f !important;
+  background-color: #2d7533 !important;
 }
 
 .bg-info {
@@ -1140,7 +1156,7 @@
 }
 
 .bg-danger {
-  background-color: #c4340f !important;
+  background-color: #ff5858 !important;
 }
 
 .bg-light {
@@ -1148,7 +1164,15 @@
 }
 
 .bg-dark {
-  background-color: #04090f !important;
+  background-color: #343a40 !important;
+}
+
+.bg-bg-color-nav {
+  background-color: #e1d8d8 !important;
+}
+
+.bg-bg-color {
+  background-color: #f5f3f3 !important;
 }
 
 .bg-body {
@@ -3115,7 +3139,7 @@
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1400px) {
   .float-xl-left {
     float: left !important;
   }

@@ -17,6 +17,18 @@ $gray-800: #343a40 !default;
 $gray-900: #212529 !default;
 $black: #000 !default;
 
+$white-dark: $black !default;
+$gray-100-dark: $gray-900 !default;
+$gray-200-dark: $gray-800 !default;
+$gray-300-dark: $gray-700 !default;
+$gray-400-dark: $gray-600 !default;
+$gray-500-dark: $gray-500 !default;
+$gray-600-dark: $gray-400 !default;
+$gray-700-dark: $gray-300 !default;
+$gray-800-dark: $gray-200 !default;
+$gray-900-dark: $gray-100 !default;
+$black-dark: $white !default;
+
 $grays: () !default;
 // stylelint-disable-next-line scss/dollar-variable-default
 $grays: map-merge(
@@ -34,19 +46,52 @@ $grays: map-merge(
   $grays
 );
 
+$grays-dark: () !default;
+// stylelint-disable-next-line scss/dollar-variable-default
+$grays-dark: map-merge(
+  (
+    "100": $gray-100-dark,
+    "200": $gray-200-dark,
+    "300": $gray-300-dark,
+    "400": $gray-400-dark,
+    "500": $gray-500-dark,
+    "600": $gray-600-dark,
+    "700": $gray-700-dark,
+    "800": $gray-800-dark,
+    "900": $gray-900-dark
+  ),
+  $grays-dark
+);
+
 $blue: #0d6efd !default;
 $indigo: #6610f2 !default;
 $purple: #693a39 !default;
 $pink: #aa2869 !default;
-$red: #c4340f !default;
-$orange: #ea943e !default;
+$red: #ff5858 !default;
+$orange: #ee7112 !default;
 $yellow: #f2a955 !default;
-$green: #02ed8f !default;
-$teal: #028d8f !default;
+$green: #2d7533 !default;
+$teal: #37f0f044 !default;
 $cyan: #17a2b8 !default;
-// $primary-color: #028d8f !default;
-// $primary-color-dark: #033c43 !default;
-$bg-primary-color-dark: #04090f !default;
+$bg-color-nav: #e1d8d8 !default;
+$bg-color: #f5f3f3 !default;
+$shadow-light: rgba(159, 162, 177, 0.3) !default;
+$shadow-dark: rgba(159, 162, 177, 0.8) !default;
+
+$blue-dark: #0d6efd !default;
+$indigo-dark: #6610f2 !default;
+$purple-dark: #693a39 !default;
+$pink-dark: #aa2869 !default;
+$red-dark: #c4340f !default;
+$orange-dark: #ee7112 !default;
+$yellow-dark: #f2a955 !default;
+$green-dark: #2d7533 !default;
+$teal-dark: #37f0f044 !default;
+$cyan-dark: #17a2b8 !default;
+$bg-color-nav-dark: #413938 !default;
+$bg-color-dark: #262327 !default;
+$shadow-light-dark: rgba(151, 152, 155, 0.2) !default;
+$shadow-dark-dark: rgba(159, 162, 177, 0.8) !default;
 
 $colors: () !default;
 // stylelint-disable-next-line scss/dollar-variable-default
@@ -64,9 +109,36 @@ $colors: map-merge(
     "cyan": $cyan,
     "white": $white,
     "gray": $gray-600,
-    "gray-dark": $gray-800
+    "gray-dark": $gray-800,
+    "shadow-light": $shadow-light,
+    "shadow-dark": $shadow-dark,
+    "font-color": $black
   ),
   $colors
+);
+
+$colors-dark: () !default;
+
+$colors-dark: map-merge(
+  (
+    "blue": $blue-dark,
+    "indigo": $indigo-dark,
+    "purple": $purple-dark,
+    "pink": $pink-dark,
+    "red": $red-dark,
+    "orange": $orange-dark,
+    "yellow": $yellow-dark,
+    "green": $green-dark,
+    "teal": $teal-dark,
+    "cyan": $cyan-dark,
+    "white": $white-dark,
+    "gray": $gray-600-dark,
+    "gray-dark": $gray-800-dark,
+    "shadow-light": $shadow-light-dark,
+    "shadow-dark": $shadow-dark-dark,
+    "font-color": $white
+  ),
+  $colors-dark
 );
 
 $primary: $orange !default;
@@ -76,7 +148,7 @@ $info: $cyan !default;
 $warning: $yellow !default;
 $danger: $red !default;
 $light: $gray-100 !default;
-$dark: $bg-primary-color-dark !default;
+$dark: $gray-800 !default;
 
 $theme-colors: () !default;
 // stylelint-disable-next-line scss/dollar-variable-default
@@ -89,9 +161,29 @@ $theme-colors: map-merge(
     "warning": $warning,
     "danger": $danger,
     "light": $light,
-    "dark": $dark
+    "dark": $dark,
+    "bg-color-nav": $bg-color-nav,
+    "bg-color": $bg-color
   ),
   $theme-colors
+);
+
+$theme-colors-dark: () !default;
+// stylelint-disable-next-line scss/dollar-variable-default
+$theme-colors-dark: map-merge(
+  (
+    "primary": #ff8723,
+    "secondary": #413938,
+    "success": #29ff7bde,
+    "info": #378ef055,
+    "warning": $warning,
+    "danger": $danger,
+    "light": $dark,
+    "dark": $light,
+    "bg-color-nav": $bg-color-nav-dark,
+    "bg-color": $bg-color-dark
+  ),
+  $theme-colors-dark
 );
 
 // Set a specific jump point for requesting color jumps
@@ -286,7 +378,7 @@ $grid-breakpoints: (
   sm: 576px,
   md: 768px,
   lg: 992px,
-  xl: 1200px
+  xl: 1400px
 ) !default;
 
 @include _assert-ascending($grid-breakpoints, "$grid-breakpoints");
@@ -300,7 +392,7 @@ $container-max-widths: (
   sm: 540px,
   md: 720px,
   lg: 960px,
-  xl: 1140px
+  xl: 1340px
 ) !default;
 
 @include _assert-ascending($container-max-widths, "$container-max-widths");
