@@ -95,22 +95,22 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]ui
 
 	validatorIndices := make(map[string]uint64)
 
-	validatorBalancesResponse := &ethpb.ValidatorBalances{}
+	validatorsResponse := &ethpb.Validators{}
 	for {
-		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize})
+		validatorsResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken})
 		if err != nil {
-			logger.Errorf("error retrieving validator balances response: %v", err)
-			break
+			log.Fatal(err)
 		}
-		if validatorBalancesResponse.TotalSize == 0 {
+		if validatorsResponse.TotalSize == 0 {
 			break
 		}
 
-		for _, balance := range validatorBalancesResponse.Balances {
-			validatorIndices[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
+		for _, validator := range validatorsResponse.ValidatorList {
+			logger.Debugf("%x - %v", validator.Validator.PublicKey, validator.Index)
+			validatorIndices[utils.FormatPublicKey(validator.Validator.PublicKey)] = validator.Index
 		}
 
-		if validatorBalancesResponse.NextPageToken == "" {
+		if validatorsResponse.NextPageToken == "" {
 			break
 		}
 	}
@@ -181,23 +181,22 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	// Retrieve the currently active validator set in order to map public keys to indexes
 	validators := make(map[string]uint64)
 
-	validatorBalancesResponse := &ethpb.ValidatorBalances{}
+	validatorsResponse := &ethpb.Validators{}
 	for {
-		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
+		validatorsResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
 		if err != nil {
-			logger.Printf("error retrieving validator balances response: %v", err)
-			break
+			log.Fatal(err)
 		}
-		if validatorBalancesResponse.TotalSize == 0 {
+		if validatorsResponse.TotalSize == 0 {
 			break
 		}
 
-		for _, balance := range validatorBalancesResponse.Balances {
-			logger.Debugf("%x - %v", balance.PublicKey, balance.Index)
-			validators[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
+		for _, validator := range validatorsResponse.ValidatorList {
+			logger.Debugf("%x - %v", validator.Validator.PublicKey, validator.Index)
+			validators[utils.FormatPublicKey(validator.Validator.PublicKey)] = validator.Index
 		}
 
-		if validatorBalancesResponse.NextPageToken == "" {
+		if validatorsResponse.NextPageToken == "" {
 			break
 		}
 	}
@@ -214,6 +213,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 		if validatorAssignmentResponse.TotalSize == 0 || len(validatorAssignmentes) == int(validatorAssignmentResponse.TotalSize) {
 			break
 		}
+
 		validatorAssignmentes = append(validatorAssignmentes, validatorAssignmentResponse.Assignments...)
 		logger.Printf("Retrieved %v assignments of %v for epoch %v", len(validatorAssignmentes), validatorAssignmentResponse.TotalSize, epoch)
 
