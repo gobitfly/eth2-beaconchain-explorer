@@ -6,9 +6,21 @@
             if (type === "hex") {
                 $("#graffiti").text("0x" + graffitiHex)
             } else {
-                var r = decodeURIComponent(graffitiHex.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'));
-                $("#graffiti").text(r)
+                try {
+                    var r = decodeURIComponent(graffitiHex.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'));
+                    $("#graffiti").text(r)
+                } catch(e) {
+                    $("#graffiti").text(hex2a(graffitiHex.replace("0x", "")))
+				}
             }
+        }
+
+        function hex2a(hexx) {
+            var hex = hexx.toString();//force conversion
+            var str = '';
+            for (var i = 0; i < hex.length; i += 2)
+                str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+            return str;
         }
 	</script>
 {{end}}
