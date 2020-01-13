@@ -214,6 +214,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 		if validatorAssignmentResponse.TotalSize == 0 || len(validatorAssignmentes) == int(validatorAssignmentResponse.TotalSize) {
 			break
 		}
+
 		validatorAssignmentes = append(validatorAssignmentes, validatorAssignmentResponse.Assignments...)
 		logger.Printf("Retrieved %v assignments of %v for epoch %v", len(validatorAssignmentes), validatorAssignmentResponse.TotalSize, epoch)
 
