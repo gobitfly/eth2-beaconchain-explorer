@@ -2,10 +2,10 @@ $(document).ready(function() {
   var pendingTable = $('#pending')
     .DataTable({
       processing: true,
-      serverSide: true,
+      serverSide: false,
       ordering: true,
       searching: true,
-      ajax: '/dashboard/data/pending' + window.location.search,
+      // ajax: '/dashboard/data/pending' + window.location.search,
       paging: false,
       columnDefs: [
         {
@@ -37,10 +37,10 @@ $(document).ready(function() {
   var activeTable = $('#active')
     .DataTable({
       processing: true,
-      serverSide: true,
+      serverSide: false,
       ordering: true,
       searching: true,
-      ajax: '/dashboard/data/active' + window.location.search,
+      // ajax: '/dashboard/data/active' + window.location.search,
       paging: false,
       columnDefs: [
         {
@@ -94,11 +94,11 @@ $(document).ready(function() {
   var ejectedTable = $('#ejected')
     .DataTable({
       processing: true,
-      serverSide: true,
+      serverSide: false,
       ordering: true,
       searching: true,
       paging: false,
-      ajax: '/dashboard/data/ejected' + window.location.search,
+      // ajax: '/dashboard/data/ejected' + window.location.search,
       columnDefs: [
         {
           targets: 0,
@@ -188,11 +188,6 @@ $(document).ready(function() {
   $('#selected-validators').on('click', '.remove-validator', function() {
     removeValidator(this.parentElement.dataset.validatorIndex)
   })
-  // $('#validator-form').submit(function(event) {
-  //   event.preventDefault()
-  //   var search = $('#validator-form input').val()
-  //   addValidator(search)
-  // })
 
   var validators = []
   var validatorsCount = {
@@ -205,7 +200,8 @@ $(document).ready(function() {
 
   setValidatorsFromURL()
   renderSelectedValidators()
-  renderCharts()
+  updateState()
+  // renderCharts()
 
   function renderSelectedValidators() {
     var elHolder = document.getElementById('selected-validators')
@@ -285,12 +281,25 @@ $(document).ready(function() {
     var qryStr = '?validators=' + validators.join(',')
     var newUrl = window.location.pathname + qryStr
     window.history.pushState(null, 'Dashboard', newUrl)
-    pendingTable.ajax.url('/dashboard/data/pending' + qryStr)
-    activeTable.ajax.url('/dashboard/data/active' + qryStr)
-    ejectedTable.ajax.url('/dashboard/data/ejected' + qryStr)
-    pendingTable.ajax.reload()
-    activeTable.ajax.reload()
-    ejectedTable.ajax.reload()
+    // $.ajax({
+    //   url: '/dashboard/data/validators' + qryStr,
+    //   success: function(result) {
+    //     console.log('result for validators:', result)
+    //   }
+    // })
+    // $.ajax({
+    //   url: '/dashboard/data/balance' + qryStr,
+    //   success: function(result) {
+    //     console.log('result for balance:', result)
+    //   }
+    // })
+    // pendingTable.ajax.url('/dashboard/data/pending' + qryStr)
+    // activeTable.ajax.url('/dashboard/data/active' + qryStr)
+    // ejectedTable.ajax.url('/dashboard/data/ejected' + qryStr)
+    // pendingTable.ajax.reload()
+    // activeTable.ajax.reload()
+    // ejectedTable.ajax.reload()
+
     renderCharts()
   }
 
@@ -301,6 +310,7 @@ $(document).ready(function() {
   }
 
   function renderCharts() {
+    console.log('render charts')
     if (validators.length === 0) {
       document.getElementById('chart-holder').style.display = 'none'
       return
@@ -310,20 +320,38 @@ $(document).ready(function() {
     $.ajax({
       url: '/dashboard/data/balance' + qryStr,
       success: function(result) {
-        var effective = result.effectiveBalanceHistory
-        var balance = result.balanceHistory
-        var utilization = []
-        if (effective && effective.length && balance && balance.length) {
-          var len = effective.length < balance.length ? effective.length : balance.length
-          effective = effective.reverse().map(point => {
-            var numOfValidators = point[2]
-            var mostEffectiveBalance = numOfValidators * 3.2
-            utilization.push([point[0], point[1] / mostEffectiveBalance])
-            return point
-          })
-          balance = balance.reverse()
-          createBalanceChart(effective, balance, utilization)
+        var t0 = Date.now()
+        var balance = new Array(result.length)
+        var effectiveBalance = new Array(result.length)
+        var validatorCount = new Array(result.length)
+        var utilization = new Array(result.length)
+        for (var i = 0; i < result.length; i++) {
+          var res = result[i]
+          validatorCount[i] = [res[0], res[1]]
+          balance[i] = [res[0], res[2]]
+          effectiveBalance = [res[0], res[3]]
+          utilization = [res[0], (res[3] / res[1]) * 3.2]
+          // balance.push([result[i][0], result[i][2]])
+          // effectiveBalance.push([result[i][0], result[i][3]])
+          // validatorCount.push([result[i][0], result[i][1]])
         }
+        var t1 = Date.now()
+        console.log(`did aggregate data in ${t1 - t0}ms`)
+        createBalanceChart(effectiveBalance, balance, utilization)
+        // var effective = result.effectiveBalanceHistory
+        // var balance = result.balanceHistory
+        // var utilization = []
+        // if (effective && effective.length && balance && balance.length) {
+        //   var len = effective.length < balance.length ? effective.length : balance.length
+        //   effective = effective.reverse().map(point => {
+        //     var numOfValidators = point[2]
+        //     var mostEffectiveBalance = numOfValidators * 3.2
+        //     utilization.push([point[0], point[1] / mostEffectiveBalance])
+        //     return point
+        //   })
+        //   balance = balance.reverse()
+        //   createBalanceChart(effective, balance, utilization)
+        // }
       }
     })
     $.ajax({
@@ -356,11 +384,10 @@ function createBalanceChart(effective, balance, utilization) {
     title: {
       text: 'Balance History for all Validators'
     },
-    subtitle: {
-      text: 'Source: beaconcha.in',
-      style: {
-        color: 'black'
-      }
+    credits: {
+      enabled: true,
+      href: 'https://beaconcha.in',
+      text: 'beaconcha.in'
     },
     xAxis: {
       type: 'datetime',
@@ -376,8 +403,9 @@ function createBalanceChart(effective, balance, utilization) {
         title: {
           text: 'Balance [ETH]',
           style: {
-            color: '#26232780',
-            'font-size': '0.8rem'
+            color: 'black'
+            // color: '#26232780',
+            // 'font-size': '0.8rem'
           }
         },
         opposite: false,
@@ -391,25 +419,47 @@ function createBalanceChart(effective, balance, utilization) {
         }
       },
       {
-        softMax: 1,
-        softMin: 0,
+        // softMax: 1,
+        // softMin: 0,
         title: {
-          text: 'Validator Effectiveness',
+          text: 'Active Validators',
           style: {
-            color: '#26232780',
-            'font-size': '0.8rem'
+            color: 'black'
+            // color: '#26232780',
+            // 'font-size': '0.8rem'
           }
         },
         labels: {
-          formatter: function() {
-            return (this.value * 100).toFixed(0) + '%'
-          },
+          // formatter: function() {
+          //   return (this.value * 100).toFixed(0) + '%'
+          // },
           style: {
             color: 'black'
           }
         },
         opposite: true
       }
+      // {
+      //   softMax: 1,
+      //   softMin: 0,
+      //   title: {
+      //     text: 'Validator Effectiveness',
+      //     style: {
+      //       color: 'black'
+      //       // color: '#26232780',
+      //       // 'font-size': '0.8rem'
+      //     }
+      //   },
+      //   labels: {
+      //     formatter: function() {
+      //       return (this.value * 100).toFixed(0) + '%'
+      //     },
+      //     style: {
+      //       color: 'black'
+      //     }
+      //   },
+      //   opposite: true
+      // }
     ],
     series: [
       {
@@ -424,7 +474,7 @@ function createBalanceChart(effective, balance, utilization) {
         data: effective
       },
       {
-        name: 'Validator Effectiveness',
+        name: 'Validator Count',
         yAxis: 1,
         data: utilization,
         tooltip: {
@@ -514,7 +564,6 @@ function createBalanceChart(effective, balance, utilization) {
 }
 
 function createProposedChart(data) {
-  // if (!data || !data.length) return
   var proposed = data.map(d => [d.Day * 1000, d.Proposed])
   var missed = data.map(d => [d.Day * 1000, d.Missed])
   var orphaned = data.map(d => [d.Day * 1000, d.Orphaned])
@@ -522,17 +571,13 @@ function createProposedChart(data) {
     exporting: {
       scale: 1
     },
-    credits: {
-      enabled: false
-    },
     title: {
       text: 'Proposal History for all Validators'
     },
-    subtitle: {
-      text: 'Source: beaconcha.in',
-      style: {
-        color: 'black'
-      }
+    credits: {
+      enabled: true,
+      href: 'https://beaconcha.in',
+      text: 'beaconcha.in'
     },
     chart: {
       type: 'column',
@@ -557,8 +602,8 @@ function createProposedChart(data) {
         title: {
           text: '# of Possible Proposals',
           style: {
-            color: 'black',
-            'font-size': '0.8rem'
+            color: 'black'
+            // 'font-size': '0.8rem'
           }
         },
         labels: {
@@ -598,14 +643,17 @@ function createProposedChart(data) {
     series: [
       {
         name: 'Proposed',
+        color: '#7cb5ec',
         data: proposed
       },
       {
         name: 'Missed',
+        color: '#343a40',
         data: missed
       },
       {
         name: 'Orphaned',
+        color: '#dc3545',
         data: orphaned
       }
     ],

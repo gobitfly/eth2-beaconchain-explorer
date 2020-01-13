@@ -4,13 +4,14 @@ import (
 	"encoding/hex"
 	"eth2-exporter/types"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"html/template"
 	"log"
 	"os"
 	"os/signal"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/kelseyhightower/envconfig"
 )

@@ -349,7 +349,8 @@ type GenericChartDataSeries struct {
 }
 
 type DashboardValidatorBalanceHistory struct {
-	Epoch          uint64  `db:"epoch"`
-	Balance        uint64  `db:"balance"`
-	ValidatorCount float64 `db:"validatorcount"`
+	Epoch            uint64  `db:"epoch"`
+	Balance          uint64  `db:"balance"`
+	EffectiveBalance uint64  `db:"effectivebalance"`
+	ValidatorCount   float64 `db:"validatorcount"`
 }
