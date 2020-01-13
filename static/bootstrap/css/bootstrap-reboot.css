@@ -17,8 +17,8 @@ body {
   font-size: 1rem;
   font-weight: 400;
   line-height: 1.5;
-  color: var(--font-color, #212529);
-  background-color: var(--bg-color, #fff);
+  color: var(--font-color, var(--body-color));
+  background-color: var(--bg-color, var(--bg-color));
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
@@ -173,12 +173,12 @@ sup {
 }
 
 a {
-  color: #0d6efd;
+  color: var(--link-color);
   text-decoration: none;
 }
 
 a:hover {
-  color: #024dbc;
+  color: var(--link-hover-color);
   text-decoration: underline;
 }
 

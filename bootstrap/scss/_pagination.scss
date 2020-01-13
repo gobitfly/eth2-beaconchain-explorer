@@ -7,15 +7,15 @@
   position: relative;
   display: block;
   color: $pagination-color;
-  background-color: $pagination-bg;
-  border: $pagination-border-width solid $pagination-border-color;
+  background-color: var(--bg-color-secondary);
+  border: $pagination-border-width solid var(--border-color);
 
   &:hover {
     z-index: 2;
     color: $pagination-hover-color;
     text-decoration: none;
-    background-color: $pagination-hover-bg;
-    border-color: $pagination-hover-border-color;
+    background-color: var(--bg-color-nav);
+    border-color: var(--border-color);
   }
 
   &:focus {
@@ -34,7 +34,7 @@
     z-index: 3;
     color: $pagination-active-color;
     background-color: $pagination-active-bg;
-    border-color: $pagination-active-border-color;
+    border-color: var(--border-color);
   }
 
   &.disabled .page-link {
@@ -42,21 +42,35 @@
     pointer-events: none;
     // Opinionated: remove the "hand" cursor set previously for .page-link
     cursor: auto;
-    background-color: $pagination-disabled-bg;
-    border-color: $pagination-disabled-border-color;
+    background-color: var(--bg-color);
+    border-color: var(--border-color-transparent);
   }
 }
-
 
 //
 // Sizing
 //
-@include pagination-size($pagination-padding-y, $pagination-padding-x, null, $pagination-border-radius);
+@include pagination-size(
+  $pagination-padding-y,
+  $pagination-padding-x,
+  null,
+  $pagination-border-radius
+);
 
 .pagination-lg {
-  @include pagination-size($pagination-padding-y-lg, $pagination-padding-x-lg, $font-size-lg, $border-radius-lg);
+  @include pagination-size(
+    $pagination-padding-y-lg,
+    $pagination-padding-x-lg,
+    $font-size-lg,
+    $border-radius-lg
+  );
 }
 
 .pagination-sm {
-  @include pagination-size($pagination-padding-y-sm, $pagination-padding-x-sm, $font-size-sm, $border-radius-sm);
+  @include pagination-size(
+    $pagination-padding-y-sm,
+    $pagination-padding-x-sm,
+    $font-size-sm,
+    $border-radius-sm
+  );
 }
