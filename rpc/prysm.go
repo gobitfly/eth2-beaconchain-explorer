@@ -97,7 +97,7 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]ui
 
 	validatorsResponse := &ethpb.Validators{}
 	for {
-		validatorsResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
+		validatorsResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken})
 		if err != nil {
 			log.Fatal(err)
 		}
