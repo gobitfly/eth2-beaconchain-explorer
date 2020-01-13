@@ -352,6 +352,10 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 
 	logger.Printf("Data for epoch %v retrieved, took %v", epoch, time.Since(start))
 
+	if len(data.Validators) == 0 {
+		return fmt.Errorf("error retrieving epoch data: no validators received for epoch")
+	}
+
 	return db.SaveEpoch(data)
 }
 
