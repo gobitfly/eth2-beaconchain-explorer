@@ -141,6 +141,19 @@ func Start(client rpc.Client) error {
 		}
 	}
 
+	if utils.Config.Indexer.UpdateAllEpochStatistics {
+		// Update all epoch statistics
+		head, err := client.GetChainHead()
+		if err != nil {
+			logger.Fatal(err)
+		}
+		startEpoch := uint64(0)
+		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
+		if err != nil {
+			logger.Fatal(err)
+		}
+	}
+
 	for true {
 
 		head, err := client.GetChainHead()
