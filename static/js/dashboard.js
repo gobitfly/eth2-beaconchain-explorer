@@ -281,12 +281,15 @@ $(document).ready(function() {
     var qryStr = '?validators=' + validators.join(',')
     var newUrl = window.location.pathname + qryStr
     window.history.pushState(null, 'Dashboard', newUrl)
-    // $.ajax({
-    //   url: '/dashboard/data/validators' + qryStr,
-    //   success: function(result) {
-    //     console.log('result for validators:', result)
-    //   }
-    // })
+    var t0 = Date.now()
+    $.ajax({
+      url: '/dashboard/data/validators' + qryStr,
+      success: function(result) {
+        if (!result) return
+        var t1 = Date.now()
+        console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1-t0}ms`)
+      }
+    })
     // $.ajax({
     //   url: '/dashboard/data/balance' + qryStr,
     //   success: function(result) {
@@ -310,7 +313,7 @@ $(document).ready(function() {
   }
 
   function renderCharts() {
-    console.log('render charts')
+    var t0 = Date.now()
     if (validators.length === 0) {
       document.getElementById('chart-holder').style.display = 'none'
       return
@@ -320,7 +323,7 @@ $(document).ready(function() {
     $.ajax({
       url: '/dashboard/data/balance' + qryStr,
       success: function(result) {
-        var t0 = Date.now()
+        var t1 = Date.now()
         var balance = new Array(result.length)
         var effectiveBalance = new Array(result.length)
         var validatorCount = new Array(result.length)
@@ -329,15 +332,17 @@ $(document).ready(function() {
           var res = result[i]
           validatorCount[i] = [res[0], res[1]]
           balance[i] = [res[0], res[2]]
-          effectiveBalance = [res[0], res[3]]
-          utilization = [res[0], (res[3] / res[1]) * 3.2]
+          effectiveBalance[i] = [res[0], res[3]]
+          utilization[i] = [res[0], res[3] / (res[1] * 3.2)]
           // balance.push([result[i][0], result[i][2]])
           // effectiveBalance.push([result[i][0], result[i][3]])
           // validatorCount.push([result[i][0], result[i][1]])
         }
-        var t1 = Date.now()
-        console.log(`did aggregate data in ${t1 - t0}ms`)
+
+        var t2 = Date.now()
         createBalanceChart(effectiveBalance, balance, utilization)
+        var t3 = Date.now()
+        console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
         // var effective = result.effectiveBalanceHistory
         // var balance = result.balanceHistory
         // var utilization = []
@@ -357,9 +362,13 @@ $(document).ready(function() {
     $.ajax({
       url: '/dashboard/data/proposals' + qryStr,
       success: function(result) {
+        var t1 = Date.now()
+        var t2 = Date.now()
         if (result && result.length) {
           createProposedChart(result)
         }
+        var t3 = Date.now()
+        console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t3 - t2}ms`)
       }
     })
   }
@@ -418,32 +427,11 @@ function createBalanceChart(effective, balance, utilization) {
           }
         }
       },
-      {
-        // softMax: 1,
-        // softMin: 0,
-        title: {
-          text: 'Active Validators',
-          style: {
-            color: 'black'
-            // color: '#26232780',
-            // 'font-size': '0.8rem'
-          }
-        },
-        labels: {
-          // formatter: function() {
-          //   return (this.value * 100).toFixed(0) + '%'
-          // },
-          style: {
-            color: 'black'
-          }
-        },
-        opposite: true
-      }
       // {
-      //   softMax: 1,
-      //   softMin: 0,
+      //   // softMax: 1,
+      //   // softMin: 0,
       //   title: {
-      //     text: 'Validator Effectiveness',
+      //     text: 'Active Validators',
       //     style: {
       //       color: 'black'
       //       // color: '#26232780',
@@ -451,15 +439,36 @@ function createBalanceChart(effective, balance, utilization) {
       //     }
       //   },
       //   labels: {
-      //     formatter: function() {
-      //       return (this.value * 100).toFixed(0) + '%'
-      //     },
+      //     // formatter: function() {
+      //     //   return (this.value * 100).toFixed(0) + '%'
+      //     // },
       //     style: {
       //       color: 'black'
       //     }
       //   },
       //   opposite: true
       // }
+      {
+        softMax: 1,
+        softMin: 0,
+        title: {
+          text: 'Validator Effectiveness',
+          style: {
+            color: 'black'
+            // color: '#26232780',
+            // 'font-size': '0.8rem'
+          }
+        },
+        labels: {
+          formatter: function() {
+            return (this.value * 100).toFixed(0) + '%'
+          },
+          style: {
+            color: 'black'
+          }
+        },
+        opposite: true
+      }
     ],
     series: [
       {
@@ -474,7 +483,7 @@ function createBalanceChart(effective, balance, utilization) {
         data: effective
       },
       {
-        name: 'Validator Count',
+        name: 'Validator Effectiveness',
         yAxis: 1,
         data: utilization,
         tooltip: {
@@ -483,6 +492,16 @@ function createBalanceChart(effective, balance, utilization) {
           }
         }
       }
+      // {
+      //   name: 'Validator Count',
+      //   yAxis: 1,
+      //   data: utilization,
+      //   tooltip: {
+      //     pointFormatter: function() {
+      //       return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${(this.y * 100).toFixed(2)}%</b><br/>`
+      //     }
+      //   }
+      // }
     ],
     plotOptions: {
       line: {

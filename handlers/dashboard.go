@@ -93,12 +93,10 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	// get data from one week before latest epoch
 	latestEpoch := services.LatestEpoch()
 	oneWeekEpochs := uint64(3600 * 24 * 7 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
-	queryOffsetEpoch := latestEpoch
+	queryOffsetEpoch := uint64(0)
 	if latestEpoch > oneWeekEpochs {
 		queryOffsetEpoch = latestEpoch - oneWeekEpochs
 	}
-
-	fmt.Println("=====", services.LatestEpoch(), queryOffsetEpoch)
 
 	query := `SELECT
 			validator_balances.epoch,
@@ -169,7 +167,7 @@ func DashboardDataBalance2(w http.ResponseWriter, r *http.Request) {
 	// get data from one week before latest epoch
 	latestEpoch := services.LatestEpoch()
 	oneWeekEpochs := uint64(3600 * 24 * 7 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
-	queryOffsetEpoch := latestEpoch
+	queryOffsetEpoch := uint64(0)
 	if latestEpoch > oneWeekEpochs {
 		queryOffsetEpoch = latestEpoch - oneWeekEpochs
 	}
@@ -359,45 +357,46 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
-	dataQuery, err := parseDataQueryParams(r)
-	if err != nil {
-		http.Error(w, "Invalid query", 400)
-		return
-	}
+	// dataQuery, err := parseDataQueryParams(r)
+	// if err != nil {
+	// 	http.Error(w, "Invalid query", 400)
+	// 	return
+	// }
 
 	var totalCount uint64
 
 	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch < activationepoch AND validator_set.validatorindex = ANY($2)", services.LatestEpoch(), filter)
 	if err != nil {
-		logger.Errorf("Error retrieving pending validator count: %v", err)
+		logger.Errorf("Error retrieving validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
+	err = db.DB.Select(&validators, `SELECT
 			validator_set.epoch,
-			validator_set.validatorindex, 
-			validators.pubkey, 
-			validator_set.withdrawableepoch, 
-			validator_set.effectivebalance, 
-			validator_set.slashed, 
-			validator_set.activationeligibilityepoch, 
-			validator_set.activationepoch, 
+			validator_set.validatorindex,
+			validators.pubkey,
+			validator_set.withdrawableepoch,
+			validator_set.effectivebalance,
+			validator_set.slashed,
+			validator_set.activationeligibilityepoch,
+			validator_set.activationepoch,
 			validator_set.exitepoch,
-			validator_balances.balance
+			validator_balances.balance,
+			(select max(epoch) from attestation_assignments where validator_set.validatorindex = attestation_assignments.validatorindex and status = 1) as lastattested,
+			(select max(epoch) from proposal_assignments where validator_set.validatorindex = proposal_assignments.validatorindex and status = 1) as lastproposed
 		FROM validator_set
-		LEFT JOIN validator_balances 
+		LEFT JOIN validator_balances
 			ON validator_set.epoch = validator_balances.epoch
 			AND validator_set.validatorindex = validator_balances.validatorindex
-		LEFT JOIN validators 
+		LEFT JOIN validators
 			ON validator_set.validatorindex = validators.validatorindex
-		WHERE validator_set.validatorindex = ANY($4)
-		ORDER BY %s %s 
-		LIMIT 100 OFFSET $3`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Start, filter)
+		WHERE validator_set.validatorindex = ANY($1)
+		LIMIT 100`, filter)
 
 	if err != nil {
-		logger.Errorf("Error retrieving pending validator data: %v", err)
+		logger.Errorf("Error retrieving validator data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -415,11 +414,13 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := &types.DataTableResponse{
-		Draw:            dataQuery.Draw,
-		RecordsTotal:    totalCount,
-		RecordsFiltered: totalCount,
-		Data:            tableData,
+	type dataType struct {
+		LatestEpoch uint64          `json:"latestEpoch"`
+		Data        [][]interface{} `json:"data"`
+	}
+	data := &dataType{
+		LatestEpoch: services.LatestEpoch(),
+		Data:        tableData,
 	}
 
 	err = json.NewEncoder(w).Encode(data)
