@@ -179,15 +179,20 @@
           setInterval(function () {
               this.tick();
           }.bind(this), 1000);
-
-                        }.bind(this));
-                        this.updateIn = 15;
-                    } else {
-                        this.updateIn--;
-                    }
-                }
-            }
-        })
+        },
+      methods: {
+          tick: function () {
+              if (this.updateIn <= 0) {
+                  $.getJSON('/index/data', function (response) {
+                      this.page = response;
+                  }.bind(this));
+                  this.updateIn = 15;
+              } else {
+                  this.updateIn--;
+              }
+          }
+        }
+  })
 </script>
 {{end}} {{ define "css"}}
 
