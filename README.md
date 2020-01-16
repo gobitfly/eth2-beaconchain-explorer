@@ -63,7 +63,7 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 - Clone the repository and run `make all` to build the indexer and front-end binaries
 - Copy the config-example.yml file an adapt it to your environment
 - Start the explorer binary and pass the path to the config file as argument
-- To build bootstrap run npm run --prefix ./bootstrap dist-css in project folder.
+- To build bootstrap run `npm run --prefix ./bootstrap dist-css in project folder.`
 
 ## Development
 
