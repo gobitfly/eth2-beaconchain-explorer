@@ -196,6 +196,7 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 			utils.FormatBalance(v.EffectiveBalance),
 			fmt.Sprintf("%v", v.Slashed),
 			fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
+			fmt.Sprintf("%v", v.ActivationEpoch),
 		}
 	}
 
