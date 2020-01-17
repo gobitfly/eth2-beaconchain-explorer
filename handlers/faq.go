@@ -32,6 +32,8 @@ func Faq(w http.ResponseWriter, r *http.Request) {
 	err := faqTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }

@@ -18,7 +18,7 @@ func Imprint(w http.ResponseWriter, r *http.Request) {
 	imprintTemplate, err := template.ParseFiles("templates/layout.html", utils.Config.Frontend.Imprint)
 
 	if err != nil {
-		logger.Printf("Error parsing imprint page template: %v", err)
+		logger.Errorf("error parsing imprint page template: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -38,6 +38,8 @@ func Imprint(w http.ResponseWriter, r *http.Request) {
 	err = imprintTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }

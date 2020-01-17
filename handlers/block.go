@@ -72,11 +72,13 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
-		logger.Printf("Error retrieving block data: %v", err)
+		logger.Errorf("error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
-			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
 		}
 		return
 	}
@@ -89,12 +91,12 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Get(&blockPageData.NextSlot, "SELECT slot FROM blocks WHERE slot > $1 ORDER BY slot LIMIT 1", blockPageData.Slot)
 	if err != nil {
-		logger.Printf("Error retrieving next slot for block %v: %v", blockPageData.Slot, err)
+		logger.Errorf("error retrieving next slot for block %v: %v", blockPageData.Slot, err)
 		blockPageData.NextSlot = 0
 	}
 	err = db.DB.Get(&blockPageData.PreviousSlot, "SELECT slot FROM blocks WHERE slot < $1 ORDER BY slot DESC LIMIT 1", blockPageData.Slot)
 	if err != nil {
-		logger.Printf("Error retrieving previous slot for block %v: %v", blockPageData.Slot, err)
+		logger.Errorf("error retrieving previous slot for block %v: %v", blockPageData.Slot, err)
 		blockPageData.PreviousSlot = 0
 	}
 
@@ -116,7 +118,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 												ORDER BY block_index`,
 		blockPageData.Slot)
 	if err != nil {
-		logger.Printf("Error retrieving block attestation data: %v", err)
+		logger.Errorf("error retrieving block attestation data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -139,7 +141,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			&attestation.TargetEpoch,
 			&attestation.TargetRoot)
 		if err != nil {
-			logger.Printf("Error scanning block attestation data: %v", err)
+			logger.Errorf("error scanning block attestation data: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -156,7 +158,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 										ORDER BY committeeindex`,
 		blockPageData.BlockRoot)
 	if err != nil {
-		logger.Printf("Error retrieving block votes data: %v", err)
+		logger.Errorf("error retrieving block votes data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -170,7 +172,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			&attestation.Validators,
 			&attestation.CommitteeIndex)
 		if err != nil {
-			logger.Printf("Error scanning block votes data: %v", err)
+			logger.Errorf("error scanning block votes data: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -198,7 +200,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 												ORDER BY block_index`,
 		blockPageData.Slot)
 	if err != nil {
-		logger.Printf("Error retrieving block deposit data: %v", err)
+		logger.Errorf("error retrieving block deposit data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -213,6 +215,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	err = blockTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
