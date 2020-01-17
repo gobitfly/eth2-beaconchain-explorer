@@ -543,7 +543,11 @@
                         </div>
                     </div>
                     <div class="row border-bottom p-3">
-                        <div class="col-md-2">Activation on:</div>
+                        {{if eq .Status "Pending"}}
+                            <div class="col-md-2">Estimated Activation on:</div>
+                        {{else}}
+                            <div class="col-md-2">Activation on:</div>
+                        {{end}}
                         <div class="col-md-10"><span
                                     aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
                             (Epoch {{.ActivationEpoch}})

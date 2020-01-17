@@ -334,6 +334,20 @@ func saveValidatorSet(epoch uint64, validators []*types.Validator, validatorIndi
 	}
 	defer stmtValidators.Close()
 
+	var lenActivatedValidators int
+	var lastActivatedValidatorIdx uint64
+	for _, v := range validators {
+		if !(v.ActivationEpoch <= epoch && epoch < v.ExitEpoch) {
+			continue
+		}
+		lenActivatedValidators++
+		idx := validatorIndices[fmt.Sprintf("%x", v.PublicKey)]
+		if idx < lastActivatedValidatorIdx {
+			continue
+		}
+		lastActivatedValidatorIdx = idx
+	}
+
 	for _, v := range validators {
 		if v.WithdrawableEpoch == 18446744073709551615 {
 			v.WithdrawableEpoch = 9223372036854775807
@@ -346,6 +360,24 @@ func saveValidatorSet(epoch uint64, validators []*types.Validator, validatorIndi
 		}
 		if v.ActivationEpoch == 18446744073709551615 {
 			v.ActivationEpoch = 9223372036854775807
+		}
+		if v.ActivationEligibilityEpoch < 9223372036854775807 && v.ActivationEpoch == 9223372036854775807 {
+			// see: https://github.com/ethereum/eth2.0-specs/blob/master/specs/phase0/beacon-chain.md#get_validator_churn_limit
+			// validator_churn_limit = max(MIN_PER_EPOCH_CHURN_LIMIT, len(active_validator_indices) // CHURN_LIMIT_QUOTIENT)
+			// validator_churn_limit = max(4, len(active_set) / 2**16)
+			// validator.activationepoch = epoch + validator.positioninactivationqueue / validator_churn_limit
+			// note: this is only an estimation
+			validatorIdx := validatorIndices[fmt.Sprintf("%x", v.PublicKey)]
+			positionInActivationQueue := validatorIdx - lastActivatedValidatorIdx
+			churnLimit := float64(lenActivatedValidators) / 65536
+			if churnLimit < 4 {
+				churnLimit = 4
+			}
+			if v.ActivationEligibilityEpoch > epoch {
+				v.ActivationEpoch = v.ActivationEligibilityEpoch + uint64(float64(positionInActivationQueue)/churnLimit)
+			} else {
+				v.ActivationEpoch = epoch + uint64(float64(positionInActivationQueue)/churnLimit)
+			}
 		}
 		_, err := stmtValidatorSet.Exec(epoch, validatorIndices[fmt.Sprintf("%x", v.PublicKey)], v.WithdrawableEpoch, v.WithdrawalCredentials, v.EffectiveBalance, v.Slashed, v.ActivationEligibilityEpoch, v.ActivationEpoch, v.ExitEpoch)
 		if err != nil {
