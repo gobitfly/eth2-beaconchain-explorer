@@ -377,6 +377,10 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
+
+		if utils.SlotToTime(b.AttesterSlot).Before(time.Now().Add(time.Minute*-1)) && b.Status == 0 {
+			b.Status = 2
+		}
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%v", b.Epoch),
 			fmt.Sprintf("%v", b.AttesterSlot),

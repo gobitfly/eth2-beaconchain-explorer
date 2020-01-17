@@ -51,13 +51,14 @@ func FormatBlockStatus(status uint64) template.HTML {
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatus(status uint64) string {
 	if status == 0 {
-		return "Scheduled"
+		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
 	} else if status == 1 {
-		return "Attested"
+		return "<span class=\"badge bg-success text-white\">Attested</span>"
 	} else if status == 2 {
-		return "Missed"
+		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+	} else {
+		return "Unknown"
 	}
-	return "Unknown"
 }
 
 // FormatValidator will return html formatted text for a validator
