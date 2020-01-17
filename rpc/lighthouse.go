@@ -353,6 +353,18 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		block.Attestations[i] = a
 	}
 
+	for i, deposit := range parsedResponse.BeaconBlock.Body.Deposits {
+		d := &types.Deposit{
+			Proof:                 nil,
+			PublicKey:             utils.MustParseHex(deposit.Data.Pubkey),
+			WithdrawalCredentials: utils.MustParseHex(deposit.Data.WithdrawalCredentials),
+			Amount:                uint64(deposit.Data.Amount),
+			Signature:             utils.MustParseHex(deposit.Data.Signature),
+		}
+
+		block.Deposits[i] = d
+	}
+
 	return []*types.Block{block}, nil
 }
 
@@ -447,8 +459,16 @@ type lighthouseBlockResponse struct {
 				Signature string `json:"signature"`
 			} `json:"attestations"`
 			AttesterSlashings []interface{} `json:"attester_slashings"`
-			Deposits          []interface{} `json:"deposits"`
-			Eth1Data          struct {
+			Deposits          []struct {
+				Data struct {
+					Amount                int    `json:"amount"`
+					Pubkey                string `json:"pubkey"`
+					Signature             string `json:"signature"`
+					WithdrawalCredentials string `json:"withdrawal_credentials"`
+				} `json:"data"`
+				Proof []string `json:"proof"`
+			} `json:"deposits"`
+			Eth1Data struct {
 				BlockHash    string `json:"block_hash"`
 				DepositCount uint64 `json:"deposit_count"`
 				DepositRoot  string `json:"deposit_root"`
