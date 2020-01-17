@@ -400,8 +400,7 @@
     <div class="hero-text">
       <h1 class="mt-4 text-center">Open Source Ethereum 2.0 Beacon Chain Explorer</h1>
       <h5 class="text-center">{{.Subtitle}}</h5>
-      <h6 class="text-center"
-        >Do you have any feedback for us? Feel free to join our <a href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a> or create an issue on <a href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github"></i> Github</a>.
+      <h6 class="text-center"><a href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter</a> | <a href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github"></i> Github</a> | <a href='https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer'><img class="mr-1 mb-1" height="16" src="/img/gitcoin_logo.svg">Gitcoin Grant</a>
       </h6>
     </div>
   </div>
@@ -525,15 +524,15 @@
   {{if gt .FinalityDelay 3}}
   <script>
     window.addEventListener('DOMContentLoaded', function() {
-      var fabContainer = document.querySelector('.fab-message')
-      var header = document.createElement('h3')
-      header.append('Finality Delay')
-      header.classList.add('text-danger')
-      var body = document.createElement('p')
-      body.append('The testnet is currently experiencing issues achieving finality. The last finalized epoch was {{.FinalityDelay}} epoch{{if ne .FinalityDelay 1}}s{{end}} ago.')
-      var messages = document.querySelector('.fab-message-content')
-      messages.appendChild(header)
-      messages.appendChild(body)
+      var fabContainer = document.querySelector('.fab-message');
+      var header = document.createElement('h3');
+      header.append('Finality Delay');
+      header.classList.add('text-danger');
+      var body = document.createElement('p');
+      body.append('The testnet is currently experiencing issues achieving finality. The last finalized epoch was {{.FinalityDelay}} epoch{{if ne .FinalityDelay 1}}s{{end}} ago.');
+      var messages = document.querySelector('.fab-message-content');
+      messages.appendChild(header);
+      messages.appendChild(body);
       fabContainer.style.display = 'initial'
     })
   </script>
