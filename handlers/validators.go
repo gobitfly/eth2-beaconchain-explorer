@@ -195,8 +195,14 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 			utils.FormatBalance(v.CurrentBalance),
 			utils.FormatBalance(v.EffectiveBalance),
 			fmt.Sprintf("%v", v.Slashed),
-			fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-			fmt.Sprintf("%v", v.ActivationEpoch),
+			[]interface{}{
+				fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEligibilityEpoch).Unix()),
+			},
+			[]interface{}{
+				fmt.Sprintf("%v", v.ActivationEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
+			},
 		}
 	}
 
@@ -269,8 +275,14 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 			utils.FormatBalance(v.CurrentBalance),
 			utils.FormatBalance(v.EffectiveBalance),
 			fmt.Sprintf("%v", v.Slashed),
-			fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-			fmt.Sprintf("%v", v.ActivationEpoch),
+			[]interface{}{
+				fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEligibilityEpoch).Unix()),
+			},
+			[]interface{}{
+				fmt.Sprintf("%v", v.ActivationEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
+			},
 		}
 	}
 
@@ -342,10 +354,22 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 			utils.FormatBalance(v.CurrentBalance),
 			utils.FormatBalance(v.EffectiveBalance),
 			fmt.Sprintf("%v", v.Slashed),
-			fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-			fmt.Sprintf("%v", v.ActivationEpoch),
-			fmt.Sprintf("%v", v.ExitEpoch),
-			fmt.Sprintf("%v", v.WithdrawableEpoch),
+			[]interface{}{
+				fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEligibilityEpoch).Unix()),
+			},
+			[]interface{}{
+				fmt.Sprintf("%v", v.ActivationEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
+			},
+			[]interface{}{
+				fmt.Sprintf("%v", v.ExitEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ExitEpoch).Unix()),
+			},
+			[]interface{}{
+				fmt.Sprintf("%v", v.WithdrawableEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.WithdrawableEpoch).Unix()),
+			},
 		}
 	}
 

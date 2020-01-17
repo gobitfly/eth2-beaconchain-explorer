@@ -444,6 +444,13 @@
         });
     </script>
 
+    <script>
+        $('span[aria-ethereum-date]').each(function(){
+            var d = $(this).attr('aria-ethereum-date')
+            $(this).html(moment.unix(d).fromNow())
+        })
+    </script>
+
 {{end}}
 
 {{ define "css"}}
@@ -536,7 +543,7 @@
                         <div class="col-md-10">{{.Slashed}}</div>
                     </div>
                     <div class="row border-bottom p-3">
-                        <div class="col-md-2">Activation eligibility on:</div>
+                        <div class="col-md-2">Eligible for Activation:</div>
                         <div class="col-md-10"><span
                                     aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
                             (Epoch {{.ActivationEligibilityEpoch}})
@@ -544,9 +551,9 @@
                     </div>
                     <div class="row border-bottom p-3">
                         {{if eq .Status "Pending"}}
-                            <div class="col-md-2">Estimated Activation on:</div>
+                            <div class="col-md-2">Estimated Activation:</div>
                         {{else}}
-                            <div class="col-md-2">Activation on:</div>
+                            <div class="col-md-2">Active since:</div>
                         {{end}}
                         <div class="col-md-10"><span
                                     aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
