@@ -23,6 +23,20 @@
           render: function(data, type, row, meta) {
             return '<a href="/validator/' + data + '">' + data + '</a>'
           }
+        },
+        {
+          targets: 5,
+          data: '5',
+          render: function(data, type, row, meta) {
+            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+          }
+        },
+        {
+          targets: 6,
+          data: '6',
+          render: function(data, type, row, meta) {
+            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+          }
         }
       ]
     })
@@ -47,6 +61,20 @@
           render: function(data, type, row, meta) {
             return '<a href="/validator/' + data + '">' + data + '</a>'
           }
+        },
+        {
+          targets: 5,
+          data: '5',
+          render: function(data, type, row, meta) {
+            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+          }
+        },
+        {
+          targets: 6,
+          data: '6',
+          render: function(data, type, row, meta) {
+            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+          }
         }
       ]
     })
@@ -70,6 +98,34 @@
           data: '1',
           render: function(data, type, row, meta) {
             return '<a href="/validator/' + data + '">' + data + '</a>'
+          }
+        },
+        {
+          targets: 5,
+          data: '5',
+          render: function(data, type, row, meta) {
+            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+          }
+        },
+        {
+          targets: 6,
+          data: '6',
+          render: function(data, type, row, meta) {
+            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+          }
+        },
+        {
+          targets: 7,
+          data: '7',
+          render: function(data, type, row, meta) {
+            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+          }
+        },
+        {
+          targets: 8,
+          data: '8',
+          render: function(data, type, row, meta) {
+            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
           }
         }
       ]
@@ -104,8 +160,8 @@
             <th>Current Balance</th>
             <th>Effective Balance</th>
             <th>Slashed</th>
-            <th>Activation Eligibility Epoch</th>
-            <th>Estimated Activation Epoch</th>
+            <th>Eligible for Activation</th>
+            <th>Estimated Activation</th>
           </tr>
         </thead>
         <tbody> </tbody>
@@ -127,8 +183,8 @@
             <th>Current Balance</th>
             <th>Effective Balance</th>
             <th>Slashed</th>
-            <th>Activation Eligibility Epoch</th>
-            <th>Activation Epoch</th>
+            <th>Eligible for Activation</th>
+            <th>Active since</th>
           </tr>
         </thead>
         <tbody> </tbody>
@@ -149,10 +205,10 @@
             <th>Current Balance</th>
             <th>Effective Balance</th>
             <th>Slashed</th>
-            <th>Activation Eligibility Epoch</th>
-            <th>Activation Epoch</th>
-            <th>Exit Epoch</th>
-            <th>Withdrawable Epoch</th>
+            <th>Eligible for Activation</th>
+            <th>Active since</th>
+            <th>Exit</th>
+            <th>Withdrawable</th>
           </tr>
         </thead>
         <tbody> </tbody>
