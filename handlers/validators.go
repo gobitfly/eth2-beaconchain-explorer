@@ -59,19 +59,19 @@ func parseDataQueryParams(r *http.Request) (*ValidatorDataQueryParams, error) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Errorf("Error converting datatables data parameter from string to int: %v", err)
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
 		return nil, err
 	}
 
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("Error converting datatables start parameter from string to int: %v", err)
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
 		return nil, err
 	}
 
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("Error converting datatables length parameter from string to int: %v", err)
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
 		return nil, err
 	}
 	if length > 100 {
@@ -108,7 +108,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 											ORDER BY validatorindex`, services.LatestEpoch())
 
 	if err != nil {
-		logger.Printf("Error retrieving validators data: %v", err)
+		logger.Errorf("error retrieving validators data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -138,7 +138,9 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	err = validatorsTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -156,7 +158,7 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch < activationepoch", services.LatestEpoch())
 	if err != nil {
-		logger.Printf("Error retrieving pending validator count: %v", err)
+		logger.Errorf("error retrieving pending validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -182,7 +184,7 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 										LIMIT $2 OFFSET $3`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
-		logger.Printf("Error retrieving pending validator data: %v", err)
+		logger.Errorf("error retrieving pending validator data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -215,7 +217,9 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -233,7 +237,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch >= activationepoch AND epoch < exitepoch", services.LatestEpoch())
 	if err != nil {
-		logger.Printf("Error retrieving active validator count: %v", err)
+		logger.Errorf("error retrieving active validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -262,7 +266,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 										LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
-		logger.Printf("Error retrieving active validators data: %v", err)
+		logger.Errorf("error retrieving active validators data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -295,7 +299,9 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -313,7 +319,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch >= exitepoch", services.LatestEpoch())
 	if err != nil {
-		logger.Printf("Error retrieving ejected validator count: %v", err)
+		logger.Errorf("error retrieving ejected validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -341,7 +347,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 										LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
-		logger.Printf("Error retrieving ejected validators data: %v", err)
+		logger.Errorf("error retrieving ejected validators data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -382,6 +388,8 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }

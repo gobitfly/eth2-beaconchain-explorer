@@ -35,7 +35,9 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 	err := chartsTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -63,7 +65,7 @@ func BlocksChart(w http.ResponseWriter, r *http.Request) {
 
 	err := db.DB.Select(&rows, "SELECT epoch, status, count(*) as nbrBlocks FROM blocks GROUP BY epoch, status ORDER BY epoch")
 	if err != nil {
-		logger.Printf("Error retrieving chart data for route %v: %v", r.URL.String(), err)
+		logger.Errorf("error retrieving chart data for route %v: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -126,7 +128,9 @@ func BlocksChart(w http.ResponseWriter, r *http.Request) {
 	err = genericChartTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -153,7 +157,7 @@ func ActiveValidatorChart(w http.ResponseWriter, r *http.Request) {
 
 	err := db.DB.Select(&rows, "SELECT epoch, validatorscount FROM epochs ORDER BY epoch")
 	if err != nil {
-		logger.Printf("Error retrieving chart data for route %v: %v", r.URL.String(), err)
+		logger.Errorf("error retrieving chart data for route %v: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -186,7 +190,9 @@ func ActiveValidatorChart(w http.ResponseWriter, r *http.Request) {
 	err = genericChartTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -213,7 +219,7 @@ func StakedEtherChart(w http.ResponseWriter, r *http.Request) {
 
 	err := db.DB.Select(&rows, "SELECT epoch, eligibleether FROM epochs ORDER BY epoch")
 	if err != nil {
-		logger.Printf("Error retrieving chart data for route %v: %v", r.URL.String(), err)
+		logger.Errorf("error retrieving chart data for route %v: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -247,7 +253,9 @@ func StakedEtherChart(w http.ResponseWriter, r *http.Request) {
 	err = genericChartTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -274,7 +282,7 @@ func AverageBalanceChart(w http.ResponseWriter, r *http.Request) {
 
 	err := db.DB.Select(&rows, "SELECT epoch, averagevalidatorbalance FROM epochs ORDER BY epoch")
 	if err != nil {
-		logger.Printf("Error retrieving chart data for route %v: %v", r.URL.String(), err)
+		logger.Errorf("error retrieving chart data for route %v: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -308,6 +316,8 @@ func AverageBalanceChart(w http.ResponseWriter, r *http.Request) {
 	err = genericChartTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
