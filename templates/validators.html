@@ -9,6 +9,9 @@
       searching: true,
       ajax: '/validators/data/pending',
       pagingType: 'full',
+      drawCallback: function() {
+        $('[data-toggle="tooltip"]').tooltip()
+      },
       columnDefs: [
         {
           targets: 0,
@@ -28,14 +31,14 @@
           targets: 5,
           data: '5',
           render: function(data, type, row, meta) {
-            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
           }
         },
         {
           targets: 6,
           data: '6',
           render: function(data, type, row, meta) {
-            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
           }
         }
       ]
@@ -47,6 +50,9 @@
       searching: true,
       ajax: '/validators/data/active',
       pagingType: 'full',
+      drawCallback: function() {
+        $('[data-toggle="tooltip"]').tooltip()
+      },
       columnDefs: [
         {
           targets: 0,
@@ -66,14 +72,14 @@
           targets: 5,
           data: '5',
           render: function(data, type, row, meta) {
-            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
           }
         },
         {
           targets: 6,
           data: '6',
           render: function(data, type, row, meta) {
-            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
           }
         }
       ]
@@ -85,6 +91,9 @@
       searching: true,
       ajax: '/validators/data/ejected',
       pagingType: 'full',
+      drawCallback: function() {
+        $('[data-toggle="tooltip"]').tooltip()
+      },
       columnDefs: [
         {
           targets: 0,
@@ -104,28 +113,28 @@
           targets: 5,
           data: '5',
           render: function(data, type, row, meta) {
-            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
           }
         },
         {
           targets: 6,
           data: '6',
           render: function(data, type, row, meta) {
-            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
           }
         },
         {
           targets: 7,
           data: '7',
           render: function(data, type, row, meta) {
-            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
           }
         },
         {
           targets: 8,
           data: '8',
           render: function(data, type, row, meta) {
-            return `${moment.unix(data[1]).fromNow()} (epoch ${data[0]})`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
           }
         }
       ]

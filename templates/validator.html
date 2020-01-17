@@ -545,7 +545,9 @@
                     <div class="row border-bottom p-3">
                         <div class="col-md-2">Eligible for Activation:</div>
                         <div class="col-md-10"><span
-                                    aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
+                                        title="{{.ActivationEligibilityTs}}"
+                                        data-toggle="tooltip"
+                                        aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
                             (Epoch {{.ActivationEligibilityEpoch}})
                         </div>
                     </div>
@@ -556,20 +558,27 @@
                             <div class="col-md-2">Active since:</div>
                         {{end}}
                         <div class="col-md-10"><span
-                                    aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
+                                        title="{{.ActivationTs}}"
+                                        data-toggle="tooltip"
+                                        aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
                             (Epoch {{.ActivationEpoch}})
                         </div>
                     </div>
                     {{if eq .Status "Ejected"}}
                         <div class="row border-bottom p-3">
                             <div class="col-md-2">Exit on:</div>
-                            <div class="col-md-10"><span aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
+                            <div class="col-md-10"><span 
+                                        title="{{.ExitTs}}"
+                                        data-toggle="tooltip"
+                                        aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
                                 (Epoch {{.ExitEpoch}})
                             </div>
                         </div>
                         <div class="row border-bottom p-3">
                             <div class="col-md-2">Withdrawable on:</div>
                             <div class="col-md-10"><span
+                                        title="{{.WithdrawableTs}}"
+                                        data-toggle="tooltip"
                                         aria-ethereum-date="{{.WithdrawableTs.Unix}}">{{.WithdrawableTs}}</span>
                                 (Epoch {{.WithdrawableEpoch}})
                             </div>
