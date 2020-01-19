@@ -394,7 +394,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 }
 
 func (lc *LighthouseClient) get(url string) ([]byte, error) {
-	client := &http.Client{Timeout: time.Second * 30}
+	client := &http.Client{Timeout: time.Second * 60}
 
 	resp, err := client.Get(url)
 	if err != nil {
