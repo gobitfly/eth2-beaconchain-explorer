@@ -180,8 +180,9 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 											AND validator_set.validatorindex = validator_balances.validatorindex
 										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
 										WHERE validator_set.epoch = $1 AND validator_set.epoch < activationepoch
+										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
 										ORDER BY %s %s 
-										LIMIT $2 OFFSET $3`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), dataQuery.Length, dataQuery.Start)
+										LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
 		logger.Errorf("error retrieving pending validator data: %v", err)
