@@ -44,18 +44,28 @@
           animation: false,
           style: {
                 fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
-                color: 'var(--body-color)'
+                color: 'var(--body-color)',
+                fontSize: '12px'
             },
           backgroundColor: 'var(--bg-color)',
       },
+      rangeSelector: {
+        enabled: true,
+
+    },
       title: {
           text: {{.Title}},
           style: {
-              color: 'var(--font-color)'
+              color: 'var(--font-color)',
+              fontSize: '20px'
           }
       },
       subtitle: {
-          text: {{.Subtitle}}
+          text: {{.Subtitle}},
+          style: {
+              color: 'var(--body-color)',
+              fontSize: '14px'
+          }
       },
       plotOptions: {
           column: {
@@ -90,7 +100,8 @@
           type: 'datetime',
           labels: {
               style: {
-                  color: 'var(--body-color)'
+                  color: 'var(--body-color)',
+                  fontSize: '16px'
               }
           },
           gridLineColor: 'var(--border-color)',
@@ -99,7 +110,8 @@
           title: {
               text: {{.YAxisTitle}},
               style: {
-                    color: 'var(--body-color)'
+                    color: 'var(--body-color)',
+                    fontSize: '16px'
               }
           }
       }],
@@ -108,9 +120,37 @@
           href: "https://www.beaconcha.in",
           text: "Source: beaconcha.in",
           style: {
-                color: 'var(--body-color)'
+                color: 'var(--body-color)',
+                fontSize: '15px'
           },
+          position: {
+              y: 0
+          }
       },
+      responsive: {
+        rules: [
+            {
+                condition: {
+                    maxWidth: 760
+                },
+                chartOptions: {
+                    chart: {
+                        marginRight: 45
+                    },
+                    yAxis: [
+                        {
+                            title: {
+                                text: null
+                            }
+                        }
+                    ],
+                    rangeSelector: {
+                        enabled: false
+                    }
+                }
+            }
+        ]
+    }
   });
 </script>
 {{end}} {{ define "css"}} {{end}} {{ define "content"}}
