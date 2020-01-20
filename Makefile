@@ -11,7 +11,7 @@ lint:
 	golint ./...
 
 bootstrap:
-  rm static/bootstrap/css/bootstrap*
+	rm static/bootstrap/css/bootstrap*
 	npm ci --prefix ./bootstrap && npm run --prefix ./bootstrap dist-css
 
 explorer:
