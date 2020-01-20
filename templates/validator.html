@@ -99,7 +99,8 @@
                 animation: false,
                 style: {
                     fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
-                    color: 'var(--body-color)'
+                    color: 'var(--body-color)',
+                    fontSize: '12px'
                   },
                   backgroundColor: 'var(--bg-color)',
             },
@@ -280,7 +281,8 @@
                     animation: false,
                     style: {
                       fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
-                      color: 'var(--body-color)'
+                      color: 'var(--body-color)',
+                      fontSize: '12px'
                   },
                   backgroundColor: 'var(--bg-color)',
                 },
@@ -463,7 +465,7 @@
             <div class="d-flex mb-1">
                 <h1 class="h4 mb-1 mb-md-0">
                     <span>Validator {{.Index}}</span>
-                    <button class="btn btn-light" type="button" id="copy-button"
+                    <button class="btn btn-light btn-sm" type="button" id="copy-button"
                             data-toggle="tooltip" data-placement="right"
                             title="Copy public key to clipboard"
                             data-clipboard-text="0x{{printf "%x" .PublicKey}}">
@@ -479,8 +481,8 @@
                 </ol>
             </nav>
         </div>
-        <span class="text-monospace text-secondary text-wrap text-sm mb-0"
-              id="copy-input">0x{{printf "%x" .PublicKey}}</span>
+        <div class="text-monospace text-secondary text-truncate text-sm mb-0"
+              id="copy-input">0x{{printf "%x" .PublicKey}}</div>
     </div>
     <div class="card">
         <div class="card-body">
