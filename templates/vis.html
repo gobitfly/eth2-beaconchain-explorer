@@ -186,7 +186,7 @@
     )
 
     svg.attr('height', ymax + nodeHeight * 2)
-    svg.attr('width', xmax + nodeWidth + 60)
+    svg.attr('width', xmax + nodeWidth + 160)
 
     var nodeset = g.selectAll('.node').data(nodes, function(d) {
       return d.block.hash
@@ -374,7 +374,12 @@
     font-size: 10px;
   }
 
-  .nodenum {
+  .nodehash a {
+    fill: var(--link-color);
+  }
+
+  .nodehash a:hover {
+    fill: var(--link-hover-color);
   }
 
   #axis text {
