@@ -45,7 +45,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
-			logger.Printf("Error parsing validator public key %v: %v", vars["index"], err)
+			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -57,14 +57,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 			if err != nil {
-				logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", 503)
+				return
 			}
 			return
 		}
 	} else {
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
 		if err != nil {
-			logger.Printf("Error parsing validator index: %v", err)
+			logger.Errorf("error parsing validator index: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -95,7 +97,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
-			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
 		}
 		return
 	}
@@ -108,7 +112,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
-			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
 		}
 		return
 	}
@@ -129,7 +135,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Select(&proposals, "select slot / $1 as day, status, count(*) FROM blocks WHERE proposer = $2 group by day, status order by day;", 86400/utils.Config.Chain.SecondsPerSlot, index)
 	if err != nil {
-		logger.Errorf("Error retrieving Daily Proposed Blocks blocks count: %v", err)
+		logger.Errorf("error retrieving Daily Proposed Blocks blocks count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -157,20 +163,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				Orphaned: proposals[i].Count,
 			})
 		} else {
-			logger.Errorf("Error parsing Daily Proposed Blocks unknown status: %v", proposals[i].Status)
+			logger.Errorf("error parsing Daily Proposed Blocks unknown status: %v", proposals[i].Status)
 		}
 	}
 
 	err = db.DB.Get(&validatorPageData.ProposedBlocksCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", index)
 	if err != nil {
-		logger.Printf("Error retrieving proposed blocks count: %v", err)
+		logger.Errorf("error retrieving proposed blocks count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
 	err = db.DB.Get(&validatorPageData.AttestationsCount, "SELECT LEAST(COUNT(*), 10000) FROM attestation_assignments WHERE validatorindex = $1", index)
 	if err != nil {
-		logger.Printf("Error retrieving attestation count: %v", err)
+		logger.Errorf("error retrieving attestation count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -178,7 +184,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var balanceHistory []*types.ValidatorBalanceHistory
 	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
 	if err != nil {
-		logger.Printf("Error retrieving validator balance history: %v", err)
+		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -191,7 +197,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
 	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, effectivebalance as balance FROM validator_set WHERE validatorindex = $1 ORDER BY epoch", index)
 	if err != nil {
-		logger.Printf("Error retrieving validator effective balance history: %v", err)
+		logger.Errorf("error retrieving validator effective balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -213,7 +219,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 
 }
@@ -225,7 +233,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
 	if err != nil {
-		logger.Printf("Error parsing validator index: %v", err)
+		logger.Errorf("error parsing validator index: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -234,19 +242,19 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables start parameter from string to int: %v", err)
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -258,7 +266,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", index)
 	if err != nil {
-		logger.Printf("Error retrieving proposed blocks count: %v", err)
+		logger.Errorf("error retrieving proposed blocks count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -281,7 +289,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 										LIMIT $2 OFFSET $3`, index, length, start)
 
 	if err != nil {
-		logger.Printf("Error retrieving proposed blocks data: %v", err)
+		logger.Errorf("error retrieving proposed blocks data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -310,7 +318,9 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -321,7 +331,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
 	if err != nil {
-		logger.Printf("Error parsing validator index: %v", err)
+		logger.Errorf("error parsing validator index: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -330,19 +340,19 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables data parameter from string to int: %v", err)
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables start parameter from string to int: %v", err)
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Printf("Error converting datatables length parameter from string to int: %v", err)
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -354,7 +364,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Get(&totalCount, "SELECT LEAST(COUNT(*), 10000) FROM attestation_assignments WHERE validatorindex = $1", index)
 	if err != nil {
-		logger.Printf("Error retrieving proposed blocks count: %v", err)
+		logger.Errorf("error retrieving proposed blocks count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -370,13 +380,17 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 										LIMIT $2 OFFSET $3`, index, length, start)
 
 	if err != nil {
-		logger.Printf("Error retrieving validator attestations data: %v", err)
+		logger.Errorf("error retrieving validator attestations data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
+
+		if utils.SlotToTime(b.AttesterSlot).Before(time.Now().Add(time.Minute*-1)) && b.Status == 0 {
+			b.Status = 2
+		}
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%v", b.Epoch),
 			fmt.Sprintf("%v", b.AttesterSlot),
@@ -394,6 +408,8 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }

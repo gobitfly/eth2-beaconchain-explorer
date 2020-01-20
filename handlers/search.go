@@ -48,13 +48,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		blocks := &types.SearchAheadBlocksResult{}
 		err := db.DB.Select(blocks, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot FROM blocks WHERE CAST(slot AS text) LIKE $1 OR ENCODE(blockroot::bytea, 'hex') LIKE $1 ORDER BY slot LIMIT 10", search+"%")
 		if err != nil {
-			logger.WithError(err).Error("Failed doing search-query")
+			logger.WithError(err).Error("error doing search-query")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
 		err = json.NewEncoder(w).Encode(blocks)
 		if err != nil {
-			logger.WithError(err).Error("Failed encoding searchAhead-blocks-result")
+			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
 			http.Error(w, "Internal server error", 503)
 		}
 	case "graffiti":
@@ -65,39 +65,39 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE graffiti LIKE convert_to($1, $2) LIMIT 10", "%"+search+"%", encoding)
 
 		if err != nil {
-			logger.WithError(err).Error("Failed doing search-query")
+			logger.WithError(err).Error("error doing search-query")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
 		err = json.NewEncoder(w).Encode(graffiti)
 		if err != nil {
-			logger.WithError(err).Error("Failed encoding searchAhead-blocks-result")
+			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
 			http.Error(w, "Internal server error", 503)
 		}
 	case "epochs":
 		epochs := &types.SearchAheadEpochsResult{}
 		err := db.DB.Select(epochs, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
 		if err != nil {
-			logger.WithError(err).Error("Failed doing search-query")
+			logger.WithError(err).Error("error doing search-query")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
 		err = json.NewEncoder(w).Encode(epochs)
 		if err != nil {
-			logger.WithError(err).Error("Failed encoding searchAhead-epochs-result")
+			logger.WithError(err).Error("error encoding searchAhead-epochs-result")
 			http.Error(w, "Internal server error", 503)
 		}
 	case "validators":
 		validators := &types.SearchAheadValidatorsResult{}
 		err := db.DB.Select(validators, "SELECT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey FROM validators WHERE ENCODE(pubkey::bytea, 'hex') LIKE $1 OR CAST(validatorindex AS text) LIKE $1 ORDER BY index LIMIT 10", search+"%")
 		if err != nil {
-			logger.WithError(err).Error("Failed doing search-query")
+			logger.WithError(err).Error("error doing search-query")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
 		err = json.NewEncoder(w).Encode(validators)
 		if err != nil {
-			logger.WithError(err).Error("Failed encoding searchAhead-validators-result")
+			logger.WithError(err).Error("error encoding searchAhead-validators-result")
 			http.Error(w, "Internal server error", 503)
 		}
 	default:

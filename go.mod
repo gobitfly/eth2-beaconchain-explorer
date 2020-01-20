@@ -22,7 +22,6 @@ require (
 	github.com/prysmaticlabs/ethereumapis v0.0.0-20200107194206-1ca2fc850a13
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52
 	github.com/sirupsen/logrus v1.4.2
-	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
 	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a // indirect

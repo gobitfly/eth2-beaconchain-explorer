@@ -58,6 +58,39 @@
             exporting: {
                 scale: 1
             },
+            navigation: {
+                menuStyle: {
+                  "border": "1px solid var(--border-color-transparent)",
+                  "background": "var(--bg-color-nav)",
+                  "padding": "1px 0",
+                  "box-shadow": "var(--bg-color-nav) 2px 2px 5px"
+                  },
+                buttonOptions: {
+                  symbolStroke: 'var(--body-color)',
+                  symbolFill: 'var(--body-color)',
+                      theme: {
+                        fill: 'var(--bg-color)',
+                        states: {
+                          hover: {
+                            fill: 'var(--primary)'
+                          },
+                          select: {
+                            fill: 'var(--primary)'
+                          }
+                        }
+                      }
+                },
+                menuItemStyle: {
+                  "padding": "0.5em 1em",
+                  "color": "var(--transparent-font-color)",
+                  "background": "none",
+                  "fontSize": "11px/14px",
+                  "transition": "background 250ms, color 250ms"
+                },
+                menuItemHoverStyle: {"background": "var(--primary)", "color": "var(--font-color)"}
+              },
+              colors: ["#7cb5ec", "#90ed7d", "#f7a35c", "#8085e9", "#f15c80", "#e4d354", "#2b908f", "#f45b5b",
+              "#91e8e1"],
             rangeSelector: {
                 enabled: false
             },
@@ -65,24 +98,28 @@
                 type: 'line',
                 animation: false,
                 style: {
-                    fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
-                },
-                backgroundColor: 'rgb(255, 255, 255)'
+                    fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
+                    color: 'var(--body-color)'
+                  },
+                  backgroundColor: 'var(--bg-color)',
             },
             title: {
-                text: 'Balance History for Validator {{.Index}}'
+                text: 'Balance History for Validator {{.Index}}',
+                style: {
+                    color: 'var(--font-color)'
+                }
             },
             subtitle: {
                 text: 'Source: beaconcha.in',
                 style: {
-                    color: 'black'
+                    color: 'var(--body-color)'
                 }
             },
             xAxis: {
                 type: 'datetime',
                 labels: {
                     style: {
-                        color: 'black'
+                        color: 'var(--body-color)'
                     }
                 },
                 range: 7 * 24 * 60 * 60 * 1000
@@ -91,13 +128,13 @@
                 title: {
                     text: 'Balance [ETH]',
                     style: {
-                        color: '#26232780',
+                        color: 'var(--body-color)',
                         'font-size': '0.8rem'
                     }
                 },
                 labels: {
                     style: {
-                        color: 'black'
+                        color: 'var(--body-color)'
                     }
                 },
                 opposite: false
@@ -123,43 +160,37 @@
                 verticalAlign: 'bottom',
                 borderWidth: 0,
                 itemStyle: {
-                    color: '#262327',
-                    'font-size': '0.8rem',
-                    'font-weight': 'lighter'
+                    color: 'var(--body-color)'
                 },
                 itemHoverStyle: {
-                    color: '#ff8723'
+                color: 'var(--primary)',
                 }
             },
             credits: {
                 enabled: false
             },
             navigator: {
-                maskFill: '#1473e631',
-                outlineColor: '#e5e1e1',
-                handles: {
-                    backgroundColor: '#f5f3f3',
-                    borderColor: '#26232780'
-                },
-                xAxis: {
-                    gridLineColor: '#e5e1e1',
-                    labels: {
-                        style: {
-                            color: '#26232780'
-                        }
-                    }
-                }
-            },
+                  enabled: true,
+                  maskFill: 'var(--mask-fill-color)',
+                  outlineColor: 'var(--border-color)',
+                  handles: {
+                    backgroundColor: 'var(--bg-color-nav)',
+                    borderColor: 'var(--transparent-font-color)',
+                  },
+                  xAxis: {
+                    gridLineColor: 'var(--border-color)',
+                  },
+              },
             scrollbar: {
-                barBackgroundColor: '#ebe7e7',
+                barBackgroundColor: 'var(--bg-color-nav)',
                 barBorderWidth: 0,
-                buttonArrowColor: '#262327',
-                rifleColor: '#262327',
-                buttonBackgroundColor: '#ebe7e7',
-                buttonBorderColor: '#ebe7e7',
-                trackBackgroundColor: '#f5f3f3',
-                trackBorderColor: '#e5e1e180'
-            },
+                buttonArrowColor: 'var(--font-color)',
+                rifleColor: 'var(--dark)',
+                buttonBackgroundColor: 'var(--bg-color-nav)',
+                buttonBorderColor: 'var(--bg-color-transparent)',
+                trackBackgroundColor: 'var(--bg-color)',
+                trackBorderColor: 'var(--border-color-transparent)',
+              },
             responsive: {
                 rules: [
                     {
@@ -199,33 +230,67 @@
                 exporting: {
                     scale: 1
                 },
-                credits: {
-                    enabled: false
+                navigation: {
+                menuStyle: {
+                  "border": "1px solid var(--border-color-transparent)",
+                  "background": "var(--bg-color-nav)",
+                  "padding": "1px 0",
+                  "box-shadow": "var(--bg-color-nav) 2px 2px 5px"
+                  },
+                buttonOptions: {
+                  symbolStroke: 'var(--body-color)',
+                  symbolFill: 'var(--body-color)',
+                      theme: {
+                        fill: 'var(--bg-color)',
+                        states: {
+                          hover: {
+                            fill: 'var(--primary)'
+                          },
+                          select: {
+                            fill: 'var(--primary)'
+                          }
+                        }
+                      }
                 },
+                menuItemStyle: {
+                  "padding": "0.5em 1em",
+                  "color": "var(--transparent-font-color)",
+                  "background": "none",
+                  "fontSize": "11px/14px",
+                  "transition": "background 250ms, color 250ms"
+                },
+                menuItemHoverStyle: {"background": "var(--primary)", "color": "var(--font-color)"}
+              },
+              colors: ["#7cb5ec", "#ff835c", "#e4a354", "#2b908f", "#f45b5b",
+              "#91e8e1"],
                 title: {
-                    text: 'Proposal History for Validator {{.Index}}'
+                    text: 'Proposal History for Validator {{.Index}}',
+                    style: {
+                          color: 'var(--font-color)'
+                    }
                 },
                 subtitle: {
                     text: 'Source: beaconcha.in',
                     style: {
-                        color: 'black'
+                        color: 'var(--body-color)'
                     }
                 },
                 chart: {
                     type: 'column',
                     animation: false,
                     style: {
-                        fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
-                    },
-                    backgroundColor: 'rgb(255, 255, 255)'
+                      fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
+                      color: 'var(--body-color)'
+                  },
+                  backgroundColor: 'var(--bg-color)',
                 },
                 xAxis: {
                     lineWidth: 0,
                     tickColor: '#e5e1e1',
                     labels: {
                         style: {
-                            color: 'black'
-                        }
+                          color: 'var(--body-color)'
+                      }
                     },
                     range: 7 * 24 * 3600 * 1000
                 },
@@ -234,16 +299,16 @@
                         title: {
                             text: '# of Possible Proposals',
                             style: {
-                                color: '#26232780',
+                                color: 'var(--body-color)',
                                 'font-size': '0.8rem'
                             }
                         },
                         labels: {
                             style: {
-                                color: 'black'
-                            }
+                          color: 'var(--body-color)'
+                      }
                         },
-                        gridLineColor: '#e5e1e1',
+                        gridLineColor: 'var(--border-color-transparent)',
                         opposite: false
                     }
                 ],
@@ -266,12 +331,12 @@
                     verticalAlign: 'bottom',
                     borderWidth: 0,
                     itemStyle: {
-                        color: '#262327',
+                        color: 'var(--body-color)',
                         'font-size': '0.8rem',
                         'font-weight': 'lighter'
                     },
                     itemHoverStyle: {
-                        color: '#ff8723'
+                        color: 'var(--primary)'
                     }
                 },
                 series: [
@@ -308,15 +373,18 @@
                     }
                 },
                 scrollbar: {
-                    barBackgroundColor: '#ebe7e7',
+                    barBackgroundColor: 'var(--bg-color-nav)',
                     barBorderWidth: 0,
-                    buttonArrowColor: '#262327',
-                    rifleColor: '#262327',
-                    buttonBackgroundColor: '#ebe7e7',
-                    buttonBorderColor: '#ebe7e7',
-                    trackBackgroundColor: '#f5f3f3',
-                    trackBorderColor: '#e5e1e180'
-                },
+                    buttonArrowColor: 'var(--font-color)',
+                    rifleColor: 'var(--dark)',
+                    buttonBackgroundColor: 'var(--bg-color-nav)',
+                    buttonBorderColor: 'var(--bg-color-transparent)',
+                    trackBackgroundColor: 'var(--bg-color)',
+                    trackBorderColor: 'var(--border-color-transparent)',
+              },
+              credits: {
+                enabled: false
+            },
                 responsive: {
                     rules: [
                         {
@@ -376,6 +444,13 @@
         });
     </script>
 
+    <script>
+        $('span[aria-ethereum-date]').each(function(){
+            var d = $(this).attr('aria-ethereum-date')
+            $(this).html(moment.unix(d).fromNow())
+        })
+    </script>
+
 {{end}}
 
 {{ define "css"}}
@@ -419,25 +494,25 @@
                         <li class="nav-item">
                             <a class="nav-link" id="pills-blocks-tab" data-toggle="pill" href="#pills-blocks" role="tab"
                                aria-controls="pills-blocks" aria-selected="false">Proposed Blocks <span
-                                        class="badge badge-secondary">{{.ProposedBlocksCount}}</span></a>
+                                        class="badge bg-secondary text-white">{{.ProposedBlocksCount}}</span></a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" id="pills-attestations-tab" data-toggle="pill"
                                href="#pills-attestations"
                                role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span
-                                        class="badge badge-secondary">{{.AttestationsCount}}</span></a>
+                                        class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
                         </li>
                         {{/*
         <li class="nav-item"
-          >*/}} {{/* <a class="nav-link" href="#">Deposits <span class="badge badge-secondary">{{.DepositsCount}}</span></a
+          >*/}} {{/* <a class="nav-link" href="#">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a
           >*/}} {{/* </li
         >*/}} {{/*
         <li class="nav-item"
-          >*/}} {{/* <a class="nav-link" href="#">Exits <span class="badge badge-secondary">{{.VoluntaryExitscount}}</span></a
+          >*/}} {{/* <a class="nav-link" href="#">Exits <span class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a
           >*/}} {{/* </li
         >*/}} {{/*
         <li class="nav-item"
-          >*/}} {{/* <a class="nav-link" href="#">Slashings <span class="badge badge-secondary">{{.SlashingsCount}}</span></a
+          >*/}} {{/* <a class="nav-link" href="#">Slashings <span class="badge bg-secondary text-white">{{.SlashingsCount}}</span></a
           >*/}} {{/* </li
         >*/}}
                     </ul>
@@ -468,29 +543,42 @@
                         <div class="col-md-10">{{.Slashed}}</div>
                     </div>
                     <div class="row border-bottom p-3">
-                        <div class="col-md-2">Activation eligibility on:</div>
+                        <div class="col-md-2">Eligible for Activation:</div>
                         <div class="col-md-10"><span
-                                    aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
+                                        title="{{.ActivationEligibilityTs}}"
+                                        data-toggle="tooltip"
+                                        aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
                             (Epoch {{.ActivationEligibilityEpoch}})
                         </div>
                     </div>
                     <div class="row border-bottom p-3">
-                        <div class="col-md-2">Activation on:</div>
+                        {{if eq .Status "Pending"}}
+                            <div class="col-md-2">Estimated Activation:</div>
+                        {{else}}
+                            <div class="col-md-2">Active since:</div>
+                        {{end}}
                         <div class="col-md-10"><span
-                                    aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
+                                        title="{{.ActivationTs}}"
+                                        data-toggle="tooltip"
+                                        aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
                             (Epoch {{.ActivationEpoch}})
                         </div>
                     </div>
                     {{if eq .Status "Ejected"}}
                         <div class="row border-bottom p-3">
                             <div class="col-md-2">Exit on:</div>
-                            <div class="col-md-10"><span aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
+                            <div class="col-md-10"><span 
+                                        title="{{.ExitTs}}"
+                                        data-toggle="tooltip"
+                                        aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
                                 (Epoch {{.ExitEpoch}})
                             </div>
                         </div>
                         <div class="row border-bottom p-3">
                             <div class="col-md-2">Withdrawable on:</div>
                             <div class="col-md-10"><span
+                                        title="{{.WithdrawableTs}}"
+                                        data-toggle="tooltip"
                                         aria-ethereum-date="{{.WithdrawableTs.Unix}}">{{.WithdrawableTs}}</span>
                                 (Epoch {{.WithdrawableEpoch}})
                             </div>

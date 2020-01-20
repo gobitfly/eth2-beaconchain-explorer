@@ -36,13 +36,13 @@ func GetTemplateFuncs() template.FuncMap {
 // FormatBlockStatus will return an html status for a block
 func FormatBlockStatus(status uint64) template.HTML {
 	if status == 0 {
-		return "<span class=\"badge badge-light\">Scheduled</span>"
+		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
 	} else if status == 1 {
-		return "<span class=\"badge badge-success\">Proposed</span>"
+		return "<span class=\"badge bg-success text-white\">Proposed</span>"
 	} else if status == 2 {
-		return "<span class=\"badge badge-warning\">Missed</span>"
+		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
 	} else if status == 3 {
-		return "<span class=\"badge badge-secondary\">Orphaned</span>"
+		return "<span class=\"badge bg-secondary text-white\">Orphaned</span>"
 	} else {
 		return "Unknown"
 	}
@@ -51,13 +51,14 @@ func FormatBlockStatus(status uint64) template.HTML {
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatus(status uint64) string {
 	if status == 0 {
-		return "Scheduled"
+		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
 	} else if status == 1 {
-		return "Attested"
+		return "<span class=\"badge bg-success text-white\">Attested</span>"
 	} else if status == 2 {
-		return "Missed"
+		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+	} else {
+		return "Unknown"
 	}
-	return "Unknown"
 }
 
 // FormatValidator will return html formatted text for a validator

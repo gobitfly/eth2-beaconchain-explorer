@@ -141,11 +141,26 @@ func Start(client rpc.Client) error {
 		}
 	}
 
-	for true {
-
+	if utils.Config.Indexer.UpdateAllEpochStatistics {
+		// Update all epoch statistics
 		head, err := client.GetChainHead()
 		if err != nil {
 			logger.Fatal(err)
+		}
+		startEpoch := uint64(0)
+		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
+		if err != nil {
+			logger.Fatal(err)
+		}
+	}
+
+	for true {
+		time.Sleep(time.Second * 10)
+
+		head, err := client.GetChainHead()
+		if err != nil {
+			logger.Errorf("error retrieving chain head: %v", err)
+			continue
 		}
 
 		startEpoch := uint64(0)
@@ -155,12 +170,14 @@ func Start(client rpc.Client) error {
 
 		dbBlocks, err := db.GetLastPendingAndProposedBlocks(startEpoch, head.HeadEpoch)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Errorf("error retrieving last pending and proposed blocks from the database: %v", err)
+			continue
 		}
 
 		nodeBlocks, err := GetLastBlocks(startEpoch, head.HeadEpoch, client)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Errorf("error retrieving last blocks from backend node: %v", err)
+			continue
 		}
 
 		blocksMap := make(map[string]*types.BlockComparisonContainer)
@@ -204,7 +221,10 @@ func Start(client rpc.Client) error {
 		// Add any missing epoch to the export set (might happen if the indexer was stopped for a long period of time)
 		epochs, err := db.GetAllEpochs()
 		if err != nil {
-			logger.Fatal(err)
+			if err != nil {
+				logger.Errorf("error retrieving all epochs from the db: %v", err)
+				continue
+			}
 		}
 
 		// Add not yet exported epochs to the export set (for example during the initial sync)
@@ -256,25 +276,23 @@ func Start(client rpc.Client) error {
 		}
 		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Errorf("error updating epoch stratus: %v", err)
 		}
 
 		err = exportAttestationPool(client)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Errorf("error exporting attestation pool data: %v", err)
 		}
 
 		err = exportValidatorQueue(client)
 		if err != nil {
-			logger.Error(err)
+			logger.Errorf("error exporting validator queue data: %v", err)
 		}
 
 		err = MarkOrphanedBlocks(startEpoch, head.HeadEpoch, nodeBlocks)
 		if err != nil {
-			logger.Fatal(err)
+			logger.Errorf("error marking orphaned blocks: %v", err)
 		}
-
-		time.Sleep(time.Second * 10)
 	}
 
 	return nil
@@ -320,7 +338,7 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 		for slot := startSlot; slot <= endSlot; slot++ {
 			blocks, err := client.GetBlocksBySlot(slot)
 			if err != nil {
-				logger.Fatal(err)
+				return nil, err
 			}
 
 			for _, block := range blocks {

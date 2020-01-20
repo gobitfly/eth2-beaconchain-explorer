@@ -41,11 +41,13 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Epoch %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, epochString, time.Now().Year())
 		data.Meta.Path = "/epoch/" + epochString
-		logger.Printf("Error retrieving block data: %v", err)
+		logger.Errorf("error retrieving block data: %v", err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
-			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
 		}
 		return
 	}
@@ -71,11 +73,13 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 										FROM epochs 
 										WHERE epoch = $1`, epoch)
 	if err != nil {
-		logger.Printf("Error getting epoch data: %v", err)
+		logger.Errorf("error getting epoch data: %v", err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
-			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
 		}
 		return
 	}
@@ -95,11 +99,13 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 										ORDER BY blocks.slot DESC`, epoch)
 
 	if err != nil {
-		logger.Printf("Error epoch blocks data: %v", err)
+		logger.Errorf("error epoch blocks data: %v", err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
-			logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
 		}
 		return
 	}
@@ -117,12 +123,12 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Get(&epochPageData.NextEpoch, "SELECT epoch FROM epochs WHERE epoch > $1 ORDER BY epoch LIMIT 1", epochPageData.Epoch)
 	if err != nil {
-		logger.Printf("Error retrieving next epoch for epoch %v: %v", epochPageData.Epoch, err)
+		logger.Errorf("error retrieving next epoch for epoch %v: %v", epochPageData.Epoch, err)
 		epochPageData.NextEpoch = 0
 	}
 	err = db.DB.Get(&epochPageData.PreviousEpoch, "SELECT epoch FROM epochs WHERE epoch < $1 ORDER BY epoch DESC LIMIT 1", epochPageData.Epoch)
 	if err != nil {
-		logger.Printf("Error retrieving previous epoch for epoch %v: %v", epochPageData.Epoch, err)
+		logger.Errorf("error retrieving previous epoch for epoch %v: %v", epochPageData.Epoch, err)
 		epochPageData.PreviousEpoch = 0
 	}
 
@@ -131,6 +137,8 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	err = epochTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }

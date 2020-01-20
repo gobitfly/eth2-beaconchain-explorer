@@ -33,7 +33,9 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	err := indexTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
-		logger.Fatalf("error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -44,6 +46,8 @@ func IndexPageData(w http.ResponseWriter, r *http.Request) {
 	err := json.NewEncoder(w).Encode(services.LatestIndexPageData())
 
 	if err != nil {
-		logger.Fatalf("error sending latest index page data: %v", err)
+		logger.Errorf("error sending latest index page data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }

@@ -1,0 +1,142 @@
+{
+  "name": "bootstrap",
+  "description": "The most popular front-end framework for developing responsive, mobile first projects on the web.",
+  "version": "4.3.1",
+  "version_short": "4.3",
+  "keywords": [
+    "css",
+    "sass",
+    "mobile-first",
+    "responsive",
+    "front-end",
+    "framework",
+    "web"
+  ],
+  "homepage": "https://getbootstrap.com/",
+  "author": "The Bootstrap Authors (https://github.com/twbs/bootstrap/graphs/contributors)",
+  "contributors": [
+    "Twitter, Inc."
+  ],
+  "scripts": {
+    "bundlesize": "bundlesize",
+    "css": "npm-run-all css-compile css-prefix css-minify",
+    "css-compile": "node-sass --output-style expanded --source-map true --source-map-contents true --precision 6 scss/ -o ../static/bootstrap/css/",
+    "css-minify": "cleancss --level 1 --format breakWith=lf --source-map --source-map-inline-sources --output ../static/bootstrap/css/bootstrap.min.css ../static/bootstrap/css/bootstrap.css && cleancss --level 1 --format breakWith=lf --source-map --source-map-inline-sources --output ../static/bootstrap/css/bootstrap-grid.min.css ../static/bootstrap/css/bootstrap-grid.css && cleancss --level 1 --format breakWith=lf --source-map --source-map-inline-sources --output ../static/bootstrap/css/bootstrap-utilities.min.css ../static/bootstrap/css/bootstrap-utilities.css && cleancss --level 1 --format breakWith=lf --source-map --source-map-inline-sources --output ../static/bootstrap/css/bootstrap-reboot.min.css ../static/bootstrap/css/bootstrap-reboot.css",
+    "css-prefix": "npm-run-all --parallel css-prefix-*",
+    "css-prefix-main": "postcss --config build/postcss.config.js --replace \"../static/bootstrap/css/*.css\" \"!../static/bootstrap/css/*.min.css\"",
+    "js": "npm-run-all js-compile js-minify",
+    "js-compile": "npm-run-all --parallel js-compile-*",
+    "js-compile-standalone": "rollup --environment BUNDLE:false --config build/rollup.config.js --sourcemap",
+    "js-compile-standalone-esm": "rollup --environment ESM:true,BUNDLE:false --config build/rollup.config.js --sourcemap",
+    "js-compile-bundle": "rollup --environment BUNDLE:true --config build/rollup.config.js --sourcemap",
+    "js-compile-plugins": "node build/build-plugins.js",
+    "js-lint": "eslint --cache --cache-location .cache/.eslintcache --report-unused-disable-directives .",
+    "js-minify": "npm-run-all --parallel js-minify-*",
+    "js-minify-standalone": "terser --compress typeofs=false --mangle --comments \"/^!/\" --source-map \"content=../static/bootstrap/jsbootstrap.js.map,includeSources,url=bootstrap.min.js.map\" --output ../static/bootstrap/jsbootstrap.min.js ../static/bootstrap/jsbootstrap.js",
+    "js-minify-standalone-esm": "terser --compress --mangle --comments \"/^!/\" --source-map \"content=../static/bootstrap/jsbootstrap.esm.js.map,includeSources,url=bootstrap.esm.min.js.map\" --output ../static/bootstrap/jsbootstrap.esm.min.js ../static/bootstrap/jsbootstrap.esm.js",
+    "js-minify-bundle": "terser --compress typeofs=false --mangle --comments \"/^!/\" --source-map \"content=../static/bootstrap/jsbootstrap.bundle.js.map,includeSources,url=bootstrap.bundle.min.js.map\" --output ../static/bootstrap/jsbootstrap.bundle.min.js ../static/bootstrap/jsbootstrap.bundle.js",
+    "lint": "npm-run-all --parallel js-lint css-lint",
+    "dist": "npm-run-all --parallel css js",
+    "dist-css": "npm-run-all --parallel css",
+    "watch": "npm-run-all --parallel watch-*",
+    "watch-css-main": "nodemon --watch scss/ --ext scss --exec \"npm-run-all css-lint css-compile css-prefix\"",
+    "watch-js-main": "nodemon --watch js/src/ --ext js --exec \"npm-run-all js-lint js-compile\""
+  },
+  "style": "dist/css/bootstrap.css",
+  "sass": "scss/bootstrap.scss",
+  "main": "../static/bootstrap/jsbootstrap.js",
+  "module": "../static/bootstrap/jsbootstrap.esm.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/twbs/bootstrap.git"
+  },
+  "bugs": {
+    "url": "https://github.com/twbs/bootstrap/issues"
+  },
+  "license": "MIT",
+  "dependencies": {},
+  "peerDependencies": {
+    "popper.js": "^1.16.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.7.5",
+    "@babel/core": "^7.7.5",
+    "@babel/plugin-proposal-object-rest-spread": "^7.7.4",
+    "@babel/preset-env": "^7.7.6",
+    "autoprefixer": "^9.7.3",
+    "babel-eslint": "^10.0.3",
+    "babel-plugin-istanbul": "^5.2.0",
+    "bundlesize": "^0.18.0",
+    "clean-css-cli": "^4.3.0",
+    "cross-env": "^6.0.3",
+    "eslint": "^6.7.2",
+    "eslint-config-xo": "^0.27.2",
+    "eslint-plugin-import": "^2.19.1",
+    "eslint-plugin-unicorn": "^13.0.0",
+    "find-unused-sass-variables": "^1.0.4",
+    "glob": "^7.1.6",
+    "hammer-simulator": "0.0.1",
+    "hugo-bin": "^0.49.0",
+    "ip": "^1.1.5",
+    "jasmine-core": "^3.5.0",
+    "karma": "^4.4.1",
+    "karma-browserstack-launcher": "1.4.0",
+    "karma-chrome-launcher": "^3.1.0",
+    "karma-coverage-istanbul-reporter": "^2.1.1",
+    "karma-detect-browsers": "^2.3.3",
+    "karma-firefox-launcher": "^1.2.0",
+    "karma-jasmine": "^2.0.1",
+    "karma-jasmine-html-reporter": "^1.4.2",
+    "karma-rollup-preprocessor": "^7.0.2",
+    "linkinator": "^1.8.0",
+    "node-sass": "^4.13.0",
+    "nodemon": "^2.0.2",
+    "npm-run-all": "^4.1.5",
+    "popper.js": "^1.16.0",
+    "postcss-cli": "^6.1.3",
+    "rollup": "^1.26.5",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-istanbul": "^2.0.1",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "serve": "^11.2.0",
+    "shelljs": "^0.8.3",
+    "stylelint": "^12.0.0",
+    "stylelint-config-twbs-bootstrap": "^1.0.0",
+    "terser": "^4.4.3",
+    "vnu-jar": "19.9.4"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "files": [
+    "dist/{css,js}/*.{css,js,map}",
+    "js/{src,dist}/**/*.{js,map}",
+    "scss/**/*.scss"
+  ],
+  "hugo-bin": {
+    "buildTags": "extended"
+  },
+  "jspm": {
+    "registry": "npm",
+    "main": "js/bootstrap",
+    "directories": {
+      "lib": "dist"
+    },
+    "shim": {
+      "js/bootstrap": {
+        "deps": [
+          "popper.js"
+        ]
+      }
+    },
+    "dependencies": {},
+    "peerDependencies": {
+      "popper.js": "^1.16.0"
+    }
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/bootstrap"
+  }
+}
