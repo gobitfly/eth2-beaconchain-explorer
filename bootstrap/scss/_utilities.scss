@@ -80,7 +80,7 @@ $utilities: map-merge(
       class: border,
       values:
         map-merge(
-          $theme-colors,
+          $theme-colors-vars,
           (
             "white": $white
           )
@@ -453,7 +453,7 @@ $utilities: map-merge(
       class: text,
       values:
         map-merge(
-          $theme-colors,
+          $theme-colors-vars,
           (
             "white": var(--white, $white),
             "body": var(--body-color, $body-color),
@@ -479,7 +479,7 @@ $utilities: map-merge(
       class: bg,
       values:
         map-merge(
-          $theme-colors,
+          $theme-colors-vars,
           (
             "body": $body-bg,
             "white": $white,

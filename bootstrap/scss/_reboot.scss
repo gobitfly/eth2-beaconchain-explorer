@@ -229,6 +229,9 @@ a {
     color: $link-hover-color;
     text-decoration: $link-hover-decoration;
   }
+  &:visited {
+    color: $link-color;
+  }
 }
 
 // And undo these styles for placeholder links/named anchors (without href).
