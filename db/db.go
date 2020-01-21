@@ -322,13 +322,23 @@ func SaveEpoch(data *types.EpochData) error {
 func saveValidatorSet(epoch uint64, validators []*types.Validator, validatorIndices map[string]uint64, tx *sql.Tx) error {
 
 	stmtValidatorSet, err := tx.Prepare(`INSERT INTO validator_set (epoch, validatorindex, withdrawableepoch, withdrawalcredentials, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (epoch, validatorindex) DO NOTHING`)
+ 													VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (epoch, validatorindex) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtValidatorSet.Close()
 
-	stmtValidators, err := tx.Prepare(`INSERT INTO validators (validatorindex, pubkey) VALUES ($1, $2) ON CONFLICT (validatorindex) DO UPDATE SET pubkey = excluded.pubkey`)
+	stmtValidators, err := tx.Prepare(`INSERT INTO validators (validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch) 
+													VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+													ON CONFLICT (validatorindex) DO UPDATE SET 
+														pubkey                     = EXCLUDED.pubkey,
+														withdrawableepoch          = EXCLUDED.withdrawableepoch,
+														withdrawalcredentials      = EXCLUDED.withdrawalcredentials,
+														effectivebalance           = EXCLUDED.effectivebalance,
+														slashed                    = EXCLUDED.slashed,
+														activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
+														activationepoch            = EXCLUDED.activationepoch,
+														exitepoch                  = EXCLUDED.exitepoch`)
 	if err != nil {
 		return err
 	}
@@ -383,7 +393,7 @@ func saveValidatorSet(epoch uint64, validators []*types.Validator, validatorIndi
 		if err != nil {
 			return fmt.Errorf("error executing save validator set statement: %v", err)
 		}
-		_, err = stmtValidators.Exec(validatorIndices[fmt.Sprintf("%x", v.PublicKey)], v.PublicKey)
+		_, err = stmtValidators.Exec(validatorIndices[fmt.Sprintf("%x", v.PublicKey)], v.PublicKey, v.WithdrawableEpoch, v.WithdrawalCredentials, v.EffectiveBalance, v.Slashed, v.ActivationEligibilityEpoch, v.ActivationEpoch, v.ExitEpoch)
 		if err != nil {
 			return fmt.Errorf("error executing save validator statement: %v", err)
 		}

@@ -10,7 +10,7 @@ services:
       - ./docker-volumes/db:/var/lib/postgresql/data
       - ./beaconchain_dump.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U explorer']
+      test: ['CMD-SHELL', 'pg_isready -U beaconchain']
       interval: 5s
       timeout: 5s
       retries: 5
