@@ -102,13 +102,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData := types.ValidatorsPageData{}
 	var validators []*types.ValidatorsPageDataValidators
 
-	err := db.DB.Select(&validators, `SELECT 
-												   epoch, 
-												   activationepoch, 
-												   exitepoch 
-											FROM validator_set 
-											WHERE epoch = $1 
-											ORDER BY validatorindex`, services.LatestEpoch())
+	err := db.DB.Select(&validators, `SELECT activationepoch, exitepoch FROM validators ORDER BY validatorindex`)
 
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
@@ -116,10 +110,11 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	latestEpoch := services.LatestEpoch()
 	for _, validator := range validators {
-		if validator.Epoch > validator.ExitEpoch {
+		if latestEpoch > validator.ExitEpoch {
 			validatorsPageData.EjectedCount++
-		} else if validator.Epoch < validator.ActivationEpoch {
+		} else if latestEpoch < validator.ActivationEpoch {
 			validatorsPageData.PendingCount++
 		} else {
 			validatorsPageData.ActiveCount++
@@ -159,7 +154,7 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch < activationepoch", services.LatestEpoch())
+	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validators WHERE $1 < activationepoch", services.LatestEpoch())
 	if err != nil {
 		logger.Errorf("error retrieving pending validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -167,25 +162,26 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
-											 validator_set.epoch,
-       										 validator_set.validatorindex, 
-											 validators.pubkey, 
-											 validator_set.withdrawableepoch, 
-											 validator_set.effectivebalance, 
-											 validator_set.slashed, 
-											 validator_set.activationeligibilityepoch, 
-											 validator_set.activationepoch, 
-											 validator_set.exitepoch,
-       										 validator_balances.balance
-										FROM validator_set
-										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch
-											AND validator_set.validatorindex = validator_balances.validatorindex
-										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
-										WHERE validator_set.epoch = $1 AND validator_set.epoch < activationepoch
-										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-										ORDER BY %s %s 
-										LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
+	err = db.DB.Select(&validators,
+		fmt.Sprintf(`SELECT 
+				validators.validatorindex, 
+				validators.pubkey, 
+				validators.withdrawableepoch, 
+				validators.effectivebalance, 
+				validators.slashed, 
+				validators.activationeligibilityepoch, 
+				validators.activationepoch, 
+				validators.exitepoch,
+				validator_balances.balance
+			FROM validators
+			LEFT JOIN validator_balances 
+				ON validator_balances.epoch = $1
+				AND validator_balances.validatorindex = validators.validatorindex
+			WHERE $1 < activationepoch
+				AND encode(validators.pubkey::bytea, 'hex') LIKE $2
+			ORDER BY %s %s 
+			LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir),
+		services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
 		logger.Errorf("error retrieving pending validator data: %v", err)
@@ -239,7 +235,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch >= activationepoch AND epoch < exitepoch", services.LatestEpoch())
+	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validators WHERE $1 >= activationepoch AND $1 < exitepoch", services.LatestEpoch())
 	if err != nil {
 		logger.Errorf("error retrieving active validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -247,27 +243,27 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
-											 validator_set.epoch, 
-											 validator_set.validatorindex, 
-											 validators.pubkey, 
-											 validator_set.withdrawableepoch, 
-											 validator_set.effectivebalance, 
-											 validator_set.slashed, 
-											 validator_set.activationeligibilityepoch, 
-											 validator_set.activationepoch, 
-											 validator_set.exitepoch,
-       										 validator_balances.balance
-										FROM validator_set
-										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch
-											AND validator_set.validatorindex = validator_balances.validatorindex
-										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
-										WHERE validator_set.epoch = $1 
-										  AND validator_set.epoch >= activationepoch 
-										  AND validator_set.epoch < exitepoch 
-										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-										ORDER BY %s %s 
-										LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
+	err = db.DB.Select(&validators,
+		fmt.Sprintf(`SELECT 
+				validators.validatorindex, 
+				validators.pubkey, 
+				validators.withdrawableepoch, 
+				validators.effectivebalance, 
+				validators.slashed, 
+				validators.activationeligibilityepoch, 
+				validators.activationepoch, 
+				validators.exitepoch,
+				validator_balances.balance
+			FROM validators
+			LEFT JOIN validator_balances 
+				ON validator_balances.epoch = $1
+				AND validator_balances.validatorindex = validators.validatorindex
+			WHERE $1 >= activationepoch 
+				AND $1 < exitepoch 
+				AND encode(validators.pubkey::bytea, 'hex') LIKE $2
+			ORDER BY %s %s 
+			LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir),
+		services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
 		logger.Errorf("error retrieving active validators data: %v", err)
@@ -321,7 +317,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch >= exitepoch", services.LatestEpoch())
+	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validators WHERE $1 >= exitepoch", services.LatestEpoch())
 	if err != nil {
 		logger.Errorf("error retrieving ejected validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -329,26 +325,26 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
-											 validator_set.epoch,
-       										 validator_set.validatorindex, 
-											 validators.pubkey, 
-											 validator_set.withdrawableepoch, 
-											 validator_set.effectivebalance, 
-											 validator_set.slashed, 
-											 validator_set.activationeligibilityepoch, 
-											 validator_set.activationepoch, 
-											 validator_set.exitepoch,
-       										 validator_balances.balance
-										FROM validator_set 
-										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch
-											AND validator_set.validatorindex = validator_balances.validatorindex
-										LEFT JOIN validators ON validator_set.validatorindex = validators.validatorindex
-										WHERE validator_set.epoch = $1 
-										  AND validator_set.epoch >= exitepoch
-										  AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-										ORDER BY %s %s 
-										LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
+	err = db.DB.Select(&validators,
+		fmt.Sprintf(`SELECT 
+				validators.validatorindex, 
+				validators.pubkey, 
+				validators.withdrawableepoch, 
+				validators.effectivebalance, 
+				validators.slashed, 
+				validators.activationeligibilityepoch, 
+				validators.activationepoch, 
+				validators.exitepoch,
+				validator_balances.balance
+			FROM validators 
+			LEFT JOIN validator_balances 
+				ON validator_balances.epoch = $1
+				AND validator_balances.validatorindex = validators.validatorindex
+			WHERE $1 >= exitepoch
+				AND encode(validators.pubkey::bytea, 'hex') LIKE $2
+			ORDER BY %s %s 
+			LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir),
+		services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
 		logger.Errorf("error retrieving ejected validators data: %v", err)
