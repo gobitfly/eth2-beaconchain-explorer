@@ -133,8 +133,7 @@
             </div>
         </div>
         </nav>
-
-   
+        {{ template "css" }}
 
     <main>
         <div class="container mt-1">
@@ -180,7 +179,7 @@
     <div class="fab-message">
             <div class="fab-message-button">
               <a href="#" class="at-button" onclick="toggleFAB();return false;">
-                    <i class="svg-question-mark fas fa-exclamation-circle fa-2x"></i>
+                    <i class="svg-question-mark fas fa-exclamation-circle fa-3x"></i>
                     <svg class="svg-cross" xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24"><path fill="#FFF" d="M24 2.5L21.5 0 12 9.5 2.5 0 0 2.5 9.5 12 0 21.5 2.5 24l9.5-9.5 9.5 9.5 2.5-2.5-9.5-9.5"/></svg> 
               </a>
             </div>
@@ -202,7 +201,7 @@
             <script src="/bootstrap/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
-    <script src="/static/js/layout.js"></script>
+    <script src="/js/layout.js"></script>
 
     {{ template "js" .Data }}
 

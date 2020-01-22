@@ -359,3 +359,7 @@ a.at-button.toggle-icon {
 .paginate_button {
   background-color: var(--bg-color-secondary);
 }
+
+.text-monospace {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
