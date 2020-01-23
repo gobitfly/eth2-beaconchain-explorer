@@ -139,6 +139,47 @@
         }
       ]
     })
+    $('#offline').DataTable({
+      processing: true,
+      serverSide: true,
+      ordering: true,
+      searching: true,
+      ajax: '/validators/data/offline',
+      pagingType: 'full',
+      drawCallback: function() {
+        $('[data-toggle="tooltip"]').tooltip()
+      },
+      columnDefs: [
+        {
+          targets: 0,
+          data: '0',
+          render: function(data, type, row, meta) {
+            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+          }
+        },
+        {
+          targets: 1,
+          data: '1',
+          render: function(data, type, row, meta) {
+            return '<a href="/validator/' + data + '">' + data + '</a>'
+          }
+        },
+        {
+          targets: 5,
+          data: '5',
+          render: function(data, type, row, meta) {
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+          }
+        },
+        {
+          targets: 6,
+          data: '6',
+          render: function(data, type, row, meta) {
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+          }
+        }
+      ]
+    })
   })
 </script>
 {{end}} {{ define "css"}}
@@ -218,6 +259,28 @@
             <th>Active since</th>
             <th>Exit</th>
             <th>Withdrawable</th>
+          </tr>
+        </thead>
+        <tbody> </tbody>
+      </table>
+    </div>
+    <div class="row">
+      <div class="col-md-8 offset-md-2">
+        <hr />
+      </div>
+    </div>
+    <div class="table-responsive col-sm-12">
+      <h4>Offline</h4>
+      <table class="table table-sm" id="offline">
+        <thead>
+          <tr>
+            <th>Public Key</th>
+            <th>Index</th>
+            <th>Current Balance</th>
+            <th>Effective Balance</th>
+            <th>Slashed</th>
+            <th>Eligible for Activation</th>
+            <th>Active since</th>
           </tr>
         </thead>
         <tbody> </tbody>

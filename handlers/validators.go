@@ -394,3 +394,99 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// ValidatorsDataOffline returns the validators that have not attested in the current and previous epochs in json
+func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	dataQuery, err := parseDataQueryParams(r)
+	if err != nil {
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	// we are looking for validators that have not attested in the previous epoch and this epoch
+	var totalCount uint64
+	err = db.DB.Get(&totalCount, `SELECT COUNT(*) 
+		FROM (
+			SELECT validatorindex, COUNT(*) AS c 
+			FROM attestation_assignments 
+			WHERE status = 0 AND (epoch = $1 OR epoch = $2)
+			GROUP BY validatorindex
+		) a WHERE c = 2`, services.LatestEpoch(), services.LatestEpoch()-1)
+	if err != nil {
+		logger.Errorf("error retrieving ejected validator count: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var validators []*types.ValidatorsPageDataValidators
+	err = db.DB.Select(&validators,
+		fmt.Sprintf(`SELECT 
+				validators.validatorindex, 
+				validators.pubkey, 
+				validators.withdrawableepoch, 
+				validators.effectivebalance, 
+				validators.slashed, 
+				validators.activationeligibilityepoch, 
+				validators.activationepoch, 
+				validators.exitepoch,
+				validator_balances.balance
+			FROM validators
+			INNER JOIN (
+				SELECT validatorindex FROM (
+					SELECT validatorindex, COUNT(*) AS c 
+					FROM attestation_assignments 
+					WHERE status = 0 AND (epoch = $1 OR epoch = $2)
+					GROUP BY validatorindex
+				) a WHERE c = 2
+			) v ON v.validatorindex = validators.validatorindex
+			LEFT JOIN validator_balances 
+				ON validator_balances.epoch = $1
+				AND validator_balances.validatorindex = validators.validatorindex
+			WHERE $1 >= activationepoch 
+				AND $1 < exitepoch 
+				AND encode(validators.pubkey::bytea, 'hex') LIKE $3
+			ORDER BY %s %s 
+			LIMIT $4 OFFSET $5`, dataQuery.OrderBy, dataQuery.OrderDir),
+		services.LatestEpoch(), services.LatestEpoch()-1, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
+
+	if err != nil {
+		logger.Errorf("error retrieving active validators data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, len(validators))
+	for i, v := range validators {
+		tableData[i] = []interface{}{
+			fmt.Sprintf("%x", v.PublicKey),
+			fmt.Sprintf("%v", v.ValidatorIndex),
+			utils.FormatBalance(v.CurrentBalance),
+			utils.FormatBalance(v.EffectiveBalance),
+			fmt.Sprintf("%v", v.Slashed),
+			[]interface{}{
+				fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEligibilityEpoch).Unix()),
+			},
+			[]interface{}{
+				fmt.Sprintf("%v", v.ActivationEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
+			},
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            dataQuery.Draw,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
