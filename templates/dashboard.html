@@ -34,7 +34,7 @@
     </div>
     <div id="stats">
       <div class="stats-box" id="stats-validators-status">
-        <div class="stats-box-header">Validators pending / active / ejected</div>
+        <div class="stats-box-header">Validators pending / active / ejected / offline</div>
         <div class="stats-box-body"></div>
       </div>
       <div class="stats-box" id="stats-earnings-total">
@@ -121,6 +121,27 @@
               <th>Activation Epoch</th>
               <th>Exit Epoch</th>
               <th>Withdrawable Epoch</th>
+            </tr>
+          </thead>
+          <tbody> </tbody>
+        </table>
+      </div>
+    </div>
+    <div id="offline-validators-table-holder">
+      <h4 class="mt-5">Offline</h4>
+      <div class="table-responsive col-sm-12">
+        <table class="table table-sm" id="offline">
+          <thead>
+            <tr>
+              <th>Public Key</th>
+              <th>Index</th>
+              <th>Current Balance</th>
+              <th>Effective Balance</th>
+              <th>Slashed</th>
+              <th>Activation Eligibility Epoch</th>
+              <th>Activation Epoch</th>
+              <th>Last Attested</th>
+              <th>Last Proposed</th>
             </tr>
           </thead>
           <tbody> </tbody>

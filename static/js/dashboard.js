@@ -1,105 +1,188 @@
 $(document).ready(function() {
-  var pendingTable = $('#pending')
-    .DataTable({
-      processing: true,
-      serverSide: false,
-      ordering: true,
-      searching: true,
-      // ajax: '/dashboard/data/pending' + window.location.search,
-      paging: false,
-      columnDefs: [
-        {
-          targets: 0,
-          data: '0',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-          }
-        },
-        {
-          targets: 1,
-          data: '1',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">' + data + '</a>'
+  var pendingTable = $('#pending').DataTable({
+    processing: true,
+    serverSide: false,
+    ordering: true,
+    searching: true,
+    paging: false,
+    columnDefs: [
+      {
+        targets: 0,
+        data: '0',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+        }
+      },
+      {
+        targets: 1,
+        data: '1',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">' + data + '</a>'
+        }
+      },
+      {
+        targets: 5,
+        data: '5',
+        render: function(data, type, row, meta) {
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+        }
+      },
+      {
+        targets: 6,
+        data: '6',
+        render: function(data, type, row, meta) {
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+        }
+      }
+    ]
+  })
+  var activeTable = $('#active').DataTable({
+    processing: true,
+    serverSide: false,
+    ordering: true,
+    searching: true,
+    paging: false,
+    drawCallback: function() {
+      $('[data-toggle="tooltip"]').tooltip()
+    },
+    columnDefs: [
+      {
+        targets: 0,
+        data: '0',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+        }
+      },
+      {
+        targets: 1,
+        data: '1',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">' + data + '</a>'
+        }
+      },
+      {
+        targets: 5,
+        data: '5',
+        render: function(data, type, row, meta) {
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+        }
+      },
+      {
+        targets: 6,
+        data: '6',
+        render: function(data, type, row, meta) {
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+        }
+      },
+      {
+        targets: 7,
+        data: '8',
+        render: function(data, type, row, meta) {
+          if (data !== null && data !== undefined) {
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+          } else {
+            return 'No Attestations Found'
           }
         }
-      ]
-    })
-  var activeTable = $('#active')
-    .DataTable({
-      processing: true,
-      serverSide: false,
-      ordering: true,
-      searching: true,
-      // ajax: '/dashboard/data/active' + window.location.search,
-      paging: false,
-      columnDefs: [
-        {
-          targets: 0,
-          data: '0',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-          }
-        },
-        {
-          targets: 1,
-          data: '1',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">' + data + '</a>'
-          }
-        },
-        // {
-        //   targets: 7,
-        //   visible: false
-        // },
-        {
-          targets: 7,
-          data: '8',
-          render: function(data, type, row, meta) {
-            if (data !== null && data !== undefined && data !== 0) {
-              return moment.unix(data).fromNow()
-            } else {
-              return 'No Attestations Found'
-            }
-          }
-        },
-        {
-          targets: 8,
-          data: '9',
-          render: function(data, type, row, meta) {
-            if (data !== null && data !== undefined && data !== 0) {
-              return moment.unix(data).fromNow()
-            } else {
-              return 'No Proposals Found'
-            }
+      },
+      {
+        targets: 8,
+        data: '9',
+        render: function(data, type, row, meta) {
+          if (data !== null && data !== undefined) {
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+          } else {
+            return 'No Proposals Found'
           }
         }
-      ]
-    })
-  var ejectedTable = $('#ejected')
-    .DataTable({
-      processing: true,
-      serverSide: false,
-      ordering: true,
-      searching: true,
-      paging: false,
-      // ajax: '/dashboard/data/ejected' + window.location.search,
-      columnDefs: [
-        {
-          targets: 0,
-          data: '0',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-          }
-        },
-        {
-          targets: 1,
-          data: '1',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">' + data + '</a>'
+      }
+    ]
+  })
+  var ejectedTable = $('#ejected').DataTable({
+    processing: true,
+    serverSide: false,
+    ordering: true,
+    searching: true,
+    paging: false,
+    columnDefs: [
+      {
+        targets: 0,
+        data: '0',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+        }
+      },
+      {
+        targets: 1,
+        data: '1',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">' + data + '</a>'
+        }
+      }
+    ]
+  })
+  var offlineTable = $('#offline').DataTable({
+    processing: true,
+    serverSide: false,
+    ordering: true,
+    searching: true,
+    paging: false,
+    drawCallback: function() {
+      $('[data-toggle="tooltip"]').tooltip()
+    },
+    columnDefs: [
+      {
+        targets: 0,
+        data: '0',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+        }
+      },
+      {
+        targets: 1,
+        data: '1',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">' + data + '</a>'
+        }
+      },
+      {
+        targets: 5,
+        data: '5',
+        render: function(data, type, row, meta) {
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+        }
+      },
+      {
+        targets: 6,
+        data: '6',
+        render: function(data, type, row, meta) {
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+        }
+      },
+      {
+        targets: 7,
+        data: '8',
+        render: function(data, type, row, meta) {
+          if (data !== null && data !== undefined) {
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+          } else {
+            return 'No Attestations Found'
           }
         }
-      ]
-    })
+      },
+      {
+        targets: 8,
+        data: '9',
+        render: function(data, type, row, meta) {
+          if (data !== null && data !== undefined) {
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+          } else {
+            return 'No Proposals Found'
+          }
+        }
+      }
+    ]
+  })
 
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -165,7 +248,8 @@ $(document).ready(function() {
   var validatorsCount = {
     pending: 0,
     active: 0,
-    ejected: 0
+    ejected: 0,
+    offline: 0
   }
   var lastStateUpdate = 0 // Date.now()
   var updatingState = false
@@ -285,20 +369,31 @@ $(document).ready(function() {
         var dataPending = []
         var dataActive = []
         var dataEjected = []
+        var dataOffline = []
 
         for (var i=0; i<result.data.length; i++) {
           var v = result.data[i]
-          if (v[6] > latestEpoch) {
+          if (v[6][0] > latestEpoch) {
             validatorsCount.pending++
             dataPending.push(v)
             var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
             if (el) el.dataset.state = 'pending'
-          } else if (v[6] <= latestEpoch) {
-            validatorsCount.active++
-            dataActive.push(v)
-            var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
-            if (el) el.dataset.state = 'active'
-          } else if (v[7] >= latestEpoch) {
+          } else if (v[6][0] <= latestEpoch) {
+            // if the last attestation is missed
+            var lastAttestationIsMissed = v[8] && v[8][2] === 2
+            var lastProposalIsMissed = v[9] && v[9][2] === 2
+            if (lastAttestationIsMissed || lastProposalIsMissed) {
+              validatorsCount.offline++
+              dataOffline.push(v)
+              var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
+              if (el) el.dataset.state = 'offline'
+            } else {
+              validatorsCount.active++
+              dataActive.push(v)
+              var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
+              if (el) el.dataset.state = 'active'
+            }
+          } else if (v[7][0] >= latestEpoch) {
             validatorsCount.ejected++
             dataEjected.push(v)
             var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
@@ -306,19 +401,23 @@ $(document).ready(function() {
           }
         }
         document.getElementById('stats').style.display = 'flex'
-        document.querySelector('#stats-validators-status .stats-box-body').innerText = `${validatorsCount.pending} / ${validatorsCount.active} / ${validatorsCount.ejected}`
+        document.querySelector('#stats-validators-status .stats-box-body').innerText = 
+          `${validatorsCount.pending} / ${validatorsCount.active} / ${validatorsCount.ejected} / ${validatorsCount.offline}`
 
         pendingTable.clear()
         activeTable.clear()
-        activeTable.clear()
+        ejectedTable.clear()
+        offlineTable.clear()
 
         if (validatorsCount.pending) pendingTable.rows.add(dataPending).draw()
         if (validatorsCount.active) activeTable.rows.add(dataActive).draw()
         if (validatorsCount.ejected) ejectedTable.rows.add(dataEjected).draw()
+        if (validatorsCount.offline) offlineTable.rows.add(dataOffline).draw()
 
         document.getElementById('pending-validators-table-holder').style.display = validatorsCount.pending ? 'block' : 'none'
         document.getElementById('active-validators-table-holder').style.display  = validatorsCount.active  ? 'block' : 'none'
         document.getElementById('ejected-validators-table-holder').style.display = validatorsCount.ejected ? 'block' : 'none'
+        document.getElementById('offline-validators-table-holder').style.display = validatorsCount.offline ? 'block' : 'none'
         renderDashboardInfo()
       }
     })
@@ -352,13 +451,6 @@ $(document).ready(function() {
     }
     document.getElementById('chart-holder').style.display = 'block'
     var qryStr = '?validators=' + validators.join(',')
-    // $.ajax({
-    //   url: '/dashboard/data/balance' + qryStr,
-    //   success: function(result) {
-    //     var t1 = Date.now()
-    //     console.log(`loaded balance2-data: length: ${result.length}, fetch: ${t1 - t0}ms`)
-    //   }
-    // })
     $.ajax({
       url: '/dashboard/data/balance' + qryStr,
       success: function(result) {

@@ -42,6 +42,9 @@ ul.multiselect li.item[data-state='pending'] {
   background-color: lightyellow;
 }
 ul.multiselect li.item[data-state='ejected'] {
+  background-color: lightgray;
+}
+ul.multiselect li.item[data-state='offline'] {
   background-color: lightcoral;
 }
 
@@ -68,7 +71,8 @@ ul.multiselect input:focus {
 
 #pending-validators-table-holder,
 #active-validators-table-holder,
-#ejected-validators-table-holder {
+#ejected-validators-table-holder,
+#offline-validators-table-holder {
   display: none;
 }
 
@@ -89,7 +93,9 @@ ul.multiselect input:focus {
   margin: 10px;
   padding: 10px;
   /*border: 1px solid black;*/
-  background: #e1d8d8;
+  /*background: #e1d8d8;*/
+  box-shadow: 0 2px 8px 0 var(--shadow-light);
+  border-radius: 10px;
 }
 .stats-box > .stats-box-header {
   font-size: 12px;

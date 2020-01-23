@@ -91,8 +91,11 @@ type ValidatorsPageDataValidators struct {
 	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
-	LastAttested               *int64 `db:"lastattested"`
-	LastProposed               *int64 `db:"lastproposed"`
+	LastAttestedEpoch          *int64 `db:"lastattestedepoch"`
+	LastAttestedStatus         *int64 `db:"lastattestedstatus"`
+	LastAttestedSlot           *int64 `db:"lastattestedslot"`
+	LastProposedEpoch          *int64 `db:"lastproposedepoch"`
+	LastProposedStatus         *int64 `db:"lastproposedstatus"`
 }
 
 // ValidatorPageData is a struct to hold data for the validators page
