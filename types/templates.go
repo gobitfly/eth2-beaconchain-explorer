@@ -91,6 +91,11 @@ type ValidatorsPageDataValidators struct {
 	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
+	LastAttestedEpoch          *int64 `db:"lastattestedepoch"`
+	LastAttestedStatus         *int64 `db:"lastattestedstatus"`
+	LastAttestedSlot           *int64 `db:"lastattestedslot"`
+	LastProposedEpoch          *int64 `db:"lastproposedepoch"`
+	LastProposedStatus         *int64 `db:"lastproposedstatus"`
 	Status                     string
 }
 

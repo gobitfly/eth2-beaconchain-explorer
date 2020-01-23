@@ -53,6 +53,13 @@ func parseDataQueryParams(r *http.Request) (*ValidatorDataQueryParams, error) {
 		orderBy = "activationeligibilityepoch"
 	case "6":
 		orderBy = "activationepoch"
+	case "7":
+		orderBy = "lastattestedslot"
+		if orderDir == "desc" {
+			orderDir = "desc nulls last"
+		} else {
+			orderDir = "asc nulls first"
+		}
 	default:
 		orderBy = "validatorindex"
 	}
@@ -343,7 +350,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 				AND validator_balances.validatorindex = validators.validatorindex
 			WHERE $1 >= exitepoch
 				AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-			ORDER BY %s %s 
+			ORDER BY %s %s
 			LIMIT $3 OFFSET $4`, dataQuery.OrderBy, dataQuery.OrderDir),
 		services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
@@ -431,7 +438,8 @@ func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
 				validators.activationeligibilityepoch, 
 				validators.activationepoch, 
 				validators.exitepoch,
-				validator_balances.balance
+				validator_balances.balance,
+				(SELECT MAX(attesterslot) FROM attestation_assignments WHERE validators.validatorindex = validatorindex AND status = 1) as lastattestedslot
 			FROM validators
 			INNER JOIN (
 				SELECT validatorindex FROM (
@@ -447,18 +455,27 @@ func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
 			WHERE $1 >= activationepoch 
 				AND $1 < exitepoch 
 				AND encode(validators.pubkey::bytea, 'hex') LIKE $3
-			ORDER BY %s %s 
+			ORDER BY %s %s
 			LIMIT $4 OFFSET $5`, dataQuery.OrderBy, dataQuery.OrderDir),
 		services.LatestEpoch(), services.LatestEpoch()-1, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
-		logger.Errorf("error retrieving active validators data: %v", err)
+		logger.Errorf("error retrieving offline validators data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
 	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
+		var lastAttested interface{}
+		if v.LastAttestedSlot == nil {
+			lastAttested = nil
+		} else {
+			lastAttested = []interface{}{
+				fmt.Sprintf("%v", *v.LastAttestedSlot),
+				fmt.Sprintf("%v", utils.SlotToTime(uint64(*v.LastAttestedSlot)).Unix()),
+			}
+		}
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
@@ -473,6 +490,7 @@ func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%v", v.ActivationEpoch),
 				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
 			},
+			lastAttested,
 		}
 	}
 
