@@ -1,13 +1,21 @@
 /*
-Lookup table to store the index - pubkey association
+This table is used to store the current state (latest exported epoch) of all validators
+It also acts as a lookup-table to store the index-pubkey association
 In order to save db space we only use the unique validator index in all other tables
 In the future it is better to replace this table with an in memory cache (redis)
 */
 drop table if exists validators;
 create table validators (
-   validatorindex int not null,
-   pubkey bytea not null,
-   primary key (validatorindex)
+    validatorindex int not null,
+    pubkey bytea not null,
+    withdrawableepoch bigint not null,
+    withdrawalcredentials bytea not null,
+    effectivebalance bigint not null,
+    slashed bool not null,
+    activationeligibilityepoch bigint not null,
+    activationepoch bigint not null,
+    exitepoch bigint not null,
+    primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
 
@@ -54,6 +62,7 @@ create table attestation_assignments (
       status int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
       primary key (epoch, validatorindex, attesterslot, committeeindex)
 );
+create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
 
 drop table if exists beacon_committees;
 create table beacon_committees (
