@@ -262,6 +262,10 @@ a:hover {
   text-decoration: underline;
 }
 
+a:visited {
+  color: var(--link-color);
+}
+
 a:not([href]), a:not([href]):hover {
   color: inherit;
   text-decoration: none;
