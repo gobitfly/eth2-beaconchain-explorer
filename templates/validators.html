@@ -177,6 +177,17 @@
           render: function(data, type, row, meta) {
             return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
           }
+        },
+        {
+          targets: 7,
+          data: '7',
+          render: function(data, type, row, meta) {
+            if (data !== null && data !== undefined) {
+              return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (slot ${data[0]})</span>`
+            } else {
+              return 'No Attestations Found'
+            }
+          }
         }
       ]
     })
@@ -281,6 +292,7 @@
             <th>Slashed</th>
             <th>Eligible for Activation</th>
             <th>Active since</th>
+            <th>Last Attestation</th>
           </tr>
         </thead>
         <tbody> </tbody>

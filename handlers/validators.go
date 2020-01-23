@@ -411,7 +411,7 @@ func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
 			SELECT validatorindex, COUNT(*) AS c 
 			FROM attestation_assignments 
 			WHERE status = 0 AND (epoch = $1 OR epoch = $2)
-			GROUOP BY validatorindex
+			GROUP BY validatorindex
 		) a WHERE c = 2`, services.LatestEpoch(), services.LatestEpoch()-1)
 	if err != nil {
 		logger.Errorf("error retrieving ejected validator count: %v", err)
@@ -430,7 +430,8 @@ func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
 				validators.activationeligibilityepoch, 
 				validators.activationepoch, 
 				validators.exitepoch,
-				validator_balances.balance
+				validator_balances.balance,
+				(SELECT MAX(attesterslot) FROM attestation_assignments WHERE validators.validatorindex = validatorindex AND status = 1) as lastattestedslot
 			FROM validators
 			INNER JOIN (
 				SELECT validatorindex FROM (
@@ -458,6 +459,15 @@ func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
+		var lastAttested interface{}
+		if v.LastAttestedSlot == nil {
+			lastAttested = nil
+		} else {
+			lastAttested = []interface{}{
+				fmt.Sprintf("%v", *v.LastAttestedSlot),
+				fmt.Sprintf("%v", utils.SlotToTime(uint64(*v.LastAttestedSlot)).Unix()),
+			}
+		}
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
@@ -472,6 +482,7 @@ func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%v", v.ActivationEpoch),
 				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
 			},
+			lastAttested,
 		}
 	}
 
