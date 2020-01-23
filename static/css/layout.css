@@ -363,3 +363,11 @@ a.at-button.toggle-icon {
 .text-monospace {
   font-family: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
+
+.fa-search {
+  position: absolute;
+  display: content;
+  right: 20px;
+  top: 13.5px;
+  color: grey;
+}
