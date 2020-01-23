@@ -32,6 +32,8 @@ create table validator_set (
     exitepoch bigint not null,
     primary key (validatorindex, epoch)
 );
+create index idx_validator_set_validatorindex on validator_set (validatorindex);
+create index idx_validator_set_epoch on validator_set (epoch);
 
 -- drop table if exists validator_assignments;
 -- create table validator_assignments (
@@ -52,6 +54,7 @@ create table proposal_assignments (
       status int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
       primary key (epoch, validatorindex, proposerslot)
 );
+create index idx_proposal_assignments_validatorindex on proposal_assignments (validatorindex);
 
 drop table if exists attestation_assignments;
 create table attestation_assignments (
@@ -62,6 +65,7 @@ create table attestation_assignments (
       status int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
       primary key (epoch, validatorindex, attesterslot, committeeindex)
 );
+create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
 
 drop table if exists beacon_committees;
 create table beacon_committees (
@@ -79,6 +83,8 @@ create table validator_balances (
     balance bigint not null,
     primary key (validatorindex, epoch)
 );
+create index idx_validator_balances_validatorindex on validator_balances (validatorindex);
+create index idx_validator_balances_epoch on validator_balances (epoch);
 
 drop table if exists attestationpool;
 create table attestationpool (

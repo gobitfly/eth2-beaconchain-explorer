@@ -24,16 +24,6 @@ $(document).ready(function() {
         }
       ]
     })
-    .on('xhr.dt', function(e, settings, json, xhr) {
-      // hide table if there are no data
-      validatorsCount.pending = json.recordsFiltered
-      renderDashboardInfo()
-      for (var i = 0; i < json.data.length; i++) {
-        var el = document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`)
-        if (el) el.dataset.state = 'pending'
-      }
-      document.getElementById('pending-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
-    })
   var activeTable = $('#active')
     .DataTable({
       processing: true,
@@ -57,9 +47,13 @@ $(document).ready(function() {
             return '<a href="/validator/' + data + '">' + data + '</a>'
           }
         },
+        // {
+        //   targets: 7,
+        //   visible: false
+        // },
         {
           targets: 7,
-          data: '7',
+          data: '8',
           render: function(data, type, row, meta) {
             if (data !== null && data !== undefined && data !== 0) {
               return moment.unix(data).fromNow()
@@ -70,7 +64,7 @@ $(document).ready(function() {
         },
         {
           targets: 8,
-          data: '8',
+          data: '9',
           render: function(data, type, row, meta) {
             if (data !== null && data !== undefined && data !== 0) {
               return moment.unix(data).fromNow()
@@ -80,16 +74,6 @@ $(document).ready(function() {
           }
         }
       ]
-    })
-    .on('xhr.dt', function(e, settings, json, xhr) {
-      // hide table if there are no data
-      validatorsCount.active = json.recordsFiltered
-      renderDashboardInfo()
-      for (var i = 0; i < json.data.length; i++) {
-        var el = document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`)
-        if (el) el.dataset.state = 'active'
-      }
-      document.getElementById('active-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
   var ejectedTable = $('#ejected')
     .DataTable({
@@ -115,16 +99,6 @@ $(document).ready(function() {
           }
         }
       ]
-    })
-    .on('xhr.dt', function(e, settings, json, xhr) {
-      // hide table if there are no data
-      validatorsCount.ejected = json.recordsFiltered
-      renderDashboardInfo()
-      for (var i = 0; i < json.data.length; i++) {
-        var el = document.querySelector(`#selected-validators .item[data-validator-index="${json.data[i][1]}"]`)
-        if (el) el.dataset.state = 'ejected'
-      }
-      document.getElementById('ejected-validators-table-holder').style.display = json.data.length ? 'block' : 'none'
     })
 
   var bhValidators = new Bloodhound({
@@ -165,9 +139,7 @@ $(document).ready(function() {
     }
   })
   $('.typeahead-dashboard').on('input', function() {
-    $('.tt-suggestion')
-      .first()
-      .addClass('tt-cursor')
+    $('.tt-suggestion').first().addClass('tt-cursor')
   })
   $('.typeahead-dashboard').on('typeahead:select', function(ev, sug) {
     addValidator(sug.index)
@@ -195,7 +167,7 @@ $(document).ready(function() {
     active: 0,
     ejected: 0
   }
-  var lastStateUpdate = Date.now()
+  var lastStateUpdate = 0 // Date.now()
   var updatingState = false
 
   setValidatorsFromURL()
@@ -219,6 +191,7 @@ $(document).ready(function() {
   }
 
   function renderDashboardInfo() {
+    // console.log('render dashboardinfo')
     var el = document.getElementById('dashboard-info')
     el.innerText = `Found ${validatorsCount.pending} pending, ${validatorsCount.active} active and ${validatorsCount.ejected} ejected validators`
   }
@@ -267,27 +240,86 @@ $(document).ready(function() {
   }
 
   function updateState() {
+    // console.log('updateState 1')
     // delay update if validator-set changes with high frequency
-    var now = Date.now()
-    var dt = now - lastStateUpdate
-    if (dt < 1000) {
-      if (updatingState) return
-      updatingState = true
-      setTimeout(updateState, 1000 - dt)
-      return
-    }
-    lastStateUpdate = Date.now()
-    updatingState = false
+    // var now = Date.now()
+    // var dt = now - lastStateUpdate
+    // if (dt < 1000) {
+    //   console.log('updateState 2', updatingState)
+    //   if (updatingState) return
+    //   updatingState = true
+    //   setTimeout(updateState, 1000 - dt)
+    //   return
+    // }
+    // lastStateUpdate = Date.now()
+    // updatingState = false
     var qryStr = '?validators=' + validators.join(',')
     var newUrl = window.location.pathname + qryStr
     window.history.pushState(null, 'Dashboard', newUrl)
     var t0 = Date.now()
     $.ajax({
+      url: '/dashboard/data/earnings' + qryStr,
+      success: function(result) {
+        var t1 = Date.now()
+        console.log(`loaded earnings: fetch: ${t1-t0}ms`)
+        if (!result) return
+        document.getElementById('stats').style.display = 'flex'
+        document.querySelector('#stats-earnings-total .stats-box-body').innerText = (result.total/1e9).toFixed(4)+' ETH'
+        document.querySelector('#stats-earnings-lastDay .stats-box-body').innerText = (result.lastDay/1e9).toFixed(4)+' ETH'
+        document.querySelector('#stats-earnings-lastWeek .stats-box-body').innerText = (result.lastWeek/1e9).toFixed(4)+' ETH'
+        document.querySelector('#stats-earnings-lastMonth .stats-box-body').innerText = (result.lastMonth/1e9).toFixed(4)+' ETH'
+      }
+    })
+    $.ajax({
       url: '/dashboard/data/validators' + qryStr,
       success: function(result) {
-        if (!result) return
         var t1 = Date.now()
         console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1-t0}ms`)
+        if (!result || !result.data.length) return        
+        // pubkey, idx, currbal, effbal, slashed, acteligepoch, actepoch, exitepoch
+        var latestEpoch = result.latestEpoch
+        validatorsCount.pending = 0
+        validatorsCount.active  = 0
+        validatorsCount.ejected = 0
+
+        var dataPending = []
+        var dataActive = []
+        var dataEjected = []
+
+        for (var i=0; i<result.data.length; i++) {
+          var v = result.data[i]
+          if (v[6] > latestEpoch) {
+            validatorsCount.pending++
+            dataPending.push(v)
+            var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
+            if (el) el.dataset.state = 'pending'
+          } else if (v[6] <= latestEpoch) {
+            validatorsCount.active++
+            dataActive.push(v)
+            var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
+            if (el) el.dataset.state = 'active'
+          } else if (v[7] >= latestEpoch) {
+            validatorsCount.ejected++
+            dataEjected.push(v)
+            var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
+            if (el) el.dataset.state = 'ejected'
+          }
+        }
+        document.getElementById('stats').style.display = 'flex'
+        document.querySelector('#stats-validators-status .stats-box-body').innerText = `${validatorsCount.pending} / ${validatorsCount.active} / ${validatorsCount.ejected}`
+
+        pendingTable.clear()
+        activeTable.clear()
+        activeTable.clear()
+
+        if (validatorsCount.pending) pendingTable.rows.add(dataPending).draw()
+        if (validatorsCount.active) activeTable.rows.add(dataActive).draw()
+        if (validatorsCount.ejected) ejectedTable.rows.add(dataEjected).draw()
+
+        document.getElementById('pending-validators-table-holder').style.display = validatorsCount.pending ? 'block' : 'none'
+        document.getElementById('active-validators-table-holder').style.display  = validatorsCount.active  ? 'block' : 'none'
+        document.getElementById('ejected-validators-table-holder').style.display = validatorsCount.ejected ? 'block' : 'none'
+        renderDashboardInfo()
       }
     })
     // $.ajax({
@@ -320,6 +352,13 @@ $(document).ready(function() {
     }
     document.getElementById('chart-holder').style.display = 'block'
     var qryStr = '?validators=' + validators.join(',')
+    // $.ajax({
+    //   url: '/dashboard/data/balance' + qryStr,
+    //   success: function(result) {
+    //     var t1 = Date.now()
+    //     console.log(`loaded balance2-data: length: ${result.length}, fetch: ${t1 - t0}ms`)
+    //   }
+    // })
     $.ajax({
       url: '/dashboard/data/balance' + qryStr,
       success: function(result) {

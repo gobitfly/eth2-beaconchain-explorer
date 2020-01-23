@@ -75,3 +75,34 @@ ul.multiselect input:focus {
 #chart-holder {
   display: none;
 }
+
+#stats {
+  display: none;
+  flex-wrap: wrap;
+}
+.stats-box {
+  flex: 1;
+  /*flex-basis: auto;
+  flex-grow: 1;
+  min-width: 100px;
+  max-width: 120px;*/
+  margin: 10px;
+  padding: 10px;
+  /*border: 1px solid black;*/
+  background: #e1d8d8;
+}
+.stats-box > .stats-box-header {
+  font-size: 12px;
+}
+.stats-box > .stats-box-body {
+  font-size: 24px;
+}
+
+@media (max-width: 1300px) {
+  .stats-box > .stats-box-header {
+    font-size: 12px;
+  }
+  .stats-box > .stats-box-body {
+    font-size: 18px;
+  }
+}

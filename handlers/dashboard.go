@@ -19,9 +19,9 @@ import (
 
 var dashboardTemplate = template.Must(template.New("dashboard").ParseFiles("templates/layout.html", "templates/dashboard.html"))
 
-func parseValidatorsFromQueryString(str string) ([]uint64, error) {
+func parseValidatorsFromQueryString(str string) ([]int64, error) {
 	if str == "" {
-		return []uint64{}, nil
+		return []int64{}, nil
 	}
 
 	strSplit := strings.Split(str, ",")
@@ -29,16 +29,16 @@ func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 
 	// we only support up to 100 validators
 	if strSplitLen > 100 {
-		return []uint64{}, fmt.Errorf("Too much validators")
+		return []int64{}, fmt.Errorf("Too much validators")
 	}
 
-	validators := make([]uint64, strSplitLen)
-	keys := make(map[uint64]bool, strSplitLen)
+	validators := make([]int64, strSplitLen)
+	keys := make(map[int64]bool, strSplitLen)
 
 	for i, vStr := range strSplit {
-		v, err := strconv.ParseUint(vStr, 10, 64)
+		v, err := strconv.ParseInt(vStr, 10, 64)
 		if err != nil {
-			return []uint64{}, err
+			return []int64{}, err
 		}
 		// make sure keys are uniq
 		if exists := keys[v]; exists {
@@ -99,9 +99,9 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `SELECT
-			validator_balances.epoch,
-			SUM(validator_balances.balance) AS balance,
-			SUM(v.effectivebalance) AS effectivebalance,
+			COALESCE(validator_balances.epoch,0) as epoch,
+			SUM(COALESCE(validator_balances.balance,0)) AS balance,
+			SUM(COALESCE(v.effectivebalance,0)) AS effectivebalance,
 			COUNT(*) AS validatorcount
 		FROM (
 			SELECT
@@ -110,9 +110,9 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 				effectivebalance
 			FROM validator_set
 			WHERE
-				validatorindex = ANY($1)
+				validatorindex = ANY('{0}')
 				AND epoch > $2
-				AND epoch > activationepoch 
+				AND epoch >= activationepoch 
 				AND epoch < exitepoch
 		) AS v
 		LEFT JOIN validator_balances
@@ -121,6 +121,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		GROUP BY validator_balances.epoch
 		ORDER BY validator_balances.epoch ASC`
 
+	fmt.Println("=================", queryValidators, queryOffsetEpoch)
 	data := []*types.DashboardValidatorBalanceHistory{}
 	err = db.DB.Select(&data, query, queryValidatorsArr, queryOffsetEpoch)
 	if err != nil {
@@ -143,6 +144,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DashboardDataBalance2 is ~20% than DashboardDataBalance
 func DashboardDataBalance2(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -194,7 +196,7 @@ func DashboardDataBalance2(w http.ResponseWriter, r *http.Request) {
 		FROM validator_set
 		WHERE validatorindex = ANY($1)
 		AND epoch > $2 AND epoch > activationepoch AND epoch < exitepoch
-		GROUP BY epoch 
+		GROUP BY epoch
 		ORDER BY epoch DESC`
 		err := db.DB.Select(&data1, query, queryValidatorsArr, queryOffsetEpoch)
 		if err != nil {
@@ -208,7 +210,7 @@ func DashboardDataBalance2(w http.ResponseWriter, r *http.Request) {
 		query := `SELECT epoch, SUM(balance) as balance
 		FROM validator_balances
 		WHERE validatorindex = ANY($1) AND epoch > $2
-		GROUP BY epoch 
+		GROUP BY epoch
 		ORDER BY epoch DESC`
 		err := db.DB.Select(&data2, query, queryValidatorsArr, queryOffsetEpoch)
 		if err != nil {
@@ -240,8 +242,8 @@ func DashboardDataBalance2(w http.ResponseWriter, r *http.Request) {
 		}
 		balanceHistoryChartData[i][0] = float64(utils.EpochToTime(item.Epoch).Unix() * 1000)
 		balanceHistoryChartData[i][1] = float64(item.ValidatorCount)
-		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9
 		balanceHistoryChartData[i][2] = float64(data2[i].Balance) / 1e9
+		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9
 	}
 
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
@@ -268,7 +270,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 		Count  uint
 	}{}
 
-	err = db.DB.Select(&proposals, "select slot / 7200 as day, status, count(*) FROM blocks WHERE proposer = ANY($1) group by day, status order by day;", filter)
+	err = db.DB.Select(&proposals, "select slot / 7200 as day, status, count(*) FROM blocks WHERE proposer = ANY($1) group by day, status order by day", filter)
 	if err != nil {
 		logger.WithError(err).Error("Error retrieving Daily Proposed Blocks blocks count")
 		http.Error(w, "Internal server error", 503)
@@ -357,219 +359,32 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
-	// dataQuery, err := parseDataQueryParams(r)
-	// if err != nil {
-	// 	http.Error(w, "Invalid query", 400)
-	// 	return
-	// }
-
-	var totalCount uint64
-
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch < activationepoch AND validator_set.validatorindex = ANY($2)", services.LatestEpoch(), filter)
-	if err != nil {
-		logger.Errorf("Error retrieving validator count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators, `SELECT
-			validator_set.epoch,
-			validator_set.validatorindex,
+			validators.validatorindex,
 			validators.pubkey,
-			validator_set.withdrawableepoch,
-			validator_set.effectivebalance,
-			validator_set.slashed,
-			validator_set.activationeligibilityepoch,
-			validator_set.activationepoch,
-			validator_set.exitepoch,
+			validators.withdrawableepoch,
+			validators.effectivebalance,
+			validators.slashed,
+			validators.activationeligibilityepoch,
+			validators.activationepoch,
+			validators.exitepoch,
 			validator_balances.balance,
-			(select max(epoch) from attestation_assignments where validator_set.validatorindex = attestation_assignments.validatorindex and status = 1) as lastattested,
-			(select max(epoch) from proposal_assignments where validator_set.validatorindex = proposal_assignments.validatorindex and status = 1) as lastproposed
-		FROM validator_set
+			case when activationepoch <= $1 then
+				(select max(epoch) from attestation_assignments where validators.validatorindex = attestation_assignments.validatorindex and status = 1) 
+			else NULL end as lastattested,
+			case when activationepoch <= $1 then
+				(select max(epoch) from proposal_assignments where validators.validatorindex = proposal_assignments.validatorindex and status = 1) 
+			else NULL end as lastproposed
+		FROM validators
 		LEFT JOIN validator_balances
-			ON validator_set.epoch = validator_balances.epoch
-			AND validator_set.validatorindex = validator_balances.validatorindex
-		LEFT JOIN validators
-			ON validator_set.validatorindex = validators.validatorindex
-		WHERE validator_set.validatorindex = ANY($1)
-		LIMIT 100`, filter)
+			ON $1 = validator_balances.epoch
+			AND validators.validatorindex = validator_balances.validatorindex
+		WHERE validators.validatorindex = ANY($2)
+		LIMIT 100`, services.LatestEpoch(), filter)
 
 	if err != nil {
 		logger.Errorf("Error retrieving validator data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	tableData := make([][]interface{}, len(validators))
-	for i, v := range validators {
-		tableData[i] = []interface{}{
-			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.ValidatorIndex),
-			utils.FormatBalance(v.CurrentBalance),
-			utils.FormatBalance(v.EffectiveBalance),
-			fmt.Sprintf("%v", v.Slashed),
-			fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-			fmt.Sprintf("%v", v.ActivationEpoch),
-		}
-	}
-
-	type dataType struct {
-		LatestEpoch uint64          `json:"latestEpoch"`
-		Data        [][]interface{} `json:"data"`
-	}
-	data := &dataType{
-		LatestEpoch: services.LatestEpoch(),
-		Data:        tableData,
-	}
-
-	err = json.NewEncoder(w).Encode(data)
-	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
-	}
-}
-
-func DashboardDataValidatorsPending(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	q := r.URL.Query()
-
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
-	if err != nil {
-		http.Error(w, "Invalid query", 400)
-		return
-	}
-	filter := pq.Array(filterArr)
-
-	dataQuery, err := parseDataQueryParams(r)
-	if err != nil {
-		http.Error(w, "Invalid query", 400)
-		return
-	}
-
-	var totalCount uint64
-
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch < activationepoch AND validator_set.validatorindex = ANY($2)", services.LatestEpoch(), filter)
-	if err != nil {
-		logger.Errorf("Error retrieving pending validator count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
-			validator_set.epoch,
-			validator_set.validatorindex, 
-			validators.pubkey, 
-			validator_set.withdrawableepoch, 
-			validator_set.effectivebalance, 
-			validator_set.slashed, 
-			validator_set.activationeligibilityepoch, 
-			validator_set.activationepoch, 
-			validator_set.exitepoch,
-			validator_balances.balance
-		FROM validator_set
-		LEFT JOIN validator_balances 
-			ON validator_set.epoch = validator_balances.epoch
-			AND validator_set.validatorindex = validator_balances.validatorindex
-		LEFT JOIN validators 
-			ON validator_set.validatorindex = validators.validatorindex
-		WHERE validator_set.epoch = $1 
-			AND validator_set.epoch < activationepoch
-			AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-			AND validator_set.validatorindex = ANY($4)
-		ORDER BY %s %s 
-		LIMIT 100 OFFSET $3`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Start, filter)
-
-	if err != nil {
-		logger.Errorf("Error retrieving pending validator data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	tableData := make([][]interface{}, len(validators))
-	for i, v := range validators {
-		tableData[i] = []interface{}{
-			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.ValidatorIndex),
-			utils.FormatBalance(v.CurrentBalance),
-			utils.FormatBalance(v.EffectiveBalance),
-			fmt.Sprintf("%v", v.Slashed),
-			fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-			fmt.Sprintf("%v", v.ActivationEpoch),
-		}
-	}
-
-	data := &types.DataTableResponse{
-		Draw:            dataQuery.Draw,
-		RecordsTotal:    totalCount,
-		RecordsFiltered: totalCount,
-		Data:            tableData,
-	}
-
-	err = json.NewEncoder(w).Encode(data)
-	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
-	}
-}
-
-func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	q := r.URL.Query()
-
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
-	if err != nil {
-		http.Error(w, "Invalid query", 400)
-		return
-	}
-	filter := pq.Array(filterArr)
-
-	dataQuery, err := parseDataQueryParams(r)
-	if err != nil {
-		http.Error(w, "Invalid query: "+err.Error(), 400)
-		return
-	}
-
-	var totalCount uint64
-
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch > activationepoch AND epoch < exitepoch AND validator_set.validatorindex = ANY($2)", services.LatestEpoch(), filter)
-	if err != nil {
-		logger.Errorf("Error retrieving active validator count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
-			validator_set.epoch, 
-			validator_set.validatorindex, 
-			validators.pubkey, 
-			validator_set.withdrawableepoch, 
-			validator_set.effectivebalance, 
-			validator_set.slashed, 
-			validator_set.activationeligibilityepoch, 
-			validator_set.activationepoch, 
-			validator_set.exitepoch,
-			validator_balances.balance,
-			(select max(epoch) from attestation_assignments where validator_set.validatorindex = attestation_assignments.validatorindex and status = 1) as lastattested,
-			(select max(epoch) from proposal_assignments where validator_set.validatorindex = proposal_assignments.validatorindex and status = 1) as lastproposed
-		FROM validator_set
-		LEFT JOIN validator_balances 
-			ON validator_set.epoch = validator_balances.epoch
-			AND validator_set.validatorindex = validator_balances.validatorindex
-		LEFT JOIN validators 
-			ON validator_set.validatorindex = validators.validatorindex
-		WHERE validator_set.epoch = $1 
-			AND validator_set.epoch > activationepoch 
-			AND validator_set.epoch < exitepoch 
-			AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-			AND validator_set.validatorindex = ANY($4)
-		ORDER BY %s %s 
-		LIMIT 100 OFFSET $3`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Start, filter)
-
-	if err != nil {
-		logger.Errorf("Error retrieving active validators data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -598,16 +413,19 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v", v.Slashed),
 			fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
 			fmt.Sprintf("%v", v.ActivationEpoch),
-			attested,
-			proposed,
+			fmt.Sprintf("%v", v.ExitEpoch),
+			fmt.Sprintf("%v", *attested),
+			fmt.Sprintf("%v", *proposed),
 		}
 	}
 
-	data := &types.DataTableResponse{
-		Draw:            dataQuery.Draw,
-		RecordsTotal:    totalCount,
-		RecordsFiltered: totalCount,
-		Data:            tableData,
+	type dataType struct {
+		LatestEpoch uint64          `json:"latestEpoch"`
+		Data        [][]interface{} `json:"data"`
+	}
+	data := &dataType{
+		LatestEpoch: services.LatestEpoch(),
+		Data:        tableData,
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -616,88 +434,143 @@ func DashboardDataValidatorsActive(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DashboardDataValidatorsEjected(w http.ResponseWriter, r *http.Request) {
+func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
 
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"))
 	if err != nil {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	filter := pq.Array(filterArr)
+	queryValidatorsArr := pq.Array(queryValidators)
 
-	dataQuery, err := parseDataQueryParams(r)
-	if err != nil {
-		http.Error(w, "Invalid query", 400)
-		return
+	latestEpoch := services.LatestEpoch()
+
+	oneDayEpochs := uint64(3600 * 24 * 1 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
+	oneWeekEpochs := oneDayEpochs * 7
+	oneMonthEpochs := oneDayEpochs * 30
+
+	lastDayEpoch := uint64(0)
+	if latestEpoch > oneDayEpochs {
+		lastDayEpoch = latestEpoch - oneDayEpochs
 	}
 
-	var totalCount uint64
-
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_set WHERE epoch = $1 AND epoch > exitepoch AND validator_set.validatorindex = ANY($2)", services.LatestEpoch(), filter)
-	if err != nil {
-		logger.Errorf("Error retrieving ejected validator count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+	lastWeekEpoch := uint64(0)
+	if latestEpoch > oneWeekEpochs {
+		lastWeekEpoch = latestEpoch - oneWeekEpochs
 	}
 
-	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, fmt.Sprintf(`SELECT 
-			validator_set.epoch,
-			validator_set.validatorindex, 
-			validators.pubkey, 
-			validator_set.withdrawableepoch, 
-			validator_set.effectivebalance, 
-			validator_set.slashed, 
-			validator_set.activationeligibilityepoch, 
-			validator_set.activationepoch, 
-			validator_set.exitepoch,
-			validator_balances.balance
-		FROM validator_set 
-		LEFT JOIN validator_balances 
-			ON validator_set.epoch = validator_balances.epoch
-			AND validator_set.validatorindex = validator_balances.validatorindex
-		LEFT JOIN validators 
-			ON validator_set.validatorindex = validators.validatorindex
-		WHERE validator_set.epoch = $1 
-			AND validator_set.epoch > exitepoch
-			AND encode(validators.pubkey::bytea, 'hex') LIKE $2
-			AND validator_set.validatorindex = ANY($4)
-		ORDER BY %s %s 
-		LIMIT 100 OFFSET $3`, dataQuery.OrderBy, dataQuery.OrderDir), services.LatestEpoch(), "%"+dataQuery.Search+"%", dataQuery.Start, filter)
-
-	if err != nil {
-		logger.Errorf("Error retrieving ejected validators data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+	lastMonthEpoch := uint64(0)
+	if latestEpoch > oneMonthEpochs {
+		lastWeekEpoch = latestEpoch - oneMonthEpochs
 	}
 
-	tableData := make([][]interface{}, len(validators))
-	for i, v := range validators {
-		tableData[i] = []interface{}{
-			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.ValidatorIndex),
-			utils.FormatBalance(v.CurrentBalance),
-			utils.FormatBalance(v.EffectiveBalance),
-			fmt.Sprintf("%v", v.Slashed),
-			fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-			fmt.Sprintf("%v", v.ActivationEpoch),
-			fmt.Sprintf("%v", v.ExitEpoch),
-			fmt.Sprintf("%v", v.WithdrawableEpoch),
+	earningsTotalQuery := `SELECT 
+	SUM(last.balance - first.balance) AS earnings
+FROM (
+	SELECT 
+		validatorindex, 
+		MIN(epoch) AS firstepoch, 
+		MAX(epoch) AS lastepoch
+	FROM validator_balances
+	WHERE validatorindex = any($1)
+	GROUP by validatorindex
+) minmaxepoch
+INNER JOIN validator_balances first
+	ON first.validatorindex = minmaxepoch.validatorindex
+	AND first.epoch = minmaxepoch.firstepoch
+INNER join validator_balances last
+	ON last.validatorindex = minmaxepoch.validatorindex
+	AND last.epoch = minmaxepoch.lastepoch`
+
+	earningsRangeQuery := `SELECT 
+	SUM(last.balance - first.balance) AS earnings
+FROM (
+	SELECT 
+		validatorindex, 
+		MIN(epoch) AS firstepoch, 
+		MAX(epoch) AS lastepoch
+	FROM validator_balances
+	WHERE validatorindex = any($2) AND epoch > $1
+	GROUP by validatorindex
+) minmaxepoch
+INNER JOIN validator_balances first
+	ON first.validatorindex = minmaxepoch.validatorindex
+	AND first.epoch = minmaxepoch.firstepoch
+INNER join validator_balances last
+	ON last.validatorindex = minmaxepoch.validatorindex
+	AND last.epoch = minmaxepoch.lastepoch`
+
+	var earningsTotal int64
+	var earningsLastDay int64
+	var earningsLastWeek int64
+	var earningsLastMonth int64
+
+	wg := sync.WaitGroup{}
+	wg.Add(4)
+	errs := make(chan error, 4)
+
+	go func() {
+		defer wg.Done()
+		err := db.DB.Get(&earningsTotal, earningsTotalQuery, queryValidatorsArr)
+		if err != nil {
+			logger.WithField("route", r.URL.String()).Errorf("error retrieving total earnings: %v", err)
+		}
+		errs <- err
+	}()
+
+	go func() {
+		defer wg.Done()
+		err := db.DB.Get(&earningsLastDay, earningsRangeQuery, lastDayEpoch, queryValidatorsArr)
+		if err != nil {
+			logger.WithField("route", r.URL.String()).Errorf("error retrieving earnings of last day: %v", err)
+		}
+		errs <- err
+	}()
+
+	go func() {
+		defer wg.Done()
+		err := db.DB.Get(&earningsLastWeek, earningsRangeQuery, lastWeekEpoch, queryValidatorsArr)
+		if err != nil {
+			logger.WithField("route", r.URL.String()).Errorf("error retrieving earnings of last week: %v", err)
+		}
+		errs <- err
+	}()
+
+	go func() {
+		defer wg.Done()
+		err := db.DB.Get(&earningsLastMonth, earningsRangeQuery, lastMonthEpoch, queryValidatorsArr)
+		if err != nil {
+			logger.WithField("route", r.URL.String()).Errorf("error retrieving earnings of last month: %v", err)
+		}
+		errs <- err
+	}()
+
+	go func() {
+		wg.Wait()
+		close(errs)
+	}()
+
+	for err := range errs {
+		if err != nil {
+			http.Error(w, "Internal server error", 503)
+			return
 		}
 	}
 
-	data := &types.DataTableResponse{
-		Draw:            dataQuery.Draw,
-		RecordsTotal:    totalCount,
-		RecordsFiltered: totalCount,
-		Data:            tableData,
+	earnings := &types.DashboardEarnings{
+		Total:     earningsTotal,
+		LastDay:   earningsLastDay,
+		LastWeek:  earningsLastWeek,
+		LastMonth: earningsLastMonth,
 	}
 
-	err = json.NewEncoder(w).Encode(data)
+	err = json.NewEncoder(w).Encode(earnings)
 	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }

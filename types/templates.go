@@ -91,8 +91,8 @@ type ValidatorsPageDataValidators struct {
 	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
-	LastAttested               *int64
-	LastProposed               *int64
+	LastAttested               *int64 `db:"lastattested"`
+	LastProposed               *int64 `db:"lastproposed"`
 }
 
 // ValidatorPageData is a struct to hold data for the validators page
@@ -353,4 +353,11 @@ type DashboardValidatorBalanceHistory struct {
 	Balance          uint64  `db:"balance"`
 	EffectiveBalance uint64  `db:"effectivebalance"`
 	ValidatorCount   float64 `db:"validatorcount"`
+}
+
+type DashboardEarnings struct {
+	Total     int64 `json:"total"`
+	LastDay   int64 `json:"lastDay"`
+	LastWeek  int64 `json:"lastWeek"`
+	LastMonth int64 `json:"lastMonth"`
 }
