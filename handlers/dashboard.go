@@ -11,7 +11,6 @@ import (
 	"html/template"
 	"net/http"
 	"sync"
-	"time"
 
 	"strconv"
 	"strings"
@@ -243,6 +242,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	logger.Errorf("getting dashboard-validators %v %v", services.LatestEpoch(), services.LatestEpoch()-1)
 	q := r.URL.Query()
 
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
@@ -263,25 +263,24 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch,
 			validators.exitepoch,
 			validator_balances.balance,
-			CASE WHEN activationepoch <= $1 THEN
-				(SELECT attesterslot FROM attestation_assignments WHERE validators.validatorindex = attestation_assignments.validatorindex ORDER BY epoch DESC LIMIT 1) 
-			ELSE NULL END AS lastattestedslot,
-			CASE WHEN activationepoch <= $1 THEN
-				(SELECT epoch FROM attestation_assignments WHERE validators.validatorindex = attestation_assignments.validatorindex ORDER BY epoch DESC LIMIT 1) 
-			ELSE NULL END AS lastattestedepoch,
-			CASE WHEN activationepoch <= $1 THEN
-				(SELECT status FROM attestation_assignments WHERE validators.validatorindex = attestation_assignments.validatorindex ORDER BY epoch DESC LIMIT 1) 
-			ELSE NULL END AS lastattestedstatus,
-			CASE WHEN activationepoch <= $1 THEN
-				(SELECT epoch FROM proposal_assignments WHERE validators.validatorindex = proposal_assignments.validatorindex ORDER BY epoch DESC LIMIT 1) 
-			ELSE NULL END AS lastproposedepoch,
-			CASE WHEN activationepoch <= $1 THEN
-				(SELECT status FROM proposal_assignments WHERE validators.validatorindex = proposal_assignments.validatorindex ORDER BY epoch DESC LIMIT 1) 
-			ELSE NULL END AS lastproposedstatus
+			lastattestations.epoch as lastattestedepoch,
+			lastproposals.epoch as lastproposedepoch
 		FROM validators
 		LEFT JOIN validator_balances
-			ON $1 = validator_balances.epoch
-			AND validators.validatorindex = validator_balances.validatorindex
+			ON validator_balances.epoch = $1
+			AND validator_balances.validatorindex = validators.validatorindex
+		LEFT JOIN (
+			SELECT validatorindex, MAX(epoch) as epoch
+			FROM attestation_assignments 
+			WHERE validatorindex = ANY($2) AND status = 1
+			GROUP BY validatorindex
+		) AS lastattestations ON lastattestations.validatorindex = validators.validatorindex
+		LEFT JOIN (
+			SELECT validatorindex, MAX(epoch) as epoch
+			FROM proposal_assignments 
+			WHERE validatorindex = ANY($2) AND status = 1
+			GROUP BY validatorindex
+		) AS lastproposals ON lastproposals.validatorindex = validators.validatorindex
 		WHERE validators.validatorindex = ANY($2)
 		LIMIT 100`, services.LatestEpoch(), filter)
 
@@ -297,24 +296,18 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		if v.LastAttestedEpoch == nil {
 			lastAttested = nil
 		} else {
-			status := *v.LastAttestedStatus
-			if utils.SlotToTime(uint64(*v.LastAttestedSlot)).Before(time.Now().Add(time.Minute*-1)) && status == 0 {
-				status = 2
-			}
 			lastAttested = []interface{}{
 				fmt.Sprintf("%v", *v.LastAttestedEpoch),
 				fmt.Sprintf("%v", utils.EpochToTime(uint64(*v.LastAttestedEpoch)).Unix()),
-				fmt.Sprintf("%v", status),
 			}
 		}
 		var lastProposed interface{}
 		if v.LastProposedEpoch == nil {
-			lastAttested = nil
+			lastProposed = nil
 		} else {
 			lastProposed = []interface{}{
 				fmt.Sprintf("%v", *v.LastProposedEpoch),
 				fmt.Sprintf("%v", utils.EpochToTime(uint64(*v.LastProposedEpoch)).Unix()),
-				fmt.Sprintf("%v", *v.LastProposedStatus),
 			}
 		}
 		tableData[i] = []interface{}{
@@ -324,16 +317,16 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			utils.FormatBalance(v.EffectiveBalance),
 			fmt.Sprintf("%v", v.Slashed),
 			[]interface{}{
-				fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEligibilityEpoch).Unix()),
+				v.ActivationEligibilityEpoch,
+				utils.EpochToTime(v.ActivationEligibilityEpoch).Unix(),
 			},
 			[]interface{}{
-				fmt.Sprintf("%v", v.ActivationEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
+				v.ActivationEpoch,
+				utils.EpochToTime(v.ActivationEpoch).Unix(),
 			},
 			[]interface{}{
-				fmt.Sprintf("%v", v.ExitEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ExitEpoch).Unix()),
+				v.ExitEpoch,
+				utils.EpochToTime(v.ExitEpoch).Unix(),
 			},
 			lastAttested,
 			lastProposed,

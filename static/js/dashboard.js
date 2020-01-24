@@ -361,7 +361,9 @@ $(document).ready(function() {
         console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1-t0}ms`)
         if (!result || !result.data.length) return        
         // pubkey, idx, currbal, effbal, slashed, acteligepoch, actepoch, exitepoch
+        console.log(`latestEpoch: ${result.latestEpoch}`)
         var latestEpoch = result.latestEpoch
+        validatorsCount.offline = 0
         validatorsCount.pending = 0
         validatorsCount.active  = 0
         validatorsCount.ejected = 0
@@ -379,10 +381,7 @@ $(document).ready(function() {
             var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
             if (el) el.dataset.state = 'pending'
           } else if (v[6][0] <= latestEpoch) {
-            // if the last attestation is missed
-            var lastAttestationIsMissed = v[8] && v[8][2] === 2
-            var lastProposalIsMissed = v[9] && v[9][2] === 2
-            if (lastAttestationIsMissed || lastProposalIsMissed) {
+            if (!v[8] || v[8][0] < latestEpoch-1) {
               validatorsCount.offline++
               dataOffline.push(v)
               var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
@@ -580,8 +579,8 @@ function createBalanceChart(effective, balance, utilization) {
       //   opposite: true
       // }
       {
-        softMax: 1,
-        softMin: 0,
+        //softMax: 1,
+        //softMin: 0,
         title: {
           text: 'Validator Effectiveness',
           style: {
@@ -592,7 +591,7 @@ function createBalanceChart(effective, balance, utilization) {
         },
         labels: {
           formatter: function() {
-            return (this.value * 100).toFixed(0) + '%'
+            return (this.value * 100).toFixed(2) + '%'
           },
           style: {
             color: 'black'
