@@ -210,6 +210,13 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 	blockPageData.Deposits = deposits
 
+	err = db.DB.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
+	if err != nil {
+		logger.Errorf("error retrieving block deposit data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 	data.Data = blockPageData
 
 	err = blockTemplate.ExecuteTemplate(w, "layout", data)

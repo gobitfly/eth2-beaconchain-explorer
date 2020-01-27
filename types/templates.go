@@ -206,9 +206,10 @@ type BlockPageData struct {
 	SlashingsCount         uint64
 	VotesCount             uint64
 
-	Attestations []*BlockPageAttestation // Attestations included in this block
-	Deposits     []*BlockPageDeposit
-	Votes        []*BlockVote // Attestations that voted for that block
+	Attestations   []*BlockPageAttestation // Attestations included in this block
+	Deposits       []*BlockPageDeposit
+	VoluntaryExits []*BlockPageVoluntaryExits
+	Votes          []*BlockVote // Attestations that voted for that block
 }
 
 // BlockVote stores a vote for a given block
@@ -247,6 +248,12 @@ type BlockPageDeposit struct {
 	Amount                uint64 `db:"amount"`
 	AmountFormatted       string
 	Signature             []byte `db:"signature"`
+}
+
+// BlockPageVoluntaryExits is a struct to hold data for voluntary exits on the block page
+type BlockPageVoluntaryExits struct {
+	ValidatorIndex uint64 `db:"validatorindex"`
+	Signature      []byte `db:"signature"`
 }
 
 // DataTableResponse is a struct to hold data for data table responses
