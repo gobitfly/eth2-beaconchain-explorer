@@ -1,4 +1,59 @@
 $(document).ready(function() {
+  var offlineTable = $('#offline').DataTable({
+    processing: true,
+    serverSide: false,
+    ordering: true,
+    searching: true,
+    paging: false,
+    drawCallback: function() {
+      $('[data-toggle="tooltip"]').tooltip()
+    },
+    columnDefs: [
+      {
+        targets: 0,
+        data: '0',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+        }
+      },
+      {
+        targets: 1,
+        data: '1',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">' + data + '</a>'
+        }
+      },
+      {
+        targets: 4,
+        data: '6',
+        render: function(data, type, row, meta) {
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+        }
+      },
+      {
+        targets: 5,
+        data: '8',
+        render: function(data, type, row, meta) {
+          if (data !== null && data !== undefined) {
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+          } else {
+            return 'No Attestations Found'
+          }
+        }
+      },
+      {
+        targets: 6,
+        data: '9',
+        render: function(data, type, row, meta) {
+          if (data !== null && data !== undefined) {
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+          } else {
+            return 'No Proposals Found'
+          }
+        }
+      }
+    ]
+  })
   var pendingTable = $('#pending').DataTable({
     processing: true,
     serverSide: false,
@@ -21,14 +76,7 @@ $(document).ready(function() {
         }
       },
       {
-        targets: 5,
-        data: '5',
-        render: function(data, type, row, meta) {
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-        }
-      },
-      {
-        targets: 6,
+        targets: 4,
         data: '6',
         render: function(data, type, row, meta) {
           return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
@@ -61,21 +109,14 @@ $(document).ready(function() {
         }
       },
       {
-        targets: 5,
-        data: '5',
-        render: function(data, type, row, meta) {
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-        }
-      },
-      {
-        targets: 6,
+        targets: 4,
         data: '6',
         render: function(data, type, row, meta) {
           return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
         }
       },
       {
-        targets: 7,
+        targets: 5,
         data: '8',
         render: function(data, type, row, meta) {
           if (data !== null && data !== undefined) {
@@ -86,7 +127,7 @@ $(document).ready(function() {
         }
       },
       {
-        targets: 8,
+        targets: 6,
         data: '9',
         render: function(data, type, row, meta) {
           if (data !== null && data !== undefined) {
@@ -117,68 +158,6 @@ $(document).ready(function() {
         data: '1',
         render: function(data, type, row, meta) {
           return '<a href="/validator/' + data + '">' + data + '</a>'
-        }
-      }
-    ]
-  })
-  var offlineTable = $('#offline').DataTable({
-    processing: true,
-    serverSide: false,
-    ordering: true,
-    searching: true,
-    paging: false,
-    drawCallback: function() {
-      $('[data-toggle="tooltip"]').tooltip()
-    },
-    columnDefs: [
-      {
-        targets: 0,
-        data: '0',
-        render: function(data, type, row, meta) {
-          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-        }
-      },
-      {
-        targets: 1,
-        data: '1',
-        render: function(data, type, row, meta) {
-          return '<a href="/validator/' + data + '">' + data + '</a>'
-        }
-      },
-      {
-        targets: 5,
-        data: '5',
-        render: function(data, type, row, meta) {
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-        }
-      },
-      {
-        targets: 6,
-        data: '6',
-        render: function(data, type, row, meta) {
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-        }
-      },
-      {
-        targets: 7,
-        data: '8',
-        render: function(data, type, row, meta) {
-          if (data !== null && data !== undefined) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-          } else {
-            return 'No Attestations Found'
-          }
-        }
-      },
-      {
-        targets: 8,
-        data: '9',
-        render: function(data, type, row, meta) {
-          if (data !== null && data !== undefined) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-          } else {
-            return 'No Proposals Found'
-          }
         }
       }
     ]
@@ -275,7 +254,6 @@ $(document).ready(function() {
   }
 
   function renderDashboardInfo() {
-    // console.log('render dashboardinfo')
     var el = document.getElementById('dashboard-info')
     el.innerText = `Found ${validatorsCount.pending} pending, ${validatorsCount.active} active and ${validatorsCount.ejected} ejected validators`
   }
@@ -289,6 +267,7 @@ $(document).ready(function() {
     }
     validators = validatorsStr.split(',')
     validators = validators.filter((v, i) => validators.indexOf(v) === i)
+    validators.sort(sortValidators)
   }
 
   function addValidator(index) {
@@ -420,18 +399,6 @@ $(document).ready(function() {
         renderDashboardInfo()
       }
     })
-    // $.ajax({
-    //   url: '/dashboard/data/balance' + qryStr,
-    //   success: function(result) {
-    //     console.log('result for balance:', result)
-    //   }
-    // })
-    // pendingTable.ajax.url('/dashboard/data/pending' + qryStr)
-    // activeTable.ajax.url('/dashboard/data/active' + qryStr)
-    // ejectedTable.ajax.url('/dashboard/data/ejected' + qryStr)
-    // pendingTable.ajax.reload()
-    // activeTable.ajax.reload()
-    // ejectedTable.ajax.reload()
 
     renderCharts()
   }
@@ -464,29 +431,12 @@ $(document).ready(function() {
           balance[i] = [res[0], res[2]]
           effectiveBalance[i] = [res[0], res[3]]
           utilization[i] = [res[0], res[3] / (res[1] * 3.2)]
-          // balance.push([result[i][0], result[i][2]])
-          // effectiveBalance.push([result[i][0], result[i][3]])
-          // validatorCount.push([result[i][0], result[i][1]])
         }
 
         var t2 = Date.now()
         createBalanceChart(effectiveBalance, balance, utilization)
         var t3 = Date.now()
         console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
-        // var effective = result.effectiveBalanceHistory
-        // var balance = result.balanceHistory
-        // var utilization = []
-        // if (effective && effective.length && balance && balance.length) {
-        //   var len = effective.length < balance.length ? effective.length : balance.length
-        //   effective = effective.reverse().map(point => {
-        //     var numOfValidators = point[2]
-        //     var mostEffectiveBalance = numOfValidators * 3.2
-        //     utilization.push([point[0], point[1] / mostEffectiveBalance])
-        //     return point
-        //   })
-        //   balance = balance.reverse()
-        //   createBalanceChart(effective, balance, utilization)
-        // }
       }
     })
     $.ajax({

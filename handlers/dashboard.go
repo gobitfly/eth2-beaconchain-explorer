@@ -103,14 +103,13 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	query := `SELECT 
 			validator_set.epoch, 
 			SUM(effectivebalance) AS effectivebalance, 
-			SUM(balance) AS balance, 
+			COALESCE(SUM(balance),0) AS balance, 
 			COUNT(*) AS validatorcount
 		FROM validator_set 
 		LEFT JOIN validator_balances 
 			ON validator_set.epoch = validator_balances.epoch 
 			AND validator_set.validatorindex = validator_balances.validatorindex 
 		WHERE validator_set.validatorindex = any($1) 
-			AND validator_set.activationepoch <= validator_set.epoch
 			AND validator_set.epoch > $2
 		GROUP BY validator_set.epoch
 		ORDER BY validator_set.epoch ASC`
@@ -316,15 +315,15 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			utils.FormatBalance(v.CurrentBalance),
 			utils.FormatBalance(v.EffectiveBalance),
 			fmt.Sprintf("%v", v.Slashed),
-			[]interface{}{
+			[]interface{}{ // 5
 				v.ActivationEligibilityEpoch,
 				utils.EpochToTime(v.ActivationEligibilityEpoch).Unix(),
 			},
-			[]interface{}{
+			[]interface{}{ // 6
 				v.ActivationEpoch,
 				utils.EpochToTime(v.ActivationEpoch).Unix(),
 			},
-			[]interface{}{
+			[]interface{}{ // 7
 				v.ExitEpoch,
 				utils.EpochToTime(v.ExitEpoch).Unix(),
 			},
