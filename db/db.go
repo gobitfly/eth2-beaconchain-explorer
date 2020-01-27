@@ -558,6 +558,14 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 	}
 	defer stmtAttestationAssignments.Close()
 
+	// stmtValidatorsLastAttestationSlot, err := tx.Prepare(`INSERT INTO validators (lastattestationslot, validatorindex)
+	// 												 VALUES    ($1, $2) ON CONFLICT (validatorindex) DO UPDATE SET lastattestationslot = excluded.lastattestationslot`)
+	stmtValidatorsLastAttestationSlot, err := tx.Prepare(`UPDATE validators SET lastattestationslot = $1 WHERE validatorindex = $2`)
+	if err != nil {
+		return err
+	}
+	defer stmtValidatorsLastAttestationSlot.Close()
+
 	for _, slot := range blocks {
 		for _, b := range slot {
 			var dbBlockRootHash []byte
@@ -613,9 +621,13 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 
 				for _, validator := range a.Attesters {
 					_, err = stmtAttestationAssignments.Exec(a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1)
-
 					if err != nil {
 						return fmt.Errorf("error executing stmtAttestationAssignments for block %v: %v", b.Slot, err)
+					}
+
+					_, err = stmtValidatorsLastAttestationSlot.Exec(a.Data.Slot, validator)
+					if err != nil {
+						return fmt.Errorf("error executing stmtValidatorsLastAttestationSlot for block %v: %v", b.Slot, err)
 					}
 				}
 

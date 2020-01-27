@@ -15,6 +15,7 @@ create table validators (
     activationeligibilityepoch bigint not null,
     activationepoch bigint not null,
     exitepoch bigint not null,
+    lastattestationslot bigint,
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
