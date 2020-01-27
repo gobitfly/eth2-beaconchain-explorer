@@ -172,7 +172,8 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 				validators.activationeligibilityepoch, 
 				validators.activationepoch, 
 				validators.exitepoch,
-				validator_balances.balance
+				
+				COALESCE(validator_balances.balance, 0) AS balance
 			FROM validators
 			LEFT JOIN validator_balances 
 				ON validator_balances.epoch = $1
@@ -253,7 +254,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 				validators.activationeligibilityepoch, 
 				validators.activationepoch, 
 				validators.exitepoch,
-				validator_balances.balance
+				COALESCE(validator_balances.balance, 0) AS balance
 			FROM validators
 			LEFT JOIN validator_balances 
 				ON validator_balances.epoch = $1
@@ -335,7 +336,7 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 				validators.activationeligibilityepoch, 
 				validators.activationepoch, 
 				validators.exitepoch,
-				validator_balances.balance
+				COALESCE(validator_balances.balance, 0) AS balance
 			FROM validators 
 			LEFT JOIN validator_balances 
 				ON validator_balances.epoch = $1
