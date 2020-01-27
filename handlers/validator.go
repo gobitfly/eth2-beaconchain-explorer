@@ -84,7 +84,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 											 validator_set.activationeligibilityepoch, 
 											 validator_set.activationepoch, 
 											 validator_set.exitepoch,
-       										 validator_balances.balance
+       										 COALESCE(validator_balances.balance, 0) AS balance
 										FROM validator_set
 										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch 
 										                                    AND validator_set.validatorindex = validator_balances.validatorindex
