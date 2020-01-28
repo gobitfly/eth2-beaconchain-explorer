@@ -77,6 +77,7 @@ type ValidatorsPageData struct {
 	ActiveCount  uint64
 	PendingCount uint64
 	EjectedCount uint64
+	OfflineCount uint64
 }
 
 // ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
@@ -91,11 +92,7 @@ type ValidatorsPageDataValidators struct {
 	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
-	LastAttestedEpoch          *int64 `db:"lastattestedepoch"`
-	LastAttestedStatus         *int64 `db:"lastattestedstatus"`
-	LastAttestedSlot           *int64 `db:"lastattestedslot"`
-	LastProposedEpoch          *int64 `db:"lastproposedepoch"`
-	LastProposedStatus         *int64 `db:"lastproposedstatus"`
+	LastAttestationSlot        *int64 `db:"lastattestationslot"`
 	Status                     string
 }
 

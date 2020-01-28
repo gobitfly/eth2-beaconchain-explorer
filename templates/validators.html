@@ -28,17 +28,17 @@
           }
         },
         {
-          targets: 5,
+          targets: 4,
           data: '5',
           render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
           }
         },
         {
-          targets: 6,
+          targets: 5,
           data: '6',
           render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
           }
         }
       ]
@@ -70,16 +70,9 @@
         },
         {
           targets: 5,
-          data: '5',
-          render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-          }
-        },
-        {
-          targets: 6,
           data: '6',
           render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
           }
         }
       ]
@@ -111,30 +104,23 @@
         },
         {
           targets: 5,
-          data: '5',
+          data: '6',
           render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
           }
         },
         {
           targets: 6,
-          data: '6',
+          data: '7',
           render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
           }
         },
         {
           targets: 7,
-          data: '7',
-          render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-          }
-        },
-        {
-          targets: 8,
           data: '8',
           render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
           }
         }
       ]
@@ -166,27 +152,19 @@
         },
         {
           targets: 5,
-          data: '5',
+          data: '6',
           render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
           }
         },
         {
           targets: 6,
-          data: '6',
-          render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-          }
-        },
-        {
-          targets: 7,
-          data: '7',
+          data: '9',
           render: function(data, type, row, meta) {
             if (data !== null && data !== undefined) {
-              return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (slot ${data[0]})</span>`
-            } else {
-              return 'No Attestations Found'
+              return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/block/${data[0]}">block ${data[0]}</a>)</span>`
             }
+            return 'No Attestations Found'
           }
         }
       ]
@@ -209,7 +187,7 @@
 </div>
 <div class="card">
   <div class="card-body">
-    <h5 class="text-center">Found {{.PendingCount}} pending, {{.ActiveCount}} active and {{.EjectedCount}} ejected validators</h5>
+    <h5 class="text-center">Found {{.PendingCount}} pending, {{.ActiveCount}} active ({{.OfflineCount}} of them offline) and {{.EjectedCount}} ejected validators</h5>
     {{if gt .PendingCount 0}}
     <h4>Pending activation</h4>
     <div class="table-responsive col-sm-12">
@@ -220,7 +198,6 @@
             <th>Index</th>
             <th>Current Balance</th>
             <th>Effective Balance</th>
-            <th>Slashed</th>
             <th>Eligible for Activation</th>
             <th>Estimated Activation</th>
           </tr>
@@ -244,7 +221,6 @@
             <th>Current Balance</th>
             <th>Effective Balance</th>
             <th>Slashed</th>
-            <th>Eligible for Activation</th>
             <th>Active since</th>
           </tr>
         </thead>
@@ -266,7 +242,6 @@
             <th>Current Balance</th>
             <th>Effective Balance</th>
             <th>Slashed</th>
-            <th>Eligible for Activation</th>
             <th>Active since</th>
             <th>Exit</th>
             <th>Withdrawable</th>
@@ -290,7 +265,6 @@
             <th>Current Balance</th>
             <th>Effective Balance</th>
             <th>Slashed</th>
-            <th>Eligible for Activation</th>
             <th>Active since</th>
             <th>Last Attestation</th>
           </tr>

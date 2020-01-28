@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-type ValidatorDataQueryParams struct {
+type ValidatorsDataQueryParams struct {
 	Search   string
 	OrderBy  string
 	OrderDir string
@@ -24,7 +24,7 @@ type ValidatorDataQueryParams struct {
 	Length   int64
 }
 
-func parseDataQueryParams(r *http.Request) (*ValidatorDataQueryParams, error) {
+func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams, error) {
 	q := r.URL.Query()
 
 	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
@@ -37,31 +37,27 @@ func parseDataQueryParams(r *http.Request) (*ValidatorDataQueryParams, error) {
 		orderDir = "desc"
 	}
 	orderColumn := q.Get("order[0][column]")
-	var orderBy string
-	switch orderColumn {
-	case "0":
-		orderBy = "pubkey"
-	case "1":
+
+	orderByRouteMap := make(map[string]map[string]string)
+	orderByRouteMap["/validators/data/pending"] = map[string]string{"0": "pubkey", "1": "validatorindex", "2": "balance", "3": "effectivebalance", "4": "activationeligibilityepoch", "5": "activationepoch"}
+	orderByRouteMap["/validators/data/active"] = map[string]string{"0": "pubkey", "1": "validatorindex", "2": "balance", "3": "effectivebalance", "4": "slashed", "5": "activationepoch"}
+	orderByRouteMap["/validators/data/ejected"] = map[string]string{"0": "pubkey", "1": "validatorindex", "2": "balance", "3": "effectivebalance", "4": "slashed", "5": "activationepoch", "6": "exitepoch", "7": "withdrawableepoch"}
+	orderByRouteMap["/validators/data/offline"] = map[string]string{"0": "pubkey", "1": "validatorindex", "2": "balance", "3": "effectivebalance", "4": "slashed", "5": "activationepoch", "6": "lastattestationslot"}
+
+	orderByRoute, exists := orderByRouteMap[r.URL.Path]
+	if !exists {
+		return nil, fmt.Errorf("invalid request-path")
+	}
+
+	orderBy, exists := orderByRoute[orderColumn]
+	if !exists {
 		orderBy = "validatorindex"
-	case "2":
-		orderBy = "balance"
-	case "3":
-		orderBy = "effectivebalance"
-	case "4":
-		orderBy = "slashed"
-	case "5":
-		orderBy = "activationeligibilityepoch"
-	case "6":
-		orderBy = "activationepoch"
-	case "7":
-		orderBy = "lastattestedslot"
+	} else if orderBy == "lastattestationslot" {
 		if orderDir == "desc" {
 			orderDir = "desc nulls last"
 		} else {
 			orderDir = "asc nulls first"
 		}
-	default:
-		orderBy = "validatorindex"
 	}
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
@@ -88,7 +84,7 @@ func parseDataQueryParams(r *http.Request) (*ValidatorDataQueryParams, error) {
 		length = 100
 	}
 
-	res := &ValidatorDataQueryParams{
+	res := &ValidatorsDataQueryParams{
 		search,
 		orderBy,
 		orderDir,
@@ -100,6 +96,46 @@ func parseDataQueryParams(r *http.Request) (*ValidatorDataQueryParams, error) {
 	return res, nil
 }
 
+func prepareValidatorsDataTable(validators *[]*types.ValidatorsPageDataValidators) [][]interface{} {
+	tableData := make([][]interface{}, len(*validators))
+	for i, v := range *validators {
+		var lastAttestation interface{}
+		if v.LastAttestationSlot == nil {
+			lastAttestation = nil
+		} else {
+			lastAttestation = []interface{}{
+				fmt.Sprintf("%v", *v.LastAttestationSlot),
+				fmt.Sprintf("%v", utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix()),
+			}
+		}
+		tableData[i] = []interface{}{
+			fmt.Sprintf("%x", v.PublicKey),
+			fmt.Sprintf("%v", v.ValidatorIndex),
+			utils.FormatBalance(v.CurrentBalance),
+			utils.FormatBalance(v.EffectiveBalance),
+			fmt.Sprintf("%v", v.Slashed),
+			[]interface{}{
+				fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEligibilityEpoch).Unix()),
+			},
+			[]interface{}{
+				fmt.Sprintf("%v", v.ActivationEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
+			},
+			[]interface{}{
+				fmt.Sprintf("%v", v.ExitEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.ExitEpoch).Unix()),
+			},
+			[]interface{}{
+				fmt.Sprintf("%v", v.WithdrawableEpoch),
+				fmt.Sprintf("%v", utils.EpochToTime(v.WithdrawableEpoch).Unix()),
+			},
+			lastAttestation,
+		}
+	}
+	return tableData
+}
+
 var validatorsTemplate = template.Must(template.New("validators").ParseFiles("templates/layout.html", "templates/validators.html"))
 
 // Validators returns the validators using a go template
@@ -109,7 +145,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData := types.ValidatorsPageData{}
 	var validators []*types.ValidatorsPageDataValidators
 
-	err := db.DB.Select(&validators, `SELECT activationepoch, exitepoch FROM validators ORDER BY validatorindex`)
+	err := db.DB.Select(&validators, `SELECT activationepoch, exitepoch, lastattestationslot FROM validators ORDER BY validatorindex`)
 
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
@@ -118,6 +154,14 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	}
 
 	latestEpoch := services.LatestEpoch()
+
+	var firstSlotOfPreviousEpoch uint64
+	if services.LatestEpoch() < 1 {
+		firstSlotOfPreviousEpoch = 0
+	} else {
+		firstSlotOfPreviousEpoch = (services.LatestEpoch() - 1) * utils.Config.Chain.SlotsPerEpoch
+	}
+
 	for _, validator := range validators {
 		if latestEpoch > validator.ExitEpoch {
 			validatorsPageData.EjectedCount++
@@ -125,6 +169,10 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 			validatorsPageData.PendingCount++
 		} else {
 			validatorsPageData.ActiveCount++
+			// offline validators did not attest in the last 2 epochs (and are active for >1 epochs)
+			if validator.ActivationEpoch < latestEpoch && (validator.LastAttestationSlot == nil || uint64(*validator.LastAttestationSlot) < firstSlotOfPreviousEpoch) {
+				validatorsPageData.OfflineCount++
+			}
 		}
 	}
 
@@ -153,7 +201,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	dataQuery, err := parseDataQueryParams(r)
+	dataQuery, err := parseValidatorsDataQueryParams(r)
 	if err != nil {
 		http.Error(w, "Internal server error", 503)
 		return
@@ -171,15 +219,14 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators,
 		fmt.Sprintf(`SELECT 
-				validators.validatorindex, 
-				validators.pubkey, 
-				validators.withdrawableepoch, 
-				validators.effectivebalance, 
-				validators.slashed, 
-				validators.activationeligibilityepoch, 
-				validators.activationepoch, 
+				validators.validatorindex,
+				validators.pubkey,
+				validators.withdrawableepoch,
+				validators.effectivebalance,
+				validators.slashed,
+				validators.activationepoch,
 				validators.exitepoch,
-				
+				validators.lastattestationslot,
 				COALESCE(validator_balances.balance, 0) AS balance
 			FROM validators
 			LEFT JOIN validator_balances 
@@ -197,30 +244,11 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]interface{}, len(validators))
-	for i, v := range validators {
-		tableData[i] = []interface{}{
-			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.ValidatorIndex),
-			utils.FormatBalance(v.CurrentBalance),
-			utils.FormatBalance(v.EffectiveBalance),
-			fmt.Sprintf("%v", v.Slashed),
-			[]interface{}{
-				fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEligibilityEpoch).Unix()),
-			},
-			[]interface{}{
-				fmt.Sprintf("%v", v.ActivationEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
-			},
-		}
-	}
-
 	data := &types.DataTableResponse{
 		Draw:            dataQuery.Draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
-		Data:            tableData,
+		Data:            prepareValidatorsDataTable(&validators),
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -235,7 +263,7 @@ func ValidatorsDataPending(w http.ResponseWriter, r *http.Request) {
 func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	dataQuery, err := parseDataQueryParams(r)
+	dataQuery, err := parseValidatorsDataQueryParams(r)
 	if err != nil {
 		http.Error(w, "Internal server error", 503)
 		return
@@ -253,14 +281,14 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators,
 		fmt.Sprintf(`SELECT 
-				validators.validatorindex, 
-				validators.pubkey, 
-				validators.withdrawableepoch, 
-				validators.effectivebalance, 
-				validators.slashed, 
-				validators.activationeligibilityepoch, 
-				validators.activationepoch, 
+				validators.validatorindex,
+				validators.pubkey,
+				validators.withdrawableepoch,
+				validators.effectivebalance,
+				validators.slashed,
+				validators.activationepoch,
 				validators.exitepoch,
+				validators.lastattestationslot,
 				COALESCE(validator_balances.balance, 0) AS balance
 			FROM validators
 			LEFT JOIN validator_balances 
@@ -279,30 +307,11 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]interface{}, len(validators))
-	for i, v := range validators {
-		tableData[i] = []interface{}{
-			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.ValidatorIndex),
-			utils.FormatBalance(v.CurrentBalance),
-			utils.FormatBalance(v.EffectiveBalance),
-			fmt.Sprintf("%v", v.Slashed),
-			[]interface{}{
-				fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEligibilityEpoch).Unix()),
-			},
-			[]interface{}{
-				fmt.Sprintf("%v", v.ActivationEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
-			},
-		}
-	}
-
 	data := &types.DataTableResponse{
 		Draw:            dataQuery.Draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
-		Data:            tableData,
+		Data:            prepareValidatorsDataTable(&validators),
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -317,7 +326,7 @@ func ValidatorsDataActive(w http.ResponseWriter, r *http.Request) {
 func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	dataQuery, err := parseDataQueryParams(r)
+	dataQuery, err := parseValidatorsDataQueryParams(r)
 	if err != nil {
 		http.Error(w, "Internal server error", 503)
 		return
@@ -335,14 +344,14 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators,
 		fmt.Sprintf(`SELECT 
-				validators.validatorindex, 
-				validators.pubkey, 
-				validators.withdrawableepoch, 
-				validators.effectivebalance, 
-				validators.slashed, 
-				validators.activationeligibilityepoch, 
-				validators.activationepoch, 
+				validators.validatorindex,
+				validators.pubkey,
+				validators.withdrawableepoch,
+				validators.effectivebalance,
+				validators.slashed,
+				validators.activationepoch,
 				validators.exitepoch,
+				validators.lastattestationslot,
 				COALESCE(validator_balances.balance, 0) AS balance
 			FROM validators 
 			LEFT JOIN validator_balances 
@@ -360,38 +369,11 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]interface{}, len(validators))
-	for i, v := range validators {
-		tableData[i] = []interface{}{
-			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.ValidatorIndex),
-			utils.FormatBalance(v.CurrentBalance),
-			utils.FormatBalance(v.EffectiveBalance),
-			fmt.Sprintf("%v", v.Slashed),
-			[]interface{}{
-				fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEligibilityEpoch).Unix()),
-			},
-			[]interface{}{
-				fmt.Sprintf("%v", v.ActivationEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
-			},
-			[]interface{}{
-				fmt.Sprintf("%v", v.ExitEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ExitEpoch).Unix()),
-			},
-			[]interface{}{
-				fmt.Sprintf("%v", v.WithdrawableEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.WithdrawableEpoch).Unix()),
-			},
-		}
-	}
-
 	data := &types.DataTableResponse{
 		Draw:            dataQuery.Draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
-		Data:            tableData,
+		Data:            prepareValidatorsDataTable(&validators),
 	}
 
 	err = json.NewEncoder(w).Encode(data)
@@ -402,25 +384,30 @@ func ValidatorsDataEjected(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ValidatorsDataOffline returns the validators that have not attested in the current and previous epochs in json
+// ValidatorsDataOffline returns the validators that have not attested in the last 2 epochs
 func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	dataQuery, err := parseDataQueryParams(r)
+	dataQuery, err := parseValidatorsDataQueryParams(r)
 	if err != nil {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
-	// we are looking for validators that have not attested in the previous epoch and this epoch
+	var firstSlotOfPreviousEpoch uint64
+	if services.LatestEpoch() < 1 {
+		firstSlotOfPreviousEpoch = 0
+	} else {
+		firstSlotOfPreviousEpoch = (services.LatestEpoch() - 1) * utils.Config.Chain.SlotsPerEpoch
+	}
+
 	var totalCount uint64
-	err = db.DB.Get(&totalCount, `SELECT COUNT(*) 
-		FROM (
-			SELECT validatorindex, COUNT(*) AS c 
-			FROM attestation_assignments 
-			WHERE status = 0 AND (epoch = $1 OR epoch = $2)
-			GROUP BY validatorindex
-		) a WHERE c = 2`, services.LatestEpoch(), services.LatestEpoch()-1)
+	err = db.DB.Get(&totalCount,
+		`SELECT COUNT(*) FROM validators 
+		WHERE $1 > activationepoch 
+			AND $1 < exitepoch 
+			AND (lastattestationslot < $2 OR lastattestationslot is null)`,
+		services.LatestEpoch(), firstSlotOfPreviousEpoch)
 	if err != nil {
 		logger.Errorf("error retrieving ejected validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -429,35 +416,27 @@ func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
 
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators,
-		fmt.Sprintf(`SELECT 
-				validators.validatorindex, 
-				validators.pubkey, 
-				validators.withdrawableepoch, 
-				validators.effectivebalance, 
-				validators.slashed, 
-				validators.activationeligibilityepoch, 
-				validators.activationepoch, 
+		fmt.Sprintf(`SELECT
+				validators.validatorindex,
+				validators.pubkey,
+				validators.withdrawableepoch,
+				validators.effectivebalance,
+				validators.slashed,
+				validators.activationepoch,
 				validators.exitepoch,
-				validator_balances.balance,
-				(SELECT MAX(attesterslot) FROM attestation_assignments WHERE validators.validatorindex = validatorindex AND status = 1) as lastattestedslot
+				validators.lastattestationslot,
+				COALESCE(validator_balances.balance, 0) AS balance
 			FROM validators
-			INNER JOIN (
-				SELECT validatorindex FROM (
-					SELECT validatorindex, COUNT(*) AS c 
-					FROM attestation_assignments 
-					WHERE status = 0 AND (epoch = $1 OR epoch = $2)
-					GROUP BY validatorindex
-				) a WHERE c = 2
-			) v ON v.validatorindex = validators.validatorindex
-			LEFT JOIN validator_balances 
+			LEFT JOIN validator_balances
 				ON validator_balances.epoch = $1
 				AND validator_balances.validatorindex = validators.validatorindex
-			WHERE $1 >= activationepoch 
-				AND $1 < exitepoch 
+			WHERE $1 > activationepoch
+				AND $1 < exitepoch
 				AND encode(validators.pubkey::bytea, 'hex') LIKE $3
+				AND ( lastattestationslot < $2 OR lastattestationslot is null )
 			ORDER BY %s %s
 			LIMIT $4 OFFSET $5`, dataQuery.OrderBy, dataQuery.OrderDir),
-		services.LatestEpoch(), services.LatestEpoch()-1, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
+		services.LatestEpoch(), firstSlotOfPreviousEpoch, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 
 	if err != nil {
 		logger.Errorf("error retrieving offline validators data: %v", err)
@@ -465,40 +444,11 @@ func ValidatorsDataOffline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]interface{}, len(validators))
-	for i, v := range validators {
-		var lastAttested interface{}
-		if v.LastAttestedSlot == nil {
-			lastAttested = nil
-		} else {
-			lastAttested = []interface{}{
-				fmt.Sprintf("%v", *v.LastAttestedSlot),
-				fmt.Sprintf("%v", utils.SlotToTime(uint64(*v.LastAttestedSlot)).Unix()),
-			}
-		}
-		tableData[i] = []interface{}{
-			fmt.Sprintf("%x", v.PublicKey),
-			fmt.Sprintf("%v", v.ValidatorIndex),
-			utils.FormatBalance(v.CurrentBalance),
-			utils.FormatBalance(v.EffectiveBalance),
-			fmt.Sprintf("%v", v.Slashed),
-			[]interface{}{
-				fmt.Sprintf("%v", v.ActivationEligibilityEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEligibilityEpoch).Unix()),
-			},
-			[]interface{}{
-				fmt.Sprintf("%v", v.ActivationEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(v.ActivationEpoch).Unix()),
-			},
-			lastAttested,
-		}
-	}
-
 	data := &types.DataTableResponse{
 		Draw:            dataQuery.Draw,
 		RecordsTotal:    totalCount,
 		RecordsFiltered: totalCount,
-		Data:            tableData,
+		Data:            prepareValidatorsDataTable(&validators),
 	}
 
 	err = json.NewEncoder(w).Encode(data)
