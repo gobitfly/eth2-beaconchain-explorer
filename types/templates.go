@@ -74,10 +74,20 @@ type IndexPageEpochHistory struct {
 
 // ValidatorsPageData is a struct to hold data about the validators page
 type ValidatorsPageData struct {
-	ActiveCount  uint64
-	PendingCount uint64
-	EjectedCount uint64
-	OfflineCount uint64
+	TotalCount           uint64
+	DepositedCount       uint64
+	PendingCount         uint64
+	ActiveCount          uint64
+	ActiveOnlineCount    uint64
+	ActiveOfflineCount   uint64
+	SlashingCount        uint64
+	SlashingOnlineCount  uint64
+	SlashingOfflineCount uint64
+	ExitingCount         uint64
+	ExitingOnlineCount   uint64
+	ExitingOfflineCount  uint64
+	ExitedCount          uint64
+	UnknownCount         uint64
 }
 
 // ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
@@ -93,7 +103,7 @@ type ValidatorsPageDataValidators struct {
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
 	LastAttestationSlot        *int64 `db:"lastattestationslot"`
-	Status                     string
+	Status                     string `db:"status"`
 }
 
 // ValidatorPageData is a struct to hold data for the validators page

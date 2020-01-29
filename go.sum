@@ -66,6 +66,7 @@ github.com/prysmaticlabs/ethereumapis v0.0.0-20191204052238-ce7288779735 h1:WLj7
 github.com/prysmaticlabs/ethereumapis v0.0.0-20191204052238-ce7288779735/go.mod h1:5OkRN6UmvgtP+kIewitcEKC7S5KOzLOGtya/Tz+HBns=
 github.com/prysmaticlabs/ethereumapis v0.0.0-20200107194206-1ca2fc850a13 h1:1gtbNdgTOkwW+FINbxRs4/J29ai/45H5xi+hUSXmLB4=
 github.com/prysmaticlabs/ethereumapis v0.0.0-20200107194206-1ca2fc850a13/go.mod h1:5OkRN6UmvgtP+kIewitcEKC7S5KOzLOGtya/Tz+HBns=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200128075941-e1e8777cb75e h1:bnnoTY3m8FPS9pz78zPwnc0jzcLi40DBBghYuJC0DTQ=
 github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52 h1:kxZ+xSWX0qbxoiDXQBLztKeEmEQg6TgCYWAOa7gSGGU=
 github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52/go.mod h1:hCwmef+4qXWjv0jLDbQdWnL0Ol7cS7/lCSS26WR+u6s=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=

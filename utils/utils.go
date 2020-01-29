@@ -61,6 +61,27 @@ func FormatAttestationStatus(status uint64) string {
 	}
 }
 
+func FormatValidatorStatus(status string) string {
+	if status == "pending" {
+		return "<span class=\"badge validator-pending text-dark\">pending</span>"
+	} else if status == "active:online" {
+		return "<span class=\"badge validator-active text-dark\">active <span class=\"badge badge-light bg-success\">on</span></span>"
+	} else if status == "active:offline" {
+		return "<span class=\"badge validator-active text-dark\">active <span class=\"badge badge-light bg-danger\">off</span></span>"
+	} else if status == "exiting:online" {
+		return "<span class=\"badge validator-exiting text-dark\">exiting <span class=\"badge badge-light bg-success\">on</span></span>"
+	} else if status == "exiting:offline" {
+		return "<span class=\"badge validator-exiting text-dark\">exiting <span class=\"badge badge-light bg-danger\">off</span></span>"
+	} else if status == "slashing:online" {
+		return "<span class=\"badge validator-slashing text-dark\">slashing <span class=\"badge badge-light bg-success\">on</span></span>"
+	} else if status == "slashing:offline" {
+		return "<span class=\"badge validator-slashing text-dark\">slashing <span class=\"badge badge-light bg-danger\">off</span></span>"
+	} else if status == "exited" {
+		return "<span class=\"badge validator-exited text-dark\">exited</span>"
+	}
+	return "Unknown"
+}
+
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))

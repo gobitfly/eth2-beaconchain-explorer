@@ -1,178 +1,282 @@
 {{ define "js"}}
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 <script>
+  var columnDefs = {}
+  columnDefs.all = [
+    {
+      targets: 0,
+      data: '0',
+      render: function(data, type, row, meta) {
+        return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+      }
+    },
+    {
+      targets: 1,
+      data: '1',
+      render: function(data, type, row, meta) {
+        return '<a href="/validator/' + data + '">' + data + '</a>'
+      }
+    },
+    {
+      targets: 2,
+      data: '2',
+      render: function(data, type, row, meta) {
+        return `${data[0]} (${data[1]})`
+      }
+    },
+    {
+      targets: 3,
+      data: '3',
+      render: function(data, type, row, meta) {
+        var d = data.split('_')
+        if (d[1] === 'offline')
+          return `${d[0]} <i class="fas fa-power-off fa-sm text-danger"></i>`
+        return `${d[0]}`
+        // return formatValidatorStatus(data)
+      }
+    },
+    {
+      targets: 4,
+      data: '4',
+      render: function(data, type, row, meta) {
+        return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
+      }
+    },
+    {
+      targets: 5,
+      data: '5',
+      render: function(data, type, row, meta) {
+        if (row[3] === 'pending') {
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">Eligible: ${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
+        } else if (
+            row[3] === 'active_online' ||
+            row[3] === 'active_offline' ||
+            row[3] === 'slasing_online' ||
+            row[3] === 'slasing_offline' ||
+            row[3] === 'exiting_online' ||
+            row[3] === 'exiting_offline'
+          ) {
+          var res = ``
+          if (data[6] === null) res += 'No Attestations Found'
+          else res += `Last attestation: <span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[7]).format()}">${moment.unix(data[7]).fromNow()} (<a href="/block/${data[6]}">block ${data[6]}</a>)</span>`
+          return res
+        } else if (row[3] === 'exited') {
+          return `Exit: <span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[5]).format()}">${moment.unix(data[5]).fromNow()} (<a href="/epoch/${data[4]}">epoch ${data[4]}</a>)</span>, Withdrawable: <span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[7]).format()}">${moment.unix(data[7]).fromNow()} (<a href="/epoch/${data[6]}">epoch ${data[6]}</a>)</span>`
+        }
+        return `unknown`
+      }
+    },
+  ]
+  columnDefs.pending = [
+    {
+      targets: 0,
+      data: '0',
+      render: function(data, type, row, meta) {
+        return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+      }
+    },
+    {
+      targets: 1,
+      data: '1',
+      render: function(data, type, row, meta) {
+        return '<a href="/validator/' + data + '">' + data + '</a>'
+      }
+    },
+    {
+      targets: 4,
+      data: '5',
+      render: function(data, type, row, meta) {
+        return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
+      }
+    },
+    {
+      targets: 5,
+      data: '6',
+      render: function(data, type, row, meta) {
+        return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
+      }
+    }
+  ]
+  columnDefs.active = [
+    {
+      targets: 0,
+      data: '0',
+      render: function(data, type, row, meta) {
+        return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+      }
+    },
+    {
+      targets: 1,
+      data: '1',
+      render: function(data, type, row, meta) {
+        return '<a href="/validator/' + data + '">' + data + '</a>'
+      }
+    },
+    {
+      targets: 5,
+      data: '6',
+      render: function(data, type, row, meta) {
+        return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
+      }
+    }
+  ]
+  columnDefs.slashing = columnDefs.active
+  columnDefs.exiting = columnDefs.active
+  columnDefs.exited = [
+    {
+      targets: 0,
+      data: '0',
+      render: function(data, type, row, meta) {
+        return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+      }
+    },
+    {
+      targets: 1,
+      data: '1',
+      render: function(data, type, row, meta) {
+        return '<a href="/validator/' + data + '">' + data + '</a>'
+      }
+    },
+    {
+      targets: 5,
+      data: '6',
+      render: function(data, type, row, meta) {
+        return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
+      }
+    },
+    {
+      targets: 6,
+      data: '7',
+      render: function(data, type, row, meta) {
+        return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
+      }
+    },
+    {
+      targets: 7,
+      data: '8',
+      render: function(data, type, row, meta) {
+        return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
+      }
+    }
+  ]
   $(document).ready(function() {
-    $('#pending').DataTable({
+    var validatorsDataTable = $('#validators').DataTable({
       processing: true,
       serverSide: true,
       ordering: true,
       searching: true,
-      ajax: '/validators/data/pending',
+      ajax: '/validators/data/validators',
       pagingType: 'full',
+      dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" +
+"<'row'<'col-sm-12'tr>>" +
+"<'row'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
+      fnInitComplete: function() {
+        $('div.filter-by-status').html(
+`<div><label><div class="dropdown" style="display:inline-block;">
+  <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+    all <span class="badge bg-dark"><span>{{.TotalCount}}</span></span>
+  </button>
+  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+    <h6 class="dropdown-header">Filter by state</h6>
+    <a class="dropdown-item" href="#" data-filter-validators="all">all <span class="badge bg-dark text-light"><span>{{.TotalCount}}</span></span></a>
+    <a class="dropdown-item" href="#" data-filter-validators="pending">pending <span class="badge bg-dark text-light">{{.PendingCount}}</span></a>
+    <a class="dropdown-item" href="#" data-filter-validators="active">active <span class="badge bg-dark text-light"><span class="text-success">{{.ActiveOnlineCount}}</span> / <span class="text-danger">{{.ActiveOfflineCount}}</span></span></a>
+    <a class="dropdown-item" href="#" data-filter-validators="slashing">slashing <span class="badge bg-dark text-light"><span class="text-success">{{.SlashingOnlineCount}}</span> / <span style="color:red">{{.SlashingOfflineCount}}</span></span></a>
+    <a class="dropdown-item" href="#" data-filter-validators="exiting">exiting <span class="badge bg-dark text-light"><span class="text-success">{{.ExitingOnlineCount}}</span> / <span style="color:red">{{.ExitingOfflineCount}}</span></span></a>
+    <a class="dropdown-item" href="#" data-filter-validators="exited">exited <span class="badge bg-dark text-light">{{.ExitedCount}}</span></a>
+  </div>
+</div>
+</label>
+</div>`)
+        .find('[data-filter-validators]').click(function(){
+          var f = $(this).data('filter-validators')
+          $('.filter-by-status .btn:first-child').html($(this).html())
+          // $('[data-filter-validators]').removeClass('active')
+          // $(`[data-filter-validators="${f}"]`).addClass('active')
+          validatorsDataTable.columnDefs = columnDefs[f]
+          validatorsDataTable.ajax.url(`/validators/data/validators?filterByStatus=${f}`)
+          validatorsDataTable.ajax.reload()
+        })
+      },
+      preDrawCallback: function() {
+        // this does not always work.. not sure how to solve the staying tooltip
+        try { $('[data-toggle="tooltip"]').tooltip('hide') } catch(e) {}
+      },
       drawCallback: function() {
         $('[data-toggle="tooltip"]').tooltip()
       },
-      columnDefs: [
-        {
-          targets: 0,
-          data: '0',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-          }
-        },
-        {
-          targets: 1,
-          data: '1',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">' + data + '</a>'
-          }
-        },
-        {
-          targets: 4,
-          data: '5',
-          render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
-          }
-        },
-        {
-          targets: 5,
-          data: '6',
-          render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
-          }
-        }
-      ]
+      columnDefs: columnDefs.all
     })
-    $('#active').DataTable({
-      processing: true,
-      serverSide: true,
-      ordering: true,
-      searching: true,
-      ajax: '/validators/data/active',
-      pagingType: 'full',
-      drawCallback: function() {
-        $('[data-toggle="tooltip"]').tooltip()
-      },
-      columnDefs: [
-        {
-          targets: 0,
-          data: '0',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-          }
-        },
-        {
-          targets: 1,
-          data: '1',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">' + data + '</a>'
-          }
-        },
-        {
-          targets: 5,
-          data: '6',
-          render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
-          }
-        }
-      ]
-    })
-    $('#ejected').DataTable({
-      processing: true,
-      serverSide: true,
-      ordering: true,
-      searching: true,
-      ajax: '/validators/data/ejected',
-      pagingType: 'full',
-      drawCallback: function() {
-        $('[data-toggle="tooltip"]').tooltip()
-      },
-      columnDefs: [
-        {
-          targets: 0,
-          data: '0',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-          }
-        },
-        {
-          targets: 1,
-          data: '1',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">' + data + '</a>'
-          }
-        },
-        {
-          targets: 5,
-          data: '6',
-          render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
-          }
-        },
-        {
-          targets: 6,
-          data: '7',
-          render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
-          }
-        },
-        {
-          targets: 7,
-          data: '8',
-          render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
-          }
-        }
-      ]
-    })
-    $('#offline').DataTable({
-      processing: true,
-      serverSide: true,
-      ordering: true,
-      searching: true,
-      ajax: '/validators/data/offline',
-      pagingType: 'full',
-      drawCallback: function() {
-        $('[data-toggle="tooltip"]').tooltip()
-      },
-      columnDefs: [
-        {
-          targets: 0,
-          data: '0',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-          }
-        },
-        {
-          targets: 1,
-          data: '1',
-          render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">' + data + '</a>'
-          }
-        },
-        {
-          targets: 5,
-          data: '6',
-          render: function(data, type, row, meta) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
-          }
-        },
-        {
-          targets: 6,
-          data: '9',
-          render: function(data, type, row, meta) {
-            if (data !== null && data !== undefined) {
-              return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/block/${data[0]}">block ${data[0]}</a>)</span>`
-            }
-            return 'No Attestations Found'
-          }
-        }
-      ]
-    })
+    // $('[data-filter-validators]').click(function(){
+    //   var f = $(this).data('filter-validators')
+    //   // $('[data-filter-validators]').removeClass('active')
+    //   // $(`[data-filter-validators="${f}"]`).addClass('active')
+    //   validatorsDataTable.ajax.url(`/validators/data/validators?filterByStatus=${f}`)
+    //   validatorsDataTable.ajax.reload()
+    // })
   })
+
 </script>
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+<style>
+
+.dataTables_wrapper {
+  min-height: 400px; /* this is needed to make the bootstrap-dropdown work when the table is empty */
+}
+[data-filter-validators]:hover {
+  cursor: pointer;
+}
+[data-filter-validators] {
+  margin: 2px;
+}
+/*
+[data-filter-validators].active {
+  margin: 0px;
+  border: 2px solid orange;
+}
+[data-filter-validators="pending"] {
+  background-color: lightyellow;
+}
+[data-filter-validators="active"] {
+  background-color: lightgreen;
+}
+[data-filter-validators="slashing"] {
+  background-color: lightpink;
+}
+[data-filter-validators="exiting"] {
+  background-color: lightblue;
+}
+[data-filter-validators="exited"] {
+  background-color: lightgray;
+}
+*/
+
+.validator-deposited {}
+.validator-pending {
+  background-color: lightyellow;
+}
+.validator-active {
+  background-color: lightgreen;
+}
+.validator-active-online {}
+.validator-active-offline {}
+.validator-slashing {
+  background-color: lightpink;
+}
+.validator-slashing-online {}
+.validator-slashing-offline {}
+.validator-exiting {
+  background-color: lightblue;
+}
+.validator-exiting-online {}
+.validator-exiting-offline {}
+.validator-exited {
+  background-color: lightgray;
+}
+.validator-unknown {}
+
+</style>
 {{end}} {{ define "content"}}
 <div class="mb-3">
   <div class="d-md-flex py-2 justify-content-md-between">
@@ -187,86 +291,16 @@
 </div>
 <div class="card">
   <div class="card-body">
-    <h5 class="text-center">Found {{.PendingCount}} pending, {{.ActiveCount}} active ({{.OfflineCount}} of them offline) and {{.EjectedCount}} ejected validators</h5>
-    {{if gt .PendingCount 0}}
-    <h4>Pending activation</h4>
     <div class="table-responsive col-sm-12">
-      <table class="table table-sm" id="pending">
+      <table class="table table-sm" id="validators">
         <thead>
           <tr>
             <th>Public Key</th>
             <th>Index</th>
-            <th>Current Balance</th>
-            <th>Effective Balance</th>
-            <th>Eligible for Activation</th>
-            <th>Estimated Activation</th>
-          </tr>
-        </thead>
-        <tbody> </tbody>
-      </table>
-    </div>
-    <div class="row">
-      <div class="col-md-8 offset-md-2">
-        <hr />
-      </div>
-    </div>
-    {{end}}
-    <div class="table-responsive col-sm-12">
-      <h4>Active</h4>
-      <table class="table table-sm" id="active">
-        <thead>
-          <tr>
-            <th>Public Key</th>
-            <th>Index</th>
-            <th>Current Balance</th>
-            <th>Effective Balance</th>
-            <th>Slashed</th>
-            <th>Active since</th>
-          </tr>
-        </thead>
-        <tbody> </tbody>
-      </table>
-    </div>
-    <div class="row">
-      <div class="col-md-8 offset-md-2">
-        <hr />
-      </div>
-    </div>
-    <div class="table-responsive col-sm-12">
-      <h4>Ejected</h4>
-      <table class="table table-sm" id="ejected">
-        <thead>
-          <tr>
-            <th>Public Key</th>
-            <th>Index</th>
-            <th>Current Balance</th>
-            <th>Effective Balance</th>
-            <th>Slashed</th>
-            <th>Active since</th>
-            <th>Exit</th>
-            <th>Withdrawable</th>
-          </tr>
-        </thead>
-        <tbody> </tbody>
-      </table>
-    </div>
-    <div class="row">
-      <div class="col-md-8 offset-md-2">
-        <hr />
-      </div>
-    </div>
-    <div class="table-responsive col-sm-12">
-      <h4>Offline</h4>
-      <table class="table table-sm" id="offline">
-        <thead>
-          <tr>
-            <th>Public Key</th>
-            <th>Index</th>
-            <th>Current Balance</th>
-            <th>Effective Balance</th>
-            <th>Slashed</th>
-            <th>Active since</th>
-            <th>Last Attestation</th>
+            <th>Balance</th>
+            <th>State</th>
+            <th>Activation</th>
+            <th>Info</th>
           </tr>
         </thead>
         <tbody> </tbody>
