@@ -1,100 +1,97 @@
 {{ define "js"}}
-    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#blocks').DataTable({
-                "processing": true,
-                "serverSide": true,
-                "ordering": false,
-                "searching": true,
-                "ajax": "/blocks/data",
-                "pagingType": "full",
-                "language": {
-                    "searchPlaceholder": "Search by Block Number",
-                    "search": "",
-                },
-                "columnDefs": [{
-                    "targets": 0,
-                    "data": "0",
-                    "render": function (data, type, row, meta) {
-                        return '<a href="/epoch/' + data + '">' + data + '</a>';
-                    }
-                }, {
-                    "targets": 1,
-                    "data": "1",
-                    "render": function (data, type, row, meta) {
-                        return '<a href="/block/' + data + '">' + data + '</a>';
-                    }
-                }, {
-                    "targets": 3,
-                    "data": "3",
-                    "render": function (data, type, row, meta) {
-                        return moment.unix(data).fromNow();
-                    }
-                }, {
-                    "targets": 5,
-                    "data": "5",
-                    "render": function (data, type, row, meta) {
-                        if (data.length < 64) {
-                            return 'N/A'
-                        } else {
-                            return '<a href="/block/' + data + '">0x' + data.substr(0, 8) + '...</a>';
-                        }
-                    }
-                }]
-            });
-        });
-    </script>
-{{end}}
-
-{{ define "css"}}
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
-    <style>
-        #blocktreechart {
-            height: 600px;
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+<script>
+  $(document).ready(function() {
+    $('#blocks').DataTable({
+      processing: true,
+      serverSide: true,
+      ordering: false,
+      searching: true,
+      ajax: '/blocks/data',
+      pagingType: 'full',
+      language: {
+        searchPlaceholder: 'Search by Block Number',
+        search: ''
+      },
+      columnDefs: [
+        {
+          targets: 0,
+          data: '0',
+          render: function(data, type, row, meta) {
+            return '<a href="/epoch/' + data + '">' + data + '</a>'
+          }
+        },
+        {
+          targets: 1,
+          data: '1',
+          render: function(data, type, row, meta) {
+            return '<a href="/block/' + data + '">' + data + '</a>'
+          }
+        },
+        {
+          targets: 3,
+          data: '3',
+          render: function(data, type, row, meta) {
+            return moment.unix(data).fromNow()
+          }
+        },
+        {
+          targets: 5,
+          data: '5',
+          render: function(data, type, row, meta) {
+            if (data.length < 64) {
+              return 'N/A'
+            } else {
+              return '<a href="/block/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+            }
+          }
         }
+      ]
+    })
+  })
+</script>
+{{end}} {{ define "css"}}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+<style>
+  #blocktreechart {
+    height: 600px;
+  }
+</style>
 
-    </style>
-
-{{end}}
-
-{{ define "content"}}
-    <div class="mb-3">
-        <div class="d-md-flex py-2 justify-content-md-between">
-            <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Blocks</h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                    <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Blocks</li>
-                </ol>
-            </nav>
-        </div>
+{{end}} {{ define "content"}}
+<div class="mb-3">
+  <div class="d-md-flex py-2 justify-content-md-between">
+    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Blocks</h1>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Blocks</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body p-3">
+    <div class="table-responsive col-sm-12 p-1">
+      <table class="table table-sm" id="blocks">
+        <thead>
+          <tr>
+            <th>Epoch</th>
+            <th>Slot</th>
+            <th>Status</th>
+            <th>Time</th>
+            <th>Proposer</th>
+            <th>Root Hash</th>
+            <th>Attestations</th>
+            <th>Deposits</th>
+            <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+            <th>Exits</th>
+            <th>Votes</th>
+          </tr>
+        </thead>
+        <tbody> </tbody>
+      </table>
     </div>
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive col-sm-12">
-                <table class="table table-sm" id="blocks">
-                    <thead>
-                    <tr>
-                        <th>Epoch</th>
-                        <th>Slot</th>
-                        <th>Status</th>
-                        <th>Time</th>
-                        <th>Proposer</th>
-                        <th>Root Hash</th>
-                        <th>Attestations</th>
-                        <th>Deposits</th>
-                        <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
-                            <span
-                                    data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-                        <th>Exits</th>
-                        <th>Votes</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+  </div>
+</div>
 {{end}}

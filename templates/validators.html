@@ -29,8 +29,7 @@
       data: '3',
       render: function(data, type, row, meta) {
         var d = data.split('_')
-        if (d[1] === 'offline')
-          return `${d[0]} <i class="fas fa-power-off fa-sm text-danger"></i>`
+        if (d[1] === 'offline') return `${d[0]} <i class="fas fa-power-off fa-sm text-danger"></i>`
         return `${d[0]}`
         // return formatValidatorStatus(data)
       }
@@ -48,24 +47,19 @@
       render: function(data, type, row, meta) {
         if (row[3] === 'pending') {
           return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">Eligible: ${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
-        } else if (
-            row[3] === 'active_online' ||
-            row[3] === 'active_offline' ||
-            row[3] === 'slasing_online' ||
-            row[3] === 'slasing_offline' ||
-            row[3] === 'exiting_online' ||
-            row[3] === 'exiting_offline'
-          ) {
+        } else if (row[3] === 'active_online' || row[3] === 'active_offline' || row[3] === 'slasing_online' || row[3] === 'slasing_offline' || row[3] === 'exiting_online' || row[3] === 'exiting_offline') {
           var res = ``
           if (data[6] === null) res += 'No Attestations Found'
           else res += `Last attestation: <span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[7]).format()}">${moment.unix(data[7]).fromNow()} (<a href="/block/${data[6]}">block ${data[6]}</a>)</span>`
           return res
         } else if (row[3] === 'exited') {
-          return `Exit: <span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[5]).format()}">${moment.unix(data[5]).fromNow()} (<a href="/epoch/${data[4]}">epoch ${data[4]}</a>)</span>, Withdrawable: <span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[7]).format()}">${moment.unix(data[7]).fromNow()} (<a href="/epoch/${data[6]}">epoch ${data[6]}</a>)</span>`
+          return `Exit: <span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[5]).format()}">${moment.unix(data[5]).fromNow()} (<a href="/epoch/${data[4]}">epoch ${data[4]}</a>)</span>, Withdrawable: <span data-toggle="tooltip" data-placement="top" title="${moment
+            .unix(data[7])
+            .format()}">${moment.unix(data[7]).fromNow()} (<a href="/epoch/${data[6]}">epoch ${data[6]}</a>)</span>`
         }
         return `unknown`
       }
-    },
+    }
   ]
   columnDefs.pending = [
     {
@@ -167,40 +161,28 @@
       searching: true,
       ajax: '/validators/data/validators',
       pagingType: 'full',
-      dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" +
-"<'row'<'col-sm-12'tr>>" +
-"<'row'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
+      dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
       fnInitComplete: function() {
-        $('div.filter-by-status').html(
-`<div><label><div class="dropdown" style="display:inline-block;">
-  <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-    all <span class="badge bg-dark"><span>{{.TotalCount}}</span></span>
-  </button>
-  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-    <h6 class="dropdown-header">Filter by state</h6>
-    <a class="dropdown-item" href="#" data-filter-validators="all">all <span class="badge bg-dark text-light"><span>{{.TotalCount}}</span></span></a>
-    <a class="dropdown-item" href="#" data-filter-validators="pending">pending <span class="badge bg-dark text-light">{{.PendingCount}}</span></a>
-    <a class="dropdown-item" href="#" data-filter-validators="active">active <span class="badge bg-dark text-light"><span class="text-success">{{.ActiveOnlineCount}}</span> / <span class="text-danger">{{.ActiveOfflineCount}}</span></span></a>
-    <a class="dropdown-item" href="#" data-filter-validators="slashing">slashing <span class="badge bg-dark text-light"><span class="text-success">{{.SlashingOnlineCount}}</span> / <span style="color:red">{{.SlashingOfflineCount}}</span></span></a>
-    <a class="dropdown-item" href="#" data-filter-validators="exiting">exiting <span class="badge bg-dark text-light"><span class="text-success">{{.ExitingOnlineCount}}</span> / <span style="color:red">{{.ExitingOfflineCount}}</span></span></a>
-    <a class="dropdown-item" href="#" data-filter-validators="exited">exited <span class="badge bg-dark text-light">{{.ExitedCount}}</span></a>
-  </div>
-</div>
-</label>
-</div>`)
-        .find('[data-filter-validators]').click(function(){
-          var f = $(this).data('filter-validators')
-          $('.filter-by-status .btn:first-child').html($(this).html())
-          // $('[data-filter-validators]').removeClass('active')
-          // $(`[data-filter-validators="${f}"]`).addClass('active')
-          validatorsDataTable.columnDefs = columnDefs[f]
-          validatorsDataTable.ajax.url(`/validators/data/validators?filterByStatus=${f}`)
-          validatorsDataTable.ajax.reload()
-        })
+        $('div.filter-by-status')
+          .html(
+            `<div><label><div class="dropdown" style="display:inline-block;"><button class="btn btn-bg-color-nav dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>All {{.TotalCount}}</span></button><div class="dropdown-menu" aria-labelledby="dropdownMenuButton"><h6 class="dropdown-header"><span>Filter by state </span> <span><span class="text-success"> online</span> | <span class="text-danger">offline</span></span></h6><hr style="margin:0.5rem 0"><a class="dropdown-item" href="#" data-filter-validators="all"><span>All </span><span>{{.TotalCount}}</span></a><a class="dropdown-item" href="#" data-filter-validators="pending"><span>pending </span><span>{{.PendingCount}}</span></a><a class="dropdown-item" href="#" data-filter-validators="active"><span>active </span><span> <span class="text-success">{{.ActiveOnlineCount}}</span>|<span class="text-danger"> {{.ActiveOfflineCount}} </span></span></a><a class="dropdown-item" href="#" data-filter-validators="slashing"><span>slashing </span><span> <span class="text-success"> {{.SlashingOnlineCount}} </span>|<span class="text-danger">{{.SlashingOfflineCount}}</span></span></a><a class="dropdown-item" href="#" data-filter-validators="exiting"><span>exiting </span><span> <span class="text-success">{{.ExitingOnlineCount}}</span>|<span class="text-danger"> {{.ExitingOfflineCount}} </span></span></a><a class="dropdown-item" href="#" data-filter-validators="exited"><span>exited </span><span>{{.ExitedCount}}</span></a></div></div></label></div>`
+          )
+          .find('[data-filter-validators]')
+          .click(function() {
+            var f = $(this).data('filter-validators')
+            $('.filter-by-status .btn:first-child').html($(this).html())
+            // $('[data-filter-validators]').removeClass('active')
+            // $(`[data-filter-validators="${f}"]`).addClass('active')
+            validatorsDataTable.columnDefs = columnDefs[f]
+            validatorsDataTable.ajax.url(`/validators/data/validators?filterByStatus=${f}`)
+            validatorsDataTable.ajax.reload()
+          })
       },
       preDrawCallback: function() {
         // this does not always work.. not sure how to solve the staying tooltip
-        try { $('[data-toggle="tooltip"]').tooltip('hide') } catch(e) {}
+        try {
+          $('[data-toggle="tooltip"]').tooltip('hide')
+        } catch (e) {}
       },
       drawCallback: function() {
         $('[data-toggle="tooltip"]').tooltip()
@@ -215,22 +197,20 @@
     //   validatorsDataTable.ajax.reload()
     // })
   })
-
 </script>
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
 <style>
-
-.dataTables_wrapper {
-  min-height: 400px; /* this is needed to make the bootstrap-dropdown work when the table is empty */
-}
-[data-filter-validators]:hover {
-  cursor: pointer;
-}
-[data-filter-validators] {
-  margin: 2px;
-}
-/*
+  .dataTables_wrapper {
+    min-height: 400px; /* this is needed to make the bootstrap-dropdown work when the table is empty */
+  }
+  [data-filter-validators]:hover {
+    cursor: pointer;
+  }
+  [data-filter-validators] {
+    margin: 2px;
+  }
+  /*
 [data-filter-validators].active {
   margin: 0px;
   border: 2px solid orange;
@@ -252,30 +232,63 @@
 }
 */
 
-.validator-deposited {}
-.validator-pending {
-  background-color: lightyellow;
-}
-.validator-active {
-  background-color: lightgreen;
-}
-.validator-active-online {}
-.validator-active-offline {}
-.validator-slashing {
-  background-color: lightpink;
-}
-.validator-slashing-online {}
-.validator-slashing-offline {}
-.validator-exiting {
-  background-color: lightblue;
-}
-.validator-exiting-online {}
-.validator-exiting-offline {}
-.validator-exited {
-  background-color: lightgray;
-}
-.validator-unknown {}
+  .dropdown-menu {
+    background-color: var(--bg-color-nav);
+    color: var(--font-color);
+  }
 
+  .dropdown-header {
+    padding: 0.25rem 1rem;
+  }
+
+  .dropdown-item {
+    display: flex;
+    padding: 0.25rem 1rem;
+    color: var(--font-color);
+  }
+
+  .dropdown-item > span:nth-child(1) {
+    width: 40%;
+    min-width: 80px;
+  }
+
+  .dropdown-item > span:nth-child(2) {
+    width: 60%;
+    min-width: 130px;
+    padding-left: 0.5rem;
+  }
+
+  .validator-deposited {
+  }
+  .validator-pending {
+    background-color: lightyellow;
+  }
+  .validator-active {
+    background-color: lightgreen;
+  }
+  .validator-active-online {
+  }
+  .validator-active-offline {
+  }
+  .validator-slashing {
+    background-color: lightpink;
+  }
+  .validator-slashing-online {
+  }
+  .validator-slashing-offline {
+  }
+  .validator-exiting {
+    background-color: lightblue;
+  }
+  .validator-exiting-online {
+  }
+  .validator-exiting-offline {
+  }
+  .validator-exited {
+    background-color: lightgray;
+  }
+  .validator-unknown {
+  }
 </style>
 {{end}} {{ define "content"}}
 <div class="mb-3">
@@ -290,8 +303,8 @@
   </div>
 </div>
 <div class="card">
-  <div class="card-body">
-    <div class="table-responsive col-sm-12">
+  <div class="card-body p-3">
+    <div class="table-responsive col-sm-12 p-1">
       <table class="table table-sm" id="validators">
         <thead>
           <tr>
