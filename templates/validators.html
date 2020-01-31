@@ -165,7 +165,7 @@
       fnInitComplete: function() {
         $('div.filter-by-status')
           .html(
-            `<div><label><div class="dropdown" style="display:inline-block;"><button class="btn btn-bg-color-nav dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>All {{.TotalCount}}</span></button><div class="dropdown-menu" aria-labelledby="dropdownMenuButton"><h6 class="dropdown-header"><span>Filter by state </span> <span><span class="text-success"> online</span> | <span class="text-danger">offline</span></span></h6><hr style="margin:0.5rem 0"><a class="dropdown-item" href="#" data-filter-validators="all"><span>All </span><span>{{.TotalCount}}</span></a><a class="dropdown-item" href="#" data-filter-validators="pending"><span>pending </span><span>{{.PendingCount}}</span></a><a class="dropdown-item" href="#" data-filter-validators="active"><span>active </span><span> <span class="text-success">{{.ActiveOnlineCount}}</span>|<span class="text-danger"> {{.ActiveOfflineCount}} </span></span></a><a class="dropdown-item" href="#" data-filter-validators="slashing"><span>slashing </span><span> <span class="text-success"> {{.SlashingOnlineCount}} </span>|<span class="text-danger">{{.SlashingOfflineCount}}</span></span></a><a class="dropdown-item" href="#" data-filter-validators="exiting"><span>exiting </span><span> <span class="text-success">{{.ExitingOnlineCount}}</span>|<span class="text-danger"> {{.ExitingOfflineCount}} </span></span></a><a class="dropdown-item" href="#" data-filter-validators="exited"><span>exited </span><span>{{.ExitedCount}}</span></a></div></div></label></div>`
+            `<div><label><div class="dropdown" style="display:inline-block;"><button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>All {{.TotalCount}}</span></button><div class="dropdown-menu" aria-labelledby="dropdownMenuButton"><h6 class="dropdown-header"><span>Filter state </span> <span><span class="text-success"> online</span> | <span class="text-danger">offline</span></span></h6><hr style="margin:0.5rem 0"><a class="dropdown-item" href="#" data-filter-validators="all"><span>All </span><span>{{.TotalCount}}</span></a><a class="dropdown-item" href="#" data-filter-validators="pending"><span>pending </span><span>{{.PendingCount}}</span></a><a class="dropdown-item" href="#" data-filter-validators="active"><span>active </span><span> <span class="text-success">{{.ActiveOnlineCount}}</span>|<span class="text-danger"> {{.ActiveOfflineCount}} </span></span></a><a class="dropdown-item" href="#" data-filter-validators="slashing"><span>slashing </span><span> <span class="text-success"> {{.SlashingOnlineCount}} </span>|<span class="text-danger">{{.SlashingOfflineCount}}</span></span></a><a class="dropdown-item" href="#" data-filter-validators="exiting"><span>exiting </span><span> <span class="text-success">{{.ExitingOnlineCount}}</span>|<span class="text-danger"> {{.ExitingOfflineCount}} </span></span></a><a class="dropdown-item" href="#" data-filter-validators="exited"><span>exited </span><span>{{.ExitedCount}}</span></a></div></div></label></div>`
           )
           .find('[data-filter-validators]')
           .click(function() {
@@ -207,9 +207,9 @@
   [data-filter-validators]:hover {
     cursor: pointer;
   }
-  [data-filter-validators] {
+  /* [data-filter-validators] {
     margin: 2px;
-  }
+  } */
   /*
 [data-filter-validators].active {
   margin: 0px;
@@ -232,13 +232,37 @@
 }
 */
 
-  .dropdown-menu {
-    background-color: var(--bg-color-nav);
+  #dropdownMenuButton * {
+    color: var(--font-color) !important;
+  }
+  #dropdownMenuButton::after {
     color: var(--font-color);
+  }
+
+  .dropdown-item:focus,
+  .dropdown-item:hover {
+    color: var(--font-color);
+    background-color: var(--bg-color-nav);
+  }
+
+  .dropdown-menu {
+    color: var(--font-color);
+    background-color: var(--white);
   }
 
   .dropdown-header {
     padding: 0.25rem 1rem;
+    color: var(--body-color);
+    display: flex;
+  }
+
+  .dropdown-header > span:nth-child(1) {
+    width: 40%;
+  }
+
+  .dropdown-header > span:nth-child(2) {
+    width: 60%;
+    padding-left: 0.5rem;
   }
 
   .dropdown-item {
