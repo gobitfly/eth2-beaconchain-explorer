@@ -394,6 +394,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%v", b.Epoch),
 			fmt.Sprintf("%v", b.AttesterSlot),
+			fmt.Sprintf("%v", utils.SlotToTime(b.AttesterSlot).Unix()),
 			fmt.Sprintf("%v", b.CommitteeIndex),
 			fmt.Sprintf("%v", utils.FormatAttestationStatus(b.Status)),
 		}
