@@ -88,6 +88,7 @@ type ValidatorsPageData struct {
 	ExitingOfflineCount  uint64
 	ExitedCount          uint64
 	UnknownCount         uint64
+	Validators           []*ValidatorsPageDataValidators
 }
 
 // ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
@@ -104,6 +105,8 @@ type ValidatorsPageDataValidators struct {
 	ExitEpoch                  uint64 `db:"exitepoch"`
 	LastAttestationSlot        *int64 `db:"lastattestationslot"`
 	State                      string `db:"state"`
+	MissedProposals            uint64 `db:"missedproposals"`
+	ExecutedProposals          uint64 `db:"executedproposals"`
 }
 
 // ValidatorPageData is a struct to hold data for the validators page
@@ -111,14 +114,15 @@ type ValidatorPageData struct {
 	Epoch                            uint64 `db:"epoch"`
 	ValidatorIndex                   uint64 `db:"validatorindex"`
 	PublicKey                        []byte
-	WithdrawableEpoch                uint64 `db:"withdrawableepoch"`
-	CurrentBalance                   uint64 `db:"balance"`
-	EffectiveBalance                 uint64 `db:"effectivebalance"`
-	Slashed                          bool   `db:"slashed"`
-	ActivationEligibilityEpoch       uint64 `db:"activationeligibilityepoch"`
-	ActivationEpoch                  uint64 `db:"activationepoch"`
-	ExitEpoch                        uint64 `db:"exitepoch"`
-	Index                            uint64 `db:"index"`
+	WithdrawableEpoch                uint64  `db:"withdrawableepoch"`
+	CurrentBalance                   uint64  `db:"balance"`
+	EffectiveBalance                 uint64  `db:"effectivebalance"`
+	Slashed                          bool    `db:"slashed"`
+	ActivationEligibilityEpoch       uint64  `db:"activationeligibilityepoch"`
+	ActivationEpoch                  uint64  `db:"activationepoch"`
+	ExitEpoch                        uint64  `db:"exitepoch"`
+	Index                            uint64  `db:"index"`
+	LastAttestationSlot              *uint64 `db:"lastattestationslot"`
 	WithdrawableTs                   time.Time
 	ActivationEligibilityTs          time.Time
 	ActivationTs                     time.Time

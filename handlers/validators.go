@@ -15,116 +15,6 @@ import (
 	"time"
 )
 
-type ValidatorsDataQueryParams struct {
-	Search      string
-	OrderBy     string
-	OrderDir    string
-	Draw        uint64
-	Start       uint64
-	Length      int64
-	StateFilter string
-}
-
-func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams, error) {
-	q := r.URL.Query()
-
-	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
-	if len(search) > 128 {
-		search = search[:128]
-	}
-
-	stateFilter := ""
-	filterByState := q.Get("filterByState")
-	if filterByState == "pending" {
-		stateFilter = "AND a.state LIKE 'pending%'"
-	} else if filterByState == "active" {
-		stateFilter = "AND a.state LIKE 'active%'"
-	} else if filterByState == "active_online" {
-		stateFilter = "AND a.state = 'active_online'"
-	} else if filterByState == "active_offline" {
-		stateFilter = "AND a.state = 'active_offline'"
-	} else if filterByState == "slashing" {
-		stateFilter = "AND a.state LIKE 'slashing%'"
-	} else if filterByState == "slashing_online" {
-		stateFilter = "AND a.state = 'slashing_online'"
-	} else if filterByState == "slashing_offline" {
-		stateFilter = "AND a.state = 'slashing_offline'"
-	} else if filterByState == "exiting" {
-		stateFilter = "AND a.state LIKE 'exiting%'"
-	} else if filterByState == "exiting_online" {
-		stateFilter = "AND a.state = 'exiting_online'"
-	} else if filterByState == "exiting_offline" {
-		stateFilter = "AND a.state = 'exiting_offline'"
-	} else if filterByState == "exited" {
-		stateFilter = "AND a.state = 'exited'"
-	} else {
-		filterByState = "all"
-	}
-
-	orderColumn := q.Get("order[0][column]")
-	orderByStateMap := make(map[string]map[string]string)
-	orderByStateMap["pending"] = map[string]string{"0": "pubkey", "1": "validatorindex", "2": "balance", "3": "state"}
-	orderByStateMap["active"] = map[string]string{"0": "pubkey", "1": "validatorindex", "2": "balance", "3": "state"}
-	orderByStateMap["slashing"] = map[string]string{"0": "pubkey", "1": "validatorindex", "2": "balance", "3": "state"}
-	orderByStateMap["exiting"] = map[string]string{"0": "pubkey", "1": "validatorindex", "2": "balance", "3": "state"}
-	orderByStateMap["exited"] = map[string]string{"0": "pubkey", "1": "validatorindex", "2": "balance", "3": "state"}
-	orderByStateMap["all"] = map[string]string{"0": "pubkey", "1": "validatorindex", "2": "balance", "3": "state"}
-	orderByState, exists := orderByStateMap[filterByState]
-	if !exists {
-		return nil, fmt.Errorf("invalid state-filter: %v", filterByState)
-	}
-	orderDir := q.Get("order[0][dir]")
-	if orderDir != "desc" && orderDir != "asc" {
-		orderDir = "desc"
-	}
-	orderBy, exists := orderByState[orderColumn]
-	if !exists {
-		orderBy = "validatorindex"
-	} else if orderBy == "lastattestationslot" {
-		if orderDir == "desc" {
-			orderDir = "desc nulls last"
-		} else {
-			orderDir = "asc nulls first"
-		}
-	}
-
-	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		return nil, err
-	}
-
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		return nil, err
-	}
-
-	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		return nil, err
-	}
-	if length < 0 {
-		length = 100
-	}
-	if length > 100 {
-		length = 100
-	}
-
-	res := &ValidatorsDataQueryParams{
-		search,
-		orderBy,
-		orderDir,
-		draw,
-		start,
-		length,
-		stateFilter,
-	}
-
-	return res, nil
-}
-
 var validatorsTemplate = template.Must(template.New("validators").ParseFiles("templates/layout.html", "templates/validators.html"))
 
 // Validators returns the validators using a go template
@@ -198,6 +88,120 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type ValidatorsDataQueryParams struct {
+	Search      string
+	OrderBy     string
+	OrderDir    string
+	Draw        uint64
+	Start       uint64
+	Length      int64
+	StateFilter string
+}
+
+func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams, error) {
+	q := r.URL.Query()
+
+	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
+	if len(search) > 128 {
+		search = search[:128]
+	}
+
+	filterByState := q.Get("filterByState")
+	var qryStateFilter string
+	switch filterByState {
+	case "pending":
+		qryStateFilter = "AND a.state LIKE 'pending%'"
+	case "active":
+		qryStateFilter = "AND a.state LIKE 'active%'"
+	case "active_online":
+		qryStateFilter = "AND a.state = 'active_online'"
+	case "active_offline":
+		qryStateFilter = "AND a.state = 'active_offline'"
+	case "slashing":
+		qryStateFilter = "AND a.state LIKE 'slashing%'"
+	case "slashing_online":
+		qryStateFilter = "AND a.state = 'slashing_online'"
+	case "slashing_offline":
+		qryStateFilter = "AND a.state = 'slashing_offline'"
+	case "exiting":
+		qryStateFilter = "AND a.state LIKE 'exiting%'"
+	case "exiting_online":
+		qryStateFilter = "AND a.state = 'exiting_online'"
+	case "exiting_offline":
+		qryStateFilter = "AND a.state = 'exiting_offline'"
+	case "exited":
+		qryStateFilter = "AND a.state = 'exited'"
+	default:
+		qryStateFilter = ""
+	}
+
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "pubkey",
+		"1": "validatorindex",
+		"2": "balance",
+		"3": "state",
+		"4": "activationepoch",
+		"5": "exitepoch",
+		"6": "withdrawableepoch",
+		"7": "lastattestationslot",
+		"8": "executedproposals",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "validatorindex"
+	}
+
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+
+	if orderBy == "lastattestationslot" {
+		if orderDir == "desc" {
+			orderDir = "desc nulls last"
+		} else {
+			orderDir = "asc nulls first"
+		}
+	}
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		return nil, err
+	}
+
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		return nil, err
+	}
+
+	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+		return nil, err
+	}
+	if length < 0 {
+		length = 100
+	}
+	if length > 100 {
+		length = 100
+	}
+
+	res := &ValidatorsDataQueryParams{
+		search,
+		orderBy,
+		orderDir,
+		draw,
+		start,
+		length,
+		qryStateFilter,
+	}
+
+	return res, nil
+}
+
 // ValidatorsData returns all validators and their balances
 func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -235,7 +239,9 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	validators.exitepoch,
 	validators.lastattestationslot,
 	COALESCE(validator_balances.balance, 0) AS balance,
-	a.state
+	a.state,
+	COALESCE(p1.c,0) as executedproposals,
+	COALESCE(p2.c,0) as missedproposals
 FROM validators
 INNER JOIN (
 	SELECT validatorindex,
@@ -252,7 +258,20 @@ INNER JOIN (
 LEFT JOIN validator_balances
 	ON validator_balances.epoch = $1
 	AND validator_balances.validatorindex = validators.validatorindex
-WHERE encode(validators.pubkey::bytea, 'hex') LIKE $3
+LEFT JOIN (
+	select validatorindex, count(*) as c 
+	from proposal_assignments
+	where status = 1
+	group by validatorindex
+) p1 ON validators.validatorindex = p1.validatorindex
+LEFT JOIN (
+	select validatorindex, count(*) as c 
+	from proposal_assignments
+	where status = 2
+	group by validatorindex
+) p2 ON validators.validatorindex = p2.validatorindex
+WHERE (encode(validators.pubkey::bytea, 'hex') LIKE $3
+	OR CAST(validators.validatorindex AS text) LIKE $3)
 %s
 ORDER BY %s %s
 LIMIT $4 OFFSET $5`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
@@ -267,36 +286,53 @@ LIMIT $4 OFFSET $5`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDi
 
 	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
-		info := []interface{}{
-			v.ActivationEligibilityEpoch,
-			utils.EpochToTime(v.ActivationEligibilityEpoch).Unix(),
-			v.ExitEpoch,
-			utils.EpochToTime(v.ExitEpoch).Unix(),
-			v.WithdrawableEpoch,
-			utils.EpochToTime(v.WithdrawableEpoch).Unix(),
-		}
-		if v.LastAttestationSlot != nil {
-			info = append(info, *v.LastAttestationSlot)
-			info = append(info, utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix())
-		} else {
-			info = append(info, nil)
-			info = append(info, nil)
-		}
-
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			[]interface{}{
-				utils.FormatBalance(v.CurrentBalance),
-				utils.FormatBalance(v.EffectiveBalance),
+				// utils.FormatBalance(v.CurrentBalance),
+				// utils.FormatBalance(v.EffectiveBalance),
+				fmt.Sprintf("%.4f ETH", float64(v.CurrentBalance)/float64(1e9)),
+				fmt.Sprintf("%.1f ETH", float64(v.EffectiveBalance)/float64(1e9)),
 			},
-			v.State, // utils.FormatValidatorStatus(v.Status),
+			v.State,
 			[]interface{}{
 				v.ActivationEpoch,
 				utils.EpochToTime(v.ActivationEpoch).Unix(),
 			},
-			info,
 		}
+
+		if v.ExitEpoch != 9223372036854775807 {
+			tableData[i] = append(tableData[i], []interface{}{
+				v.ExitEpoch,
+				utils.EpochToTime(v.ExitEpoch).Unix(),
+			})
+		} else {
+			tableData[i] = append(tableData[i], nil)
+		}
+
+		if v.WithdrawableEpoch != 9223372036854775807 {
+			tableData[i] = append(tableData[i], []interface{}{
+				v.WithdrawableEpoch,
+				utils.EpochToTime(v.WithdrawableEpoch).Unix(),
+			})
+		} else {
+			tableData[i] = append(tableData[i], nil)
+		}
+
+		if v.LastAttestationSlot != nil {
+			tableData[i] = append(tableData[i], []interface{}{
+				*v.LastAttestationSlot,
+				utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix(),
+			})
+		} else {
+			tableData[i] = append(tableData[i], nil)
+		}
+
+		tableData[i] = append(tableData[i], []interface{}{
+			v.ExecutedProposals,
+			v.MissedProposals,
+		})
 	}
 
 	data := &types.DataTableResponse{

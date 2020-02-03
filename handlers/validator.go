@@ -76,20 +76,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
 	err = db.DB.Get(&validatorPageData, `SELECT 
-											 validator_set.epoch, 
-											 validator_set.validatorindex, 
-											 validator_set.withdrawableepoch, 
-											 validator_set.effectivebalance, 
-											 validator_set.slashed, 
-											 validator_set.activationeligibilityepoch, 
-											 validator_set.activationepoch, 
-											 validator_set.exitepoch,
-       										 COALESCE(validator_balances.balance, 0) AS balance
-										FROM validator_set
-										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch 
-										                                    AND validator_set.validatorindex = validator_balances.validatorindex
-										WHERE validator_set.epoch = $1 
-										  AND validator_set.validatorindex = $2
+											validators.validatorindex, 
+											validators.withdrawableepoch, 
+											validators.effectivebalance, 
+											validators.slashed, 
+											validators.activationeligibilityepoch, 
+											validators.activationepoch, 
+											validators.exitepoch,
+											validators.lastattestationslot,
+											COALESCE(validator_balances.balance, 0) AS balance
+										FROM validators
+										LEFT JOIN validator_balances 
+											ON validators.validatorindex = validator_balances.validatorindex
+											AND validator_balances.epoch = $1
+										WHERE validators.validatorindex = $2
 										LIMIT 1`, services.LatestEpoch(), index)
 	if err != nil {
 		logger.Printf("Error retrieving validator page data: %v", err)
@@ -104,6 +104,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	validatorPageData.Epoch = services.LatestEpoch()
 	validatorPageData.Index = index
 	validatorPageData.PublicKey, err = db.GetValidatorPublicKey(index)
 	if err != nil {
@@ -207,12 +208,29 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
 	}
 
+	var firstSlotOfPreviousEpoch uint64
+	if services.LatestEpoch() < 1 {
+		firstSlotOfPreviousEpoch = 0
+	} else {
+		firstSlotOfPreviousEpoch = (services.LatestEpoch() - 1) * utils.Config.Chain.SlotsPerEpoch
+	}
+
 	if validatorPageData.Epoch > validatorPageData.ExitEpoch {
-		validatorPageData.Status = "Ejected"
+		validatorPageData.Status = "Exited"
 	} else if validatorPageData.Epoch < validatorPageData.ActivationEpoch {
 		validatorPageData.Status = "Pending"
+	} else if validatorPageData.Slashed {
+		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < firstSlotOfPreviousEpoch) {
+			validatorPageData.Status = "SlashingOffline"
+		} else {
+			validatorPageData.Status = "Slashing"
+		}
 	} else {
-		validatorPageData.Status = "Active"
+		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < firstSlotOfPreviousEpoch) {
+			validatorPageData.Status = "ActiveOffline"
+		} else {
+			validatorPageData.Status = "Active"
+		}
 	}
 	data.Data = validatorPageData
 
