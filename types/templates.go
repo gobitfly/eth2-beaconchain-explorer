@@ -103,7 +103,7 @@ type ValidatorsPageDataValidators struct {
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
 	LastAttestationSlot        *int64 `db:"lastattestationslot"`
-	Status                     string `db:"status"`
+	State                      string `db:"state"`
 }
 
 // ValidatorPageData is a struct to hold data for the validators page
