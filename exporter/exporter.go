@@ -274,21 +274,25 @@ func Start(client rpc.Client) error {
 		if head.FinalizedEpoch > 10 {
 			startEpoch = head.FinalizedEpoch - 10
 		}
+		logger.Infof("updating status of epochs %v-%v", startEpoch, head.HeadEpoch)
 		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
 		if err != nil {
 			logger.Errorf("error updating epoch stratus: %v", err)
 		}
 
+		logger.Infof("exporting attestation pool")
 		err = exportAttestationPool(client)
 		if err != nil {
 			logger.Errorf("error exporting attestation pool data: %v", err)
 		}
 
+		logger.Infof("exporting validation queue")
 		err = exportValidatorQueue(client)
 		if err != nil {
 			logger.Errorf("error exporting validator queue data: %v", err)
 		}
 
+		logger.Infof("marking orphaned blocks of epochs %v-%v", startEpoch, head.HeadEpoch)
 		err = MarkOrphanedBlocks(startEpoch, head.HeadEpoch, nodeBlocks)
 		if err != nil {
 			logger.Errorf("error marking orphaned blocks: %v", err)

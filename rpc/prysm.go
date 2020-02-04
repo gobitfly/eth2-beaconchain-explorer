@@ -99,7 +99,7 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]ui
 	for {
 		validatorsResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken})
 		if err != nil {
-			log.Fatal(err)
+			return nil, nil, fmt.Errorf("error retrieving validator indices for validator queue: %v", err)
 		}
 		if validatorsResponse.TotalSize == 0 {
 			break
@@ -185,7 +185,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	for {
 		validatorsResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
 		if err != nil {
-			log.Fatal(err)
+			return nil, fmt.Errorf("error retrieving validator indices for epoch assignments: %v", err)
 		}
 		if validatorsResponse.TotalSize == 0 {
 			break
