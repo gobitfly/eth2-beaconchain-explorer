@@ -114,40 +114,6 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte)
 	return tx.Commit()
 }
 
-// SaveAttestationPool will save the attestation pool into the database
-func SaveAttestationPool(attestations []*types.Attestation) error {
-	tx, err := DB.Begin()
-	if err != nil {
-		return fmt.Errorf("error starting db transactions: %v", err)
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec("TRUNCATE attestationpool")
-	if err != nil {
-		return fmt.Errorf("error truncating attestationpool table: %v", err)
-	}
-
-	stmtAttestationPool, err := tx.Prepare(`INSERT INTO attestationpool (aggregationbits, signature, slot, index, beaconblockroot, source_epoch, source_root, target_epoch, target_root)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (slot, index) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmtAttestationPool.Close()
-
-	for _, attestation := range attestations {
-		_, err := stmtAttestationPool.Exec(bitfield.Bitlist(attestation.AggregationBits).Bytes(), attestation.Signature, attestation.Data.Slot, attestation.Data.CommitteeIndex, attestation.Data.BeaconBlockRoot, attestation.Data.Source.Epoch, attestation.Data.Source.Root, attestation.Data.Target.Epoch, attestation.Data.Target.Root)
-		if err != nil {
-			return fmt.Errorf("error executing stmtAttestationPool: %v", err)
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("error committing db transaction: %v", err)
-	}
-	return nil
-}
-
 // SaveValidatorQueue will save the validator queue into the database
 func SaveValidatorQueue(validators *types.ValidatorQueue, validatorIndices map[string]uint64) error {
 	tx, err := DB.Begin()
@@ -232,12 +198,6 @@ func SaveEpoch(data *types.EpochData) error {
 	err = saveValidatorAttestationAssignments(data.Epoch, data.ValidatorAssignmentes.AttestorAssignments, tx)
 	if err != nil {
 		return fmt.Errorf("error saving validator assignments to db: %v", err)
-	}
-
-	logger.Infof("exporting beacon committees data")
-	err = saveBeaconCommittees(data.Epoch, data.BeaconCommittees, tx)
-	if err != nil {
-		return fmt.Errorf("error saving beacon committees to db: %v", err)
 	}
 
 	logger.Infof("exporting validator balance data")
@@ -449,27 +409,6 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 		_, err := stmtAttestationAssignments.Exec(epoch, validator, keySplit[0], keySplit[1], 0)
 		if err != nil {
 			return fmt.Errorf("error executing save validator attestation assignment statement: %v", err)
-		}
-	}
-
-	return nil
-}
-
-func saveBeaconCommittees(epoch uint64, committeesMap map[uint64][]*types.BeaconCommitteItem, tx *sql.Tx) error {
-
-	stmt, err := tx.Prepare(`INSERT INTO beacon_committees (epoch, slot, slotindex, indices)
- 													VALUES    ($1, $2, $3, $4) ON CONFLICT (epoch, slot, slotindex) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	for slot, comittees := range committeesMap {
-		for index, committee := range comittees {
-			_, err := stmt.Exec(epoch, slot, index, pq.Array(committee.ValidatorIndices))
-			if err != nil {
-				return fmt.Errorf("error executing save beacon committee statement: %v", err)
-			}
 		}
 	}
 

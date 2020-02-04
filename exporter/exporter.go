@@ -278,12 +278,6 @@ func Start(client rpc.Client) error {
 			logger.Errorf("error updating epoch stratus: %v", err)
 		}
 
-		logger.Infof("exporting attestation pool")
-		err = exportAttestationPool(client)
-		if err != nil {
-			logger.Errorf("error exporting attestation pool data: %v", err)
-		}
-
 		logger.Infof("exporting validation queue")
 		err = exportValidatorQueue(client)
 		if err != nil {
@@ -379,16 +373,6 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 	}
 
 	return db.SaveEpoch(data)
-}
-
-func exportAttestationPool(client rpc.Client) error {
-	attestations, err := client.GetAttestationPool()
-
-	if err != nil {
-		return fmt.Errorf("error retrieving attestation pool data: %v", err)
-	}
-
-	return db.SaveAttestationPool(attestations)
 }
 
 func exportValidatorQueue(client rpc.Client) error {

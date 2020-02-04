@@ -65,35 +65,12 @@ create table attestation_assignments (
 );
 create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
 
-drop table if exists beacon_committees;
-create table beacon_committees (
-    epoch int not null,
-    slot int not null,
-    slotindex int not null,
-    indices int[] not null,
-    primary key (epoch, slot, slotindex)
-);
-
 drop table if exists validator_balances;
 create table validator_balances (
     epoch int not null,
     validatorindex int not null,
     balance bigint not null,
     primary key (validatorindex, epoch)
-);
-
-drop table if exists attestationpool;
-create table attestationpool (
-     aggregationbits bytea not null,
-     signature bytea not null,
-     slot int not null,
-     index int not null,
-     beaconblockroot bytea not null,
-     source_epoch int not null,
-     source_root bytea not null,
-     target_epoch int not null,
-     target_root bytea not null,
-     primary key (slot, index)
 );
 
 drop table if exists validatorqueue_activation;
