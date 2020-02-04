@@ -156,6 +156,7 @@ func Start(client rpc.Client) error {
 
 	for true {
 		time.Sleep(time.Second * 10)
+		logger.Infof("checking for new blocks/epochs to export")
 
 		head, err := client.GetChainHead()
 		if err != nil {
@@ -297,6 +298,8 @@ func Start(client rpc.Client) error {
 		if err != nil {
 			logger.Errorf("error marking orphaned blocks: %v", err)
 		}
+
+		logger.Infof("finished exporting all new blocks/epochs")
 	}
 
 	return nil
