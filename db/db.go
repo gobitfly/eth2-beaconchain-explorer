@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -575,12 +576,16 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				logger.Printf("skipping export of block %x at slot %v as it is already present in the db", b.BlockRoot, b.Slot)
 				continue
 			}
+			start := time.Now()
+			logger.Infof("exporting block %x at slot %v", b.BlockRoot, b.Slot)
 
+			logger.Infof("deleting placeholder block")
 			_, err = tx.Exec("DELETE FROM blocks WHERE slot = $1 AND length(blockroot) = 1", b.Slot) // Delete placeholder block
 			if err != nil {
 				return fmt.Errorf("error deleting placeholder block: %v", err)
 			}
 
+			logger.Infof("writing block data")
 			_, err = stmtBlock.Exec(epoch,
 				b.Slot,
 				b.BlockRoot,
@@ -603,6 +608,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				return fmt.Errorf("error executing stmtBlocks for block %v: %v", b.Slot, err)
 			}
 
+			logger.Infof("writing proposer slashings data")
 			for i, ps := range b.ProposerSlashings {
 				_, err := stmtProposerSlashing.Exec(b.Slot, i, ps.ProposerIndex, ps.Header1.Slot, ps.Header1.ParentRoot, ps.Header1.StateRoot, ps.Header1.BodyRoot, ps.Header1.Signature, ps.Header2.Slot, ps.Header2.ParentRoot, ps.Header2.StateRoot, ps.Header2.BodyRoot, ps.Header2.Signature)
 				if err != nil {
@@ -610,6 +616,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				}
 			}
 
+			logger.Infof("writing attester slashings data")
 			for i, as := range b.AttesterSlashings {
 				_, err := stmtAttesterSlashing.Exec(b.Slot, i, as.Attestation1.Signature, as.Attestation1.Data.Slot, as.Attestation1.Data.CommitteeIndex, as.Attestation1.Data.BeaconBlockRoot, as.Attestation1.Data.Source.Epoch, as.Attestation1.Data.Source.Root, as.Attestation1.Data.Target.Epoch, as.Attestation1.Data.Target.Root, as.Attestation2.Signature, as.Attestation2.Data.Slot, as.Attestation2.Data.CommitteeIndex, as.Attestation2.Data.BeaconBlockRoot, as.Attestation2.Data.Source.Epoch, as.Attestation2.Data.Source.Root, as.Attestation2.Data.Target.Epoch, as.Attestation2.Data.Target.Root)
 				if err != nil {
@@ -617,6 +624,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				}
 			}
 
+			logger.Infof("writing attestation data")
 			for i, a := range b.Attestations {
 
 				for _, validator := range a.Attesters {
@@ -637,6 +645,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				}
 			}
 
+			logger.Infof("writing deposits data")
 			for i, d := range b.Deposits {
 				_, err := stmtDeposits.Exec(b.Slot, i, nil, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature)
 				if err != nil {
@@ -644,6 +653,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				}
 			}
 
+			logger.Infof("writing voluntary exits data")
 			for i, ve := range b.VoluntaryExits {
 				_, err := stmtVoluntaryExits.Exec(b.Slot, i, ve.Epoch, ve.ValidatorIndex, ve.Signature)
 				if err != nil {
@@ -651,10 +661,13 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				}
 			}
 
+			logger.Infof("writing proposal assignments data")
 			_, err = stmtProposalAssignments.Exec(epoch, b.Proposer, b.Slot, b.Status)
 			if err != nil {
 				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %v", b.Slot, err)
 			}
+
+			logger.Infof("export of block %x at slot %x completed, took %v", b.BlockRoot, b.Slot, time.Since(start))
 		}
 	}
 
