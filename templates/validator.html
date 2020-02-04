@@ -547,7 +547,6 @@
 					</ul>
 				</div>
 			</div>
-
 			<div class="tab-content" id="pills-tabContent">
 				<div class="tab-pane fade show active" id="pills-overview" role="tabpanel"
 					 aria-labelledby="pills-overview-tab">
@@ -565,7 +564,15 @@
 					</div>
 					<div class="row border-bottom p-3">
 						<div class="col-md-2">Status:</div>
-						<div class="col-md-10"><b>{{.Status}}</b></div>
+                        {{if eq .Status "ActiveOffline"}}
+                            <div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Active</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
+                        {{else if eq .Status "SlashingOffline"}}
+                            <div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Slashing</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
+                        {{else if eq .Status "ExitingOffline"}}
+                            <div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Exiting</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
+                        {{else}}
+                            <div class="col-md-10"><b>{{.Status}}</b></div>
+                        {{end}}
 					</div>
 					<div class="row border-bottom p-3">
 						<div class="col-md-2">Slashed:</div>
