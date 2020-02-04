@@ -9,7 +9,6 @@ import (
 	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
 	"github.com/prysmaticlabs/go-bitfield"
 	"google.golang.org/grpc"
-	"log"
 	"sync"
 	"time"
 
@@ -37,7 +36,7 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 	chainClient := ethpb.NewBeaconChainClient(conn)
 	nodeClient := ethpb.NewNodeClient(conn)
 
-	log.Printf("gRPC connection to backend node established")
+	logger.Printf("gRPC connection to backend node established")
 	client := &PrysmClient{
 		client:              chainClient,
 		nodeClient:          nodeClient,

@@ -127,8 +127,6 @@ func Start(client rpc.Client) error {
 		})
 
 		for _, epoch := range keys {
-			logger.Printf("exporting epoch %v", epoch)
-
 			err = ExportEpoch(epoch, client)
 
 			if err != nil {
@@ -137,7 +135,6 @@ func Start(client rpc.Client) error {
 					epochBlacklist[epoch]++
 				}
 			}
-			logger.Printf("finished export for epoch %v", epoch)
 		}
 	}
 

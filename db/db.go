@@ -207,36 +207,46 @@ func SaveEpoch(data *types.EpochData) error {
 	}
 	defer tx.Rollback()
 
+	logger.Infof("starting export of epoch %v", data.Epoch)
+	start := time.Now()
+
+	logger.Infof("exporting block data")
 	err = saveBlocks(data.Epoch, data.Blocks, tx)
 	if err != nil {
 		return fmt.Errorf("error saving blocks to db: %v", err)
 	}
 
+	logger.Infof("exporting validator set data")
 	err = saveValidatorSet(data.Epoch, data.Validators, data.ValidatorIndices, tx)
 	if err != nil {
 		return fmt.Errorf("error saving validator set to db: %v", err)
 	}
 
+	logger.Infof("exporting proposal assignments data")
 	err = saveValidatorProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments, tx)
 	if err != nil {
 		return fmt.Errorf("error saving validator assignments to db: %v", err)
 	}
 
+	logger.Infof("exporting attestation assignments data")
 	err = saveValidatorAttestationAssignments(data.Epoch, data.ValidatorAssignmentes.AttestorAssignments, tx)
 	if err != nil {
 		return fmt.Errorf("error saving validator assignments to db: %v", err)
 	}
 
+	logger.Infof("exporting beacon committees data")
 	err = saveBeaconCommittees(data.Epoch, data.BeaconCommittees, tx)
 	if err != nil {
 		return fmt.Errorf("error saving beacon committees to db: %v", err)
 	}
 
+	logger.Infof("exporting validator balance data")
 	err = saveValidatorBalances(data.Epoch, data.ValidatorBalances, tx)
 	if err != nil {
 		return fmt.Errorf("error saving validator balances to db: %v", err)
 	}
 
+	logger.Infof("exporting epoch statistics data")
 	proposerSlashingsCount := 0
 	attesterSlashingsCount := 0
 	attestationsCount := 0
@@ -317,6 +327,8 @@ func SaveEpoch(data *types.EpochData) error {
 	if err != nil {
 		return fmt.Errorf("error committing db transaction: %v", err)
 	}
+
+	logger.Infof("export of epoch %v completed, took %v", data.Epoch, time.Since(start))
 	return nil
 }
 
