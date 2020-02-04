@@ -104,7 +104,7 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte)
 	}
 
 	for _, orphanedBlock := range orphanedBlocks {
-		logger.Printf("Marking block %x as orphaned", orphanedBlock)
+		logger.Printf("marking block %x as orphaned", orphanedBlock)
 		_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = $1", orphanedBlock)
 		if err != nil {
 			return err
@@ -572,7 +572,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 			err := DB.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
 
 			if err == nil && bytes.Compare(dbBlockRootHash, b.BlockRoot) == 0 {
-				logger.Printf("Skipping export of block %x at slot %v as it is already present in the db", b.BlockRoot, b.Slot)
+				logger.Printf("skipping export of block %x at slot %v as it is already present in the db", b.BlockRoot, b.Slot)
 				continue
 			}
 

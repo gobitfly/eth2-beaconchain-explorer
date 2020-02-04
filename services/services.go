@@ -35,7 +35,7 @@ func epochUpdater() {
 		err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 
 		if err != nil {
-			logger.Printf("Error retrieving latest epoch from the database: %v", err)
+			logger.Printf("error retrieving latest epoch from the database: %v", err)
 		} else {
 			atomic.StoreUint64(&latestEpoch, epoch)
 			if firstRun {

@@ -176,13 +176,13 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 		})
 	}
 
-	logger.Printf("Retrieved data for %v validators for epoch %v", len(data.ValidatorBalances), epoch)
+	logger.Printf("retrieved data for %v validators for epoch %v", len(data.ValidatorBalances), epoch)
 
 	data.ValidatorAssignmentes, err = lc.GetEpochAssignments(epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
 	}
-	logger.Printf("Retrieved validator assignment data for epoch %v", epoch)
+	logger.Printf("retrieved validator assignment data for epoch %v", epoch)
 
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]map[string]*types.Block)
@@ -209,7 +209,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 			data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 		}
 	}
-	logger.Printf("Retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
+	logger.Printf("retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
 
 	// Fill up missed and scheduled blocks
 	for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {

@@ -215,7 +215,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 		}
 
 		validatorAssignmentes = append(validatorAssignmentes, validatorAssignmentResponse.Assignments...)
-		logger.Printf("Retrieved %v assignments of %v for epoch %v", len(validatorAssignmentes), validatorAssignmentResponse.TotalSize, epoch)
+		logger.Printf("retrieved %v assignments of %v for epoch %v", len(validatorAssignmentes), validatorAssignmentResponse.TotalSize, epoch)
 
 		if validatorAssignmentResponse.NextPageToken == "" {
 			break
@@ -279,13 +279,13 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			break
 		}
 	}
-	logger.Printf("Retrieved data for %v validator balances for epoch %v", len(data.ValidatorBalances), epoch)
+	logger.Printf("retrieved data for %v validator balances for epoch %v", len(data.ValidatorBalances), epoch)
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
 	}
-	logger.Printf("Retrieved validator assignment data for epoch %v", epoch)
+	logger.Printf("retrieved validator assignment data for epoch %v", epoch)
 
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]map[string]*types.Block)
@@ -311,7 +311,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 		}
 	}
-	logger.Printf("Retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
+	logger.Printf("retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
 
 	// Fill up missed and scheduled blocks
 	for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {
@@ -384,7 +384,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			break
 		}
 	}
-	logger.Printf("Retrieved validator data for epoch %v", epoch)
+	logger.Printf("retrieved validator data for epoch %v", epoch)
 
 	// Retrieve the beacon committees for the epoch
 	data.BeaconCommittees = make(map[uint64][]*types.BeaconCommitteItem)

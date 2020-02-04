@@ -128,13 +128,13 @@ func ReadConfig(cfg *types.Config, path string) error {
 func readConfigFile(cfg *types.Config, path string) error {
 	f, err := os.Open(path)
 	if err != nil {
-		return fmt.Errorf("Error opening config file %v: %v", path, err)
+		return fmt.Errorf("error opening config file %v: %v", path, err)
 	}
 
 	decoder := yaml.NewDecoder(f)
 	err = decoder.Decode(cfg)
 	if err != nil {
-		return fmt.Errorf("Error decoding config file %v: %v", path, err)
+		return fmt.Errorf("error decoding config file %v: %v", path, err)
 	}
 
 	return nil
