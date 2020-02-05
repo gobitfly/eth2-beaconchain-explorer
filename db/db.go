@@ -131,15 +131,17 @@ func SaveValidatorQueue(validators *types.ValidatorQueue, validatorIndices map[s
 		return fmt.Errorf("error truncating validatorqueue_exit table: %v", err)
 	}
 
-	stmtValidatorQueueActivation, err := tx.Prepare(`INSERT INTO validatorqueue_activation (index, publickey)
- 													VALUES    ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
+	stmtValidatorQueueActivation, err := tx.Prepare(`
+		INSERT INTO validatorqueue_activation (index, publickey)
+		VALUES ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtValidatorQueueActivation.Close()
 
-	stmtValidatorQueueExit, err := tx.Prepare(`INSERT INTO validatorqueue_exit (index, publickey)
- 													VALUES    ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
+	stmtValidatorQueueExit, err := tx.Prepare(`
+		INSERT INTO validatorqueue_exit (index, publickey)
+		VALUES ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -182,10 +184,10 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving blocks to db: %v", err)
 	}
 
-	logger.Infof("exporting validator set data")
-	err = saveValidatorSet(data.Epoch, data.Validators, data.ValidatorIndices, tx)
+	logger.Infof("exporting validators data")
+	err = saveValidators(data.Epoch, data.Validators, tx)
 	if err != nil {
-		return fmt.Errorf("error saving validator set to db: %v", err)
+		return fmt.Errorf("error saving validators to db: %v", err)
 	}
 
 	logger.Infof("exporting proposal assignments data")
@@ -200,11 +202,11 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving validator assignments to db: %v", err)
 	}
 
-	logger.Infof("exporting validator balance data")
-	err = saveValidatorBalances(data.Epoch, data.ValidatorBalances, tx)
-	if err != nil {
-		return fmt.Errorf("error saving validator balances to db: %v", err)
-	}
+	// logger.Infof("exporting validator balance data")
+	// err = saveValidatorBalances(data.Epoch, data.ValidatorBalances, tx)
+	// if err != nil {
+	// 	return fmt.Errorf("error saving validator balances to db: %v", err)
+	// }
 
 	logger.Infof("exporting epoch statistics data")
 	proposerSlashingsCount := 0
@@ -237,34 +239,36 @@ func SaveEpoch(data *types.EpochData) error {
 		}
 	}
 
-	_, err = tx.Exec(`INSERT INTO epochs (
-												epoch, 
-												blockscount, 
-												proposerslashingscount, 
-												attesterslashingscount, 
-												attestationscount, 
-												depositscount, 
-												voluntaryexitscount, 
-												validatorscount, 
-												averagevalidatorbalance, 
-												finalized, 
-                    							eligibleether, 
-												globalparticipationrate, 
-												votedether
-												)
-							VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT (epoch) DO UPDATE SET 
-								  blockscount = excluded.blockscount, 
-								  proposerslashingscount = excluded.proposerslashingscount,
-								  attesterslashingscount = excluded.attesterslashingscount,
-								  attestationscount = excluded.attestationscount,
-								  depositscount = excluded.depositscount,
-								  voluntaryexitscount = excluded.voluntaryexitscount,
-								  validatorscount = excluded.validatorscount,
-								  averagevalidatorbalance = excluded.averagevalidatorbalance,
-								  finalized = excluded.finalized,
-								  eligibleether = excluded.eligibleether,
-								  globalparticipationrate = excluded.globalparticipationrate,
-								  votedether = excluded.votedether`,
+	_, err = tx.Exec(`
+		INSERT INTO epochs (
+			epoch, 
+			blockscount, 
+			proposerslashingscount, 
+			attesterslashingscount, 
+			attestationscount, 
+			depositscount, 
+			voluntaryexitscount, 
+			validatorscount, 
+			averagevalidatorbalance, 
+			finalized, 
+			eligibleether, 
+			globalparticipationrate, 
+			votedether
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+		ON CONFLICT (epoch) DO UPDATE SET 
+			blockscount             = excluded.blockscount, 
+			proposerslashingscount  = excluded.proposerslashingscount,
+			attesterslashingscount  = excluded.attesterslashingscount,
+			attestationscount       = excluded.attestationscount,
+			depositscount           = excluded.depositscount,
+			voluntaryexitscount     = excluded.voluntaryexitscount,
+			validatorscount         = excluded.validatorscount,
+			averagevalidatorbalance = excluded.averagevalidatorbalance,
+			finalized               = excluded.finalized,
+			eligibleether           = excluded.eligibleether,
+			globalparticipationrate = excluded.globalparticipationrate,
+			votedether              = excluded.votedether`,
 		data.Epoch,
 		len(data.Blocks),
 		proposerSlashingsCount,
@@ -292,30 +296,46 @@ func SaveEpoch(data *types.EpochData) error {
 	return nil
 }
 
-func saveValidatorSet(epoch uint64, validators []*types.Validator, validatorIndices map[string]uint64, tx *sql.Tx) error {
-
-	stmtValidatorSet, err := tx.Prepare(`INSERT INTO validator_set (epoch, validatorindex, withdrawableepoch, withdrawalcredentials, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch)
- 													VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (epoch, validatorindex) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmtValidatorSet.Close()
-
-	stmtValidators, err := tx.Prepare(`INSERT INTO validators (validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch) 
-													VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-													ON CONFLICT (validatorindex) DO UPDATE SET 
-														pubkey                     = EXCLUDED.pubkey,
-														withdrawableepoch          = EXCLUDED.withdrawableepoch,
-														withdrawalcredentials      = EXCLUDED.withdrawalcredentials,
-														effectivebalance           = EXCLUDED.effectivebalance,
-														slashed                    = EXCLUDED.slashed,
-														activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
-														activationepoch            = EXCLUDED.activationepoch,
-														exitepoch                  = EXCLUDED.exitepoch`)
+func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
+	stmtValidators, err := tx.Prepare(`
+		INSERT INTO validators (
+			validatorindex, 
+			pubkey, 
+			withdrawableepoch, 
+			withdrawalcredentials, 
+			balance, 
+			effectivebalance, 
+			slashed, 
+			activationeligibilityepoch, 
+			activationepoch, 
+			exitepoch
+		) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+		ON CONFLICT (validatorindex) DO UPDATE SET 
+			pubkey                     = EXCLUDED.pubkey,
+			withdrawableepoch          = EXCLUDED.withdrawableepoch,
+			withdrawalcredentials      = EXCLUDED.withdrawalcredentials,
+			balance                    = EXCLUDED.balance,
+			effectivebalance           = EXCLUDED.effectivebalance,
+			slashed                    = EXCLUDED.slashed,
+			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
+			activationepoch            = EXCLUDED.activationepoch,
+			exitepoch                  = EXCLUDED.exitepoch`)
 	if err != nil {
 		return err
 	}
 	defer stmtValidators.Close()
+
+	stmtValidatorBalance, err := tx.Prepare(`
+		INSERT INTO validator_balances (epoch, validatorindex, balance, effectivebalance)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (epoch, validatorindex) DO UPDATE SET
+			balance          = EXCLUDED.balance,
+			effectivebalance = EXCLUDED.effectivebalance`)
+	if err != nil {
+		return err
+	}
+	defer stmtValidatorBalance.Close()
 
 	var lenActivatedValidators int
 	var lastActivatedValidatorIdx uint64
@@ -324,11 +344,10 @@ func saveValidatorSet(epoch uint64, validators []*types.Validator, validatorIndi
 			continue
 		}
 		lenActivatedValidators++
-		idx := validatorIndices[fmt.Sprintf("%x", v.PublicKey)]
-		if idx < lastActivatedValidatorIdx {
+		if v.Index < lastActivatedValidatorIdx {
 			continue
 		}
-		lastActivatedValidatorIdx = idx
+		lastActivatedValidatorIdx = v.Index
 	}
 
 	for _, v := range validators {
@@ -350,8 +369,7 @@ func saveValidatorSet(epoch uint64, validators []*types.Validator, validatorIndi
 			// validator_churn_limit = max(4, len(active_set) / 2**16)
 			// validator.activationepoch = epoch + validator.positioninactivationqueue / validator_churn_limit
 			// note: this is only an estimation
-			validatorIdx := validatorIndices[fmt.Sprintf("%x", v.PublicKey)]
-			positionInActivationQueue := validatorIdx - lastActivatedValidatorIdx
+			positionInActivationQueue := v.Index - lastActivatedValidatorIdx
 			churnLimit := float64(lenActivatedValidators) / 65536
 			if churnLimit < 4 {
 				churnLimit = 4
@@ -362,13 +380,13 @@ func saveValidatorSet(epoch uint64, validators []*types.Validator, validatorIndi
 				v.ActivationEpoch = epoch + uint64(float64(positionInActivationQueue)/churnLimit)
 			}
 		}
-		_, err := stmtValidatorSet.Exec(epoch, validatorIndices[fmt.Sprintf("%x", v.PublicKey)], v.WithdrawableEpoch, v.WithdrawalCredentials, v.EffectiveBalance, v.Slashed, v.ActivationEligibilityEpoch, v.ActivationEpoch, v.ExitEpoch)
-		if err != nil {
-			return fmt.Errorf("error executing save validator set statement: %v", err)
-		}
-		_, err = stmtValidators.Exec(validatorIndices[fmt.Sprintf("%x", v.PublicKey)], v.PublicKey, v.WithdrawableEpoch, v.WithdrawalCredentials, v.EffectiveBalance, v.Slashed, v.ActivationEligibilityEpoch, v.ActivationEpoch, v.ExitEpoch)
+		_, err = stmtValidators.Exec(v.Index, v.PublicKey, v.WithdrawableEpoch, v.WithdrawalCredentials, v.Balance, v.EffectiveBalance, v.Slashed, v.ActivationEligibilityEpoch, v.ActivationEpoch, v.ExitEpoch)
 		if err != nil {
 			return fmt.Errorf("error executing save validator statement: %v", err)
+		}
+		_, err = stmtValidatorBalance.Exec(epoch, v.Index, v.Balance, v.EffectiveBalance)
+		if err != nil {
+			return fmt.Errorf("error executing save validatorBalance statement: %v", err)
 		}
 	}
 
@@ -376,9 +394,10 @@ func saveValidatorSet(epoch uint64, validators []*types.Validator, validatorIndi
 }
 
 func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint64, tx *sql.Tx) error {
-
-	stmt, err := tx.Prepare(`INSERT INTO proposal_assignments (epoch, validatorindex, proposerslot, status)
- 													VALUES    ($1, $2, $3, $4) ON CONFLICT (epoch, validatorindex, proposerslot) DO NOTHING`)
+	stmt, err := tx.Prepare(`
+		INSERT INTO proposal_assignments (epoch, validatorindex, proposerslot, status)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (epoch, validatorindex, proposerslot) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -395,9 +414,10 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 }
 
 func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sql.Tx) error {
-
-	stmtAttestationAssignments, err := tx.Prepare(`INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
- 													VALUES    ($1, $2, $3, $4, $5) ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO NOTHING`)
+	stmtAttestationAssignments, err := tx.Prepare(`
+		INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO NOTHING`)
 	if err != nil {
 		return err
 	}
@@ -416,9 +436,10 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 }
 
 func saveValidatorBalances(epoch uint64, balances []*types.ValidatorBalance, tx *sql.Tx) error {
-
-	stmt, err := tx.Prepare(`INSERT INTO validator_balances (epoch, validatorindex, balance)
- 													VALUES    ($1, $2, $3) ON CONFLICT (epoch, validatorindex) DO UPDATE SET balance = excluded.balance`)
+	stmt, err := tx.Prepare(`
+		INSERT INTO validator_balances (epoch, validatorindex, balance)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (epoch, validatorindex) DO UPDATE SET balance = excluded.balance`)
 	if err != nil {
 		return err
 	}
@@ -435,83 +456,78 @@ func saveValidatorBalances(epoch uint64, balances []*types.ValidatorBalance, tx 
 }
 
 func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
-
-	stmtBlock, err := tx.Prepare(`INSERT INTO blocks (
-                    epoch, 
-                    slot, 
-                    blockroot, 
-                    parentroot, 
-                    stateroot, 
-                    signature, 
-                    randaoreveal,
-                    graffiti, 
-                    eth1data_depositroot, 
-                    eth1data_depositcount, 
-                    eth1data_blockhash, 
-                    proposerslashingscount, 
-                    attesterslashingscount, 
-                    attestationscount, 
-                    depositscount, 
-                    voluntaryexitscount, 
-                    proposer,
-                    status)
- 					VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) ON CONFLICT (slot, blockroot) DO NOTHING`)
+	stmtBlock, err := tx.Prepare(`
+		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, proposer, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+		ON CONFLICT (slot, blockroot) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtBlock.Close()
 
-	stmtProposerSlashing, err := tx.Prepare(`INSERT INTO blocks_proposerslashings (block_slot, block_index, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT (block_slot, block_index) DO NOTHING`)
+	stmtProposerSlashing, err := tx.Prepare(`
+		INSERT INTO blocks_proposerslashings (block_slot, block_index, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtProposerSlashing.Close()
 
-	stmtAttesterSlashing, err := tx.Prepare(`INSERT INTO blocks_attesterslashings (block_slot, block_index, attestation1_signature, attestation1_slot, attestation1_index, attestation1_beaconblockroot, attestation1_source_epoch, attestation1_source_root, attestation1_target_epoch, attestation1_target_root, attestation2_signature, attestation2_slot, attestation2_index, attestation2_beaconblockroot, attestation2_source_epoch, attestation2_source_root, attestation2_target_epoch, attestation2_target_root)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) ON CONFLICT (block_slot, block_index) DO NOTHING`)
+	stmtAttesterSlashing, err := tx.Prepare(`
+		INSERT INTO blocks_attesterslashings (block_slot, block_index, attestation1_signature, attestation1_slot, attestation1_index, attestation1_beaconblockroot, attestation1_source_epoch, attestation1_source_root, attestation1_target_epoch, attestation1_target_root, attestation2_signature, attestation2_slot, attestation2_index, attestation2_beaconblockroot, attestation2_source_epoch, attestation2_source_root, attestation2_target_epoch, attestation2_target_root)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+		ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtAttesterSlashing.Close()
 
-	stmtAttestations, err := tx.Prepare(`INSERT INTO blocks_attestations (block_slot, block_index, aggregationbits, validators, signature, slot, committeeindex, beaconblockroot, source_epoch, source_root, target_epoch, target_root)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (block_slot, block_index) DO NOTHING`)
+	stmtAttestations, err := tx.Prepare(`
+		INSERT INTO blocks_attestations (block_slot, block_index, aggregationbits, validators, signature, slot, committeeindex, beaconblockroot, source_epoch, source_root, target_epoch, target_root)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtAttestations.Close()
 
-	stmtDeposits, err := tx.Prepare(`INSERT INTO blocks_deposits (block_slot, block_index, proof, publickey, withdrawalcredentials, amount, signature)
- 													VALUES    ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (block_slot, block_index) DO NOTHING`)
+	stmtDeposits, err := tx.Prepare(`
+		INSERT INTO blocks_deposits (block_slot, block_index, proof, publickey, withdrawalcredentials, amount, signature)
+		VALUES ($1, $2, $3, $4, $5, $6, $7) 
+		ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtDeposits.Close()
 
-	stmtVoluntaryExits, err := tx.Prepare(`INSERT INTO blocks_voluntaryexits (block_slot, block_index, epoch, validatorindex, signature)
- 													VALUES    ($1, $2, $3, $4, $5) ON CONFLICT (block_slot, block_index) DO NOTHING`)
+	stmtVoluntaryExits, err := tx.Prepare(`
+		INSERT INTO blocks_voluntaryexits (block_slot, block_index, epoch, validatorindex, signature)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtVoluntaryExits.Close()
 
-	stmtProposalAssignments, err := tx.Prepare(`INSERT INTO proposal_assignments (epoch, validatorindex, proposerslot, status)
- 													VALUES    ($1, $2, $3, $4) ON CONFLICT (epoch, validatorindex, proposerslot) DO UPDATE SET status = excluded.status`)
+	stmtProposalAssignments, err := tx.Prepare(`
+		INSERT INTO proposal_assignments (epoch, validatorindex, proposerslot, status)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (epoch, validatorindex, proposerslot) DO UPDATE SET status = excluded.status`)
 	if err != nil {
 		return err
 	}
 	defer stmtProposalAssignments.Close()
 
-	stmtAttestationAssignments, err := tx.Prepare(`INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
- 													VALUES    ($1, $2, $3, $4, $5) ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status`)
+	stmtAttestationAssignments, err := tx.Prepare(`
+		INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status`)
 	if err != nil {
 		return err
 	}
 	defer stmtAttestationAssignments.Close()
 
-	// stmtValidatorsLastAttestationSlot, err := tx.Prepare(`INSERT INTO validators (lastattestationslot, validatorindex)
-	// 												 VALUES    ($1, $2) ON CONFLICT (validatorindex) DO UPDATE SET lastattestationslot = excluded.lastattestationslot`)
 	stmtValidatorsLastAttestationSlot, err := tx.Prepare(`UPDATE validators SET lastattestationslot = $1 WHERE validatorindex = $2`)
 	if err != nil {
 		return err
@@ -627,12 +643,14 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 
 // UpdateEpochStatus will update the epoch status in the database
 func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
-	_, err := DB.Exec(`UPDATE epochs SET 
-                  finalized = $1, 
-                  eligibleether = $2, 
-                  globalparticipationrate = $3, 
-                  votedether = $4
-			WHERE epoch = $5`, stats.Finalized, stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Epoch)
+	_, err := DB.Exec(`
+		UPDATE epochs SET
+			finalized = $1,
+			eligibleether = $2,
+			globalparticipationrate = $3,
+			votedether = $4
+		WHERE epoch = $5`,
+		stats.Finalized, stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Epoch)
 
 	return err
 }

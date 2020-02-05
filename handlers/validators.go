@@ -229,52 +229,50 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		firstSlotOfPreviousEpoch = (lastestEpoch - 1) * utils.Config.Chain.SlotsPerEpoch
 	}
 
-	qry := fmt.Sprintf(`SELECT
-	validators.validatorindex,
-	validators.pubkey,
-	validators.withdrawableepoch,
-	validators.effectivebalance,
-	validators.slashed,
-	validators.activationepoch,
-	validators.exitepoch,
-	validators.lastattestationslot,
-	COALESCE(validator_balances.balance, 0) AS balance,
-	a.state,
-	COALESCE(p1.c,0) as executedproposals,
-	COALESCE(p2.c,0) as missedproposals
-FROM validators
-INNER JOIN (
-	SELECT validatorindex,
-	CASE 
-		WHEN exitepoch <= $1 then 'exited'
-		WHEN activationepoch > $1 then 'pending'
-		WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
-		WHEN slashed then 'slashing_online'
-		WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
-		ELSE 'active_online'
-	END AS state
-	FROM validators
-) a ON a.validatorindex = validators.validatorindex
-LEFT JOIN validator_balances
-	ON validator_balances.epoch = $1
-	AND validator_balances.validatorindex = validators.validatorindex
-LEFT JOIN (
-	select validatorindex, count(*) as c 
-	from proposal_assignments
-	where status = 1
-	group by validatorindex
-) p1 ON validators.validatorindex = p1.validatorindex
-LEFT JOIN (
-	select validatorindex, count(*) as c 
-	from proposal_assignments
-	where status = 2
-	group by validatorindex
-) p2 ON validators.validatorindex = p2.validatorindex
-WHERE (encode(validators.pubkey::bytea, 'hex') LIKE $3
-	OR CAST(validators.validatorindex AS text) LIKE $3)
-%s
-ORDER BY %s %s
-LIMIT $4 OFFSET $5`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
+	qry := fmt.Sprintf(`
+		SELECT
+			validators.validatorindex,
+			validators.pubkey,
+			validators.withdrawableepoch,
+			validators.balance,
+			validators.effectivebalance,
+			validators.slashed,
+			validators.activationepoch,
+			validators.exitepoch,
+			validators.lastattestationslot,
+			a.state,
+			COALESCE(p1.c,0) as executedproposals,
+			COALESCE(p2.c,0) as missedproposals
+		FROM validators
+		INNER JOIN (
+			SELECT validatorindex,
+			CASE 
+				WHEN exitepoch <= $1 then 'exited'
+				WHEN activationepoch > $1 then 'pending'
+				WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
+				WHEN slashed then 'slashing_online'
+				WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
+				ELSE 'active_online'
+			END AS state
+			FROM validators
+		) a ON a.validatorindex = validators.validatorindex
+		LEFT JOIN (
+			select validatorindex, count(*) as c 
+			from proposal_assignments
+			where status = 1
+			group by validatorindex
+		) p1 ON validators.validatorindex = p1.validatorindex
+		LEFT JOIN (
+			select validatorindex, count(*) as c 
+			from proposal_assignments
+			where status = 2
+			group by validatorindex
+		) p2 ON validators.validatorindex = p2.validatorindex
+		WHERE (encode(validators.pubkey::bytea, 'hex') LIKE $3
+			OR CAST(validators.validatorindex AS text) LIKE $3)
+		%s
+		ORDER BY %s %s
+		LIMIT $4 OFFSET $5`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
 
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators, qry, lastestEpoch, firstSlotOfPreviousEpoch, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
