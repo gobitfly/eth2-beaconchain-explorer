@@ -153,36 +153,8 @@ $(document).ready(function() {
       )
     }
   })
-  var searchIcon
-
-  // $('input.typeahead').on('blur', function(input) {
-  //   if (searchIcon)
-  //     $(this)
-  //       .parent()
-  //       .parent()
-  //       .append(searchIcon)
-  // })
-
-  // $('input.typeahead').on('focus', function(input) {
-  //   if (searchIcon) searchIcon.detach()
-  // })
 
   $('.typeahead').on('input', function(input) {
-    var siblings = $(this)
-      .parent()
-      .siblings()
-    if (siblings && siblings.length) {
-      searchIcon = siblings
-    }
-    if (searchIcon)
-      if (input.target.value !== '') {
-        searchIcon.detach()
-      } else {
-        $(this)
-          .parent()
-          .parent()
-          .append(searchIcon)
-      }
 
     $('.tt-suggestion')
       .first()

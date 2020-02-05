@@ -1,7 +1,14 @@
+@import url('/fonts/inter.css');
+body { font-family: 'Inter', sans-serif; }
+@supports (font-variation-settings: normal) {
+  body { font-family: 'Inter var', sans-serif; }
+}
+
 .theme-switch-wrapper {
   position: relative;
   display: contents;
 }
+
 .theme-switch {
   height: calc(var(--font-size, 1rem) * 1.2);
   position: absolute;
@@ -197,6 +204,10 @@ input:checked + .slider:before {
   -webkit-appearance: searchfield;
 }
 
+.twitter-typeahead input {
+  padding-right: 36px;
+}
+
 @media (min-width: 1140px) {
   .search-icon {
     cursor: pointer;
@@ -366,8 +377,7 @@ a.at-button.toggle-icon {
 
 .fa-search {
   position: absolute;
-  display: content;
   right: 20px;
-  top: 13.5px;
+  bottom: 29%;
   color: grey;
 }
