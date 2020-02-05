@@ -1,7 +1,14 @@
+@import url('/fonts/inter.css');
+body { font-family: 'Inter', sans-serif; }
+@supports (font-variation-settings: normal) {
+  body { font-family: 'Inter var', sans-serif; }
+}
+
 .theme-switch-wrapper {
   position: relative;
   display: contents;
 }
+
 .theme-switch {
   height: calc(var(--font-size, 1rem) * 1.2);
   position: absolute;
