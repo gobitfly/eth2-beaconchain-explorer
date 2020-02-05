@@ -130,7 +130,9 @@
             var s = d[0].charAt(0).toUpperCase() + d[0].slice(1)
             if (d[1] === 'offline') 
               return `<span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
-            return `${s}`
+            if (d[1] === 'online')
+              return `<span>${s} <i class="fas fa-power-off fa-sm text-success"></i></span>`
+            return `<span>${s}</span>`
           }
         },
         {
@@ -139,7 +141,7 @@
           render: function(data, type, row, meta) {
             if (data === null) 
               return '-'
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
           }
         },
         {
@@ -148,7 +150,7 @@
           render: function(data, type, row, meta) {
             if (data === null) 
               return '-'
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">epoch ${data[0]}</a>)</span>`
+            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
           }
         },
         {

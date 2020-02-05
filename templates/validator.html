@@ -570,8 +570,8 @@
                             <div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Slashing</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
                         {{else if eq .Status "ExitingOffline"}}
                             <div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Exiting</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
-                        {{else}}
-                            <div class="col-md-10"><b>{{.Status}}</b></div>
+                        {{else if (or (eq .Status "Active") (eq .Status "Slashing") (eq .Status "Exiting")) }}
+                            <div class="col-md-10"><b>{{.Status}}</b> <i class="fas fa-power-off fa-sm text-success"></i></div>
                         {{end}}
 					</div>
 					<div class="row border-bottom p-3">
