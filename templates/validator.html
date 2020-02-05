@@ -2,78 +2,78 @@
 
 	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 	<script>
-        $(document).ready(function () {
-            $('#blocks').DataTable({
-                processing: true,
-                serverSide: true,
-                ordering: false,
-                searching: false,
-                ajax: '/validator/{{.Index}}/proposedblocks',
-                pagingType: 'full',
-                columnDefs: [
-                    {
-                        targets: 0,
-                        data: '0',
-                        render: function (data, type, row, meta) {
-                            return '<a href="/epoch/' + data + '">' + data + '</a>'
-                        }
-                    }, {
-                        targets: 3,
-                        data: '3',
-                        render: function (data, type, row, meta) {
-                            return moment.unix(data).fromNow();
-                        }
-                    },
-                    {
-                        targets: 4,
-                        data: '4',
-                        render: function (data, type, row, meta) {
-                            if (data.length < 64) {
-                                return 'N/A'
-                            } else {
-                                return '<a href="/block/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-                            }
-                        }
-                    },
-                    {
-                        targets: 1,
-                        data: '1',
-                        render: function (data, type, row, meta) {
-                            return '<a href="/block/' + data + '">' + data + '</a>'
-                        }
-                    }
-                ]
-            });
-            $('#attestations').DataTable({
-                processing: true,
-                serverSide: true,
-                ordering: false,
-                searching: false,
-                ajax: '/validator/{{.Index}}/attestations',
-                pagingType: 'full',
-                columnDefs: [
-                    {
-                        targets: 0,
-                        data: '0',
-                        render: function (data, type, row, meta) {
-                            return '<a href="/epoch/' + data + '">' + data + '</a>'
-                        }
-                    }, {
-                        targets: 1,
-                        data: '1',
-                        render: function (data, type, row, meta) {
-                            return '<a href="/block/' + data + '">' + data + '</a>'
-                        }
-                    }, {
-                        targets: 3,
-                        data: '3',
-                        render: function (data, type, row, meta) {
-                            return moment.unix(data).fromNow();
-                        }
-                    }
-                ]
-            })
-        })
+		$(document).ready(function () {
+			$('#blocks').DataTable({
+				processing: true,
+				serverSide: true,
+				ordering: false,
+				searching: false,
+				ajax: '/validator/{{.Index}}/proposedblocks',
+				pagingType: 'full',
+				columnDefs: [
+					{
+						targets: 0,
+						data: '0',
+						render: function (data, type, row, meta) {
+							return '<a href="/epoch/' + data + '">' + data + '</a>'
+						}
+					}, {
+						targets: 3,
+						data: '3',
+						render: function (data, type, row, meta) {
+							return moment.unix(data).fromNow();
+						}
+					},
+					{
+						targets: 4,
+						data: '4',
+						render: function (data, type, row, meta) {
+							if (data.length < 64) {
+								return 'N/A'
+							} else {
+								return '<a href="/block/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+							}
+						}
+					},
+					{
+						targets: 1,
+						data: '1',
+						render: function (data, type, row, meta) {
+							return '<a href="/block/' + data + '">' + data + '</a>'
+						}
+					}
+				]
+			});
+			$('#attestations').DataTable({
+				processing: true,
+				serverSide: true,
+				ordering: false,
+				searching: false,
+				ajax: '/validator/{{.Index}}/attestations',
+				pagingType: 'full',
+				columnDefs: [
+					{
+						targets: 0,
+						data: '0',
+						render: function (data, type, row, meta) {
+							return '<a href="/epoch/' + data + '">' + data + '</a>'
+						}
+					}, {
+						targets: 1,
+						data: '1',
+						render: function (data, type, row, meta) {
+							return '<a href="/block/' + data + '">' + data + '</a>'
+						}
+					}, {
+						targets: 3,
+						data: '3',
+						render: function (data, type, row, meta) {
+							return moment.unix(data).fromNow();
+						}
+					}
+				]
+			})
+		})
 	</script>
 
 	<script src="https://code.highcharts.com/stock/highstock.js"></script>
@@ -81,403 +81,403 @@
 	<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 
 	<script>
-        Highcharts.stockChart('balancechart', {
-            exporting: {
-                scale: 1
-            },
-            navigation: {
-                menuStyle: {
-                    "border": "1px solid var(--border-color-transparent)",
-                    "background": "var(--bg-color-nav)",
-                    "padding": "1px 0",
-                    "box-shadow": "var(--bg-color-nav) 2px 2px 5px"
-                },
-                buttonOptions: {
-                    symbolStroke: 'var(--body-color)',
-                    symbolFill: 'var(--body-color)',
-                    theme: {
-                        fill: 'var(--bg-color)',
-                        states: {
-                            hover: {
-                                fill: 'var(--primary)'
-                            },
-                            select: {
-                                fill: 'var(--primary)'
-                            }
-                        }
-                    }
-                },
-                menuItemStyle: {
-                    "padding": "0.5em 1em",
-                    "color": "var(--transparent-font-color)",
-                    "background": "none",
-                    "fontSize": "11px/14px",
-                    "transition": "background 250ms, color 250ms"
-                },
-                menuItemHoverStyle: {"background": "var(--primary)", "color": "var(--font-color)"}
-            },
-            colors: ["#7cb5ec", "#90ed7d", "#f7a35c", "#8085e9", "#f15c80", "#e4d354", "#2b908f", "#f45b5b",
-                "#91e8e1"],
-            rangeSelector: {
-                enabled: false
-            },
-            chart: {
-                type: 'line',
-                animation: false,
-                style: {
-                    fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
-                    color: 'var(--body-color)',
-                    fontSize: '12px'
-                },
-                backgroundColor: 'var(--bg-color)',
-            },
-            title: {
-                text: 'Balance History for Validator {{.Index}}',
-                style: {
-                    color: 'var(--font-color)'
-                }
-            },
-            subtitle: {
-                text: 'Source: beaconcha.in',
-                style: {
-                    color: 'var(--body-color)'
-                }
-            },
-            xAxis: {
-                type: 'datetime',
-                labels: {
-                    style: {
-                        color: 'var(--body-color)'
-                    }
-                },
-                range: 7 * 24 * 60 * 60 * 1000
-            },
-            yAxis: [{
-                title: {
-                    text: 'Balance [ETH]',
-                    style: {
-                        color: 'var(--body-color)',
-                        'font-size': '0.8rem'
-                    }
-                },
-                labels: {
-                    style: {
-                        color: 'var(--body-color)'
-                    }
-                },
-                opposite: false
-            }],
-            series: [{
-                name: "Balance",
-                data: {{.BalanceHistoryChartData}}
-            }, {
-                name: "Effective Balance",
-                step: true,
-                data: {{.EffectiveBalanceHistoryChartData}}
-            }],
-            plotOptions: {
-                line: {
-                    animation: false,
-                    lineWidth: 2.5,
-                }
-            },
-            legend: {
-                enabled: true,
-                layout: 'horizontal',
-                align: 'center',
-                verticalAlign: 'bottom',
-                borderWidth: 0,
-                itemStyle: {
-                    color: 'var(--body-color)'
-                },
-                itemHoverStyle: {
-                    color: 'var(--primary)',
-                }
-            },
-            credits: {
-                enabled: false
-            },
-            navigator: {
-                enabled: true,
-                maskFill: 'var(--mask-fill-color)',
-                outlineColor: 'var(--border-color)',
-                handles: {
-                    backgroundColor: 'var(--bg-color-nav)',
-                    borderColor: 'var(--transparent-font-color)',
-                },
-                xAxis: {
-                    gridLineColor: 'var(--border-color)',
-                },
-            },
-            scrollbar: {
-                barBackgroundColor: 'var(--bg-color-nav)',
-                barBorderWidth: 0,
-                buttonArrowColor: 'var(--font-color)',
-                rifleColor: 'var(--dark)',
-                buttonBackgroundColor: 'var(--bg-color-nav)',
-                buttonBorderColor: 'var(--bg-color-transparent)',
-                trackBackgroundColor: 'var(--bg-color)',
-                trackBorderColor: 'var(--border-color-transparent)',
-            },
-            responsive: {
-                rules: [
-                    {
-                        condition: {
-                            maxWidth: 760
-                        },
-                        chartOptions: {
-                            chart: {
-                                marginRight: 45
-                            },
-                            yAxis: [
-                                {
-                                    title: {
-                                        text: null
-                                    }
-                                },
-                                {
-                                    title: {
-                                        text: null
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        });
+		Highcharts.stockChart('balancechart', {
+			exporting: {
+				scale: 1
+			},
+			navigation: {
+				menuStyle: {
+					"border": "1px solid var(--border-color-transparent)",
+					"background": "var(--bg-color-nav)",
+					"padding": "1px 0",
+					"box-shadow": "var(--bg-color-nav) 2px 2px 5px"
+				},
+				buttonOptions: {
+					symbolStroke: 'var(--body-color)',
+					symbolFill: 'var(--body-color)',
+					theme: {
+						fill: 'var(--bg-color)',
+						states: {
+							hover: {
+								fill: 'var(--primary)'
+							},
+							select: {
+								fill: 'var(--primary)'
+							}
+						}
+					}
+				},
+				menuItemStyle: {
+					"padding": "0.5em 1em",
+					"color": "var(--transparent-font-color)",
+					"background": "none",
+					"fontSize": "11px/14px",
+					"transition": "background 250ms, color 250ms"
+				},
+				menuItemHoverStyle: {"background": "var(--primary)", "color": "var(--font-color)"}
+			},
+			colors: ["#7cb5ec", "#90ed7d", "#f7a35c", "#8085e9", "#f15c80", "#e4d354", "#2b908f", "#f45b5b",
+				"#91e8e1"],
+			rangeSelector: {
+				enabled: false
+			},
+			chart: {
+				type: 'line',
+				animation: false,
+				style: {
+					fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
+					color: 'var(--body-color)',
+					fontSize: '12px'
+				},
+				backgroundColor: 'var(--bg-color)',
+			},
+			title: {
+				text: 'Balance History for Validator {{.Index}}',
+				style: {
+					color: 'var(--font-color)'
+				}
+			},
+			subtitle: {
+				text: 'Source: beaconcha.in',
+				style: {
+					color: 'var(--body-color)'
+				}
+			},
+			xAxis: {
+				type: 'datetime',
+				labels: {
+					style: {
+						color: 'var(--body-color)'
+					}
+				},
+				range: 7 * 24 * 60 * 60 * 1000
+			},
+			yAxis: [{
+				title: {
+					text: 'Balance [ETH]',
+					style: {
+						color: 'var(--body-color)',
+						'font-size': '0.8rem'
+					}
+				},
+				labels: {
+					style: {
+						color: 'var(--body-color)'
+					}
+				},
+				opposite: false
+			}],
+			series: [{
+				name: "Balance",
+				data: {{.BalanceHistoryChartData}}
+			}, {
+				name: "Effective Balance",
+				step: true,
+				data: {{.EffectiveBalanceHistoryChartData}}
+			}],
+			plotOptions: {
+				line: {
+					animation: false,
+					lineWidth: 2.5,
+				}
+			},
+			legend: {
+				enabled: true,
+				layout: 'horizontal',
+				align: 'center',
+				verticalAlign: 'bottom',
+				borderWidth: 0,
+				itemStyle: {
+					color: 'var(--body-color)'
+				},
+				itemHoverStyle: {
+					color: 'var(--primary)',
+				}
+			},
+			credits: {
+				enabled: false
+			},
+			navigator: {
+				enabled: true,
+				maskFill: 'var(--mask-fill-color)',
+				outlineColor: 'var(--border-color)',
+				handles: {
+					backgroundColor: 'var(--bg-color-nav)',
+					borderColor: 'var(--transparent-font-color)',
+				},
+				xAxis: {
+					gridLineColor: 'var(--border-color)',
+				},
+			},
+			scrollbar: {
+				barBackgroundColor: 'var(--bg-color-nav)',
+				barBorderWidth: 0,
+				buttonArrowColor: 'var(--font-color)',
+				rifleColor: 'var(--dark)',
+				buttonBackgroundColor: 'var(--bg-color-nav)',
+				buttonBorderColor: 'var(--bg-color-transparent)',
+				trackBackgroundColor: 'var(--bg-color)',
+				trackBorderColor: 'var(--border-color-transparent)',
+			},
+			responsive: {
+				rules: [
+					{
+						condition: {
+							maxWidth: 760
+						},
+						chartOptions: {
+							chart: {
+								marginRight: 45
+							},
+							yAxis: [
+								{
+									title: {
+										text: null
+									}
+								},
+								{
+									title: {
+										text: null
+									}
+								}
+							]
+						}
+					}
+				]
+			}
+		});
 	</script>
-    {{if .DailyProposalCount}}
+	{{if .DailyProposalCount}}
 		<script>
-            var data = {{.DailyProposalCount}};
-            var proposed = data.map(d => [d.Day * 1000, d.Proposed]);
-            var missed = data.map(d => [d.Day * 1000, d.Missed]);
-            var orphaned = data.map(d => [d.Day * 1000, d.Orphaned]);
+			var data = {{.DailyProposalCount}};
+			var proposed = data.map(d => [d.Day * 1000, d.Proposed]);
+			var missed = data.map(d => [d.Day * 1000, d.Missed]);
+			var orphaned = data.map(d => [d.Day * 1000, d.Orphaned]);
 
-            Highcharts.stockChart('proposedChart', {
-                exporting: {
-                    scale: 1
-                },
-                navigation: {
-                    menuStyle: {
-                        "border": "1px solid var(--border-color-transparent)",
-                        "background": "var(--bg-color-nav)",
-                        "padding": "1px 0",
-                        "box-shadow": "var(--bg-color-nav) 2px 2px 5px"
-                    },
-                    buttonOptions: {
-                        symbolStroke: 'var(--body-color)',
-                        symbolFill: 'var(--body-color)',
-                        theme: {
-                            fill: 'var(--bg-color)',
-                            states: {
-                                hover: {
-                                    fill: 'var(--primary)'
-                                },
-                                select: {
-                                    fill: 'var(--primary)'
-                                }
-                            }
-                        }
-                    },
-                    menuItemStyle: {
-                        "padding": "0.5em 1em",
-                        "color": "var(--transparent-font-color)",
-                        "background": "none",
-                        "fontSize": "11px/14px",
-                        "transition": "background 250ms, color 250ms"
-                    },
-                    menuItemHoverStyle: {"background": "var(--primary)", "color": "var(--font-color)"}
-                },
-                colors: ["#7cb5ec", "#ff835c", "#e4a354", "#2b908f", "#f45b5b",
-                    "#91e8e1"],
-                title: {
-                    text: 'Proposal History for Validator {{.Index}}',
-                    style: {
-                        color: 'var(--font-color)'
-                    }
-                },
-                subtitle: {
-                    text: 'Source: beaconcha.in',
-                    style: {
-                        color: 'var(--body-color)'
-                    }
-                },
-                chart: {
-                    type: 'column',
-                    animation: false,
-                    style: {
-                        fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
-                        color: 'var(--body-color)',
-                        fontSize: '12px'
-                    },
-                    backgroundColor: 'var(--bg-color)',
-                },
-                xAxis: {
-                    lineWidth: 0,
-                    tickColor: '#e5e1e1',
-                    labels: {
-                        style: {
-                            color: 'var(--body-color)'
-                        }
-                    },
-                    range: 7 * 24 * 3600 * 1000
-                },
-                yAxis: [
-                    {
-                        title: {
-                            text: '# of Possible Proposals',
-                            style: {
-                                color: 'var(--body-color)',
-                                'font-size': '0.8rem'
-                            }
-                        },
-                        labels: {
-                            style: {
-                                color: 'var(--body-color)'
-                            }
-                        },
-                        gridLineColor: 'var(--border-color-transparent)',
-                        opposite: false
-                    }
-                ],
-                plotOptions: {
-                    column: {
-                        stacking: 'normal',
-                        dataGrouping: {
-                            enabled: true,
-                            forced: true,
-                            units: [
-                                ['day', [1]]
-                            ]
-                        }
-                    }
-                },
-                legend: {
-                    enabled: true,
-                    layout: 'horizontal',
-                    align: 'center',
-                    verticalAlign: 'bottom',
-                    borderWidth: 0,
-                    itemStyle: {
-                        color: 'var(--body-color)',
-                        'font-size': '0.8rem',
-                        'font-weight': 'lighter'
-                    },
-                    itemHoverStyle: {
-                        color: 'var(--primary)'
-                    }
-                },
-                series: [
-                    {
-                        name: 'Proposed',
-                        data: proposed
-                    },
-                    {
-                        name: 'Missed',
-                        data: missed
-                    },
-                    {
-                        name: 'Orphaned',
-                        data: orphaned
-                    }
-                ],
-                rangeSelector: {
-                    enabled: false
-                },
-                navigator: {
-                    maskFill: '#1473e631',
-                    outlineColor: '#e5e1e1',
-                    handles: {
-                        backgroundColor: '#f5f3f3',
-                        borderColor: '#26232780'
-                    },
-                    xAxis: {
-                        gridLineColor: '#e5e1e1',
-                        labels: {
-                            style: {
-                                color: '#26232780'
-                            }
-                        }
-                    }
-                },
-                scrollbar: {
-                    barBackgroundColor: 'var(--bg-color-nav)',
-                    barBorderWidth: 0,
-                    buttonArrowColor: 'var(--font-color)',
-                    rifleColor: 'var(--dark)',
-                    buttonBackgroundColor: 'var(--bg-color-nav)',
-                    buttonBorderColor: 'var(--bg-color-transparent)',
-                    trackBackgroundColor: 'var(--bg-color)',
-                    trackBorderColor: 'var(--border-color-transparent)',
-                },
-                credits: {
-                    enabled: false
-                },
-                responsive: {
-                    rules: [
-                        {
-                            condition: {
-                                maxWidth: 760
-                            },
-                            chartOptions: {
-                                chart: {
-                                    marginRight: 45
-                                },
-                                yAxis: [
-                                    {
-                                        title: {
-                                            text: null
-                                        }
-                                    },
-                                    {
-                                        title: {
-                                            text: null
-                                        }
-                                    }
-                                ]
-                            }
-                        }
-                    ]
-                }
-            })
+			Highcharts.stockChart('proposedChart', {
+				exporting: {
+					scale: 1
+				},
+				navigation: {
+					menuStyle: {
+						"border": "1px solid var(--border-color-transparent)",
+						"background": "var(--bg-color-nav)",
+						"padding": "1px 0",
+						"box-shadow": "var(--bg-color-nav) 2px 2px 5px"
+					},
+					buttonOptions: {
+						symbolStroke: 'var(--body-color)',
+						symbolFill: 'var(--body-color)',
+						theme: {
+							fill: 'var(--bg-color)',
+							states: {
+								hover: {
+									fill: 'var(--primary)'
+								},
+								select: {
+									fill: 'var(--primary)'
+								}
+							}
+						}
+					},
+					menuItemStyle: {
+						"padding": "0.5em 1em",
+						"color": "var(--transparent-font-color)",
+						"background": "none",
+						"fontSize": "11px/14px",
+						"transition": "background 250ms, color 250ms"
+					},
+					menuItemHoverStyle: {"background": "var(--primary)", "color": "var(--font-color)"}
+				},
+				colors: ["#7cb5ec", "#ff835c", "#e4a354", "#2b908f", "#f45b5b",
+					"#91e8e1"],
+				title: {
+					text: 'Proposal History for Validator {{.Index}}',
+					style: {
+						color: 'var(--font-color)'
+					}
+				},
+				subtitle: {
+					text: 'Source: beaconcha.in',
+					style: {
+						color: 'var(--body-color)'
+					}
+				},
+				chart: {
+					type: 'column',
+					animation: false,
+					style: {
+						fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
+						color: 'var(--body-color)',
+						fontSize: '12px'
+					},
+					backgroundColor: 'var(--bg-color)',
+				},
+				xAxis: {
+					lineWidth: 0,
+					tickColor: '#e5e1e1',
+					labels: {
+						style: {
+							color: 'var(--body-color)'
+						}
+					},
+					range: 7 * 24 * 3600 * 1000
+				},
+				yAxis: [
+					{
+						title: {
+							text: '# of Possible Proposals',
+							style: {
+								color: 'var(--body-color)',
+								'font-size': '0.8rem'
+							}
+						},
+						labels: {
+							style: {
+								color: 'var(--body-color)'
+							}
+						},
+						gridLineColor: 'var(--border-color-transparent)',
+						opposite: false
+					}
+				],
+				plotOptions: {
+					column: {
+						stacking: 'normal',
+						dataGrouping: {
+							enabled: true,
+							forced: true,
+							units: [
+								['day', [1]]
+							]
+						}
+					}
+				},
+				legend: {
+					enabled: true,
+					layout: 'horizontal',
+					align: 'center',
+					verticalAlign: 'bottom',
+					borderWidth: 0,
+					itemStyle: {
+						color: 'var(--body-color)',
+						'font-size': '0.8rem',
+						'font-weight': 'lighter'
+					},
+					itemHoverStyle: {
+						color: 'var(--primary)'
+					}
+				},
+				series: [
+					{
+						name: 'Proposed',
+						data: proposed
+					},
+					{
+						name: 'Missed',
+						data: missed
+					},
+					{
+						name: 'Orphaned',
+						data: orphaned
+					}
+				],
+				rangeSelector: {
+					enabled: false
+				},
+				navigator: {
+					maskFill: '#1473e631',
+					outlineColor: '#e5e1e1',
+					handles: {
+						backgroundColor: '#f5f3f3',
+						borderColor: '#26232780'
+					},
+					xAxis: {
+						gridLineColor: '#e5e1e1',
+						labels: {
+							style: {
+								color: '#26232780'
+							}
+						}
+					}
+				},
+				scrollbar: {
+					barBackgroundColor: 'var(--bg-color-nav)',
+					barBorderWidth: 0,
+					buttonArrowColor: 'var(--font-color)',
+					rifleColor: 'var(--dark)',
+					buttonBackgroundColor: 'var(--bg-color-nav)',
+					buttonBorderColor: 'var(--bg-color-transparent)',
+					trackBackgroundColor: 'var(--bg-color)',
+					trackBorderColor: 'var(--border-color-transparent)',
+				},
+				credits: {
+					enabled: false
+				},
+				responsive: {
+					rules: [
+						{
+							condition: {
+								maxWidth: 760
+							},
+							chartOptions: {
+								chart: {
+									marginRight: 45
+								},
+								yAxis: [
+									{
+										title: {
+											text: null
+										}
+									},
+									{
+										title: {
+											text: null
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			})
 		</script>
-    {{end}}
+	{{end}}
 
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 	<script type="text/javascript">
 
-        function setTooltip(message) {
-            $('#copy-button').tooltip('hide')
-                .attr('data-original-title', message)
-                .tooltip('show');
-        }
+		function setTooltip(message) {
+			$('#copy-button').tooltip('hide')
+				.attr('data-original-title', message)
+				.tooltip('show');
+		}
 
-        function hideTooltip() {
-            setTimeout(function () {
-                $('#copy-button').tooltip('hide')
-                    .attr('data-original-title', 'Copy public key to clipboard')
-            }, 1000);
-        }
+		function hideTooltip() {
+			setTimeout(function () {
+				$('#copy-button').tooltip('hide')
+					.attr('data-original-title', 'Copy public key to clipboard')
+			}, 1000);
+		}
 
-        var clipboard = new ClipboardJS('#copy-button');
+		var clipboard = new ClipboardJS('#copy-button');
 
-        clipboard.on('success', function (e) {
-            setTooltip('Public key copied!');
-            hideTooltip();
-        });
+		clipboard.on('success', function (e) {
+			setTooltip('Public key copied!');
+			hideTooltip();
+		});
 
-        clipboard.on('error', function (e) {
-            setTooltip('Failed to copy public key!');
-            hideTooltip();
-        });
+		clipboard.on('error', function (e) {
+			setTooltip('Failed to copy public key!');
+			hideTooltip();
+		});
 	</script>
 
 	<script>
-        $('span[aria-ethereum-date]').each(function () {
-            var d = $(this).attr('aria-ethereum-date');
-            $(this).html(moment.unix(d).fromNow())
-        })
+		$('span[aria-ethereum-date]').each(function () {
+			var d = $(this).attr('aria-ethereum-date');
+			$(this).html(moment.unix(d).fromNow())
+		})
 	</script>
 
 {{end}}
@@ -531,19 +531,19 @@
 							   role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span
 										class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
 						</li>
-                        {{/*
-        <li class="nav-item"
-          >*/}} {{/* <a class="nav-link" href="#">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a
-          >*/}} {{/* </li
-        >*/}} {{/*
-        <li class="nav-item"
-          >*/}} {{/* <a class="nav-link" href="#">Exits <span class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a
-          >*/}} {{/* </li
-        >*/}} {{/*
-        <li class="nav-item"
-          >*/}} {{/* <a class="nav-link" href="#">Slashings <span class="badge bg-secondary text-white">{{.SlashingsCount}}</span></a
-          >*/}} {{/* </li
-        >*/}}
+						{{/*
+		<li class="nav-item"
+		  >*/}} {{/* <a class="nav-link" href="#">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a
+		  >*/}} {{/* </li
+		>*/}} {{/*
+		<li class="nav-item"
+		  >*/}} {{/* <a class="nav-link" href="#">Exits <span class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a
+		  >*/}} {{/* </li
+		>*/}} {{/*
+		<li class="nav-item"
+		  >*/}} {{/* <a class="nav-link" href="#">Slashings <span class="badge bg-secondary text-white">{{.SlashingsCount}}</span></a
+		  >*/}} {{/* </li
+		>*/}}
 					</ul>
 				</div>
 			</div>
@@ -564,15 +564,17 @@
 					</div>
 					<div class="row border-bottom p-3">
 						<div class="col-md-2">Status:</div>
-                        {{if eq .Status "ActiveOffline"}}
-                            <div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Active</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
-                        {{else if eq .Status "SlashingOffline"}}
-                            <div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Slashing</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
-                        {{else if eq .Status "ExitingOffline"}}
-                            <div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Exiting</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
-                        {{else if (or (eq .Status "Active") (eq .Status "Slashing") (eq .Status "Exiting")) }}
-                            <div class="col-md-10"><b>{{.Status}}</b> <i class="fas fa-power-off fa-sm text-success"></i></div>
-                        {{end}}
+						{{if eq .Status "ActiveOffline"}}
+							<div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Active</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
+						{{else if eq .Status "SlashingOffline"}}
+							<div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Slashing</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
+						{{else if eq .Status "ExitingOffline"}}
+							<div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Exiting</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
+						{{else if (or (eq .Status "Active") (eq .Status "Slashing") (eq .Status "Exiting")) }}
+							<div class="col-md-10"><b>{{.Status}}</b> <i class="fas fa-power-off fa-sm text-success"></i></div>
+						{{else}}
+							<div class="col-md-10"><b>{{.Status}}</b></div>
+						{{end}}
 					</div>
 					<div class="row border-bottom p-3">
 						<div class="col-md-2">Slashed:</div>
@@ -588,11 +590,11 @@
 						</div>
 					</div>
 					<div class="row border-bottom p-3">
-                        {{if eq .Status "Pending"}}
+						{{if eq .Status "Pending"}}
 							<div class="col-md-2">Estimated Activation:</div>
-                        {{else}}
+						{{else}}
 							<div class="col-md-2">Active since:</div>
-                        {{end}}
+						{{end}}
 						<div class="col-md-10"><span
 									title="{{.ActivationTs}}"
 									data-toggle="tooltip"
@@ -600,7 +602,7 @@
 							(Epoch {{.ActivationEpoch}})
 						</div>
 					</div>
-                    {{if eq .Status "Ejected"}}
+					{{if eq .Status "Ejected"}}
 						<div class="row border-bottom p-3">
 							<div class="col-md-2">Exit on:</div>
 							<div class="col-md-10"><span
@@ -619,7 +621,7 @@
 								(Epoch {{.WithdrawableEpoch}})
 							</div>
 						</div>
-                    {{end}}
+					{{end}}
 					<div class="row border-bottom p-3">
 						<div class="col-md-12">
 							<div id="balancechart" height="200px"></div>
@@ -661,7 +663,7 @@
 							<tr>
 								<th>Epoch</th>
 								<th>Slot</th>
-                                <th>Status</th>
+								<th>Status</th>
 								<th>Time</th>
 								<th>Committee Index</th>
 							</tr>
