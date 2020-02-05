@@ -197,6 +197,10 @@ input:checked + .slider:before {
   -webkit-appearance: searchfield;
 }
 
+.twitter-typeahead input {
+  padding-right: 36px;
+}
+
 @media (min-width: 1140px) {
   .search-icon {
     cursor: pointer;
@@ -366,8 +370,7 @@ a.at-button.toggle-icon {
 
 .fa-search {
   position: absolute;
-  display: content;
   right: 20px;
-  top: 13.5px;
+  bottom: 29%;
   color: grey;
 }
