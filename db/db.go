@@ -202,11 +202,11 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving validator assignments to db: %v", err)
 	}
 
-	// logger.Infof("exporting validator balance data")
-	// err = saveValidatorBalances(data.Epoch, data.ValidatorBalances, tx)
-	// if err != nil {
-	// 	return fmt.Errorf("error saving validator balances to db: %v", err)
-	// }
+	logger.Infof("exporting validator balance data")
+	err = saveValidatorBalances(data.Epoch, data.Validators, tx)
+	if err != nil {
+		return fmt.Errorf("error saving validator balances to db: %v", err)
+	}
 
 	logger.Infof("exporting epoch statistics data")
 	proposerSlashingsCount := 0
@@ -226,8 +226,8 @@ func SaveEpoch(data *types.EpochData) error {
 	}
 
 	validatorBalanceSum := new(big.Int)
-	for _, b := range data.ValidatorBalances {
-		validatorBalanceSum = new(big.Int).Add(validatorBalanceSum, new(big.Int).SetUint64(b.Balance))
+	for _, v := range data.Validators {
+		validatorBalanceSum = new(big.Int).Add(validatorBalanceSum, new(big.Int).SetUint64(v.Balance))
 	}
 
 	validatorBalanceAverage := new(big.Int).Div(validatorBalanceSum, new(big.Int).SetInt64(int64(len(data.Validators)))).Uint64()
@@ -299,15 +299,15 @@ func SaveEpoch(data *types.EpochData) error {
 func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
 	stmtValidators, err := tx.Prepare(`
 		INSERT INTO validators (
-			validatorindex, 
-			pubkey, 
-			withdrawableepoch, 
-			withdrawalcredentials, 
-			balance, 
-			effectivebalance, 
-			slashed, 
-			activationeligibilityepoch, 
-			activationepoch, 
+			validatorindex,
+			pubkey,
+			withdrawableepoch,
+			withdrawalcredentials,
+			balance,
+			effectivebalance,
+			slashed,
+			activationeligibilityepoch,
+			activationepoch,
 			exitepoch
 		) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
@@ -325,17 +325,6 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 		return err
 	}
 	defer stmtValidators.Close()
-
-	stmtValidatorBalance, err := tx.Prepare(`
-		INSERT INTO validator_balances (epoch, validatorindex, balance, effectivebalance)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (epoch, validatorindex) DO UPDATE SET
-			balance          = EXCLUDED.balance,
-			effectivebalance = EXCLUDED.effectivebalance`)
-	if err != nil {
-		return err
-	}
-	defer stmtValidatorBalance.Close()
 
 	var lenActivatedValidators int
 	var lastActivatedValidatorIdx uint64
@@ -384,10 +373,6 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 		if err != nil {
 			return fmt.Errorf("error executing save validator statement: %v", err)
 		}
-		_, err = stmtValidatorBalance.Exec(epoch, v.Index, v.Balance, v.EffectiveBalance)
-		if err != nil {
-			return fmt.Errorf("error executing save validatorBalance statement: %v", err)
-		}
 	}
 
 	return nil
@@ -435,18 +420,20 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 	return nil
 }
 
-func saveValidatorBalances(epoch uint64, balances []*types.ValidatorBalance, tx *sql.Tx) error {
+func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
 	stmt, err := tx.Prepare(`
-		INSERT INTO validator_balances (epoch, validatorindex, balance)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (epoch, validatorindex) DO UPDATE SET balance = excluded.balance`)
+		INSERT INTO validator_balances (epoch, validatorindex, balance, effectivebalance)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (epoch, validatorindex) DO UPDATE SET
+			balance          = EXCLUDED.balance,
+			effectivebalance = EXCLUDED.effectivebalance`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	for _, b := range balances {
-		_, err := stmt.Exec(epoch, b.Index, b.Balance)
+	for _, v := range validators {
+		_, err := stmt.Exec(epoch, v.Index, v.Balance, v.EffectiveBalance)
 		if err != nil {
 			return fmt.Errorf("error executing save validator balance statement: %v", err)
 		}

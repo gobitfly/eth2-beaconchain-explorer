@@ -251,10 +251,9 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
-	data.ValidatorBalances = make([]*types.ValidatorBalance, 0)
 	data.ValidatorIndices = make(map[string]uint64)
 
+	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
 	validatorBalancesByPubkey := make(map[string]uint64)
 
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
@@ -269,11 +268,6 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 
 		for _, balance := range validatorBalancesResponse.Balances {
-			data.ValidatorBalances = append(data.ValidatorBalances, &types.ValidatorBalance{
-				PublicKey: balance.PublicKey,
-				Index:     balance.Index,
-				Balance:   balance.Balance,
-			})
 			data.ValidatorIndices[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
 			validatorBalancesByPubkey[utils.FormatPublicKey(balance.PublicKey)] = balance.Balance
 		}
@@ -282,7 +276,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			break
 		}
 	}
-	logger.Printf("retrieved data for %v validator balances for epoch %v", len(data.ValidatorBalances), epoch)
+	logger.Printf("retrieved data for %v validator balances for epoch %v", len(validatorBalancesByPubkey), epoch)
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
 	if err != nil {

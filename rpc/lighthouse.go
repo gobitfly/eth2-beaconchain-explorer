@@ -5,13 +5,14 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	lru "github.com/hashicorp/golang-lru"
-	"github.com/prysmaticlabs/go-bitfield"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/prysmaticlabs/go-bitfield"
 )
 
 // LighthouseClient holds the Lighthouse client info
@@ -137,7 +138,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 
 	stateRootString := strings.Replace(string(stateRoot), "\"", "", -1)
 	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
-	data.ValidatorBalances = make([]*types.ValidatorBalance, 0)
 	data.ValidatorIndices = make(map[string]uint64)
 	data.Validators = make([]*types.Validator, 0)
 
@@ -158,15 +158,12 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 
 		pubKey := utils.MustParseHex(validator.Pubkey)
 		data.ValidatorIndices[utils.FormatPublicKey(pubKey)] = validator.ValidatorIndex
-		data.ValidatorBalances = append(data.ValidatorBalances, &types.ValidatorBalance{
-			PublicKey: pubKey,
-			Index:     validator.ValidatorIndex,
-			Balance:   validator.Balance,
-		})
 
 		data.Validators = append(data.Validators, &types.Validator{
+			Index:                      validator.ValidatorIndex,
 			PublicKey:                  pubKey,
 			WithdrawalCredentials:      utils.MustParseHex(validator.Validator.WithdrawalCredentials),
+			Balance:                    validator.Balance,
 			EffectiveBalance:           validator.Validator.EffectiveBalance,
 			Slashed:                    validator.Validator.Slashed,
 			ActivationEligibilityEpoch: validator.Validator.ActivationEligibilityEpoch,
@@ -176,7 +173,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 		})
 	}
 
-	logger.Printf("retrieved data for %v validators for epoch %v", len(data.ValidatorBalances), epoch)
+	logger.Printf("retrieved data for %v validators for epoch %v", len(data.Validators), epoch)
 
 	data.ValidatorAssignmentes, err = lc.GetEpochAssignments(epoch)
 	if err != nil {
