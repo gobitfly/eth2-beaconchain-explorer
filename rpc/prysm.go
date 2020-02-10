@@ -210,14 +210,11 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving validator assignment response for caching: %v", err)
 		}
-		if validatorAssignmentResponse.TotalSize == 0 || len(validatorAssignmentes) == int(validatorAssignmentResponse.TotalSize) {
-			break
-		}
 
 		validatorAssignmentes = append(validatorAssignmentes, validatorAssignmentResponse.Assignments...)
 		logger.Printf("retrieved %v assignments of %v for epoch %v", len(validatorAssignmentes), validatorAssignmentResponse.TotalSize, epoch)
 
-		if validatorAssignmentResponse.NextPageToken == "" {
+		if validatorAssignmentResponse.NextPageToken == "" || validatorAssignmentResponse.TotalSize == 0 || len(validatorAssignmentes) == int(validatorAssignmentResponse.TotalSize) {
 			break
 		}
 	}
