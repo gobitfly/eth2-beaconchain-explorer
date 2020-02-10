@@ -398,6 +398,7 @@ type GenericChartData struct {
 	Subtitle     string                    `json:"subtitle"`
 	XAxisTitle   string                    `json:"x_axis_title"`
 	YAxisTitle   string                    `json:"y_axis_title"`
+	Type         string                    `json:"type"`
 	StackingMode string                    `json:"stacking_mode"`
 	Series       []*GenericChartDataSeries `json:"series"`
 }

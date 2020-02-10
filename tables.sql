@@ -107,6 +107,7 @@ create table epochs (
     voluntaryexitscount int not null,
     validatorscount int not null,
     averagevalidatorbalance bigint not null,
+    totalvalidatorbalance bigint not null,
     finalized bool,
     eligibleether bigint,
     globalparticipationrate float,
@@ -219,4 +220,14 @@ create table blocks_voluntaryexits (
    validatorindex int not null,
    signature bytea not null,
    primary key (block_slot, block_index)
+);
+
+drop table if exists network_liveness;
+create table network_liveness (
+    ts timestamp without time zone,
+    headepoch int not null,
+    finalizedepoch int not null,
+    justifiedepoch int not null,
+    previousjustifiedepoch int not null,
+    primary key (ts)
 );

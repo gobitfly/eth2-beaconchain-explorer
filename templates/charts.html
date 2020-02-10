@@ -1,4 +1,27 @@
 {{ define "js"}}
+<script src="https://code.highcharts.com/stock/highstock.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+<script src="/js/highcharts-global-options.js"></script>
+<script>
+{{range $i, $e := .}}
+    Highcharts.stockChart('chart-{{$i}}',{
+        chart: { type: {{.Data.Type}} },
+        rangeSelector: {  enabled: false },
+        title: { text: {{.Data.Title}} },
+        subtitle: { text: {{.Data.Subtitle}} },
+        plotOptions: { column: { stacking: {{.Data.StackingMode}} } },
+        xAxis: { type: 'datetime' },
+        yAxis: [{ 
+            title: { text: {{.Data.YAxisTitle}} },
+            opposite: false
+        }],
+        series: {{.Data.Series}},
+        navigator: { enabled: false },
+        scrollbar: { enabled: false }
+    })
+{{end}}
+</script>
 {{end}}
 
 {{ define "css"}}
@@ -11,11 +34,25 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
                     <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Epochs</li>
+                    <li class="breadcrumb-item active" aria-current="page">Charts</li>
                 </ol>
             </nav>
         </div>
     </div>
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                {{range $i, $e := .}}
+                    <div class="col-md-6">
+                        <div class="card ml-6 mt-6">
+                            <div id="chart-{{$i}}"></div>
+                        </div>
+                    </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+    <!--
     <div class="card">
         <div class="card-body">
             <div class="row">
@@ -56,7 +93,44 @@
                         </div>
                     </div>
                 </div>
+                <div class="col-md-3">
+                    <div class="card ml-3 mt-3">
+                        <i class="far fa-chart-bar card-img-top fa-10x text-center p-1 border-bottom"></i>
+                        <div class="card-body">
+                            <h4 class="card-title"><a href="/charts/network_liveness">Network Liveness</a></h4>
+                            <p class="card-text">History of the Network Liveness</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card ml-3 mt-3">
+                        <i class="far fa-chart-bar card-img-top fa-10x text-center p-1 border-bottom"></i>
+                        <div class="card-body">
+                            <h4 class="card-title"><a href="/charts/participation_rate">Participation Rate</a></h4>
+                            <p class="card-text">History of the Participation Rate</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card ml-3 mt-3">
+                        <i class="far fa-chart-bar card-img-top fa-10x text-center p-1 border-bottom"></i>
+                        <div class="card-body">
+                            <h4 class="card-title"><a href="/charts/estimated_validator_return">Estimated Validator Return</a></h4>
+                            <p class="card-text">History of the Estimated Validator Return</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card ml-3 mt-3">
+                        <i class="far fa-chart-bar card-img-top fa-10x text-center p-1 border-bottom"></i>
+                        <div class="card-body">
+                            <h4 class="card-title"><a href="/charts/stake_effectiveness">Stake Effectiveness</a></h4>
+                            <p class="card-text">History of the Stake Effectiveness</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+    -->
 {{end}}

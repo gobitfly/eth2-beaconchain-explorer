@@ -7,7 +7,7 @@
 <script>
 Highcharts.stockChart('chart', {
     chart: {
-        type: 'column'
+        type: {{.Type}}
     },
     rangeSelector: { 
         enabled: true
@@ -42,7 +42,7 @@ Highcharts.stockChart('chart', {
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
         <li class="breadcrumb-item"><a href="/charts" title="Charts">Charts</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Chart details</li>
+        <li class="breadcrumb-item active" aria-current="page">{{ .Title }}</li>
       </ol>
     </nav>
   </div>

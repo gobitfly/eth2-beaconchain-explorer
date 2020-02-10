@@ -21,6 +21,7 @@ require (
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
 	github.com/prysmaticlabs/ethereumapis v0.0.0-20200107194206-1ca2fc850a13
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52
+	github.com/prysmaticlabs/prysm v0.3.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d

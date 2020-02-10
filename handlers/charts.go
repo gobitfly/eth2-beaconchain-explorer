@@ -9,16 +9,79 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sort"
+	"sync"
 	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/prysmaticlabs/prysm/shared/mathutil"
 )
 
 var chartsTemplate = template.Must(template.New("charts").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/charts.html"))
 var genericChartTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/genericchart.html"))
 
+type chartHandler struct {
+	Order    int
+	DataFunc func() (*types.GenericChartData, error)
+}
+
+var chartHandlers = map[string]chartHandler{
+	"blocks":                     chartHandler{1, blocksChartData},
+	"validators":                 chartHandler{2, activeValidatorsChartData},
+	"staked_ether":               chartHandler{3, stakedEtherChartData},
+	"average_balance":            chartHandler{4, averageBalanceChartData},
+	"network_liveness":           chartHandler{5, networkLivenessChartData},
+	"participation_rate":         chartHandler{6, participationRateChartData},
+	"estimated_validator_return": chartHandler{7, estimatedValidatorReturnChartData},
+	"stake_effectiveness":        chartHandler{8, stakeEffectivenessChartData},
+}
+
 // Charts uses a go template for presenting the page to show charts
 func Charts(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
+
+	type chartHandlerRes struct {
+		Order int
+		Path  string
+		Data  *types.GenericChartData
+		Error error
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(len(chartHandlers))
+
+	chartHandlerResChan := make(chan chartHandlerRes, len(chartHandlers))
+
+	for i, ch := range chartHandlers {
+		go func(i string, ch chartHandler) {
+			defer wg.Done()
+			data, err := ch.DataFunc()
+			if err != nil {
+				logger.Errorf("error getting chart data for %v: %w", i, err)
+			}
+			chartHandlerResChan <- chartHandlerRes{ch.Order, i, data, err}
+		}(i, ch)
+	}
+
+	go func() {
+		wg.Wait()
+		close(chartHandlerResChan)
+	}()
+
+	pageCharts := []chartHandlerRes{}
+
+	for chart := range chartHandlerResChan {
+		if chart.Error != nil {
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		pageCharts = append(pageCharts, chart)
+	}
+
+	sort.Slice(pageCharts, func(i, j int) bool {
+		return pageCharts[i].Order < pageCharts[j].Order
+	})
 
 	data := &types.PageData{
 		Meta: &types.Meta{
@@ -44,15 +107,29 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// BlocksChart will show the history of daily blocks proposed chart
-func BlocksChart(w http.ResponseWriter, r *http.Request) {
+func GenericChart(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
+
+	vars := mux.Vars(r)
+	chartVar := vars["chart"]
+	chartHandler, exists := chartHandlers[chartVar]
+	if !exists {
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	chartData, err := chartHandler.DataFunc()
+	if err != nil {
+		logger.Errorf("error retrieving chart data for route %v: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
 	data := &types.PageData{
 		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Blocks Chart - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
+			Title:       fmt.Sprintf("%v - %v Chart - beaconcha.in - %v", chartData.Title, utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/charts",
+			Path:        "/charts/" + chartVar,
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "charts",
@@ -63,6 +140,16 @@ func BlocksChart(w http.ResponseWriter, r *http.Request) {
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 	}
 
+	err = genericChartTemplate.ExecuteTemplate(w, "layout", data)
+
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+func blocksChartData() (*types.GenericChartData, error) {
 	rows := []struct {
 		Epoch     uint64
 		Status    uint64
@@ -71,9 +158,7 @@ func BlocksChart(w http.ResponseWriter, r *http.Request) {
 
 	err := db.DB.Select(&rows, "SELECT epoch, status, count(*) as nbrBlocks FROM blocks GROUP BY epoch, status ORDER BY epoch")
 	if err != nil {
-		logger.Errorf("error retrieving chart data for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
+		return nil, err
 	}
 
 	dailyProposedBlocks := [][]float64{}
@@ -109,10 +194,12 @@ func BlocksChart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "History of daily blocks proposed",
+		Title:        "Blocks",
+		Subtitle:     "History of daily blocks proposed",
 		XAxisTitle:   "",
 		YAxisTitle:   "# of Blocks",
 		StackingMode: "normal",
+		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Proposed",
@@ -129,15 +216,7 @@ func BlocksChart(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	data.Data = chartData
-
-	err = genericChartTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
+	return chartData, nil
 }
 
 // ActiveValidatorChart will show the Active Validators Chart
@@ -166,9 +245,7 @@ func ActiveValidatorChart(w http.ResponseWriter, r *http.Request) {
 
 	err := db.DB.Select(&rows, "SELECT epoch, validatorscount FROM epochs ORDER BY epoch")
 	if err != nil {
-		logger.Errorf("error retrieving chart data for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
+		return nil, err
 	}
 
 	dailyActiveValidators := [][]float64{}
@@ -182,10 +259,12 @@ func ActiveValidatorChart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "History of daily active validators",
+		Title:        "Validators",
+		Subtitle:     "History of daily active validators",
 		XAxisTitle:   "",
 		YAxisTitle:   "# of Validators",
 		StackingMode: "false",
+		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Validators",
@@ -194,15 +273,7 @@ func ActiveValidatorChart(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	data.Data = chartData
-
-	err = genericChartTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
+	return chartData, nil
 }
 
 // StakedEtherChart will show the Staked Ether Chart
@@ -231,9 +302,7 @@ func StakedEtherChart(w http.ResponseWriter, r *http.Request) {
 
 	err := db.DB.Select(&rows, "SELECT epoch, eligibleether FROM epochs ORDER BY epoch")
 	if err != nil {
-		logger.Errorf("error retrieving chart data for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
+		return nil, err
 	}
 
 	dailyStakedEther := [][]float64{}
@@ -247,11 +316,12 @@ func StakedEtherChart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "History of daily staked Ether",
-		Subtitle:     "Ethereum 2.0 Beacon Chain Chart",
+		Title:        "Staked Ether",
+		Subtitle:     "History of daily staked Ether",
 		XAxisTitle:   "",
 		YAxisTitle:   "Ether",
 		StackingMode: "false",
+		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Staked Ether",
@@ -260,15 +330,7 @@ func StakedEtherChart(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	data.Data = chartData
-
-	err = genericChartTemplate.ExecuteTemplate(w, "layout", data)
-
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
+	return chartData, nil
 }
 
 // AverageBalanceChart will show the Average Validator Balance Chart
@@ -297,9 +359,7 @@ func AverageBalanceChart(w http.ResponseWriter, r *http.Request) {
 
 	err := db.DB.Select(&rows, "SELECT epoch, averagevalidatorbalance FROM epochs ORDER BY epoch")
 	if err != nil {
-		logger.Errorf("error retrieving chart data for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
+		return nil, err
 	}
 
 	dailyAverageBalance := [][]float64{}
@@ -313,11 +373,12 @@ func AverageBalanceChart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "History of the daily average validator balance",
-		Subtitle:     "Ethereum 2.0 Beacon Chain Chart",
+		Title:        "Validator Balance",
+		Subtitle:     "History of the daily average validator balance",
 		XAxisTitle:   "",
 		YAxisTitle:   "Ether",
 		StackingMode: "false",
+		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Average Balance [ETH]",
@@ -326,13 +387,199 @@ func AverageBalanceChart(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	data.Data = chartData
+	return chartData, nil
+}
 
-	err = genericChartTemplate.ExecuteTemplate(w, "layout", data)
+func networkLivenessChartData() (*types.GenericChartData, error) {
+	rows := []struct {
+		Timestamp      uint64
+		HeadEpoch      uint64
+		FinalizedEpoch uint64
+	}{}
 
+	err := db.DB.Select(&rows, "SELECT EXTRACT(epoch FROM ts)::INT AS timestamp, headepoch, finalizedepoch FROM network_liveness ORDER BY ts")
 	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
+		return nil, err
 	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		// networkliveness := (1 - 4*float64(row.HeadEpoch-2-row.FinalizedEpoch)/100)
+		// if networkliveness < 0 {
+		// 	networkliveness = 0
+		// }
+		seriesData = append(seriesData, []float64{
+			float64(row.Timestamp * 1000),
+			float64(row.HeadEpoch - row.FinalizedEpoch),
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Network Liveness",
+		Subtitle:     "History of how far the last Finalized Epoch is behind the Head Epoch",
+		XAxisTitle:   "",
+		YAxisTitle:   "Network Liveness [epochs]",
+		StackingMode: "false",
+		Type:         "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Network Liveness",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func participationRateChartData() (*types.GenericChartData, error) {
+	rows := []struct {
+		Epoch                   uint64
+		Globalparticipationrate float64
+	}{}
+
+	err := db.DB.Select(&rows, "SELECT epoch, globalparticipationrate FROM epochs WHERE epoch < $1 ORDER BY epoch", services.LatestEpoch())
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
+			row.Globalparticipationrate * 100,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Participation Rate",
+		Subtitle:     "History of the Participation Rate",
+		XAxisTitle:   "",
+		YAxisTitle:   "Participation Rate [%]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Participation Rate",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func estimatedValidatorReturnChartData() (*types.GenericChartData, error) {
+	rows := []struct {
+		Epoch           uint64
+		Eligibleether   uint64
+		Votedether      uint64
+		Validatorscount uint64
+	}{}
+
+	// note: eligibleether might not be correct, need to check what exactly the node returns
+	// for the reward-calculation we need the sum of all effective balances
+	err := db.DB.Select(&rows, `SELECT epoch, eligibleether, votedether, validatorscount FROM epochs ORDER BY epoch`)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	// see: https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/beacon-chain.md#rewards-and-penalties-1
+	maxEffectiveBalance := uint64(32e8)
+	baseRewardFactor := uint64(64)
+	baseRewardPerEpoch := uint64(4)
+	proposerRewardQuotient := uint64(8)
+	slotsPerDay := 3600 * 24 / utils.Config.Chain.SecondsPerSlot
+	epochsPerDay := slotsPerDay / utils.Config.Chain.SlotsPerEpoch
+
+	for _, row := range rows {
+		if row.Eligibleether == 0 {
+			continue
+		}
+
+		baseReward := maxEffectiveBalance * baseRewardFactor / mathutil.IntegerSquareRoot(row.Eligibleether) / baseRewardPerEpoch
+		// Micro-incentives for matching FFG source, FFG target, and head
+		estimatedRewardPerDay := epochsPerDay * 3 * baseReward * row.Votedether / row.Eligibleether
+		// Proposer and inclusion delay micro-rewards
+		proposerReward := baseReward / proposerRewardQuotient
+		estimatedRewardPerDay += epochsPerDay * (baseReward - proposerReward)
+		proposalsPerDay := slotsPerDay / row.Validatorscount
+		estimatedRewardPerDay += proposalsPerDay * proposerReward
+
+		seriesData = append(seriesData, []float64{
+			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
+			float64(estimatedRewardPerDay) / 1e9,
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Estimated Validator Return",
+		Subtitle:     "History of the Estimated Validator Return",
+		XAxisTitle:   "",
+		YAxisTitle:   "Estimated Validator Return [ETH/day]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Estimated Validator Return",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func stakeEffectivenessChartData() (*types.GenericChartData, error) {
+	rows := []struct {
+		Epoch                 uint64
+		Totalvalidatorbalance uint64
+		Eligibleether         uint64
+	}{}
+
+	err := db.DB.Select(&rows, `
+		SELECT
+			epoch, 
+			COALESCE(totalvalidatorbalance,0) as totalvalidatorbalance,
+			COALESCE(eligibleether,0) as eligibleether
+		FROM epochs ORDER BY epoch`)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		if row.Eligibleether == 0 {
+			continue
+		}
+		if row.Totalvalidatorbalance == 0 {
+			continue
+		}
+		seriesData = append(seriesData, []float64{
+			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
+			100 * float64(row.Eligibleether) / float64(row.Totalvalidatorbalance),
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Stake Effectiveness",
+		Subtitle:     "History of the Stake Effectiveness",
+		XAxisTitle:   "",
+		YAxisTitle:   "Stake Effectiveness [%]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Stake Effectiveness",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
 }

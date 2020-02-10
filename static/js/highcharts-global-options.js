@@ -47,6 +47,7 @@ Highcharts.setOptions({
       }
     },
     xAxis: {
+      ordinal: false,
       labels: {
         style: {
           color: 'var(--body-color)'
