@@ -27,12 +27,12 @@ func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	flag.Parse()
 
-	log.Printf("Config file path: %v", *configPath)
+	log.Printf("config file path: %v", *configPath)
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
 
 	if err != nil {
-		log.Fatalf("Error reading config file: %v", err)
+		log.Fatalf("error reading config file: %v", err)
 	}
 
 	dbConn, err := sqlx.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name))
@@ -45,7 +45,7 @@ func main() {
 	dbConnectionTimeout := time.NewTimer(15 * time.Second)
 	go func() {
 		<-dbConnectionTimeout.C
-		log.Fatal("Timeout while connecting to the database")
+		log.Fatal("timeout while connecting to the database")
 	}()
 	err = dbConn.Ping()
 	if err != nil {
@@ -59,7 +59,7 @@ func main() {
 	utils.Config = cfg
 
 	if utils.Config.Chain.SlotsPerEpoch == 0 || utils.Config.Chain.SecondsPerSlot == 0 || utils.Config.Chain.GenesisTimestamp == 0 {
-		log.Fatal("Invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
+		log.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
 	}
 
 	if cfg.Indexer.Enabled {
@@ -76,7 +76,7 @@ func main() {
 				log.Fatal(err)
 			}
 		} else {
-			log.Fatalf("Invalid note type %v specified. Supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
+			log.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
 		}
 
 		go exporter.Start(rpcClient)
@@ -118,6 +118,7 @@ func main() {
 		// router.HandleFunc("/dashboard/data/pending", handlers.DashboardDataValidatorsPending).Methods("GET")
 		// router.HandleFunc("/dashboard/data/active", handlers.DashboardDataValidatorsActive).Methods("GET")
 		// router.HandleFunc("/dashboard/data/ejected", handlers.DashboardDataValidatorsEjected).Methods("GET")
+		router.HandleFunc("/validators/data", handlers.ValidatorsData).Methods("GET")
 		router.HandleFunc("/search", handlers.Search).Methods("POST")
 		router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 		router.HandleFunc("/faq", handlers.Faq).Methods("GET")
@@ -155,7 +156,7 @@ func main() {
 			Handler:      n,
 		}
 
-		log.Printf("HTTP servicer listinging on %v", srv.Addr)
+		log.Printf("http server listening on %v", srv.Addr)
 		go func() {
 			if err := srv.ListenAndServe(); err != nil {
 				log.Println(err)
@@ -165,5 +166,5 @@ func main() {
 
 	utils.WaitForCtrlC()
 
-	log.Println("Exiting")
+	log.Println("exiting...")
 }

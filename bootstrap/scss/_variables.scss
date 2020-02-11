@@ -71,10 +71,10 @@ $red: #f82e2e !default;
 $orange: #ee7112 !default;
 $yellow: #f0952d !default;
 $green: #2d7533 !default;
-$teal: #37f0f044 !default;
+$teal: #143226 !default;
 $cyan: #17a2b8 !default;
 $bg-color-nav: #e1d8d8 !default;
-$bg-color: #f5f3f3 !default;
+$bg-color: #fefbfb !default;
 $shadow-light: rgba(159, 162, 177, 0.3) !default;
 $shadow-dark: rgba(159, 162, 177, 0.8) !default;
 
@@ -86,7 +86,7 @@ $red-dark: #c4340f !default;
 $orange-dark: #ee7112 !default;
 $yellow-dark: #f2a955 !default;
 $green-dark: #2d7533 !default;
-$teal-dark: #37f0f044 !default;
+$teal-dark: #37f0f0 !default;
 $cyan-dark: #17a2b8 !default;
 $bg-color-nav-dark: #413938 !default;
 $bg-color-dark: #262327 !default;
@@ -144,7 +144,7 @@ $colors-dark: map-merge(
 );
 
 $primary: $orange !default;
-$secondary: $teal !default;
+$secondary: #5e6d64 !default;
 $success: $green !default;
 $info: $cyan !default;
 $warning: $yellow !default;
@@ -157,7 +157,7 @@ $theme-colors: () !default;
 $theme-colors: map-merge(
   (
     "primary": $primary,
-    "secondary": $secondary,
+    "secondary": #5e6d64,
     "success": $success,
     "info": $info,
     "warning": $warning,
@@ -185,7 +185,7 @@ $theme-colors-dark: () !default;
 $theme-colors-dark: map-merge(
   (
     "primary": #ff8723,
-    "secondary": #413938,
+    "secondary": #c4c4ba,
     "success": #29ff7bde,
     "info": darken($info, 20%),
     "warning": darken($warning, 20%),
@@ -221,7 +221,16 @@ $theme-colors-vars: map-merge(
     "dark": var(--dark, $dark),
     "bg-color-nav": var(--bg-color-nav, $bg-color-nav),
     "bg-color": var(--bg-color, $bg-color),
-    "bg-color-secondary": var(--bg-color-secondary, #ebe7e7)
+    "bg-color-secondary": var(--bg-color-secondary, #ebe7e7),
+    "card-border-color": rgba($white, 0.125),
+    "link-color": var(--link-color, darken(#6699cc, 25%)),
+    "link-hover-color": var(--link-hover-color, darken(#6699cc, 40%)),
+    "input-color": var(--input-color, $gray-700),
+    "input-border-color": var(--input-border-color, $gray-400),
+    "border-color": var(--border-color, #e5e1e1),
+    "border-color-transparent": var(--border-color-transparent, #e5e1e180),
+    "transparent-font-color": var(--transparent-font-color, #26232780),
+    "mask-fill-color": var(--mask-fill-color, #1473e631)
   ),
   $theme-colors-vars
 );
@@ -414,10 +423,10 @@ $paragraph-margin-bottom: 1rem !default;
 
 $grid-breakpoints: (
   xs: 0,
-  sm: 576px,
-  md: 768px,
-  lg: 992px,
-  xl: 1400px
+  sm: 640px,
+  md: 820px,
+  lg: 1140px,
+  xl: 1440px
 ) !default;
 
 @include _assert-ascending($grid-breakpoints, "$grid-breakpoints");
@@ -429,9 +438,9 @@ $grid-breakpoints: (
 
 $container-max-widths: (
   sm: 540px,
-  md: 720px,
-  lg: 960px,
-  xl: 1340px
+  md: 780px,
+  lg: 1100px,
+  xl: 1400px
 ) !default;
 
 @include _assert-ascending($container-max-widths, "$container-max-widths");
@@ -506,9 +515,9 @@ $embed-responsive-aspect-ratios: map-merge(
 // Font, line-height, and color for body text, headings, and more.
 
 // stylelint-disable value-keyword-case
-$font-family-sans-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-  "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
-  "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !default;
+$font-family-sans-serif: 'Inter', sans-serif;//-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+  //"Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
+  //"Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !default;
 $font-family-monospace: SFMono-Regular, Menlo, Monaco, Consolas,
   "Liberation Mono", "Courier New", monospace !default;
 $font-family-base: $font-family-sans-serif !default;
@@ -1086,7 +1095,7 @@ $card-spacer-x: 1.25rem !default;
 $card-title-spacer-y: 0.75rem !default;
 $card-border-width: $border-width !default;
 $card-border-radius: $border-radius !default;
-$card-border-color: rgba($black, 0.125) !default;
+$card-border-color: var(--card-border-color, rgba(0, 0, 0, 0.125)) !default;
 $card-inner-border-radius: subtract(
   $card-border-radius,
   $card-border-width
@@ -1097,7 +1106,7 @@ $card-cap-bg: rgba($black, 0.03) !default;
 $card-cap-color: null !default;
 $card-height: null !default;
 $card-color: null !default;
-$card-bg: $white !default;
+$card-bg: var(--bg-color, #fff) !default;
 
 $card-img-overlay-padding: 1.25rem !default;
 

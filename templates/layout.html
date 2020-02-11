@@ -31,7 +31,7 @@
 
         <link rel="stylesheet" href="/css/fontawesome.min.css">
         <link rel="stylesheet" href="/bootstrap/css/bootstrap.min.css">
-        <link rel="stylesheet" href="/css/theme.css">
+        <link rel="stylesheet" href="/css/layout.css">
         <script>
                 var mql = window.matchMedia('(prefers-color-scheme: light)');
                 var lightScheme = mql.matches;
@@ -51,388 +51,10 @@
                 }
         </script>
 
-        {{ template "css" }}
 
-        <style>
-            .theme-switch-wrapper {
-              position: relative;
-              display: contents;
-            }
-            .theme-switch {
-              height: calc(var(--font-size, 1rem) * 1.2);
-              position: absolute;
-              width: calc(var(--font-size, 1rem) * 2.4);
-              margin-top: .2rem;
-              margin-bottom: 0rem;
-              margin-left: .1rem;
-            }
-    
-            .theme-switch input {
-              display: none;
-            }
-    
-            .slider {
-              background-color: var(--shadow-light, rgba(151, 152, 155, 0.2));
-              bottom: 0;
-              cursor: pointer;
-              left: 0;
-              position: absolute;
-              right: 0;
-              top: 0;
-              transition: 0.4s;
-            }
-    
-            .sun,
-            .moon {
-              position: absolute;
-              top: 50%;
-              transform: translateY(-50%);
-              cursor: pointer;
-              width: auto;
-              height: calc(var(--font-size, 1rem) * 0.6);
-            }
-    
-            .moon {
-              left: calc(var(--font-size, 1rem) * 0.3);
-            }
-            .sun {
-              right: calc(var(--font-size, 1rem) * 0.28);
-            }
-    
-            .slider:before {
-              background: var(--primary, #222);
-              bottom: calc(var(--font-size, 1rem) * 0.1);
-              content: '';
-              height: var(--font-size, 1rem);
-              left: calc(var(--font-size, 1rem) * 0.1);
-              position: absolute;
-              transition: 0.4s;
-              width: var(--font-size, 1rem);
-            }
-    
-            input:checked ~ .moon path {
-              fill: var(--shadow-dark, rgba(159, 162, 177, 0.8));
-            }
-    
-            input:checked ~ .sun path {
-              fill: #f5f3ce;
-            }
-    
-            input ~ .sun path {
-              fill: var(--shadow-dark, rgba(159, 162, 177, 0.8));
-            }
-    
-            input ~ .moon path {
-              fill: #f5f3ce;
-            }
-    
-            input:checked + .slider:before {
-              transform: translateX(calc(var(--font-size, 1rem) * 1.2));
-            }
-    
-            .slider.round {
-              border-radius: 30px;
-            }
-    
-            .slider.round:before {
-              border-radius: 50%;
-            }
-            </style>
-    
-
-        <style>
-            .tt-menu {
-                margin-top: 4px;
-                background-color: var(--bg-color-secondary);
-                border: 1px solid #ccc;
-                border: 1px solid rgba(0, 0, 0, 0.2);
-                -webkit-border-radius: 4px;
-                -moz-border-radius: 4px;
-                border-radius: 4px;
-                box-shadow: 0 5px 10px rgba(0, 0, 0, .2);
-                overflow-y: auto;
-                max-height: 300px;
-                cursor: pointer;
-                right: -44px;
-            }
-
-            .tt-query {
-                -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
-                -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
-                box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
-            }
-
-            .tt-suggestion {
-                padding: 5px 20px;
-                line-height: 34px;
-            }
-
-            .tt-suggestion.tt-cursor, .tt-suggestion:hover {
-                color: #fff;
-                background-color: #007bff;;
-            }
-
-            .tt-suggestion p {
-                margin: 0;
-            }
-
-            .tt-dataset h3 {
-                padding: 5px 20px;
-                font-size: 1.5em;
-            }
-
-            .input-group > span.twitter-typeahead {
-                position: relative;
-                -ms-flex: 1 1 auto;
-                flex: 1 1 auto;
-                width: 1%;
-                margin-bottom: 0;
-                margin-right: .5rem !important;
-            }
-        </style>
-        <style>
-
-            .nav-indicator {
-                position: absolute;
-                left: 0;
-                bottom: -.5rem;
-                width: 100%;
-                height: 4px;
-                transition: .15s;
-                z-index: 1;
-                border-radius: 8px 8px 0 0;
-                background-color: orange;
-                background-color: var(--primary);
-            }
-
-            .nav-item {
-                position: relative;
-            }
-
-            .navbar-brand {
-                margin-right: 1rem;
-            }
-
-            @media (max-width: 992px) {
-                .nav-indicator {
-                    display: none;
-                }
-                .navbar-nav {
-                    margin-top: .5rem;
-                    margin-left: .5rem;
-                }
-                .nav-item {
-                    margin: .2rem 0;
-                }            
-            }
-
-            .search-container {
-                    flex: 1 1 235px; 
-                    display: flex; 
-                    justify-content: flex-start;
-                }
-
-                .search-container > form {
-                    width: 100%; 
-                    justify-content: flex-start;
-                }
-
-                .search-container > form > span {
-                    /* width: 90%;  */
-                    width: inherit;
-                    max-width: 400px; 
-                    position:relative; 
-                    display: flex; 
-                    justify-content: flex-start;
-                }
-
-                .search-container .twitter-typeahead {
-                    width: 100%;
-                    display: flex !important;
-                }
-
-                .search-container .twitter-typeahead input {
-                    width: 100% !important;
-                    transition: width 0.4s ease-in;
-                    -webkit-appearance: searchfield;
-                }
-
-            @media (min-width: 992px) {
-                .search-icon {
-                    cursor: pointer;
-                }
-                .search-container .form-control:focus + .fa-search {
-                    color: blue;
-                }
-
-                .search-container > form {
-                    justify-content: flex-end;
-                }
-
-                .search-container > form > span { 
-                    justify-content: flex-end;
-                }
-
-                .search-container .twitter-typeahead {
-                    width: 100%;
-                    display: flex !important;
-                    justify-content: flex-end;
-                }
-
-                .search-container .twitter-typeahead input {
-                    width: 235px !important;
-                }
-
-                .search-container .twitter-typeahead input:focus {
-                    width: 100% !important;
-                    max-width: 400px;
-                }
-
-            }
-
-
-
-            @media (min-width: 992px) and (max-width: 1400px) {
-                .navbar i {
-                    display: none;
-                }
-
-                .navbar-brand i {
-                    display: initial;
-                }
-            }
-
-
-            .fab-message {
-                    display: none;
-                    position: fixed;
-                    width: 100%;
-                    bottom: 0;
-                    -webkit-transform: translateY(100%);
-                    transform: translateY(100%);
-                    -webkit-transition: all 0.3s;
-                    transition: all 0.3s;
-                    z-index: 15;
-                }
-            .fab-message-button {
-                float: right;
-                padding: 20px;
-                -webkit-transform: translateY(-100%);
-                transform: translateY(-100%);
-                -webkit-transition: all 0.3s;
-                transition: all 0.3s;
-            }
-            .fab-message-content {
-                background: var(--bg-color-secondary);
-                box-shadow: none;
-                color: var(--body-color);
-                padding: 20px;
-                -webkit-transition: all 0.3s;
-                transition: all 0.3s;
-            }
-            .fab-message-content p {
-                margin-left: 0.2rem;
-                font-size: 1rem;
-            }
-            .fab-message-content h3 {
-                color: var(--font-color);
-            }
-            @media (min-width: 1400px) {
-                .fab-message-button {
-                    margin-right: 20px;
-                }
-                .fab-message-content {
-                    padding: 20px 200px;
-                }
-                }
-                .fab-message.is-open {
-                    -webkit-transform: translateY(0);
-                    transform: translateY(0);
-                    z-index: 15;
-                }
-                .fab-message.is-open .fab-message-button {
-                    -webkit-transform: translateY(-2em);
-                    transform: translateY(-2em);
-                }
-                .fab-message.is-open .fab-message-content {
-                    box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
-                }
-
-                /*FAB Button*/
-                .at-button {
-                    position: absolute;
-                    right: 24px;
-                    bottom: 24px;
-                    background: var(--bg-color-nav);
-                    width: 48px;
-                    height: 48px;
-                    padding: 12px;
-                    z-index: 15;
-                    border-radius: 100%;
-                    box-sizing: border-box;
-                    color: #666;
-                    -webkit-animation: at-ripple 1.2s alternate infinite;
-                    animation: at-ripple 1.2s alternate infinite;
-                }
-                .at-button i.fas {
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translateX(-50%) translateY(-50%);
-                    color: var(--warning);
-                }
-        
-                @-webkit-keyframes at-ripple {
-                    0% {
-                        box-shadow: 0 4px 10px rgba(102, 102, 102, 0.1),
-                        0 0 0 0 rgba(102, 102, 102, 0.1), 0 0 0 5px rgba(102, 102, 102, 0.1);
-                    }
-                    100% {
-                        box-shadow: 0 4px 10px rgba(102, 102, 102, 0.1),
-                        0 0 0 5px rgba(102, 102, 102, 0.1), 0 0 0 10px rgba(102, 102, 102, 0.1);
-                    }
-                }
-                @keyframes at-ripple {
-                    0% {
-                        box-shadow: 0 4px 10px rgba(102, 102, 102, 0.1),
-                        0 0 0 0 rgba(102, 102, 102, 0.1), 0 0 0 5px rgba(102, 102, 102, 0.1);
-                    }
-                    100% {
-                        box-shadow: 0 4px 10px rgba(102, 102, 102, 0.1),
-                        0 0 0 5px rgba(102, 102, 102, 0.1), 0 0 0 10px rgba(102, 102, 102, 0.1);
-                    }
-                }
-                /* .at-button i {
-                 position: absolute;
-                } */
-                .at-button .svg-cross {
-                    opacity: 0;
-                    transition: opacity 0.25s;
-                }
-                .at-button .svg-question-mark {
-                    opacity: 1;
-                    transition: opacity 0.25s;
-                }
-                .toggle-icon.at-button .svg-question-mark {
-                  opacity: 0;
-                }
-                .toggle-icon.at-button .svg-cross {
-                 opacity: 1;
-                }
-                a.at-button.toggle-icon {
-                    bottom: -20px;
-                }
-
-        </style>
-        <style>
-            .paginate_button {
-                background-color: var(--bg-color-secondary)
-            }
-        </style>
     </head>
 
     <body ontouchstart="">
-    
     <noscript>
         <strong>We're sorry but beaconcha.in doesn't work properly without JavaScript enabled. Please enable it to
             continue.</strong>
@@ -493,9 +115,9 @@
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>
-                        <li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
-                            <a class="nav-link" href="/dashboard"><i class="fas fa-chart-bar"></i> Dashboard</a>
-                            {{ if eq .Active "dashboard"}} 
+                        <li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
+                            <a class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-book"></i> Docs</a>
+                            {{ if eq .Active "docs"}}
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>
@@ -507,28 +129,25 @@
                     <div class="search-container">
                         <form  class="form-inline ml-auto" action="/search" method="POST">
                             <span>
-                                <input style="padding-right: 1.75rem;" class="form-control mr-2 typeahead" name="search" type="text"
+                                <input class="form-control mr-2 typeahead" name="search" type="text"
                                 placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
-                                <span style="position:absolute; display: content; right:16px; top: 10px; color: grey;" class="fas fa-search"></span>
+                                <span class="fas fa-search"></span>
                             </span>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
-
         </nav>
-
-   
+        {{ template "css" }}
 
     <main>
-        <div class="container">
+        <div class="container mt-1">
             {{ template "content" .Data }}
         </div>
     </main>
 
-    <div class=" text-center my-5">
-        <hr/>
+    <div class="text-center" style="margin-top: 3rem; margin-bottom: 4.2rem;">
         <footer class="container">© bitfly gmbh 2020 | <a href="/imprint">Imprint</a> | <a href="https://twitter.com/etherchain_org">
                 <i class="fab fa-twitter mr-1"></i>Twitter</a> | <a href="https://www.reddit.com/u/etherchain/">
                 <i class="fab fa-reddit mr-1"></i>Reddit</a> | <a
@@ -567,7 +186,6 @@
             <div class="fab-message-button">
               <a href="#" class="at-button" onclick="toggleFAB();return false;">
                     <i class="svg-question-mark fas fa-exclamation-circle fa-3x"></i>
-                <!-- <svg class="svg-question-mark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="#FFFFFF"d="M19.3 7.2c0 1.7-.5 3.2-1.5 4.4-1 1.2-2.4 2-4.1 2.3v.1c0 .9-.2 1.6-.6 2.2-.4.7-1.1 1-1.9 1-1.6 0-2.4-1-2.4-2.9v-2c0-1.1.3-1.7 1-2.1.5-.1 1.3-.3 2.2-.6 1.2-.5 1.8-1.3 1.8-2.6 0-.6-.2-1.1-.7-1.5-.4-.4-1-.6-1.5-.6-1.1 0-2.2.6-3.2 1.8L4.7 3.6c.6-1.1 1.6-2 3.1-2.7 1.3-.6 2.6-.9 4-.9 2.1 0 3.9.7 5.4 2 1.4 1.3 2.1 3.1 2.1 5.2zm-5.2 14c0 .8-.3 1.4-.8 2-.6.5-1.2.8-2 .8s-1.5-.3-2-.8c-.6-.5-.8-1.2-.8-2s.3-1.5.8-2 1.2-.8 2-.8 1.4.3 2 .8c.5.5.8 1.2.8 2z"/></svg> -->
                     <svg class="svg-cross" xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24"><path fill="#FFF" d="M24 2.5L21.5 0 12 9.5 2.5 0 0 2.5 9.5 12 0 21.5 2.5 24l9.5-9.5 9.5 9.5 2.5-2.5-9.5-9.5"/></svg> 
               </a>
             </div>
@@ -589,234 +207,7 @@
             <script src="/bootstrap/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
-    <!-- fab toggle -->
-   <script>
-    function toggleFAB() {
-            var fabContainer = document.querySelector('.fab-message');
-            var fabButton = fabContainer.querySelector('.fab-message-button a');
-            var fabToggle = document.getElementById('fab-message-toggle');
-            fabContainer.classList.toggle('is-open');
-            fabButton.classList.toggle('toggle-icon');                    
-        }
-        $(document).ready(function() {
-            var fabContainer = document.querySelector('.fab-message');
-            var messages = document.querySelector('.fab-message-content h3')
-            console.log('messages', messages)
-            if(messages) {
-                console.log('displaying info')
-                fabContainer.style.display = "initial"
-            }
-        })
-   </script>
-
-    <!-- theme button toggle -->
-    <script>
-            
-
-        function switchTheme(e) {
-          if (e.target.checked) {
-            document.documentElement.setAttribute('data-theme', 'light');
-            localStorage.setItem('theme', 'light'); 
-            document.getElementById('nav').classList.remove('navbar-dark')
-            document.getElementById('nav').classList.add('navbar-light')
-          } else {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            document.getElementById('nav').classList.remove('navbar-light')
-            document.getElementById('nav').classList.add('navbar-dark')
-            localStorage.setItem('theme', 'dark'); 
-          }
-        }
-        $('#toggleSwitch').on('change', switchTheme)
-
-    </script>
-
-    <script>
-        $(document).ready(function () {
-            $('[data-toggle="tooltip"]').tooltip();
-
-            var bhValidators = new Bloodhound({
-                datumTokenizer: Bloodhound.tokenizers.whitespace,
-                queryTokenizer: Bloodhound.tokenizers.whitespace,
-                identify: function (obj) {
-                    return obj.index;
-                },
-                remote: {
-                    url: '/search/validators/%QUERY',
-                    wildcard: '%QUERY',
-                }
-            });
-
-            var bhBlocks = new Bloodhound({
-                datumTokenizer: Bloodhound.tokenizers.whitespace,
-                queryTokenizer: Bloodhound.tokenizers.whitespace,
-                identify: function (obj) {
-                    return obj.blockroot;
-                },
-                remote: {
-                    url: '/search/blocks/%QUERY',
-                    wildcard: '%QUERY',
-                }
-            });
-
-            var bhGraffiti = new Bloodhound({
-                datumTokenizer: Bloodhound.tokenizers.whitespace,
-                queryTokenizer: Bloodhound.tokenizers.whitespace,
-                identify: function (obj) {
-                    return obj.graffiti;
-                },
-                remote: {
-                    url: '/search/graffiti/%QUERY',
-                    wildcard: '%QUERY',
-                }
-            });
-
-            var bhEpochs = new Bloodhound({
-                datumTokenizer: Bloodhound.tokenizers.whitespace,
-                queryTokenizer: Bloodhound.tokenizers.whitespace,
-                identify: function (obj) {
-                    return obj.blockroot;
-                },
-                remote: {
-                    url: '/search/epochs/%QUERY',
-                    wildcard: '%QUERY',
-                }
-            });
-
-            $('.typeahead').typeahead({
-                minLength: 1,
-                highlight: true,
-                hint: false,
-                autoselect: false,
-            }, {
-                limit: 5,
-                name: 'validators',
-                source: bhValidators,
-                display: 'pubkey',
-                templates: {
-                    header: '<h3>Validators</h3>',
-                    suggestion: function (data) {
-                        return `<div>${data.index}: ${data.pubkey.substring(0, 16)}…</div>`;
-                    }
-                }
-            }, {
-                limit: 5,
-                name: 'blocks',
-                source: bhBlocks,
-                display: 'blockroot',
-                templates: {
-                    header: '<h3>Blocks</h3>',
-                    suggestion: function (data) {
-                        return `<div>${data.slot}: ${data.blockroot.substring(0, 16)}…</div>`;
-                    }
-                }
-            }, {
-                limit: 5,
-                name: 'epochs',
-                source: bhEpochs,
-                display: 'epoch',
-                templates: {
-                    header: '<h3>Epochs</h3>',
-                    suggestion: function (data) {
-                        return `<div>${data.epoch}</div>`;
-                    }
-                }
-            }, {
-                limit: 5,
-                name: 'graffiti',
-                source: bhGraffiti,
-                display: 'graffiti',
-                templates: {
-                    header: '<h3>Graffiti</h3>',
-                    suggestion: function (data) {
-                        if (data.graffiti) {
-                            data.graffiti = data.graffiti.replace(/(^\")|(\"$)'/, '').trim();
-                            return `<div>${data.graffiti}</div>`;
-                        } else {
-                            return `<div>${data.slot}<div>`
-                        }
-                    }
-                }
-            });
-
-            $('.typeahead').on('focus', function (event) {
-                if (event.target.value !== '') {
-                    $(this).trigger($.Event('keydown', {
-                        keyCode: 40
-                    }));
-                }
-            });
-
-            $('.typeahead').on('input', function () {
-                $('.tt-suggestion').first().addClass('tt-cursor');
-            });
-
-            $('.tt-menu').on('mouseenter', function () {
-                $('.tt-suggestion').first().removeClass('tt-cursor');
-            });
-
-            $('.tt-menu').on('mouseleave', function () {
-                $('.tt-suggestion').first().addClass('tt-cursor');
-            });
-
-            $('.typeahead').on('typeahead:select', function (ev, sug) {
-                if (sug.blockroot !== undefined) {
-                    window.location = '/block/' + sug.blockroot;
-                } else if (sug.index !== undefined) {
-                    window.location = '/validator/' + sug.index;
-                } else if (sug.epoch !== undefined) {
-                    window.location = '/epoch/' + sug.epoch;
-                } else {
-                    console.log('invalid typeahead-selection', sug);
-                }
-            });
-        });
-
-        moment.locale((window.navigator.userLanguage || window.navigator.language).toLowerCase());
-        $("[aria-ethereum-date]").each(function (item) {
-            var dt = $(this).attr("aria-ethereum-date");
-            var format = $(this).attr("aria-ethereum-date-format");
-
-            if (!format) {
-                format = "L LTS";
-            }
-
-            if (format === "FROMNOW") {
-                $(this).text(moment.unix(dt).fromNow());
-            } else {
-                $(this).text(moment.unix(dt).format(format));
-            }
-        });
-    </script>
-
-    <script>
-        var indicator = $('#nav .nav-indicator');
-        var items = document.querySelectorAll('#nav .nav-item');
-        var selectedLi = indicator.parent()[0]
-        var navigated = false;
-
-        function handleIndicator(el) {
-            indicator.css({
-                'width': `${el.offsetWidth}px`, 
-                'left': `${el.offsetLeft}px`,
-                'bottom': 0,
-                })
-        }
-        
-        items.forEach(function (item, index) {
-            item.addEventListener('click', (el) => {
-                if(navigated === false) {
-                    indicator.css({
-                        'width': `${selectedLi.offsetWidth}px`, 
-                        'left': `${selectedLi.offsetLeft}px`,
-                        'bottom': 0,
-                    }).detach().appendTo('.navbar ul') //.appendTo(el.target)
-                }
-                navigated = true;
-                handleIndicator(item)
-            })
-        });
-
-    </script>
+    <script src="/js/layout.js"></script>
 
     {{ template "js" .Data }}
 

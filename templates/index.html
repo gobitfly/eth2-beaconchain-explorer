@@ -82,7 +82,8 @@
                   animation: false,
                   style: {
                       fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
-                      color: 'var(--body-color)'
+                      color: 'var(--body-color)',
+                      fontSize: '12px'
                   },
                   backgroundColor: 'var(--bg-color)',
               },
@@ -400,24 +401,27 @@
     <div class="hero-text">
       <h1 class="mt-4 text-center">Open Source Ethereum 2.0 Beacon Chain Explorer</h1>
       <h5 class="text-center">{{.Subtitle}}</h5>
-      <h6 class="text-center"><a href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter</a> | <a href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github"></i> Github</a> | <a href='https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer'><img class="mr-1 mb-1" height="16" src="/img/gitcoin_logo.svg">Gitcoin Grant</a>
+      <h6 class="text-center"
+        ><a href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter</a> | <a href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github"></i> Github</a> |
+        <a href="https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer"><img class="mr-1 mb-1" height="16" src="/img/gitcoin_logo.svg" />Gitcoin Grant</a>
       </h6>
     </div>
   </div>
   <div class="card">
     <div class="card-body">
-      <form action="/search" class="mb-2 mt-2" method="POST">
-        <div class="input-group typeahead-holder">
-          <input class="form-control mr-2 form-control-md typeahead" type="text" name="search" placeholder="Search by Public Key / Block Number / Block Hash" />
-          <button type="submit" class="btn btn-primary btn-md">
-            <span class="fas fa-search"></span>
-          </button>
-        </div>
-      </form>
+      <style>
+        .fa-search {
+          right: 25px;
+        }
+      </style>
+      <div class="input-group typeahead-holder">
+        <input id="search-input" class="form-control mr-2 form-control-md typeahead" type="text" name="search" placeholder="Search by Public Key / Block Number / Block Hash" />
+        <span class="fas fa-search"></span>
+      </div>
     </div>
   </div>
   <div class="card mt-2">
-    <div class="card-body">
+    <div class="card-header">
       <div class="row">
         <div class="col-md-4 responsive-border-right responsive-border-right-l">
           <div class="d-flex justify-content-between">
@@ -467,7 +471,8 @@
           </div>
         </div>
       </div>
-      <hr />
+    </div>
+    <div class="card-body">
       <div class="row">
         <div class="col-lg-12">
           <highcharts height="600px" :constructor-type="'stockChart'" :options="chartOptions"></highcharts>
@@ -491,7 +496,7 @@
               <th>Slot</th>
               <th>Status</th>
               <th>Time</th>
-              <th>Proposed by</th>
+              <th>Proposer</th>
               <th>Root Hash</th>
               <th>Attestations</th>
               <th>Deposits</th>
@@ -524,15 +529,15 @@
   {{if gt .FinalityDelay 3}}
   <script>
     window.addEventListener('DOMContentLoaded', function() {
-      var fabContainer = document.querySelector('.fab-message');
-      var header = document.createElement('h3');
-      header.append('Finality Delay');
-      header.classList.add('text-danger');
-      var body = document.createElement('p');
-      body.append('The testnet is currently experiencing issues achieving finality. The last finalized epoch was {{.FinalityDelay}} epoch{{if ne .FinalityDelay 1}}s{{end}} ago.');
-      var messages = document.querySelector('.fab-message-content');
-      messages.appendChild(header);
-      messages.appendChild(body);
+      var fabContainer = document.querySelector('.fab-message')
+      var header = document.createElement('h3')
+      header.append('Finality Delay')
+      header.classList.add('text-danger')
+      var body = document.createElement('p')
+      body.append('The testnet is currently experiencing issues achieving finality. The last finalized epoch was {{.FinalityDelay}} epoch{{if ne .FinalityDelay 1}}s{{end}} ago.')
+      var messages = document.querySelector('.fab-message-content')
+      messages.appendChild(header)
+      messages.appendChild(body)
       fabContainer.style.display = 'initial'
     })
   </script>

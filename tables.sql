@@ -10,11 +10,13 @@ create table validators (
     pubkey bytea not null,
     withdrawableepoch bigint not null,
     withdrawalcredentials bytea not null,
+    balance bigint not null,
     effectivebalance bigint not null,
     slashed bool not null,
     activationeligibilityepoch bigint not null,
     activationepoch bigint not null,
     exitepoch bigint not null,
+    lastattestationslot bigint,
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
@@ -67,38 +69,16 @@ create table attestation_assignments (
 );
 create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
 
-drop table if exists beacon_committees;
-create table beacon_committees (
-    epoch int not null,
-    slot int not null,
-    slotindex int not null,
-    indices int[] not null,
-    primary key (epoch, slot, slotindex)
-);
-
 drop table if exists validator_balances;
 create table validator_balances (
     epoch int not null,
     validatorindex int not null,
     balance bigint not null,
+    effectivebalance bigint not null,
     primary key (validatorindex, epoch)
 );
 create index idx_validator_balances_validatorindex on validator_balances (validatorindex);
 create index idx_validator_balances_epoch on validator_balances (epoch);
-
-drop table if exists attestationpool;
-create table attestationpool (
-     aggregationbits bytea not null,
-     signature bytea not null,
-     slot int not null,
-     index int not null,
-     beaconblockroot bytea not null,
-     source_epoch int not null,
-     source_root bytea not null,
-     target_epoch int not null,
-     target_root bytea not null,
-     primary key (slot, index)
-);
 
 drop table if exists validatorqueue_activation;
 create table validatorqueue_activation (

@@ -5,13 +5,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"sync"
+	"time"
+
 	lru "github.com/hashicorp/golang-lru"
 	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
 	"github.com/prysmaticlabs/go-bitfield"
 	"google.golang.org/grpc"
-	"log"
-	"sync"
-	"time"
 
 	ptypes "github.com/golang/protobuf/ptypes/empty"
 )
@@ -37,7 +37,7 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 	chainClient := ethpb.NewBeaconChainClient(conn)
 	nodeClient := ethpb.NewNodeClient(conn)
 
-	log.Printf("gRPC connection to backend node established")
+	logger.Printf("gRPC connection to backend node established")
 	client := &PrysmClient{
 		client:              chainClient,
 		nodeClient:          nodeClient,
@@ -99,7 +99,7 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]ui
 	for {
 		validatorsResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken})
 		if err != nil {
-			log.Fatal(err)
+			return nil, nil, fmt.Errorf("error retrieving validator indices for validator queue: %v", err)
 		}
 		if validatorsResponse.TotalSize == 0 {
 			break
@@ -185,7 +185,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	for {
 		validatorsResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
 		if err != nil {
-			log.Fatal(err)
+			return nil, fmt.Errorf("error retrieving validator indices for epoch assignments: %v", err)
 		}
 		if validatorsResponse.TotalSize == 0 {
 			break
@@ -210,14 +210,11 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving validator assignment response for caching: %v", err)
 		}
-		if validatorAssignmentResponse.TotalSize == 0 || len(validatorAssignmentes) == int(validatorAssignmentResponse.TotalSize) {
-			break
-		}
 
 		validatorAssignmentes = append(validatorAssignmentes, validatorAssignmentResponse.Assignments...)
-		logger.Printf("Retrieved %v assignments of %v for epoch %v", len(validatorAssignmentes), validatorAssignmentResponse.TotalSize, epoch)
+		logger.Printf("retrieved %v assignments of %v for epoch %v", len(validatorAssignmentes), validatorAssignmentResponse.TotalSize, epoch)
 
-		if validatorAssignmentResponse.NextPageToken == "" {
+		if validatorAssignmentResponse.NextPageToken == "" || validatorAssignmentResponse.TotalSize == 0 || len(validatorAssignmentes) == int(validatorAssignmentResponse.TotalSize) {
 			break
 		}
 	}
@@ -251,9 +248,10 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
-	data.ValidatorBalances = make([]*types.ValidatorBalance, 0)
 	data.ValidatorIndices = make(map[string]uint64)
+
+	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
+	validatorBalancesByPubkey := make(map[string]uint64)
 
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
 	for {
@@ -267,25 +265,21 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 
 		for _, balance := range validatorBalancesResponse.Balances {
-			data.ValidatorBalances = append(data.ValidatorBalances, &types.ValidatorBalance{
-				PublicKey: balance.PublicKey,
-				Index:     balance.Index,
-				Balance:   balance.Balance,
-			})
 			data.ValidatorIndices[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
+			validatorBalancesByPubkey[utils.FormatPublicKey(balance.PublicKey)] = balance.Balance
 		}
 
 		if validatorBalancesResponse.NextPageToken == "" {
 			break
 		}
 	}
-	logger.Printf("Retrieved data for %v validator balances for epoch %v", len(data.ValidatorBalances), epoch)
+	logger.Printf("retrieved data for %v validator balances for epoch %v", len(validatorBalancesByPubkey), epoch)
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
 	}
-	logger.Printf("Retrieved validator assignment data for epoch %v", epoch)
+	logger.Printf("retrieved validator assignment data for epoch %v", epoch)
 
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]map[string]*types.Block)
@@ -311,7 +305,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 		}
 	}
-	logger.Printf("Retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
+	logger.Printf("retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
 
 	// Fill up missed and scheduled blocks
 	for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {
@@ -360,7 +354,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	for {
 		validatorResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
 		if err != nil {
-			logger.Printf("error retrieving validator response: %v", err)
+			logger.Errorf("error retrieving validator response: %v", err)
 			break
 		}
 		if validatorResponse.TotalSize == 0 {
@@ -368,9 +362,16 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 
 		for _, validator := range validatorResponse.ValidatorList {
+			balance, exists := validatorBalancesByPubkey[utils.FormatPublicKey(validator.Validator.PublicKey)]
+			if !exists {
+				logger.WithField("pubkey", utils.FormatPublicKey(validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
+				continue
+			}
 			data.Validators = append(data.Validators, &types.Validator{
+				Index:                      validator.Index,
 				PublicKey:                  validator.Validator.PublicKey,
 				WithdrawalCredentials:      validator.Validator.WithdrawalCredentials,
+				Balance:                    balance,
 				EffectiveBalance:           validator.Validator.EffectiveBalance,
 				Slashed:                    validator.Validator.Slashed,
 				ActivationEligibilityEpoch: validator.Validator.ActivationEligibilityEpoch,
@@ -384,7 +385,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			break
 		}
 	}
-	logger.Printf("Retrieved validator data for epoch %v", epoch)
+	logger.Printf("retrieved validator data for epoch %v", epoch)
 
 	// Retrieve the beacon committees for the epoch
 	data.BeaconCommittees = make(map[uint64][]*types.BeaconCommitteItem)

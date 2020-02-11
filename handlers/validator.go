@@ -18,13 +18,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var validatorTemplate = template.Must(template.New("validator").ParseFiles("templates/layout.html", "templates/validator.html"))
+var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator.html"))
 var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validatornotfound.html"))
 
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-
 	vars := mux.Vars(r)
 
 	var index uint64
@@ -76,20 +74,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
 	err = db.DB.Get(&validatorPageData, `SELECT 
-											 validator_set.epoch, 
-											 validator_set.validatorindex, 
-											 validator_set.withdrawableepoch, 
-											 validator_set.effectivebalance, 
-											 validator_set.slashed, 
-											 validator_set.activationeligibilityepoch, 
-											 validator_set.activationepoch, 
-											 validator_set.exitepoch,
-       										 validator_balances.balance
-										FROM validator_set
-										LEFT JOIN validator_balances ON validator_set.epoch = validator_balances.epoch 
-										                                    AND validator_set.validatorindex = validator_balances.validatorindex
-										WHERE validator_set.epoch = $1 
-										  AND validator_set.validatorindex = $2
+											validators.validatorindex, 
+											validators.withdrawableepoch, 
+											validators.effectivebalance, 
+											validators.slashed, 
+											validators.activationeligibilityepoch, 
+											validators.activationepoch, 
+											validators.exitepoch,
+											validators.lastattestationslot,
+											COALESCE(validator_balances.balance, 0) AS balance
+										FROM validators
+										LEFT JOIN validator_balances 
+											ON validators.validatorindex = validator_balances.validatorindex
+											AND validator_balances.epoch = $1
+										WHERE validators.validatorindex = $2
 										LIMIT 1`, services.LatestEpoch(), index)
 	if err != nil {
 		logger.Printf("Error retrieving validator page data: %v", err)
@@ -104,6 +102,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	validatorPageData.Epoch = services.LatestEpoch()
 	validatorPageData.Index = index
 	validatorPageData.PublicKey, err = db.GetValidatorPublicKey(index)
 	if err != nil {
@@ -118,9 +117,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
-	validatorPageData.CurrentBalanceFormatted = utils.FormatBalance(validatorPageData.CurrentBalance)
-	validatorPageData.EffectiveBalanceFormatted = utils.FormatBalance(validatorPageData.EffectiveBalance)
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -190,12 +186,36 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
+	cutoff1d := time.Now().Add(time.Hour * 24 * -1)
+	cutoff7d := time.Now().Add(time.Hour * 24 * 7 * -1)
+	cutoff31d := time.Now().Add(time.Hour * 24 * 31 * -1)
+
 	for i, balance := range balanceHistory {
-		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
+		balanceTs := utils.EpochToTime(balance.Epoch)
+
+		if balanceTs.Before(cutoff1d) {
+			validatorPageData.Income1d = validatorPageData.CurrentBalance - balance.Balance
+		}
+		if balanceTs.Before(cutoff7d) {
+			validatorPageData.Income7d = validatorPageData.CurrentBalance - balance.Balance
+		}
+		if balanceTs.Before(cutoff31d) {
+			validatorPageData.Income31d = validatorPageData.CurrentBalance - balance.Balance
+		}
+
+		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
+	}
+
+	if validatorPageData.Income7d == 0 {
+		validatorPageData.Income7d = validatorPageData.Income1d
+	}
+
+	if validatorPageData.Income31d == 0 {
+		validatorPageData.Income31d = validatorPageData.Income7d
 	}
 
 	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, effectivebalance as balance FROM validator_set WHERE validatorindex = $1 ORDER BY epoch", index)
+	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, COALESCE(effectivebalance, 0) as balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
 	if err != nil {
 		logger.Errorf("error retrieving validator effective balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -207,16 +227,39 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
 	}
 
+	var firstSlotOfPreviousEpoch uint64
+	if services.LatestEpoch() < 1 {
+		firstSlotOfPreviousEpoch = 0
+	} else {
+		firstSlotOfPreviousEpoch = (services.LatestEpoch() - 1) * utils.Config.Chain.SlotsPerEpoch
+	}
+
 	if validatorPageData.Epoch > validatorPageData.ExitEpoch {
-		validatorPageData.Status = "Ejected"
+		validatorPageData.Status = "Exited"
 	} else if validatorPageData.Epoch < validatorPageData.ActivationEpoch {
 		validatorPageData.Status = "Pending"
+	} else if validatorPageData.Slashed {
+		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < firstSlotOfPreviousEpoch) {
+			validatorPageData.Status = "SlashingOffline"
+		} else {
+			validatorPageData.Status = "Slashing"
+		}
 	} else {
-		validatorPageData.Status = "Active"
+		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < firstSlotOfPreviousEpoch) {
+			validatorPageData.Status = "ActiveOffline"
+		} else {
+			validatorPageData.Status = "Active"
+		}
 	}
 	data.Data = validatorPageData
 
-	err = validatorTemplate.ExecuteTemplate(w, "layout", data)
+	if utils.IsApiRequest(r) {
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(data.Data)
+	} else {
+		w.Header().Set("Content-Type", "text/html")
+		err = validatorTemplate.ExecuteTemplate(w, "layout", data)
+	}
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -394,8 +437,9 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%v", b.Epoch),
 			fmt.Sprintf("%v", b.AttesterSlot),
-			fmt.Sprintf("%v", b.CommitteeIndex),
 			fmt.Sprintf("%v", utils.FormatAttestationStatus(b.Status)),
+			fmt.Sprintf("%v", utils.SlotToTime(b.AttesterSlot).Unix()),
+			fmt.Sprintf("%v", b.CommitteeIndex),
 		}
 	}
 

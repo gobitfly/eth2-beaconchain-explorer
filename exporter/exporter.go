@@ -24,7 +24,7 @@ var epochBlacklist = make(map[uint64]uint64)
 func Start(client rpc.Client) error {
 
 	if utils.Config.Indexer.FullIndexOnStartup {
-		logger.Printf("Performing one time full db reindex")
+		logger.Printf("performing one time full db reindex")
 		head, err := client.GetChainHead()
 		if err != nil {
 			logger.Fatal(err)
@@ -55,7 +55,7 @@ func Start(client rpc.Client) error {
 					if err != nil {
 						logger.Error(err)
 					}
-					logger.Printf("Finished export for epoch %v", epoch)
+					logger.Printf("finished export for epoch %v", epoch)
 				}
 			}
 		}
@@ -105,18 +105,18 @@ func Start(client rpc.Client) error {
 
 		for key, block := range blocksMap {
 			if block.Db == nil {
-				logger.Printf("Queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
+				logger.Printf("queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			} else if block.Node == nil {
-				logger.Printf("Queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
+				logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
-				logger.Printf("Queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
+				logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			}
 		}
 
-		logger.Printf("Exporting %v epochs.", len(epochsToExport))
+		logger.Printf("exporting %v epochs.", len(epochsToExport))
 
 		keys := make([]uint64, 0)
 		for k := range epochsToExport {
@@ -127,8 +127,6 @@ func Start(client rpc.Client) error {
 		})
 
 		for _, epoch := range keys {
-			logger.Printf("Exporting epoch %v", epoch)
-
 			err = ExportEpoch(epoch, client)
 
 			if err != nil {
@@ -137,7 +135,6 @@ func Start(client rpc.Client) error {
 					epochBlacklist[epoch]++
 				}
 			}
-			logger.Printf("Finished export for epoch %v", epoch)
 		}
 	}
 
@@ -156,6 +153,7 @@ func Start(client rpc.Client) error {
 
 	for true {
 		time.Sleep(time.Second * 10)
+		logger.Infof("checking for new blocks/epochs to export")
 
 		head, err := client.GetChainHead()
 		if err != nil {
@@ -207,13 +205,13 @@ func Start(client rpc.Client) error {
 
 		for key, block := range blocksMap {
 			if block.Db == nil {
-				logger.Printf("Queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
+				logger.Printf("queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			} else if block.Node == nil {
-				logger.Printf("Queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
+				logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
-				logger.Printf("Queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
+				logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
 				epochsToExport[block.Epoch] = true
 			}
 		}
@@ -240,7 +238,7 @@ func Start(client rpc.Client) error {
 			}
 		}
 
-		logger.Printf("Exporting %v epochs.", len(epochsToExport))
+		logger.Printf("exporting %v epochs.", len(epochsToExport))
 
 		keys := make([]uint64, 0)
 		for k := range epochsToExport {
@@ -252,11 +250,11 @@ func Start(client rpc.Client) error {
 
 		for _, epoch := range keys {
 			if epochBlacklist[epoch] > 3 {
-				logger.Printf("Skipping export of epoch %v as it has errored %d times", epoch, epochBlacklist[epoch])
+				logger.Printf("skipping export of epoch %v as it has errored %d times", epoch, epochBlacklist[epoch])
 				continue
 			}
 
-			logger.Printf("Exporting epoch %v", epoch)
+			logger.Printf("exporting epoch %v", epoch)
 
 			err = ExportEpoch(epoch, client)
 
@@ -266,7 +264,7 @@ func Start(client rpc.Client) error {
 					epochBlacklist[epoch]++
 				}
 			}
-			logger.Printf("Finished export for epoch %v", epoch)
+			logger.Printf("finished export for epoch %v", epoch)
 		}
 
 		// Update epoch statistics up to 10 epochs after the last finalized epoch
@@ -274,25 +272,25 @@ func Start(client rpc.Client) error {
 		if head.FinalizedEpoch > 10 {
 			startEpoch = head.FinalizedEpoch - 10
 		}
+		logger.Infof("updating status of epochs %v-%v", startEpoch, head.HeadEpoch)
 		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
 		if err != nil {
 			logger.Errorf("error updating epoch stratus: %v", err)
 		}
 
-		err = exportAttestationPool(client)
-		if err != nil {
-			logger.Errorf("error exporting attestation pool data: %v", err)
-		}
-
+		logger.Infof("exporting validation queue")
 		err = exportValidatorQueue(client)
 		if err != nil {
 			logger.Errorf("error exporting validator queue data: %v", err)
 		}
 
+		logger.Infof("marking orphaned blocks of epochs %v-%v", startEpoch, head.HeadEpoch)
 		err = MarkOrphanedBlocks(startEpoch, head.HeadEpoch, nodeBlocks)
 		if err != nil {
 			logger.Errorf("error marking orphaned blocks: %v", err)
 		}
+
+		logger.Infof("finished exporting all new blocks/epochs")
 	}
 
 	return nil
@@ -317,7 +315,7 @@ func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBloc
 			continue
 		}
 		if parentRoot != blockRoot { // Block is not part of the canonical chain
-			logger.Errorf("Block %x at slot %v in epoch %v has been orphaned", blocks[i].BlockRoot, blocks[i].Slot, blocks[i].Epoch)
+			logger.Errorf("block %x at slot %v in epoch %v has been orphaned", blocks[i].BlockRoot, blocks[i].Slot, blocks[i].Epoch)
 			orphanedBlocks = append(orphanedBlocks, blocks[i].BlockRoot)
 			continue
 		}
@@ -351,7 +349,7 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 			}
 		}
 
-		logger.Printf("Retrieving all blocks for epoch %v. %v epochs remaining", epoch, endEpoch-epoch)
+		logger.Printf("retrieving all blocks for epoch %v. %v epochs remaining", epoch, endEpoch-epoch)
 	}
 
 	return wrappedBlocks, nil
@@ -361,30 +359,20 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 func ExportEpoch(epoch uint64, client rpc.Client) error {
 	start := time.Now()
 
-	logger.Printf("Retrieving data for epoch %v", epoch)
+	logger.Printf("retrieving data for epoch %v", epoch)
 	data, err := client.GetEpochData(epoch)
 
 	if err != nil {
 		return fmt.Errorf("error retrieving epoch data: %v", err)
 	}
 
-	logger.Printf("Data for epoch %v retrieved, took %v", epoch, time.Since(start))
+	logger.Printf("data for epoch %v retrieved, took %v", epoch, time.Since(start))
 
 	if len(data.Validators) == 0 {
 		return fmt.Errorf("error retrieving epoch data: no validators received for epoch")
 	}
 
 	return db.SaveEpoch(data)
-}
-
-func exportAttestationPool(client rpc.Client) error {
-	attestations, err := client.GetAttestationPool()
-
-	if err != nil {
-		return fmt.Errorf("error retrieving attestation pool data: %v", err)
-	}
-
-	return db.SaveAttestationPool(attestations)
 }
 
 func exportValidatorQueue(client rpc.Client) error {
@@ -403,7 +391,7 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 		if err != nil {
 			logger.Printf("error retrieving epoch participation statistics: %v", err)
 		} else {
-			logger.Printf("Updating epoch %v with status finalized = %v", epoch, epochParticipationStats.Finalized)
+			logger.Printf("updating epoch %v with status finalized = %v", epoch, epochParticipationStats.Finalized)
 			err := db.UpdateEpochStatus(epochParticipationStats)
 
 			if err != nil {

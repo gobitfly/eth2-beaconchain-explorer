@@ -84,7 +84,7 @@ func VisBlocks(w http.ResponseWriter, r *http.Request) {
 		d.Difficulty = d.Slot
 	}
 
-	logger.Printf("Returning %v blocks since %v", len(chartData), sinceSlot)
+	logger.Printf("returning %v blocks since %v", len(chartData), sinceSlot)
 
 	err = json.NewEncoder(w).Encode(chartData)
 	if err != nil {
@@ -132,7 +132,7 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 		chartData = append(chartData, data)
 	}
 
-	logger.Printf("Returning %v entries since %v", len(chartData), sinceSlot)
+	logger.Printf("returning %v entries since %v", len(chartData), sinceSlot)
 
 	data := &types.PageData{
 		Meta: &types.Meta{

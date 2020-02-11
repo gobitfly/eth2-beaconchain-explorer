@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -16,13 +17,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var epochTemplate = template.Must(template.New("epoch").Funcs(template.FuncMap{"formatBlockStatus": utils.FormatBlockStatus}).ParseFiles("templates/layout.html", "templates/epoch.html"))
+var epochTemplate = template.Must(template.New("epoch").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epoch.html"))
 var epochNotFoundTemplate = template.Must(template.New("epochnotfound").ParseFiles("templates/layout.html", "templates/epochnotfound.html"))
 
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-
 	vars := mux.Vars(r)
 	epochString := strings.Replace(vars["epoch"], "0x", "", -1)
 
@@ -116,11 +115,6 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
 
-	epochPageData.VotedEtherFormatted = fmt.Sprintf("%.2f ETH", float64(epochPageData.VotedEther)/float64(1000000000))
-	epochPageData.EligibleEtherFormatted = fmt.Sprintf("%.2f ETH", float64(epochPageData.EligibleEther)/float64(1000000000))
-	epochPageData.GlobalParticipationRateFormatted = fmt.Sprintf("%.0f", epochPageData.GlobalParticipationRate*float64(100))
-	epochPageData.AverageValidatorBalanceFormatted = fmt.Sprintf("%.2f ETH", float64(epochPageData.AverageValidatorBalance)/float64(1000000000))
-
 	err = db.DB.Get(&epochPageData.NextEpoch, "SELECT epoch FROM epochs WHERE epoch > $1 ORDER BY epoch LIMIT 1", epochPageData.Epoch)
 	if err != nil {
 		logger.Errorf("error retrieving next epoch for epoch %v: %v", epochPageData.Epoch, err)
@@ -134,7 +128,13 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = epochPageData
 
-	err = epochTemplate.ExecuteTemplate(w, "layout", data)
+	if utils.IsApiRequest(r) {
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(data.Data)
+	} else {
+		w.Header().Set("Content-Type", "text/html")
+		err = epochTemplate.ExecuteTemplate(w, "layout", data)
+	}
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)

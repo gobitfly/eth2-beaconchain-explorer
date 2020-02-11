@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -27,6 +28,9 @@ func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"formatBlockStatus": FormatBlockStatus,
 		"formatValidator":   FormatValidator,
+		"formatBalance":     FormatBalance,
+		"formatPercentage":  FormatPercentage,
+		"formatIncome":      FormatIncome,
 		"mod":               func(i, j int) bool { return i%j == 0 },
 		"sub":               func(i, j int) int { return i - j },
 		"add":               func(i, j int) int { return i + j },
@@ -61,6 +65,27 @@ func FormatAttestationStatus(status uint64) string {
 	}
 }
 
+func FormatValidatorStatus(status string) string {
+	if status == "pending" {
+		return "<span class=\"badge validator-pending text-dark\">pending</span>"
+	} else if status == "active:online" {
+		return "<span class=\"badge validator-active text-dark\">active <span class=\"badge badge-light bg-success\">on</span></span>"
+	} else if status == "active:offline" {
+		return "<span class=\"badge validator-active text-dark\">active <span class=\"badge badge-light bg-danger\">off</span></span>"
+	} else if status == "exiting:online" {
+		return "<span class=\"badge validator-exiting text-dark\">exiting <span class=\"badge badge-light bg-success\">on</span></span>"
+	} else if status == "exiting:offline" {
+		return "<span class=\"badge validator-exiting text-dark\">exiting <span class=\"badge badge-light bg-danger\">off</span></span>"
+	} else if status == "slashing:online" {
+		return "<span class=\"badge validator-slashing text-dark\">slashing <span class=\"badge badge-light bg-success\">on</span></span>"
+	} else if status == "slashing:offline" {
+		return "<span class=\"badge validator-slashing text-dark\">slashing <span class=\"badge badge-light bg-danger\">off</span></span>"
+	} else if status == "exited" {
+		return "<span class=\"badge validator-exited text-dark\">exited</span>"
+	}
+	return "Unknown"
+}
+
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
@@ -82,8 +107,24 @@ func EpochToTime(epoch uint64) time.Time {
 }
 
 // FormatBalance will return a string for a balance
-func FormatBalance(balance uint64) string {
+func FormatBalance(balance int64) string {
 	return fmt.Sprintf("%.2f ETH", float64(balance)/float64(1000000000))
+}
+
+// FormatIncome will return a string for a balance
+func FormatIncome(income int64) template.HTML {
+	if income > 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f ETH</b></span>`, float64(income)/float64(1000000000)))
+	} else if income < 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f ETH</b></span>`, float64(income)/float64(1000000000)))
+	} else {
+		return template.HTML(fmt.Sprintf(`<b>%.4f ETH</b>`, float64(income)/float64(1000000000)))
+	}
+}
+
+// FormatPercentage will return a string for a percentage
+func FormatPercentage(percentage float64) string {
+	return fmt.Sprintf("%.0f", percentage*float64(100))
 }
 
 // WaitForCtrlC will block/wait until a control-c is pressed
@@ -107,13 +148,13 @@ func ReadConfig(cfg *types.Config, path string) error {
 func readConfigFile(cfg *types.Config, path string) error {
 	f, err := os.Open(path)
 	if err != nil {
-		return fmt.Errorf("Error opening config file %v: %v", path, err)
+		return fmt.Errorf("error opening config file %v: %v", path, err)
 	}
 
 	decoder := yaml.NewDecoder(f)
 	err = decoder.Decode(cfg)
 	if err != nil {
-		return fmt.Errorf("Error decoding config file %v: %v", path, err)
+		return fmt.Errorf("error decoding config file %v: %v", path, err)
 	}
 
 	return nil
@@ -140,4 +181,9 @@ func MustParseHex(hexString string) []byte {
 		log.Fatal(err)
 	}
 	return data
+}
+
+func IsApiRequest(r *http.Request) bool {
+	query, ok := r.URL.Query()["format"]
+	return ok && len(query) > 0 && query[0] == "json"
 }

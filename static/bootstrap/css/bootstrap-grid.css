@@ -22,27 +22,27 @@ html {
   margin-left: auto;
 }
 
-@media (min-width: 576px) {
+@media (min-width: 640px) {
   .container {
     max-width: 540px;
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 820px) {
   .container {
-    max-width: 720px;
+    max-width: 780px;
   }
 }
 
-@media (min-width: 992px) {
+@media (min-width: 1140px) {
   .container {
-    max-width: 960px;
+    max-width: 1100px;
   }
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1440px) {
   .container {
-    max-width: 1340px;
+    max-width: 1400px;
   }
 }
 
@@ -54,27 +54,27 @@ html {
   margin-left: auto;
 }
 
-@media (min-width: 576px) {
+@media (min-width: 640px) {
   .container, .container-sm {
     max-width: 540px;
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 820px) {
   .container, .container-sm, .container-md {
-    max-width: 720px;
+    max-width: 780px;
   }
 }
 
-@media (min-width: 992px) {
+@media (min-width: 1140px) {
   .container, .container-sm, .container-md, .container-lg {
-    max-width: 960px;
+    max-width: 1100px;
   }
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1440px) {
   .container, .container-sm, .container-md, .container-lg, .container-xl {
-    max-width: 1340px;
+    max-width: 1400px;
   }
 }
 
@@ -275,7 +275,7 @@ html {
   margin-left: 91.666667%;
 }
 
-@media (min-width: 576px) {
+@media (min-width: 640px) {
   .col-sm {
     flex-basis: 0;
     -webkit-box-flex: 1;
@@ -416,7 +416,7 @@ html {
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 820px) {
   .col-md {
     flex-basis: 0;
     -webkit-box-flex: 1;
@@ -557,7 +557,7 @@ html {
   }
 }
 
-@media (min-width: 992px) {
+@media (min-width: 1140px) {
   .col-lg {
     flex-basis: 0;
     -webkit-box-flex: 1;
@@ -698,7 +698,7 @@ html {
   }
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1440px) {
   .col-xl {
     flex-basis: 0;
     -webkit-box-flex: 1;
@@ -1593,7 +1593,7 @@ html {
   padding-left: 3rem !important;
 }
 
-@media (min-width: 576px) {
+@media (min-width: 640px) {
   .d-sm-none {
     display: none !important;
   }
@@ -2178,7 +2178,7 @@ html {
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 820px) {
   .d-md-none {
     display: none !important;
   }
@@ -2763,7 +2763,7 @@ html {
   }
 }
 
-@media (min-width: 992px) {
+@media (min-width: 1140px) {
   .d-lg-none {
     display: none !important;
   }
@@ -3348,7 +3348,7 @@ html {
   }
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1440px) {
   .d-xl-none {
     display: none !important;
   }

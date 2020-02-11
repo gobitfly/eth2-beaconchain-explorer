@@ -9,9 +9,9 @@
                 try {
                     var r = decodeURIComponent(graffitiHex.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'));
                     $("#graffiti").text(r)
-                } catch(e) {
+                } catch (e) {
                     $("#graffiti").text(hex2a(graffitiHex.replace("0x", "")))
-				}
+                }
             }
         }
 
@@ -22,6 +22,22 @@
                 str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
             return str;
         }
+
+        // Javascript to enable link to tab
+        var url = document.location.toString();
+        if (url.match('#')) {
+            console.log('.nav-pills a[href="#' + url.split('#')[1] + '"]');
+            $('.nav-pills a[href="#' + url.split('#')[1] + '"]').tab('show');
+        }
+
+        // Change hash for page-reload
+        $('.nav-pills a').on('shown.bs.tab', function (e) {
+            if (history.pushState) {
+                history.pushState(null, null, e.target.hash);
+            } else {
+                location.hash = e.target.hash;
+            }
+        })
 	</script>
 {{end}}
 
@@ -55,34 +71,24 @@
 				<div class="col-md-12">
 					<ul class="nav nav-pills justify-content-center" id="pills-tab" role="tablist">
 						<li class="nav-item">
-							<a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview"
-							   role="tab" aria-controls="pills-overview" aria-selected="true">Overview</a>
-						</li>
-                        <li class="nav-item">
-                            <a class="nav-link" id="pills-votes-tab" data-toggle="pill" href="#pills-votes"
-                               role="tab" aria-controls="pills-votes" aria-selected="false">Votes <span
-                                        class="badge bg-secondary text-white">{{.VotesCount}}</span></a>
-                        </li>
-						<li class="nav-item">
-							<a class="nav-link" id="pills-attestations-tab" data-toggle="pill"
-							   href="#pills-attestations"
-							   role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span
-										class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
+							<a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview" role="tab" aria-controls="pills-overview" aria-selected="true">Overview</a>
 						</li>
 						<li class="nav-item">
-							<a class="nav-link" id="pills-deposits-tab" data-toggle="pill" href="#pills-deposits"
-							   role="tab" aria-controls="pills-deposits" aria-selected="false">Deposits <span
-										class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
+							<a class="nav-link" id="pills-votes-tab" data-toggle="pill" href="#pills-votes" role="tab" aria-controls="pills-votes" aria-selected="false">Votes <span class="badge bg-secondary text-white">{{.VotesCount}}</span></a>
 						</li>
-                        {{/*                    <li class="nav-item">*/}}
-                        {{/*                        <a class="nav-link" href="#">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>*/}}
-                        {{/*                    </li>*/}}
-                        {{/*                    <li class="nav-item">*/}}
-                        {{/*                        <a class="nav-link" href="#">Exits <span class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a>*/}}
-                        {{/*                    </li>*/}}
-                        {{/*                    <li class="nav-item">*/}}
-                        {{/*                        <a class="nav-link" href="#">Slashings <span class="badge bg-secondary text-white">{{.SlashingsCount}}</span></a>*/}}
-                        {{/*                    </li>*/}}
+						<li class="nav-item">
+							<a class="nav-link" id="pills-attestations-tab" data-toggle="pill" href="#pills-attestations" role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
+						</li>
+                        {{if gt .DepositsCount 0}}
+							<li class="nav-item">
+								<a class="nav-link" id="pills-deposits-tab" data-toggle="pill" href="#pills-deposits" role="tab" aria-controls="pills-deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
+							</li>
+                        {{end}}
+                        {{if gt .VoluntaryExitscount 0}}
+							<li class="nav-item">
+								<a class="nav-link" id="pills-voluntary-exits-tab" data-toggle="pill" href="#pills-voluntary-exits" role="tab" aria-controls="pills-voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a>
+							</li>
+                        {{end}}
 					</ul>
 				</div>
 			</div>
@@ -109,7 +115,7 @@
 						</div>
 					</div>
 					<div class="row border-bottom p-3">
-						<div class="col-md-2">Proposed by:</div>
+						<div class="col-md-2">Proposer:</div>
 						<div class="col-md-10">{{formatValidator .Proposer}}</div>
 					</div>
                     {{ if (or (eq .Status 1) (eq .Status 3)) }}
@@ -190,27 +196,27 @@
 						</div>
                     {{end}}
 				</div>
-                <div class="tab-pane fade" id="pills-votes" role="tabpanel" aria-labelledby="pills-votes-tab">
-                    <div class="row p-1">
-                        <div class="col-md-12 text-center"><b>{{.VotesCount}} validator{{if ne .VotesCount 1}}s{{end}} voted for this block:</b></div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered text-center">
+				<div class="tab-pane fade" id="pills-votes" role="tabpanel" aria-labelledby="pills-votes-tab">
+					<div class="row p-1">
+						<div class="col-md-12 text-center"><b>{{.VotesCount}} validator{{if ne .VotesCount 1}}s{{end}} voted for this block:</b></div>
+					</div>
+					<div class="table-responsive">
+						<table class="table table-sm table-bordered text-center">
                             {{range $i, $vote := .Votes}}
                                 {{if mod $i 10 }}
-                                    <tr>
+									<tr>
                                 {{end}}
-                                <td class="p-1" data-toggle="tooltip" data-placement="top"
-                                    title="Voted on by validator {{$vote.Validator}} of committee {{$vote.CommitteeIndex}} included in block {{$vote.IncludedIn}}">
-									{{formatValidator $vote.Validator}}
+								<td class="p-1" data-toggle="tooltip" data-placement="top"
+									title="Voted on by validator {{$vote.Validator}} of committee {{$vote.CommitteeIndex}} included in block {{$vote.IncludedIn}}">
+                                    {{formatValidator $vote.Validator}}
 								</td>
                                 {{if or (mod (add $i 1) 10) (eq $i (sub (len $.Votes) 1))}}
-                                    </tr>
+									</tr>
                                 {{end}}
                             {{end}}
-                        </table>
-                    </div>
-                </div>
+						</table>
+					</div>
+				</div>
 				<div class="tab-pane fade" id="pills-attestations" role="tabpanel"
 					 aria-labelledby="pills-attestations-tab">
                     {{range $i, $attestation := .Attestations}}
@@ -271,32 +277,54 @@
 						</div>
                     {{end}}
 				</div>
-				<div class="tab-pane fade" id="pills-deposits" role="tabpanel" aria-labelledby="pills-deposits-tab">
-                    {{range $i, $deposit := .Deposits}}
-						<div class="row border-bottom p-1">
-							<div class="col-md-12 text-center"><b>Deposit {{$i}}</b></div>
-						</div>
-						<div class="row border-bottom p-1">
-							<div class="col-md-2">Amount:</div>
-							<div class="col-md-10">{{$deposit.AmountFormatted}} ETH</div>
-						</div>
-						<div class="row border-bottom p-1">
-							<div class="col-md-2">Public Key:</div>
-							<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $deposit.PublicKey}}</div>
-						</div>
-						<div class="row border-bottom p-1">
-							<div class="col-md-2">Withdrawal Credentials:</div>
-							<div class="col-md-10 text-monospace text-break">
-								0x{{printf "%x" $deposit.WithdrawalCredentials}}</div>
-						</div>
-						<div class="row border-bottom p-1">
-							<div class="col-md-2">Signature:</div>
-							<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $deposit.Signature}}</div>
-						</div>
-						<div class="row border-bottom">
-						</div>
-                    {{end}}
-				</div>
+                {{if gt .DepositsCount 0}}
+					<div class="tab-pane fade" id="pills-deposits" role="tabpanel" aria-labelledby="pills-deposits-tab">
+                        {{range $i, $deposit := .Deposits}}
+							<div class="row border-bottom p-1">
+								<div class="col-md-12 text-center"><b>Deposit {{$i}}</b></div>
+							</div>
+							<div class="row border-bottom p-1">
+								<div class="col-md-2">Amount:</div>
+								<div class="col-md-10">{{$deposit.Amount | formatBalance}}</div>
+							</div>
+							<div class="row border-bottom p-1">
+								<div class="col-md-2">Public Key:</div>
+								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $deposit.PublicKey}}</div>
+							</div>
+							<div class="row border-bottom p-1">
+								<div class="col-md-2">Withdrawal Credentials:</div>
+								<div class="col-md-10 text-monospace text-break">
+									0x{{printf "%x" $deposit.WithdrawalCredentials}}</div>
+							</div>
+							<div class="row border-bottom p-1">
+								<div class="col-md-2">Signature:</div>
+								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $deposit.Signature}}</div>
+							</div>
+							<div class="row border-bottom">
+							</div>
+                        {{end}}
+					</div>
+                {{end}}
+                {{if gt .VoluntaryExitscount 0}}
+					<div class="tab-pane fade" id="pills-voluntary-exits" role="tabpanel" aria-labelledby="pills-voluntary-exits-tab">
+                        {{range $i, $exit := .VoluntaryExits}}
+							<div class="row border-bottom p-1">
+								<div class="col-md-12 text-center"><b>Exit {{$i}}</b></div>
+							</div>
+							<div class="row border-bottom p-1">
+								<div class="col-md-2">Validator:</div>
+								<div class="col-md-10">{{formatValidator $exit.ValidatorIndex}}</div>
+							</div>
+							<div class="row border-bottom p-1">
+								<div class="col-md-2">Signature:</div>
+								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $exit.Signature}}</div>
+							</div>
+
+							<div class="row border-bottom">
+							</div>
+                        {{end}}
+					</div>
+                {{end}}
 			</div>
 		</div>
 	</div>

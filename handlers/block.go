@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -22,7 +23,6 @@ var blockNotFoundTemplate = template.Must(template.New("blocknotfound").ParseFil
 
 // Block will return the data for a block
 func Block(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
 
 	vars := mux.Vars(r)
 	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
@@ -205,14 +205,24 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, d := range deposits {
-		d.AmountFormatted = utils.FormatBalance(d.Amount)
-	}
 	blockPageData.Deposits = deposits
+
+	err = db.DB.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
+	if err != nil {
+		logger.Errorf("error retrieving block deposit data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
 	data.Data = blockPageData
 
-	err = blockTemplate.ExecuteTemplate(w, "layout", data)
+	if utils.IsApiRequest(r) {
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(data.Data)
+	} else {
+		w.Header().Set("Content-Type", "text/html")
+		err = blockTemplate.ExecuteTemplate(w, "layout", data)
+	}
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
