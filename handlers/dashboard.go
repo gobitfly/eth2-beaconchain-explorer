@@ -264,6 +264,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.effectivebalance,
 			validators.slashed,
 			validators.activationeligibilityepoch,
+			validators.lastattestationslot,
 			validators.activationepoch,
 			validators.exitepoch,
 			a.state,
