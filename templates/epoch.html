@@ -67,12 +67,12 @@
             <div class="row border-bottom p-3">
                 <div class="col-md-2">Voting Participation:</div>
                 <div class="col-md-10">
-                    <div>{{.VotedEtherFormatted}} of {{.EligibleEtherFormatted}}<small
-                                class="text-muted ml-1">({{.GlobalParticipationRateFormatted}}%)</small></div>
+                    <div>{{.VotedEther | formatBalance}} of {{.EligibleEther | formatBalance}}<small
+                                class="text-muted ml-1">({{.GlobalParticipationRate | formatPercentage}}%)</small></div>
                     <div class="progress" style="height:5px; width: 250px;">
                         <div class="progress-bar" role="progressbar"
-                             style="width: {{.GlobalParticipationRateFormatted}}%;"
-                             aria-valuenow="{{.GlobalParticipationRateFormatted}}" aria-valuemin="0"
+                             style="width: {{.GlobalParticipationRate | formatPercentage}}%;"
+                             aria-valuenow="{{.GlobalParticipationRate | formatPercentage}}" aria-valuemin="0"
                              aria-valuemax="100"></div>
                     </div>
                 </div>
@@ -83,7 +83,7 @@
             </div>
             <div class="row border-bottom p-3">
                 <div class="col-md-2">Avg. Validator Balance:</div>
-                <div class="col-md-10">{{.AverageValidatorBalanceFormatted}}</div>
+                <div class="col-md-10">{{.AverageValidatorBalance | formatBalance}}</div>
             </div>
             <div class="row border-bottom p-3">
                 <div class="col-md-2">{{.BlocksCount}} Blocks:</div>

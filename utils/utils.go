@@ -28,6 +28,9 @@ func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"formatBlockStatus": FormatBlockStatus,
 		"formatValidator":   FormatValidator,
+		"formatBalance":     FormatBalance,
+		"formatPercentage":  FormatPercentage,
+		"formatIncome":      FormatIncome,
 		"mod":               func(i, j int) bool { return i%j == 0 },
 		"sub":               func(i, j int) int { return i - j },
 		"add":               func(i, j int) int { return i + j },
@@ -104,8 +107,24 @@ func EpochToTime(epoch uint64) time.Time {
 }
 
 // FormatBalance will return a string for a balance
-func FormatBalance(balance uint64) string {
+func FormatBalance(balance int64) string {
 	return fmt.Sprintf("%.2f ETH", float64(balance)/float64(1000000000))
+}
+
+// FormatIncome will return a string for a balance
+func FormatIncome(income int64) template.HTML {
+	if income > 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f ETH</b></span>`, float64(income)/float64(1000000000)))
+	} else if income < 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f ETH</b></span>`, float64(income)/float64(1000000000)))
+	} else {
+		return template.HTML(fmt.Sprintf(`<b>%.4f ETH</b>`, float64(income)/float64(1000000000)))
+	}
+}
+
+// FormatPercentage will return a string for a percentage
+func FormatPercentage(percentage float64) string {
+	return fmt.Sprintf("%.0f", percentage*float64(100))
 }
 
 // WaitForCtrlC will block/wait until a control-c is pressed

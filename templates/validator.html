@@ -556,12 +556,17 @@
 					</div>
 					<div class="row border-bottom p-3">
 						<div class="col-md-2">Current Balance:</div>
-						<div class="col-md-10">{{.CurrentBalanceFormatted}}</div>
+						<div class="col-md-10">{{.CurrentBalance | formatBalance}}</div>
 					</div>
 					<div class="row border-bottom p-3">
 						<div class="col-md-2">Effective Balance:</div>
-						<div class="col-md-10">{{.EffectiveBalanceFormatted}}</div>
+						<div class="col-md-10">{{.EffectiveBalance | formatBalance}}</div>
 					</div>
+					<div class="row border-bottom p-3">
+						<div class="col-md-2">Income:</div>
+						<div class="col-md-10">1 day: {{.Income1d | formatIncome}} | 7 days: {{.Income7d | formatIncome}} | 31 days: {{.Income31d | formatIncome}}</div>
+					</div>
+
 					<div class="row border-bottom p-3">
 						<div class="col-md-2">Status:</div>
 						{{if eq .Status "ActiveOffline"}}

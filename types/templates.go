@@ -70,7 +70,7 @@ type IndexPageDataBlocks struct {
 type IndexPageEpochHistory struct {
 	Epoch           uint64 `db:"epoch"`
 	ValidatorsCount uint64 `db:"validatorscount"`
-	EligibleEther   uint64 `db:"eligibleether"`
+	EligibleEther   int64  `db:"eligibleether"`
 	Finalized       bool   `db:"finalized"`
 }
 
@@ -117,8 +117,8 @@ type ValidatorPageData struct {
 	ValidatorIndex                   uint64 `db:"validatorindex"`
 	PublicKey                        []byte
 	WithdrawableEpoch                uint64  `db:"withdrawableepoch"`
-	CurrentBalance                   uint64  `db:"balance"`
-	EffectiveBalance                 uint64  `db:"effectivebalance"`
+	CurrentBalance                   int64   `db:"balance"`
+	EffectiveBalance                 int64   `db:"effectivebalance"`
 	Slashed                          bool    `db:"slashed"`
 	ActivationEligibilityEpoch       uint64  `db:"activationeligibilityepoch"`
 	ActivationEpoch                  uint64  `db:"activationepoch"`
@@ -129,13 +129,14 @@ type ValidatorPageData struct {
 	ActivationEligibilityTs          time.Time
 	ActivationTs                     time.Time
 	ExitTs                           time.Time
-	CurrentBalanceFormatted          string
-	EffectiveBalanceFormatted        string
 	Status                           string
 	ProposedBlocksCount              uint64
 	AttestationsCount                uint64
 	StatusProposedCount              uint64
 	StatusMissedCount                uint64
+	Income1d                         int64
+	Income7d                         int64
+	Income31d                        int64
 	DailyProposalCount               []DailyProposalCount
 	BalanceHistoryChartData          [][]float64
 	EffectiveBalanceHistoryChartData [][]float64
@@ -152,7 +153,7 @@ type DailyProposalCount struct {
 // ValidatorBalanceHistory is a struct for the validator balance history data
 type ValidatorBalanceHistory struct {
 	Epoch   uint64 `db:"epoch"`
-	Balance uint64 `db:"balance"`
+	Balance int64  `db:"balance"`
 }
 
 // ValidatorAttestation is a struct for the validators attestations data
@@ -277,7 +278,6 @@ type BlockPageDeposit struct {
 	PublicKey             []byte `db:"publickey"`
 	WithdrawalCredentials []byte `db:"withdrawalcredentials"`
 	Amount                uint64 `db:"amount"`
-	AmountFormatted       string
 	Signature             []byte `db:"signature"`
 }
 
@@ -305,32 +305,28 @@ type EpochsPageData struct {
 	DepositsCount           uint64  `db:"depositscount"`
 	VoluntaryExitsCount     uint64  `db:"voluntaryexitscount"`
 	ValidatorsCount         uint64  `db:"validatorscount"`
+	AverageValidatorBalance int64   `db:"averagevalidatorbalance"`
+	Finalized               bool    `db:"finalized"`
+	EligibleEther           int64   `db:"eligibleether"`
+	GlobalParticipationRate float64 `db:"globalparticipationrate"`
+	VotedEther              int64   `db:"votedether"`
+}
+
+// EpochPageData is a struct to hold detailed epoch data for the epoch page
+type EpochPageData struct {
+	Epoch                   uint64  `db:"epoch"`
+	BlocksCount             uint64  `db:"blockscount"`
+	ProposerSlashingsCount  uint64  `db:"proposerslashingscount"`
+	AttesterSlashingsCount  uint64  `db:"attesterslashingscount"`
+	AttestationsCount       uint64  `db:"attestationscount"`
+	DepositsCount           uint64  `db:"depositscount"`
+	VoluntaryExitsCount     uint64  `db:"voluntaryexitscount"`
+	ValidatorsCount         uint64  `db:"validatorscount"`
 	AverageValidatorBalance uint64  `db:"averagevalidatorbalance"`
 	Finalized               bool    `db:"finalized"`
 	EligibleEther           uint64  `db:"eligibleether"`
 	GlobalParticipationRate float64 `db:"globalparticipationrate"`
 	VotedEther              uint64  `db:"votedether"`
-}
-
-// EpochPageData is a struct to hold detailed epoch data for the epoch page
-type EpochPageData struct {
-	Epoch                            uint64  `db:"epoch"`
-	BlocksCount                      uint64  `db:"blockscount"`
-	ProposerSlashingsCount           uint64  `db:"proposerslashingscount"`
-	AttesterSlashingsCount           uint64  `db:"attesterslashingscount"`
-	AttestationsCount                uint64  `db:"attestationscount"`
-	DepositsCount                    uint64  `db:"depositscount"`
-	VoluntaryExitsCount              uint64  `db:"voluntaryexitscount"`
-	ValidatorsCount                  uint64  `db:"validatorscount"`
-	AverageValidatorBalance          uint64  `db:"averagevalidatorbalance"`
-	Finalized                        bool    `db:"finalized"`
-	EligibleEther                    uint64  `db:"eligibleether"`
-	GlobalParticipationRate          float64 `db:"globalparticipationrate"`
-	VotedEther                       uint64  `db:"votedether"`
-	VotedEtherFormatted              string
-	EligibleEtherFormatted           string
-	GlobalParticipationRateFormatted string
-	AverageValidatorBalanceFormatted string
 
 	Blocks []*IndexPageDataBlocks
 

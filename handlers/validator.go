@@ -18,7 +18,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var validatorTemplate = template.Must(template.New("validator").ParseFiles("templates/layout.html", "templates/validator.html"))
+var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator.html"))
 var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validatornotfound.html"))
 
 // Validator returns validator data using a go template
@@ -118,9 +118,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validatorPageData.CurrentBalanceFormatted = utils.FormatBalance(validatorPageData.CurrentBalance)
-	validatorPageData.EffectiveBalanceFormatted = utils.FormatBalance(validatorPageData.EffectiveBalance)
-
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)
@@ -189,8 +186,32 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
+	cutoff1d := time.Now().Add(time.Hour * 24 * -1)
+	cutoff7d := time.Now().Add(time.Hour * 24 * 7 * -1)
+	cutoff31d := time.Now().Add(time.Hour * 24 * 31 * -1)
+
 	for i, balance := range balanceHistory {
-		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
+		balanceTs := utils.EpochToTime(balance.Epoch)
+
+		if balanceTs.Before(cutoff1d) {
+			validatorPageData.Income1d = validatorPageData.CurrentBalance - balance.Balance
+		}
+		if balanceTs.Before(cutoff7d) {
+			validatorPageData.Income7d = validatorPageData.CurrentBalance - balance.Balance
+		}
+		if balanceTs.Before(cutoff31d) {
+			validatorPageData.Income31d = validatorPageData.CurrentBalance - balance.Balance
+		}
+
+		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
+	}
+
+	if validatorPageData.Income7d == 0 {
+		validatorPageData.Income7d = validatorPageData.Income1d
+	}
+
+	if validatorPageData.Income31d == 0 {
+		validatorPageData.Income31d = validatorPageData.Income7d
 	}
 
 	var effectiveBalanceHistory []*types.ValidatorBalanceHistory

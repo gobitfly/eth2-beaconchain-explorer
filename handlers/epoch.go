@@ -17,7 +17,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var epochTemplate = template.Must(template.New("epoch").Funcs(template.FuncMap{"formatBlockStatus": utils.FormatBlockStatus}).ParseFiles("templates/layout.html", "templates/epoch.html"))
+var epochTemplate = template.Must(template.New("epoch").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epoch.html"))
 var epochNotFoundTemplate = template.Must(template.New("epochnotfound").ParseFiles("templates/layout.html", "templates/epochnotfound.html"))
 
 // Epoch will show the epoch using a go template
@@ -114,11 +114,6 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
-
-	epochPageData.VotedEtherFormatted = fmt.Sprintf("%.2f ETH", float64(epochPageData.VotedEther)/float64(1000000000))
-	epochPageData.EligibleEtherFormatted = fmt.Sprintf("%.2f ETH", float64(epochPageData.EligibleEther)/float64(1000000000))
-	epochPageData.GlobalParticipationRateFormatted = fmt.Sprintf("%.0f", epochPageData.GlobalParticipationRate*float64(100))
-	epochPageData.AverageValidatorBalanceFormatted = fmt.Sprintf("%.2f ETH", float64(epochPageData.AverageValidatorBalance)/float64(1000000000))
 
 	err = db.DB.Get(&epochPageData.NextEpoch, "SELECT epoch FROM epochs WHERE epoch > $1 ORDER BY epoch LIMIT 1", epochPageData.Epoch)
 	if err != nil {

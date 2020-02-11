@@ -205,9 +205,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, d := range deposits {
-		d.AmountFormatted = utils.FormatBalance(d.Amount)
-	}
 	blockPageData.Deposits = deposits
 
 	err = db.DB.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
