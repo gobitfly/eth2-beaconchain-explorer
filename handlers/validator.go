@@ -194,13 +194,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		balanceTs := utils.EpochToTime(balance.Epoch)
 
 		if balanceTs.Before(cutoff1d) {
-			validatorPageData.Income1d = validatorPageData.CurrentBalance - balance.Balance
+			validatorPageData.Income1d = int64(validatorPageData.CurrentBalance) - int64(balance.Balance)
 		}
 		if balanceTs.Before(cutoff7d) {
-			validatorPageData.Income7d = validatorPageData.CurrentBalance - balance.Balance
+			validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balance.Balance)
 		}
 		if balanceTs.Before(cutoff31d) {
-			validatorPageData.Income31d = validatorPageData.CurrentBalance - balance.Balance
+			validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balance.Balance)
 		}
 
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
