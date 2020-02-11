@@ -10,6 +10,7 @@ create table validators (
     pubkey bytea not null,
     withdrawableepoch bigint not null,
     withdrawalcredentials bytea not null,
+    balance bigint not null,
     effectivebalance bigint not null,
     slashed bool not null,
     activationeligibilityepoch bigint not null,
@@ -70,6 +71,7 @@ create table validator_balances (
     epoch int not null,
     validatorindex int not null,
     balance bigint not null,
+    effectivebalance bigint not null,
     primary key (validatorindex, epoch)
 );
 

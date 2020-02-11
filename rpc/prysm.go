@@ -5,12 +5,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"sync"
+	"time"
+
 	lru "github.com/hashicorp/golang-lru"
 	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
 	"github.com/prysmaticlabs/go-bitfield"
 	"google.golang.org/grpc"
-	"sync"
-	"time"
 
 	ptypes "github.com/golang/protobuf/ptypes/empty"
 )
@@ -247,9 +248,10 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
-	data.ValidatorBalances = make([]*types.ValidatorBalance, 0)
 	data.ValidatorIndices = make(map[string]uint64)
+
+	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
+	validatorBalancesByPubkey := make(map[string]uint64)
 
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
 	for {
@@ -263,19 +265,15 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 
 		for _, balance := range validatorBalancesResponse.Balances {
-			data.ValidatorBalances = append(data.ValidatorBalances, &types.ValidatorBalance{
-				PublicKey: balance.PublicKey,
-				Index:     balance.Index,
-				Balance:   balance.Balance,
-			})
 			data.ValidatorIndices[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
+			validatorBalancesByPubkey[utils.FormatPublicKey(balance.PublicKey)] = balance.Balance
 		}
 
 		if validatorBalancesResponse.NextPageToken == "" {
 			break
 		}
 	}
-	logger.Printf("retrieved data for %v validator balances for epoch %v", len(data.ValidatorBalances), epoch)
+	logger.Printf("retrieved data for %v validator balances for epoch %v", len(validatorBalancesByPubkey), epoch)
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
 	if err != nil {
@@ -356,7 +354,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	for {
 		validatorResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}})
 		if err != nil {
-			logger.Printf("error retrieving validator response: %v", err)
+			logger.Errorf("error retrieving validator response: %v", err)
 			break
 		}
 		if validatorResponse.TotalSize == 0 {
@@ -364,9 +362,16 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 
 		for _, validator := range validatorResponse.ValidatorList {
+			balance, exists := validatorBalancesByPubkey[utils.FormatPublicKey(validator.Validator.PublicKey)]
+			if !exists {
+				logger.WithField("pubkey", utils.FormatPublicKey(validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
+				continue
+			}
 			data.Validators = append(data.Validators, &types.Validator{
+				Index:                      validator.Index,
 				PublicKey:                  validator.Validator.PublicKey,
 				WithdrawalCredentials:      validator.Validator.WithdrawalCredentials,
+				Balance:                    balance,
 				EffectiveBalance:           validator.Validator.EffectiveBalance,
 				Slashed:                    validator.Validator.Slashed,
 				ActivationEligibilityEpoch: validator.Validator.ActivationEligibilityEpoch,

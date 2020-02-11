@@ -27,7 +27,6 @@ type EpochData struct {
 	ValidatorIndices        map[string]uint64
 	ValidatorAssignmentes   *EpochAssignments
 	BeaconCommittees        map[uint64][]*BeaconCommitteItem
-	ValidatorBalances       []*ValidatorBalance
 	Blocks                  map[uint64]map[string]*Block
 	EpochParticipationStats *ValidatorParticipation
 }
@@ -41,13 +40,6 @@ type ValidatorParticipation struct {
 	EligibleEther           uint64
 }
 
-// ValidatorBalance is a struct to hold validator balance data
-type ValidatorBalance struct {
-	PublicKey []byte
-	Index     uint64
-	Balance   uint64
-}
-
 // BeaconCommitteItem is a struct to hold beacon committee data
 type BeaconCommitteItem struct {
 	ValidatorIndices []uint64
@@ -55,14 +47,16 @@ type BeaconCommitteItem struct {
 
 // Validator is a struct to hold validator data
 type Validator struct {
+	Index                      uint64
 	PublicKey                  []byte
-	WithdrawalCredentials      []byte
+	Balance                    uint64
 	EffectiveBalance           uint64
 	Slashed                    bool
 	ActivationEligibilityEpoch uint64
 	ActivationEpoch            uint64
 	ExitEpoch                  uint64
 	WithdrawableEpoch          uint64
+	WithdrawalCredentials      []byte
 }
 
 // ValidatorQueue is a struct to hold validator queue data
