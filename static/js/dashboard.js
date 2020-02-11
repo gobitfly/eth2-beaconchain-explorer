@@ -1,13 +1,11 @@
 $(document).ready(function() {
-  var offlineTable = $('#offline').DataTable({
+  var validatorsDataTable = $('#validators').DataTable({
     processing: true,
     serverSide: false,
     ordering: true,
-    searching: true,
+    searching: false,
     paging: false,
-    drawCallback: function() {
-      $('[data-toggle="tooltip"]').tooltip()
-    },
+    info: false,
     columnDefs: [
       {
         targets: 0,
@@ -24,140 +22,66 @@ $(document).ready(function() {
         }
       },
       {
-        targets: 4,
-        data: '6',
+        targets: 2,
+        data: '2',
         render: function(data, type, row, meta) {
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
+          return `${data[0]} (${data[1]})`
+        }
+      },
+      {
+        targets: 3,
+        data: '3',
+        render: function(data, type, row, meta) {
+          var d = data.split('_')
+          var s = d[0].charAt(0).toUpperCase() + d[0].slice(1)
+          if (d[1] === 'offline') 
+            return `<span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
+          if (d[1] === 'online')
+            return `<span>${s} <i class="fas fa-power-off fa-sm text-success"></i></span>`
+          return `<span>${s}</span>`
+        }
+      },
+      {
+        targets: 4,
+        data: '4',
+        render: function(data, type, row, meta) {
+          if (data === null) 
+            return '-'
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
       {
         targets: 5,
-        data: '8',
+        data: '5',
         render: function(data, type, row, meta) {
-          if (data !== null && data !== undefined) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-          } else {
-            return 'No Attestations Found'
-          }
+          if (data === null) 
+            return '-'
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
       {
         targets: 6,
-        data: '9',
-        render: function(data, type, row, meta) {
-          if (data !== null && data !== undefined) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-          } else {
-            return 'No Proposals Found'
-          }
-        }
-      }
-    ]
-  })
-  var pendingTable = $('#pending').DataTable({
-    processing: true,
-    serverSide: false,
-    ordering: true,
-    searching: true,
-    paging: false,
-    columnDefs: [
-      {
-        targets: 0,
-        data: '0',
-        render: function(data, type, row, meta) {
-          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-        }
-      },
-      {
-        targets: 1,
-        data: '1',
-        render: function(data, type, row, meta) {
-          return '<a href="/validator/' + data + '">' + data + '</a>'
-        }
-      },
-      {
-        targets: 4,
         data: '6',
         render: function(data, type, row, meta) {
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-        }
-      }
-    ]
-  })
-  var activeTable = $('#active').DataTable({
-    processing: true,
-    serverSide: false,
-    ordering: true,
-    searching: true,
-    paging: false,
-    drawCallback: function() {
-      $('[data-toggle="tooltip"]').tooltip()
-    },
-    columnDefs: [
-      {
-        targets: 0,
-        data: '0',
-        render: function(data, type, row, meta) {
-          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+          if (data === null) 
+            return '-'
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
       {
-        targets: 1,
-        data: '1',
+        targets: 7,
+        data: '7',
         render: function(data, type, row, meta) {
-          return '<a href="/validator/' + data + '">' + data + '</a>'
+          if (data === null)
+            return 'No Attestation found'
+          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
         }
       },
       {
-        targets: 4,
-        data: '6',
-        render: function(data, type, row, meta) {
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-        }
-      },
-      {
-        targets: 5,
+        targets: 8,
         data: '8',
         render: function(data, type, row, meta) {
-          if (data !== null && data !== undefined) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-          } else {
-            return 'No Attestations Found'
-          }
-        }
-      },
-      {
-        targets: 6,
-        data: '9',
-        render: function(data, type, row, meta) {
-          if (data !== null && data !== undefined) {
-            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (epoch ${data[0]})</span>`
-          } else {
-            return 'No Proposals Found'
-          }
-        }
-      }
-    ]
-  })
-  var ejectedTable = $('#ejected').DataTable({
-    processing: true,
-    serverSide: false,
-    ordering: true,
-    searching: true,
-    paging: false,
-    columnDefs: [
-      {
-        targets: 0,
-        data: '0',
-        render: function(data, type, row, meta) {
-          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-        }
-      },
-      {
-        targets: 1,
-        data: '1',
-        render: function(data, type, row, meta) {
-          return '<a href="/validator/' + data + '">' + data + '</a>'
+          return `<span data-toggle="tooltip" data-placement="top" title="${data[0]} executed / ${data[1]} missed"><span class="text-success">${data[0]}</span> / <span class="text-danger">${data[1]}</span></span>`
         }
       }
     ]
@@ -255,7 +179,7 @@ $(document).ready(function() {
 
   function renderDashboardInfo() {
     var el = document.getElementById('dashboard-info')
-    el.innerText = `Found ${validatorsCount.pending} pending, ${validatorsCount.active} active and ${validatorsCount.ejected} ejected validators`
+    el.innerText = `Found ${validatorsCount.pending} pending, ${validatorsCount.active_online + validatorsCount.active_offline} active and ${validatorsCount.exited} exited validators`
   }
 
   function setValidatorsFromURL() {
@@ -327,10 +251,14 @@ $(document).ready(function() {
         console.log(`loaded earnings: fetch: ${t1-t0}ms`)
         if (!result) return
         document.getElementById('stats').style.display = 'flex'
-        document.querySelector('#stats-earnings-total .stats-box-body').innerText = (result.total/1e9).toFixed(4)+' ETH'
-        document.querySelector('#stats-earnings-lastDay .stats-box-body').innerText = (result.lastDay/1e9).toFixed(4)+' ETH'
-        document.querySelector('#stats-earnings-lastWeek .stats-box-body').innerText = (result.lastWeek/1e9).toFixed(4)+' ETH'
-        document.querySelector('#stats-earnings-lastMonth .stats-box-body').innerText = (result.lastMonth/1e9).toFixed(4)+' ETH'
+        document.querySelector('#stats-earnings .stats-box-body').innerText = `total: ${(result.total/1e9).toFixed(4)} ETH
+1 day: ${(result.lastDay/1e9).toFixed(4)} ETH
+7 days: ${(result.lastWeek/1e9).toFixed(4)} ETH
+31 days: ${(result.lastMonth/1e9).toFixed(4)} ETH`
+        // document.querySelector('#stats-earnings-total .stats-box-body').innerText = (result.total/1e9).toFixed(4)+' ETH'
+        // document.querySelector('#stats-earnings-lastDay .stats-box-body').innerText = (result.lastDay/1e9).toFixed(4)+' ETH'
+        // document.querySelector('#stats-earnings-lastWeek .stats-box-body').innerText = (result.lastWeek/1e9).toFixed(4)+' ETH'
+        // document.querySelector('#stats-earnings-lastMonth .stats-box-body').innerText = (result.lastMonth/1e9).toFixed(4)+' ETH'
       }
     })
     $.ajax({
@@ -340,62 +268,51 @@ $(document).ready(function() {
         console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1-t0}ms`)
         if (!result || !result.data.length) return        
         // pubkey, idx, currbal, effbal, slashed, acteligepoch, actepoch, exitepoch
+        // 0:pubkey, 1:idx, 2:[currbal,effbal], 3:state, 4:[actepoch,acttime], 5:[exit,exittime], 6:[wd,wdt], 7:[lasta,lastat], 8:[exprop,misprop]
         console.log(`latestEpoch: ${result.latestEpoch}`)
         var latestEpoch = result.latestEpoch
-        validatorsCount.offline = 0
         validatorsCount.pending = 0
-        validatorsCount.active  = 0
-        validatorsCount.ejected = 0
-
-        var dataPending = []
-        var dataActive = []
-        var dataEjected = []
-        var dataOffline = []
+        validatorsCount.active_online = 0
+        validatorsCount.active_offline = 0
+        validatorsCount.slashing_online = 0
+        validatorsCount.slashing_offline = 0
+        validatorsCount.exiting_online = 0
+        validatorsCount.exiting_offline = 0
+        validatorsCount.exited  = 0
 
         for (var i=0; i<result.data.length; i++) {
           var v = result.data[i]
-          if (v[6][0] > latestEpoch) {
-            validatorsCount.pending++
-            dataPending.push(v)
-            var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
-            if (el) el.dataset.state = 'pending'
-          } else if (v[6][0] <= latestEpoch) {
-            if (!v[8] || v[8][0] < latestEpoch-1) {
-              validatorsCount.offline++
-              dataOffline.push(v)
-              var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
-              if (el) el.dataset.state = 'offline'
-            } else {
-              validatorsCount.active++
-              dataActive.push(v)
-              var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
-              if (el) el.dataset.state = 'active'
-            }
-          } else if (v[7][0] >= latestEpoch) {
-            validatorsCount.ejected++
-            dataEjected.push(v)
-            var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
-            if (el) el.dataset.state = 'ejected'
-          }
+          var state = v[3]
+          if (!validatorsCount[state]) validatorsCount[state] = 0
+          validatorsCount[state]++
+          var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
+          if (el) el.dataset.state = state
         }
+        validatorsDataTable.clear()
+        validatorsDataTable.rows.add(result.data).draw()
+
         document.getElementById('stats').style.display = 'flex'
-        document.querySelector('#stats-validators-status .stats-box-body').innerText = 
-          `${validatorsCount.pending} / ${validatorsCount.active} / ${validatorsCount.ejected} / ${validatorsCount.offline}`
+        document.querySelector('#stats-validators-status .stats-box-body').innerText = `pending:  ${validatorsCount.pending}
+active:   ${validatorsCount.active_online} / ${validatorsCount.active_offline}
+slashing: ${validatorsCount.slashing_online} / ${validatorsCount.slashing_offline}
+exiting:  ${validatorsCount.exiting_online} / ${validatorsCount.exiting_offline}
+exited:   ${validatorsCount.exited}`
 
-        pendingTable.clear()
-        activeTable.clear()
-        ejectedTable.clear()
-        offlineTable.clear()
+        // pendingTable.clear()
+        // activeTable.clear()
+        // ejectedTable.clear()
+        // offlineTable.clear()
 
-        if (validatorsCount.pending) pendingTable.rows.add(dataPending).draw()
-        if (validatorsCount.active) activeTable.rows.add(dataActive).draw()
-        if (validatorsCount.ejected) ejectedTable.rows.add(dataEjected).draw()
-        if (validatorsCount.offline) offlineTable.rows.add(dataOffline).draw()
+        // if (validatorsCount.pending) pendingTable.rows.add(dataPending).draw()
+        // if (validatorsCount.active) activeTable.rows.add(dataActive).draw()
+        // if (validatorsCount.ejected) ejectedTable.rows.add(dataEjected).draw()
+        // if (validatorsCount.offline) offlineTable.rows.add(dataOffline).draw()
+// 
+        // document.getElementById('pending-validators-table-holder').style.display = validatorsCount.pending ? 'block' : 'none'
+        // document.getElementById('active-validators-table-holder').style.display  = validatorsCount.active  ? 'block' : 'none'
+        // document.getElementById('ejected-validators-table-holder').style.display = validatorsCount.ejected ? 'block' : 'none'
+        // document.getElementById('offline-validators-table-holder').style.display = validatorsCount.offline ? 'block' : 'none'
 
-        document.getElementById('pending-validators-table-holder').style.display = validatorsCount.pending ? 'block' : 'none'
-        document.getElementById('active-validators-table-holder').style.display  = validatorsCount.active  ? 'block' : 'none'
-        document.getElementById('ejected-validators-table-holder').style.display = validatorsCount.ejected ? 'block' : 'none'
-        document.getElementById('offline-validators-table-holder').style.display = validatorsCount.offline ? 'block' : 'none'
         renderDashboardInfo()
       }
     })

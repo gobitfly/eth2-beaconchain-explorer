@@ -35,17 +35,22 @@ ul.multiselect li.item {
   background-color: lightblue;
 }
 
-ul.multiselect li.item[data-state='active'] {
+ul.multiselect li.item[data-state='active_online'],
+ul.multiselect li.item[data-state='slashing_online'],
+ul.multiselect li.item[data-state='exiting_online'] {
   background-color: lightgreen;
+}
+ul.multiselect li.item[data-state='active_offline'],
+ul.multiselect li.item[data-state='slashing_offline'],
+ul.multiselect li.item[data-state='exiting_offline'] {
+  background-color: lightcoral;
 }
 ul.multiselect li.item[data-state='pending'] {
   background-color: lightyellow;
 }
-ul.multiselect li.item[data-state='ejected'] {
+ul.multiselect li.item[data-state='exited'],
+ul.multiselect li.item[data-state='slashed'] {
   background-color: lightgray;
-}
-ul.multiselect li.item[data-state='offline'] {
-  background-color: lightcoral;
 }
 
 ul.multiselect li.item .remove-validator {

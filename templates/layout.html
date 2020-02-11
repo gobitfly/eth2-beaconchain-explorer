@@ -115,6 +115,12 @@
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>
+                        <li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
+                            <a class="nav-link" href="/dashboard"><i class="fas fa-chart-bar"></i> Dashboard</a>
+                            {{ if eq .Active "dashboard"}} 
+                                <span class="nav-indicator"></span>
+                            {{end}}
+                        </li>
                         <li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
                             <a class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-book"></i> Docs</a>
                             {{ if eq .Active "docs"}}

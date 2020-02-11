@@ -100,24 +100,20 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		queryOffsetEpoch = latestEpoch - oneWeekEpochs
 	}
 
-	query := `SELECT 
-			validator_set.epoch, 
-			SUM(effectivebalance) AS effectivebalance, 
-			COALESCE(SUM(balance),0) AS balance, 
+	query := `SELECT
+			epoch,
+			SUM(effectivebalance) AS effectivebalance,
+			COALESCE(SUM(balance),0) AS balance,
 			COUNT(*) AS validatorcount
-		FROM validator_set 
-		LEFT JOIN validator_balances 
-			ON validator_set.epoch = validator_balances.epoch 
-			AND validator_set.validatorindex = validator_balances.validatorindex 
-		WHERE validator_set.validatorindex = any($1) 
-			AND validator_set.epoch > $2
-		GROUP BY validator_set.epoch
-		ORDER BY validator_set.epoch ASC`
+		FROM validator_balances
+		WHERE validatorindex = ANY($1) AND epoch > $2
+		GROUP BY epoch
+		ORDER BY epoch ASC`
 
 	data := []*types.DashboardValidatorBalanceHistory{}
 	err = db.DB.Select(&data, query, queryValidatorsArr, queryOffsetEpoch)
 	if err != nil {
-		logger.Errorf("Error retrieving validator balance history: %v", err)
+		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -251,85 +247,111 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
+	lastestEpoch := services.LatestEpoch()
+	var firstSlotOfPreviousEpoch uint64
+	if lastestEpoch < 1 {
+		firstSlotOfPreviousEpoch = 0
+	} else {
+		firstSlotOfPreviousEpoch = (lastestEpoch - 1) * utils.Config.Chain.SlotsPerEpoch
+	}
+
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators, `SELECT
 			validators.validatorindex,
 			validators.pubkey,
 			validators.withdrawableepoch,
+			validators.balance,
 			validators.effectivebalance,
 			validators.slashed,
 			validators.activationeligibilityepoch,
 			validators.activationepoch,
 			validators.exitepoch,
-			validator_balances.balance,
-			lastattestations.epoch as lastattestedepoch,
-			lastproposals.epoch as lastproposedepoch
+			a.state,
+			COALESCE(p1.c, 0) as executedproposals,
+			COALESCE(p2.c, 0) as missedproposals
 		FROM validators
-		LEFT JOIN validator_balances
-			ON validator_balances.epoch = $1
-			AND validator_balances.validatorindex = validators.validatorindex
+		INNER JOIN (
+			SELECT validatorindex,
+			CASE 
+				WHEN exitepoch <= $1 then 'exited'
+				WHEN activationepoch > $1 then 'pending'
+				WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
+				WHEN slashed then 'slashing_online'
+				WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
+				ELSE 'active_online'
+			END AS state
+			FROM validators
+		) a ON a.validatorindex = validators.validatorindex
 		LEFT JOIN (
-			SELECT validatorindex, MAX(epoch) as epoch
-			FROM attestation_assignments 
-			WHERE validatorindex = ANY($2) AND status = 1
-			GROUP BY validatorindex
-		) AS lastattestations ON lastattestations.validatorindex = validators.validatorindex
+			select validatorindex, count(*) as c 
+			from proposal_assignments
+			where status = 1
+			group by validatorindex
+		) p1 ON validators.validatorindex = p1.validatorindex
 		LEFT JOIN (
-			SELECT validatorindex, MAX(epoch) as epoch
-			FROM proposal_assignments 
-			WHERE validatorindex = ANY($2) AND status = 1
-			GROUP BY validatorindex
-		) AS lastproposals ON lastproposals.validatorindex = validators.validatorindex
-		WHERE validators.validatorindex = ANY($2)
-		LIMIT 100`, services.LatestEpoch(), filter)
+			select validatorindex, count(*) as c 
+			from proposal_assignments
+			where status = 2
+			group by validatorindex
+		) p2 ON validators.validatorindex = p2.validatorindex
+		WHERE validators.validatorindex = ANY($3)
+		LIMIT 100`, lastestEpoch, firstSlotOfPreviousEpoch, filter)
 
 	if err != nil {
-		logger.Errorf("Error retrieving validator data: %v", err)
+		logger.Errorf("error retrieving validator data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
 	tableData := make([][]interface{}, len(validators))
 	for i, v := range validators {
-		var lastAttested interface{}
-		if v.LastAttestedEpoch == nil {
-			lastAttested = nil
-		} else {
-			lastAttested = []interface{}{
-				fmt.Sprintf("%v", *v.LastAttestedEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(uint64(*v.LastAttestedEpoch)).Unix()),
-			}
-		}
-		var lastProposed interface{}
-		if v.LastProposedEpoch == nil {
-			lastProposed = nil
-		} else {
-			lastProposed = []interface{}{
-				fmt.Sprintf("%v", *v.LastProposedEpoch),
-				fmt.Sprintf("%v", utils.EpochToTime(uint64(*v.LastProposedEpoch)).Unix()),
-			}
-		}
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
-			utils.FormatBalance(v.CurrentBalance),
-			utils.FormatBalance(v.EffectiveBalance),
-			fmt.Sprintf("%v", v.Slashed),
-			[]interface{}{ // 5
-				v.ActivationEligibilityEpoch,
-				utils.EpochToTime(v.ActivationEligibilityEpoch).Unix(),
+			[]interface{}{
+				// utils.FormatBalance(v.CurrentBalance),
+				// utils.FormatBalance(v.EffectiveBalance),
+				fmt.Sprintf("%.4f ETH", float64(v.CurrentBalance)/float64(1e9)),
+				fmt.Sprintf("%.1f ETH", float64(v.EffectiveBalance)/float64(1e9)),
 			},
-			[]interface{}{ // 6
+			v.State,
+			[]interface{}{
 				v.ActivationEpoch,
 				utils.EpochToTime(v.ActivationEpoch).Unix(),
 			},
-			[]interface{}{ // 7
+		}
+
+		if v.ExitEpoch != 9223372036854775807 {
+			tableData[i] = append(tableData[i], []interface{}{
 				v.ExitEpoch,
 				utils.EpochToTime(v.ExitEpoch).Unix(),
-			},
-			lastAttested,
-			lastProposed,
+			})
+		} else {
+			tableData[i] = append(tableData[i], nil)
 		}
+
+		if v.WithdrawableEpoch != 9223372036854775807 {
+			tableData[i] = append(tableData[i], []interface{}{
+				v.WithdrawableEpoch,
+				utils.EpochToTime(v.WithdrawableEpoch).Unix(),
+			})
+		} else {
+			tableData[i] = append(tableData[i], nil)
+		}
+
+		if v.LastAttestationSlot != nil {
+			tableData[i] = append(tableData[i], []interface{}{
+				*v.LastAttestationSlot,
+				utils.SlotToTime(uint64(*v.LastAttestationSlot)).Unix(),
+			})
+		} else {
+			tableData[i] = append(tableData[i], nil)
+		}
+
+		tableData[i] = append(tableData[i], []interface{}{
+			v.ExecutedProposals,
+			v.MissedProposals,
+		})
 	}
 
 	type dataType struct {
@@ -343,7 +365,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.Fatalf("error enconding json response for %v route: %v", r.URL.String(), err)
 	}
 }
 
