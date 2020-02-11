@@ -621,7 +621,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %v", b.Slot, err)
 			}
 
-			logger.Infof("export of block %x at slot %x completed, took %v", b.BlockRoot, b.Slot, time.Since(start))
+			logger.Infof("export of block %x at slot %v completed, took %v", b.BlockRoot, b.Slot, time.Since(start))
 		}
 	}
 
