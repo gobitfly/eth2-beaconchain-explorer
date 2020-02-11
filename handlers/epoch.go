@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -21,8 +22,6 @@ var epochNotFoundTemplate = template.Must(template.New("epochnotfound").ParseFil
 
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-
 	vars := mux.Vars(r)
 	epochString := strings.Replace(vars["epoch"], "0x", "", -1)
 
@@ -134,7 +133,13 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = epochPageData
 
-	err = epochTemplate.ExecuteTemplate(w, "layout", data)
+	if utils.IsApiRequest(r) {
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(data.Data)
+	} else {
+		w.Header().Set("Content-Type", "text/html")
+		err = epochTemplate.ExecuteTemplate(w, "layout", data)
+	}
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)

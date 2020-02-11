@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"html/template"
 	"time"
 
@@ -226,6 +228,19 @@ type BlockPageData struct {
 	Deposits       []*BlockPageDeposit
 	VoluntaryExits []*BlockPageVoluntaryExits
 	Votes          []*BlockVote // Attestations that voted for that block
+}
+
+func (u *BlockPageData) MarshalJSON() ([]byte, error) {
+	type Alias BlockPageData
+	return json.Marshal(&struct {
+		BlockRoot string
+		Ts        int64
+		*Alias
+	}{
+		BlockRoot: fmt.Sprintf("%x", u.BlockRoot),
+		Ts:        u.Ts.Unix(),
+		Alias:     (*Alias)(u),
+	})
 }
 
 // BlockVote stores a vote for a given block

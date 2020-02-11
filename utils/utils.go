@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -161,4 +162,9 @@ func MustParseHex(hexString string) []byte {
 		log.Fatal(err)
 	}
 	return data
+}
+
+func IsApiRequest(r *http.Request) bool {
+	query, ok := r.URL.Query()["format"]
+	return ok && len(query) > 0 && query[0] == "json"
 }

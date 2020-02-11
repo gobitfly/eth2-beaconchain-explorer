@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -22,7 +23,6 @@ var blockNotFoundTemplate = template.Must(template.New("blocknotfound").ParseFil
 
 // Block will return the data for a block
 func Block(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
 
 	vars := mux.Vars(r)
 	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
@@ -219,7 +219,13 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = blockPageData
 
-	err = blockTemplate.ExecuteTemplate(w, "layout", data)
+	if utils.IsApiRequest(r) {
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(data.Data)
+	} else {
+		w.Header().Set("Content-Type", "text/html")
+		err = blockTemplate.ExecuteTemplate(w, "layout", data)
+	}
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
