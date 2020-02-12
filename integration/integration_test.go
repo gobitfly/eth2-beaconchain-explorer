@@ -127,17 +127,20 @@ func checkEndpoint(addr string) (int, error) {
 func dockerComposeUp(dockerComposeFile string) {
 	cmd := exec.Command("docker-compose", "-f", dockerComposeFile, "up", "-d")
 	o, err := cmd.CombinedOutput()
+	fmt.Printf("%s\n", o)
 	if err != nil {
+		cmd := exec.Command("docker-compose", "-f", dockerComposeFile, "logs")
+		logsOut, _ := cmd.CombinedOutput()
+		fmt.Printf("%s\n", logsOut)
 		panic(err)
 	}
-	fmt.Printf("%s\n", o)
 }
 
 func dockerComposeDown(dockerComposeFile string) {
 	cmd := exec.Command("docker-compose", "-f", dockerComposeFile, "down")
 	o, err := cmd.CombinedOutput()
+	fmt.Printf("%s\n", o)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%s\n", o)
 }

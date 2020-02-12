@@ -181,20 +181,20 @@ func getIndexPageData() (*types.IndexPageData, error) {
 func UpdateValidatorPerformance() error {
 	tx, err := db.DB.Beginx()
 	if err != nil {
-		return fmt.Errorf("error starting db transaction: %w")
+		return fmt.Errorf("error starting db transaction: %w", err)
 	}
 	defer tx.Rollback()
 
 	_, err = tx.Exec("TRUNCATE validator_performance")
 	if err != nil {
-		return fmt.Errorf("error truncating validator performance table: %w")
+		return fmt.Errorf("error truncating validator performance table: %w", err)
 	}
 
 	var currentEpoch uint64
 
 	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM validator_balances")
 	if err != nil {
-		return fmt.Errorf("error retrieving latest epoch from validator_balances table: %w")
+		return fmt.Errorf("error retrieving latest epoch from validator_balances table: %w", err)
 	}
 
 	now := utils.EpochToTime(currentEpoch)
