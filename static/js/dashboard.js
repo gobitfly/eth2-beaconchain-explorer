@@ -266,7 +266,10 @@ $(document).ready(function() {
       success: function(result) {
         var t1 = Date.now()
         console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1-t0}ms`)
-        if (!result || !result.data.length) return        
+        if (!result || !result.data.length) {
+          document.getElementById('validators-table-holder').style.display = 'none'
+          return
+        }
         // pubkey, idx, currbal, effbal, slashed, acteligepoch, actepoch, exitepoch
         // 0:pubkey, 1:idx, 2:[currbal,effbal], 3:state, 4:[actepoch,acttime], 5:[exit,exittime], 6:[wd,wdt], 7:[lasta,lastat], 8:[exprop,misprop]
         console.log(`latestEpoch: ${result.latestEpoch}`)
@@ -298,7 +301,7 @@ slashing: ${validatorsCount.slashing_online} / ${validatorsCount.slashing_offlin
 exiting:  ${validatorsCount.exiting_online} / ${validatorsCount.exiting_offline}
 exited:   ${validatorsCount.exited}`
 
-        // pendingTable.clear()
+        document.getElementById('validators-table-holder').style.display = 'block'
         // activeTable.clear()
         // ejectedTable.clear()
         // offlineTable.clear()

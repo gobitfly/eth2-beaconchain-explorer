@@ -100,7 +100,8 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		queryOffsetEpoch = latestEpoch - oneWeekEpochs
 	}
 
-	query := `SELECT
+	query := `
+		SELECT
 			epoch,
 			SUM(effectivebalance) AS effectivebalance,
 			COALESCE(SUM(balance),0) AS balance,
@@ -150,10 +151,8 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 		Count  uint
 	}{}
 
-	err = db.DB.Select(&proposals, `SELECT 
-			slot / 7200 AS day, 
-			status, 
-			COUNT(*) 
+	err = db.DB.Select(&proposals, `
+		SELECT slot / 7200 AS day, status, COUNT(*) 
 		FROM blocks 
 		WHERE proposer = ANY($1) 
 		GROUP BY day, status 
@@ -384,7 +383,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 
 	latestEpoch := services.LatestEpoch()
 
-	oneDayEpochs := uint64(3600 * 24 * 1 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
+	oneDayEpochs := uint64(3600 * 24 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
 	oneWeekEpochs := oneDayEpochs * 7
 	oneMonthEpochs := oneDayEpochs * 30
 
@@ -403,15 +402,16 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 		lastWeekEpoch = latestEpoch - oneMonthEpochs
 	}
 
-	earningsTotalQuery := `SELECT 
+	earningsTotalQuery := `
+		SELECT
 			SUM(last.balance - first.balance) AS earnings
 		FROM (
-			SELECT 
-				validatorindex, 
-				MIN(epoch) AS firstepoch, 
+			SELECT
+				validatorindex,
+				MIN(epoch) AS firstepoch,
 				MAX(epoch) AS lastepoch
 			FROM validator_balances
-			WHERE validatorindex = any($1)
+			WHERE validatorindex = ANY($1)
 			GROUP by validatorindex
 		) minmaxepoch
 		INNER JOIN validator_balances first
@@ -421,15 +421,16 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 			ON last.validatorindex = minmaxepoch.validatorindex
 			AND last.epoch = minmaxepoch.lastepoch`
 
-	earningsRangeQuery := `SELECT 
+	earningsRangeQuery := `
+		SELECT
 			SUM(last.balance - first.balance) AS earnings
 		FROM (
-			SELECT 
-				validatorindex, 
-				MIN(epoch) AS firstepoch, 
+			SELECT
+				validatorindex,
+				MIN(epoch) AS firstepoch,
 				MAX(epoch) AS lastepoch
 			FROM validator_balances
-			WHERE validatorindex = any($1) AND epoch > $2
+			WHERE validatorindex = ANY($1) AND epoch > $2
 			GROUP by validatorindex
 		) minmaxepoch
 		INNER JOIN validator_balances first
