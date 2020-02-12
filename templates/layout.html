@@ -97,9 +97,15 @@
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>
-                        <li class="nav-item {{ if eq .Active "validators"}}active{{end}}">
-                            <a class="nav-link" href="/validators"><i class="fas fa-thumbs-up"></i> Validators</a>
-                            {{ if eq .Active "validators"}} 
+                        <li class="nav-item {{ if eq .Active "validators"}}active{{end}} dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-thumbs-up"></i> Validators
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <a class="dropdown-item" href="/validators"><i class="fas fa-table"></i> Overview</a>
+                                <a class="dropdown-item" href="/validators/leaderboard"><i class="fas fa-medal"></i> Leaderboard</a>
+                            </div>
+                            {{ if eq .Active "validators"}}
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>

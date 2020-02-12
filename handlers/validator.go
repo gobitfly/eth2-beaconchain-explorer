@@ -207,11 +207,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if validatorPageData.Income7d == 0 {
-		validatorPageData.Income7d = validatorPageData.Income1d
+		validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
 	}
 
 	if validatorPageData.Income31d == 0 {
-		validatorPageData.Income31d = validatorPageData.Income7d
+		validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
 	}
 
 	var effectiveBalanceHistory []*types.ValidatorBalanceHistory

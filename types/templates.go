@@ -156,6 +156,26 @@ type ValidatorBalanceHistory struct {
 	Balance uint64 `db:"balance"`
 }
 
+// ValidatorBalance is a struct for the validator balance data
+type ValidatorBalance struct {
+	Epoch            uint64 `db:"epoch"`
+	Balance          uint64 `db:"balance"`
+	EffectiveBalance uint64 `db:"effectivebalance"`
+	Index            uint64 `db:"validatorindex"`
+	PublicKey        []byte `db:"pubkey"`
+}
+
+// ValidatorPerformance is a struct for the validator performance data
+type ValidatorPerformance struct {
+	Index           uint64 `db:"validatorindex"`
+	PublicKey       []byte `db:"pubkey"`
+	Balance         uint64 `db:"balance"`
+	Performance1d   int64  `db:"performance1d"`
+	Performance7d   int64  `db:"performance7d"`
+	Performance31d  int64  `db:"performance31d"`
+	Performance365d int64  `db:"performance365d"`
+}
+
 // ValidatorAttestation is a struct for the validators attestations data
 type ValidatorAttestation struct {
 	Epoch          uint64 `db:"epoch"`

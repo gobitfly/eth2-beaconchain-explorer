@@ -106,6 +106,11 @@ func EpochToTime(epoch uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
 }
 
+// TimeToEpoch will return an epoch for a given time
+func TimeToEpoch(ts time.Time) int64 {
+	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.SecondsPerSlot) / int64(Config.Chain.SlotsPerEpoch)
+}
+
 // FormatBalance will return a string for a balance
 func FormatBalance(balance uint64) string {
 	return fmt.Sprintf("%.2f ETH", float64(balance)/float64(1000000000))

@@ -34,19 +34,22 @@ create table validator_set (
     exitepoch bigint not null,
     primary key (validatorindex, epoch)
 );
-create index idx_validator_set_validatorindex on validator_set (validatorindex);
-create index idx_validator_set_epoch on validator_set (epoch);
 
--- drop table if exists validator_assignments;
--- create table validator_assignments (
---     epoch int not null,
---     validatorindex int not null,
---     beaconcommittees int[] not null,
---     committeeindex int not null,
---     attesterslot int not null,
---     proposerslot int not null,
---     primary key (epoch, validatorindex)
--- );
+drop table if exists validator_performance;
+create table validator_performance (
+    validatorindex int not null,
+    balance bigint not null,
+    performance1d bigint not null,
+    performance7d bigint not null,
+    performance31d bigint not null,
+    performance365d bigint not null,
+    primary key (validatorindex)
+);
+create index idx_validator_performance_balance on validator_performance (balance);
+create index idx_validator_performance_performance1d on validator_performance (performance1d);
+create index idx_validator_performance_performance7d on validator_performance (performance7d);
+create index idx_validator_performance_performance31d on validator_performance (performance31d);
+create index idx_validator_performance_performance365d on validator_performance (performance365d);
 
 drop table if exists proposal_assignments;
 create table proposal_assignments (
@@ -56,7 +59,6 @@ create table proposal_assignments (
       status int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
       primary key (epoch, validatorindex, proposerslot)
 );
-create index idx_proposal_assignments_validatorindex on proposal_assignments (validatorindex);
 
 drop table if exists attestation_assignments;
 create table attestation_assignments (
@@ -77,8 +79,8 @@ create table validator_balances (
     effectivebalance bigint not null,
     primary key (validatorindex, epoch)
 );
-create index idx_validator_balances_validatorindex on validator_balances (validatorindex);
 create index idx_validator_balances_epoch on validator_balances (epoch);
+
 
 drop table if exists validatorqueue_activation;
 create table validatorqueue_activation (
