@@ -1,126 +1,22 @@
-Highcharts.setOptions({
-  credits: {
-    enabled: true,
-    href: 'https://beaconcha.in',
-    text: 'beaconcha.in'
-  },
-  exporting: {
-    scale: 1
-  },
-  title: {
-    style: {
-      color: 'var(--font-color)'
-    }
-  },
-  chart: {
-    animation: false,
-    style: {
-      fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
-      color: 'var(--body-color)',
-      fontSize: '12px'
-    },
-    backgroundColor: 'var(--bg-color)'
-  },
-  legend: {
-    enabled: true,
-    layout: 'horizontal',
-    align: 'center',
-    verticalAlign: 'bottom',
-    borderWidth: 0,
-    itemStyle: {
-      color: 'var(--body-color)',
-      'font-size': '0.8rem',
-      'font-weight': 'lighter'
-    },
-    itemHoverStyle: {
-      color: 'var(--primary)',
-    }
-  },
-  xAxis: {
-    labels: {
-      style: {
-        color: 'var(--body-color)'
-      }
-    },
-  },
-  yAxis: {
-    title: {
-      style: {
-        color: 'var(--body-color)',
-        'font-size': '0.8rem'
-      }
-    },
-    labels: {
-      style: {
-        color: 'var(--body-color)',
-        'font-size': '0.8rem'
-      }
-    }
-  },
-  navigator: {
-    enabled: true,
-    maskFill: 'var(--mask-fill-color)',
-    outlineColor: 'var(--border-color)',
-    handles: {
-      backgroundColor: 'var(--bg-color-nav)',
-      borderColor: 'var(--transparent-font-color)',
-    },
-    xAxis: {
-      gridLineColor: 'var(--border-color)',
-    },
-  },
-  scrollbar: {
-    barBackgroundColor: 'var(--bg-color-nav)',
-    barBorderWidth: 0,
-    buttonArrowColor: 'var(--font-color)',
-    rifleColor: 'var(--dark)',
-    buttonBackgroundColor: 'var(--bg-color-nav)',
-    buttonBorderColor: 'var(--bg-color-transparent)',
-    trackBackgroundColor: 'var(--bg-color)',
-    trackBorderColor: 'var(--border-color-transparent)',
-  },
-  responsive: {
-    rules: [
-      {
-        condition: {
-          maxWidth: 760
-        },
-        chartOptions: {
-          chart: {
-            marginRight: 45
-          },
-          yAxis: [
-            {
-              title: {
-                text: null
-              }
-            },
-            {
-              title: {
-                text: null
-              }
-            }
-          ]
-        }
-      }
-    ]
-  },
-  plotOptions: {
-    line: {
-      animation: false,
-      lineWidth: 2.5
-    }
-  }
-})
-
 $(document).ready(function() {
-  var validatorsDataTable = $('#validators').DataTable({
+  var validatorsDataTable = window.vdt = $('#validators').DataTable({
     processing: true,
     serverSide: false,
     ordering: true,
     searching: false,
     paging: false,
     info: false,
+    preDrawCallback: function() {
+      // this does not always work.. not sure how to solve the staying tooltip
+      try {
+        $('#validators').find('[data-toggle="tooltip"]').tooltip('dispose')
+      } catch (e) {}
+    },
+    drawCallback: function() {
+      $('#validators').find('[data-toggle="tooltip"]').tooltip()
+      if (validatorsDataTable)
+        validatorsDataTable.columns.adjust().responsive.recalc()
+    },
     columnDefs: [
       {
         targets: 0,
@@ -407,7 +303,9 @@ $(document).ready(function() {
           if (el) el.dataset.state = state
         }
         validatorsDataTable.clear()
+        // validatorsDataTable.column(6).visible(true)
         validatorsDataTable.rows.add(result.data).draw()
+        validatorsDataTable.columns.adjust().responsive.recalc()
 
         document.getElementById('stats').style.display = 'flex'
         document.querySelector('#stats-validators-status .stats-box-body').innerText = `pending:  ${validatorsCount.pending}
@@ -521,19 +419,11 @@ function createBalanceChart(effective, balance, utilization) {
       },
       {
         title: {
-          text: 'Validator Effectiveness',
-          style: {
-            color: 'var(--body-color)',
-            'font-size': '0.8rem'
-          }
+          text: 'Validator Effectiveness'
         },
         labels: {
           formatter: function() {
             return (this.value * 100).toFixed(2) + '%'
-          },
-          style: {
-            color: 'var(--body-color)',
-            'font-size': '0.8rem'
           }
         },
         opposite: true
@@ -561,13 +451,7 @@ function createBalanceChart(effective, balance, utilization) {
           }
         }
       }
-    ],
-    plotOptions: {
-      line: {
-        animation: false,
-        lineWidth: 2.5
-      }
-    }
+    ]
   })
 }
 
@@ -592,7 +476,6 @@ function createProposedChart(data) {
         title: {
           text: '# of Possible Proposals'
         },
-        gridLineColor: '#e5e1e1',
         opposite: false
       }
     ],
