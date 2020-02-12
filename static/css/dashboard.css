@@ -74,6 +74,7 @@ ul.multiselect input:focus {
   outline: none;
 }
 
+#validators-table-holder,
 #pending-validators-table-holder,
 #active-validators-table-holder,
 #ejected-validators-table-holder,

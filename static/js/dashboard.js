@@ -1,3 +1,118 @@
+Highcharts.setOptions({
+  credits: {
+    enabled: true,
+    href: 'https://beaconcha.in',
+    text: 'beaconcha.in'
+  },
+  exporting: {
+    scale: 1
+  },
+  title: {
+    style: {
+      color: 'var(--font-color)'
+    }
+  },
+  chart: {
+    animation: false,
+    style: {
+      fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif',
+      color: 'var(--body-color)',
+      fontSize: '12px'
+    },
+    backgroundColor: 'var(--bg-color)'
+  },
+  legend: {
+    enabled: true,
+    layout: 'horizontal',
+    align: 'center',
+    verticalAlign: 'bottom',
+    borderWidth: 0,
+    itemStyle: {
+      color: 'var(--body-color)',
+      'font-size': '0.8rem',
+      'font-weight': 'lighter'
+    },
+    itemHoverStyle: {
+      color: 'var(--primary)',
+    }
+  },
+  xAxis: {
+    labels: {
+      style: {
+        color: 'var(--body-color)'
+      }
+    },
+  },
+  yAxis: {
+    title: {
+      style: {
+        color: 'var(--body-color)',
+        'font-size': '0.8rem'
+      }
+    },
+    labels: {
+      style: {
+        color: 'var(--body-color)',
+        'font-size': '0.8rem'
+      }
+    }
+  },
+  navigator: {
+    enabled: true,
+    maskFill: 'var(--mask-fill-color)',
+    outlineColor: 'var(--border-color)',
+    handles: {
+      backgroundColor: 'var(--bg-color-nav)',
+      borderColor: 'var(--transparent-font-color)',
+    },
+    xAxis: {
+      gridLineColor: 'var(--border-color)',
+    },
+  },
+  scrollbar: {
+    barBackgroundColor: 'var(--bg-color-nav)',
+    barBorderWidth: 0,
+    buttonArrowColor: 'var(--font-color)',
+    rifleColor: 'var(--dark)',
+    buttonBackgroundColor: 'var(--bg-color-nav)',
+    buttonBorderColor: 'var(--bg-color-transparent)',
+    trackBackgroundColor: 'var(--bg-color)',
+    trackBorderColor: 'var(--border-color-transparent)',
+  },
+  responsive: {
+    rules: [
+      {
+        condition: {
+          maxWidth: 760
+        },
+        chartOptions: {
+          chart: {
+            marginRight: 45
+          },
+          yAxis: [
+            {
+              title: {
+                text: null
+              }
+            },
+            {
+              title: {
+                text: null
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  plotOptions: {
+    line: {
+      animation: false,
+      lineWidth: 2.5
+    }
+  }
+})
+
 $(document).ready(function() {
   var validatorsDataTable = $('#validators').DataTable({
     processing: true,
@@ -383,80 +498,33 @@ function createBalanceChart(effective, balance, utilization) {
       enabled: false
     },
     chart: {
-      type: 'line',
-      animation: false,
-      style: {
-        fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
-      },
-      backgroundColor: 'rgb(255, 255, 255)'
+      type: 'line'
     },
     title: {
       text: 'Balance History for all Validators'
     },
-    credits: {
-      enabled: true,
-      href: 'https://beaconcha.in',
-      text: 'beaconcha.in'
-    },
     xAxis: {
       type: 'datetime',
-      labels: {
-        style: {
-          color: 'black'
-        }
-      },
       range: 7 * 24 * 60 * 60 * 1000
     },
     yAxis: [
       {
         title: {
-          text: 'Balance [ETH]',
-          style: {
-            color: 'black'
-            // color: '#26232780',
-            // 'font-size': '0.8rem'
-          }
+          text: 'Balance [ETH]'
         },
         opposite: false,
         labels: {
           formatter: function() {
             return this.value.toFixed(0)
-          },
-          style: {
-            color: 'black'
           }
         }
       },
-      // {
-      //   // softMax: 1,
-      //   // softMin: 0,
-      //   title: {
-      //     text: 'Active Validators',
-      //     style: {
-      //       color: 'black'
-      //       // color: '#26232780',
-      //       // 'font-size': '0.8rem'
-      //     }
-      //   },
-      //   labels: {
-      //     // formatter: function() {
-      //     //   return (this.value * 100).toFixed(0) + '%'
-      //     // },
-      //     style: {
-      //       color: 'black'
-      //     }
-      //   },
-      //   opposite: true
-      // }
       {
-        //softMax: 1,
-        //softMin: 0,
         title: {
           text: 'Validator Effectiveness',
           style: {
-            color: 'black'
-            // color: '#26232780',
-            // 'font-size': '0.8rem'
+            color: 'var(--body-color)',
+            'font-size': '0.8rem'
           }
         },
         labels: {
@@ -464,7 +532,8 @@ function createBalanceChart(effective, balance, utilization) {
             return (this.value * 100).toFixed(2) + '%'
           },
           style: {
-            color: 'black'
+            color: 'var(--body-color)',
+            'font-size': '0.8rem'
           }
         },
         opposite: true
@@ -492,92 +561,12 @@ function createBalanceChart(effective, balance, utilization) {
           }
         }
       }
-      // {
-      //   name: 'Validator Count',
-      //   yAxis: 1,
-      //   data: utilization,
-      //   tooltip: {
-      //     pointFormatter: function() {
-      //       return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${(this.y * 100).toFixed(2)}%</b><br/>`
-      //     }
-      //   }
-      // }
     ],
     plotOptions: {
       line: {
         animation: false,
         lineWidth: 2.5
       }
-    },
-    legend: {
-      enabled: true,
-      layout: 'horizontal',
-      align: 'center',
-      verticalAlign: 'bottom',
-      borderWidth: 0,
-      itemStyle: {
-        color: '#262327',
-        'font-size': '0.8rem',
-        'font-weight': 'lighter'
-      },
-      itemHoverStyle: {
-        color: '#ff8723'
-      }
-    },
-    credits: {
-      enabled: false
-    },
-    navigator: {
-      maskFill: '#1473e631',
-      outlineColor: '#e5e1e1',
-      handles: {
-        backgroundColor: '#f5f3f3',
-        borderColor: '#26232780'
-      },
-      xAxis: {
-        gridLineColor: '#e5e1e1',
-        labels: {
-          style: {
-            color: '#26232780'
-          }
-        }
-      }
-    },
-    scrollbar: {
-      barBackgroundColor: '#ebe7e7',
-      barBorderWidth: 0,
-      buttonArrowColor: '#262327',
-      rifleColor: '#262327',
-      buttonBackgroundColor: '#ebe7e7',
-      buttonBorderColor: '#ebe7e7',
-      trackBackgroundColor: '#f5f3f3',
-      trackBorderColor: '#e5e1e180'
-    },
-    responsive: {
-      rules: [
-        {
-          condition: {
-            maxWidth: 760
-          },
-          chartOptions: {
-            chart: {
-              marginRight: 45
-            },
-            yAxis: [
-              {
-                title: {
-                  text: null
-                }
-              },
-              {
-                title: {
-                  text: null
-                }
-              }
-            ]
-          }
-        }
-      ]
     }
   })
 }
@@ -587,48 +576,21 @@ function createProposedChart(data) {
   var missed = data.map(d => [d.Day * 1000, d.Missed])
   var orphaned = data.map(d => [d.Day * 1000, d.Orphaned])
   Highcharts.stockChart('proposed-chart', {
-    exporting: {
-      scale: 1
+    chart: {
+      type: 'column'
     },
     title: {
-      text: 'Proposal History for all Validators'
-    },
-    credits: {
-      enabled: true,
-      href: 'https://beaconcha.in',
-      text: 'beaconcha.in'
-    },
-    chart: {
-      type: 'column',
-      animation: false,
-      style: {
-        fontFamily: 'Helvetica Neue", Helvetica, Arial, sans-serif'
-      },
-      backgroundColor: 'rgb(255, 255, 255)'
+      text: 'Proposal History for all Validators',
     },
     xAxis: {
       lineWidth: 0,
       tickColor: '#e5e1e1',
-      labels: {
-        style: {
-          color: 'black'
-        }
-      },
       range: 7 * 24 * 3600 * 1000
     },
     yAxis: [
       {
         title: {
-          text: '# of Possible Proposals',
-          style: {
-            color: 'black'
-            // 'font-size': '0.8rem'
-          }
-        },
-        labels: {
-          style: {
-            color: 'black'
-          }
+          text: '# of Possible Proposals'
         },
         gridLineColor: '#e5e1e1',
         opposite: false
@@ -642,21 +604,6 @@ function createProposedChart(data) {
           forced: true,
           units: [['day', [1]]]
         }
-      }
-    },
-    legend: {
-      enabled: true,
-      layout: 'horizontal',
-      align: 'center',
-      verticalAlign: 'bottom',
-      borderWidth: 0,
-      itemStyle: {
-        color: '#262327',
-        'font-size': '0.8rem',
-        'font-weight': 'lighter'
-      },
-      itemHoverStyle: {
-        color: '#ff8723'
       }
     },
     series: [
@@ -678,58 +625,6 @@ function createProposedChart(data) {
     ],
     rangeSelector: {
       enabled: false
-    },
-    navigator: {
-      maskFill: '#1473e631',
-      outlineColor: '#e5e1e1',
-      handles: {
-        backgroundColor: '#f5f3f3',
-        borderColor: 'black'
-      },
-      xAxis: {
-        gridLineColor: '#e5e1e1',
-        labels: {
-          style: {
-            color: 'black'
-          }
-        }
-      }
-    },
-    scrollbar: {
-      barBackgroundColor: '#ebe7e7',
-      barBorderWidth: 0,
-      buttonArrowColor: '#262327',
-      rifleColor: '#262327',
-      buttonBackgroundColor: '#ebe7e7',
-      buttonBorderColor: '#ebe7e7',
-      trackBackgroundColor: '#f5f3f3',
-      trackBorderColor: '#e5e1e180'
-    },
-    responsive: {
-      rules: [
-        {
-          condition: {
-            maxWidth: 760
-          },
-          chartOptions: {
-            chart: {
-              marginRight: 45
-            },
-            yAxis: [
-              {
-                title: {
-                  text: null
-                }
-              },
-              {
-                title: {
-                  text: null
-                }
-              }
-            ]
-          }
-        }
-      ]
     }
   })
 }
