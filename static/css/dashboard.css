@@ -20,11 +20,6 @@ ul.multiselect {
   z-index: 99;
 }
 
-ul.multiselect li.input {
-  list-style: none;
-  float: left;
-}
-
 ul.multiselect li.item {
   list-style: none;
   float: left;
@@ -32,6 +27,7 @@ ul.multiselect li.item {
   border-radius: 5px;
   margin: 2px;
   padding: 0 5px;
+  color: black;
   background-color: lightblue;
 }
 
@@ -57,15 +53,28 @@ ul.multiselect li.item .remove-validator {
   cursor: pointer;
 }
 
-ul.multiselect li span {
-  margin-top: 0.2rem;
-}
-
 ul.multiselect li.item .remove-validator:hover {
   filter: drop-shadow(1px 2px 3px #888) invert(0.2);
 }
 
-ul.multiselect input {
+ul.multiselect li.input {
+  list-style: none;
+  float: left;
+  margin: 2px;
+  border-radius: 5px;
+}
+
+ul.multiselect li.input span {
+  background: white;
+  border: 1px solid var(--bg-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+}
+
+ul.multiselect li.input input {
+  margin: 0 2px;
+  background: var(--bg-color);
+  color: var(--font-color);
   border: none;
   padding: 0 0.2rem;
 }

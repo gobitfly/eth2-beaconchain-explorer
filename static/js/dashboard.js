@@ -303,8 +303,8 @@ $(document).ready(function() {
           if (el) el.dataset.state = state
         }
         validatorsDataTable.clear()
-        // validatorsDataTable.column(6).visible(true)
         validatorsDataTable.rows.add(result.data).draw()
+        validatorsDataTable.column(6).visible(false)
         validatorsDataTable.columns.adjust().responsive.recalc()
 
         document.getElementById('stats').style.display = 'flex'
