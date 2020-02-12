@@ -218,12 +218,12 @@ func UpdateValidatorPerformance() error {
 
 	var startBalances []*types.ValidatorBalance
 	err = tx.Select(&startBalances, `
-			SELECT 
-			       validators.validatorindex, 
-			       amount AS balance 
-			FROM blocks_deposits 
-			    LEFT JOIN validators ON validators.pubkey = blocks_deposits.publickey
-			WHERE validators.validatorindex IS NOT NULL;
+			select 
+				   validator_balances.validatorindex, 
+				   validator_balances.balance 
+			FROM validators 
+				LEFT JOIN validator_balances ON validators.activationepoch = validator_balances.epoch AND validators.validatorindex = validator_balances.validatorindex
+			WHERE validator_balances.validatorindex IS NOT NULL;
 			`)
 	if err != nil {
 		return fmt.Errorf("error retrieving initial validator balances data: %w", err)
@@ -259,6 +259,7 @@ func UpdateValidatorPerformance() error {
 
 		currentBalance := balances[int64(currentEpoch)]
 		startBalance := int64(startBalanceMap[validator])
+
 		if currentBalance == 0 || startBalance == 0 {
 			continue
 		}
@@ -284,6 +285,19 @@ func UpdateValidatorPerformance() error {
 		performance7d := currentBalance - balance7d
 		performance31d := currentBalance - balance31d
 		performance365d := currentBalance - balance365d
+
+		if performance1d > 10000000 {
+			performance1d = 0
+		}
+		if performance7d > 10000000*7 {
+			performance7d = 0
+		}
+		if performance31d > 10000000*31 {
+			performance31d = 0
+		}
+		if performance365d > 10000000*365 {
+			performance365d = 0
+		}
 
 		_, err := tx.Exec("INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d) VALUES ($1, $2, $3, $4, $5, $6)",
 			validator, currentBalance, performance1d, performance7d, performance31d, performance365d)

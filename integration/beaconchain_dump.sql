@@ -307,6 +307,23 @@ ALTER TABLE public.validators OWNER TO beaconchain;
 -- Name: validators2; Type: TABLE; Schema: public; Owner: beaconchain
 --
 
+create table validator_performance (
+                                       validatorindex int not null,
+                                       balance bigint not null,
+                                       performance1d bigint not null,
+                                       performance7d bigint not null,
+                                       performance31d bigint not null,
+                                       performance365d bigint not null,
+                                       primary key (validatorindex)
+);
+create index idx_validator_performance_balance on validator_performance (balance);
+create index idx_validator_performance_performance1d on validator_performance (performance1d);
+create index idx_validator_performance_performance7d on validator_performance (performance7d);
+create index idx_validator_performance_performance31d on validator_performance (performance31d);
+create index idx_validator_performance_performance365d on validator_performance (performance365d);
+
+ALTER TABLE public.validator_performance OWNER TO beaconchain;
+
 CREATE TABLE public.validators2 (
     validatorindex integer NOT NULL,
     pubkey bytea NOT NULL,
