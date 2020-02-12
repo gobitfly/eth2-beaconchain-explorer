@@ -77,10 +77,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
-		"3": "performance1d",
-		"4": "performance7d",
-		"5": "performance31d",
-		"6": "performance365d",
+		"4": "performance1d",
+		"5": "performance7d",
+		"6": "performance31d",
+		"7": "performance365d",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -103,6 +103,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 
 	var performanceData []*types.ValidatorPerformance
 	err = db.DB.Select(&performanceData, `SELECT 
+											   ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
 											   validator_performance.*,
 											   validators.pubkey 
 										FROM validator_performance 
@@ -122,6 +123,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	for i, b := range performanceData {
 
 		tableData[i] = []interface{}{
+			b.Rank,
 			utils.FormatValidator(b.Index),
 			fmt.Sprintf("%x", b.PublicKey),
 			fmt.Sprintf("%v", b.Balance),

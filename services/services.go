@@ -31,6 +31,7 @@ func Init() {
 
 func performanceDataUpdater() {
 	for true {
+		time.Sleep(time.Hour)
 		logger.Info("updating validator performance data")
 		err := UpdateValidatorPerformance()
 
@@ -39,7 +40,6 @@ func performanceDataUpdater() {
 		} else {
 			logger.Info("validator performance data update completed")
 		}
-		time.Sleep(time.Hour)
 	}
 }
 
