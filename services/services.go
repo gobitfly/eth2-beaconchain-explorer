@@ -21,7 +21,7 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	go performanceDataUpdater()
+	// go performanceDataUpdater()
 
 	ready.Add(2)
 	go epochUpdater()

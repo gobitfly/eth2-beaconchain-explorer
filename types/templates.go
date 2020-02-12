@@ -109,6 +109,10 @@ type ValidatorsPageDataValidators struct {
 	State                      string `db:"state"`
 	MissedProposals            uint64 `db:"missedproposals"`
 	ExecutedProposals          uint64 `db:"executedproposals"`
+	Performance1d              uint64 `db:"performance1d"`
+	Performance7d              uint64 `db:"performance7d"`
+	Performance31d             uint64 `db:"performance31d"`
+	Performance365d            uint64 `db:"performance365d"`
 }
 
 // ValidatorPageData is a struct to hold data for the validators page

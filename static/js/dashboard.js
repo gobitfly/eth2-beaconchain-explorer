@@ -100,18 +100,6 @@ $(document).ready(function() {
       }
     ]
   })
-  $('#validators').on('draw.dt',function(){
-    console.log('dt.draw')
-    validatorsDataTable.columns.adjust().responsive.recalc()
-  })
-  validatorsDataTable.on('draw',function(){
-    console.log('draw')
-    validatorsDataTable.columns.adjust().responsive.recalc()
-  })
-  $('#validators').on('init.dt',function(){
-    console.log('dt.init')
-    // validatorsDataTable.columns.adjust().responsive.recalc()
-  })
 
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,

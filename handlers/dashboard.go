@@ -236,7 +236,6 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	logger.Errorf("getting dashboard-validators %v %v", services.LatestEpoch(), services.LatestEpoch()-1)
 	q := r.URL.Query()
 
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
@@ -268,7 +267,11 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			a.state,
 			COALESCE(p1.c, 0) as executedproposals,
-			COALESCE(p2.c, 0) as missedproposals
+			COALESCE(p2.c, 0) as missedproposals,
+			COALESCE(r.performance1d, 0) as performance1d,
+			COALESCE(r.performance7d, 0) as performance7d,
+			COALESCE(r.performance31d, 0) as performance31d,
+			COALESCE(r.performance365d, 0) as performance365d
 		FROM validators
 		INNER JOIN (
 			SELECT validatorindex,
@@ -283,17 +286,18 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			FROM validators
 		) a ON a.validatorindex = validators.validatorindex
 		LEFT JOIN (
-			select validatorindex, count(*) as c 
-			from proposal_assignments
-			where status = 1
-			group by validatorindex
+			SELECT validatorindex, count(*) AS c 
+			FROM proposal_assignments
+			WHERE status = 1
+			GROUP BY validatorindex
 		) p1 ON validators.validatorindex = p1.validatorindex
 		LEFT JOIN (
-			select validatorindex, count(*) as c 
-			from proposal_assignments
-			where status = 2
-			group by validatorindex
+			SELECT validatorindex, count(*) AS c 
+			FROM proposal_assignments
+			WHERE status = 2
+			GROUP BY validatorindex
 		) p2 ON validators.validatorindex = p2.validatorindex
+		LEFT JOIN validator_performance r ON validators.validatorindex = r.validatorindex
 		WHERE validators.validatorindex = ANY($3)
 		LIMIT 100`, lastestEpoch, firstSlotOfPreviousEpoch, filter)
 
@@ -309,8 +313,6 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			[]interface{}{
-				// utils.FormatBalance(v.CurrentBalance),
-				// utils.FormatBalance(v.EffectiveBalance),
 				fmt.Sprintf("%.4f ETH", float64(v.CurrentBalance)/float64(1e9)),
 				fmt.Sprintf("%.1f ETH", float64(v.EffectiveBalance)/float64(1e9)),
 			},
@@ -351,6 +353,13 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = append(tableData[i], []interface{}{
 			v.ExecutedProposals,
 			v.MissedProposals,
+		})
+
+		tableData[i] = append(tableData[i], []interface{}{
+			v.Performance1d,
+			v.Performance7d,
+			v.Performance31d,
+			v.Performance365d,
 		})
 	}
 
