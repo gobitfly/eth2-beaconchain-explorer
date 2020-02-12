@@ -218,12 +218,12 @@ func UpdateValidatorPerformance() error {
 
 	var startBalances []*types.ValidatorBalance
 	err = tx.Select(&startBalances, `
-			select 
-				   validator_balances.validatorindex, 
-				   validator_balances.balance 
-			FROM validators 
-				LEFT JOIN validator_balances ON validators.activationepoch = validator_balances.epoch AND validators.validatorindex = validator_balances.validatorindex
-			WHERE validator_balances.validatorindex IS NOT NULL
+			SELECT 
+			       validators.validatorindex, 
+			       amount AS balance 
+			FROM blocks_deposits 
+			    LEFT JOIN validators ON validators.pubkey = blocks_deposits.publickey
+			WHERE validators.validatorindex IS NOT NULL;
 			`)
 	if err != nil {
 		return fmt.Errorf("error retrieving initial validator balances data: %w", err)
@@ -231,7 +231,7 @@ func UpdateValidatorPerformance() error {
 
 	startBalanceMap := make(map[uint64]uint64)
 	for _, balance := range startBalances {
-		startBalanceMap[balance.Index] = balance.Balance
+		startBalanceMap[balance.Index] += balance.Balance
 	}
 
 	var balances []*types.ValidatorBalance
