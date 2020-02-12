@@ -158,6 +158,13 @@ $(document).ready(function() {
     removeValidator(this.parentElement.dataset.validatorIndex)
   })
 
+  $('.multiselect-border input').on('focus', function(event) {
+    $('.multiselect-border').addClass('focused')
+  })
+  $('.multiselect-border input').on('blur', function(event) {
+    $('.multiselect-border').removeClass('focused')
+  })
+
   var validators = []
   var validatorsCount = {
     pending: 0,
@@ -398,6 +405,9 @@ function createBalanceChart(effective, balance, utilization) {
     chart: {
       type: 'line'
     },
+    legend: {
+      enabled: true
+    },
     title: {
       text: 'Balance History for all Validators'
     },
@@ -466,6 +476,10 @@ function createProposedChart(data) {
     title: {
       text: 'Proposal History for all Validators',
     },
+    legend: {
+      enabled: true
+    },
+    colors: ["#7cb5ec", "#ff835c", "#e4a354", "#2b908f", "#f45b5b", "#91e8e1"],
     xAxis: {
       lineWidth: 0,
       tickColor: '#e5e1e1',
@@ -497,12 +511,12 @@ function createProposedChart(data) {
       },
       {
         name: 'Missed',
-        color: '#343a40',
+        color: '#ff835c',
         data: missed
       },
       {
         name: 'Orphaned',
-        color: '#dc3545',
+        color: '#e4a354',
         data: orphaned
       }
     ],
