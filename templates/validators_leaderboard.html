@@ -1,0 +1,75 @@
+{{ define "js"}}
+	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.js"></script>
+	<script>
+        $('#leaderboard').DataTable({
+            processing: true,
+            serverSide: true,
+            ordering: true,
+            searching: true,
+            ajax: '/validators/leaderboard/data',
+            pagingType: 'full',
+            columnDefs: [
+                {
+                    targets: 0,
+                    data: '0',
+                    "orderable": false
+                }, {
+                    targets: 1,
+                    data: '1',
+                    render: function (data, type, row, meta) {
+                        return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+                    },
+                    "orderable": false
+                }, {
+                    targets: 2,
+                    data: '2',
+                    render: function (data, type, row, meta) {
+                        return (data / 10e8).toFixed(4) + ' ETH'
+                    },
+                    "orderable": false
+                }
+            ],
+            order: [[4, "desc"]]
+        })
+	</script>
+{{end}}
+
+{{ define "css"}}
+	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.css"/>
+
+{{end}}
+
+{{ define "content"}}
+	<div class="mb-3">
+		<div class="d-md-flex py-2 justify-content-md-between">
+			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-medal"></i> Validator Staking Leaderboard</h1>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+					<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+					<li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Leaderboard</li>
+				</ol>
+			</nav>
+		</div>
+	</div>
+	<div class="card">
+		<div class="card-body">
+			<div class="table-responsive col-sm-12 mb-3 pt-1">
+				<table class="table table-sm" id="leaderboard" width="100%">
+					<thead>
+					<tr>
+						<th>Public Key</th>
+						<th>Index</th>
+						<th>Balance</th>
+						<th>Income 1 day</th>
+						<th>Income 7 days</th>
+						<th>Income 31 days</th>
+						<th>Income 1 year</th>
+					</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+{{end}}
