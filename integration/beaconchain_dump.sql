@@ -259,6 +259,22 @@ CREATE TABLE public.validator_balances (
 ALTER TABLE public.validator_balances OWNER TO beaconchain;
 
 --
+-- Name: validator_performance; Type: TABLE; Schema: public; Owner: beaconchain
+--
+
+CREATE TABLE public.validator_performance (
+    validatorindex integer NOT NULL,
+    balance bigint NOT NULL,
+    performance1d bigint NOT NULL,
+    performance7d bigint NOT NULL,
+    performance31d bigint NOT NULL,
+    performance365d bigint NOT NULL
+);
+
+
+ALTER TABLE public.validator_performance OWNER TO beaconchain;
+
+--
 -- Name: validatorqueue_activation; Type: TABLE; Schema: public; Owner: beaconchain
 --
 
@@ -306,23 +322,6 @@ ALTER TABLE public.validators OWNER TO beaconchain;
 --
 -- Name: validators2; Type: TABLE; Schema: public; Owner: beaconchain
 --
-
-create table validator_performance (
-                                       validatorindex int not null,
-                                       balance bigint not null,
-                                       performance1d bigint not null,
-                                       performance7d bigint not null,
-                                       performance31d bigint not null,
-                                       performance365d bigint not null,
-                                       primary key (validatorindex)
-);
-create index idx_validator_performance_balance on validator_performance (balance);
-create index idx_validator_performance_performance1d on validator_performance (performance1d);
-create index idx_validator_performance_performance7d on validator_performance (performance7d);
-create index idx_validator_performance_performance31d on validator_performance (performance31d);
-create index idx_validator_performance_performance365d on validator_performance (performance365d);
-
-ALTER TABLE public.validator_performance OWNER TO beaconchain;
 
 CREATE TABLE public.validators2 (
     validatorindex integer NOT NULL,
@@ -1488,6 +1487,14 @@ COPY public.validator_balances (epoch, validatorindex, balance, effectivebalance
 
 
 --
+-- Data for Name: validator_performance; Type: TABLE DATA; Schema: public; Owner: beaconchain
+--
+
+COPY public.validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d) FROM stdin;
+\.
+
+
+--
 -- Data for Name: validatorqueue_activation; Type: TABLE DATA; Schema: public; Owner: beaconchain
 --
 
@@ -1686,6 +1693,14 @@ ALTER TABLE ONLY public.validator_balances
 
 
 --
+-- Name: validator_performance validator_performance_pkey; Type: CONSTRAINT; Schema: public; Owner: beaconchain
+--
+
+ALTER TABLE ONLY public.validator_performance
+    ADD CONSTRAINT validator_performance_pkey PRIMARY KEY (validatorindex);
+
+
+--
 -- Name: validatorqueue_activation validatorqueue_activation_pkey; Type: CONSTRAINT; Schema: public; Owner: beaconchain
 --
 
@@ -1707,6 +1722,41 @@ ALTER TABLE ONLY public.validatorqueue_exit
 
 ALTER TABLE ONLY public.validators2
     ADD CONSTRAINT validators2_pkey PRIMARY KEY (validatorindex);
+
+
+--
+-- Name: idx_validator_performance_balance; Type: INDEX; Schema: public; Owner: beaconchain
+--
+
+CREATE INDEX idx_validator_performance_balance ON public.validator_performance USING btree (balance);
+
+
+--
+-- Name: idx_validator_performance_performance1d; Type: INDEX; Schema: public; Owner: beaconchain
+--
+
+CREATE INDEX idx_validator_performance_performance1d ON public.validator_performance USING btree (performance1d);
+
+
+--
+-- Name: idx_validator_performance_performance31d; Type: INDEX; Schema: public; Owner: beaconchain
+--
+
+CREATE INDEX idx_validator_performance_performance31d ON public.validator_performance USING btree (performance31d);
+
+
+--
+-- Name: idx_validator_performance_performance365d; Type: INDEX; Schema: public; Owner: beaconchain
+--
+
+CREATE INDEX idx_validator_performance_performance365d ON public.validator_performance USING btree (performance365d);
+
+
+--
+-- Name: idx_validator_performance_performance7d; Type: INDEX; Schema: public; Owner: beaconchain
+--
+
+CREATE INDEX idx_validator_performance_performance7d ON public.validator_performance USING btree (performance7d);
 
 
 --
