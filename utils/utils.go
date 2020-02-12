@@ -107,7 +107,7 @@ func EpochToTime(epoch uint64) time.Time {
 }
 
 // FormatBalance will return a string for a balance
-func FormatBalance(balance int64) string {
+func FormatBalance(balance uint64) string {
 	return fmt.Sprintf("%.2f ETH", float64(balance)/float64(1000000000))
 }
 
