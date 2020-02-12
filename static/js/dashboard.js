@@ -12,11 +12,14 @@ $(document).ready(function() {
         $('#validators').find('[data-toggle="tooltip"]').tooltip('dispose')
       } catch (e) {}
     },
-    drawCallback: function() {
+    drawCallback: function(settings) {
       $('#validators').find('[data-toggle="tooltip"]').tooltip()
-      if (validatorsDataTable)
-        validatorsDataTable.columns.adjust().responsive.recalc()
+      // if (validatorsDataTable)
+      // console.log(arguments)
+      // var api = new $.fn.dataTable.Api( settings )
+      // api.columns.adjust().responsive.recalc()
     },
+    order: [[1,'asc']],
     columnDefs: [
       {
         targets: 0,
@@ -96,6 +99,18 @@ $(document).ready(function() {
         }
       }
     ]
+  })
+  $('#validators').on('draw.dt',function(){
+    console.log('dt.draw')
+    validatorsDataTable.columns.adjust().responsive.recalc()
+  })
+  validatorsDataTable.on('draw',function(){
+    console.log('draw')
+    validatorsDataTable.columns.adjust().responsive.recalc()
+  })
+  $('#validators').on('init.dt',function(){
+    console.log('dt.init')
+    // validatorsDataTable.columns.adjust().responsive.recalc()
   })
 
   var bhValidators = new Bloodhound({
@@ -204,7 +219,12 @@ $(document).ready(function() {
     var usp = new URLSearchParams(window.location.search)
     var validatorsStr = usp.get('validators')
     if (!validatorsStr) {
-      validators = []
+      var validatorsStr = localStorage.getItem('dashboard_validators')
+      if (validatorsStr) {
+        validators = JSON.parse(validatorsStr)
+      } else {
+        validators = []
+      }
       return
     }
     validators = validatorsStr.split(',')
@@ -258,6 +278,7 @@ $(document).ready(function() {
     // }
     // lastStateUpdate = Date.now()
     // updatingState = false
+    localStorage.setItem('dashboard_validators', JSON.stringify(validators))
     var qryStr = '?validators=' + validators.join(',')
     var newUrl = window.location.pathname + qryStr
     window.history.pushState(null, 'Dashboard', newUrl)
@@ -312,7 +333,8 @@ $(document).ready(function() {
         validatorsDataTable.clear()
         validatorsDataTable.rows.add(result.data).draw()
         validatorsDataTable.column(6).visible(false)
-        validatorsDataTable.columns.adjust().responsive.recalc()
+
+        requestAnimationFrame(()=>{validatorsDataTable.columns.adjust().responsive.recalc()})
 
         document.getElementById('stats').style.display = 'flex'
         document.querySelector('#stats-validators-status .stats-box-body').innerText = `pending:  ${validatorsCount.pending}
