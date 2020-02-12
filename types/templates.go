@@ -109,6 +109,8 @@ type ValidatorsPageDataValidators struct {
 	State                      string `db:"state"`
 	MissedProposals            uint64 `db:"missedproposals"`
 	ExecutedProposals          uint64 `db:"executedproposals"`
+	MissedAttestations         uint64 `db:"missedattestations"`
+	ExecutedAttestations       uint64 `db:"executedattestations"`
 	Performance1d              uint64 `db:"performance1d"`
 	Performance7d              uint64 `db:"performance7d"`
 	Performance31d             uint64 `db:"performance31d"`
