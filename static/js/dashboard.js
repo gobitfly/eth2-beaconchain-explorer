@@ -14,10 +14,6 @@ $(document).ready(function() {
     },
     drawCallback: function(settings) {
       $('#validators').find('[data-toggle="tooltip"]').tooltip()
-      // if (validatorsDataTable)
-      // console.log(arguments)
-      // var api = new $.fn.dataTable.Api( settings )
-      // api.columns.adjust().responsive.recalc()
     },
     order: [[1,'asc']],
     columnDefs: [
@@ -126,7 +122,6 @@ $(document).ready(function() {
       source: bhValidators,
       display: 'index',
       templates: {
-        // header: '<h3>Validators</h3>',
         suggestion: function(data) {
           return `<div>${data.index}: ${data.pubkey.substring(0, 16)}…</div>`
         }
@@ -168,27 +163,25 @@ $(document).ready(function() {
     $('.multiselect-border').removeClass('focused')
   })
 
-  var validators = []
-  var validatorsCount = {
+  var state = {}
+  state.validators = []
+  state.validatorsCount = {
     pending: 0,
     active: 0,
     ejected: 0,
     offline: 0
   }
-  var lastStateUpdate = 0 // Date.now()
-  var updatingState = false
 
   setValidatorsFromURL()
   renderSelectedValidators()
   updateState()
-  // renderCharts()
 
   function renderSelectedValidators() {
     var elHolder = document.getElementById('selected-validators')
     $('#selected-validators .item').remove()
     var elsItems = []
-    for (var i = 0; i < validators.length; i++) {
-      var v = validators[i]
+    for (var i = 0; i < state.validators.length; i++) {
+      var v = state.validators[i]
       var elItem = document.createElement('li')
       elItem.classList = 'item'
       elItem.dataset.validatorIndex = v
@@ -200,7 +193,7 @@ $(document).ready(function() {
 
   function renderDashboardInfo() {
     var el = document.getElementById('dashboard-info')
-    el.innerText = `Found ${validatorsCount.pending} pending, ${validatorsCount.active_online + validatorsCount.active_offline} active and ${validatorsCount.exited} exited validators`
+    el.innerText = `Found ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online + state.validatorsCount.active_offline} active and ${state.validatorsCount.exited} exited validators`
   }
 
   function setValidatorsFromURL() {
@@ -209,36 +202,36 @@ $(document).ready(function() {
     if (!validatorsStr) {
       var validatorsStr = localStorage.getItem('dashboard_validators')
       if (validatorsStr) {
-        validators = JSON.parse(validatorsStr)
+        state.validators = JSON.parse(validatorsStr)
       } else {
-        validators = []
+        state.validators = []
       }
       return
     }
-    validators = validatorsStr.split(',')
-    validators = validators.filter((v, i) => validators.indexOf(v) === i)
-    validators.sort(sortValidators)
+    state.validators = validatorsStr.split(',')
+    state.validators = state.validators.filter((v, i) => state.validators.indexOf(v) === i)
+    state.validators.sort(sortValidators)
   }
 
   function addValidator(index) {
-    if (validators.length >= 100) {
+    if (state.validators.length >= 100) {
       alert('Too much validators, you can not add more than 100 validators to your dashboard!')
       return
     }
-    for (var i = 0; i < validators.length; i++) {
-      if (validators[i] === index) return
+    for (var i = 0; i < state.validators.length; i++) {
+      if (state.validators[i] === index) return
     }
-    validators.push(index)
-    validators.sort(sortValidators)
+    state.validators.push(index)
+    state.validators.sort(sortValidators)
     renderSelectedValidators()
     updateState()
   }
 
   function removeValidator(index) {
-    for (var i = 0; i < validators.length; i++) {
-      if (validators[i] === index) {
-        validators.splice(i, 1)
-        validators.sort(sortValidators)
+    for (var i = 0; i < state.validators.length; i++) {
+      if (state.validators[i] === index) {
+        state.validators.splice(i, 1)
+        state.validators.sort(sortValidators)
         renderSelectedValidators()
         updateState()
         return
@@ -253,21 +246,8 @@ $(document).ready(function() {
   }
 
   function updateState() {
-    // console.log('updateState 1')
-    // delay update if validator-set changes with high frequency
-    // var now = Date.now()
-    // var dt = now - lastStateUpdate
-    // if (dt < 1000) {
-    //   console.log('updateState 2', updatingState)
-    //   if (updatingState) return
-    //   updatingState = true
-    //   setTimeout(updateState, 1000 - dt)
-    //   return
-    // }
-    // lastStateUpdate = Date.now()
-    // updatingState = false
-    localStorage.setItem('dashboard_validators', JSON.stringify(validators))
-    var qryStr = '?validators=' + validators.join(',')
+    localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
+    var qryStr = '?validators=' + state.validators.join(',')
     var newUrl = window.location.pathname + qryStr
     window.history.pushState(null, 'Dashboard', newUrl)
     var t0 = Date.now()
@@ -282,10 +262,6 @@ $(document).ready(function() {
 1 day: ${(result.lastDay/1e9).toFixed(4)} ETH
 7 days: ${(result.lastWeek/1e9).toFixed(4)} ETH
 31 days: ${(result.lastMonth/1e9).toFixed(4)} ETH`
-        // document.querySelector('#stats-earnings-total .stats-box-body').innerText = (result.total/1e9).toFixed(4)+' ETH'
-        // document.querySelector('#stats-earnings-lastDay .stats-box-body').innerText = (result.lastDay/1e9).toFixed(4)+' ETH'
-        // document.querySelector('#stats-earnings-lastWeek .stats-box-body').innerText = (result.lastWeek/1e9).toFixed(4)+' ETH'
-        // document.querySelector('#stats-earnings-lastMonth .stats-box-body').innerText = (result.lastMonth/1e9).toFixed(4)+' ETH'
       }
     })
     $.ajax({
@@ -301,22 +277,23 @@ $(document).ready(function() {
         // 0:pubkey, 1:idx, 2:[currbal,effbal], 3:state, 4:[actepoch,acttime], 5:[exit,exittime], 6:[wd,wdt], 7:[lasta,lastat], 8:[exprop,misprop]
         console.log(`latestEpoch: ${result.latestEpoch}`)
         var latestEpoch = result.latestEpoch
-        validatorsCount.pending = 0
-        validatorsCount.active_online = 0
-        validatorsCount.active_offline = 0
-        validatorsCount.slashing_online = 0
-        validatorsCount.slashing_offline = 0
-        validatorsCount.exiting_online = 0
-        validatorsCount.exiting_offline = 0
-        validatorsCount.exited  = 0
+        state.validatorsCount.pending = 0
+        state.validatorsCount.active_online = 0
+        state.validatorsCount.active_offline = 0
+        state.validatorsCount.slashing_online = 0
+        state.validatorsCount.slashing_offline = 0
+        state.validatorsCount.exiting_online = 0
+        state.validatorsCount.exiting_offline = 0
+        state.validatorsCount.exited  = 0
 
         for (var i=0; i<result.data.length; i++) {
           var v = result.data[i]
-          var state = v[3]
-          if (!validatorsCount[state]) validatorsCount[state] = 0
-          validatorsCount[state]++
-          var el = document.querySelector(`#selected-validators .item[data-validator-index="${v[1]}"]`)
-          if (el) el.dataset.state = state
+          var vIndex = v[1]
+          var vState = v[3]
+          if (!state.validatorsCount[vState]) state.validatorsCount[vState] = 0
+          state.validatorsCount[vState]++
+          var el = document.querySelector(`#selected-validators .item[data-validator-index="${vIndex}"]`)
+          if (el) el.dataset.state = vState
         }
         validatorsDataTable.clear()
         validatorsDataTable.rows.add(result.data).draw()
@@ -325,27 +302,13 @@ $(document).ready(function() {
         requestAnimationFrame(()=>{validatorsDataTable.columns.adjust().responsive.recalc()})
 
         document.getElementById('stats').style.display = 'flex'
-        document.querySelector('#stats-validators-status .stats-box-body').innerText = `pending:  ${validatorsCount.pending}
-active:   ${validatorsCount.active_online} / ${validatorsCount.active_offline}
-slashing: ${validatorsCount.slashing_online} / ${validatorsCount.slashing_offline}
-exiting:  ${validatorsCount.exiting_online} / ${validatorsCount.exiting_offline}
-exited:   ${validatorsCount.exited}`
+        document.querySelector('#stats-validators-status .stats-box-body').innerText = `pending:  ${state.validatorsCount.pending}
+active:   ${state.validatorsCount.active_online} / ${state.validatorsCount.active_offline}
+slashing: ${state.validatorsCount.slashing_online} / ${state.validatorsCount.slashing_offline}
+exiting:  ${state.validatorsCount.exiting_online} / ${state.validatorsCount.exiting_offline}
+exited:   ${state.validatorsCount.exited}`
 
         document.getElementById('validators-table-holder').style.display = 'block'
-        // activeTable.clear()
-        // ejectedTable.clear()
-        // offlineTable.clear()
-
-        // if (validatorsCount.pending) pendingTable.rows.add(dataPending).draw()
-        // if (validatorsCount.active) activeTable.rows.add(dataActive).draw()
-        // if (validatorsCount.ejected) ejectedTable.rows.add(dataEjected).draw()
-        // if (validatorsCount.offline) offlineTable.rows.add(dataOffline).draw()
-// 
-        // document.getElementById('pending-validators-table-holder').style.display = validatorsCount.pending ? 'block' : 'none'
-        // document.getElementById('active-validators-table-holder').style.display  = validatorsCount.active  ? 'block' : 'none'
-        // document.getElementById('ejected-validators-table-holder').style.display = validatorsCount.ejected ? 'block' : 'none'
-        // document.getElementById('offline-validators-table-holder').style.display = validatorsCount.offline ? 'block' : 'none'
-
         renderDashboardInfo()
       }
     })
@@ -361,12 +324,12 @@ exited:   ${validatorsCount.exited}`
 
   function renderCharts() {
     var t0 = Date.now()
-    if (validators.length === 0) {
+    if (state.validators.length === 0) {
       document.getElementById('chart-holder').style.display = 'none'
       return
     }
     document.getElementById('chart-holder').style.display = 'block'
-    var qryStr = '?validators=' + validators.join(',')
+    var qryStr = '?validators=' + state.validators.join(',')
     $.ajax({
       url: '/dashboard/data/balance' + qryStr,
       success: function(result) {
