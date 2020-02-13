@@ -22,6 +22,7 @@ var epochBlacklist = make(map[uint64]uint64)
 
 // Start will start the export of data from rpc into the database
 func Start(client rpc.Client) error {
+	go performanceDataUpdater()
 
 	if utils.Config.Indexer.FullIndexOnStartup {
 		logger.Printf("performing one time full db reindex")
@@ -400,4 +401,151 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 		}
 	}
 	return nil
+}
+
+func performanceDataUpdater() {
+	for true {
+
+		logger.Info("updating validator performance data")
+		err := updateValidatorPerformance()
+
+		if err != nil {
+			logger.Errorf("error updating validator performance data: %w", err)
+		} else {
+			logger.Info("validator performance data update completed")
+		}
+		time.Sleep(time.Hour)
+	}
+}
+
+func updateValidatorPerformance() error {
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting db transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("TRUNCATE validator_performance")
+	if err != nil {
+		return fmt.Errorf("error truncating validator performance table: %w", err)
+	}
+
+	var currentEpoch uint64
+
+	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM validator_balances")
+	if err != nil {
+		return fmt.Errorf("error retrieving latest epoch from validator_balances table: %w", err)
+	}
+
+	now := utils.EpochToTime(currentEpoch)
+	epoch1d := utils.TimeToEpoch(now.Add(time.Hour * 24 * -1))
+	epoch7d := utils.TimeToEpoch(now.Add(time.Hour * 24 * 7 * -1))
+	epoch31d := utils.TimeToEpoch(now.Add(time.Hour * 24 * 31 * -1))
+	epoch365d := utils.TimeToEpoch(now.Add(time.Hour * 24 * 356 * -1))
+
+	if epoch1d < 0 {
+		epoch1d = 0
+	}
+	if epoch7d < 0 {
+		epoch7d = 0
+	}
+	if epoch31d < 0 {
+		epoch31d = 0
+	}
+	if epoch365d < 0 {
+		epoch365d = 0
+	}
+
+	var startBalances []*types.ValidatorBalance
+	err = tx.Select(&startBalances, `
+			select 
+				   validator_balances.validatorindex, 
+				   validator_balances.balance 
+			FROM validators 
+				LEFT JOIN validator_balances ON validators.activationepoch = validator_balances.epoch AND validators.validatorindex = validator_balances.validatorindex
+			WHERE validator_balances.validatorindex IS NOT NULL;
+			`)
+	if err != nil {
+		return fmt.Errorf("error retrieving initial validator balances data: %w", err)
+	}
+
+	startBalanceMap := make(map[uint64]uint64)
+	for _, balance := range startBalances {
+		startBalanceMap[balance.Index] += balance.Balance
+	}
+
+	var balances []*types.ValidatorBalance
+
+	err = tx.Select(&balances, `SELECT 
+											   validator_balances.epoch, 
+											   validator_balances.validatorindex, 
+											   validator_balances.balance
+										FROM validator_balances 
+										WHERE validator_balances.epoch IN ($1, $2, $3, $4, $5)`, currentEpoch, epoch1d, epoch7d, epoch31d, epoch365d)
+	if err != nil {
+		return fmt.Errorf("error retrieving validator performance data: %w", err)
+	}
+
+	performance := make(map[uint64]map[int64]int64)
+
+	for _, balance := range balances {
+		if performance[balance.Index] == nil {
+			performance[balance.Index] = make(map[int64]int64)
+		}
+		performance[balance.Index][int64(balance.Epoch)] = int64(balance.Balance)
+	}
+
+	for validator, balances := range performance {
+
+		currentBalance := balances[int64(currentEpoch)]
+		startBalance := int64(startBalanceMap[validator])
+
+		if currentBalance == 0 || startBalance == 0 {
+			continue
+		}
+
+		balance1d := balances[epoch1d]
+		if balance1d == 0 {
+			balance1d = startBalance
+		}
+		balance7d := balances[epoch7d]
+		if balance7d == 0 {
+			balance7d = startBalance
+		}
+		balance31d := balances[epoch31d]
+		if balance31d == 0 {
+			balance31d = startBalance
+		}
+		balance365d := balances[epoch365d]
+		if balance365d == 0 {
+			balance365d = startBalance
+		}
+
+		performance1d := currentBalance - balance1d
+		performance7d := currentBalance - balance7d
+		performance31d := currentBalance - balance31d
+		performance365d := currentBalance - balance365d
+
+		if performance1d > 10000000 {
+			performance1d = 0
+		}
+		if performance7d > 10000000*7 {
+			performance7d = 0
+		}
+		if performance31d > 10000000*31 {
+			performance31d = 0
+		}
+		if performance365d > 10000000*365 {
+			performance365d = 0
+		}
+
+		_, err := tx.Exec("INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d) VALUES ($1, $2, $3, $4, $5, $6)",
+			validator, currentBalance, performance1d, performance7d, performance31d, performance365d)
+
+		if err != nil {
+			return fmt.Errorf("error saving validator performance data: %w", err)
+		}
+	}
+
+	return tx.Commit()
 }
