@@ -267,7 +267,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			a.state,
 			COALESCE(p1.c, 0) as executedproposals,
-			COALESCE(p2.c, 0) as missedproposals
+			COALESCE(p2.c, 0) as missedproposals,
+			COALESCE(validator_performance.performance7d, 0) as performance7d
 		FROM validators
 		INNER JOIN (
 			SELECT validatorindex,
@@ -293,13 +294,10 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			WHERE status = 2
 			GROUP BY validatorindex
 		) p2 ON validators.validatorindex = p2.validatorindex
+		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = ANY($3)
 		LIMIT 100`, lastestEpoch, firstSlotOfPreviousEpoch, filter)
-	// COALESCE(r.performance1d, 0) as performance1d,
-	// COALESCE(r.performance7d, 0) as performance7d,
-	// COALESCE(r.performance31d, 0) as performance31d,
-	// COALESCE(r.performance365d, 0) as performance365d
-	// LEFT JOIN validator_performance r ON validators.validatorindex = r.validatorindex
+
 	if err != nil {
 		logger.Errorf("error retrieving validator data: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -354,17 +352,13 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			v.MissedProposals,
 		})
 
-		tableData[i] = append(tableData[i], []interface{}{
-			v.ExecutedAttestations,
-			v.MissedAttestations,
-		})
-
 		// tableData[i] = append(tableData[i], []interface{}{
-		// 	v.Performance1d,
-		// 	v.Performance7d,
-		// 	v.Performance31d,
-		// 	v.Performance365d,
+		// 	v.ExecutedAttestations,
+		// 	v.MissedAttestations,
 		// })
+
+		// tableData[i] = append(tableData[i], fmt.Sprintf("%.4f ETH", float64(v.Performance7d)/float64(1e9)))
+		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d))
 	}
 
 	type dataType struct {
