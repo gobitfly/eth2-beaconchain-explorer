@@ -125,11 +125,11 @@ Highcharts.setOptions({
       rules: [
         {
           condition: {
-            maxWidth: 760
+            maxWidth: 590
           },
           chartOptions: {
             chart: {
-              marginRight: 45
+              marginRight: 80
             },
             yAxis: [
               {

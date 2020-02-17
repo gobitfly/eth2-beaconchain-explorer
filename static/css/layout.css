@@ -4,6 +4,10 @@ body { font-family: 'Inter', sans-serif; }
   body { font-family: 'Inter var', sans-serif; }
 }
 
+body main {
+  min-height: calc(100vh - 56px) !important;
+}
+
 .theme-switch-wrapper {
   position: relative;
   display: contents;
@@ -17,6 +21,15 @@ body { font-family: 'Inter', sans-serif; }
   margin-bottom: 0rem;
   margin-left: 0.1rem;
 }
+
+table.dataTable .sorting:before, table.dataTable.table-sm .sorting_asc:before, table.dataTable.table-sm .sorting_desc:before {
+  right : .40rem !important;
+}
+
+table.dataTable thead .sorting:after, table.dataTable thead .sorting_asc:after, table.dataTable thead .sorting_desc:after, table.dataTable thead .sorting_asc_disabled:after, table.dataTable thead .sorting_desc_disabled:after {
+  right: .15rem !important;
+}
+
 
 .theme-switch input {
   display: none;

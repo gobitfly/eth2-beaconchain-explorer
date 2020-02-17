@@ -3,7 +3,7 @@ $(document).ready(function() {
     processing: true,
     serverSide: false,
     ordering: true,
-    searching: false,
+    searching: true,
     paging: false,
     info: false,
     preDrawCallback: function() {
@@ -45,9 +45,9 @@ $(document).ready(function() {
           var d = data.split('_')
           var s = d[0].charAt(0).toUpperCase() + d[0].slice(1)
           if (d[1] === 'offline') 
-            return `<span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
+            return `<span style="display:none">${d[1]}</span><span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
           if (d[1] === 'online')
-            return `<span>${s} <i class="fas fa-power-off fa-sm text-success"></i></span>`
+            return `<span style="display:none">${d[1]}</span><span>${s} <i class="fas fa-power-off fa-sm text-success"></i></span>`
           return `<span>${s}</span>`
         }
       },
@@ -96,6 +96,7 @@ $(document).ready(function() {
       }
     ]
   })
+
 
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -245,6 +246,27 @@ $(document).ready(function() {
     return ai - bi
   }
 
+  function addChange(selector, value) {
+    if(selector !== undefined || selector !== null) {
+      var element = document.querySelector(selector)
+      if(element !== undefined) {
+        // remove old
+        element.classList.remove('decreased')
+        element.classList.remove('increased')
+        if(value < 0) {
+          element.classList.add("decreased")
+        } 
+        if (value > 0) {
+          element.classList.add("increased")
+        }
+      } else {
+        console.error("Could not find element with selector", selector)
+      }
+    } else {
+      console.error("selector is not defined", selector)
+    }
+  }
+
   function updateState() {
     localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
     var qryStr = '?validators=' + state.validators.join(',')
@@ -257,11 +279,27 @@ $(document).ready(function() {
         var t1 = Date.now()
         console.log(`loaded earnings: fetch: ${t1-t0}ms`)
         if (!result) return
-        document.getElementById('stats').style.display = 'flex'
-        document.querySelector('#stats-earnings .stats-box-body').innerText = `total: ${(result.total/1e9).toFixed(4)} ETH
-1 day: ${(result.lastDay/1e9).toFixed(4)} ETH
-7 days: ${(result.lastWeek/1e9).toFixed(4)} ETH
-31 days: ${(result.lastMonth/1e9).toFixed(4)} ETH`
+        // document.getElementById('stats').style.display = 'flex'
+        var lastDay = (result.lastDay/1e9).toFixed(4) 
+        var lastWeek = (result.lastWeek/1e9).toFixed(4)
+        var lastMonth = (result.lastMonth/1e9).toFixed(4)
+        var total = (result.total/1e9).toFixed(4)
+
+        addChange("#earnings-day-header", lastDay)
+        addChange("#earnings-week-header", lastWeek)
+        addChange("#earnings-month-header", lastMonth)
+        addChange("#earnings-total-header", lastMonth)
+
+
+
+        document.querySelector('#earnings-day').innerText = lastDay || '0.000'
+        document.querySelector('#earnings-week').innerText = lastWeek || '0.000'
+        document.querySelector('#earnings-month').innerText = lastMonth || '0.000'
+        document.querySelector('#earnings-total').innerText = total || '0.000'
+//         document.querySelector('#stats-earnings .stats-box-body').innerText = `total: ${(result.total/1e9).toFixed(4)} ETH
+// 1 day: ${(result.lastDay/1e9).toFixed(4)} ETH
+// 7 days: ${(result.lastWeek/1e9).toFixed(4)} ETH
+// 31 days: ${(result.lastMonth/1e9).toFixed(4)} ETH`
       }
     })
     $.ajax({
@@ -296,17 +334,20 @@ $(document).ready(function() {
           if (el) el.dataset.state = vState
         }
         validatorsDataTable.clear()
+        console.log('search',validatorsDataTable.columns().search())
         validatorsDataTable.rows.add(result.data).draw()
+
         validatorsDataTable.column(6).visible(false)
 
         requestAnimationFrame(()=>{validatorsDataTable.columns.adjust().responsive.recalc()})
 
-        document.getElementById('stats').style.display = 'flex'
-        document.querySelector('#stats-validators-status .stats-box-body').innerText = `pending:  ${state.validatorsCount.pending}
-active:   ${state.validatorsCount.active_online} / ${state.validatorsCount.active_offline}
-slashing: ${state.validatorsCount.slashing_online} / ${state.validatorsCount.slashing_offline}
-exiting:  ${state.validatorsCount.exiting_online} / ${state.validatorsCount.exiting_offline}
-exited:   ${state.validatorsCount.exited}`
+        // document.getElementById('stats').style.display = 'flex'
+        // document.querySelector('#stats-validators-status').innerText = `showing ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online} active, `
+//         `pending:  ${state.validatorsCount.pending}
+// active:   ${state.validatorsCount.active_online} / ${state.validatorsCount.active_offline}
+// slashing: ${state.validatorsCount.slashing_online} / ${state.validatorsCount.slashing_offline}
+// exiting:  ${state.validatorsCount.exiting_online} / ${state.validatorsCount.exiting_offline}
+// exited:   ${state.validatorsCount.exited}`
 
         document.getElementById('validators-table-holder').style.display = 'block'
         renderDashboardInfo()
@@ -324,11 +365,11 @@ exited:   ${state.validatorsCount.exited}`
 
   function renderCharts() {
     var t0 = Date.now()
-    if (state.validators.length === 0) {
-      document.getElementById('chart-holder').style.display = 'none'
-      return
-    }
-    document.getElementById('chart-holder').style.display = 'block'
+    // if (state.validators.length === 0) {
+    //   document.getElementById('chart-holder').style.display = 'none'
+    //   return
+    // }
+    document.getElementById('chart-holder').style.display = 'flex'
     var qryStr = '?validators=' + state.validators.join(',')
     $.ajax({
       url: '/dashboard/data/balance' + qryStr,
@@ -376,7 +417,7 @@ function createBalanceChart(effective, balance, utilization) {
       enabled: false
     },
     chart: {
-      type: 'line'
+      type: 'line',
     },
     legend: {
       enabled: true
@@ -397,7 +438,7 @@ function createBalanceChart(effective, balance, utilization) {
         labels: {
           formatter: function() {
             return this.value.toFixed(0)
-          }
+          },
         }
       },
       {
@@ -407,7 +448,8 @@ function createBalanceChart(effective, balance, utilization) {
         labels: {
           formatter: function() {
             return (this.value * 100).toFixed(2) + '%'
-          }
+          },
+
         },
         opposite: true
       }
@@ -444,7 +486,7 @@ function createProposedChart(data) {
   var orphaned = data.map(d => [d.Day * 1000, d.Orphaned])
   Highcharts.stockChart('proposed-chart', {
     chart: {
-      type: 'column'
+      type: 'column',
     },
     title: {
       text: 'Proposal History for all Validators',
