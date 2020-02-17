@@ -170,6 +170,7 @@ type ValidatorBalance struct {
 
 // ValidatorPerformance is a struct for the validator performance data
 type ValidatorPerformance struct {
+	Rank            uint64 `db:"rank"`
 	Index           uint64 `db:"validatorindex"`
 	PublicKey       []byte `db:"pubkey"`
 	Balance         uint64 `db:"balance"`

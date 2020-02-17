@@ -77,10 +77,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
-		"3": "performance1d",
-		"4": "performance7d",
-		"5": "performance31d",
-		"6": "performance365d",
+		"4": "performance1d",
+		"5": "performance7d",
+		"6": "performance31d",
+		"7": "performance365d",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -102,15 +102,16 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var performanceData []*types.ValidatorPerformance
-	err = db.DB.Select(&performanceData, `SELECT 
-											   validator_performance.*,
-											   validators.pubkey 
-										FROM validator_performance 
-											LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
-										WHERE (encode(validators.pubkey::bytea, 'hex') LIKE $3
-													OR CAST(validator_performance.validatorindex AS text) LIKE $3)
-										ORDER BY `+orderBy+` `+orderDir+` 										
-										LIMIT $1 OFFSET $2`, length, start, "%"+search+"%")
+	err = db.DB.Select(&performanceData, `SELECT * FROM (SELECT 
+											   			ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
+											   			validator_performance.*,
+											   			validators.pubkey 
+													FROM validator_performance 
+													LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+													ORDER BY `+orderBy+` `+orderDir+`) AS a
+													WHERE (encode(a.pubkey::bytea, 'hex') LIKE $3
+														OR CAST(a.validatorindex AS text) LIKE $3)
+													LIMIT $1 OFFSET $2`, length, start, "%"+search+"%")
 
 	if err != nil {
 		logger.Errorf("error retrieving validator attestations data: %v", err)
@@ -122,6 +123,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	for i, b := range performanceData {
 
 		tableData[i] = []interface{}{
+			b.Rank,
 			utils.FormatValidator(b.Index),
 			fmt.Sprintf("%x", b.PublicKey),
 			fmt.Sprintf("%v", b.Balance),

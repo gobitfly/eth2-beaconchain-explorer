@@ -16,20 +16,24 @@
                 }, {
                     targets: 1,
                     data: '1',
+                    "orderable": false
+                }, {
+                    targets: 2,
+                    data: '2',
                     render: function (data, type, row, meta) {
                         return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
                     },
                     "orderable": false
                 }, {
-                    targets: 2,
-                    data: '2',
+                    targets: 3,
+                    data: '3',
                     render: function (data, type, row, meta) {
                         return (data / 10e8).toFixed(4) + ' ETH'
                     },
                     "orderable": false
                 }
             ],
-            order: [[4, "desc"]]
+            order: [[5, "desc"]]
         })
 	</script>
 {{end}}
@@ -58,8 +62,9 @@
 				<table class="table table-sm" id="leaderboard" width="100%">
 					<thead>
 					<tr>
-						<th>Public Key</th>
+						<th>Rank</th>
 						<th>Index</th>
+						<th>Public Key</th>
 						<th>Balance</th>
 						<th>Income 1 day</th>
 						<th>Income 7 days</th>
