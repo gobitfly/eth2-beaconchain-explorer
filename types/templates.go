@@ -109,6 +109,9 @@ type ValidatorsPageDataValidators struct {
 	State                      string `db:"state"`
 	MissedProposals            uint64 `db:"missedproposals"`
 	ExecutedProposals          uint64 `db:"executedproposals"`
+	MissedAttestations         uint64 `db:"missedattestations"`
+	ExecutedAttestations       uint64 `db:"executedattestations"`
+	Performance7d              int64  `db:"performance7d"`
 }
 
 // ValidatorPageData is a struct to hold data for the validators page
@@ -400,4 +403,18 @@ type GenericChartData struct {
 type GenericChartDataSeries struct {
 	Name string      `json:"name"`
 	Data [][]float64 `json:"data"`
+}
+
+type DashboardValidatorBalanceHistory struct {
+	Epoch            uint64  `db:"epoch"`
+	Balance          uint64  `db:"balance"`
+	EffectiveBalance uint64  `db:"effectivebalance"`
+	ValidatorCount   float64 `db:"validatorcount"`
+}
+
+type DashboardEarnings struct {
+	Total     int64 `json:"total"`
+	LastDay   int64 `json:"lastDay"`
+	LastWeek  int64 `json:"lastWeek"`
+	LastMonth int64 `json:"lastMonth"`
 }

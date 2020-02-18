@@ -121,8 +121,14 @@
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>
+                        <li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
+                            <a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                            {{ if eq .Active "dashboard"}} 
+                                <span class="nav-indicator"></span>
+                            {{end}}
+                        </li>
                         <li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
-                            <a class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-book"></i> Docs</a>
+                            <a class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
                             {{ if eq .Active "docs"}}
                                 <span class="nav-indicator"></span>
                             {{end}}
@@ -154,6 +160,7 @@
     </main>
 
     <div class="text-center" style="margin-top: 3rem; margin-bottom: 4.2rem;">
+        <hr>
         <footer class="container">© bitfly gmbh 2020 | <a href="/imprint">Imprint</a> | <a href="https://twitter.com/etherchain_org">
                 <i class="fab fa-twitter mr-1"></i>Twitter</a> | <a href="https://www.reddit.com/u/etherchain/">
                 <i class="fab fa-reddit mr-1"></i>Reddit</a> | <a

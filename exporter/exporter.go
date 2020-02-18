@@ -405,7 +405,7 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 
 func performanceDataUpdater() {
 	for true {
-
+		time.Sleep(time.Hour)
 		logger.Info("updating validator performance data")
 		err := updateValidatorPerformance()
 
@@ -414,7 +414,6 @@ func performanceDataUpdater() {
 		} else {
 			logger.Info("validator performance data update completed")
 		}
-		time.Sleep(time.Hour)
 	}
 }
 
