@@ -103,7 +103,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	query := `
 		SELECT
 			epoch,
-			SUM(effectivebalance) AS effectivebalance,
+			COALESCE(SUM(effectivebalance),0) AS effectivebalance,
 			COALESCE(SUM(balance),0) AS balance,
 			COUNT(*) AS validatorcount
 		FROM validator_balances
