@@ -1,4 +1,5 @@
 $(document).ready(function() {
+  var clipboard = new ClipboardJS('#copy-button');
   var validatorsDataTable = window.vdt = $('#validators').DataTable({
     processing: true,
     serverSide: false,
@@ -164,14 +165,29 @@ $(document).ready(function() {
     $('.multiselect-border').removeClass('focused')
   })
 
-  var state = {}
-  state.validators = []
-  state.validatorsCount = {
-    pending: 0,
-    active: 0,
-    ejected: 0,
-    offline: 0
+  $('#clear-search').on('click', function(event) {
+    console.log('click')
+    if(state) {
+      state = setInitialState()
+      localStorage.removeItem('dashboard_validators')
+      window.location = "/dashboard"
+    }
+    // window.location = "/dashboard"
+  })
+
+  function setInitialState () {
+    var _state = {}
+    _state.validators = []
+    _state.validatorsCount = {
+      pending: 0,
+      active: 0,
+      ejected: 0,
+      offline: 0
+    }
+    return _state;
   }
+
+  var state = setInitialState()
 
   setValidatorsFromURL()
   renderSelectedValidators()
@@ -268,91 +284,101 @@ $(document).ready(function() {
   }
 
   function updateState() {
+
+
     localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
     var qryStr = '?validators=' + state.validators.join(',')
     var newUrl = window.location.pathname + qryStr
     window.history.pushState(null, 'Dashboard', newUrl)
     var t0 = Date.now()
-    $.ajax({
-      url: '/dashboard/data/earnings' + qryStr,
-      success: function(result) {
-        var t1 = Date.now()
-        console.log(`loaded earnings: fetch: ${t1-t0}ms`)
-        if (!result) return
-        // document.getElementById('stats').style.display = 'flex'
-        var lastDay = (result.lastDay/1e9).toFixed(4) 
-        var lastWeek = (result.lastWeek/1e9).toFixed(4)
-        var lastMonth = (result.lastMonth/1e9).toFixed(4)
-        var total = (result.total/1e9).toFixed(4)
-
-        addChange("#earnings-day-header", lastDay)
-        addChange("#earnings-week-header", lastWeek)
-        addChange("#earnings-month-header", lastMonth)
-        addChange("#earnings-total-header", lastMonth)
-
-
-
-        document.querySelector('#earnings-day').innerText = lastDay || '0.000'
-        document.querySelector('#earnings-week').innerText = lastWeek || '0.000'
-        document.querySelector('#earnings-month').innerText = lastMonth || '0.000'
-        document.querySelector('#earnings-total').innerText = total || '0.000'
-//         document.querySelector('#stats-earnings .stats-box-body').innerText = `total: ${(result.total/1e9).toFixed(4)} ETH
-// 1 day: ${(result.lastDay/1e9).toFixed(4)} ETH
-// 7 days: ${(result.lastWeek/1e9).toFixed(4)} ETH
-// 31 days: ${(result.lastMonth/1e9).toFixed(4)} ETH`
-      }
-    })
-    $.ajax({
-      url: '/dashboard/data/validators' + qryStr,
-      success: function(result) {
-        var t1 = Date.now()
-        console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1-t0}ms`)
-        if (!result || !result.data.length) {
-          document.getElementById('validators-table-holder').style.display = 'none'
-          return
+    if(state.validators && state.validators.length) {
+      $.ajax({
+        url: '/dashboard/data/earnings' + qryStr,
+        success: function(result) {
+          var t1 = Date.now()
+          console.log(`loaded earnings: fetch: ${t1-t0}ms`)
+          if (!result) return
+          // document.getElementById('stats').style.display = 'flex'
+          var lastDay = (result.lastDay/1e9).toFixed(4) 
+          var lastWeek = (result.lastWeek/1e9).toFixed(4)
+          var lastMonth = (result.lastMonth/1e9).toFixed(4)
+          var total = (result.total/1e9).toFixed(4)
+  
+          addChange("#earnings-day-header", lastDay)
+          addChange("#earnings-week-header", lastWeek)
+          addChange("#earnings-month-header", lastMonth)
+          addChange("#earnings-total-header", lastMonth)
+  
+  
+  
+          document.querySelector('#earnings-day').innerText = lastDay || '0.000'
+          document.querySelector('#earnings-week').innerText = lastWeek || '0.000'
+          document.querySelector('#earnings-month').innerText = lastMonth || '0.000'
+          document.querySelector('#earnings-total').innerText = total || '0.000'
+  //         document.querySelector('#stats-earnings .stats-box-body').innerText = `total: ${(result.total/1e9).toFixed(4)} ETH
+  // 1 day: ${(result.lastDay/1e9).toFixed(4)} ETH
+  // 7 days: ${(result.lastWeek/1e9).toFixed(4)} ETH
+  // 31 days: ${(result.lastMonth/1e9).toFixed(4)} ETH`
         }
-        // pubkey, idx, currbal, effbal, slashed, acteligepoch, actepoch, exitepoch
-        // 0:pubkey, 1:idx, 2:[currbal,effbal], 3:state, 4:[actepoch,acttime], 5:[exit,exittime], 6:[wd,wdt], 7:[lasta,lastat], 8:[exprop,misprop]
-        console.log(`latestEpoch: ${result.latestEpoch}`)
-        var latestEpoch = result.latestEpoch
-        state.validatorsCount.pending = 0
-        state.validatorsCount.active_online = 0
-        state.validatorsCount.active_offline = 0
-        state.validatorsCount.slashing_online = 0
-        state.validatorsCount.slashing_offline = 0
-        state.validatorsCount.exiting_online = 0
-        state.validatorsCount.exiting_offline = 0
-        state.validatorsCount.exited  = 0
-
-        for (var i=0; i<result.data.length; i++) {
-          var v = result.data[i]
-          var vIndex = v[1]
-          var vState = v[3]
-          if (!state.validatorsCount[vState]) state.validatorsCount[vState] = 0
-          state.validatorsCount[vState]++
-          var el = document.querySelector(`#selected-validators .item[data-validator-index="${vIndex}"]`)
-          if (el) el.dataset.state = vState
+      })
+      $.ajax({
+        url: '/dashboard/data/validators' + qryStr,
+        success: function(result) {
+          var t1 = Date.now()
+          console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1-t0}ms`)
+          if (!result || !result.data.length) {
+            document.getElementById('validators-table-holder').style.display = 'none'
+            return
+          }
+          // pubkey, idx, currbal, effbal, slashed, acteligepoch, actepoch, exitepoch
+          // 0:pubkey, 1:idx, 2:[currbal,effbal], 3:state, 4:[actepoch,acttime], 5:[exit,exittime], 6:[wd,wdt], 7:[lasta,lastat], 8:[exprop,misprop]
+          console.log(`latestEpoch: ${result.latestEpoch}`)
+          var latestEpoch = result.latestEpoch
+          state.validatorsCount.pending = 0
+          state.validatorsCount.active_online = 0
+          state.validatorsCount.active_offline = 0
+          state.validatorsCount.slashing_online = 0
+          state.validatorsCount.slashing_offline = 0
+          state.validatorsCount.exiting_online = 0
+          state.validatorsCount.exiting_offline = 0
+          state.validatorsCount.exited  = 0
+  
+          for (var i=0; i<result.data.length; i++) {
+            var v = result.data[i]
+            var vIndex = v[1]
+            var vState = v[3]
+            if (!state.validatorsCount[vState]) state.validatorsCount[vState] = 0
+            state.validatorsCount[vState]++
+            var el = document.querySelector(`#selected-validators .item[data-validator-index="${vIndex}"]`)
+            if (el) el.dataset.state = vState
+          }
+          validatorsDataTable.clear()
+          console.log('search',validatorsDataTable.columns().search())
+          validatorsDataTable.rows.add(result.data).draw()
+  
+          validatorsDataTable.column(6).visible(false)
+  
+          requestAnimationFrame(()=>{validatorsDataTable.columns.adjust().responsive.recalc()})
+  
+          // document.getElementById('stats').style.display = 'flex'
+          // document.querySelector('#stats-validators-status').innerText = `showing ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online} active, `
+  //         `pending:  ${state.validatorsCount.pending}
+  // active:   ${state.validatorsCount.active_online} / ${state.validatorsCount.active_offline}
+  // slashing: ${state.validatorsCount.slashing_online} / ${state.validatorsCount.slashing_offline}
+  // exiting:  ${state.validatorsCount.exiting_online} / ${state.validatorsCount.exiting_offline}
+  // exited:   ${state.validatorsCount.exited}`
+  
+          document.getElementById('validators-table-holder').style.display = 'block'
+          renderDashboardInfo()
         }
-        validatorsDataTable.clear()
-        console.log('search',validatorsDataTable.columns().search())
-        validatorsDataTable.rows.add(result.data).draw()
+      })
 
-        validatorsDataTable.column(6).visible(false)
+    } else {
+      // window.location = "/dashboard"
+    }
 
-        requestAnimationFrame(()=>{validatorsDataTable.columns.adjust().responsive.recalc()})
-
-        // document.getElementById('stats').style.display = 'flex'
-        // document.querySelector('#stats-validators-status').innerText = `showing ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online} active, `
-//         `pending:  ${state.validatorsCount.pending}
-// active:   ${state.validatorsCount.active_online} / ${state.validatorsCount.active_offline}
-// slashing: ${state.validatorsCount.slashing_online} / ${state.validatorsCount.slashing_offline}
-// exiting:  ${state.validatorsCount.exiting_online} / ${state.validatorsCount.exiting_offline}
-// exited:   ${state.validatorsCount.exited}`
-
-        document.getElementById('validators-table-holder').style.display = 'block'
-        renderDashboardInfo()
-      }
-    })
+    $('#copy-button')
+    .attr('data-clipboard-text', window.location.href)
 
     renderCharts()
   }
@@ -370,41 +396,44 @@ $(document).ready(function() {
     //   return
     // }
     document.getElementById('chart-holder').style.display = 'flex'
-    var qryStr = '?validators=' + state.validators.join(',')
-    $.ajax({
-      url: '/dashboard/data/balance' + qryStr,
-      success: function(result) {
-        var t1 = Date.now()
-        var balance = new Array(result.length)
-        var effectiveBalance = new Array(result.length)
-        var validatorCount = new Array(result.length)
-        var utilization = new Array(result.length)
-        for (var i = 0; i < result.length; i++) {
-          var res = result[i]
-          validatorCount[i] = [res[0], res[1]]
-          balance[i] = [res[0], res[2]]
-          effectiveBalance[i] = [res[0], res[3]]
-          utilization[i] = [res[0], res[3] / (res[1] * 3.2)]
+    if(state.validators && state.validators.length) {
+      var qryStr = '?validators=' + state.validators.join(',')
+      $.ajax({
+        url: '/dashboard/data/balance' + qryStr,
+        success: function(result) {
+          var t1 = Date.now()
+          var balance = new Array(result.length)
+          var effectiveBalance = new Array(result.length)
+          var validatorCount = new Array(result.length)
+          var utilization = new Array(result.length)
+          for (var i = 0; i < result.length; i++) {
+            var res = result[i]
+            validatorCount[i] = [res[0], res[1]]
+            balance[i] = [res[0], res[2]]
+            effectiveBalance[i] = [res[0], res[3]]
+            utilization[i] = [res[0], res[3] / (res[1] * 3.2)]
+          }
+  
+          var t2 = Date.now()
+          createBalanceChart(effectiveBalance, balance, utilization)
+          var t3 = Date.now()
+          console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
         }
+      })
+      $.ajax({
+        url: '/dashboard/data/proposals' + qryStr,
+        success: function(result) {
+          var t1 = Date.now()
+          var t2 = Date.now()
+          if (result && result.length) {
+            createProposedChart(result)
+          }
+          var t3 = Date.now()
+          console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t3 - t2}ms`)
+        }
+      })
 
-        var t2 = Date.now()
-        createBalanceChart(effectiveBalance, balance, utilization)
-        var t3 = Date.now()
-        console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
-      }
-    })
-    $.ajax({
-      url: '/dashboard/data/proposals' + qryStr,
-      success: function(result) {
-        var t1 = Date.now()
-        var t2 = Date.now()
-        if (result && result.length) {
-          createProposedChart(result)
-        }
-        var t3 = Date.now()
-        console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t3 - t2}ms`)
-      }
-    })
+    }
   }
 })
 

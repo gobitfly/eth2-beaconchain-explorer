@@ -5,6 +5,7 @@
   <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
   <script src="/js/highcharts-global-options.js"></script>
   <script src="/js/dashboard.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 {{end}} 
 
 {{ define "css"}}
@@ -90,6 +91,12 @@
        </div>
       </div> -->
       <div class="multiselect-container" class="row border-bottom p-3">
+        <span style="display:flex;justify-content:flex-end; font-size:0.9rem; padding: .1rem 0;">
+          <button id="copy-button" data-clipboard-text="https://beaconcha.in/dashboard" type="button" class="btn btn-primary btn-sm m-1">
+            <i class="fa fa-copy"></i>
+          </button>
+          <button id="clear-search" type="button" class="btn btn-primary btn-sm my-1">clear</button>
+        </span>
         <span class="multiselect-border">
           <ul id="selected-validators" class="multiselect">
             <li class="input">
@@ -97,7 +104,9 @@
             </li>
           </ul>
         </span>
-        <span id="dashboard-info" style="font-weight:300;font-size:0.9rem;display:flex;justify-content:center"></span>
+        <div style="font-weight:300;font-size:0.9rem;display:flex;justify-content:center">
+          <span id="dashboard-info" ></span>
+        </div>
       </div>
       <div class="dashboard-charts" id="chart-holder">
           <div class="chart card" id="balance-chart">
