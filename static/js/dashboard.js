@@ -439,6 +439,7 @@ function createBalanceChart(effective, balance, utilization) {
           formatter: function() {
             return this.value.toFixed(0)
           },
+          
         }
       },
       {
