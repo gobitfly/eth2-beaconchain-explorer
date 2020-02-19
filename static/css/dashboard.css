@@ -14,12 +14,9 @@
   border-radius: 4px;
   display: flex;
   position: relative;
-  /* height: 2.8em; */
   background-color: var(--bg-color-secondary);
   border: 1.5px solid var(--light);
   box-shadow: 0 2px 3px rgba(0,0,0,0.06);
-  padding: .5rem .75rem;
-  /* padding-right: 6.5em; */
 }
 
 
@@ -28,10 +25,11 @@
 }
 
 ul.multiselect {
-  padding: 0;
-  margin: 0;
   z-index: 99;
   display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  align-content: center;
   flex: 1;
   flex-wrap: wrap;
   list-style-type: none;
@@ -42,14 +40,15 @@ ul.multiselect {
   padding-inline-start: 0;
   background-color: var(--bg-color-secondary);
   color: var(--body-color);
+  padding: .5rem .75rem;
 }
 
 ul.multiselect li.item {
+  margin: 3px;
   list-style: none;
   float: left;
   border: 1px solid #666666;
   border-radius: 5px;
-  margin: 2px;
   padding: 0 5px;
   color: black;
   background-color: lightblue;
@@ -86,7 +85,6 @@ ul.multiselect li.input {
   list-style: none;
   float: left;
   margin: 0;
-  padding:0;
   height: inherit;
   width: inherit;
   border-radius: 0;
@@ -98,6 +96,7 @@ ul.multiselect li.input span {
   border: 1px solid var(--bg-color-secondary);
   border-radius: 5px;
   background: var(--bg-color-secondary);
+
 }
 
 ul.multiselect li.input input {
@@ -118,7 +117,6 @@ ul.multiselect li.input input {
   background: none;
   outline: none;
   border: none;
-  padding: 0;
   z-index: 1;
   position: relative;
   width: 100%;

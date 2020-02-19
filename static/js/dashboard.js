@@ -1,5 +1,57 @@
+
+function setTooltip(selector, message) {
+  $(selector).tooltip('hide').attr('data-original-title', message)
+  setTimeout(function(){
+    $(selector)
+      .tooltip('show');
+  }, 50)
+}
+
+function hideTooltip(selector, message) {
+  setTimeout(function () {
+    $(selector).tooltip('hide')
+      .attr('data-original-title', message)
+  }, 1000);
+}
+
 $(document).ready(function() {
   var clipboard = new ClipboardJS('#copy-button');
+
+  var copyButton = $('#copy-button')
+  var clearSearch = $('#clear-search')
+  //'<i class="fa fa-copy"></i>'
+  copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
+  //'<i class="fas fa-check"></i>'
+  tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
+
+
+  clipboard.on('success', function (e) {
+    copyButton.empty().append(tickIcon);
+
+    setTooltip('#copy-button', 'Link Copied')
+    hideTooltip('#copy-button', 'Copy Link to Dashboard')
+
+    setTimeout(function(){
+      copyButton.empty().append(copyIcon);
+    }, 500)
+  });
+
+  clipboard.on('error', function (e) {
+    setTooltip('#copy-button', 'Failed to copy Dashboard Link!');
+    hideTooltip('#copy-button');
+  });
+
+  copyButton.on('click', function() {
+    
+  })
+
+  clearSearch.on('click', function() {
+    clearSearch.empty().append(tickIcon);
+    setTimeout(function(){
+      clearSearch.empty().append(copyIcon);
+    }, 500)
+  })
+
   var validatorsDataTable = window.vdt = $('#validators').DataTable({
     processing: true,
     serverSide: false,
