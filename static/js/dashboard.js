@@ -292,6 +292,8 @@ $(document).ready(function() {
     window.history.pushState(null, 'Dashboard', newUrl)
     var t0 = Date.now()
     if(state.validators && state.validators.length) {
+      document.querySelector('#copy-button').style.visibility = "visible"
+      document.querySelector('#clear-search').style.visibility = "visible"
       $.ajax({
         url: '/dashboard/data/earnings' + qryStr,
         success: function(result) {
@@ -374,6 +376,8 @@ $(document).ready(function() {
       })
 
     } else {
+      document.querySelector('#copy-button').style.visibility = "hidden"
+      document.querySelector('#clear-search').style.visibility = "hidden"
       // window.location = "/dashboard"
     }
 
