@@ -395,7 +395,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 
 	oneDayEpochs := uint64(3600 * 24 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
 	oneWeekEpochs := oneDayEpochs * 7
-	oneMonthEpochs := oneDayEpochs * 30
+	oneMonthEpochs := oneDayEpochs * 31
 
 	lastDayEpoch := uint64(0)
 	if latestEpoch > oneDayEpochs {
@@ -409,7 +409,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 
 	lastMonthEpoch := uint64(0)
 	if latestEpoch > oneMonthEpochs {
-		lastWeekEpoch = latestEpoch - oneMonthEpochs
+		lastMonthEpoch = latestEpoch - oneMonthEpochs
 	}
 
 	earningsTotalQuery := `
