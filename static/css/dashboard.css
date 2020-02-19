@@ -197,6 +197,12 @@ ul.multiselect input:focus {
   margin: 0 1rem;
 }
 
+.dashboard-title {
+  display: flex;
+}
+
+
+
 @media screen and (max-width: 818px) {
   .dashboard-container {
     margin: 1rem 0;
@@ -204,6 +210,19 @@ ul.multiselect input:focus {
 
   .dashboard-title-value > .title {
     display: none;
+  }
+
+  .dashboard-header {
+    justify-content: center;
+    margin-left: -2rem;
+    margin-bottom: -1rem;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    margin-left: -1rem;
   }
 
   .dashboard-header-content {

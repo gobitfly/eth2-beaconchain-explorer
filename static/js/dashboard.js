@@ -14,7 +14,94 @@ function hideTooltip(selector, message) {
   }, 1000);
 }
 
+function createBlock(x, y) {
+  use = document.createElementNS("http://www.w3.org/2000/svg","use")
+  // use.setAttributeNS(null, "style", `transform: translate(calc(${x} * var(--disperse-factor)), calc(${y} * var(--disperse-factor)));`)
+  use.setAttributeNS(null, "href", "#cube")
+  use.setAttributeNS(null, "x", x)
+  use.setAttributeNS(null, "y", y)
+  return use;
+}
+
+function appendBlocks(blocks) {
+
+  var use = document.createElementNS("http://www.w3.org/2000/svg","use")
+  // use.setAttributeNS(null, "style", `transform: translate(calc(${x} * var(--disperse-factor)), calc(${y} * var(--disperse-factor)));`)
+  use.setAttributeNS(null, "href", "#cube-small")
+  use.setAttributeNS(null, "x", 129)
+  use.setAttributeNS(null, "y", 56)
+  $("g.move").empty()
+
+  for (var i = 0; i < blocks.length; i++) {
+    var block = blocks[i];
+    block = createBlock(block[0], block[1])
+    document.querySelector('g.move').appendChild(block)
+  }
+  document.querySelector('g.move').appendChild(use)
+}
+
 $(document).ready(function() {
+/* 
+  [121, 48],
+  [121, 24],
+  [121, 0],
+  [100, 60],
+  [100, 36],
+  [100, 12],
+  [142, 60],
+  [142, 36],
+  [142, 12],
+  [163, 72],
+  [163, 48],
+  [163, 24],
+  [79, 72],
+  [79, 48],
+  [79, 24],
+  [121, 72],
+  [121, 48],
+  [121, 24],
+  [100, 84],
+  [100, 60],
+  [100, 36],
+  [142, 84],
+  [142, 60],
+  [142, 36],
+  [121, 96],
+  [121, 72],
+  [129, 56]
+*/
+ var xBlocks = [
+  [121, 48],
+  [121, 24],
+  [121, 0],
+  [100, 60],
+  [100, 36],
+  [100, 12],
+  [142, 60],
+  [142, 36],
+  [142, 12],
+  [163, 72],
+  [163, 48],
+  [163, 24],
+  [79, 72],
+  [79, 48],
+  [79, 24],
+  [121, 72],
+  [121, 48],
+  [121, 24],
+  [100, 84],
+  [100, 60],
+  [100, 36],
+  [142, 84],
+  [142, 60],
+  [142, 36],
+  [121, 96],
+  [121, 72],
+  // [129, 56]
+ ]
+
+
+
   var clipboard = new ClipboardJS('#copy-button');
 
   var copyButton = $('#copy-button')
@@ -218,7 +305,6 @@ $(document).ready(function() {
   })
 
   $('#clear-search').on('click', function(event) {
-    console.log('click')
     if(state) {
       state = setInitialState()
       localStorage.removeItem('dashboard_validators')
@@ -336,7 +422,13 @@ $(document).ready(function() {
   }
 
   function updateState() {
+    // if(_range < xBlocks.length + 3 && _range !== -1) {
 
+    //   appendBlocks(xBlocks.slice(_range, _range+3))
+    //   _range = _range + 3;
+    // } else if(_range !== -1) {
+    //   _range = -1;
+    // }
 
     localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
     var qryStr = '?validators=' + state.validators.join(',')
@@ -344,8 +436,14 @@ $(document).ready(function() {
     window.history.pushState(null, 'Dashboard', newUrl)
     var t0 = Date.now()
     if(state.validators && state.validators.length) {
+      if(state.validators.length >= 9) {
+        appendBlocks(xBlocks)
+      } else {
+        appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
+      }
       document.querySelector('#copy-button').style.visibility = "visible"
       document.querySelector('#clear-search').style.visibility = "visible"
+
       $.ajax({
         url: '/dashboard/data/earnings' + qryStr,
         success: function(result) {
