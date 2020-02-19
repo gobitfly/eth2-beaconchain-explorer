@@ -31,7 +31,9 @@ ul.multiselect {
   padding: 0;
   margin: 0;
   z-index: 99;
-  display: block;
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
   list-style-type: none;
   margin-block-start: 0;
   margin-block-end: 0;
@@ -80,6 +82,7 @@ ul.multiselect li.item .remove-validator:hover {
 }
 
 ul.multiselect li.input {
+  flex: 1 200px;
   list-style: none;
   float: left;
   margin: 0;
@@ -87,9 +90,11 @@ ul.multiselect li.input {
   height: inherit;
   width: inherit;
   border-radius: 0;
+  
 }
 
 ul.multiselect li.input span {
+  width: 100%;
   border: 1px solid var(--bg-color-secondary);
   border-radius: 5px;
   background: var(--bg-color-secondary);
@@ -110,14 +115,13 @@ ul.multiselect li.input input {
   -webkit-tap-highlight-color: var(--shadow-light);
   font-size: 1.1em;
   font-weight: normal;
-  display: block;
-  width: 100%;
   background: none;
   outline: none;
   border: none;
   padding: 0;
   z-index: 1;
   position: relative;
+  width: 100%;
 }
 
 ul.multiselect input:focus {

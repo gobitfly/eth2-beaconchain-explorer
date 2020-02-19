@@ -11,6 +11,7 @@ import (
 	"html/template"
 	"net/http"
 	"sync"
+	"time"
 
 	"strconv"
 	"strings"
@@ -57,7 +58,9 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.PageData{
 		Meta: &types.Meta{
+			Title:       fmt.Sprintf("%v - Dashboard - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
+			Path:        "/dashboard",
 		},
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "dashboard",
