@@ -459,7 +459,7 @@ $(document).ready(function() {
           addChange("#earnings-day-header", lastDay)
           addChange("#earnings-week-header", lastWeek)
           addChange("#earnings-month-header", lastMonth)
-          addChange("#earnings-total-header", lastMonth)
+          addChange("#earnings-total-header", total)
   
   
   
