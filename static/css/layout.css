@@ -217,7 +217,7 @@ input:checked + .slider:before {
   -webkit-appearance: searchfield;
 }
 
-.twitter-typeahead input {
+nav .twitter-typeahead input, #search-input {
   padding-right: 36px;
 }
 
