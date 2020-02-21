@@ -457,36 +457,84 @@ func updateValidatorPerformance() error {
 
 	var startBalances []*types.ValidatorBalance
 	err = tx.Select(&startBalances, `
-			select 
-				   validator_balances.validatorindex, 
-				   validator_balances.balance 
-			FROM validators 
-				LEFT JOIN validator_balances ON validators.activationepoch = validator_balances.epoch AND validators.validatorindex = validator_balances.validatorindex
-			WHERE validator_balances.validatorindex IS NOT NULL;
-			`)
+		SELECT 
+			validator_balances.validatorindex,
+			validator_balances.balance
+		FROM validators
+			LEFT JOIN validator_balances
+				ON validators.activationepoch = validator_balances.epoch
+				AND validators.validatorindex = validator_balances.validatorindex
+		WHERE validator_balances.validatorindex IS NOT NULL`)
 	if err != nil {
 		return fmt.Errorf("error retrieving initial validator balances data: %w", err)
 	}
 
 	startBalanceMap := make(map[uint64]uint64)
 	for _, balance := range startBalances {
-		startBalanceMap[balance.Index] += balance.Balance
+		startBalanceMap[balance.Index] = balance.Balance
 	}
 
 	var balances []*types.ValidatorBalance
-
-	err = tx.Select(&balances, `SELECT 
-											   validator_balances.epoch, 
-											   validator_balances.validatorindex, 
-											   validator_balances.balance
-										FROM validator_balances 
-										WHERE validator_balances.epoch IN ($1, $2, $3, $4, $5)`, currentEpoch, epoch1d, epoch7d, epoch31d, epoch365d)
+	err = tx.Select(&balances, `
+		SELECT
+			validator_balances.epoch,
+			validator_balances.validatorindex,
+			validator_balances.balance
+		FROM validator_balances
+		WHERE validator_balances.epoch IN ($1, $2, $3, $4, $5)`,
+		currentEpoch, epoch1d, epoch7d, epoch31d, epoch365d)
 	if err != nil {
 		return fmt.Errorf("error retrieving validator performance data: %w", err)
 	}
 
-	performance := make(map[uint64]map[int64]int64)
+	type depositByEpochRange struct {
+		Index        uint64 `db:"validatorindex"`
+		EpochRange   uint64 `db:"epochrange"`
+		DepositTotal uint64 `db:"deposittotal"`
+	}
 
+	// get total deposit-amounts from specific epochs up to the current epoch
+	var depositsByEpochRange []*depositByEpochRange
+	err = tx.Select(&depositsByEpochRange, `
+		SELECT
+			validatorindex,
+			epochrange,
+			MAX(deposittotal) as deposittotal
+		FROM 
+		(
+			SELECT DISTINCT
+				validatorindex,
+				CASE
+					WHEN (d.block_slot/32)-1 <= $5 THEN $5
+					WHEN (d.block_slot/32)-1 <= $4 THEN $4
+					WHEN (d.block_slot/32)-1 <= $3 THEN $3
+					WHEN (d.block_slot/32)-1 <= $2 THEN $2
+					ELSE $1
+				END AS epochrange,
+				SUM(d.amount) OVER (
+					PARTITION BY d.publickey 
+					ORDER BY d.block_slot DESC
+				) AS deposittotal
+			FROM validators
+				INNER JOIN blocks_deposits d
+					ON d.publickey = validators.pubkey
+					AND (d.block_slot/32) > validators.activationepoch
+		) a
+		GROUP BY epochrange, validatorindex`,
+		currentEpoch, epoch1d, epoch7d, epoch31d, epoch365d)
+	if err != nil {
+		return fmt.Errorf("error retrieving validator deposits data: %w", err)
+	}
+
+	depositsMap := make(map[uint64]map[int64]int64)
+	for _, deposit := range depositsByEpochRange {
+		if _, exists := depositsMap[deposit.Index]; !exists {
+			depositsMap[deposit.Index] = make(map[int64]int64)
+		}
+		depositsMap[deposit.Index][int64(deposit.EpochRange)] = int64(deposit.DepositTotal)
+	}
+
+	performance := make(map[uint64]map[int64]int64)
 	for _, balance := range balances {
 		if performance[balance.Index] == nil {
 			performance[balance.Index] = make(map[int64]int64)
@@ -525,6 +573,36 @@ func updateValidatorPerformance() error {
 		performance31d := currentBalance - balance31d
 		performance365d := currentBalance - balance365d
 
+		if depositsMap[validator] != nil {
+			if d, exists := depositsMap[validator][epoch1d]; exists {
+				performance1d -= d
+			}
+
+			if d, exists := depositsMap[validator][epoch7d]; exists {
+				performance7d -= d
+			} else if d, exists := depositsMap[validator][epoch1d]; exists {
+				performance7d -= d
+			}
+
+			if d, exists := depositsMap[validator][epoch31d]; exists {
+				performance31d -= d
+			} else if d, exists := depositsMap[validator][epoch7d]; exists {
+				performance31d -= d
+			} else if d, exists := depositsMap[validator][epoch1d]; exists {
+				performance31d -= d
+			}
+
+			if d, exists := depositsMap[validator][epoch365d]; exists {
+				performance365d -= d
+			} else if d, exists := depositsMap[validator][epoch31d]; exists {
+				performance365d -= d
+			} else if d, exists := depositsMap[validator][epoch7d]; exists {
+				performance365d -= d
+			} else if d, exists := depositsMap[validator][epoch1d]; exists {
+				performance365d -= d
+			}
+		}
+
 		if performance1d > 10000000 {
 			performance1d = 0
 		}
@@ -538,7 +616,9 @@ func updateValidatorPerformance() error {
 			performance365d = 0
 		}
 
-		_, err := tx.Exec("INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d) VALUES ($1, $2, $3, $4, $5, $6)",
+		_, err := tx.Exec(`
+			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d)
+			VALUES ($1, $2, $3, $4, $5, $6)`,
 			validator, currentBalance, performance1d, performance7d, performance31d, performance365d)
 
 		if err != nil {
