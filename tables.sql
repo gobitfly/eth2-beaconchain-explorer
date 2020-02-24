@@ -69,7 +69,7 @@ create table attestation_assignments (
       status int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
       primary key (epoch, validatorindex, attesterslot, committeeindex)
 );
-create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
+create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex, epoch desc, attesterslot desc);
 
 drop table if exists validator_balances;
 create table validator_balances (
