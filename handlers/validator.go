@@ -214,6 +214,31 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
 	}
 
+	var depositHistory []*types.ValidatorDepositHistory
+	err = db.DB.Select(&depositHistory, `
+		SELECT 
+			d.block_slot, 
+			d.amount 
+		FROM validators 
+			LEFT JOIN blocks_deposits d 
+				ON d.publickey = validators.pubkey 
+				AND (d.block_slot/32) > validators.activationepoch 
+		WHERE validators.validatorindex = $1`, index)
+
+	for _, deposit := range depositHistory {
+		depositTs := utils.SlotToTime(deposit.BlockSlot)
+
+		if depositTs.After(cutoff1d) {
+			validatorPageData.Income1d -= int64(deposit.Amount)
+		}
+		if depositTs.After(cutoff7d) {
+			validatorPageData.Income7d -= int64(deposit.Amount)
+		}
+		if depositTs.After(cutoff31d) {
+			validatorPageData.Income31d -= int64(deposit.Amount)
+		}
+	}
+
 	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
 	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, COALESCE(effectivebalance, 0) as balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
 	if err != nil {

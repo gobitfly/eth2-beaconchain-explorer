@@ -159,6 +159,12 @@ type ValidatorBalanceHistory struct {
 	Balance uint64 `db:"balance"`
 }
 
+// ValidatorDepositHistory is a struct for the validator deposit history data
+type ValidatorDepositHistory struct {
+	BlockSlot uint64 `db:"block_slot"`
+	Amount    uint64 `db:"amount"`
+}
+
 // ValidatorBalance is a struct for the validator balance data
 type ValidatorBalance struct {
 	Epoch            uint64 `db:"epoch"`
