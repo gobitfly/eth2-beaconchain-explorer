@@ -394,13 +394,15 @@ type SearchAheadValidatorsResult []struct {
 
 // GenericChartData is a struct to hold chart data
 type GenericChartData struct {
-	Title        string                    `json:"title"`
-	Subtitle     string                    `json:"subtitle"`
-	XAxisTitle   string                    `json:"x_axis_title"`
-	YAxisTitle   string                    `json:"y_axis_title"`
-	Type         string                    `json:"type"`
-	StackingMode string                    `json:"stacking_mode"`
-	Series       []*GenericChartDataSeries `json:"series"`
+	IsNormalChart        bool
+	XAxisLabelsFormatter template.JS
+	Title                string                    `json:"title"`
+	Subtitle             string                    `json:"subtitle"`
+	XAxisTitle           string                    `json:"x_axis_title"`
+	YAxisTitle           string                    `json:"y_axis_title"`
+	Type                 string                    `json:"type"`
+	StackingMode         string                    `json:"stacking_mode"`
+	Series               []*GenericChartDataSeries `json:"series"`
 }
 
 // GenericChartDataSeries is a struct to hold chart series data

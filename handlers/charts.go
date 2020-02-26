@@ -34,6 +34,8 @@ var chartHandlers = map[string]chartHandler{
 	"participation_rate":         chartHandler{6, participationRateChartData},
 	"estimated_validator_return": chartHandler{7, estimatedValidatorReturnChartData},
 	"stake_effectiveness":        chartHandler{8, stakeEffectivenessChartData},
+	"balance_distribution":       chartHandler{9, balanceDistributionChartData},
+	"performance_distribution":   chartHandler{10, performanceDistributionChartData},
 }
 
 // Charts uses a go template for presenting the page to show charts
@@ -576,6 +578,195 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Stake Effectiveness",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func balanceDistributionChartData() (*types.GenericChartData, error) {
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var currentEpoch uint64
+	err = tx.Get(&currentEpoch, "select max(epoch) from validator_balances")
+	if err != nil {
+		return nil, err
+	}
+
+	rows := []struct {
+		MaxBalance float64
+		Count      float64
+	}{}
+
+	err = tx.Select(&rows, `
+		with
+			stats as (
+				select 
+					min(balance) as min,
+					max(balance) as max
+				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances) 
+			),
+			balances as (
+				select balance
+				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances)
+			),
+			histogram as (
+				select 
+					width_bucket(balance, min, max, 99) as bucket,
+					max(balance) as max,
+					count(*) as cnt
+				from  balances, stats
+				group by bucket
+				order by bucket
+			)
+		select max/1e9 as maxbalance, cnt as count
+		from histogram`)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	seriesData := make([][]float64, len(rows))
+
+	for i, row := range rows {
+		seriesData[i] = []float64{row.MaxBalance, row.Count}
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart: true,
+		Title:         "Balance Distribution",
+		Subtitle:      fmt.Sprintf("Histogram of balances at epoch %d", currentEpoch),
+		XAxisTitle:    "Balance",
+		YAxisTitle:    "Validators",
+		StackingMode:  "false",
+		Type:          "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func performanceDistributionChartData() (*types.GenericChartData, error) {
+	rows := []struct {
+		MaxPerformance7d float64
+		Count            float64
+	}{}
+
+	err := db.DB.Select(&rows, `
+		with
+			stats as (
+				select 
+					min(performance7d) as min7d,
+					max(performance7d) as max7d
+				from validator_performance
+			),
+			histogram as (
+				select 
+					width_bucket(performance7d, min7d, max7d, 9) as bucket,
+					max(performance7d) as max,
+					count(*) as cnt
+				from  validator_performance, stats
+				group by bucket
+				order by bucket
+			)
+		select max/1e9 as maxperformance7d, cnt as count
+		from histogram`)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := make([][]float64, len(rows))
+
+	for i, row := range rows {
+		seriesData[i] = []float64{row.MaxPerformance7d, row.Count}
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart: true,
+		Title:         "Performance Distribution",
+		Subtitle:      fmt.Sprintf("Histogram of performances of the last 7 days at epoch %d", services.LatestEpoch()),
+		XAxisTitle:    "Performance",
+		XAxisLabelsFormatter: `function(){
+  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'<span>'
+  return '<span style="color:var(--success)">'+this.value+'<span>'
+}
+`,
+		YAxisTitle:   "Validators",
+		StackingMode: "false",
+		Type:         "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func blockProposalDistributionChartData() (*types.GenericChartData, error) {
+	rows := []struct {
+		MaxPerformance7d float64
+		Count            float64
+	}{}
+
+	err := db.DB.Select(&rows, `
+		with
+			stats as (
+				select 
+					min(performance7d) as min7d,
+					max(performance7d) as max7d
+				from validator_performance
+			),
+			histogram as (
+				select 
+					width_bucket(performance7d, min7d, max7d, 9) as bucket,
+					max(performance7d) as max,
+					count(*) as cnt
+				from  validator_performance, stats
+				group by bucket
+				order by bucket
+			)
+		select max/1e9 as maxperformance7d, cnt as count
+		from histogram`)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := make([][]float64, len(rows))
+
+	for i, row := range rows {
+		seriesData[i] = []float64{row.MaxPerformance7d, row.Count}
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart: true,
+		Title:         "Performance Distribution",
+		Subtitle:      fmt.Sprintf("Histogram of performances of the last 7 days at epoch %d", services.LatestEpoch()),
+		XAxisTitle:    "Performance",
+		XAxisLabelsFormatter: `function(){
+  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'<span>'
+  return '<span style="color:var(--success)">'+this.value+'<span>'
+}
+`,
+		YAxisTitle:   "Validators",
+		StackingMode: "false",
+		Type:         "column",
+		Series: []*types.GenericChartDataSeries{
+			{
 				Data: seriesData,
 			},
 		},
