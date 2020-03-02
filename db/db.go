@@ -234,7 +234,7 @@ func SaveEpoch(data *types.EpochData) error {
 
 	validatorsCount := 0
 	for _, v := range data.Validators {
-		if v.ExitEpoch > data.Epoch && v.ActivationEpoch <= data.Epoch {
+		if v.ExitEpoch > data.Epoch {
 			validatorsCount++
 		}
 	}
@@ -250,13 +250,12 @@ func SaveEpoch(data *types.EpochData) error {
 			voluntaryexitscount, 
 			validatorscount, 
 			averagevalidatorbalance, 
-			totalvalidatorbalance,
 			finalized, 
 			eligibleether, 
 			globalparticipationrate, 
 			votedether
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
 		ON CONFLICT (epoch) DO UPDATE SET 
 			blockscount             = excluded.blockscount, 
 			proposerslashingscount  = excluded.proposerslashingscount,
@@ -266,7 +265,6 @@ func SaveEpoch(data *types.EpochData) error {
 			voluntaryexitscount     = excluded.voluntaryexitscount,
 			validatorscount         = excluded.validatorscount,
 			averagevalidatorbalance = excluded.averagevalidatorbalance,
-			totalvalidatorbalance   = excluded.totalvalidatorbalance,
 			finalized               = excluded.finalized,
 			eligibleether           = excluded.eligibleether,
 			globalparticipationrate = excluded.globalparticipationrate,
@@ -280,7 +278,6 @@ func SaveEpoch(data *types.EpochData) error {
 		voluntaryExitCount,
 		validatorsCount,
 		validatorBalanceAverage,
-		validatorBalanceSum.Uint64(),
 		data.EpochParticipationStats.Finalized,
 		data.EpochParticipationStats.EligibleEther,
 		data.EpochParticipationStats.GlobalParticipationRate,

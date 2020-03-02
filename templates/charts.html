@@ -2,7 +2,6 @@
 <script src="https://code.highcharts.com/stock/highstock.js"></script>
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
 <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
-<script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
 <script>
 {{range $i, $e := .}}
@@ -11,8 +10,13 @@
         Highcharts.chart('chart-{{$i}}',{
             chart: { type: {{.Data.Type}} },
             rangeSelector: {  enabled: false },
-            title: { text: {{.Data.Title}} },
-            subtitle: { text: {{.Data.Subtitle}} },
+            title: { 
+                useHTML: true,
+                text: '<a href="charts/{{.Path}}">{{.Data.Title}}</a>',
+            },
+            subtitle: {
+                text: {{.Data.Subtitle}}
+            },
             plotOptions: { column: { stacking: {{.Data.StackingMode}} } },
             xAxis: { 
                 // type: 'logarithmic',
@@ -80,9 +84,19 @@
         Highcharts.stockChart('chart-{{$i}}',{
             chart: { type: {{.Data.Type}} },
             rangeSelector: {  enabled: false },
-            title: { text: {{.Data.Title}} },
+            title: { 
+                useHTML: true,
+                text: '<a href="charts/{{.Path}}">{{.Data.Title}}</a>',
+            },
             subtitle: { text: {{.Data.Subtitle}} },
-            plotOptions: { column: { stacking: {{.Data.StackingMode}} } },
+            plotOptions: { 
+                column: { 
+                    stacking: {{.Data.StackingMode}},
+                    dataGrouping: {
+                        {{ if .Data.ColumnDataGroupingApproximation }}approximation: {{.Data.ColumnDataGroupingApproximation}},{{end}}
+                    },
+                } 
+            },
             yAxis: [{ 
                 title: { text: {{.Data.YAxisTitle}} },
                 opposite: false

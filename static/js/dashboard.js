@@ -608,7 +608,7 @@ $(document).ready(function() {
   }
 })
 
-function createBalanceChart(effective, balance, utilization) {
+function createBalanceChart(effective, balance, utilization, missedAttestations) {
   Highcharts.stockChart('balance-chart', {
     exporting: {
       scale: 1

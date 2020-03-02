@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"sort"
-	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -20,70 +18,15 @@ import (
 var chartsTemplate = template.Must(template.New("charts").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/charts.html"))
 var genericChartTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/genericchart.html"))
 
-type chartHandler struct {
-	Order    int
-	DataFunc func() (*types.GenericChartData, error)
-}
-
-var chartHandlers = map[string]chartHandler{
-	"blocks":                     chartHandler{1, blocksChartData},
-	"validators":                 chartHandler{2, activeValidatorsChartData},
-	"staked_ether":               chartHandler{3, stakedEtherChartData},
-	"average_balance":            chartHandler{4, averageBalanceChartData},
-	"network_liveness":           chartHandler{5, networkLivenessChartData},
-	"participation_rate":         chartHandler{6, participationRateChartData},
-	"estimated_validator_return": chartHandler{7, estimatedValidatorReturnChartData},
-	"stake_effectiveness":        chartHandler{8, stakeEffectivenessChartData},
-	"balance_distribution":       chartHandler{9, balanceDistributionChartData},
-	"performance_distribution":   chartHandler{10, performanceDistributionChartData},
-}
-
 // Charts uses a go template for presenting the page to show charts
 func Charts(w http.ResponseWriter, r *http.Request) {
-
 	w.Header().Set("Content-Type", "text/html")
 
-	type chartHandlerRes struct {
-		Order int
-		Path  string
-		Data  *types.GenericChartData
-		Error error
+	chartsPageData := services.LatestChartsPageData()
+	if chartsPageData == nil {
+		http.Error(w, "The requested data is currently unavailable, please retry in a few seconds", http.StatusServiceUnavailable)
+		return
 	}
-
-	wg := sync.WaitGroup{}
-	wg.Add(len(chartHandlers))
-
-	chartHandlerResChan := make(chan chartHandlerRes, len(chartHandlers))
-
-	for i, ch := range chartHandlers {
-		go func(i string, ch chartHandler) {
-			defer wg.Done()
-			data, err := ch.DataFunc()
-			if err != nil {
-				logger.Errorf("error getting chart data for %v: %w", i, err)
-			}
-			chartHandlerResChan <- chartHandlerRes{ch.Order, i, data, err}
-		}(i, ch)
-	}
-
-	go func() {
-		wg.Wait()
-		close(chartHandlerResChan)
-	}()
-
-	pageCharts := []chartHandlerRes{}
-
-	for chart := range chartHandlerResChan {
-		if chart.Error != nil {
-			http.Error(w, "Internal server error", 503)
-			return
-		}
-		pageCharts = append(pageCharts, chart)
-	}
-
-	sort.Slice(pageCharts, func(i, j int) bool {
-		return pageCharts[i].Order < pageCharts[j].Order
-	})
 
 	data := &types.PageData{
 		Meta: &types.Meta{
@@ -93,7 +36,7 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "charts",
-		Data:                  nil,
+		Data:                  chartsPageData,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -101,29 +44,35 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := chartsTemplate.ExecuteTemplate(w, "layout", data)
-
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
 
+// GenericChart uses a go template for presenting the page of a generic chart
 func GenericChart(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	vars := mux.Vars(r)
-	chartVar := vars["chart"]
-	chartHandler, exists := chartHandlers[chartVar]
-	if !exists {
-		http.Error(w, "Internal server error", 503)
+	chartsPageData := services.LatestChartsPageData()
+	if chartsPageData == nil {
+		http.Error(w, "The requested data is currently unavailable, please retry in a few seconds", http.StatusServiceUnavailable)
 		return
 	}
 
-	chartData, err := chartHandler.DataFunc()
-	if err != nil {
-		logger.Errorf("error retrieving chart data for route %v: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+	vars := mux.Vars(r)
+	chartVar := vars["chart"]
+	var chartData *types.GenericChartData
+	for _, d := range *chartsPageData {
+		if d.Path == chartVar {
+			chartData = d.Data
+			break
+		}
+	}
+
+	if chartData == nil {
+		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
@@ -142,11 +91,10 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 	}
 
-	err = genericChartTemplate.ExecuteTemplate(w, "layout", data)
-
+	err := genericChartTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -214,177 +162,6 @@ func blocksChartData() (*types.GenericChartData, error) {
 			{
 				Name: "Orphaned",
 				Data: dailyOrphanedBlocks,
-			},
-		},
-	}
-
-	return chartData, nil
-}
-
-// ActiveValidatorChart will show the Active Validators Chart
-func ActiveValidatorChart(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Active Validators Chart - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/charts",
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "charts",
-		Data:                  nil,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-	}
-
-	rows := []struct {
-		Epoch           uint64
-		ValidatorsCount uint64
-	}{}
-
-	err := db.DB.Select(&rows, "SELECT epoch, validatorscount FROM epochs ORDER BY epoch")
-	if err != nil {
-		return nil, err
-	}
-
-	dailyActiveValidators := [][]float64{}
-
-	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-
-		if len(dailyActiveValidators) == 0 || dailyActiveValidators[len(dailyActiveValidators)-1][0] != day {
-			dailyActiveValidators = append(dailyActiveValidators, []float64{day, float64(row.ValidatorsCount)})
-		}
-	}
-
-	chartData := &types.GenericChartData{
-		Title:        "Validators",
-		Subtitle:     "History of daily active validators",
-		XAxisTitle:   "",
-		YAxisTitle:   "# of Validators",
-		StackingMode: "false",
-		Type:         "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Validators",
-				Data: dailyActiveValidators,
-			},
-		},
-	}
-
-	return chartData, nil
-}
-
-// StakedEtherChart will show the Staked Ether Chart
-func StakedEtherChart(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Staked Ether Chart - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/charts",
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "charts",
-		Data:                  nil,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-	}
-
-	rows := []struct {
-		Epoch         uint64
-		EligibleEther uint64
-	}{}
-
-	err := db.DB.Select(&rows, "SELECT epoch, eligibleether FROM epochs ORDER BY epoch")
-	if err != nil {
-		return nil, err
-	}
-
-	dailyStakedEther := [][]float64{}
-
-	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-
-		if len(dailyStakedEther) == 0 || dailyStakedEther[len(dailyStakedEther)-1][0] != day {
-			dailyStakedEther = append(dailyStakedEther, []float64{day, float64(row.EligibleEther) / 1000000000})
-		}
-	}
-
-	chartData := &types.GenericChartData{
-		Title:        "Staked Ether",
-		Subtitle:     "History of daily staked Ether",
-		XAxisTitle:   "",
-		YAxisTitle:   "Ether",
-		StackingMode: "false",
-		Type:         "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Staked Ether",
-				Data: dailyStakedEther,
-			},
-		},
-	}
-
-	return chartData, nil
-}
-
-// AverageBalanceChart will show the Average Validator Balance Chart
-func AverageBalanceChart(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Average Validator Balance Chart - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/charts",
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "charts",
-		Data:                  nil,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-	}
-
-	rows := []struct {
-		Epoch                   uint64
-		AverageValidatorBalance uint64
-	}{}
-
-	err := db.DB.Select(&rows, "SELECT epoch, averagevalidatorbalance FROM epochs ORDER BY epoch")
-	if err != nil {
-		return nil, err
-	}
-
-	dailyAverageBalance := [][]float64{}
-
-	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-
-		if len(dailyAverageBalance) == 0 || dailyAverageBalance[len(dailyAverageBalance)-1][0] != day {
-			dailyAverageBalance = append(dailyAverageBalance, []float64{day, float64(row.AverageValidatorBalance) / 1000000000})
-		}
-	}
-
-	chartData := &types.GenericChartData{
-		Title:        "Validator Balance",
-		Subtitle:     "History of the daily average validator balance",
-		XAxisTitle:   "",
-		YAxisTitle:   "Ether",
-		StackingMode: "false",
-		Type:         "column",
-		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Average Balance [ETH]",
-				Data: dailyAverageBalance,
 			},
 		},
 	}
