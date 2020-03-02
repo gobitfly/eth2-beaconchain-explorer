@@ -358,6 +358,8 @@ $(document).ready(function() {
       var validatorsStr = localStorage.getItem('dashboard_validators')
       if (validatorsStr) {
         state.validators = JSON.parse(validatorsStr)
+        state.validators = state.validators.filter((v, i) => state.validators.indexOf(v) === i)
+        state.validators.sort(sortValidators)
       } else {
         state.validators = []
       }
@@ -542,6 +544,21 @@ $(document).ready(function() {
     renderSelectedValidators()
     updateState()
   }
+  window.addEventListener('storage', function(e) {
+      var validatorsStr = localStorage.getItem('dashboard_validators')
+      if (JSON.stringify(state.validators) === validatorsStr) {
+        return
+      }
+      if (validatorsStr) {
+        state.validators = JSON.parse(validatorsStr)
+      } else {
+        state.validators = []
+      }
+      state.validators = state.validators.filter((v, i) => state.validators.indexOf(v) === i)
+      state.validators.sort(sortValidators)
+      renderSelectedValidators()
+      updateState()
+  })
 
   function renderCharts() {
     var t0 = Date.now()
