@@ -217,6 +217,67 @@
 		})
 	</script>
 
+	<script type="text/javascript">
+		var validators = []
+		var validatorIdx = {{.Index}}+''
+		$(document).ready(function () {
+			updateDashboardButtons()
+			$('#remove-from-dashboard-button').click(function(){
+				validators = validators.filter(function(v, i, a){
+					if (v === validatorIdx) return false
+					return true
+				})
+				validators.sort(sortValidators)
+				localStorage.setItem('dashboard_validators', JSON.stringify(validators))
+				$('#add-to-dashboard-button').show()
+				$('#remove-from-dashboard-button').hide()
+			})
+			$('#add-to-dashboard-button').click(function(){
+				validators.push(validatorIdx)
+				validators.sort(sortValidators)
+				localStorage.setItem('dashboard_validators', JSON.stringify(validators))
+				$('#add-to-dashboard-button').hide()
+				$('#remove-from-dashboard-button').show()
+			})
+		})
+		window.addEventListener('storage', function(e){
+			// note: this fires only if storage changes within another tab
+			updateDashboardButtons()
+		})
+		function updateDashboardButtons() {
+			var validatorIsInDashboard = false
+			var validatorsStr = localStorage.getItem('dashboard_validators')
+			if (validatorsStr) {
+				try { 
+					validators = JSON.parse(validatorsStr)
+				} catch(e) { 
+					console.error('error parsing localStorage.dashboard_validators', e)
+					validators = []
+				}
+			} else {
+				validators = []
+			}
+			for (var i=0; i<validators.length; i++) {
+				if (validators[i] === validatorIdx) {
+					validatorIsInDashboard = true
+					break
+				}
+			}
+			$('#remove-from-dashboard-button').hide()
+			$('#add-to-dashboard-button').hide()
+			if (validatorIsInDashboard) {
+				$('#remove-from-dashboard-button').show()
+			} else {
+				$('#add-to-dashboard-button').show()
+			}
+		}
+		function sortValidators(a, b) {
+			var ai = parseInt(a)
+			var bi = parseInt(b)
+			return ai - bi
+		}
+	</script>
+
 {{end}}
 
 {{ define "css"}}
@@ -234,6 +295,18 @@
 							title="Copy public key to clipboard"
 							data-clipboard-text="0x{{printf "%x" .PublicKey}}">
 						<i class="fa fa-copy"></i>
+					</button>
+					<button class="btn btn-light btn-sm" type="button" id="add-to-dashboard-button"
+							style="display:none;"
+							data-toggle="tooltip" data-placement="right"
+							title="Add validator to dashboard">
+						<i class="fa fa-plus"></i>
+					</button>
+					<button class="btn btn-light btn-sm" type="button" id="remove-from-dashboard-button"
+							style="display:none;"
+							data-toggle="tooltip" data-placement="right"
+							title="Remove validator from dashboard">
+						<i class="fa fa-minus"></i>
 					</button>
 				</h1>
 			</div>
