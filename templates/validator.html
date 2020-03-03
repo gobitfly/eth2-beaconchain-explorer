@@ -231,6 +231,7 @@
 				localStorage.setItem('dashboard_validators', JSON.stringify(validators))
 				$('#add-to-dashboard-button').show()
 				$('#remove-from-dashboard-button').hide()
+				$(this).tooltip('hide')
 			})
 			$('#add-to-dashboard-button').click(function(){
 				validators.push(validatorIdx)
@@ -238,6 +239,7 @@
 				localStorage.setItem('dashboard_validators', JSON.stringify(validators))
 				$('#add-to-dashboard-button').hide()
 				$('#remove-from-dashboard-button').show()
+				$(this).tooltip('hide')
 			})
 		})
 		window.addEventListener('storage', function(e){
