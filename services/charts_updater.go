@@ -366,7 +366,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Participation Rate",
-		Subtitle:     "History of the Participation Rate",
+		Subtitle:     "History of the Participation Rate - measuring how many of the validators expected to attest to blocks are actually doing so.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Participation Rate [%]",
 		StackingMode: "false",
@@ -479,7 +479,7 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Stake Effectiveness",
-		Subtitle:     "History of the Stake Effectiveness",
+		Subtitle:     "History of the Stake Effectiveness - measuring the relation between the sum of all effective balances and the sum of all balances. 100% Stake Effectiveness means that 100% of the locked Ether is used for staking.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Stake Effectiveness [%]",
 		StackingMode: "false",
@@ -555,7 +555,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 		Title:                "Balance Distribution",
 		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d", currentEpoch),
 		XAxisTitle:           "Balance",
-		YAxisTitle:           "# of Validators",
+		YAxisTitle:           "log # of Validators",
 		XAxisLabelsFormatter: `function(){ return this.value+'ETH' }`,
 		StackingMode:         "false",
 		Type:                 "column",
@@ -629,7 +629,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 		Title:                "Effective Balance Distribution",
 		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d", currentEpoch),
 		XAxisTitle:           "Effective Balance",
-		YAxisTitle:           "# of Validators",
+		YAxisTitle:           "log # of Validators",
 		XAxisLabelsFormatter: `function(){ return this.value+'ETH' }`,
 		StackingMode:         "false",
 		Type:                 "column",
@@ -681,14 +681,14 @@ func performanceDistributionChartData() (*types.GenericChartData, error) {
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
 		Title:         "Performance Distribution",
-		Subtitle:      fmt.Sprintf("Histogram of performances of the last 7 days at epoch %d", LatestEpoch()),
+		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 7 days at epoch %d", LatestEpoch()),
 		XAxisTitle:    "Performance",
 		XAxisLabelsFormatter: `function(){
   if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
   return '<span style="color:var(--success)">'+this.value+'ETH<span>'
 }
 `,
-		YAxisTitle:   "# of Validators",
+		YAxisTitle:   "log # of Validators",
 		StackingMode: "false",
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
@@ -778,7 +778,7 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
   return '<span style="color:var(--success)">'+this.value+'%<span>'
 }
 `,
-		YAxisTitle:   "# of Validators",
+		YAxisTitle:   "log # of Validators",
 		StackingMode: "false",
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
