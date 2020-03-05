@@ -389,11 +389,18 @@ func estimatedValidatorReturnChartData() (*types.GenericChartData, error) {
 		Eligibleether   uint64
 		Votedether      uint64
 		Validatorscount uint64
+		Finalitydelay   uint64
 	}{}
 
 	// note: eligibleether might not be correct, need to check what exactly the node returns
 	// for the reward-calculation we need the sum of all effective balances
-	err := db.DB.Select(&rows, `SELECT epoch, eligibleether, votedether, validatorscount FROM epochs ORDER BY epoch`)
+	err := db.DB.Select(&rows, `
+		SELECT 
+			epoch, eligibleether, votedether, validatorscount, 
+			coalesce(nl.headepoch-nl.finalizedepoch,2) as finalitydelay
+		FROM epochs
+			LEFT JOIN network_liveness nl ON epochs.epoch = nl.headepoch
+		ORDER BY epoch`)
 	if err != nil {
 		return nil, err
 	}
@@ -407,6 +414,9 @@ func estimatedValidatorReturnChartData() (*types.GenericChartData, error) {
 	proposerRewardQuotient := uint64(8)
 	slotsPerDay := 3600 * 24 / utils.Config.Chain.SecondsPerSlot
 	epochsPerDay := slotsPerDay / utils.Config.Chain.SlotsPerEpoch
+	minAttestationInclusionDelay := uint64(1) // epochs
+	minEpochsToInactivityPenalty := uint64(4) // epochs
+	// inactivityPenaltyQuotient := uint6(33554432) // 2**25
 
 	for _, row := range rows {
 		if row.Eligibleether == 0 {
@@ -414,13 +424,21 @@ func estimatedValidatorReturnChartData() (*types.GenericChartData, error) {
 		}
 		baseReward := maxEffectiveBalance * baseRewardFactor / mathutil.IntegerSquareRoot(row.Eligibleether) / baseRewardPerEpoch
 		// Micro-incentives for matching FFG source, FFG target, and head
-		rewardPerEpoch := 3 * baseReward * row.Votedether / row.Eligibleether
+		rewardPerEpoch := int64(3 * baseReward * row.Votedether / row.Eligibleether)
 		// Proposer and inclusion delay micro-rewards
 		proposerReward := baseReward / proposerRewardQuotient
-		maxAttesterReward := baseReward - proposerReward
-		rewardPerEpoch += maxAttesterReward
-		rewardPerEpoch += proposerReward * (utils.Config.Chain.SlotsPerEpoch / row.Validatorscount)
-		rewardPerDay := rewardPerEpoch * epochsPerDay
+		maxAttesterReward := (baseReward - proposerReward) / minAttestationInclusionDelay
+		rewardPerEpoch += int64(maxAttesterReward)
+		rewardPerEpoch += int64(proposerReward * (utils.Config.Chain.SlotsPerEpoch / row.Validatorscount))
+
+		// inactivity-penalty
+		if true && row.Finalitydelay > minEpochsToInactivityPenalty {
+			rewardPerEpoch -= int64(baseReward * baseRewardPerEpoch)
+			// if the validator is slashed
+			// rewardPerEpoch -=  maxEffectiveBalance*finality_delay/inactivityPenaltyQuotient
+		}
+
+		rewardPerDay := rewardPerEpoch * int64(epochsPerDay)
 		seriesData = append(seriesData, []float64{
 			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
 			float64(rewardPerDay) / 1e9,

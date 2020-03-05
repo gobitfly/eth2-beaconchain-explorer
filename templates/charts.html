@@ -15,12 +15,11 @@
                 text: '<a href="charts/{{.Path}}">{{.Data.Title}}</a>',
             },
             subtitle: {
-                text: {{.Data.Subtitle}}
+                useHTML: true,
+                text: {{.Data.Subtitle}} + ' <button class="button btn-secondary btn-xs hide-gaps" data-index="{{$i}}">hide gaps</button>'
             },
             plotOptions: { column: { stacking: {{.Data.StackingMode}} } },
-            xAxis: { 
-                // type: 'logarithmic',
-                // labels: { enabled: false}
+            xAxis: {
                 labels: {
                     {{ if .Data.XAxisLabelsFormatter }}formatter: {{.Data.XAxisLabelsFormatter}},{{end}}
                 }
@@ -35,7 +34,7 @@
             navigator: { enabled: false },
             scrollbar: { enabled: false }
         })
-        /** /
+        /**/
         {
             var series = {{.Data.Series}}
             var xAxisCategories = []
@@ -47,17 +46,22 @@
                 })
                 series[0].data = d
             })
-            Highcharts.chart('chart-{{$i}}',{
+            Highcharts.chart('chart-{{$i}}-nogaps',{
                 chart: { type: {{.Data.Type}} },
                 rangeSelector: {  enabled: false },
-                title: { text: {{.Data.Title}} },
-                subtitle: { text: {{.Data.Subtitle}} },
+                title: { 
+                    useHTML: true,
+                    text: '<a href="charts/{{.Path}}">{{.Data.Title}}</a>',
+                },
+                subtitle: { 
+                    useHTML: true,
+                    text: {{.Data.Subtitle}} + ' <button class="button btn-secondary btn-xs show-gaps" data-index="{{$i}}">show gaps</button>'
+                },
                 plotOptions: { 
                     column: { 
-                    //     stacking: {{.Data.StackingMode}},
-                         pointPadding: 0,
-                         groupPadding: 0,
-                         borderWidth: 1,
+                        pointPadding: 0,
+                        groupPadding: 0,
+                        borderWidth: 1,
                         shadow: false
                     } 
                 },
@@ -106,6 +110,16 @@
             scrollbar: { enabled: false }
         })
     {{end}}
+    $('.hide-gaps').click(function(){
+        var idx = $(this).data('index')
+        $('#chart-holder-'+idx).hide()
+        $('#chart-holder-'+idx+'-nogaps').show()
+    })
+    $('.show-gaps').click(function(){
+        var idx = $(this).data('index')
+        $('#chart-holder-'+idx).show()
+        $('#chart-holder-'+idx+'-nogaps').hide()
+    })
 {{end}}
 </script>
 {{end}}
@@ -130,7 +144,7 @@
     </div>
     <div class="row">
         {{range $i, $e := .}}
-            <div class="col-md-6 mb-4">
+            <div class="col-md-6 mb-4" id="chart-holder-{{$i}}">
                 <div class="card">
                     <div id="chart-{{$i}}">
                         <svg>
@@ -139,6 +153,17 @@
                     </div>
                 </div>
             </div>
+            {{if .Data.IsNormalChart}}
+                <div class="col-md-6 mb-4" id="chart-holder-{{$i}}-nogaps" style="display:none">
+                    <div class="card">
+                        <div id="chart-{{$i}}-nogaps">
+                            <svg>
+                                <use xlink:href="#ab83d798-7d25-4111-a4e2-42875f6e6704"></use>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            {{end}}
         {{end}}
     </div>
 {{end}}
