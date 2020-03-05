@@ -527,7 +527,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 			),
 			histogram as (
 				select 
-					width_bucket(balance, min, max, 99) as bucket,
+					width_bucket(balance, min, max, 999) as bucket,
 					max(balance) as max,
 					count(*)
 				from  balances, stats
@@ -555,7 +555,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 		Title:                "Balance Distribution",
 		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d.", currentEpoch),
 		XAxisTitle:           "Balance",
-		YAxisTitle:           "log # of Validators",
+		YAxisTitle:           "# of Validators",
 		XAxisLabelsFormatter: `function(){ return this.value+'ETH' }`,
 		StackingMode:         "false",
 		Type:                 "column",
@@ -601,7 +601,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 			),
 			histogram as (
 				select 
-					width_bucket(effectivebalance, min, max, 99) as bucket,
+					width_bucket(effectivebalance, min, max, 999) as bucket,
 					max(effectivebalance) as max,
 					count(*)
 				from  balances, stats
@@ -629,7 +629,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 		Title:                "Effective Balance Distribution",
 		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d.", currentEpoch),
 		XAxisTitle:           "Effective Balance",
-		YAxisTitle:           "log # of Validators",
+		YAxisTitle:           "# of Validators",
 		XAxisLabelsFormatter: `function(){ return this.value+'ETH' }`,
 		StackingMode:         "false",
 		Type:                 "column",
@@ -688,7 +688,7 @@ func performanceDistributionChartData() (*types.GenericChartData, error) {
   return '<span style="color:var(--success)">'+this.value+'ETH<span>'
 }
 `,
-		YAxisTitle:   "log # of Validators",
+		YAxisTitle:   "# of Validators",
 		StackingMode: "false",
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
@@ -722,26 +722,24 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
 						(epochs.validatorscount/32)
 							*
 						vb.effectivebalance/(epochs.eligibleether/epochs.validatorscount)
-					) as luck
+					) as luck,
+					((select max(epoch) from proposal_assignments) - v.activationepoch) as age
 				from proposal_assignments pa
-				inner join epochs 
-					on epochs.epoch = pa.epoch 
-					and epochs.eligibleether != 0
-				left join validator_balances vb
-					on vb.validatorindex = pa.validatorindex
-					and vb.epoch = pa.epoch
+					inner join epochs 
+						on epochs.epoch = pa.epoch 
+						and epochs.eligibleether != 0
+					inner join validators v
+						on v.validatorindex = pa.validatorindex
+						and (((select max(epoch) from proposal_assignments) - v.activationepoch) - v.activationepoch) >= $1
+						and epochs.epoch < v.exitepoch
+					left join validator_balances vb
+						on vb.validatorindex = pa.validatorindex
+						and vb.epoch = pa.epoch
 			),
 			aggregated as (
-				select 
-					(
-						sum(luck)
-							/
-						((select max(epoch) from proposal_assignments) - v.activationepoch)
-					) as luck
+				select ( sum(luck) / age ) as luck
 				from assignments
-				left join validators v on v.validatorindex = assignments.validatorindex
-				where ((select max(epoch) from proposal_assignments) - v.activationepoch) >= $1
-				group by assignments.validatorindex, v.activationepoch
+				group by validatorindex, age
 			),
 			stats as (
 				select
@@ -759,7 +757,7 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
 				order by bucket
 			)
 		select max, count
-		from histogram`, minAgeInEpochs)
+		from histogram;`, minAgeInEpochs)
 	if err != nil {
 		return nil, err
 	}
@@ -780,7 +778,7 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
   return '<span style="color:var(--success)">'+this.value+'%<span>'
 }
 `,
-		YAxisTitle:   "log # of Validators",
+		YAxisTitle:   "# of Validators",
 		StackingMode: "false",
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{

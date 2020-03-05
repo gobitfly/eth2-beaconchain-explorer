@@ -122,32 +122,32 @@ Highcharts.setOptions({
       trackBackgroundColor: 'var(--bg-color)',
       trackBorderColor: 'var(--border-color-transparent)',
     },
-    responsive: {
-      rules: [
-        {
-          condition: {
-            maxWidth: 590
-          },
-          chartOptions: {
-            chart: {
-              marginRight: 80
-            },
-            yAxis: [
-              {
-                title: {
-                  text: null
-                }
-              },
-              {
-                title: {
-                  text: null
-                }
-              }
-            ]
-          }
-        }
-      ]
-    },
+    // responsive: {
+    //   rules: [
+    //     {
+    //       condition: {
+    //         maxWidth: 590
+    //       },
+    //       chartOptions: {
+    //         chart: {
+    //           marginRight: 80
+    //         },
+    //         yAxis: [
+    //           {
+    //             title: {
+    //               text: null
+    //             }
+    //           },
+    //           {
+    //             title: {
+    //               text: null
+    //             }
+    //           }
+    //         ]
+    //       }
+    //     }
+    //   ]
+    // },
     plotOptions: {
       line: {
         animation: false,
