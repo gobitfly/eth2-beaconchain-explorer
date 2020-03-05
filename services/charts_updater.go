@@ -51,14 +51,15 @@ func chartsPageDataUpdater() {
 			time.Sleep(sleepDuration)
 			continue
 		}
-		logger.Info("updating chartPageData")
+		logger.WithField("epoch", latestEpoch).Info("updating chartPageData")
+		now := time.Now()
 		data, err := getChartsPageData()
 		if err != nil {
 			logger.Errorf("error updating chartPageData: %w", err)
 			time.Sleep(sleepDuration)
 			continue
 		}
-		logger.Info("chartPageData update completed")
+		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(now)).Info("chartPageData update completed")
 		chartsPageData.Store(&data)
 		prevEpoch = latestEpoch
 	}
@@ -159,7 +160,7 @@ func blocksChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Blocks",
-		Subtitle:     "History of daily blocks proposed",
+		Subtitle:     "History of daily blocks proposed.",
 		XAxisTitle:   "",
 		YAxisTitle:   "# of Blocks",
 		StackingMode: "normal",
@@ -206,7 +207,7 @@ func activeValidatorsChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Validators",
-		Subtitle:     "History of daily active validators",
+		Subtitle:     "History of daily active validators.",
 		XAxisTitle:   "",
 		YAxisTitle:   "# of Validators",
 		StackingMode: "false",
@@ -245,7 +246,7 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Staked Ether",
-		Subtitle:     "History of daily staked Ether",
+		Subtitle:     "History of daily staked Ether, which is the sum of all effctive balances.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Ether",
 		StackingMode: "false",
@@ -284,7 +285,7 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Validator Balance",
-		Subtitle:     "History of the daily average validator balance",
+		Subtitle:     "History of the daily average validator balance.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Ether",
 		StackingMode: "false",
@@ -327,9 +328,9 @@ func networkLivenessChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:                           "Network Liveness",
-		Subtitle:                        "History of how far the last Finalized Epoch is behind the Head Epoch",
+		Subtitle:                        "History of how far the last Finalized Epoch is behind the Head Epoch. The protocol allows epochs to be finalized after 2 epochs.",
 		XAxisTitle:                      "",
-		YAxisTitle:                      "Network Liveness [epochs]",
+		YAxisTitle:                      "Network Liveness [Epochs]",
 		StackingMode:                    "false",
 		ColumnDataGroupingApproximation: "high",
 		Type:                            "column",
@@ -366,7 +367,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Participation Rate",
-		Subtitle:     "History of the Participation Rate - measuring how many of the validators expected to attest to blocks are actually doing so.",
+		Subtitle:     "History of the Participation Rate, measuring how many of the validators expected to attest to blocks are actually doing so.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Participation Rate [%]",
 		StackingMode: "false",
@@ -411,25 +412,24 @@ func estimatedValidatorReturnChartData() (*types.GenericChartData, error) {
 		if row.Eligibleether == 0 {
 			continue
 		}
-
 		baseReward := maxEffectiveBalance * baseRewardFactor / mathutil.IntegerSquareRoot(row.Eligibleether) / baseRewardPerEpoch
 		// Micro-incentives for matching FFG source, FFG target, and head
-		estimatedRewardPerDay := epochsPerDay * 3 * baseReward * row.Votedether / row.Eligibleether
+		rewardPerEpoch := 3 * baseReward * row.Votedether / row.Eligibleether
 		// Proposer and inclusion delay micro-rewards
 		proposerReward := baseReward / proposerRewardQuotient
-		estimatedRewardPerDay += epochsPerDay * (baseReward - proposerReward)
-		proposalsPerDay := slotsPerDay / row.Validatorscount
-		estimatedRewardPerDay += proposalsPerDay * proposerReward
-
+		maxAttesterReward := baseReward - proposerReward
+		rewardPerEpoch += maxAttesterReward
+		rewardPerEpoch += proposerReward * (utils.Config.Chain.SlotsPerEpoch / row.Validatorscount)
+		rewardPerDay := rewardPerEpoch * epochsPerDay
 		seriesData = append(seriesData, []float64{
 			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
-			float64(estimatedRewardPerDay) / 1e9,
+			float64(rewardPerDay) / 1e9,
 		})
 	}
 
 	chartData := &types.GenericChartData{
 		Title:        "Estimated Validator Return",
-		Subtitle:     "History of the Estimated Validator Return",
+		Subtitle:     "History of the Estimated Validator Return.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Estimated Validator Return [ETH/day]",
 		StackingMode: "false",
@@ -455,8 +455,8 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 	err := db.DB.Select(&rows, `
 		SELECT
 			epoch, 
-			COALESCE(totalvalidatorbalance,0) as totalvalidatorbalance,
-			COALESCE(eligibleether,0) as eligibleether
+			COALESCE(totalvalidatorbalance, 0) AS totalvalidatorbalance,
+			COALESCE(eligibleether, 0) AS eligibleether
 		FROM epochs ORDER BY epoch`)
 	if err != nil {
 		return nil, err
@@ -479,7 +479,7 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Stake Effectiveness",
-		Subtitle:     "History of the Stake Effectiveness - measuring the relation between the sum of all effective balances and the sum of all balances. 100% Stake Effectiveness means that 100% of the locked Ether is used for staking.",
+		Subtitle:     "History of the Stake Effectiveness measuring the relation between the sum of all effective balances and the sum of all balances. 100% Stake Effectiveness means that 100% of the locked Ether is used for staking.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Stake Effectiveness [%]",
 		StackingMode: "false",
@@ -527,7 +527,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 			),
 			histogram as (
 				select 
-					width_bucket(balance, min, max, 999) as bucket,
+					width_bucket(balance, min, max, 99) as bucket,
 					max(balance) as max,
 					count(*)
 				from  balances, stats
@@ -553,7 +553,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 	chartData := &types.GenericChartData{
 		IsNormalChart:        true,
 		Title:                "Balance Distribution",
-		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d", currentEpoch),
+		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d.", currentEpoch),
 		XAxisTitle:           "Balance",
 		YAxisTitle:           "log # of Validators",
 		XAxisLabelsFormatter: `function(){ return this.value+'ETH' }`,
@@ -601,7 +601,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 			),
 			histogram as (
 				select 
-					width_bucket(effectivebalance, min, max, 999) as bucket,
+					width_bucket(effectivebalance, min, max, 99) as bucket,
 					max(effectivebalance) as max,
 					count(*)
 				from  balances, stats
@@ -627,7 +627,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 	chartData := &types.GenericChartData{
 		IsNormalChart:        true,
 		Title:                "Effective Balance Distribution",
-		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d", currentEpoch),
+		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d.", currentEpoch),
 		XAxisTitle:           "Effective Balance",
 		YAxisTitle:           "log # of Validators",
 		XAxisLabelsFormatter: `function(){ return this.value+'ETH' }`,
@@ -659,8 +659,8 @@ func performanceDistributionChartData() (*types.GenericChartData, error) {
 			),
 			histogram as (
 				select 
-					width_bucket(performance7d, min7d, max7d, 999) as bucket,
-					max(performance7d) as max,
+					width_bucket(performance1d, min7d, max7d, 9999) as bucket,
+					max(performance1d) as max,
 					count(*) as cnt
 				from  validator_performance, stats
 				group by bucket
@@ -681,7 +681,7 @@ func performanceDistributionChartData() (*types.GenericChartData, error) {
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
 		Title:         "Performance Distribution",
-		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 7 days at epoch %d", LatestEpoch()),
+		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 7 days at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Performance",
 		XAxisLabelsFormatter: `function(){
   if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
@@ -712,6 +712,7 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
 		Count float64
 	}{}
 
+	minAgeInEpochs := 100
 	err := db.DB.Select(&rows, `
 		with
 			assignments as (
@@ -739,6 +740,7 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
 					) as luck
 				from assignments
 				left join validators v on v.validatorindex = assignments.validatorindex
+				where ((select max(epoch) from proposal_assignments) - v.activationepoch) >= $1
 				group by assignments.validatorindex, v.activationepoch
 			),
 			stats as (
@@ -757,7 +759,7 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
 				order by bucket
 			)
 		select max, count
-		from histogram`)
+		from histogram`, minAgeInEpochs)
 	if err != nil {
 		return nil, err
 	}
@@ -771,7 +773,7 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
 		Title:         "Block Proposal Assignment Luck Distribution",
-		Subtitle:      fmt.Sprintf("Histogram of Block Proposal Assignment Luck at epoch %d. A validator is 100%% lucky when he got assigned to propse a block every active-validator-count/32 epochs during his active livetime.", LatestEpoch()),
+		Subtitle:      fmt.Sprintf("Histogram of Block Proposal Assignment Luck at epoch %d. A validator is 100%% lucky when he got assigned to propse a block every active-validator-count/32 epochs during his active livetime. Only validators with a livetime >= %v epochs are included.", LatestEpoch(), minAgeInEpochs),
 		XAxisTitle:    "Luck [%]",
 		XAxisLabelsFormatter: `function(){
   if (this.value < 100) return '<span style="color:var(--danger)">'+this.value+'%<span>'
