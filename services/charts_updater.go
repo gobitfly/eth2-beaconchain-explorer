@@ -730,7 +730,7 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
 		Count float64
 	}{}
 
-	minAgeInEpochs := 100
+	minAgeInEpochs := 200
 	err := db.DB.Select(&rows, `
 		with
 			assignments as (
@@ -748,8 +748,8 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
 						and epochs.eligibleether != 0
 					inner join validators v
 						on v.validatorindex = pa.validatorindex
-						and (((select max(epoch) from proposal_assignments) - v.activationepoch) - v.activationepoch) >= $1
-						and epochs.epoch < v.exitepoch
+						and ((select max(epoch) from proposal_assignments) - v.activationepoch) >= $1
+						and (select max(epoch) from proposal_assignments) < v.exitepoch
 					left join validator_balances vb
 						on vb.validatorindex = pa.validatorindex
 						and vb.epoch = pa.epoch
@@ -789,7 +789,7 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
 		Title:         "Block Proposal Assignment Luck Distribution",
-		Subtitle:      fmt.Sprintf("Histogram of Block Proposal Assignment Luck at epoch %d. A validator is 100%% lucky when he got assigned to propse a block every active-validator-count/32 epochs during his active livetime. Only validators with a livetime >= %v epochs are included.", LatestEpoch(), minAgeInEpochs),
+		Subtitle:      fmt.Sprintf("Histogram of Block Proposal Assignment Luck at epoch %d. A validator is 100%% lucky when he got assigned to propse a block every active-validator-count/32 epochs during his active livetime. Only active validators with a livetime >= %v epochs are included.", LatestEpoch(), minAgeInEpochs),
 		XAxisTitle:    "Luck [%]",
 		XAxisLabelsFormatter: `function(){
   if (this.value < 100) return '<span style="color:var(--danger)">'+this.value+'%<span>'
