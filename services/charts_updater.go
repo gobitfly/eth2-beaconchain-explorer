@@ -285,7 +285,7 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Validator Balance",
-		Subtitle:     "History of the daily average validator balance.",
+		Subtitle:     "Average Daily Validator Balance",
 		XAxisTitle:   "",
 		YAxisTitle:   "Ether",
 		StackingMode: "false",
@@ -328,7 +328,7 @@ func networkLivenessChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:                           "Network Liveness",
-		Subtitle:                        "History of how far the last Finalized Epoch is behind the Head Epoch. The protocol allows epochs to be finalized after 2 epochs. If the last Finalized Epoch is more than 4 epochs behind the Head Epoch all validators will get penalized.",
+		Subtitle:                        "Network Liveness measures how far the last Finalized Epoch is behind the Head Epoch. The protocol allows epochs to be finalized after 2 epochs. If the last Finalized Epoch is more than 4 epochs behind the Head Epoch all validators will get penalized.",
 		XAxisTitle:                      "",
 		YAxisTitle:                      "Network Liveness [epochs]",
 		StackingMode:                    "false",
@@ -367,7 +367,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Participation Rate",
-		Subtitle:     "History of the Participation Rate, measuring how many of the validators expected to attest to blocks are actually doing so.",
+		Subtitle:     "Participation Rate measures how many of the validators expected to attest to blocks are actually doing so.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Participation Rate [%]",
 		StackingMode: "false",
@@ -446,15 +446,15 @@ func estimatedValidatorReturnChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Estimated Validator Return",
-		Subtitle:     "History of the Estimated Validator Return.",
+		Title:        "Estimated Daily Validator Income",
+		Subtitle:     "",
 		XAxisTitle:   "",
-		YAxisTitle:   "Estimated Validator Return [ETH/day]",
+		YAxisTitle:   "Estimated Validator Income [ETH/day]",
 		StackingMode: "false",
 		Type:         "line",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Estimated Validator Return",
+				Name: "Estimated Daily Validator Income",
 				Data: seriesData,
 			},
 		},
@@ -497,7 +497,7 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Stake Effectiveness",
-		Subtitle:     "History of the Stake Effectiveness measuring the relation between the sum of all effective balances and the sum of all balances. 100% Stake Effectiveness means that 100% of the locked Ether is used for staking.",
+		Subtitle:     "Stake Effectiveness measures the relation between the sum of all effective balances and the sum of all balances. 100% Stake Effectiveness means that 100% of the locked Ether is used for staking.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Stake Effectiveness [%]",
 		StackingMode: "false",
