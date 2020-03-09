@@ -4,7 +4,8 @@
 <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
 <script>
-$(document).ready(function () {
+var chartFns = []
+chartFns.push(function(){
 {{range $i, $e := .}}
     {{if .Data.IsNormalChart}}
         /**/
@@ -111,6 +112,10 @@ $(document).ready(function () {
             scrollbar: { enabled: false }
         })
     {{end}}
+{{end}}
+})
+$(document).ready(function () {
+function allDone(){
     $('.hide-gaps').click(function(){
         var idx = $(this).data('index')
         $('#chart-holder-'+idx).hide()
@@ -121,7 +126,13 @@ $(document).ready(function () {
         $('#chart-holder-'+idx).show()
         $('#chart-holder-'+idx+'-nogaps').hide()
     })
-{{end}}
+}
+;(function renderChart() {
+    if (!chartFns.length) return allDone()
+    var fn = chartFns.shift()
+    fn()
+    requestAnimationFrame(renderChart)
+})()
 })
 </script>
 {{end}}

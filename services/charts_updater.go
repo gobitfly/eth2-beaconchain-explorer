@@ -328,9 +328,9 @@ func networkLivenessChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:                           "Network Liveness",
-		Subtitle:                        "History of how far the last Finalized Epoch is behind the Head Epoch. The protocol allows epochs to be finalized after 2 epochs.",
+		Subtitle:                        "History of how far the last Finalized Epoch is behind the Head Epoch. The protocol allows epochs to be finalized after 2 epochs. If the last Finalized Epoch is more than 4 epochs behind the Head Epoch all validators will get penalized.",
 		XAxisTitle:                      "",
-		YAxisTitle:                      "Network Liveness [Epochs]",
+		YAxisTitle:                      "Network Liveness [epochs]",
 		StackingMode:                    "false",
 		ColumnDataGroupingApproximation: "high",
 		Type:                            "column",
