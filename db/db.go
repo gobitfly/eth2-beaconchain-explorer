@@ -250,6 +250,7 @@ func SaveEpoch(data *types.EpochData) error {
 			voluntaryexitscount, 
 			validatorscount, 
 			averagevalidatorbalance, 
+			totalvalidatorbalance
 			finalized, 
 			eligibleether, 
 			globalparticipationrate, 
@@ -265,6 +266,7 @@ func SaveEpoch(data *types.EpochData) error {
 			voluntaryexitscount     = excluded.voluntaryexitscount,
 			validatorscount         = excluded.validatorscount,
 			averagevalidatorbalance = excluded.averagevalidatorbalance,
+			totalvalidatorbalance   = excluded.totalvalidatorbalance,
 			finalized               = excluded.finalized,
 			eligibleether           = excluded.eligibleether,
 			globalparticipationrate = excluded.globalparticipationrate,
@@ -278,6 +280,7 @@ func SaveEpoch(data *types.EpochData) error {
 		voluntaryExitCount,
 		validatorsCount,
 		validatorBalanceAverage,
+		validatorBalanceSum.Uint64(),
 		data.EpochParticipationStats.Finalized,
 		data.EpochParticipationStats.EligibleEther,
 		data.EpochParticipationStats.GlobalParticipationRate,
