@@ -627,7 +627,22 @@ function createBalanceChart(effective, balance, utilization) {
     },
     xAxis: {
       type: 'datetime',
-      range: 7 * 24 * 60 * 60 * 1000
+      range: 7 * 24 * 60 * 60 * 1000,
+      labels: {
+        formatter: function(){
+          var epoch = timeToEpoch(this.value)
+          var orig = this.axis.defaultLabelFormatter.call(this)
+          return `${orig}<br/>Epoch ${epoch}`
+        }
+      }
+    },
+    tooltip: {
+      formatter: function(tooltip) {
+        var orig = tooltip.defaultFormatter.call(this, tooltip)
+        var epoch = timeToEpoch(this.x)
+        orig[0] = `${orig[0]}<span style="font-size:10px">Epoch ${epoch}</span>`
+        return orig
+      }
     },
     yAxis: [
       {
