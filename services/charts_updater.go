@@ -24,7 +24,7 @@ var chartHandlers = map[string]chartHandler{
 	"average_balance":                  chartHandler{4, averageBalanceChartData},
 	"network_liveness":                 chartHandler{5, networkLivenessChartData},
 	"participation_rate":               chartHandler{6, participationRateChartData},
-	"estimated_validator_return":       chartHandler{7, estimatedValidatorReturnChartData},
+	"estimated_validator_income":       chartHandler{7, estimatedValidatorIncomeChartData},
 	"stake_effectiveness":              chartHandler{8, stakeEffectivenessChartData},
 	"balance_distribution":             chartHandler{9, balanceDistributionChartData},
 	"effective_balance_distribution":   chartHandler{10, effectiveBalanceDistributionChartData},
@@ -383,20 +383,21 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	return chartData, nil
 }
 
-func estimatedValidatorReturnChartData() (*types.GenericChartData, error) {
+func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	rows := []struct {
-		Epoch           uint64
-		Eligibleether   uint64
-		Votedether      uint64
-		Validatorscount uint64
-		Finalitydelay   uint64
+		Epoch                   uint64
+		Eligibleether           uint64
+		Votedether              uint64
+		Validatorscount         uint64
+		Finalitydelay           uint64
+		Globalparticipationrate float64
 	}{}
 
 	// note: eligibleether might not be correct, need to check what exactly the node returns
 	// for the reward-calculation we need the sum of all effective balances
 	err := db.DB.Select(&rows, `
 		SELECT 
-			epoch, eligibleether, votedether, validatorscount, 
+			epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
 			coalesce(nl.headepoch-nl.finalizedepoch,2) as finalitydelay
 		FROM epochs
 			LEFT JOIN network_liveness nl ON epochs.epoch = nl.headepoch
@@ -427,12 +428,12 @@ func estimatedValidatorReturnChartData() (*types.GenericChartData, error) {
 		rewardPerEpoch := int64(3 * baseReward * row.Votedether / row.Eligibleether)
 		// Proposer and inclusion delay micro-rewards
 		proposerReward := baseReward / proposerRewardQuotient
-		maxAttesterReward := (baseReward - proposerReward) / minAttestationInclusionDelay
-		rewardPerEpoch += int64(maxAttesterReward)
-		rewardPerEpoch += int64(proposerReward * (utils.Config.Chain.SlotsPerEpoch / row.Validatorscount))
+		attesters := float64(row.Validatorscount/32) * row.Globalparticipationrate
+		rewardPerEpoch += int64(attesters * float64(proposerReward*(utils.Config.Chain.SlotsPerEpoch/row.Validatorscount)))
+		rewardPerEpoch += int64((baseReward - proposerReward) / minAttestationInclusionDelay)
 
 		// inactivity-penalty
-		if true && row.Finalitydelay > minEpochsToInactivityPenalty {
+		if row.Finalitydelay > minEpochsToInactivityPenalty {
 			rewardPerEpoch -= int64(baseReward * baseRewardPerEpoch)
 			// if the validator is slashed
 			// rewardPerEpoch -=  maxEffectiveBalance*finality_delay/inactivityPenaltyQuotient
