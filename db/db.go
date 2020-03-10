@@ -234,7 +234,7 @@ func SaveEpoch(data *types.EpochData) error {
 
 	validatorsCount := 0
 	for _, v := range data.Validators {
-		if v.ExitEpoch > data.Epoch {
+		if v.ExitEpoch > data.Epoch && v.ActivationEpoch <= data.Epoch {
 			validatorsCount++
 		}
 	}
