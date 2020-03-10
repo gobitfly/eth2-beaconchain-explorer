@@ -678,8 +678,8 @@ func performanceDistributionChartData() (*types.GenericChartData, error) {
 			),
 			histogram as (
 				select 
-					width_bucket(performance1d, min7d, max7d, 9999) as bucket,
-					max(performance1d) as max,
+					width_bucket(performance7d, min7d, max7d, 9999) as bucket,
+					max(performance7d) as max,
 					count(*) as cnt
 				from  validator_performance, stats
 				group by bucket
