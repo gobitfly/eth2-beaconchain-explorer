@@ -23,6 +23,7 @@ var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").
 
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 
 	var index uint64
@@ -257,7 +258,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(data.Data)
 	} else {
-		w.Header().Set("Content-Type", "text/html")
 		err = validatorTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
