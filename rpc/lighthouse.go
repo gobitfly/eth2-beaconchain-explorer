@@ -289,28 +289,28 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		Status:       1,
 		BlockRoot:    utils.MustParseHex(parsedResponse.Root),
 		Slot:         slot,
-		ParentRoot:   utils.MustParseHex(parsedResponse.BeaconBlock.ParentRoot),
-		StateRoot:    utils.MustParseHex(parsedResponse.BeaconBlock.StateRoot),
+		ParentRoot:   utils.MustParseHex(parsedResponse.BeaconBlock.Message.ParentRoot),
+		StateRoot:    utils.MustParseHex(parsedResponse.BeaconBlock.Message.StateRoot),
 		Signature:    utils.MustParseHex(parsedResponse.BeaconBlock.Signature),
-		RandaoReveal: utils.MustParseHex(parsedResponse.BeaconBlock.Body.RandaoReveal),
-		Graffiti:     utils.MustParseHex(parsedResponse.BeaconBlock.Body.Graffiti),
+		RandaoReveal: utils.MustParseHex(parsedResponse.BeaconBlock.Message.Body.RandaoReveal),
+		Graffiti:     utils.MustParseHex(parsedResponse.BeaconBlock.Message.Body.Graffiti),
 		Eth1Data: &types.Eth1Data{
-			DepositRoot:  utils.MustParseHex(parsedResponse.BeaconBlock.Body.Eth1Data.DepositRoot),
-			DepositCount: parsedResponse.BeaconBlock.Body.Eth1Data.DepositCount,
-			BlockHash:    utils.MustParseHex(parsedResponse.BeaconBlock.Body.Eth1Data.BlockHash),
+			DepositRoot:  utils.MustParseHex(parsedResponse.BeaconBlock.Message.Body.Eth1Data.DepositRoot),
+			DepositCount: parsedResponse.BeaconBlock.Message.Body.Eth1Data.DepositCount,
+			BlockHash:    utils.MustParseHex(parsedResponse.BeaconBlock.Message.Body.Eth1Data.BlockHash),
 		},
-		ProposerSlashings: make([]*types.ProposerSlashing, len(parsedResponse.BeaconBlock.Body.ProposerSlashings)),
-		AttesterSlashings: make([]*types.AttesterSlashing, len(parsedResponse.BeaconBlock.Body.AttesterSlashings)),
-		Attestations:      make([]*types.Attestation, len(parsedResponse.BeaconBlock.Body.Attestations)),
-		Deposits:          make([]*types.Deposit, len(parsedResponse.BeaconBlock.Body.Deposits)),
-		VoluntaryExits:    make([]*types.VoluntaryExit, len(parsedResponse.BeaconBlock.Body.VoluntaryExits)),
+		ProposerSlashings: make([]*types.ProposerSlashing, len(parsedResponse.BeaconBlock.Message.Body.ProposerSlashings)),
+		AttesterSlashings: make([]*types.AttesterSlashing, len(parsedResponse.BeaconBlock.Message.Body.AttesterSlashings)),
+		Attestations:      make([]*types.Attestation, len(parsedResponse.BeaconBlock.Message.Body.Attestations)),
+		Deposits:          make([]*types.Deposit, len(parsedResponse.BeaconBlock.Message.Body.Deposits)),
+		VoluntaryExits:    make([]*types.VoluntaryExit, len(parsedResponse.BeaconBlock.Message.Body.VoluntaryExits)),
 	}
 
 	if block.Eth1Data.DepositCount > 2147483647 { // Sometimes the lighthouse node does return bogus data for the DepositCount value
 		block.Eth1Data.DepositCount = 0
 	}
 
-	for i, attestation := range parsedResponse.BeaconBlock.Body.Attestations {
+	for i, attestation := range parsedResponse.BeaconBlock.Message.Body.Attestations {
 		a := &types.Attestation{
 			AggregationBits: utils.MustParseHex(attestation.AggregationBits),
 			Attesters:       []uint64{},
@@ -350,7 +350,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		block.Attestations[i] = a
 	}
 
-	for i, deposit := range parsedResponse.BeaconBlock.Body.Deposits {
+	for i, deposit := range parsedResponse.BeaconBlock.Message.Body.Deposits {
 		d := &types.Deposit{
 			Proof:                 nil,
 			PublicKey:             utils.MustParseHex(deposit.Data.Pubkey),
@@ -400,6 +400,10 @@ func (lc *LighthouseClient) get(url string) ([]byte, error) {
 
 	data, err := ioutil.ReadAll(resp.Body)
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("error-response: %s", data)
+	}
+
 	return data, err
 
 }
@@ -437,48 +441,50 @@ type lighthouseValidatorParticipationResponse struct {
 
 type lighthouseBlockResponse struct {
 	BeaconBlock struct {
-		Body struct {
-			Attestations []struct {
-				AggregationBits string `json:"aggregation_bits"`
-				Data            struct {
-					BeaconBlockRoot string `json:"beacon_block_root"`
-					Index           uint64 `json:"index"`
-					Slot            uint64 `json:"slot"`
-					Source          struct {
-						Epoch uint64 `json:"epoch"`
-						Root  string `json:"root"`
-					} `json:"source"`
-					Target struct {
-						Epoch uint64 `json:"epoch"`
-						Root  string `json:"root"`
-					} `json:"target"`
-				} `json:"data"`
-				Signature string `json:"signature"`
-			} `json:"attestations"`
-			AttesterSlashings []interface{} `json:"attester_slashings"`
-			Deposits          []struct {
-				Data struct {
-					Amount                int    `json:"amount"`
-					Pubkey                string `json:"pubkey"`
-					Signature             string `json:"signature"`
-					WithdrawalCredentials string `json:"withdrawal_credentials"`
-				} `json:"data"`
-				Proof []string `json:"proof"`
-			} `json:"deposits"`
-			Eth1Data struct {
-				BlockHash    string `json:"block_hash"`
-				DepositCount uint64 `json:"deposit_count"`
-				DepositRoot  string `json:"deposit_root"`
-			} `json:"eth1_data"`
-			Graffiti          string        `json:"graffiti"`
-			ProposerSlashings []interface{} `json:"proposer_slashings"`
-			RandaoReveal      string        `json:"randao_reveal"`
-			VoluntaryExits    []interface{} `json:"voluntary_exits"`
-		} `json:"body"`
-		ParentRoot string `json:"parent_root"`
-		Signature  string `json:"signature"`
-		Slot       uint64 `json:"slot"`
-		StateRoot  string `json:"state_root"`
+		Message struct {
+			Body struct {
+				Attestations []struct {
+					AggregationBits string `json:"aggregation_bits"`
+					Data            struct {
+						BeaconBlockRoot string `json:"beacon_block_root"`
+						Index           uint64 `json:"index"`
+						Slot            uint64 `json:"slot"`
+						Source          struct {
+							Epoch uint64 `json:"epoch"`
+							Root  string `json:"root"`
+						} `json:"source"`
+						Target struct {
+							Epoch uint64 `json:"epoch"`
+							Root  string `json:"root"`
+						} `json:"target"`
+					} `json:"data"`
+					Signature string `json:"signature"`
+				} `json:"attestations"`
+				AttesterSlashings []interface{} `json:"attester_slashings"`
+				Deposits          []struct {
+					Data struct {
+						Amount                int    `json:"amount"`
+						Pubkey                string `json:"pubkey"`
+						Signature             string `json:"signature"`
+						WithdrawalCredentials string `json:"withdrawal_credentials"`
+					} `json:"data"`
+					Proof []string `json:"proof"`
+				} `json:"deposits"`
+				Eth1Data struct {
+					BlockHash    string `json:"block_hash"`
+					DepositCount uint64 `json:"deposit_count"`
+					DepositRoot  string `json:"deposit_root"`
+				} `json:"eth1_data"`
+				Graffiti          string        `json:"graffiti"`
+				ProposerSlashings []interface{} `json:"proposer_slashings"`
+				RandaoReveal      string        `json:"randao_reveal"`
+				VoluntaryExits    []interface{} `json:"voluntary_exits"`
+			} `json:"body"`
+			ParentRoot string `json:"parent_root"`
+			Slot       uint64 `json:"slot"`
+			StateRoot  string `json:"state_root"`
+		} `json:"message"`
+		Signature string `json:"signature"`
 	} `json:"beacon_block"`
 	Root string `json:"root"`
 }
