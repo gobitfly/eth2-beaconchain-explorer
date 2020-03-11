@@ -221,7 +221,35 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
     <script src="/js/layout.js"></script>
-
+    <script>
+        function slotToTime(slot) {
+            var gts = {{.ChainGenesisTimestamp}}
+            var sps = {{.ChainSecondsPerSlot}}
+            return (gts+slot*sps)*1000
+        }
+        function epochToTime(epoch) {
+            var gts = {{.ChainGenesisTimestamp}}
+            var sps = {{.ChainSecondsPerSlot}}
+            var spe = {{.ChainSlotsPerEpoch}}
+            return (gts+epoch*sps*spe)*1000
+        }
+        function timeToEpoch(ts) {
+            var gts = {{.ChainGenesisTimestamp}}
+            var sps = {{.ChainSecondsPerSlot}}
+            var spe = {{.ChainSlotsPerEpoch}}
+            var slot = Math.floor((ts/1000 - gts) / sps)
+            var epoch = Math.floor(slot/spe)
+            return epoch
+        }
+        function timeToSlot(ts) {
+            var gts = {{.ChainGenesisTimestamp}}
+            var sps = {{.ChainSecondsPerSlot}}
+            var spe = {{.ChainSlotsPerEpoch}}
+            var slot = Math.floor((ts/1000 - gts) / sps)
+            return slot
+        }
+    </script>
+    
     {{ template "js" .Data }}
 
     </body>

@@ -11,11 +11,14 @@ import (
 
 // PageData is a struct to hold web page data
 type PageData struct {
-	Active             string
-	Meta               *Meta
-	ShowSyncingMessage bool
-	Data               interface{}
-	Version            string
+	Active                string
+	Meta                  *Meta
+	ShowSyncingMessage    bool
+	Data                  interface{}
+	Version               string
+	ChainSlotsPerEpoch    uint64
+	ChainSecondsPerSlot   uint64
+	ChainGenesisTimestamp uint64
 }
 
 // Meta is a struct to hold metadata about the page

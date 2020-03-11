@@ -24,10 +24,13 @@ func Index(w http.ResponseWriter, r *http.Request) {
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "",
 		},
-		ShowSyncingMessage: services.IsSyncing(),
-		Active:             "index",
-		Data:               services.LatestIndexPageData(),
-		Version:            version.Version,
+		ShowSyncingMessage:    services.IsSyncing(),
+		Active:                "index",
+		Data:                  services.LatestIndexPageData(),
+		Version:               version.Version,
+		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
+		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
+		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 	}
 
 	err := indexTemplate.ExecuteTemplate(w, "layout", data)
