@@ -225,52 +225,71 @@ func SaveEpoch(data *types.EpochData) error {
 		}
 	}
 
+	validatorsCount := len(data.Validators)
 	validatorBalanceSum := new(big.Int)
 	for _, v := range data.Validators {
 		validatorBalanceSum = new(big.Int).Add(validatorBalanceSum, new(big.Int).SetUint64(v.Balance))
 	}
+	validatorBalanceAverage := new(big.Int).Div(validatorBalanceSum, new(big.Int).SetInt64(int64(validatorsCount))).Uint64()
 
-	validatorBalanceAverage := new(big.Int).Div(validatorBalanceSum, new(big.Int).SetInt64(int64(len(data.Validators)))).Uint64()
-
-	validatorsCount := 0
+	exitedValidatorsCount := 0
+	pendingValidtorsCount := 0
+	slashingValidatorsCount := 0
+	slashedValidatorsCount := 0
+	activeValidatorsCount := 0
+	activeValidatorBalanceSum := new(big.Int)
 	for _, v := range data.Validators {
-		if v.ExitEpoch > data.Epoch && v.ActivationEpoch <= data.Epoch {
-			validatorsCount++
+		if v.ExitEpoch <= data.Epoch {
+			exitedValidatorsCount++
+		} else if v.ActivationEpoch > data.Epoch {
+			pendingValidatorsCount++
+		} else {
+			activeValidatorsCount++
+			activeValidatorBalanceSum = new(big.Int).Add(activeValidatorBalanceSum, new(big.Int).SetUint64(v.Balance))
 		}
 	}
+	activeValidatorBalanceAverage := new(big.Int).Div(activeValidatorBalanceSum, new(big.Int).SetInt64(int64(activeValidatorsCount))).Uint64()
 
 	_, err = tx.Exec(`
 		INSERT INTO epochs (
-			epoch, 
-			blockscount, 
-			proposerslashingscount, 
-			attesterslashingscount, 
-			attestationscount, 
-			depositscount, 
-			voluntaryexitscount, 
-			validatorscount, 
-			averagevalidatorbalance, 
+			epoch,
+			blockscount,
+			proposerslashingscount,
+			attesterslashingscount,
+			attestationscount,
+			depositscount,
+			voluntaryexitscount,
+			validatorscount,
+			activevalidatorscount,
+			pendingvalidatorscount,
+			slashingvalidatorscount,
+			averagevalidatorbalance,
 			totalvalidatorbalance,
-			finalized, 
-			eligibleether, 
-			globalparticipationrate, 
+			averageactivevalidatorbalance,
+			totalactivevalidatorbalance,
+			finalized,
+			eligibleether,
+			globalparticipationrate,
 			votedether
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (epoch) DO UPDATE SET 
-			blockscount             = excluded.blockscount, 
-			proposerslashingscount  = excluded.proposerslashingscount,
-			attesterslashingscount  = excluded.attesterslashingscount,
-			attestationscount       = excluded.attestationscount,
-			depositscount           = excluded.depositscount,
-			voluntaryexitscount     = excluded.voluntaryexitscount,
-			validatorscount         = excluded.validatorscount,
-			averagevalidatorbalance = excluded.averagevalidatorbalance,
-			totalvalidatorbalance   = excluded.totalvalidatorbalance,
-			finalized               = excluded.finalized,
-			eligibleether           = excluded.eligibleether,
-			globalparticipationrate = excluded.globalparticipationrate,
-			votedether              = excluded.votedether`,
+			blockscount                   = excluded.blockscount,
+			proposerslashingscount        = excluded.proposerslashingscount,
+			attesterslashingscount        = excluded.attesterslashingscount,
+			attestationscount             = excluded.attestationscount,
+			depositscount                 = excluded.depositscount,
+			voluntaryexitscount           = excluded.voluntaryexitscount,
+			validatorscount               = excluded.validatorscount,
+			averagevalidatorbalance       = excluded.averagevalidatorbalance,
+			totalvalidatorbalance         = excluded.totalvalidatorbalance,
+			activevalidatorscount         = excluded.activevalidatorscount,
+			averageactivevalidatorbalance = excluded.averageactivevalidatorbalance,
+			totalactivevalidatorbalance   = excluded.totalactivevalidatorbalance,
+			finalized                     = excluded.finalized,
+			eligibleether                 = excluded.eligibleether,
+			globalparticipationrate       = excluded.globalparticipationrate,
+			votedether                    = excluded.votedether`,
 		data.Epoch,
 		len(data.Blocks),
 		proposerSlashingsCount,
@@ -281,6 +300,9 @@ func SaveEpoch(data *types.EpochData) error {
 		validatorsCount,
 		validatorBalanceAverage,
 		validatorBalanceSum.Uint64(),
+		activeValidatorsCount,
+		activeValidatorBalanceAverage,
+		activeValidatorBalanceSum.Uint64(),
 		data.EpochParticipationStats.Finalized,
 		data.EpochParticipationStats.EligibleEther,
 		data.EpochParticipationStats.GlobalParticipationRate,

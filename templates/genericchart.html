@@ -23,7 +23,7 @@ Highcharts.chart('chart',{
     title: { text: {{.YAxisTitle}} },
     opposite: false
   }],
-  legend: {enabled:false},
+  legend: {enabled:true},
   series: {{.Series}},
   navigator: {
     xAxis: {
@@ -56,6 +56,7 @@ Highcharts.stockChart('chart', {
     },
     opposite: false
   }],
+  legend: {enabled:true},
   series: {{.Series}},
 });
 {{end}}

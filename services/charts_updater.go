@@ -18,18 +18,18 @@ type chartHandler struct {
 }
 
 var chartHandlers = map[string]chartHandler{
-	"blocks":                           chartHandler{1, blocksChartData},
-	"validators":                       chartHandler{2, activeValidatorsChartData},
-	"staked_ether":                     chartHandler{3, stakedEtherChartData},
-	"average_balance":                  chartHandler{4, averageBalanceChartData},
-	"network_liveness":                 chartHandler{5, networkLivenessChartData},
-	"participation_rate":               chartHandler{6, participationRateChartData},
-	"estimated_validator_income":       chartHandler{7, estimatedValidatorIncomeChartData},
-	"stake_effectiveness":              chartHandler{8, stakeEffectivenessChartData},
-	"balance_distribution":             chartHandler{9, balanceDistributionChartData},
-	"effective_balance_distribution":   chartHandler{10, effectiveBalanceDistributionChartData},
-	"performance_distribution":         chartHandler{11, performanceDistributionChartData},
-	"block_proposal_luck_distribution": chartHandler{12, blockProposalLuckDistributionChartData},
+	"blocks":                         chartHandler{1, blocksChartData},
+	"validators":                     chartHandler{2, activeValidatorsChartData},
+	"staked_ether":                   chartHandler{3, stakedEtherChartData},
+	"average_balance":                chartHandler{4, averageBalanceChartData},
+	"network_liveness":               chartHandler{5, networkLivenessChartData},
+	"participation_rate":             chartHandler{6, participationRateChartData},
+	"estimated_validator_income":     chartHandler{7, estimatedValidatorIncomeChartData},
+	"stake_effectiveness":            chartHandler{8, stakeEffectivenessChartData},
+	"balance_distribution":           chartHandler{9, balanceDistributionChartData},
+	"effective_balance_distribution": chartHandler{10, effectiveBalanceDistributionChartData},
+	"performance_distribution":       chartHandler{11, performanceDistributionChartData},
+	// "block_proposal_luck_distribution": chartHandler{12, blockProposalLuckDistributionChartData},
 }
 
 // LatestChartsPageData returns the latest chart page data
@@ -383,6 +383,34 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	return chartData, nil
 }
 
+func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
+	rows := []struct {
+		Epoch                   uint64
+		Eligibleether           uint64
+		Votedether              uint64
+		Validatorscount         uint64
+		Finalitydelay           uint64
+		Globalparticipationrate float64
+		Totalvalidatorbalance   uint64
+	}{}
+
+	// note: eligibleether might not be correct, need to check what exactly the node returns
+	// for the reward-calculation we need the sum of all effective balances
+	err := db.DB.Select(&rows, `
+		SELECT 
+			epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
+			coalesce(nl.headepoch-nl.finalizedepoch,2) as finalitydelay,
+			coalesce(totalvalidatorbalance,0) as totalvalidatorbalance
+		FROM epochs
+			LEFT JOIN network_liveness nl ON epochs.epoch = nl.headepoch
+		ORDER BY epoch`)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
 func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	rows := []struct {
 		Epoch                   uint64
@@ -391,6 +419,7 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 		Validatorscount         uint64
 		Finalitydelay           uint64
 		Globalparticipationrate float64
+		Totalvalidatorbalance   uint64
 	}{}
 
 	// note: eligibleether might not be correct, need to check what exactly the node returns
@@ -398,7 +427,8 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	err := db.DB.Select(&rows, `
 		SELECT 
 			epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
-			coalesce(nl.headepoch-nl.finalizedepoch,2) as finalitydelay
+			coalesce(nl.headepoch-nl.finalizedepoch,2) as finalitydelay,
+			coalesce(totalvalidatorbalance,0) as totalvalidatorbalance
 		FROM epochs
 			LEFT JOIN network_liveness nl ON epochs.epoch = nl.headepoch
 		ORDER BY epoch`)
@@ -407,6 +437,7 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	}
 
 	seriesData := [][]float64{}
+	avgDailyValidatorIncomeSeries := [][]float64{}
 
 	// see: https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/beacon-chain.md#rewards-and-penalties-1
 	maxEffectiveBalance := uint64(32e8)
@@ -419,6 +450,8 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	minEpochsToInactivityPenalty := uint64(4) // epochs
 	// inactivityPenaltyQuotient := uint6(33554432) // 2**25
 
+	var prevTotalvalidatorbalance uint64
+	var prevDay float64
 	for _, row := range rows {
 		if row.Eligibleether == 0 {
 			continue
@@ -439,11 +472,24 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 			// rewardPerEpoch -=  maxEffectiveBalance*finality_delay/inactivityPenaltyQuotient
 		}
 
+		ts := float64(utils.EpochToTime(row.Epoch).Unix() * 1000)
 		rewardPerDay := rewardPerEpoch * int64(epochsPerDay)
 		seriesData = append(seriesData, []float64{
-			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
+			ts,
 			float64(rewardPerDay) / 1e9,
 		})
+
+		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+		if prevDay != day && prevTotalvalidatorbalance != 0 {
+			avgDailyValidatorIncomeSeries = append(avgDailyValidatorIncomeSeries, []float64{
+				day,
+				float64(int64(row.Totalvalidatorbalance)-int64(prevTotalvalidatorbalance)) / float64(row.Validatorscount) / 1e9,
+			})
+		}
+		if prevDay != day {
+			prevDay = day
+			prevTotalvalidatorbalance = row.Totalvalidatorbalance
+		}
 	}
 
 	chartData := &types.GenericChartData{
@@ -457,6 +503,10 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 			{
 				Name: "Estimated Daily Validator Income",
 				Data: seriesData,
+			},
+			{
+				Name: "Average Daily Validator Income",
+				Data: avgDailyValidatorIncomeSeries,
 			},
 		},
 	}
