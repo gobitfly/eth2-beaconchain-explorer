@@ -92,7 +92,14 @@
                             {{end}}
                         </li>
                         <li class="nav-item {{ if eq .Active "blocks"}}active{{end}}">
-                            <a class="nav-link" href="/blocks"><i class="fas fa-cubes"></i> Blocks</a>
+                            <!-- <a class="nav-link" href="/blocks"><i class="fas fa-cubes"></i> Blocks</a> -->
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-cubes"></i> Blocks
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <a class="dropdown-item" href="/blocks"><i class="fas fa-table"></i> Overview</a>
+                                <a class="dropdown-item" href="/vis"><i class="fas fa-project-diagram"></i> Block Viz</a>
+                            </div>
                             {{ if eq .Active "blocks"}} 
                                 <span class="nav-indicator"></span>
                             {{end}}
@@ -109,12 +116,14 @@
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>
+                        <!--
                         <li class="nav-item {{ if eq .Active "vis"}}active{{end}}">
                             <a class="nav-link" href="/vis"><i class="fas fa-project-diagram"></i> Block Viz</a>
                             {{ if eq .Active "vis"}} 
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>
+                        -->
                         <li class="nav-item {{ if eq .Active "charts"}}active{{end}}">
                             <a class="nav-link" href="/charts"><i class="fas fa-chart-bar"></i> Charts</a>
                             {{ if eq .Active "charts"}} 
@@ -195,6 +204,12 @@
                                   </g>
                                 </svg> Dashboard</a>
                             {{ if eq .Active "dashboard"}} 
+                                <span class="nav-indicator"></span>
+                            {{end}}
+                        </li>
+                        <li class="nav-item {{ if eq .Active "staking_estimator"}}active{{end}}">
+                            <a class="nav-link" href="/staking_estimator"><i class="fas fa-tachometer-alt"></i> Staking Estimator</a>
+                            {{ if eq .Active "staking_estimator"}} 
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>

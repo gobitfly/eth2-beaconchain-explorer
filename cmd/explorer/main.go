@@ -113,6 +113,7 @@ func main() {
 		router.HandleFunc("/dashboard/data/earnings", handlers.DashboardDataEarnings).Methods("GET")
 		router.HandleFunc("/dashboard/data/missedattestations", handlers.DashboardDataMissedAttestations).Methods("GET")
 		router.HandleFunc("/graffitiwall", handlers.Graffitiwall).Methods("GET")
+		router.HandleFunc("/staking_estimator", handlers.StakingEstimator).Methods("GET")
 		router.HandleFunc("/search", handlers.Search).Methods("POST")
 		router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 		router.HandleFunc("/faq", handlers.Faq).Methods("GET")
