@@ -1,0 +1,295 @@
+{{ define "js"}}
+<script src="https://code.highcharts.com/stock/highstock.js"></script>
+<script src="/js/highcharts-global-options.js"></script>
+<script>
+	var data = {{.}}
+
+	var pastSeriesBalanceData = new Array(data.length)
+
+	var maxEffectiveBalance = 32e8
+	var baseRewardFactor = 64
+	var baseRewardPerEpoch = 4
+	var proposerRewardQuotient = 8
+	var minAttestationInclusionDelay = 1
+	var minEpochsToInactivityPenalty = 4
+
+	var secondsPerSlot = 12
+	var slotsPerEpoch = 32
+	var epochsPerDay = 3600 * 24 / (secondsPerSlot * slotsPerEpoch)
+	var dollarPerEth = 144
+	var dollarPerGwei = dollarPerEth/1e9
+
+	calculate()
+
+	$('.staking-variable').on('change',function(){
+		console.log('change')
+		calculate()
+	})
+
+	function calculate() {
+		var t0 = Date.now()
+		var startBalance = parseFloat(document.getElementById('staking-variable-startbalance').value)*1e9
+		var dailyCosts = parseFloat(document.getElementById('staking-variable-dailycosts').value)
+		var duration = parseFloat(document.getElementById('staking-variable-duration').value)
+		var totalEffectiveBalance = parseFloat(document.getElementById('staking-variable-totaleffectivebalance').value)*1e9
+		var participationRate = parseFloat(document.getElementById('staking-variable-participationrate').value)
+		var globalParticipationRate = parseFloat(document.getElementById('staking-variable-globalparticipationrate').value)
+		calculatePastRewards(startBalance, dailyCosts)
+		calculateFutureRewards(startBalance, dailyCosts, duration, totalEffectiveBalance, participationRate, globalParticipationRate)
+		console.log(`calculated in ${Date.now()-t0}ms`)
+	}
+
+	function calculateFutureRewards(balance, dailyCosts, duration, totalEffectiveBalance, partRate, globalPartRate) {
+		var startBalance = balance
+		var len = epochsPerDay * duration
+		var futureSeriesBalanceData = new Array(len)
+		var effectiveBalance = balance > maxEffectiveBalance ? maxEffectiveBalance : balance
+		for (var i=0; i<len; i++) {
+			var eligibleEther = totalEffectiveBalance
+			var votedEther = eligibleEther * 0.9
+			var validatorsCount = totalEffectiveBalance / 32e8
+			var finalityDelay = 2
+			var globalParticipationRate = globalPartRate
+
+			var baseReward = effectiveBalance * baseRewardFactor / Math.sqrt(eligibleEther) / baseRewardPerEpoch
+			
+			var reward = 3 * baseReward * votedEther / eligibleEther
+
+			var proposerReward = baseReward/proposerRewardQuotient
+			var attesters = globalParticipationRate * validatorsCount/32
+
+			reward += attesters * proposerReward * 32/validatorsCount
+			reward += baseReward - proposerReward
+
+			if (finalityDelay > minEpochsToInactivityPenalty) {
+				reward -= baseReward * baseRewardPerEpoch
+			}
+
+			if (reward < 0) console.log(epoch,reward)
+
+			balance += reward
+			effectiveBalance = balance > maxEffectiveBalance ? maxEffectiveBalance : balance
+
+			futureSeriesBalanceData[i] = [Date.now()+i*32*12*1000,balance/1e9]
+		}
+
+		var totalCosts = (dailyCosts/dollarPerGwei) * duration
+
+		console.log('-- future')
+		console.log('startBalance:',startBalance/1e9)
+		console.log('endBalance:',balance/1e9)
+		console.log('totalCost:',totalCosts/1e9,totalCosts*dollarPerGwei)
+		var totalReward = balance - startBalance - totalCosts
+		var el = document.getElementById('futureReward')
+		el.innerText = (totalReward/1e9).toFixed(9)+' ETH'
+
+		var futureSeries = [{
+			name: 'Theoretical Avg Daily Income of your validators',
+			yAxis: 0,
+			data: futureSeriesBalanceData
+		}]
+
+		Highcharts.stockChart('futureStakingEstimationChart',{
+			title: {
+				text: 'Future Estimated Staking Income'
+			},
+			series: futureSeries,
+			legend: {
+				enabled: true
+			}
+		})
+	}
+
+	function calculatePastRewards(balance, dailyCosts, duration, totalEffectiveBalance, partRate, globalPartRate) {
+		var startBalance = balance
+		var effectiveBalance = balance > maxEffectiveBalance ? maxEffectiveBalance : balance
+		for (var i=0; i<data.length; i++) {
+			var d = data[i]
+			var epoch = d[0]
+			var eligibleEther = d[1]
+			var votedEther = d[2]
+			var validatorsCount = d[3]
+			var finalityDelay = d[4]
+			var globalParticipationRate = d[5]
+
+			var baseReward = effectiveBalance * baseRewardFactor / Math.sqrt(eligibleEther) / baseRewardPerEpoch
+			
+			var reward = 3 * baseReward * votedEther / eligibleEther
+
+			var proposerReward = baseReward/proposerRewardQuotient
+			var attesters = globalParticipationRate * validatorsCount/32
+
+			reward += attesters * proposerReward * 32/validatorsCount
+			reward += baseReward - proposerReward
+
+			if (finalityDelay > minEpochsToInactivityPenalty) {
+				reward -= baseReward * baseRewardPerEpoch
+			}
+
+			// if (reward < 0) console.log(epoch,reward)
+
+			balance += reward
+			effectiveBalance = balance > maxEffectiveBalance ? maxEffectiveBalance : balance
+
+			pastSeriesBalanceData[i] = [epochToTime(epoch),balance/1e9]
+		}
+
+		var startTime = epochToTime(data[0][0])
+		var endTime = epochToTime(data[data.length-1][0])
+		var totalTime = endTime - startTime
+		var totalCosts = (dailyCosts/dollarPerGwei) * totalTime/(3600*24)/1000
+
+		console.log('-- past')
+		console.log('startBalance:',startBalance/1e9)
+		console.log('endBalance:',balance/1e9)
+		console.log('totalCost:',totalCosts/1e9,totalCosts*dollarPerGwei)
+		var totalReward = balance - startBalance - totalCosts
+		var elPastReward = document.getElementById('pastReward')
+		elPastReward.innerText = (totalReward/1e9).toFixed(9)+' ETH'
+
+		var pastSeries = [{
+			name: 'Your validator\'s balance',
+			yAxis: 0,
+			data: pastSeriesBalanceData
+		}
+		// ,{
+		// 	name: 'Real Avg Daily Income of all validators',
+		// 	yAxis: 0,
+		// 	data: [[Date.now(),2],[Date.now()+1000,1]]
+		// }
+		]
+
+		Highcharts.stockChart('pastStakingEstimationChart',{
+			title: {
+				text: 'Past Estimated Staking Income'
+			},
+			series: pastSeries,
+			legend: {
+				enabled: true
+			}
+		})
+	}
+</script>
+{{end}}
+
+{{ define "css"}}
+{{end}}
+
+{{ define "content"}}
+	<div class="mb-3">
+		<div class="d-md-flex py-2 justify-content-md-between">
+			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-chart-bar"></i> Staking Estimator</h1>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+					<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Staking Estimator</li>
+				</ol>
+			</nav>
+		</div>
+	</div>
+	
+	<div class="row">
+		<div class="col-md-12 mb-4">
+			<div class="card">
+				<div class="row">
+					<div class="col-md-6 mb-4">
+						<div style="padding:10px;padding-bottom:0;">
+						<table class="table">
+							<tbody>
+								<tr>
+									<td>Your start balance (>= 3.2 ETH)</td>
+									<td><input id="staking-variable-startbalance" class="staking-variable" type="number" value=3.2 min=3.2 step=0.1></td>
+								</tr>
+								<tr>
+									<td>Your cost of running the validators ($/day)</td>
+									<td><input id="staking-variable-dailycosts" class="staking-variable" type="number" value=2.0 min=0></td>
+								</tr>
+								<tr>
+									<td>Staking duration (days)</td>
+									<td><input id="staking-variable-duration" class="staking-variable" type="number" value=31 min=1 step=1></td>
+								</tr>
+								<tr>
+									<td>Total effective staked ETH</td>
+									<td><input id="staking-variable-totaleffectivebalance" class="staking-variable" type="number" value=52438.4 min=52438.4></td>
+								</tr>
+								<tr>
+									<td>Your participation rate (%)</td>
+									<td><input id="staking-variable-participationrate" class="staking-variable" type="number" value=90 min=0 max=100 step=1></td>
+								</tr>
+								<tr>
+									<td>Global participation rate (%)</td>
+									<td><input id="staking-variable-globalparticipationrate" class="staking-variable" type="number" value=90 min=0 max=100 step=1></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					</div>
+					<div class="col-md-6 mb-4">
+						<div style="height:50%; display: flex; flex-direction:column; justify-content: center; align-items:center;">
+							<h3>Your estimated income in the past:</h3>
+							<h1 id="pastReward">100 ETH</h1>
+						</div>
+						<div style="height:50%; display: flex; flex-direction:column; justify-content: center; align-items:center;">
+							<h3>Your estimated income in the future:</h3>
+							<h1 id="futureReward">100000 ETH</h1>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-6 mb-4">
+			<div class="card">
+				<div id="pastStakingEstimationChart"></div>
+			</div>
+		</div>
+		<div class="col-md-6 mb-4">
+			<div class="card">
+				<div id="futureStakingEstimationChart"></div>
+			</div>
+		</div>
+	</div>
+	<!--
+	<div class="card">
+		<div class="card-body">
+			<div>
+				<h5>Your setup</h5>
+				<div>
+					<div style="width:50%; float:left;">
+						<table class="table">
+							<tbody>
+								<tr>
+									<td>your effective staked eth</td>
+									<td><input type="number"></td>
+								</tr>
+								<tr>
+									<td>your cost of running the validators ($/day)</td>
+									<td><input type="number"></td>
+								</tr>
+								<tr>
+									<td>staking duration (days)</td>
+									<td><input type="number"></td>
+								</tr>
+								<tr>
+									<td>total effective staked eth</td>
+									<td><input type="number"></td>
+								</tr>
+								<tr>
+									<td>your participation rate</td>
+									<td><input type="number"></td>
+								</tr>
+								<tr>
+									<td>global participation rate</td>
+									<td><input type="number"></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div style="width:50%; float:left;">
+				</div>
+			</div>
+		</div>
+	</div>
+	-->
+{{end}}
