@@ -31,7 +31,7 @@ func Vis(w http.ResponseWriter, r *http.Request) {
 			Path:        "/blocks",
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "vis",
+		Active:                "blocks",
 		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,

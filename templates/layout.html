@@ -50,7 +50,9 @@
                     }
                 }
         </script>
-
+        <script>
+            console.log('active:',{{.Active}})
+        </script>
 
     </head>
 
@@ -91,8 +93,7 @@
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>
-                        <li class="nav-item {{ if eq .Active "blocks"}}active{{end}}">
-                            <!-- <a class="nav-link" href="/blocks"><i class="fas fa-cubes"></i> Blocks</a> -->
+                        <li class="nav-item {{ if eq .Active "blocks"}}active{{end}} dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <i class="fas fa-cubes"></i> Blocks
                             </a>
