@@ -18,13 +18,6 @@ var stakingEstimatorTemplate = template.Must(template.New("staking_estimator").F
 func StakingEstimator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	seriesData, err := estimatedValidatorIncomeChartData()
-	if err != nil {
-		logger.Errorf("error getting data for chart in template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - Staking estimator - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
@@ -33,7 +26,7 @@ func StakingEstimator(w http.ResponseWriter, r *http.Request) {
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "staking_estimator",
-		Data:                  seriesData,
+		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -41,7 +34,7 @@ func StakingEstimator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stakingEstimatorTemplate = template.Must(template.New("staking_estimator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/staking_estimator.html"))
-	err = stakingEstimatorTemplate.ExecuteTemplate(w, "layout", data)
+	err := stakingEstimatorTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
