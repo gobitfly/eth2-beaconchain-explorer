@@ -3,6 +3,8 @@
 <script src="/js/highcharts-global-options.js"></script>
 <script>
 
+var poolStaking = document.getElementById('staking-variable-poolStaking').checked
+
 function calcIssuanceRate(totalStake) {
 	var rewardPerDay = calcRewardPerDay(totalStake)
 	var rewardPerYear = 365 * rewardPerDay
@@ -40,9 +42,26 @@ function calcRewardPerEpoch(totalStake, onlinePropabilty) {
 }
 
 function calculate() {
+	var t0 = Date.now()
+
+	// var newPoolStaking = document.getElementById('staking-variable-poolStaking').checked
+	// if (newPoolStaking != poolStaking) poolStaking = newPoolStaking
+
+	poolStaking = document.getElementById('staking-variable-poolStaking').checked
+
+	if (poolStaking) {
+		$('.staking-variable-holder.pool').show()
+		$('.staking-variable-holder.noPool').hide()
+	} else {
+		$('.staking-variable-holder.pool').hide()
+		$('.staking-variable-holder.noPool').show()
+	}
+
+	var yourStake = parseFloat(document.getElementById('staking-variable-yourStake').value)*1e9
 	var totalStake = parseFloat(document.getElementById('staking-variable-totalStake').value)*1e9
 	var onlinePropability = parseFloat(document.getElementById('staking-variable-onlinePropabilty').value)/100
 	var ethPrice = parseFloat(document.getElementById('staking-variable-ethPrice').value)
+	var initialCosts = parseFloat(document.getElementById('staking-variable-initialCosts').value)
 	var dailyCosts = parseFloat(document.getElementById('staking-variable-dailyCosts').value)
 	
 	if (totalStake < 32*16387*1e9*.6) {
@@ -88,6 +107,7 @@ function calculate() {
 	var onlineSeriesData = []
 	var priceSeriesData = []
 	var costsSeriesData = []
+	var theoreticalBalanceSeriesData = []
 
 	for (var i=500e3; i<=6e6; i+=500e3) {
 		var rpd = calcRewardPerDay(i*1e9, onlinePropability)
@@ -96,14 +116,14 @@ function calculate() {
 		stakedSeriesData.push([i, parseFloat((100*ipy/32e9).toFixed(2))])
 	}
 
-	for (var i=0.4; i<=1; i+=.05) {
+	for (var i=0.4; i<=1; i+=.02) {
 		var rpd = calcRewardPerDay(totalStake, i)
 		var ipd = rpd - dailyCostsGwei
 		var ipy = 356 * ipd
 		onlineSeriesData.push([parseFloat((i).toFixed(2)), parseFloat((100*ipy/32e9).toFixed(2))])
 	}
 
-	for (var i=50; i<=1000; i+=50) {
+	for (var i=20; i<=1000; i+=20) {
 		var rpd = calcRewardPerDay(totalStake, onlinePropability)
 		var dailyCostsGwei = 1e9 * dailyCosts/i
 		var ipd = rpd - dailyCostsGwei
@@ -111,13 +131,17 @@ function calculate() {
 		priceSeriesData.push([i, parseFloat((100*ipy/32e9).toFixed(2))])
 	}
 
-	for (var i=0.01; i<=5; i+=0.01) {
+	for (var i=0.00; i<=5; i+=0.2) {
 		var rpd = calcRewardPerDay(totalStake, onlinePropability)
 		var dailyCosts = i
 		var dailyCostsGwei = 1e9 * dailyCosts/ethPrice
 		var ipd = rpd - dailyCostsGwei
 		var ipy = 356 * ipd
 		costsSeriesData.push([parseFloat((i).toFixed(2)), parseFloat((100*ipy/32e9).toFixed(2))])
+	}
+
+	for (var i=0; i<10; i++) {
+		theoreticalBalanceSeriesData.push([Date.now()+i*3600*1000, i*0.5])
 	}
 
 	Highcharts.chart('issuanceOverStakedChart',{
@@ -175,6 +199,23 @@ function calculate() {
 		legend: { enabled: false },
 		navigator: { enabled: false },
 	})
+
+
+	Highcharts.stockChart('theoreticalBalanceChart',{
+		title: {
+			text: 'Estimated Income over Time'
+		},
+		series: [{
+			name: 'Income ($)',
+			data: theoreticalBalanceSeriesData,
+		}],
+		yAxis: [{ title: { text: 'Income ($)' } }],
+		// xAxis: [{ title: { text: 'Eth price ($)' } }],
+		legend: { enabled: false },
+		navigator: { enabled: false },
+	})
+
+	console.log(`calculation done in ${Date.now()-t0}ms`)
 }
 
 calculate()
@@ -233,16 +274,25 @@ $('.staking-variable').on('change',function(){
 					</div>
 				</div>
 				-->
+				<div class="col-md-12">
+					<div style="padding:10px;">The beaconchain is a complex adaptive system. Calculations of this Staking Estimator are rough estimations.</div>
+				</div>
 				<div class="col-md-6">
 					<div style="padding:10px;padding-bottom:0;">
 						<table class="table">
 							<tbody>
+								<!--
 								<tr>
-									<th>Total staked ether</th>
+									<th>Your staked ether (ETH, must be multiple of 32 if not staking on a pool)</th>
+									<td><input id="staking-variable-yourStake" class="staking-variable" type="number" value=500000 min=100000 step=1></td>
+								</tr>
+								-->
+								<tr>
+									<th>Total staked ether of the network (ETH)</th>
 									<td><input id="staking-variable-totalStake" class="staking-variable" type="number" value=500000 min=100000 step=1></td>
 								</tr>
 								<tr>
-									<th>Online propability (%)</th>
+									<th>Online propability of the network (%)</th>
 									<td><input id="staking-variable-onlinePropabilty" class="staking-variable" type="number" value=95 min=1 step=1></td>
 								</tr>
 								<tr>
@@ -250,8 +300,34 @@ $('.staking-variable').on('change',function(){
 									<td><input id="staking-variable-ethPrice" class="staking-variable" type="number" value=134.05 min=0.01 step=0.01></td>
 								</tr>
 								<tr>
-									<th>Daily costs of running a validator ($/day)</th>
-									<td><input id="staking-variable-dailyCosts" class="staking-variable" type="number" value=2.0 min=0></td>
+									<th>Staking in a pool</th>
+									<td><input id="staking-variable-poolStaking" class="staking-variable" type="checkbox"></td>
+								</tr>
+
+								<tr class="staking-variable-holder pool">
+									<th>Your staked ether (ETH)</th>
+									<td><input id="staking-variable-yourStake" class="staking-variable pool" type="number" value=32 min=0.01 step=0.01></td>
+								</tr>
+								<tr class="staking-variable-holder pool">
+									<th>Staking fee (%)</th>
+									<td><input id="staking-variable-fee" class="staking-variable pool" type="number" value=0 min=0 max=100 step=1></td>
+								</tr>
+								<tr class="staking-variable-holder pool">
+									<th>Reinvest gains</th>
+									<td><input id="staking-variable-reinvest" class="staking-variable pool" type="checkbox"></td>
+								</tr>
+
+								<tr class="staking-variable-holder noPool">
+									<th>Number of validators</th>
+									<td><input id="staking-variable-validatorsNum" class="staking-variable noPool" type="number" value=1 min=1 step=1></td>
+								</tr>
+								<tr class="staking-variable-holder noPool">
+									<th>Initial costs ($)</th>
+									<td><input id="staking-variable-initialCosts" class="staking-variable noPool" type="number" value=0 min=0></td>
+								</tr>
+								<tr class="staking-variable-holder noPool">
+									<th>Monthly costs for running your validators ($)</th>
+									<td><input id="staking-variable-dailyCosts" class="staking-variable noPool" type="number" value=2.0 min=0></td>
 								</tr>
 							</tbody>
 						</table>
@@ -288,6 +364,9 @@ $('.staking-variable').on('change',function(){
 								</tr>
 							</tbody>
 						</table>
+						<div>
+							The break-even-point is reached after <span id="breakEvenPoint">10 days</span>
+						</div>
 					</div>
 				</div>
 				<!--
@@ -310,6 +389,9 @@ $('.staking-variable').on('change',function(){
 					</div>
 				</div>
 				-->
+				<div class="col-md-12">
+					<div id="theoreticalBalanceChart"></div>
+				</div>
 				<div class="col-md-6">
 					<div id="issuanceOverStakedChart"></div>
 				</div>
