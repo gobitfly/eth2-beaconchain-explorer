@@ -51,15 +51,15 @@ Highcharts.setOptions({
       ordinal: false,
       labels: {
         style: {
-          color: 'var(--body-color)'
+          color: 'var(--font-color)'
         }
       },
     },
     yAxis: {
       title: {
         style: {
-          color: 'var(--body-color)',
-          'font-size': '0.8rem'
+          color: 'var(--font-color)',
+          // 'font-size': '0.8rem'
         }
       },
       labels: {
