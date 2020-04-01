@@ -172,6 +172,70 @@ input:checked + .slider:before {
 .navbar-brand {
   margin-right: 1rem;
 }
+/* TODO CHANGE IN BOOTSTRAP */
+.dropdown-menu {
+  background-color: var(--bg-color-nav);
+}
+
+.dropdown-item {
+  color: var(--body-color);
+}
+.card {
+  box-shadow: 0 3px 8px var(--shadow-light);
+}
+.card-header {
+  background: none;
+}
+.card-body {
+  padding: 1rem;
+}
+.table {
+  margin-bottom: 0;
+}
+
+.table td, .table th {
+  padding: .75rem;
+  vertical-align: top;
+  border-top: 1px solid var(--border-color);
+  border-bottom: none;
+}
+
+.table thead th {
+  color: var(--body-color);
+  border-top: none;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-color-light);
+  border-bottom-color: var(--border-color);
+  /* border-top: 1px solid lightsalmon;
+  border-color: lightsalmon; */
+}
+
+.dataTables_info, .dataTables_length {
+  padding-left: 1rem !important;
+}
+
+.dataTables_filter input {
+  width: 200px !important;
+}
+
+.dataTables_paginate, .dataTables_filter {
+  padding-right: 1rem !important;
+}
+
+.nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link.active { 
+  border-color: var(--border-color)
+}
+
+.nav-tabs .nav-link:focus, .nav-tabs .nav-link:hover {
+  border-color: var(--border-color);
+}
+
+.nav-tabs {
+  border-bottom: 1px solid var(--border-color);
+}
+
+
+/* CHANGE IN BOOTSTRAP*/
 
 @media (max-width: 1140px) {
   .nav-indicator {
@@ -254,7 +318,10 @@ nav .twitter-typeahead input, #search-input {
 }
 
 @media (min-width: 1140px) and (max-width: 1440px) {
-  .navbar i {
+  .navbar .nav-item i {
+    display: none;
+  }
+  .navbar .nav-item svg {
     display: none;
   }
 

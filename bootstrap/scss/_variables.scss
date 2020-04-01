@@ -74,7 +74,7 @@ $green: #2d7533 !default;
 $teal: #143226 !default;
 $cyan: #17a2b8 !default;
 $bg-color-nav: #e1d8d8 !default;
-$bg-color: #fefbfb !default;
+$bg-color: #fffcfc !default;
 $shadow-light: rgba(159, 162, 177, 0.3) !default;
 $shadow-dark: rgba(159, 162, 177, 0.8) !default;
 
@@ -164,8 +164,9 @@ $theme-colors: map-merge(
     "danger": $danger,
     "light": $light,
     "dark": $dark,
-    "bg-color-nav": $bg-color-nav,
     "bg-color": $bg-color,
+    "bg-color-light": #e5e1e166,
+    "bg-color-nav": $bg-color-nav,
     "card-border-color": rgba($black, 0.125),
     "link-color": darken(#6699cc, 25%),
     "link-hover-color": darken(#6699cc, 40%),
@@ -192,8 +193,9 @@ $theme-colors-dark: map-merge(
     "danger": darken($danger, 20%),
     "light": $dark,
     "dark": $light,
-    "bg-color-nav": $bg-color-nav-dark,
     "bg-color": $bg-color-dark,
+    "bg-color-light": #5c4e4e55,
+    "bg-color-nav": $bg-color-nav-dark,
     "bg-color-secondary": #24201f,
     "card-border-color": rgba($white, 0.125),
     "link-color": #6699cc,
@@ -437,9 +439,9 @@ $grid-breakpoints: (
 // Define the maximum width of `.container` for different screen sizes.
 
 $container-max-widths: (
-  sm: 540px,
-  md: 780px,
-  lg: 1100px,
+  sm: 620px,
+  md: 790px,
+  lg: 1110px,
   xl: 1400px
 ) !default;
 

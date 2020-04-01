@@ -26,7 +26,7 @@
         // Javascript to enable link to tab
         var url = document.location.toString();
         if (url.match('#')) {
-            console.log('.nav-pills a[href="#' + url.split('#')[1] + '"]');
+            // console.log('.nav-pills a[href="#' + url.split('#')[1] + '"]');
             $('.nav-pills a[href="#' + url.split('#')[1] + '"]').tab('show');
         }
 
@@ -45,7 +45,7 @@
 {{end}}
 
 {{ define "content"}}
-	<div class="mb-3">
+	<div class="my-3">
 		<div class="d-md-flex py-2 justify-content-md-between">
 			<h1 class="h4 mb-1 mb-md-0">
                 {{if gt .PreviousSlot 0}}
@@ -66,7 +66,7 @@
 		</div>
 	</div>
 	<div class="card">
-		<div class="card-body">
+		<div class="card-body px-0">
 			<div class="row border-bottom p-1">
 				<div class="col-md-12">
 					<ul class="nav nav-pills justify-content-center" id="pills-tab" role="tablist">

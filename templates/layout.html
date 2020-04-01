@@ -69,7 +69,7 @@
     </script>
         <div  class="container">
                     <a class=navbar-brand href="/">
-                    <i class="fas fa-satellite-dish mr-1"></i>
+                    <i {{ if eq .Active "index"}}style="color: var(--font-color)"{{else}}style="opacity: .7"{{end}} class="fas fa-satellite-dish mr-1"></i>
                     <span class="brand-text">beaconcha.in</span>
                 </a>
                 
@@ -79,12 +79,12 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav mr-auto">
-                        <li class="nav-item {{ if eq .Active "index"}}active{{end}}">
+                        <!-- <li class="nav-item {{ if eq .Active "index"}}active{{end}}">
                             <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
                             {{ if eq .Active "index"}} 
                                 <span class="nav-indicator"></span>
                             {{end}}
-                        </li>
+                        </li> -->
                         <li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
                             <a class="nav-link" href="/epochs"><i class="fas fa-history"></i> Epochs</a>
                             {{ if eq .Active "epochs"}} 
@@ -121,8 +121,79 @@
                                 <span class="nav-indicator"></span>
                             {{end}}
                         </li>
+                        <style>
+                            .nav-cube {
+                                --mainColor: rgba(75,75,75,.7);
+                                --strokeColor: rgba(55,55,55, 1);
+                                --lightColor: rgba(0,0,0,.5);
+                                --darkColor: rgba(100,100,100,.8);
+                            }
+                            [data-theme='dark'] .nav-cube {
+                                --mainColor: rgba(180,180,180,.7);
+                                --strokeColor: rgba(200,200,200, 1);
+                                --lightColor: rgba(255,255,255,.5);
+                                --darkColor: rgba(150,150,150,.8);
+                            }
+                        </style>
                         <li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
-                            <a class="nav-link" href="/dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                            <a class="nav-link" href="/dashboard"><svg style="width:21px; height:23px;" xmlns="http://www.w3.org/2000/svg" class="nav-cube" viewBox="80 20 150 100">
+                                <defs>
+                                  <g id="cube" class="cube-unit" >
+                                    <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
+                                    <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
+                                    <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
+                                  </g>
+                                  <g id="cube" class="cube-unit">
+                                    <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
+                                    <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
+                                    <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
+                                  </g>
+                    
+                                  <g style="transform: scale(0.6)" id="cube-small" class="cube-unit" >
+                                    <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
+                                    <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
+                                    <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
+                                  </g>
+                                  <g id="cube" class="cube-unit">
+                                    <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
+                                    <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
+                                    <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
+                                  </g>
+                                </defs>
+                                  <g class="move">        
+                                  <use href="#cube-small" x="129" y="56"/>
+                                  </g>
+                    
+                                  <g style="opacity: .2;">
+                                    <use href="#cube" x="121" y="48"/>
+                                    <use href="#cube" x="121" y="24"/>
+                                    <use href="#cube" x="121" y="0"/>
+                                    <use href="#cube" x="100" y="60"/>
+                                    <use href="#cube" x="100" y="36"/>
+                                    <use href="#cube" x="100" y="12"/>
+                                    <use href="#cube" x="142" y="60"/>
+                                    <use href="#cube" x="142" y="36"/>
+                                    <use href="#cube" x="142" y="12"/>
+                                    <use href="#cube" x="163" y="72"/>
+                                    <use href="#cube" x="163" y="48"/>
+                                    <use href="#cube" x="163" y="24"/>
+                                    <use href="#cube" x="79" y="72"/>
+                                    <use href="#cube" x="79" y="48"/>
+                                    <use href="#cube" x="79" y="24"/>
+                                    <use href="#cube" x="121" y="72"/> 
+                                    <use href="#cube" x="121" y="48"/> 
+                                    <use href="#cube" x="121" y="24"/>
+                                    <use href="#cube" x="100" y="84"/>
+                                    <use href="#cube" x="100" y="60"/>
+                                    <use href="#cube" x="100" y="36"/>
+                                    <use href="#cube" x="142" y="84"/>
+                                    <use href="#cube" x="142" y="60"/>
+                                    <use href="#cube" x="142" y="36"/>
+                                    <use href="#cube" x="121" y="96"/>
+                                    <use href="#cube" x="121" y="72"/>
+                                    <use href="#cube-small" x="129" y="56"/>
+                                  </g>
+                                </svg> Dashboard</a>
                             {{ if eq .Active "dashboard"}} 
                                 <span class="nav-indicator"></span>
                             {{end}}

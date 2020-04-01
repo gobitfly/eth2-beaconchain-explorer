@@ -24,19 +24,19 @@ html {
 
 @media (min-width: 640px) {
   .container {
-    max-width: 540px;
+    max-width: 620px;
   }
 }
 
 @media (min-width: 820px) {
   .container {
-    max-width: 780px;
+    max-width: 790px;
   }
 }
 
 @media (min-width: 1140px) {
   .container {
-    max-width: 1100px;
+    max-width: 1110px;
   }
 }
 
@@ -56,19 +56,19 @@ html {
 
 @media (min-width: 640px) {
   .container, .container-sm {
-    max-width: 540px;
+    max-width: 620px;
   }
 }
 
 @media (min-width: 820px) {
   .container, .container-sm, .container-md {
-    max-width: 780px;
+    max-width: 790px;
   }
 }
 
 @media (min-width: 1140px) {
   .container, .container-sm, .container-md, .container-lg {
-    max-width: 1100px;
+    max-width: 1110px;
   }
 }
 
