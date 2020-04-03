@@ -12,20 +12,20 @@ import (
 	"time"
 )
 
-var stakingEstimatorTemplate = template.Must(template.New("staking_estimator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/staking_estimator.html"))
+var stakingCalculatorTemplate = template.Must(template.New("staking_calculator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/staking_calculator.html"))
 
-// StakingEstimator renders stakingEstimatorTemplate
-func StakingEstimator(w http.ResponseWriter, r *http.Request) {
+// StakingCalculator renders stakingCalculatorTemplate
+func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := &types.PageData{
 		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Staking estimator - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
+			Title:       fmt.Sprintf("%v - Staking calculator - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/staking_estimator",
+			Path:        "/staking_calculator",
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "staking_estimator",
+		Active:                "staking_calculator",
 		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -33,8 +33,8 @@ func StakingEstimator(w http.ResponseWriter, r *http.Request) {
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 	}
 
-	stakingEstimatorTemplate = template.Must(template.New("staking_estimator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/staking_estimator.html"))
-	err := stakingEstimatorTemplate.ExecuteTemplate(w, "layout", data)
+	stakingCalculatorTemplate = template.Must(template.New("staking_estimator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/staking_calculator.html"))
+	err := stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)

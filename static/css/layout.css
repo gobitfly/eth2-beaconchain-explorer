@@ -459,3 +459,8 @@ a.at-button.toggle-icon {
   bottom: 29%;
   color: grey;
 }
+
+/* #TODO:stefan add to boostrap */
+.form-check-input {
+  border: 1px solid var(--input-border-color);
+}
