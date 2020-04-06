@@ -124,43 +124,42 @@ renderResult: ${t3-t2}ms
 		p.initialCosts = parseFloat(document.getElementById('staking-variable-initialCosts').value)
 		p.monthlyCosts = parseFloat(document.getElementById('staking-variable-monthlyCosts').value)
 
-		// p.poolStaking = document.getElementById('staking-variable-poolStaking').checked
 		p.stakingFee = parseInt(document.getElementById('staking-variable-stakingFee').value)/100
 		p.reinvest = document.getElementById('staking-variable-reinvest').checked
 
-		// if (p.poolStaking) {
-		// 	p.initialCosts = 0
-		// 	p.monthlyCosts = 0
-		// } else {
-		// 	p.stakingFee = 0
-		// 	p.reinvest = false
-		// }
-
-		if (!p.networkStake || p.networkStake < 32*16387*1e9) {
+		if (isNaN(p.stake) || p.stake < 1e-9) {
+			p.stake = 1/1e9
+			document.getElementById('staking-variable-yourStake').value = p.stake
+		}
+		if (isNaN(p.networkStake) || p.networkStake < 32*16387*1e9) {
 			p.networkStake = 32*16387*1e9
 			document.getElementById('staking-variable-totalStake').value = p.networkStake/1e9
 		}
-		if (!p.networkOnlinePropability || p.networkOnlinePropability < .01) {
+		if (isNaN(p.networkOnlinePropability) || p.networkOnlinePropability < .01) {
 			p.networkOnlinePropability = .01
 			document.getElementById('staking-variable-onlinePropabilty').value = p.networkOnlinePropability*100
 		}
-		if (p.networkOnlinePropability > 1.00) {
+		if (isNaN(p.networkOnlinePropability) || p.networkOnlinePropability > 1.00) {
 			p.networkOnlinePropability = 1.00
 			document.getElementById('staking-variable-onlinePropabilty').value = p.networkOnlinePropability*100
 		}
-		if (p.ethPrice < 0) {
+		if (isNaN(p.ethPrice) || p.ethPrice < 0) {
 			p.ethPrice = 0
 			document.getElementById('staking-variable-ethPrice').value = p.ethPrice
 		}
-		// if (p.ethPriceChangePerMonth < 0) {
-		// 	p.ethPriceChangePerMonth = 0
-		// 	document.getElementById('staking-variable-ethPriceChangePerMonth').value = p.ethPriceChangePerMonth
-		// }
-		if (p.monthlyCosts < 0) {
+		if (isNaN(p.ethPriceChangePerMonth)) {
+			p.ethPriceChangePerMonth = 0
+			document.getElementById('staking-variable-ethPriceChangePerMonth').value = p.ethPriceChangePerMonth
+		}
+		if (isNaN(p.initialCosts) || p.initialCosts < 0) {
+			p.initialCosts = 0
+			document.getElementById('staking-variable-initialCosts').value = 0
+		}
+		if (isNaN(p.monthlyCosts) || p.monthlyCosts < 0) {
 			p.monthlyCosts = 0
 			document.getElementById('staking-variable-monthlyCosts').value = 0
 		}
-		if (p.stakingFee < 0) {
+		if (isNaN(p.stakingFee) || p.stakingFee < 0) {
 			p.stakingFee = 0
 			document.getElementById('staking-variable-stakingFee').value = 0
 		}
@@ -210,13 +209,8 @@ renderResult: ${t3-t2}ms
 
 		this.result.start = now
 
-		console.log('start',incomeDollar-costs,incomeDollar,costs, yourStake/valStake)
-		this.fillChartData(
-			now, 
-			incomeDollar, 
-			costs, 
-			ethPrice
-		)
+		// console.log('start',incomeDollar-costs,incomeDollar,costs, yourStake/valStake)
+		this.fillChartData(now, incomeDollar, costs, ethPrice)
 
 		for (var i=0; i<epochsPerYear; i++) {
 			var allVal = (totalStake / valStake)|0
@@ -236,14 +230,11 @@ renderResult: ${t3-t2}ms
 			var valRewards = totalRewards/allVal
 			
 			incomeAll += totalRewards
-
 			ethPrice = ethPrice*(1+ethPriceChangePerEpoch)
 			incomeGwei += valRewards * (yourStake/valStake) * (1-this.params.stakingFee)
 			if (this.params.reinvest)
 				yourStake += valRewards * (yourStake/valStake) * (1-this.params.stakingFee)
-
 			costs += costsPerEpoch
-
 			var day = (i+1)/epochsPerDay|0
 			if (day > this.result.incomeDollarChartData.length-1) {
 				var t = now+(i+1)*12*32*1000
@@ -267,7 +258,6 @@ renderResult: ${t3-t2}ms
 			var prevProfit = pdcd[pdcd.length-2][1]
 			var currProfit = pdcd[pdcd.length-1][1]
 			if (prevProfit<0 && currProfit>=0) {
-				console.log('break-even',t,prevProfit,currProfit)
 				this.result.breakEvenPoint = t
 			}
 		}
@@ -335,6 +325,12 @@ var c = new Calculator()
 td,th {
 	vertical-align: middle;
 }
+.currency-switch {
+	cursor: pointer
+}
+.currency-switch:hover {
+	color: var(--primary)
+}
 </style>
 {{ end }}
 
@@ -356,9 +352,9 @@ td,th {
 			<div class="row">
 				<div class="col-md-6">
 					<div style="padding:10px;padding-bottom:0;">
-						<!--<h3>Network parameters</h3>-->
+						<h4>Network parameters</h4>
 						<table class="table table-sm">
-							<caption>Network parameters</caption>
+							<!--<caption>Network parameters</caption>-->
 							<tbody>
 								<tr>
 									<th width="50%">Total staked ether (<span id="totalStake-currency">ETH</span> <i class="fas fa-random fa-sm currency-switch" data-for="totalStake"></i>) <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Total staked ether is the sum of effective balances of all active validators attesting in the network."></i></th>
@@ -380,13 +376,14 @@ td,th {
 								</tr>
 								<tr>
 									<th>Monthly change of ETH price (%)</th>
-									<td><input id="staking-variable-ethPriceChangePerMonth" class="staking-variable form-control" type="text" value=30></td>
+									<td><input id="staking-variable-ethPriceChangePerMonth" class="staking-variable form-control" type="text" value=0></td>
 								</tr>
 							</tbody>
 						</table>
-						<!--<h3>Your staking parameters</h3>-->
+						<h4>Your staking parameters</h4>
 						<table class="table">
-							<caption>Your staking parameters</caption>
+							<!--<caption>Your staking parameters</caption>-->
+							<tbody>
 								<tr class="staking-variable-holder">
 									<th width="50%">Your staking (<span id="yourStake-currency">ETH</span> <i class="fas fa-random fa-sm currency-switch" data-for="yourStake"></i>) <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="This value represents the amount of ETH you want to use for stacking. If you are not staking on a pool it must be a multiple of 32, since validators can only join the network with a minimum of 32 ETH."></i></th>
 									<td><input id="staking-variable-yourStake" class="staking-variable form-control" type="text" value=32></td>
@@ -418,12 +415,13 @@ td,th {
 				</div>
 				<div class="col-md-6">
 					<div style="padding:10px;padding-bottom:0;">
+						<h4>Estimated Rewards</h4>
 						<table class="table">
 							<tbody>
 								<tr>
 									<th>Duration</th>
 									<th>Your Profit</th>
-									<th>Network Issuance</th>
+									<th>Staking Issuance</th>
 								</tr>
 								<tr>
 									<th>1 day</th>
