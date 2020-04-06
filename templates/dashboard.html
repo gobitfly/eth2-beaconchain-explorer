@@ -32,12 +32,25 @@
     
             
             .blue-cube {
-              --mainColor: #009CDE;
+              /* --mainColor: #009CDE;
               --strokeColor: #0079ad;
               --lightColor: #00affa;
-              --darkColor: #008bc7;
+              --darkColor: #008bc7; */
               width: 89px;
               height: auto;
+            }
+
+            .blue-cube {
+                --mainColor: rgba(75,75,75,.7);
+                --strokeColor: rgba(55,55,55, 1);
+                --lightColor: rgba(0,0,0,.5);
+                --darkColor: rgba(100,100,100,.8);
+            }
+            [data-theme='dark'] .blue-cube {
+                --mainColor: rgba(180,180,180,.7);
+                --strokeColor: rgba(200,200,200, 1);
+                --lightColor: rgba(255,255,255,.5);
+                --darkColor: rgba(150,150,150,.8);
             }
             
             @keyframes moveX {
@@ -110,10 +123,8 @@
             } */
             
             </style>
-            <div class="cube">
-    
+            <div id="dashboard-cube" class="cube">
               <svg xmlns="http://www.w3.org/2000/svg" class="blue-cube" viewBox="20 -20 250 200">
-      
                 <defs>
                   <g id="cube" class="cube-unit" >
                     <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
@@ -137,13 +148,7 @@
                     <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
                   </g>
                 </defs>
-       
-                  <!-- <line opacity=".5" x1="96" x2="110" y1="45" y2="45" fill="none" stroke-width="1" stroke-linecap="round" stroke="var(--lightColor)" stroke-dasharray="2.5" />
-                  <line opacity=".5" x1="190" x2="205" y1="45" y2="45" fill="none" stroke-width="1" stroke-linecap="round" stroke="var(--lightColor)" stroke-dasharray="2.5" /> -->
-                  <g class="move">
-                    
-    
-              
+                  <g class="move">        
                   <use href="#cube-small" x="129" y="56"/>
                   </g>
     
@@ -237,8 +242,8 @@
           </div>
       </div>
       <div class="dashboard-table" id="validators-table-holder">
-          <div class="table-responsive col-sm-12 mb-3 pt-1">
-            <table class="table table-sm" id="validators" width="100%">
+          <div class="table-responsive pt-1">
+            <table class="table" id="validators" width="100%">
               <thead>
                 <tr>
                   <th>Public Key</th>

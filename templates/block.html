@@ -26,7 +26,7 @@
         // Javascript to enable link to tab
         var url = document.location.toString();
         if (url.match('#')) {
-            console.log('.nav-pills a[href="#' + url.split('#')[1] + '"]');
+            // console.log('.nav-pills a[href="#' + url.split('#')[1] + '"]');
             $('.nav-pills a[href="#' + url.split('#')[1] + '"]').tab('show');
         }
 
@@ -45,7 +45,7 @@
 {{end}}
 
 {{ define "content"}}
-	<div class="mb-3">
+	<div class="my-3">
 		<div class="d-md-flex py-2 justify-content-md-between">
 			<h1 class="h4 mb-1 mb-md-0">
                 {{if gt .PreviousSlot 0}}
@@ -65,83 +65,84 @@
 			</nav>
 		</div>
 	</div>
-	<div class="card">
-		<div class="card-body">
-			<div class="row border-bottom p-1">
-				<div class="col-md-12">
-					<ul class="nav nav-pills justify-content-center" id="pills-tab" role="tablist">
-						<li class="nav-item">
-							<a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview" role="tab" aria-controls="pills-overview" aria-selected="true">Overview</a>
-						</li>
-						<li class="nav-item">
-							<a class="nav-link" id="pills-votes-tab" data-toggle="pill" href="#pills-votes" role="tab" aria-controls="pills-votes" aria-selected="false">Votes <span class="badge bg-secondary text-white">{{.VotesCount}}</span></a>
-						</li>
-						<li class="nav-item">
-							<a class="nav-link" id="pills-attestations-tab" data-toggle="pill" href="#pills-attestations" role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
-						</li>
-                        {{if gt .DepositsCount 0}}
-							<li class="nav-item">
-								<a class="nav-link" id="pills-deposits-tab" data-toggle="pill" href="#pills-deposits" role="tab" aria-controls="pills-deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
-							</li>
-                        {{end}}
-                        {{if gt .VoluntaryExitscount 0}}
-							<li class="nav-item">
-								<a class="nav-link" id="pills-voluntary-exits-tab" data-toggle="pill" href="#pills-voluntary-exits" role="tab" aria-controls="pills-voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a>
-							</li>
-                        {{end}}
-					</ul>
-				</div>
-			</div>
-
+	<ul style="margin-bottom: -1px;" class="nav nav-tabs justify-content-start" id="pills-tab" role="tablist">
+		<li class="nav-item">
+			<a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview" role="tab" aria-controls="pills-overview" aria-selected="true">Overview</a>
+		</li>
+		<li class="nav-item">
+			<a class="nav-link" id="pills-votes-tab" data-toggle="pill" href="#pills-votes" role="tab" aria-controls="pills-votes" aria-selected="false">Votes <span class="badge bg-secondary text-white">{{.VotesCount}}</span></a>
+		</li>
+		<li class="nav-item">
+			<a class="nav-link" id="pills-attestations-tab" data-toggle="pill" href="#pills-attestations" role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
+		</li>
+								{{if gt .DepositsCount 0}}
+			<li class="nav-item">
+				<a class="nav-link" id="pills-deposits-tab" data-toggle="pill" href="#pills-deposits" role="tab" aria-controls="pills-deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
+			</li>
+								{{end}}
+								{{if gt .VoluntaryExitscount 0}}
+			<li class="nav-item">
+				<a class="nav-link" id="pills-voluntary-exits-tab" data-toggle="pill" href="#pills-voluntary-exits" role="tab" aria-controls="pills-voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a>
+			</li>
+								{{end}}
+	</ul>
+	<style>
+		.block-card {
+			border-top-left-radius: 0;
+			border-top-right-radius: 0;
+		}
+	</style>
+	<div class="card block-card">
+		<div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
 			<div class="tab-content" id="pills-tabContent">
 				<div class="tab-pane fade show active" id="pills-overview" role="tabpanel"
 					 aria-labelledby="pills-overview-tab">
-					<div class="row border-bottom p-3">
+					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Epoch:</div>
 						<div class="col-md-10"><a href="/epoch/{{.Epoch}}">{{.Epoch}}</a></div>
 					</div>
-					<div class="row border-bottom p-3">
+					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Slot:</div>
 						<div class="col-md-10"><b>{{.Slot}}</b></div>
 					</div>
-					<div class="row border-bottom p-3">
+					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Status:</div>
 						<div class="col-md-10">{{formatBlockStatus .Status}}</div>
 					</div>
-					<div class="row border-bottom p-3">
+					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Time:</div>
 						<div class="col-md-10"><span aria-ethereum-date="{{.Ts.Unix}}">{{.Ts}}</span> (<span
 									aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW"></span>)
 						</div>
 					</div>
-					<div class="row border-bottom p-3">
+					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Proposer:</div>
 						<div class="col-md-10">{{formatValidator .Proposer}}</div>
 					</div>
                     {{ if (or (eq .Status 1) (eq .Status 3)) }}
-						<div class="row border-bottom p-3">
+						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Block Root:</div>
 							<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}}</div>
 						</div>
-						<div class="row border-bottom p-3">
+						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Parent Root:</div>
 							<div class="col-md-10 text-monospace text-break"><a
 										href="/block/{{printf "%x" .ParentRoot}}">0x{{printf "%x" .ParentRoot}}</a>
 							</div>
 						</div>
-						<div class="row border-bottom p-3">
+						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">State Root:</div>
 							<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .StateRoot}}</div>
 						</div>
-						<div class="row border-bottom p-3">
+						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Signature:</div>
 							<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .Signature}}</div>
 						</div>
-						<div class="row border-bottom p-3">
+						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Randao Reveal:</div>
 							<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .RandaoReveal}}</div>
 						</div>
-						<div class="row border-bottom p-3">
+						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Graffiti:</div>
 							<div class="col-md-8 text-monospace text-break" id="graffiti"
 								 aria-graffiti="{{printf "%x" .Graffiti}}">0x{{printf "%x" .Graffiti}}</div>
@@ -156,39 +157,39 @@
 								</div>
 							</div>
 						</div>
-						<div class="row border-bottom p-3">
+						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Eth 1 Data:</div>
 							<div class="col-md-10">
-								<div class="row border-bottom p-1">
+								<div class="row p-1">
 									<div class="col-md-2">Block Hash:</div>
 									<div class="col-md-10 text-monospace text-break">
 										<a href="https://goerli.etherscan.io/block/0x{{printf "%x" .Eth1dataBlockhash}}">0x{{printf "%x" .Eth1dataBlockhash}}</a>
 									</div>
 								</div>
-								<div class="row border-bottom p-1">
+								<div class="row p-1">
 									<div class="col-md-2">Deposit Count:</div>
 									<div class="col-md-10 text-monospace text-break">{{.Eth1dataDepositcount}}</div>
 								</div>
-								<div class="row border-bottom p-1">
+								<div class="row p-1">
 									<div class="col-md-2">Deposit Root:</div>
 									<div class="col-md-10 text-monospace text-break">
 										0x{{printf "%x" .Eth1dataDepositroot}}</div>
 								</div>
 							</div>
 						</div>
-						<div class="row border-bottom p-3">
+						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Attestations:</div>
 							<div class="col-md-10"><b>{{.AttestationsCount}}</b></div>
 						</div>
-						<div class="row border-bottom p-3">
+						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Deposits:</div>
 							<div class="col-md-10"><b>{{.DepositsCount}}</b></div>
 						</div>
-						<div class="row border-bottom p-3">
+						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Voluntary Exits:</div>
 							<div class="col-md-10"><b>{{.VoluntaryExitscount}}</b></div>
 						</div>
-						<div class="row border-bottom p-3">
+						<div class="row p-3 mx-0">
 							<div class="col-md-2">Slashings:</div>
 							<div class="col-md-10"><b>{{.AttesterSlashingsCount}}</b> attester &
 								<b>{{.ProposerSlashingsCount}}</b> proposer slashings
@@ -206,7 +207,7 @@
                                 {{if mod $i 10 }}
 									<tr>
                                 {{end}}
-								<td class="p-1" data-toggle="tooltip" data-placement="top"
+								<td style="border-bottom: 1px solid var(--border-color);" class="p-1" data-toggle="tooltip" data-placement="top"
 									title="Voted on by validator {{$vote.Validator}} of committee {{$vote.CommitteeIndex}} included in block {{$vote.IncludedIn}}">
                                     {{formatValidator $vote.Validator}}
 								</td>
@@ -219,24 +220,27 @@
 				</div>
 				<div class="tab-pane fade" id="pills-attestations" role="tabpanel"
 					 aria-labelledby="pills-attestations-tab">
+					 <div class="row border-bottom p-1 mx-0">
+						<div class="col-md-12 text-center"><b>Showing {{ .AttestationsCount }} Attestations </b></div>
+					</div>
                     {{range $i, $attestation := .Attestations}}
-						<div class="row border-bottom p-1">
+						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-12 text-center"><b>Attestation {{$i}}</b></div>
 						</div>
-						<div class="row border-bottom p-1">
+						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Slot:</div>
 							<div class="col-md-10"><a href="/block/{{$attestation.Slot}}">{{$attestation.Slot}}</a>
 							</div>
 						</div>
-						<div class="row border-bottom p-1">
+						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Committee Index:</div>
 							<div class="col-md-10">{{$attestation.CommitteeIndex}}</div>
 						</div>
-						<div class="row border-bottom p-1">
+						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Aggregation Bits:</div>
 							<div class="col-md-10">{{printf "%8b" $attestation.AggregationBits}}</div>
 						</div>
-						<div class="row border-bottom p-1">
+						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Validators:</div>
 							<div class="col-md-10">
                                 {{range $validator := $attestation.Validators}}
@@ -244,13 +248,13 @@
                                 {{end}}
 							</div>
 						</div>
-						<div class="row border-bottom p-1">
+						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Beacon Block Root:</div>
 							<div class="col-md-10 text-monospace text-break"><a
 										href="/block/{{printf "%x" $attestation.BeaconBlockRoot}}">0x{{printf "%x" $attestation.BeaconBlockRoot}}</a>
 							</div>
 						</div>
-						<div class="row border-bottom p-1">
+						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Source:</div>
 							<div class="col-md-10">Epoch <a
 										href="/epoch/{{$attestation.SourceEpoch}}">{{$attestation.SourceEpoch}}</a>
@@ -259,7 +263,7 @@
 											href="{{printf "%x" $attestation.SourceRoot}}">0x{{printf "%x" $attestation.SourceRoot}}</a>)</span>
 							</div>
 						</div>
-						<div class="row border-bottom p-1">
+						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Target:</div>
 							<div class="col-md-10">Epoch <a
 										href="/epoch/{{$attestation.TargetEpoch}}">{{$attestation.TargetEpoch}}</a>
@@ -268,39 +272,39 @@
 											href="{{printf "%x" $attestation.TargetRoot}}">0x{{printf "%x" $attestation.TargetRoot}}</a>)</span>
 							</div>
 						</div>
-						<div class="row border-bottom p-1">
+						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Signature:</div>
 							<div class="col-md-10 text-monospace text-break">
 								0x{{printf "%x" $attestation.Signature}}</div>
 						</div>
-						<div class="row border-bottom">
+						<div class="row border-bottom mx-0">
 						</div>
                     {{end}}
 				</div>
                 {{if gt .DepositsCount 0}}
 					<div class="tab-pane fade" id="pills-deposits" role="tabpanel" aria-labelledby="pills-deposits-tab">
                         {{range $i, $deposit := .Deposits}}
-							<div class="row border-bottom p-1">
+							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-12 text-center"><b>Deposit {{$i}}</b></div>
 							</div>
-							<div class="row border-bottom p-1">
+							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-2">Amount:</div>
 								<div class="col-md-10">{{$deposit.Amount | formatBalance}}</div>
 							</div>
-							<div class="row border-bottom p-1">
+							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-2">Public Key:</div>
 								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $deposit.PublicKey}}</div>
 							</div>
-							<div class="row border-bottom p-1">
+							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-2">Withdrawal Credentials:</div>
 								<div class="col-md-10 text-monospace text-break">
 									0x{{printf "%x" $deposit.WithdrawalCredentials}}</div>
 							</div>
-							<div class="row border-bottom p-1">
+							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-2">Signature:</div>
 								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $deposit.Signature}}</div>
 							</div>
-							<div class="row border-bottom">
+							<div class="row border-bottom mx-0">
 							</div>
                         {{end}}
 					</div>
@@ -308,19 +312,16 @@
                 {{if gt .VoluntaryExitscount 0}}
 					<div class="tab-pane fade" id="pills-voluntary-exits" role="tabpanel" aria-labelledby="pills-voluntary-exits-tab">
                         {{range $i, $exit := .VoluntaryExits}}
-							<div class="row border-bottom p-1">
+							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-12 text-center"><b>Exit {{$i}}</b></div>
 							</div>
-							<div class="row border-bottom p-1">
+							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-2">Validator:</div>
 								<div class="col-md-10">{{formatValidator $exit.ValidatorIndex}}</div>
 							</div>
-							<div class="row border-bottom p-1">
+							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-2">Signature:</div>
 								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $exit.Signature}}</div>
-							</div>
-
-							<div class="row border-bottom">
 							</div>
                         {{end}}
 					</div>

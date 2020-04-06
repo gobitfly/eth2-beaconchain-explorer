@@ -22,14 +22,6 @@ body main {
   margin-left: 0.1rem;
 }
 
-table.dataTable .sorting:before, table.dataTable.table-sm .sorting_asc:before, table.dataTable.table-sm .sorting_desc:before {
-  right : .40rem !important;
-}
-
-table.dataTable thead .sorting:after, table.dataTable thead .sorting_asc:after, table.dataTable thead .sorting_desc:after, table.dataTable thead .sorting_asc_disabled:after, table.dataTable thead .sorting_desc_disabled:after {
-  right: .15rem !important;
-}
-
 
 .theme-switch input {
   display: none;
@@ -172,6 +164,77 @@ input:checked + .slider:before {
 .navbar-brand {
   margin-right: 1rem;
 }
+/* TODO CHANGE IN BOOTSTRAP */
+.dropdown-menu {
+  background-color: var(--bg-color-nav);
+}
+
+.dropdown-item {
+  color: var(--body-color);
+}
+.card {
+  box-shadow: 0 3px 8px var(--shadow-light);
+}
+.card-header {
+  background: none;
+}
+.card-body {
+  padding: 1rem;
+}
+.table {
+  margin-bottom: 0;
+  width: 100% !important;
+  line-height: 1.2;
+  font-size: 0.93rem;
+  white-space: nowrap !important;
+}
+
+.table td, .table th {
+  padding: .75rem;
+  vertical-align: top;
+  border-top: 1px solid var(--border-color);
+  border-bottom: none;
+}
+.table thead th::before, .table thead th::after {
+  font-weight: 400;
+}
+
+.table thead th {
+  color: var(--body-color);
+  border-top: none;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-color-light);
+  border-bottom-color: var(--border-color);
+  /* border-top: 1px solid lightsalmon;
+  border-color: lightsalmon; */
+}
+
+.dataTables_info, .dataTables_length {
+  padding-left: 1rem !important;
+}
+
+.dataTables_filter input {
+  width: 200px !important;
+}
+
+.dataTables_paginate, .dataTables_filter {
+  padding-right: 1rem !important;
+}
+
+.nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link.active { 
+  border-color: var(--border-color)
+}
+
+.nav-tabs .nav-link:focus, .nav-tabs .nav-link:hover {
+  border-color: var(--border-color);
+}
+
+.nav-tabs {
+  border-bottom: 1px solid var(--border-color);
+}
+
+
+/* CHANGE IN BOOTSTRAP*/
 
 @media (max-width: 1140px) {
   .nav-indicator {
@@ -214,7 +277,6 @@ input:checked + .slider:before {
 .search-container .twitter-typeahead input {
   width: 100% !important;
   transition: width 0.4s ease-in;
-  -webkit-appearance: searchfield;
 }
 
 nav .twitter-typeahead input, #search-input {
@@ -254,7 +316,10 @@ nav .twitter-typeahead input, #search-input {
 }
 
 @media (min-width: 1140px) and (max-width: 1440px) {
-  .navbar i {
+  .navbar .nav-item i {
+    display: none;
+  }
+  .navbar .nav-item svg {
     display: none;
   }
 

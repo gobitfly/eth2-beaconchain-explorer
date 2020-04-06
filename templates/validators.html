@@ -189,6 +189,10 @@
     min-height: 400px; /* this is needed to make the bootstrap-dropdown work when the table is empty */
   }
 
+  .filter-by-status {
+    padding-left: 1rem !important;
+  }
+
   #dropdownMenuButton * {
     color: var(--font-color) !important;
   }
@@ -196,51 +200,51 @@
     color: var(--font-color);
   }
 
-  .dropdown-item:focus,
-  .dropdown-item:hover {
+  #validators_wrapper .dropdown-item:focus,
+  #validators_wrapper .dropdown-item:hover {
     color: var(--font-color);
     background-color: var(--bg-color-nav);
   }
 
-  .dropdown-menu {
+  #validators_wrapper .dropdown-menu {
     color: var(--font-color);
     background-color: var(--bg-color-secondary);
   }
 
-  .dropdown-header {
+  #validators_wrapper .dropdown-header {
     padding: 0.25rem 1rem;
     color: var(--body-color);
     display: flex;
   }
 
-  .dropdown-header > span:nth-child(1) {
+  #validators_wrapper .dropdown-header > span:nth-child(1) {
     width: 40%;
   }
 
-  .dropdown-header > span:nth-child(2) {
+  #validators_wrapper .dropdown-header > span:nth-child(2) {
     width: 60%;
     padding-left: 0.5rem;
   }
 
-  .dropdown-item {
+  #validators_wrapper .dropdown-item {
     display: flex;
     padding: 0.25rem 1rem;
     color: var(--font-color);
   }
 
-  .dropdown-item > span:nth-child(1) {
+  #validators_wrapper .dropdown-item > span:nth-child(1) {
     width: 40%;
     min-width: 80px;
   }
 
-  .dropdown-item > span:nth-child(2) {
+  #validators_wrapper .dropdown-item > span:nth-child(2) {
     width: 60%;
     min-width: 130px;
     padding-left: 0.5rem;
   }
 </style>
 {{end}} {{ define "content"}}
-<div class="mb-3">
+<div class="my-3">
   <div class="d-md-flex py-2 justify-content-md-between">
     <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-table"></i> Validators Overview</h1>
     <nav aria-label="breadcrumb">
@@ -253,10 +257,9 @@
   </div>
 </div>
 <div class="card">
-  <div class="card-body">
-    <div class="table-responsive col-sm-12 mb-3 pt-1">
-
-      <table class="table table-sm" id="validators" width="100%">
+  <div class="card-body px-0 py-2">
+    <div class="table-responsive pt-2">
+      <table class="table" id="validators">
         <thead>
           <tr>
             <th>Public Key</th>

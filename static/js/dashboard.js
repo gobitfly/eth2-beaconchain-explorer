@@ -25,19 +25,29 @@ function createBlock(x, y) {
 
 function appendBlocks(blocks) {
 
-  var use = document.createElementNS("http://www.w3.org/2000/svg","use")
-  // use.setAttributeNS(null, "style", `transform: translate(calc(${x} * var(--disperse-factor)), calc(${y} * var(--disperse-factor)));`)
-  use.setAttributeNS(null, "href", "#cube-small")
-  use.setAttributeNS(null, "x", 129)
-  use.setAttributeNS(null, "y", 56)
-  $("g.move").empty()
 
+  $(".blue-cube g.move").each(function() {
+    $(this).empty()
+  })
+
+  var cubes = document.querySelectorAll('.blue-cube g.move')
   for (var i = 0; i < blocks.length; i++) {
     var block = blocks[i];
-    block = createBlock(block[0], block[1])
-    document.querySelector('g.move').appendChild(block)
+
+    for (let i = 0; i < cubes.length; i++) {
+      var cube = cubes[i];
+      cube.appendChild(createBlock(block[0], block[1]))
+    }    
   }
-  document.querySelector('g.move').appendChild(use)
+  for (let i = 0; i < cubes.length; i++) {
+    var cube = cubes[i];
+    var use = document.createElementNS("http://www.w3.org/2000/svg","use")
+    // use.setAttributeNS(null, "style", `transform: translate(calc(${x} * var(--disperse-factor)), calc(${y} * var(--disperse-factor)));`)
+    use.setAttributeNS(null, "href", "#cube-small")
+    use.setAttributeNS(null, "x", 129)
+    use.setAttributeNS(null, "y", 56)
+    cube.appendChild(use)
+  }    
 }
 
 $(document).ready(function() {
@@ -389,8 +399,16 @@ $(document).ready(function() {
       if (state.validators[i] === index) {
         state.validators.splice(i, 1)
         state.validators.sort(sortValidators)
-        renderSelectedValidators()
-        updateState()
+        //removed last validator
+        if(state.validators.length === 0) {
+          state = setInitialState()
+          localStorage.removeItem('dashboard_validators')
+          window.location = "/dashboard"
+          return
+        } else {
+          renderSelectedValidators()
+          updateState()
+        }
         return
       }
     }
@@ -438,11 +456,11 @@ $(document).ready(function() {
     window.history.pushState(null, 'Dashboard', newUrl)
     var t0 = Date.now()
     if(state.validators && state.validators.length) {
-      if(state.validators.length >= 9) {
-        appendBlocks(xBlocks)
-      } else {
-        appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
-      }
+      // if(state.validators.length >= 9) {
+      //   appendBlocks(xBlocks)
+      // } else {
+      //   appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
+      // }
       document.querySelector('#copy-button').style.visibility = "visible"
       document.querySelector('#clear-search').style.visibility = "visible"
 

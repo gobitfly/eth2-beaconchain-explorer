@@ -5,7 +5,7 @@
 {{end}}
 
 {{ define "content"}}
-    <div class="mb-3">
+    <div class="my-3">
         <div class="d-md-flex py-2 justify-content-md-between">
             <h1 class="h4 mb-1 mb-md-0">
                 {{if gt .PreviousEpoch 0}}
@@ -27,14 +27,14 @@
     </div>
 
     <div class="card">
-        <div class="card-body">
-            <div class="row border-bottom p-3">
-                <div class="col-md-2">Epoch:</div>
-                <div class="col-md-10">{{.Epoch}}</div>
+        <div class="card-body px-0 py-1">
+            <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Epoch:</div>
+                <div class="col-md-9">{{.Epoch}}</div>
             </div>
-            <div class="row border-bottom p-3">
-                <div class="col-md-2">Finalized:</div>
-                <div class="col-md-10">
+            <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Finalized:</div>
+                <div class="col-md-9">
                     {{if .Finalized}}
                         <span class="badge bg-success text-white">Yes</span>
                     {{else}}
@@ -42,31 +42,31 @@
                     {{end}}
                 </div>
             </div>
-            <div class="row border-bottom p-3">
-                <div class="col-md-2">Time:</div>
-                <div class="col-md-10"><span aria-ethereum-date="{{.Ts.Unix}}">{{.Ts}}</span> (<span
+            <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Time:</div>
+                <div class="col-md-9"><span aria-ethereum-date="{{.Ts.Unix}}">{{.Ts}}</span> (<span
                             aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW"></span>)
                 </div>
             </div>
-            <div class="row border-bottom p-3">
-                <div class="col-md-2">Attestations:</div>
-                <div class="col-md-10">{{.AttestationsCount}}</div>
+            <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Attestations:</div>
+                <div class="col-md-9">{{.AttestationsCount}}</div>
             </div>
-            <div class="row border-bottom p-3">
-                <div class="col-md-2">Deposits:</div>
-                <div class="col-md-10">{{.DepositsCount}}</div>
+            <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Deposits:</div>
+                <div class="col-md-9">{{.DepositsCount}}</div>
             </div>
-            <div class="row border-bottom p-3">
-                <div class="col-md-2">Slashings <span data-toggle="tooltip" data-placement="top"
+            <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Slashings <span data-toggle="tooltip" data-placement="top"
                                                       title="Proposers">P</span>
                     / <span
                             data-toggle="tooltip" data-placement="top" title="Attesters">A</span>:
                 </div>
-                <div class="col-md-10">{{.ProposerSlashingsCount}} / {{.AttesterSlashingsCount}}</div>
+                <div class="col-md-9">{{.ProposerSlashingsCount}} / {{.AttesterSlashingsCount}}</div>
             </div>
-            <div class="row border-bottom p-3">
-                <div class="col-md-2">Voting Participation:</div>
-                <div class="col-md-10">
+            <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Voting Participation:</div>
+                <div class="col-md-9">
                     <div>{{.VotedEther | formatBalance}} of {{.EligibleEther | formatBalance}}<small
                                 class="text-muted ml-1">({{.GlobalParticipationRate | formatPercentage}}%)</small></div>
                     <div class="progress" style="height:5px; width: 250px;">
@@ -77,59 +77,63 @@
                     </div>
                 </div>
             </div>
-            <div class="row border-bottom p-3">
-                <div class="col-md-2">Validators:</div>
-                <div class="col-md-10">{{.ValidatorsCount}}</div>
+            <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Validators:</div>
+                <div class="col-md-9">{{.ValidatorsCount}}</div>
             </div>
-            <div class="row border-bottom p-3">
-                <div class="col-md-2">Avg. Validator Balance:</div>
-                <div class="col-md-10">{{.AverageValidatorBalance | formatBalance}}</div>
+            <div class="row border-bottom p-3 mx-0">
+                <div class="col-md-3">Avg. Validator Balance:</div>
+                <div class="col-md-9">{{.AverageValidatorBalance | formatBalance}}</div>
             </div>
-            <div class="row border-bottom p-3">
-                <div class="col-md-2">{{.BlocksCount}} Blocks:</div>
-                <div class="col-md-10">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                            <tr>
-                                <th>Slot</th>
-                                <th>Status</th>
-                                <th>Time</th>
-                                <th>Proposer</th>
-                                <th>Root Hash</th>
-                                <th>Attestations</th>
-                                <th>Deposits</th>
-                                <th>Slashings <span data-toggle="tooltip" data-placement="top"
-                                                    title="Proposers">P</span> /
-                                    <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-                                <th>Exits</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {{range .Blocks}}
-                                <tr>
-                                    <td><a href="/block/{{.Slot}}">{{.Slot}}</a></td>
-                                    <td class="text-capitalize">{{formatBlockStatus .Status}}</td>
-                                    <td aria-ethereum-date="{{.Ts.Unix}}"
-                                        aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
-                                    <td><a href="/validator/{{.Proposer}}">{{.Proposer}}</a></td>
-                                    <td class="text-monospace">
-                                        {{ if eq .Status 1}}
-                                            <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}...</a>
-                                        {{else}}
-                                            N/A
-                                        {{end}}
-                                    </td>
-                                    <td>{{.Attestations}}</td>
-                                    <td>{{.Deposits}}</td>
-                                    <td>{{.Proposerslashings}} / {{.Attesterslashings}}</td>
-                                    <td>{{.Exits}}</td>
-                                </tr>
-                            {{end}}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            <a style="cursor:pointer;" data-toggle="collapse" data-target="#epoch-blocks" aria-expand="true" aria-controls="epoch-blocks" class="row p-3 mx-0 collapsed">
+                <div style="position:relative" class="col-md-3">Blocks: </div>
+                <div class="col-md-9"></i> {{.BlocksCount}}</div>
+            </a>
+        </div>
+    </div>
+    
+    <div id="epoch-blocks" class="card my-3 collapse show">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Slot</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                        <th>Proposer</th>
+                        <th>Root Hash</th>
+                        <th>Attestations</th>
+                        <th>Deposits</th>
+                        <th>Slashings <span data-toggle="tooltip" data-placement="top"
+                                            title="Proposers">P</span> /
+                            <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                        <th>Exits</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{range .Blocks}}
+                        <tr>
+                            <td><a href="/block/{{.Slot}}">{{.Slot}}</a></td>
+                            <td class="text-capitalize">{{formatBlockStatus .Status}}</td>
+                            <td aria-ethereum-date="{{.Ts.Unix}}"
+                                aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
+                            <td><a href="/validator/{{.Proposer}}">{{.Proposer}}</a></td>
+                            <td class="text-monospace">
+                                {{ if eq .Status 1}}
+                                    <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}...</a>
+                                {{else}}
+                                    N/A
+                                {{end}}
+                            </td>
+                            <td>{{.Attestations}}</td>
+                            <td>{{.Deposits}}</td>
+                            <td>{{.Proposerslashings}} / {{.Attesterslashings}}</td>
+                            <td>{{.Exits}}</td>
+                        </tr>
+                    {{end}}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

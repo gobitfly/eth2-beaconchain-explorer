@@ -200,7 +200,7 @@
 }
 
 .border-bg-color {
-  border-color: var(--bg-color, #fefbfb) !important;
+  border-color: var(--bg-color, #fffcfc) !important;
 }
 
 .border-bg-color-secondary {
@@ -1132,7 +1132,7 @@
 }
 
 .text-bg-color {
-  color: var(--bg-color, #fefbfb) !important;
+  color: var(--bg-color, #fffcfc) !important;
 }
 
 .text-bg-color-secondary {
@@ -1252,7 +1252,7 @@
 }
 
 .bg-bg-color {
-  background-color: var(--bg-color, #fefbfb) !important;
+  background-color: var(--bg-color, #fffcfc) !important;
 }
 
 .bg-bg-color-secondary {
