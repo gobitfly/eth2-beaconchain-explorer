@@ -28,10 +28,10 @@ var chartHandlers = map[string]chartHandler{
 	"stake_effectiveness":            chartHandler{8, stakeEffectivenessChartData},
 	"balance_distribution":           chartHandler{9, balanceDistributionChartData},
 	"effective_balance_distribution": chartHandler{10, effectiveBalanceDistributionChartData},
-	"performance_distribution_1d":    chartHandler{12, performanceDistribution1dChartData},
-	"performance_distribution_7d":    chartHandler{13, performanceDistribution7dChartData},
-	"performance_distribution_31d":   chartHandler{14, performanceDistribution31dChartData},
-	"performance_distribution_365d":  chartHandler{15, performanceDistribution365dChartData},
+	// performance_distribution_1d":    chartHandler{12, performanceDistribution1dChartData},
+	// performance_distribution_7d":    chartHandler{13, performanceDistribution7dChartData},
+	// performance_distribution_31d":   chartHandler{14, performanceDistribution31dChartData},
+	"performance_distribution_365d": chartHandler{15, performanceDistribution365dChartData},
 }
 
 // LatestChartsPageData returns the latest chart page data
