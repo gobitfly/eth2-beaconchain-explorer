@@ -130,30 +130,41 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]ui
 
 // GetAttestationPool will get the attestation pool from a Prysm client
 func (pc *PrysmClient) GetAttestationPool() ([]*types.Attestation, error) {
-	attestationsResponse, err := pc.client.AttestationPool(context.Background(), &ptypes.Empty{})
+	var err error
 
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving attestation pool data: %v", err)
-	}
+	attestationPoolResponse := &ethpb.AttestationPoolResponse{}
 
-	attestations := make([]*types.Attestation, len(attestationsResponse.Attestations))
-	for i, attestation := range attestationsResponse.Attestations {
-		attestations[i] = &types.Attestation{
-			AggregationBits: attestation.AggregationBits,
-			Data: &types.AttestationData{
-				Slot:            attestation.Data.Slot,
-				CommitteeIndex:  attestation.Data.CommitteeIndex,
-				BeaconBlockRoot: attestation.Data.BeaconBlockRoot,
-				Source: &types.Checkpoint{
-					Epoch: attestation.Data.Source.Epoch,
-					Root:  attestation.Data.Source.Root,
+	attestations := []*types.Attestation{}
+
+	for {
+		attestationPoolResponse, err = pc.client.AttestationPool(context.Background(), &ethpb.AttestationPoolRequest{PageSize: utils.PageSize, PageToken: attestationPoolResponse.NextPageToken})
+		if err != nil {
+			return nil, err
+		}
+		if attestationPoolResponse.TotalSize == 0 {
+			break
+		}
+		for _, attestation := range attestationPoolResponse.Attestations {
+			attestations = append(attestations, &types.Attestation{
+				AggregationBits: attestation.AggregationBits,
+				Data: &types.AttestationData{
+					Slot:            attestation.Data.Slot,
+					CommitteeIndex:  attestation.Data.CommitteeIndex,
+					BeaconBlockRoot: attestation.Data.BeaconBlockRoot,
+					Source: &types.Checkpoint{
+						Epoch: attestation.Data.Source.Epoch,
+						Root:  attestation.Data.Source.Root,
+					},
+					Target: &types.Checkpoint{
+						Epoch: attestation.Data.Target.Epoch,
+						Root:  attestation.Data.Target.Root,
+					},
 				},
-				Target: &types.Checkpoint{
-					Epoch: attestation.Data.Target.Epoch,
-					Root:  attestation.Data.Target.Root,
-				},
-			},
-			Signature: attestation.Signature,
+				Signature: attestation.Signature,
+			})
+		}
+		if attestationPoolResponse.NextPageToken == "" {
+			break
 		}
 	}
 

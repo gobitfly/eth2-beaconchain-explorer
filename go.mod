@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/docker v1.13.1
+	github.com/docker/docker v1.13.1 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/golang/protobuf v1.3.2
@@ -19,8 +19,9 @@ require (
 	github.com/meatballhat/negroni-logrus v0.0.0-20170801195057-31067281800f
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
-	github.com/prysmaticlabs/ethereumapis v0.0.0-20200107194206-1ca2fc850a13
+	github.com/prysmaticlabs/ethereumapis v0.0.0-20200226203635-fca4d6f69bed
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52
+	github.com/prysmaticlabs/prysm v0.3.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d

@@ -394,18 +394,39 @@ type SearchAheadValidatorsResult []struct {
 
 // GenericChartData is a struct to hold chart data
 type GenericChartData struct {
-	Title        string                    `json:"title"`
-	Subtitle     string                    `json:"subtitle"`
-	XAxisTitle   string                    `json:"x_axis_title"`
-	YAxisTitle   string                    `json:"y_axis_title"`
-	StackingMode string                    `json:"stacking_mode"`
-	Series       []*GenericChartDataSeries `json:"series"`
+	IsNormalChart                   bool
+	XAxisLabelsFormatter            template.JS
+	Title                           string                    `json:"title"`
+	Subtitle                        string                    `json:"subtitle"`
+	XAxisTitle                      string                    `json:"x_axis_title"`
+	YAxisTitle                      string                    `json:"y_axis_title"`
+	Type                            string                    `json:"type"`
+	StackingMode                    string                    `json:"stacking_mode"`
+	ColumnDataGroupingApproximation string                    // "average", "averages", "open", "high", "low", "close" and "sum"
+	Series                          []*GenericChartDataSeries `json:"series"`
 }
 
 // GenericChartDataSeries is a struct to hold chart series data
 type GenericChartDataSeries struct {
 	Name string      `json:"name"`
 	Data [][]float64 `json:"data"`
+}
+
+// ChartsPageData is an array to hold charts for the charts-page
+type ChartsPageData []*ChartsPageDataChart
+
+// ChartsPageDataChart is a struct to hold a chart for the charts-page
+type ChartsPageDataChart struct {
+	Order int
+	Path  string
+	Data  *GenericChartData
+}
+
+type DashboardData struct {
+	BalanceHistory      DashboardValidatorBalanceHistory `json:"balance_history"`
+	Earnings            DashboardEarnings                `json:"earnings"`
+	Validators          [][]interface{}                  `json:"validators"`
+	DailyProposalCounts []DailyProposalCount             `json:"daily_proposal_counts"`
 }
 
 type DashboardValidatorBalanceHistory struct {

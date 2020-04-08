@@ -224,7 +224,8 @@ CREATE TABLE public.epochs (
     finalized boolean,
     eligibleether bigint,
     globalparticipationrate double precision,
-    votedether bigint
+    votedether bigint,
+    totalvalidatorbalance bigint NOT NULL
 );
 
 
@@ -978,12 +979,12 @@ COPY public.blocks_voluntaryexits (block_slot, block_index, epoch, validatorinde
 -- Data for Name: epochs; Type: TABLE DATA; Schema: public; Owner: beaconchain
 --
 
-COPY public.epochs (epoch, blockscount, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, validatorscount, averagevalidatorbalance, finalized, eligibleether, globalparticipationrate, votedether) FROM stdin;
-0	7	0	0	18	0	0	70	3200000000	t	224000000000	0.8857142925262451	198400000000
-1	8	0	0	27	0	0	70	3200303854	t	223200000000	1	223200000000
-2	8	0	0	23	0	0	70	3200303854	t	223200000000	0.814068078994751	181700000000
-3	8	0	0	0	0	0	70	3200963978	t	223200000000	1	223200000000
-4	7	0	0	35	0	0	70	7544191053	t	223200000000	1	223200000000
+COPY public.epochs (epoch, blockscount, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, validatorscount, averagevalidatorbalance, finalized, eligibleether, globalparticipationrate, votedether, totalvalidatorbalance) FROM stdin;
+0	7	0	0	18	0	0	70	3200000000	t	224000000000	0.8857142925262451	198400000000	224000000000
+1	8	0	0	27	0	0	70	3200303854	t	223200000000	1	223200000000	224021269786
+2	8	0	0	23	0	0	70	3200303854	t	223200000000	0.814068078994751	181700000000	224021269786
+3	8	0	0	0	0	0	70	3200963978	t	223200000000	1	223200000000	224067478493
+4	7	0	0	35	0	0	70	7544191053	t	223200000000	1	223200000000	528093373716
 \.
 
 

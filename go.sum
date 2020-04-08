@@ -28,6 +28,7 @@ github.com/golang/mock v1.1.1/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfb
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.2 h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs=
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/golang/protobuf v1.3.5 h1:F768QJ1E9tib+q5Sc8MkdJi1RxLTbRcTf8LJV56aRls=
 github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5aqRK0M=
 github.com/gorilla/mux v1.7.3 h1:gnP5JzjVOuiZD07fKKToCAOjS0yOpj/qPETTXCCS6hw=
 github.com/gorilla/mux v1.7.3/go.mod h1:1lud6UwP+6orDFRuTfBEV8e9/aOM/c4fVVCaMa2zaAs=
@@ -69,8 +70,17 @@ github.com/prysmaticlabs/ethereumapis v0.0.0-20200107194206-1ca2fc850a13/go.mod 
 github.com/prysmaticlabs/ethereumapis v0.0.0-20200128075941-e1e8777cb75e h1:bnnoTY3m8FPS9pz78zPwnc0jzcLi40DBBghYuJC0DTQ=
 github.com/prysmaticlabs/ethereumapis v0.0.0-20200203190527-c2c488463094 h1:W3F1SmOZmNiUPDh+ldDNGiVIhkZuYWfz1rROOSQ+uBc=
 github.com/prysmaticlabs/ethereumapis v0.0.0-20200205181151-a90fbe4a333e h1:kBCup3ovjINQQy5qWTRH+hIvT176f8NdVb/rakYTUkQ=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200212160257-9e66dfce9956 h1:N+KhYyyN10PIY3uFP1INOXDu8pCn/9Qxv1MC3ba+aQQ=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200213224628-b7452dde4ca3 h1:vhqBgbKg17cwGZbiOjuUqLsvkN11T+eEli5sQBbpgz4=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200215183925-e6f60041667f h1:qhuJjsIZDa2fQTtgDT4+5ynOfXEoOrxUL2guDm/YHRw=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200217194317-53ccc146f7f4 h1:u2zYp7Z1u+TIWYyu5CPdXUMOvago4eZBx7Err0zLFpA=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200226203635-fca4d6f69bed h1:q3dDgsJrTIWqLEYG0jJIYMr7jA1CxxDRrAgSP6t78lQ=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200226203635-fca4d6f69bed/go.mod h1:5OkRN6UmvgtP+kIewitcEKC7S5KOzLOGtya/Tz+HBns=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200403221346-98c441678328 h1:fl2Njc0YSScG/ogkJlNR1SEaYIOHW7Ak7iVTjORwJ7U=
 github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52 h1:kxZ+xSWX0qbxoiDXQBLztKeEmEQg6TgCYWAOa7gSGGU=
 github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52/go.mod h1:hCwmef+4qXWjv0jLDbQdWnL0Ol7cS7/lCSS26WR+u6s=
+github.com/prysmaticlabs/prysm v0.3.1 h1:GEFb0olEUL2IZtycYsttGrZXFzQ5vmnPSoN9nvx3WxY=
+github.com/prysmaticlabs/prysm v0.3.1/go.mod h1:kjzJhe13tmXQBdaO5DRLntr1qtMgl1boIocbR4dP3O4=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
 github.com/sirupsen/logrus v1.4.2 h1:SPIRibHv4MatM3XXNO2BJeFLZwZ2LvZgfQ5+UNI2im4=

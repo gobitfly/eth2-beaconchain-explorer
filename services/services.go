@@ -15,6 +15,7 @@ import (
 
 var latestEpoch uint64
 var indexPageData atomic.Value
+var chartsPageData atomic.Value
 var ready = sync.WaitGroup{}
 
 var logger = logrus.New().WithField("module", "services")
@@ -25,6 +26,8 @@ func Init() {
 	go epochUpdater()
 	go indexPageDataUpdater()
 	ready.Wait()
+
+	go chartsPageDataUpdater()
 }
 
 func epochUpdater() {
@@ -35,7 +38,7 @@ func epochUpdater() {
 		err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 
 		if err != nil {
-			logger.Printf("error retrieving latest epoch from the database: %v", err)
+			logger.Errorf("error retrieving latest epoch from the database: %w", err)
 		} else {
 			atomic.StoreUint64(&latestEpoch, epoch)
 			if firstRun {

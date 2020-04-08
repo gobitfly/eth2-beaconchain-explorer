@@ -226,18 +226,15 @@ func SaveEpoch(data *types.EpochData) error {
 	}
 
 	validatorBalanceSum := new(big.Int)
-	for _, v := range data.Validators {
-		validatorBalanceSum = new(big.Int).Add(validatorBalanceSum, new(big.Int).SetUint64(v.Balance))
-	}
-
-	validatorBalanceAverage := new(big.Int).Div(validatorBalanceSum, new(big.Int).SetInt64(int64(len(data.Validators)))).Uint64()
-
 	validatorsCount := 0
 	for _, v := range data.Validators {
-		if v.ExitEpoch > data.Epoch {
+		if v.ExitEpoch > data.Epoch && v.ActivationEpoch <= data.Epoch {
 			validatorsCount++
+			validatorBalanceSum = new(big.Int).Add(validatorBalanceSum, new(big.Int).SetUint64(v.Balance))
 		}
 	}
+
+	validatorBalanceAverage := new(big.Int).Div(validatorBalanceSum, new(big.Int).SetInt64(int64(validatorsCount)))
 
 	_, err = tx.Exec(`
 		INSERT INTO epochs (
@@ -250,12 +247,13 @@ func SaveEpoch(data *types.EpochData) error {
 			voluntaryexitscount, 
 			validatorscount, 
 			averagevalidatorbalance, 
+			totalvalidatorbalance,
 			finalized, 
 			eligibleether, 
 			globalparticipationrate, 
 			votedether
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
 		ON CONFLICT (epoch) DO UPDATE SET 
 			blockscount             = excluded.blockscount, 
 			proposerslashingscount  = excluded.proposerslashingscount,
@@ -265,6 +263,7 @@ func SaveEpoch(data *types.EpochData) error {
 			voluntaryexitscount     = excluded.voluntaryexitscount,
 			validatorscount         = excluded.validatorscount,
 			averagevalidatorbalance = excluded.averagevalidatorbalance,
+			totalvalidatorbalance   = excluded.totalvalidatorbalance,
 			finalized               = excluded.finalized,
 			eligibleether           = excluded.eligibleether,
 			globalparticipationrate = excluded.globalparticipationrate,
@@ -277,7 +276,8 @@ func SaveEpoch(data *types.EpochData) error {
 		depositCount,
 		voluntaryExitCount,
 		validatorsCount,
-		validatorBalanceAverage,
+		validatorBalanceAverage.Uint64(),
+		validatorBalanceSum.Uint64(),
 		data.EpochParticipationStats.Finalized,
 		data.EpochParticipationStats.EligibleEther,
 		data.EpochParticipationStats.GlobalParticipationRate,

@@ -77,6 +77,8 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func DashboardData() {}
+
 func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -234,6 +236,57 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = json.NewEncoder(w).Encode(dailyProposalCount)
+	if err != nil {
+		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+	}
+}
+
+func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	if err != nil {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	filter := pq.Array(filterArr)
+
+	missedAttestations := []struct {
+		Epoch          uint64
+		Validatorindex uint64
+	}{}
+
+	maxEpoch := services.LatestEpoch() - 1
+	minEpoch := utils.TimeToEpoch(time.Now().Add(time.Hour * 24 * -7))
+
+	err = db.DB.Select(&missedAttestations, `
+		SELECT epoch, validatorindex
+		FROM attestation_assignments
+		WHERE 
+			validatorindex = ANY($1) 
+			AND epoch <= $2 
+			AND epoch >= $3 
+			AND status = 0`, filter, maxEpoch, minEpoch)
+	if err != nil {
+		logger.WithError(err).Error("Error retrieving Daily Proposed Blocks blocks count")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	result := make(map[int64][]uint64)
+
+	for _, ma := range missedAttestations {
+		ts := utils.EpochToTime(ma.Epoch).Unix()
+		if _, exists := result[ts]; !exists {
+			result[ts] = []uint64{ma.Validatorindex}
+		} else {
+			result[ts] = append(result[ts], ma.Validatorindex)
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(result)
 	if err != nil {
 		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
 	}
