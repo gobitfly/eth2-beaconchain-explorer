@@ -24,7 +24,7 @@ var chartHandlers = map[string]chartHandler{
 	"average_balance":                chartHandler{4, averageBalanceChartData},
 	"network_liveness":               chartHandler{5, networkLivenessChartData},
 	"participation_rate":             chartHandler{6, participationRateChartData},
-	"validator_income":               chartHandler{7, validatorIncomeChartData},
+	"validator_income":               chartHandler{7, averageDailyValidatorIncomeChartData},
 	"stake_effectiveness":            chartHandler{8, stakeEffectivenessChartData},
 	"balance_distribution":           chartHandler{9, balanceDistributionChartData},
 	"effective_balance_distribution": chartHandler{10, effectiveBalanceDistributionChartData},
@@ -387,60 +387,34 @@ func participationRateChartData() (*types.GenericChartData, error) {
 
 func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 	rows := []struct {
-		Epoch                   uint64
-		Eligibleether           uint64
-		Votedether              uint64
-		Validatorscount         uint64
-		Finalitydelay           uint64
-		Globalparticipationrate float64
-		Totalvalidatorbalance   uint64
-	}{}
-
-	// note: eligibleether might not be correct, need to check what exactly the node returns
-	// for the reward-calculation we need the sum of all effective balances
-	err := db.DB.Select(&rows, `
-		SELECT 
-			epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
-			coalesce(nl.headepoch-nl.finalizedepoch,2) as finalitydelay,
-			coalesce(totalvalidatorbalance,0) as totalvalidatorbalance
-		FROM epochs
-			LEFT JOIN network_liveness nl ON epochs.epoch = nl.headepoch
-		ORDER BY epoch`)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
-func validatorIncomeChartData() (*types.GenericChartData, error) {
-	rows := []struct {
 		Epoch                 uint64
 		Validatorscount       uint64
 		Totalvalidatorbalance int64
 	}{}
 
-	// note: eligibleether might not be correct, need to check what exactly the node returns
-	// for the reward-calculation we need the sum of all effective balances
 	err := db.DB.Select(&rows, `
-		with
-			extradeposits as (
-				select
-					(d.block_slot/32) as epoch,
-					sum(d.amount) as amount
-					from validators
-				inner join blocks_deposits d 
-					on d.publickey = validators.pubkey
-					and (d.block_slot/32) > validators.activationepoch
-				group by epoch
-			)
-		select 
-			epochs.epoch, validatorscount,
-			coalesce(totalvalidatorbalance - coalesce(ed.amount,0),0) as totalvalidatorbalance
-		from epochs
-			left join extradeposits ed on epochs.epoch = ed.epoch
-			left join network_liveness nl on epochs.epoch = nl.headepoch
-		order by epoch;`)
+	with
+	extradeposits as (
+		SELECT distinct
+            (d.block_slot/32)-1 AS epoch,
+            sum(d.amount) over (
+                order by d.block_slot/32 asc
+            ) as amount
+        FROM validators
+            INNER JOIN blocks_deposits d
+                ON d.publickey = validators.pubkey
+                AND (d.block_slot/32) > validators.activationepoch
+        ORDER BY epoch
+	)
+select 
+	epochs.epoch, validatorscount,
+    coalesce(totalvalidatorbalance - coalesce(ed.amount,0),0) as totalvalidatorbalance
+from epochs
+	left join extradeposits ed on ed.epoch = (
+        select epoch from extradeposits where epoch <= epochs.epoch limit 1
+    )
+    left join network_liveness nl on epochs.epoch = nl.headepoch
+order by epoch;`)
 	if err != nil {
 		return nil, err
 	}
