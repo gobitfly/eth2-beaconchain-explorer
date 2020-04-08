@@ -24,12 +24,14 @@ var chartHandlers = map[string]chartHandler{
 	"average_balance":                chartHandler{4, averageBalanceChartData},
 	"network_liveness":               chartHandler{5, networkLivenessChartData},
 	"participation_rate":             chartHandler{6, participationRateChartData},
-	"estimated_validator_income":     chartHandler{7, estimatedValidatorIncomeChartData},
+	"validator_income":               chartHandler{7, validatorIncomeChartData},
 	"stake_effectiveness":            chartHandler{8, stakeEffectivenessChartData},
 	"balance_distribution":           chartHandler{9, balanceDistributionChartData},
 	"effective_balance_distribution": chartHandler{10, effectiveBalanceDistributionChartData},
-	"performance_distribution":       chartHandler{11, performanceDistributionChartData},
-	// "block_proposal_luck_distribution": chartHandler{12, blockProposalLuckDistributionChartData},
+	"performance_distribution_1d":    chartHandler{12, performanceDistribution1dChartData},
+	"performance_distribution_7d":    chartHandler{13, performanceDistribution7dChartData},
+	"performance_distribution_31d":   chartHandler{14, performanceDistribution31dChartData},
+	"performance_distribution_365d":  chartHandler{15, performanceDistribution365dChartData},
 }
 
 // LatestChartsPageData returns the latest chart page data
@@ -214,7 +216,7 @@ func activeValidatorsChartData() (*types.GenericChartData, error) {
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Validators",
+				Name: "# of Validators",
 				Data: dailyActiveValidators,
 			},
 		},
@@ -411,6 +413,76 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 	return nil, nil
 }
 
+func validatorIncomeChartData() (*types.GenericChartData, error) {
+	rows := []struct {
+		Epoch                 uint64
+		Validatorscount       uint64
+		Totalvalidatorbalance int64
+	}{}
+
+	// note: eligibleether might not be correct, need to check what exactly the node returns
+	// for the reward-calculation we need the sum of all effective balances
+	err := db.DB.Select(&rows, `
+		with
+			extradeposits as (
+				select
+					(d.block_slot/32) as epoch,
+					sum(d.amount) as amount
+					from validators
+				inner join blocks_deposits d 
+					on d.publickey = validators.pubkey
+					and (d.block_slot/32) > validators.activationepoch
+				group by epoch
+			)
+		select 
+			epochs.epoch, validatorscount,
+			coalesce(totalvalidatorbalance - coalesce(ed.amount,0),0) as totalvalidatorbalance
+		from epochs
+			left join extradeposits ed on epochs.epoch = ed.epoch
+			left join network_liveness nl on epochs.epoch = nl.headepoch
+		order by epoch;`)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	var prevTotalvalidatorbalance int64
+	var prevDay float64
+	for _, row := range rows {
+		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+		if prevDay != day && prevTotalvalidatorbalance != 0 && row.Totalvalidatorbalance != 0 {
+			seriesData = append(seriesData, []float64{
+				day,
+				float64(int64(prevTotalvalidatorbalance)-int64(row.Totalvalidatorbalance)) / float64(row.Validatorscount) / 1e9,
+			})
+		}
+		if prevDay != day {
+			fmt.Printf("%v:%v; ", utils.EpochToTime(row.Epoch).Day(), float64(int64(prevTotalvalidatorbalance)-int64(row.Totalvalidatorbalance))/float64(row.Validatorscount)/1e9)
+			prevDay = day
+			prevTotalvalidatorbalance = row.Totalvalidatorbalance
+		}
+	}
+	fmt.Println("len:", len(seriesData))
+
+	chartData := &types.GenericChartData{
+		Title:        "Average daily validator income",
+		Subtitle:     "",
+		XAxisTitle:   "",
+		YAxisTitle:   "Average daily Validator Income [ETH/day]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Average Daily Validator Income",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
 func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	rows := []struct {
 		Epoch                   uint64
@@ -425,13 +497,24 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	// note: eligibleether might not be correct, need to check what exactly the node returns
 	// for the reward-calculation we need the sum of all effective balances
 	err := db.DB.Select(&rows, `
-		SELECT 
-			epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
-			coalesce(nl.headepoch-nl.finalizedepoch,2) as finalitydelay,
-			coalesce(totalvalidatorbalance,0) as totalvalidatorbalance
-		FROM epochs
-			LEFT JOIN network_liveness nl ON epochs.epoch = nl.headepoch
-		ORDER BY epoch`)
+		with
+			extradeposits as (
+				select
+					(d.block_slot/32) as epoch,
+					sum(d.amount) as amount
+					from validators
+				inner join blocks_deposits d 
+					on d.publickey = validators.pubkey
+					and (d.block_slot/32) > validators.activationepoch
+				group by epoch
+			)
+		select 
+			epochs.epoch, eligibleether, votedether, validatorscount, globalparticipationrate,
+			coalesce(totalvalidatorbalance - coalesce(ed.amount,0),0) as totalvalidatorbalance
+		from epochs
+			left join extradeposits ed on epochs.epoch = ed.epoch
+			left join network_liveness nl on epochs.epoch = nl.headepoch
+		order by epoch;`)
 	if err != nil {
 		return nil, err
 	}
@@ -483,7 +566,7 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 		if prevDay != day && prevTotalvalidatorbalance != 0 {
 			avgDailyValidatorIncomeSeries = append(avgDailyValidatorIncomeSeries, []float64{
 				day,
-				float64(int64(row.Totalvalidatorbalance)-int64(prevTotalvalidatorbalance)) / float64(row.Validatorscount) / 1e9,
+				float64(int64(prevTotalvalidatorbalance)-int64(row.Totalvalidatorbalance)) / float64(row.Validatorscount) / 1e9,
 			})
 		}
 		if prevDay != day {
@@ -493,17 +576,17 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Estimated Daily Validator Income",
+		Title:        "Average daily validator income",
 		Subtitle:     "",
 		XAxisTitle:   "",
-		YAxisTitle:   "Estimated Validator Income [ETH/day]",
+		YAxisTitle:   "Average daily Validator Income [ETH/day]",
 		StackingMode: "false",
 		Type:         "line",
 		Series: []*types.GenericChartDataSeries{
-			{
-				Name: "Estimated Daily Validator Income",
-				Data: seriesData,
-			},
+			// {
+			// 	Name: "Estimated Daily Validator Income",
+			// 	Data: seriesData,
+			// },
 			{
 				Name: "Average Daily Validator Income",
 				Data: avgDailyValidatorIncomeSeries,
@@ -630,6 +713,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 		Type:                 "column",
 		Series: []*types.GenericChartDataSeries{
 			{
+				Name: "# of Validators",
 				Data: seriesData,
 			},
 		},
@@ -704,6 +788,251 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 		Type:                 "column",
 		Series: []*types.GenericChartDataSeries{
 			{
+				Name: "# of Validators",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func performanceDistribution1dChartData() (*types.GenericChartData, error) {
+	var err error
+
+	rows := []struct {
+		MaxPerformance float64
+		Count          float64
+	}{}
+
+	err = db.DB.Select(&rows, `
+		with
+			stats as (
+				select 
+					min(performance1d) as min,
+					max(performance1d) as max
+				from validator_performance
+			),
+			histogram as (
+				select 
+					width_bucket(performance1d, min, max, 9999) as bucket,
+					max(performance1d) as max,
+					count(*) as cnt
+				from  validator_performance, stats
+				group by bucket
+				order by bucket
+			)
+		select max/1e9 as maxperformance, cnt as count
+		from histogram`)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := make([][]float64, len(rows))
+
+	for i, row := range rows {
+		seriesData[i] = []float64{row.MaxPerformance, row.Count}
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart: true,
+		Title:         "Income Distribution (1 day)",
+		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last day at epoch %d.", LatestEpoch()),
+		XAxisTitle:    "Income",
+		XAxisLabelsFormatter: `function(){
+  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
+  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
+}
+`,
+		YAxisTitle:   "# of Validators",
+		StackingMode: "false",
+		Type:         "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "# of Validators",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func performanceDistribution7dChartData() (*types.GenericChartData, error) {
+	var err error
+
+	rows := []struct {
+		MaxPerformance float64
+		Count          float64
+	}{}
+
+	err = db.DB.Select(&rows, `
+		with
+			stats as (
+				select 
+					min(performance7d) as min,
+					max(performance7d) as max
+				from validator_performance
+			),
+			histogram as (
+				select 
+					width_bucket(performance7d, min, max, 9999) as bucket,
+					max(performance7d) as max,
+					count(*) as cnt
+				from  validator_performance, stats
+				group by bucket
+				order by bucket
+			)
+		select max/1e9 as maxperformance, cnt as count
+		from histogram`)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := make([][]float64, len(rows))
+
+	for i, row := range rows {
+		seriesData[i] = []float64{row.MaxPerformance, row.Count}
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart: true,
+		Title:         "Income Distribution (7 days)",
+		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 7 days at epoch %d.", LatestEpoch()),
+		XAxisTitle:    "Income",
+		XAxisLabelsFormatter: `function(){
+  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
+  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
+}
+`,
+		YAxisTitle:   "# of Validators",
+		StackingMode: "false",
+		Type:         "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "# of Validators",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func performanceDistribution31dChartData() (*types.GenericChartData, error) {
+	var err error
+
+	rows := []struct {
+		MaxPerformance float64
+		Count          float64
+	}{}
+
+	err = db.DB.Select(&rows, `
+		with
+			stats as (
+				select 
+					min(performance31d) as min,
+					max(performance31d) as max
+				from validator_performance
+			),
+			histogram as (
+				select 
+					width_bucket(performance31d, min, max, 9999) as bucket,
+					max(performance31d) as max,
+					count(*) as cnt
+				from  validator_performance, stats
+				group by bucket
+				order by bucket
+			)
+		select max/1e9 as maxperformance, cnt as count
+		from histogram`)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := make([][]float64, len(rows))
+
+	for i, row := range rows {
+		seriesData[i] = []float64{row.MaxPerformance, row.Count}
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart: true,
+		Title:         "Income Distribution (31 days)",
+		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 31 days at epoch %d.", LatestEpoch()),
+		XAxisTitle:    "Income",
+		XAxisLabelsFormatter: `function(){
+  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
+  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
+}
+`,
+		YAxisTitle:   "# of Validators",
+		StackingMode: "false",
+		Type:         "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "# of Validators",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func performanceDistribution365dChartData() (*types.GenericChartData, error) {
+	var err error
+
+	rows := []struct {
+		MaxPerformance float64
+		Count          float64
+	}{}
+
+	err = db.DB.Select(&rows, `
+		with
+			stats as (
+				select 
+					min(performance365d) as min,
+					max(performance365d) as max
+				from validator_performance
+			),
+			histogram as (
+				select 
+					width_bucket(performance365d, min, max, 9999) as bucket,
+					max(performance365d) as max,
+					count(*) as cnt
+				from  validator_performance, stats
+				group by bucket
+				order by bucket
+			)
+		select max/1e9 as maxperformance, cnt as count
+		from histogram`)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := make([][]float64, len(rows))
+
+	for i, row := range rows {
+		seriesData[i] = []float64{row.MaxPerformance, row.Count}
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart: true,
+		Title:         "Income Distribution (365 days)",
+		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 365 days at epoch %d.", LatestEpoch()),
+		XAxisTitle:    "Income",
+		XAxisLabelsFormatter: `function(){
+  if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
+  return '<span style="color:var(--success)">'+this.value+'ETH<span>'
+}
+`,
+		YAxisTitle:   "# of Validators",
+		StackingMode: "false",
+		Type:         "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "# of Validators",
 				Data: seriesData,
 			},
 		},
@@ -713,44 +1042,84 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 }
 
 func performanceDistributionChartData() (*types.GenericChartData, error) {
-	rows := []struct {
-		MaxPerformance7d float64
-		Count            float64
+	var err error
+
+	rows1d := []struct {
+		MaxPerformance float64
+		Count          float64
+	}{}
+	rows7d := []struct {
+		MaxPerformance float64
+		Count          float64
+	}{}
+	rows31d := []struct {
+		MaxPerformance float64
+		Count          float64
+	}{}
+	rows365d := []struct {
+		MaxPerformance float64
+		Count          float64
 	}{}
 
-	err := db.DB.Select(&rows, `
+	qryTpl := `
 		with
 			stats as (
 				select 
-					min(performance7d) as min7d,
-					max(performance7d) as max7d
+					min(%[1]s) as min,
+					max(%[1]s) as max
 				from validator_performance
 			),
 			histogram as (
 				select 
-					width_bucket(performance7d, min7d, max7d, 9999) as bucket,
-					max(performance7d) as max,
+					width_bucket(%[1]s, min, max, 9999) as bucket,
+					max(%[1]s) as max,
 					count(*) as cnt
 				from  validator_performance, stats
 				group by bucket
 				order by bucket
 			)
-		select max/1e9 as maxperformance7d, cnt as count
-		from histogram`)
+		select max/1e9 as maxperformance, cnt as count
+		from histogram`
+
+	err = db.DB.Select(&rows1d, fmt.Sprintf(qryTpl, "performance1d"))
+	if err != nil {
+		return nil, err
+	}
+	err = db.DB.Select(&rows7d, fmt.Sprintf(qryTpl, "performance7d"))
+	if err != nil {
+		return nil, err
+	}
+	err = db.DB.Select(&rows31d, fmt.Sprintf(qryTpl, "performance31d"))
+	if err != nil {
+		return nil, err
+	}
+	err = db.DB.Select(&rows365d, fmt.Sprintf(qryTpl, "performance365d"))
 	if err != nil {
 		return nil, err
 	}
 
-	seriesData := make([][]float64, len(rows))
+	seriesData1d := make([][]float64, len(rows1d))
+	seriesData7d := make([][]float64, len(rows7d))
+	seriesData31d := make([][]float64, len(rows31d))
+	seriesData365d := make([][]float64, len(rows365d))
 
-	for i, row := range rows {
-		seriesData[i] = []float64{row.MaxPerformance7d, row.Count}
+	for i, row := range rows1d {
+		seriesData1d[i] = []float64{row.MaxPerformance, row.Count}
+	}
+	for i, row := range rows7d {
+		seriesData7d[i] = []float64{row.MaxPerformance, row.Count}
+	}
+	for i, row := range rows31d {
+		seriesData31d[i] = []float64{row.MaxPerformance, row.Count}
+	}
+	for i, row := range rows365d {
+		seriesData365d[i] = []float64{row.MaxPerformance, row.Count}
 	}
 
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
 		Title:         "Performance Distribution",
-		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 7 days at epoch %d.", LatestEpoch()),
+		Subtitle:      fmt.Sprintf("Histogram of income-performances at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Performance",
 		XAxisLabelsFormatter: `function(){
   if (this.value < 0) return '<span style="color:var(--danger)">'+this.value+'ETH<span>'
@@ -762,7 +1131,20 @@ func performanceDistributionChartData() (*types.GenericChartData, error) {
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Data: seriesData,
+				Name: "Income of the last day",
+				Data: seriesData1d,
+			},
+			{
+				Name: "Income of the last 7 days",
+				Data: seriesData7d,
+			},
+			{
+				Name: "Income of the last 31 days",
+				Data: seriesData31d,
+			},
+			{
+				Name: "Income of the last 365 days",
+				Data: seriesData365d,
 			},
 		},
 	}
@@ -852,6 +1234,7 @@ func blockProposalLuckDistributionChartData() (*types.GenericChartData, error) {
 		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
+				Name: "# of Validators",
 				Data: seriesData,
 			},
 		},
