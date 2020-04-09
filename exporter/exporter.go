@@ -418,10 +418,6 @@ func performanceDataUpdater() {
 	}
 }
 
-func Foo() {
-
-}
-
 func updateValidatorPerformance() error {
 	tx, err := db.DB.Beginx()
 	if err != nil {

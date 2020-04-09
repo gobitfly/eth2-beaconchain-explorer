@@ -28,10 +28,7 @@ var chartHandlers = map[string]chartHandler{
 	"stake_effectiveness":            chartHandler{8, stakeEffectivenessChartData},
 	"balance_distribution":           chartHandler{9, balanceDistributionChartData},
 	"effective_balance_distribution": chartHandler{10, effectiveBalanceDistributionChartData},
-	// performance_distribution_1d":    chartHandler{12, performanceDistribution1dChartData},
-	// performance_distribution_7d":    chartHandler{13, performanceDistribution7dChartData},
-	// performance_distribution_31d":   chartHandler{14, performanceDistribution31dChartData},
-	"performance_distribution_365d": chartHandler{15, performanceDistribution365dChartData},
+	"performance_distribution_365d":  chartHandler{15, performanceDistribution365dChartData},
 }
 
 // LatestChartsPageData returns the latest chart page data
@@ -387,53 +384,84 @@ func participationRateChartData() (*types.GenericChartData, error) {
 
 func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 	rows := []struct {
-		Epoch                 uint64
-		Validatorscount       uint64
-		Totalvalidatorbalance int64
+		Epoch           uint64
+		Validatorscount uint64
+		Inflation       int64
 	}{}
 
+	// note: this query is overly complex
 	err := db.DB.Select(&rows, `
-	with
-	extradeposits as (
-		SELECT distinct
-            (d.block_slot/32)-1 AS epoch,
-            sum(d.amount) over (
-                order by d.block_slot/32 asc
-            ) as amount
-        FROM validators
-            INNER JOIN blocks_deposits d
-                ON d.publickey = validators.pubkey
-                AND (d.block_slot/32) > validators.activationepoch
-        ORDER BY epoch
-	)
-select 
-	epochs.epoch, validatorscount,
-    coalesce(totalvalidatorbalance - coalesce(ed.amount,0),0) as totalvalidatorbalance
-from epochs
-	left join extradeposits ed on ed.epoch = (
-        select epoch from extradeposits where epoch <= epochs.epoch limit 1
-    )
-    left join network_liveness nl on epochs.epoch = nl.headepoch
-order by epoch;`)
+		with
+			firstdeposits as (
+				select distinct
+					epoch,
+					sum(vb.balance) over (
+						order by vb.epoch asc
+					) as amount
+				from validator_balances vb
+					inner join validators v 
+						on v.validatorindex = vb.validatorindex
+						and v.activationepoch = vb.epoch
+				order by epoch
+			),
+			extradeposits as (
+				select distinct
+					(d.block_slot/32)-1 AS epoch,
+					sum(d.amount) over (
+						order by d.block_slot/32 asc
+					) as amount
+				from validators
+					inner join blocks_deposits d
+						on d.publickey = validators.pubkey
+						and (d.block_slot/32)+1 > validators.activationepoch
+				order by epoch
+			),
+			totalbalance as (
+				select
+					vb.epoch,
+					sum(vb.balance)
+				from validator_balances vb
+					inner join validators v
+						on v.validatorindex = vb.validatorindex
+						and v.activationepoch <= vb.epoch
+						and v.exitepoch > vb.epoch
+				group by epoch
+			)
+		select 
+			epochs.epoch,
+			validatorscount,
+			coalesce(
+				totalvalidatorbalance
+				- coalesce(ed.amount,0)
+				- coalesce(fd.amount,0)
+				, 0) as inflation
+		from epochs
+			left join firstdeposits fd on fd.epoch = (
+				select epoch from firstdeposits where epoch <= epochs.epoch limit 1
+			)
+			left join extradeposits ed on ed.epoch = (
+				select epoch from extradeposits where epoch <= epochs.epoch limit 1
+			)
+		order by epochs.epoch`)
 	if err != nil {
 		return nil, err
 	}
 
 	seriesData := [][]float64{}
 
-	var prevTotalvalidatorbalance int64
+	var prevInflation int64
 	var prevDay float64
 	for _, row := range rows {
 		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if prevDay != day && prevTotalvalidatorbalance != 0 && row.Totalvalidatorbalance != 0 {
+		if prevDay != day && prevInflation != 0 && row.Inflation != 0 {
 			seriesData = append(seriesData, []float64{
 				day,
-				float64(int64(prevTotalvalidatorbalance)-int64(row.Totalvalidatorbalance)) / float64(row.Validatorscount) / 1e9,
+				float64(int64(row.Inflation)-int64(prevInflation)) / float64(row.Validatorscount) / 1e9,
 			})
 		}
 		if prevDay != day {
 			prevDay = day
-			prevTotalvalidatorbalance = row.Totalvalidatorbalance
+			prevInflation = row.Inflation
 		}
 	}
 
