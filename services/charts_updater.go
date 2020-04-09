@@ -25,7 +25,7 @@ var chartHandlers = map[string]chartHandler{
 	"network_liveness":               chartHandler{5, networkLivenessChartData},
 	"participation_rate":             chartHandler{6, participationRateChartData},
 	"validator_income":               chartHandler{7, averageDailyValidatorIncomeChartData},
-	"inflation":                      chartHandler{8, inflationChartData},
+	"staking_rewards":                chartHandler{8, stakingRewardsChartData},
 	"stake_effectiveness":            chartHandler{9, stakeEffectivenessChartData},
 	"balance_distribution":           chartHandler{10, balanceDistributionChartData},
 	"effective_balance_distribution": chartHandler{11, effectiveBalanceDistributionChartData},
@@ -387,7 +387,7 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 	rows := []struct {
 		Epoch           uint64
 		Validatorscount uint64
-		Inflation       int64
+		Rewards         int64
 	}{}
 
 	err := db.DB.Select(&rows, `
@@ -417,7 +417,7 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 		select 
 			e.epoch,
 			e.validatorscount,
-			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as inflation
+			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as rewards
 		from epochs e
 			left join firstdeposits fd on fd.epoch = (
 				select epoch from firstdeposits where epoch <= e.epoch order by epoch desc limit 1
@@ -432,19 +432,19 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 
 	seriesData := [][]float64{}
 
-	var prevInflation int64
+	var prevRewards int64
 	var prevDay float64
 	for _, row := range rows {
 		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if prevDay != day && prevInflation != 0 && row.Inflation != 0 {
+		if prevDay != day && prevRewards != 0 && row.Rewards != 0 {
 			seriesData = append(seriesData, []float64{
 				day,
-				float64(int64(row.Inflation)-int64(prevInflation)) / float64(row.Validatorscount) / 1e9,
+				float64(int64(row.Rewards)-int64(prevRewards)) / float64(row.Validatorscount) / 1e9,
 			})
 		}
 		if prevDay != day {
 			prevDay = day
-			prevInflation = row.Inflation
+			prevRewards = row.Rewards
 		}
 	}
 
@@ -466,10 +466,10 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 	return chartData, nil
 }
 
-func inflationChartData() (*types.GenericChartData, error) {
+func stakingRewardsChartData() (*types.GenericChartData, error) {
 	rows := []struct {
-		Epoch     uint64
-		Inflation int64
+		Epoch   uint64
+		Rewards int64
 	}{}
 
 	err := db.DB.Select(&rows, `
@@ -498,7 +498,7 @@ func inflationChartData() (*types.GenericChartData, error) {
 			)
 		select 
 			e.epoch,
-			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as inflation
+			e.totalvalidatorbalance-coalesce(fd.amount,0)-coalesce(ed.amount,0) as rewards
 		from epochs e
 			left join firstdeposits fd on fd.epoch = (
 				select epoch from firstdeposits where epoch <= e.epoch order by epoch desc limit 1
@@ -516,10 +516,10 @@ func inflationChartData() (*types.GenericChartData, error) {
 	var prevDay float64
 	for _, row := range rows {
 		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if prevDay != day && row.Inflation != 0 {
+		if prevDay != day && row.Rewards != 0 {
 			seriesData = append(seriesData, []float64{
 				day,
-				float64(row.Inflation) / 1e9,
+				float64(row.Rewards) / 1e9,
 			})
 		}
 		if prevDay != day {
@@ -528,15 +528,15 @@ func inflationChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Inflation",
+		Title:        "Staking Rewards",
 		Subtitle:     "",
 		XAxisTitle:   "",
-		YAxisTitle:   "Inflation [ETH]",
+		YAxisTitle:   "Staking Rewards [ETH]",
 		StackingMode: "false",
 		Type:         "line",
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Inflation",
+				Name: "Staking Rewards",
 				Data: seriesData,
 			},
 		},
