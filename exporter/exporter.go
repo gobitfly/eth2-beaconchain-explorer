@@ -488,59 +488,41 @@ func updateValidatorPerformance() error {
 		return fmt.Errorf("error retrieving validator performance data: %w", err)
 	}
 
-	type depositByEpochRange struct {
-		Index        uint64 `db:"validatorindex"`
-		EpochRange   uint64 `db:"epochrange"`
-		DepositTotal uint64 `db:"deposittotal"`
-	}
-
-	// get total deposit-amounts from specific epochs up to the current epoch
-	var depositsByEpochRange []*depositByEpochRange
-	err = tx.Select(&depositsByEpochRange, `
-		SELECT
-			validatorindex,
-			epochrange,
-			MAX(deposittotal) as deposittotal
-		FROM 
-		(
-			SELECT DISTINCT
-				validatorindex,
-				CASE
-					WHEN (d.block_slot/32)-1 <= $5 THEN $5
-					WHEN (d.block_slot/32)-1 <= $4 THEN $4
-					WHEN (d.block_slot/32)-1 <= $3 THEN $3
-					WHEN (d.block_slot/32)-1 <= $2 THEN $2
-					ELSE $1
-				END AS epochrange,
-				SUM(d.amount) OVER (
-					PARTITION BY d.publickey 
-					ORDER BY d.block_slot DESC
-				) AS deposittotal
-			FROM validators
-				INNER JOIN blocks_deposits d
-					ON d.publickey = validators.pubkey
-					AND (d.block_slot/32) > validators.activationepoch
-		) a
-		GROUP BY epochrange, validatorindex`,
-		currentEpoch, epoch1d, epoch7d, epoch31d, epoch365d)
-	if err != nil {
-		return fmt.Errorf("error retrieving validator deposits data: %w", err)
-	}
-
-	depositsMap := make(map[uint64]map[int64]int64)
-	for _, deposit := range depositsByEpochRange {
-		if _, exists := depositsMap[deposit.Index]; !exists {
-			depositsMap[deposit.Index] = make(map[int64]int64)
-		}
-		depositsMap[deposit.Index][int64(deposit.EpochRange)] = int64(deposit.DepositTotal)
-	}
-
 	performance := make(map[uint64]map[int64]int64)
 	for _, balance := range balances {
 		if performance[balance.Index] == nil {
 			performance[balance.Index] = make(map[int64]int64)
 		}
 		performance[balance.Index][int64(balance.Epoch)] = int64(balance.Balance)
+	}
+
+	deposits := []struct {
+		Validatorindex uint64
+		Epoch          int64
+		Amount         int64
+	}{}
+
+	err = tx.Select(&deposits, `
+		SELECT
+			v.validatorindex,
+			(d.block_slot/32)-1 AS epoch,
+			SUM(d.amount) AS amount
+		FROM validators v
+			INNER JOIN blocks_deposits d
+				ON d.publickey = v.pubkey
+				AND (d.block_slot/32)-1 > v.activationepoch
+		GROUP BY (d.block_slot/32)-1, v.validatorindex
+		ORDER BY epoch`)
+	if err != nil {
+		return fmt.Errorf("error retrieving validator deposits data: %w", err)
+	}
+
+	depositsMap := make(map[uint64]map[int64]int64)
+	for _, d := range deposits {
+		if _, exists := depositsMap[d.Validatorindex]; !exists {
+			depositsMap[d.Validatorindex] = make(map[int64]int64)
+		}
+		depositsMap[d.Validatorindex][d.Epoch] = d.Amount
 	}
 
 	for validator, balances := range performance {
@@ -575,32 +557,19 @@ func updateValidatorPerformance() error {
 		performance365d := currentBalance - balance365d
 
 		if depositsMap[validator] != nil {
-			if d, exists := depositsMap[validator][epoch1d]; exists {
-				performance1d -= d
-			}
-
-			if d, exists := depositsMap[validator][epoch7d]; exists {
-				performance7d -= d
-			} else if d, exists := depositsMap[validator][epoch1d]; exists {
-				performance7d -= d
-			}
-
-			if d, exists := depositsMap[validator][epoch31d]; exists {
-				performance31d -= d
-			} else if d, exists := depositsMap[validator][epoch7d]; exists {
-				performance31d -= d
-			} else if d, exists := depositsMap[validator][epoch1d]; exists {
-				performance31d -= d
-			}
-
-			if d, exists := depositsMap[validator][epoch365d]; exists {
-				performance365d -= d
-			} else if d, exists := depositsMap[validator][epoch31d]; exists {
-				performance365d -= d
-			} else if d, exists := depositsMap[validator][epoch7d]; exists {
-				performance365d -= d
-			} else if d, exists := depositsMap[validator][epoch1d]; exists {
-				performance365d -= d
+			for depositEpoch, depositAmount := range depositsMap[validator] {
+				if depositEpoch > epoch1d {
+					performance1d -= depositAmount
+				}
+				if depositEpoch > epoch7d {
+					performance7d -= depositAmount
+				}
+				if depositEpoch > epoch31d {
+					performance31d -= depositAmount
+				}
+				if depositEpoch > epoch365d {
+					performance365d -= depositAmount
+				}
 			}
 		}
 
