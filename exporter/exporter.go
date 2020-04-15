@@ -583,19 +583,6 @@ func updateValidatorPerformance() error {
 			}
 		}
 
-		if performance1d > 10000000 {
-			performance1d = 0
-		}
-		if performance7d > 10000000*7 {
-			performance7d = 0
-		}
-		if performance31d > 10000000*31 {
-			performance31d = 0
-		}
-		if performance365d > 10000000*365 {
-			performance365d = 0
-		}
-
 		_, err := tx.Exec(`
 			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d)
 			VALUES ($1, $2, $3, $4, $5, $6)`,
