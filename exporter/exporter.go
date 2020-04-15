@@ -25,6 +25,16 @@ func Start(client rpc.Client) error {
 	go performanceDataUpdater()
 	go networkLivenessUpdater(client)
 
+	// wait until the beacon-node is available
+	for {
+		_, err := client.GetChainHead()
+		if err == nil {
+			break
+		}
+		logger.Errorf("beacon-node seems to be unavailable: %w", err)
+		time.Sleep(time.Second * 10)
+	}
+
 	if utils.Config.Indexer.FullIndexOnStartup {
 		logger.Printf("performing one time full db reindex")
 		head, err := client.GetChainHead()
@@ -571,19 +581,6 @@ func updateValidatorPerformance() error {
 					performance365d -= depositAmount
 				}
 			}
-		}
-
-		if performance1d > 10000000 {
-			performance1d = 0
-		}
-		if performance7d > 10000000*7 {
-			performance7d = 0
-		}
-		if performance31d > 10000000*31 {
-			performance31d = 0
-		}
-		if performance365d > 10000000*365 {
-			performance365d = 0
 		}
 
 		_, err := tx.Exec(`

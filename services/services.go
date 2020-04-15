@@ -74,28 +74,28 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	var epoch uint64
 	err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
-
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving latest epoch from the database: %v", err)
 	}
+	data.CurrentEpoch = epoch
 
 	var blocks []*types.IndexPageDataBlocks
-
-	err = db.DB.Select(&blocks, `SELECT blocks.epoch, 
-											    blocks.slot, 
-											    blocks.proposer, 
-											    blocks.blockroot, 
-											    blocks.parentroot, 
-											    blocks.attestationscount, 
-											    blocks.depositscount, 
-											    blocks.voluntaryexitscount, 
-											    blocks.proposerslashingscount, 
-											    blocks.attesterslashingscount,
-       											blocks.status
-										FROM blocks 
-										WHERE blocks.slot < $1
-										ORDER BY blocks.slot DESC LIMIT 20`, utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
-
+	err = db.DB.Select(&blocks, `
+		SELECT
+			blocks.epoch,
+			blocks.slot,
+			blocks.proposer,
+			blocks.blockroot,
+			blocks.parentroot,
+			blocks.attestationscount,
+			blocks.depositscount,
+			blocks.voluntaryexitscount,
+			blocks.proposerslashingscount,
+			blocks.attesterslashingscount,
+			blocks.status
+		FROM blocks 
+		WHERE blocks.slot < $1
+		ORDER BY blocks.slot DESC LIMIT 20`, utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index block data: %v", err)
 	}
@@ -139,12 +139,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 
 	if len(epochHistory) > 0 {
-		data.CurrentEpoch = epochHistory[len(epochHistory)-1].Epoch
-
 		for i := len(epochHistory) - 1; i >= 0; i-- {
 			if epochHistory[i].Finalized {
 				data.CurrentFinalizedEpoch = epochHistory[i].Epoch
-				data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
+				data.FinalityDelay = data.CurrentEpoch - epoch
 				break
 			}
 		}

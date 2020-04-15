@@ -395,7 +395,7 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 			firstdeposits as (
 				select distinct
 					vb.epoch,
-					sum(coalesce(vb.balance,32e8)) over (order by v.activationepoch asc) as amount
+					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
 				from validators v
 					left join validator_balances vb
 						on vb.validatorindex = v.validatorindex
@@ -477,7 +477,7 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 			firstdeposits as (
 				select distinct
 					vb.epoch,
-					sum(coalesce(vb.balance,32e8)) over (order by v.activationepoch asc) as amount
+					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
 				from validators v
 					left join validator_balances vb
 						on vb.validatorindex = v.validatorindex
@@ -585,7 +585,7 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	avgDailyValidatorIncomeSeries := [][]float64{}
 
 	// see: https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/beacon-chain.md#rewards-and-penalties-1
-	maxEffectiveBalance := uint64(32e8)
+	maxEffectiveBalance := uint64(32e9)
 	baseRewardFactor := uint64(64)
 	baseRewardPerEpoch := uint64(4)
 	proposerRewardQuotient := uint64(8)
