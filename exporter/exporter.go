@@ -25,6 +25,16 @@ func Start(client rpc.Client) error {
 	go performanceDataUpdater()
 	go networkLivenessUpdater(client)
 
+	// wait until the beacon-node is available
+	for {
+		_, err := client.GetChainHead()
+		if err == nil {
+			break
+		}
+		logger.Errorf("beacon-node seems to be unavailable: %w", err)
+		time.Sleep(time.Second * 10)
+	}
+
 	if utils.Config.Indexer.FullIndexOnStartup {
 		logger.Printf("performing one time full db reindex")
 		head, err := client.GetChainHead()
