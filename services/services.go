@@ -81,20 +81,22 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	var blocks []*types.IndexPageDataBlocks
 
-	err = db.DB.Select(&blocks, `SELECT blocks.epoch, 
-											    blocks.slot, 
-											    blocks.proposer, 
-											    blocks.blockroot, 
-											    blocks.parentroot, 
-											    blocks.attestationscount, 
-											    blocks.depositscount, 
-											    blocks.voluntaryexitscount, 
-											    blocks.proposerslashingscount, 
-											    blocks.attesterslashingscount,
-       											blocks.status
-										FROM blocks 
-										WHERE blocks.slot < $1
-										ORDER BY blocks.slot DESC LIMIT 20`, utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
+	err = db.DB.Select(&blocks, `
+		SELECT
+			blocks.epoch,
+			blocks.slot,
+			blocks.proposer,
+			blocks.blockroot,
+			blocks.parentroot,
+			blocks.attestationscount,
+			blocks.depositscount,
+			blocks.voluntaryexitscount,
+			blocks.proposerslashingscount,
+			blocks.attesterslashingscount,
+			blocks.status
+		FROM blocks 
+		WHERE blocks.slot < $1
+		ORDER BY blocks.slot DESC LIMIT 20`, utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index block data: %v", err)
