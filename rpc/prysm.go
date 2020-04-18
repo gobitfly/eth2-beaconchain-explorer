@@ -234,8 +234,10 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	// Proposer assignments are cached by the proposer slot
 	// Attestation assignments are cached by the slot & committee key
 	for _, assignment := range validatorAssignmentes {
-		if assignment.ProposerSlot > 0 {
-			assignments.ProposerAssignments[assignment.ProposerSlot] = validators[utils.FormatPublicKey(assignment.PublicKey)]
+		for _, slot := range assignment.ProposerSlots {
+			if slot > 0 {
+				assignments.ProposerAssignments[slot] = validators[utils.FormatPublicKey(assignment.PublicKey)]
+			}
 		}
 
 		if assignment.AttesterSlot > 0 {
@@ -430,6 +432,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 // GetBlocksBySlot will get blocks by slot from a Prysm client
 func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 
+	logger.Infof("Retrieving block at slot %v", slot)
 	blocks := make([]*types.Block, 0)
 	blocksResponse, err := pc.client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}})
 	if err != nil {
@@ -474,7 +477,7 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 
 		for i, proposerSlashing := range block.Block.Block.Body.ProposerSlashings {
 			b.ProposerSlashings[i] = &types.ProposerSlashing{
-				ProposerIndex: proposerSlashing.ProposerIndex,
+				ProposerIndex: 0,
 				Header1: &types.Block{
 					Slot:       proposerSlashing.Header_1.Header.Slot,
 					ParentRoot: proposerSlashing.Header_1.Header.ParentRoot,

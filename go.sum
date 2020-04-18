@@ -59,6 +59,8 @@ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZN
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
 github.com/prysmaticlabs/ethereumapis v0.0.0-20200226203635-fca4d6f69bed h1:q3dDgsJrTIWqLEYG0jJIYMr7jA1CxxDRrAgSP6t78lQ=
 github.com/prysmaticlabs/ethereumapis v0.0.0-20200226203635-fca4d6f69bed/go.mod h1:5OkRN6UmvgtP+kIewitcEKC7S5KOzLOGtya/Tz+HBns=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200414190010-6607cc86ddb7 h1:p1WbKbIHr4tXK6wclFrM78P61Ai2qSWMQGkljbP4H1A=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200414190010-6607cc86ddb7/go.mod h1:5OkRN6UmvgtP+kIewitcEKC7S5KOzLOGtya/Tz+HBns=
 github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52 h1:kxZ+xSWX0qbxoiDXQBLztKeEmEQg6TgCYWAOa7gSGGU=
 github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52/go.mod h1:hCwmef+4qXWjv0jLDbQdWnL0Ol7cS7/lCSS26WR+u6s=
 github.com/prysmaticlabs/prysm v0.3.1 h1:GEFb0olEUL2IZtycYsttGrZXFzQ5vmnPSoN9nvx3WxY=

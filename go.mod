@@ -19,7 +19,7 @@ require (
 	github.com/meatballhat/negroni-logrus v0.0.0-20170801195057-31067281800f
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
-	github.com/prysmaticlabs/ethereumapis v0.0.0-20200226203635-fca4d6f69bed
+	github.com/prysmaticlabs/ethereumapis v0.0.0-20200414190010-6607cc86ddb7
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52
 	github.com/prysmaticlabs/prysm v0.3.1
 	github.com/sirupsen/logrus v1.4.2
