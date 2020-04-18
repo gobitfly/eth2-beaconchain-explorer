@@ -741,7 +741,10 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 			),
 			histogram as (
 				select 
-					width_bucket(balance, min, max, 999) as bucket,
+					case
+						when min = max then 0
+						else width_bucket(balance, min, max, 999) 
+					end as bucket,
 					max(balance) as max,
 					count(*)
 				from  balances, stats
@@ -816,7 +819,10 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 			),
 			histogram as (
 				select 
-					width_bucket(effectivebalance, min, max, 999) as bucket,
+					case
+						when min = max then 0
+						else width_bucket(effectivebalance, min, max, 999) 
+					end as bucket,
 					max(effectivebalance) as max,
 					count(*)
 				from  balances, stats
@@ -1060,7 +1066,10 @@ func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 			),
 			histogram as (
 				select 
-					width_bucket(performance365d, min, max, 9999) as bucket,
+					case
+						when min = max then 0
+						else width_bucket(performance365d, min, max, 999) 
+					end as bucket,
 					max(performance365d) as max,
 					count(*) as cnt
 				from  validator_performance, stats
