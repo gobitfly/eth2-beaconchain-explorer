@@ -252,10 +252,12 @@ type BlockPageData struct {
 	SlashingsCount         uint64
 	VotesCount             uint64
 
-	Attestations   []*BlockPageAttestation // Attestations included in this block
-	Deposits       []*BlockPageDeposit
-	VoluntaryExits []*BlockPageVoluntaryExits
-	Votes          []*BlockVote // Attestations that voted for that block
+	Attestations      []*BlockPageAttestation // Attestations included in this block
+	Deposits          []*BlockPageDeposit
+	VoluntaryExits    []*BlockPageVoluntaryExits
+	Votes             []*BlockVote // Attestations that voted for that block
+	AttesterSlashings []*BlockPageAttesterSlashing
+	ProposerSlashings []*BlockPageProposerSlashing
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {
@@ -312,6 +314,47 @@ type BlockPageDeposit struct {
 type BlockPageVoluntaryExits struct {
 	ValidatorIndex uint64 `db:"validatorindex"`
 	Signature      []byte `db:"signature"`
+}
+
+// BlockPageAttesterSlashing is a struct to hold data for attester slashings on the block page
+type BlockPageAttesterSlashing struct {
+	BlockSlot                    uint64        `db:"block_slot"`
+	BlockIndex                   uint64        `db:"block_index"`
+	Attestation1Signature        []byte        `db:"attestation1_signature"`
+	Attestation1Slot             uint64        `db:"attestation1_slot"`
+	Attestation1Index            uint64        `db:"attestation1_index"`
+	Attestation1BeaconBlockRoot  []byte        `db:"attestation1_beaconblockroot"`
+	Attestation1SourceEpoch      uint64        `db:"attestation1_source_epoch"`
+	Attestation1SourceRoot       []byte        `db:"attestation1_source_root"`
+	Attestation1TargetEpoch      uint64        `db:"attestation1_target_epoch"`
+	Attestation1TargetRoot       []byte        `db:"attestation1_target_root"`
+	Attestation1AttestingIndices pq.Int64Array `db:"attestation1_attesting_indices"`
+	Attestation2Signature        []byte        `db:"attestation2_signature"`
+	Attestation2Slot             uint64        `db:"attestation2_slot"`
+	Attestation2Index            uint64        `db:"attestation2_index"`
+	Attestation2BeaconBlockRoot  []byte        `db:"attestation2_beaconblockroot"`
+	Attestation2SourceEpoch      uint64        `db:"attestation2_source_epoch"`
+	Attestation2SourceRoot       []byte        `db:"attestation2_source_root"`
+	Attestation2TargetEpoch      uint64        `db:"attestation2_target_epoch"`
+	Attestation2TargetRoot       []byte        `db:"attestation2_target_root"`
+	Attestation2AttestingIndices pq.Int64Array `db:"attestation2_attesting_indices"`
+}
+
+// BlockPageProposerSlashing is a struct to hold data for proposer slashings on the block page
+type BlockPageProposerSlashing struct {
+	BlockSlot         uint64 `db:"block_slot"`
+	BlockIndex        uint64 `db:"block_index"`
+	ProposerIndex     uint64 `db:"proposerindex"`
+	Header1Slot       uint64 `db:"header1_slot"`
+	Header1ParentRoot []byte `db:"header1_parentroot"`
+	Header1StateRoot  []byte `db:"header1_stateroot"`
+	Header1BodyRoot   []byte `db:"header1_bodyroot"`
+	Header1Signature  []byte `db:"header1_signature"`
+	Header2Slot       uint64 `db:"header2_slot"`
+	Header2ParentRoot []byte `db:"header2_parentroot"`
+	Header2StateRoot  []byte `db:"header2_stateroot"`
+	Header2BodyRoot   []byte `db:"header2_bodyroot"`
+	Header2Signature  []byte `db:"header2_signature"`
 }
 
 // DataTableResponse is a struct to hold data for data table responses

@@ -48,13 +48,13 @@
 	<div class="my-3">
 		<div class="d-md-flex py-2 justify-content-md-between">
 			<h1 class="h4 mb-1 mb-md-0">
-                {{if gt .PreviousSlot 0}}
+				{{if gt .PreviousSlot 0}}
 					<a href="/block/{{.PreviousSlot}}"><i class="fa fa-chevron-left"></i></a>
-                {{end}}
+				{{end}}
 				<span class="ml-1 mr-1"><i class="fas fa-cube mr-2"></i>Block at Slot {{.Slot}}</span>
-                {{if gt .NextSlot 0}}
+				{{if gt .NextSlot 0}}
 					<a href="/block/{{.NextSlot}}"><i class="fa fa-chevron-right"></i></a>
-                {{end}}
+				{{end}}
 			</h1>
 			<nav aria-label="breadcrumb">
 				<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
@@ -75,16 +75,26 @@
 		<li class="nav-item">
 			<a class="nav-link" id="pills-attestations-tab" data-toggle="pill" href="#pills-attestations" role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
 		</li>
-								{{if gt .DepositsCount 0}}
+		{{if gt .DepositsCount 0}}
 			<li class="nav-item">
 				<a class="nav-link" id="pills-deposits-tab" data-toggle="pill" href="#pills-deposits" role="tab" aria-controls="pills-deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
 			</li>
-								{{end}}
-								{{if gt .VoluntaryExitscount 0}}
+		{{end}}
+		{{if gt .VoluntaryExitscount 0}}
 			<li class="nav-item">
 				<a class="nav-link" id="pills-voluntary-exits-tab" data-toggle="pill" href="#pills-voluntary-exits" role="tab" aria-controls="pills-voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a>
 			</li>
-								{{end}}
+		{{end}}
+		{{if gt .AttesterSlashingsCount 0}}
+			<li class="nav-item">
+				<a class="nav-link" id="pills-attester-slashings-tab" data-toggle="pill" href="#pills-attester-slashings" role="tab" aria-controls="pills-attester-slashings" aria-selected="false">Attester Slashings <span class="badge bg-secondary text-white">{{.AttesterSlashingsCount}}</span></a>
+			</li>
+		{{end}}
+		{{if gt .ProposerSlashingsCount 0}}
+			<li class="nav-item">
+				<a class="nav-link" id="pills-proposer-slashings-tab" data-toggle="pill" href="#pills-proposer-slashings" role="tab" aria-controls="pills-attester-slashings" aria-selected="false">Proposer Slashings <span class="badge bg-secondary text-white">{{.ProposerSlashingsCount}}</span></a>
+			</li>
+		{{end}}
 	</ul>
 	<style>
 		.block-card {
@@ -119,7 +129,7 @@
 						<div class="col-md-2">Proposer:</div>
 						<div class="col-md-10">{{formatValidator .Proposer}}</div>
 					</div>
-                    {{ if (or (eq .Status 1) (eq .Status 3)) }}
+					{{ if (or (eq .Status 1) (eq .Status 3)) }}
 						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Block Root:</div>
 							<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}}</div>
@@ -195,7 +205,7 @@
 								<b>{{.ProposerSlashingsCount}}</b> proposer slashings
 							</div>
 						</div>
-                    {{end}}
+					{{end}}
 				</div>
 				<div class="tab-pane fade" id="pills-votes" role="tabpanel" aria-labelledby="pills-votes-tab">
 					<div class="row p-1">
@@ -203,18 +213,18 @@
 					</div>
 					<div class="table-responsive">
 						<table class="table table-sm table-bordered text-center">
-                            {{range $i, $vote := .Votes}}
-                                {{if mod $i 10 }}
+							{{range $i, $vote := .Votes}}
+								{{if mod $i 10 }}
 									<tr>
-                                {{end}}
+								{{end}}
 								<td style="border-bottom: 1px solid var(--border-color);" class="p-1" data-toggle="tooltip" data-placement="top"
 									title="Voted on by validator {{$vote.Validator}} of committee {{$vote.CommitteeIndex}} included in block {{$vote.IncludedIn}}">
-                                    {{formatValidator $vote.Validator}}
+									{{formatValidator $vote.Validator}}
 								</td>
-                                {{if or (mod (add $i 1) 10) (eq $i (sub (len $.Votes) 1))}}
+								{{if or (mod (add $i 1) 10) (eq $i (sub (len $.Votes) 1))}}
 									</tr>
-                                {{end}}
-                            {{end}}
+								{{end}}
+							{{end}}
 						</table>
 					</div>
 				</div>
@@ -223,7 +233,7 @@
 					 <div class="row border-bottom p-1 mx-0">
 						<div class="col-md-12 text-center"><b>Showing {{ .AttestationsCount }} Attestations </b></div>
 					</div>
-                    {{range $i, $attestation := .Attestations}}
+					{{range $i, $attestation := .Attestations}}
 						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-12 text-center"><b>Attestation {{$i}}</b></div>
 						</div>
@@ -243,9 +253,9 @@
 						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Validators:</div>
 							<div class="col-md-10">
-                                {{range $validator := $attestation.Validators}}
+								{{range $validator := $attestation.Validators}}
 									<span><a href="/validator/{{$validator}}">{{$validator}}</a> </span>
-                                {{end}}
+								{{end}}
 							</div>
 						</div>
 						<div class="row border-bottom p-1 mx-0">
@@ -279,11 +289,11 @@
 						</div>
 						<div class="row border-bottom mx-0">
 						</div>
-                    {{end}}
+					{{end}}
 				</div>
-                {{if gt .DepositsCount 0}}
+				{{if gt .DepositsCount 0}}
 					<div class="tab-pane fade" id="pills-deposits" role="tabpanel" aria-labelledby="pills-deposits-tab">
-                        {{range $i, $deposit := .Deposits}}
+						{{range $i, $deposit := .Deposits}}
 							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-12 text-center"><b>Deposit {{$i}}</b></div>
 							</div>
@@ -306,12 +316,12 @@
 							</div>
 							<div class="row border-bottom mx-0">
 							</div>
-                        {{end}}
+						{{end}}
 					</div>
-                {{end}}
-                {{if gt .VoluntaryExitscount 0}}
+				{{end}}
+				{{if gt .VoluntaryExitscount 0}}
 					<div class="tab-pane fade" id="pills-voluntary-exits" role="tabpanel" aria-labelledby="pills-voluntary-exits-tab">
-                        {{range $i, $exit := .VoluntaryExits}}
+						{{range $i, $exit := .VoluntaryExits}}
 							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-12 text-center"><b>Exit {{$i}}</b></div>
 							</div>
@@ -323,9 +333,94 @@
 								<div class="col-md-2">Signature:</div>
 								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $exit.Signature}}</div>
 							</div>
-                        {{end}}
+						{{end}}
 					</div>
-                {{end}}
+				{{end}}
+				{{if gt .AttesterSlashingsCount 0}}
+					{{range $i, $attestationSlashing := .AttesterSlashings}}
+					<div class="tab-pane fade" id="pills-attester-slashings" role="tabpanel" aria-labelledby="pills-attester-slashings-tab">
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-12 text-center"><b>Attestation 1</b></div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Slot:</div>
+							<div class="col-md-10"><a href="/block/{{$attestationSlashing.Attestation1Slot}}">{{$attestationSlashing.Attestation1Slot}}</a></div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Committee Index:</div>
+							<div class="col-md-10">{{$attestationSlashing.Attestation1Index}}</div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Beacon BlockRoot:</div>
+							<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation1BeaconBlockRoot}}</div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Signature:</div>
+							<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation1Signature}}</div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Source Epoch:</div>
+							<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation1SourceEpoch}}">{{$attestationSlashing.Attestation1SourceEpoch}}</a></div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Target Epoch:</div>
+							<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation1TargetEpoch}}">{{$attestationSlashing.Attestation1TargetEpoch}}</a></div>
+						</div>
+						<!--
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Attesting Validators:</div>
+							<div class="col-md-10">
+								{{range $validator := $attestationSlashing.Attestation1AttestingIndices}}
+									<span><a href="/validator/{{$validator}}">{{$validator}}</a> </span>
+								{{end}}
+							</div>
+						</div>
+						-->
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-12 text-center"><b>Attestation 2</b></div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Slot:</div>
+							<div class="col-md-10"><a href="/block/{{$attestationSlashing.Attestation2Slot}}">{{$attestationSlashing.Attestation2Slot}}</a></div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Committee Index:</div>
+							<div class="col-md-10">{{$attestationSlashing.Attestation2Index}}</div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Beacon BlockRoot:</div>
+							<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation2BeaconBlockRoot}}</div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Signature:</div>
+							<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation2Signature}}</div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Source Epoch:</div>
+							<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation2SourceEpoch}}">{{$attestationSlashing.Attestation2SourceEpoch}}</a></div>
+						</div>
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Target Epoch:</div>
+							<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation2TargetEpoch}}">{{$attestationSlashing.Attestation2TargetEpoch}}</a></div>
+						</div>
+						<!--
+						<div class="row border-bottom p-1 mx-0">
+							<div class="col-md-2">Attesting Validators:</div>
+							<div class="col-md-10">
+								{{range $validator := $attestationSlashing.Attestation1AttestingIndices}}
+									<span><a href="/validator/{{$validator}}">{{$validator}}</a> </span>
+								{{end}}
+							</div>
+						</div>
+						-->
+					</div>
+					{{end}}
+				{{end}}
+				{{if gt .ProposerSlashingsCount 0}}
+					<div class="tab-pane fade" id="pills-proposer-slashings" role="tabpanel" aria-labelledby="pills-proposer-slashings-tab">
+						foo
+					</div>
+				{{end}}
 			</div>
 		</div>
 	</div>
