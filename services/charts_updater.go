@@ -638,10 +638,10 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Average daily validator income",
+		Title:        "Average Daily Validator Income",
 		Subtitle:     "",
 		XAxisTitle:   "",
-		YAxisTitle:   "Average daily Validator Income [ETH/day]",
+		YAxisTitle:   "Average Daily Validator Income [ETH/day]",
 		StackingMode: "false",
 		Type:         "line",
 		Series: []*types.GenericChartDataSeries{
