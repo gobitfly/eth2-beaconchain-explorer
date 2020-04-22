@@ -231,3 +231,13 @@ create table network_liveness (
     previousjustifiedepoch int not null,
     primary key (ts)
 );
+
+drop table if exists graffitiwall;
+create table graffitiwall (
+    x int not null,
+    y int not null,
+    color text not null,
+    slot int not null,
+    validator int not null,
+    primary key (x,y)
+);
