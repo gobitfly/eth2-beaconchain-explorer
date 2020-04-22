@@ -1,0 +1,46 @@
+{{ define "js"}}
+	<script type="text/javascript">
+        var c = document.getElementById("graffitiwall");
+        var ctx = c.getContext("2d");
+        ctx.fillStyle = "#FFFFFF"
+
+        ctx.fillRect(0, 0, 999, 1099)
+
+        ctx.fillStyle = "#000000"
+        ctx.font = "15px Arial";
+        ctx.fillText("by beaconcha.in", 875, 1030);
+
+        ctx.beginPath();
+        ctx.moveTo(0, 1000);
+        ctx.lineTo(999, 1000);
+        ctx.stroke();
+
+        var pixels = {{.}}
+            pixels.forEach(function (p) {
+                ctx.fillStyle = "#" + p.color
+                ctx.fillRect(p.x, p.y, 1, 1)
+            })
+	</script>
+{{end}}
+
+{{ define "css"}}
+{{end}}
+
+{{ define "content"}}
+	<div class="my-3">
+		<div class="d-md-flex py-2 justify-content-md-between">
+			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-paint-brush"></i> The Graffitiwall - Draw your stake!</h1>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+					<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Graffitiwall</li>
+				</ol>
+			</nav>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-12 text-center">
+			<canvas id="graffitiwall" width="1000" height="1050"></canvas>
+		</div>
+	</div>
+{{end}}
