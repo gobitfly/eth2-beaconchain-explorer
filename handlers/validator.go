@@ -223,14 +223,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		Amount uint64
 	}{}
 	err = db.DB.Select(&depositHistory, `
-		SELECT 
-			(d.block_slot/32)-1 as epoch, 
-			d.amount 
-		FROM validators 
-			LEFT JOIN blocks_deposits d 
-				ON d.publickey = validators.pubkey 
-				AND (d.block_slot/32)-1 > validators.activationepoch 
-		WHERE validators.validatorindex = $1`, index)
+		SELECT
+			(d.block_slot/32) as epoch,
+			d.amount
+		FROM validators
+			LEFT JOIN blocks_deposits d
+				ON d.publickey = validators.pubkey
+		WHERE validators.validatorindex = $1
+		OFFSET 1`, index)
 
 	for _, deposit := range depositHistory {
 		depositTs := utils.EpochToTime(deposit.Epoch)

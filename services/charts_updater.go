@@ -503,7 +503,7 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 			left join firstdeposits fd on fd.epoch = (
 				select epoch from firstdeposits where epoch <= e.epoch order by epoch desc limit 1
 			)
-			left join extradeposits ed on fd.epoch = (
+			left join extradeposits ed on ed.epoch = (
 				select epoch from extradeposits where epoch <= e.epoch order by epoch desc limit 1
 			)
 		order by epoch`)
@@ -638,10 +638,10 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Average daily validator income",
+		Title:        "Average Daily Validator Income",
 		Subtitle:     "",
 		XAxisTitle:   "",
-		YAxisTitle:   "Average daily Validator Income [ETH/day]",
+		YAxisTitle:   "Average Daily Validator Income [ETH/day]",
 		StackingMode: "false",
 		Type:         "line",
 		Series: []*types.GenericChartDataSeries{

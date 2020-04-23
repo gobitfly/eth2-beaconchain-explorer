@@ -466,11 +466,16 @@ func updateValidatorPerformance() error {
 		epoch365d = 0
 	}
 
-	var startBalances []*types.ValidatorBalance
+	var startBalances []struct {
+		Index           uint64
+		Balance         uint64
+		Activationepoch int64
+	}
 	err = tx.Select(&startBalances, `
 		SELECT 
-			validator_balances.validatorindex,
-			validator_balances.balance
+			validator_balances.validatorindex as index,
+			validator_balances.balance,
+			validators.activationepoch
 		FROM validators
 			LEFT JOIN validator_balances
 				ON validators.activationepoch = validator_balances.epoch
@@ -480,8 +485,10 @@ func updateValidatorPerformance() error {
 		return fmt.Errorf("error retrieving initial validator balances data: %w", err)
 	}
 
+	startEpochMap := make(map[uint64]int64)
 	startBalanceMap := make(map[uint64]uint64)
 	for _, balance := range startBalances {
+		startEpochMap[balance.Index] = balance.Activationepoch
 		startBalanceMap[balance.Index] = balance.Balance
 	}
 
@@ -515,13 +522,13 @@ func updateValidatorPerformance() error {
 	err = tx.Select(&deposits, `
 		SELECT
 			v.validatorindex,
-			(d.block_slot/32)-1 AS epoch,
+			(d.block_slot/32) AS epoch,
 			SUM(d.amount) AS amount
 		FROM validators v
 			INNER JOIN blocks_deposits d
 				ON d.publickey = v.pubkey
-				AND (d.block_slot/32)-1 > v.activationepoch
-		GROUP BY (d.block_slot/32)-1, v.validatorindex
+				AND (d.block_slot/32) > v.activationepoch
+		GROUP BY (d.block_slot/32), v.validatorindex
 		ORDER BY epoch`)
 	if err != nil {
 		return fmt.Errorf("error retrieving validator deposits data: %w", err)
@@ -545,19 +552,19 @@ func updateValidatorPerformance() error {
 		}
 
 		balance1d := balances[epoch1d]
-		if balance1d == 0 {
+		if balance1d == 0 || startEpochMap[validator] > epoch1d {
 			balance1d = startBalance
 		}
 		balance7d := balances[epoch7d]
-		if balance7d == 0 {
+		if balance7d == 0 || startEpochMap[validator] > epoch7d {
 			balance7d = startBalance
 		}
 		balance31d := balances[epoch31d]
-		if balance31d == 0 {
+		if balance31d == 0 || startEpochMap[validator] > epoch31d {
 			balance31d = startBalance
 		}
 		balance365d := balances[epoch365d]
-		if balance365d == 0 {
+		if balance365d == 0 || startEpochMap[validator] > epoch365d {
 			balance365d = startBalance
 		}
 
