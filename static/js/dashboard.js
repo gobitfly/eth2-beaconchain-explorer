@@ -600,7 +600,7 @@ $(document).ready(function() {
             validatorCount[i] = [res[0], res[1]]
             balance[i] = [res[0], res[2]]
             effectiveBalance[i] = [res[0], res[3]]
-            utilization[i] = [res[0], res[3] / (res[1] * 3.2)]
+            utilization[i] = [res[0], res[3] / (res[1] * 32)]
           }
   
           var t2 = Date.now()

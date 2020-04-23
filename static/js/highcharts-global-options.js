@@ -9,7 +9,8 @@ Highcharts.setOptions({
       },
     },
     exporting: {
-      scale: 1
+      scale: 1,
+      enabled: false,
     },
     title: {
       style: {

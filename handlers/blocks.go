@@ -11,6 +11,7 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -51,10 +52,8 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	search, err := strconv.ParseInt(q.Get("search[value]"), 10, 64)
-	if err != nil {
-		search = -1
-	}
+	search := q.Get("search[value]")
+	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
@@ -79,57 +78,73 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var blocksCount uint64
-
-	err = db.DB.Get(&blocksCount, "SELECT MAX(slot) + 1 FROM blocks")
-	if err != nil {
-		logger.Errorf("error retrieving max slot number: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	startSlot := blocksCount - start
-	endSlot := blocksCount - start - length + 1
-
-	if startSlot > 9223372036854775807 {
-		startSlot = blocksCount
-	}
-	if endSlot > 9223372036854775807 {
-		endSlot = 0
-	}
-
 	var blocks []*types.IndexPageDataBlocks
-	if search == -1 {
-		err = db.DB.Select(&blocks, `SELECT blocks.epoch, 
-											    blocks.slot, 
-											    blocks.proposer, 
-											    blocks.blockroot, 
-											    blocks.parentroot, 
-											    blocks.attestationscount, 
-											    blocks.depositscount, 
-											    blocks.voluntaryexitscount, 
-											    blocks.proposerslashingscount, 
-											    blocks.attesterslashingscount, 
-											    blocks.status,
-       											COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes
-										FROM blocks 
-										WHERE blocks.slot >= $1 AND blocks.slot <= $2
-										ORDER BY blocks.slot DESC`, endSlot, startSlot)
+	if search == "" {
+		err = db.DB.Get(&blocksCount, "SELECT MAX(slot) + 1 FROM blocks")
+		if err != nil {
+			logger.Errorf("error retrieving max slot number: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+
+		startSlot := blocksCount - start
+		endSlot := blocksCount - start - length + 1
+
+		if startSlot > 9223372036854775807 {
+			startSlot = blocksCount
+		}
+		if endSlot > 9223372036854775807 {
+			endSlot = 0
+		}
+		err = db.DB.Select(&blocks, `
+			SELECT 
+				blocks.epoch, 
+				blocks.slot, 
+				blocks.proposer, 
+				blocks.blockroot, 
+				blocks.parentroot, 
+				blocks.attestationscount, 
+				blocks.depositscount, 
+				blocks.voluntaryexitscount, 
+				blocks.proposerslashingscount, 
+				blocks.attesterslashingscount, 
+				blocks.status, 
+				COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes,
+				blocks.graffiti
+			FROM blocks 
+			WHERE blocks.slot >= $1 AND blocks.slot <= $2 
+			ORDER BY blocks.slot DESC`, endSlot, startSlot)
 	} else {
-		err = db.DB.Select(&blocks, `SELECT blocks.epoch, 
-											    blocks.slot, 
-											    blocks.proposer, 
-											    blocks.blockroot, 
-											    blocks.parentroot, 
-											    blocks.attestationscount, 
-											    blocks.depositscount, 
-											    blocks.voluntaryexitscount, 
-											    blocks.proposerslashingscount, 
-											    blocks.attesterslashingscount, 
-											    blocks.status,
-       											COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes
-										FROM blocks 
-										WHERE blocks.slot = $1
-										ORDER BY blocks.slot DESC`, search)
+		err = db.DB.Get(&blocksCount, "SELECT count(*) FROM blocks WHERE CAST(blocks.slot as text) LIKE $1 OR graffiti LIKE convert_to($2, $3)", search, "%"+search+"%", "UTF-8")
+		if err != nil {
+			logger.Errorf("error retrieving max slot number: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		offset := length * draw
+		if offset > 10000 {
+			offset = 10000
+		}
+		err = db.DB.Select(&blocks, `
+			SELECT 
+				blocks.epoch, 
+				blocks.slot, 
+				blocks.proposer, 
+				blocks.blockroot, 
+				blocks.parentroot, 
+				blocks.attestationscount, 
+				blocks.depositscount, 
+				blocks.voluntaryexitscount, 
+				blocks.proposerslashingscount, 
+				blocks.attesterslashingscount, 
+				blocks.status, 
+				COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes, 
+				blocks.graffiti 
+			FROM blocks 
+			WHERE CAST(blocks.slot as text) LIKE $1 OR graffiti LIKE convert_to($2, $3) 
+			ORDER BY blocks.slot DESC 
+			LIMIT $4 
+			OFFSET $5`, search, "%"+search+"%", "UTF-8", length, offset)
 	}
 
 	if err != nil {
@@ -152,6 +167,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
 			b.Exits,
 			b.Votes,
+			fmt.Sprintf("%x", b.Graffiti),
 		}
 	}
 
