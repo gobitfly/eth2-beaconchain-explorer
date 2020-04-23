@@ -12,6 +12,7 @@ import (
 	"html/template"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,16 +27,43 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	vars := mux.Vars(r)
+
 	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
-
-	blockPageData := types.BlockPageData{}
-
+	blockSlot := int64(-1)
 	blockRootHash, err := hex.DecodeString(slotOrHash)
-
-	if err == nil && len(slotOrHash) == 64 {
-		slotOrHash = "-1"
+	if err != nil || len(slotOrHash) != 64 {
+		blockRootHash = []byte{}
+		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 	}
 
+	data := &types.PageData{
+		Meta: &types.Meta{
+			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
+		},
+		ShowSyncingMessage:    services.IsSyncing(),
+		Active:                "blocks",
+		Data:                  nil,
+		Version:               version.Version,
+		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
+		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
+		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+	}
+
+	if err != nil {
+		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
+		data.Meta.Path = "/block/" + slotOrHash
+		logger.Errorf("error retrieving block data: %v", err)
+		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+
+		if err != nil {
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		return
+	}
+
+	blockPageData := types.BlockPageData{}
 	err = db.DB.Get(&blockPageData, `
 		SELECT
 			epoch,
@@ -58,20 +86,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			status
 		FROM blocks
 		WHERE slot = $1 OR blockroot = $2 ORDER BY status LIMIT 1`,
-		slotOrHash, blockRootHash)
-
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "blocks",
-		Data:                  nil,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-	}
+		blockSlot, blockRootHash)
 
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
