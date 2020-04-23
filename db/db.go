@@ -293,7 +293,6 @@ func SaveEpoch(data *types.EpochData) error {
 	if err != nil {
 		return fmt.Errorf("error saving graffitiwall: %v", err)
 	}
-
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("error committing db transaction: %v", err)
