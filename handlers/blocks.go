@@ -115,15 +115,11 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			WHERE blocks.slot >= $1 AND blocks.slot <= $2 
 			ORDER BY blocks.slot DESC`, endSlot, startSlot)
 	} else {
-		err = db.DB.Get(&blocksCount, "SELECT count(*) FROM blocks WHERE CAST(blocks.slot as text) LIKE $1 OR graffiti LIKE convert_to($2, $3)", search, "%"+search+"%", "UTF-8")
+		err = db.DB.Get(&blocksCount, "SELECT count(*) FROM blocks WHERE CAST(blocks.slot as text) LIKE $1 OR graffiti LIKE convert_to($2, $3)", search+"%", "%"+search+"%", "UTF-8")
 		if err != nil {
 			logger.Errorf("error retrieving max slot number: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
-		}
-		offset := length * draw
-		if offset > 10000 {
-			offset = 10000
 		}
 		err = db.DB.Select(&blocks, `
 			SELECT 
@@ -140,11 +136,16 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				blocks.status, 
 				COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes, 
 				blocks.graffiti 
-			FROM blocks 
-			WHERE CAST(blocks.slot as text) LIKE $1 OR graffiti LIKE convert_to($2, $3) 
-			ORDER BY blocks.slot DESC 
-			LIMIT $4 
-			OFFSET $5`, search+"%", "%"+search+"%", "UTF-8", length, offset)
+			FROM blocks
+			WHERE slot IN (
+				SELECT slot 
+				FROM blocks
+				WHERE CAST(blocks.slot as text) LIKE $1 OR graffiti LIKE convert_to($2, $3) 
+				ORDER BY blocks.slot ASC 
+				LIMIT $4 
+				OFFSET $5
+			) ORDER BY blocks.slot DESC
+			`, search+"%", "%"+search+"%", "UTF-8", length, start)
 	}
 
 	if err != nil {
