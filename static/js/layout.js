@@ -50,7 +50,7 @@ $(document).ready(function() {
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
     identify: function(obj) {
-      return obj.blockroot
+      return obj.slot
     },
     remote: {
       url: '/search/blocks/%QUERY',
@@ -74,7 +74,7 @@ $(document).ready(function() {
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
     identify: function(obj) {
-      return obj.blockroot
+      return obj.epoch
     },
     remote: {
       url: '/search/epochs/%QUERY',
@@ -109,6 +109,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Blocks</h3>',
         suggestion: function(data) {
+          console.log('------', data)
           return `<div>${data.slot}: ${data.blockroot.substring(0, 16)}…</div>`
         }
       }
@@ -174,8 +175,8 @@ $(document).ready(function() {
   })
 
   $('.typeahead').on('typeahead:select', function(ev, sug) {
-    if (sug.blockroot !== undefined) {
-      window.location = '/block/' + sug.blockroot
+    if (sug.slot !== undefined) {
+      window.location = '/block/' + sug.slot
     } else if (sug.index !== undefined) {
       window.location = '/validator/' + sug.index
     } else if (sug.epoch !== undefined) {
