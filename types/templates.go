@@ -214,6 +214,14 @@ type VisChartData struct {
 	Difficulty uint64   `json:"difficulty"`
 }
 
+type GraffitiwallData struct {
+	X         uint64 `db:"x" json:"x"`
+	Y         uint64 `db:"y" json:"y"`
+	Color     string `db:"color" json:"color"`
+	Slot      uint64 `db:"slot" json:"slot"`
+	Validator uint64 `db:"validator" json:"validator"`
+}
+
 // VisVotesPageData is a struct for the visualization votes page data
 type VisVotesPageData struct {
 	ChartData []*VotesVisChartData
