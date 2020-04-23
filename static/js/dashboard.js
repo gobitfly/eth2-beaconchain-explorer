@@ -171,6 +171,7 @@ $(document).ready(function() {
         targets: 0,
         data: '0',
         render: function(data, type, row, meta) {
+          if (type == 'sort' || type == 'type') return data
           return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
         }
       },
@@ -178,6 +179,7 @@ $(document).ready(function() {
         targets: 1,
         data: '1',
         render: function(data, type, row, meta) {
+          if (type == 'sort' || type == 'type') return data
           return '<a href="/validator/' + data + '">' + data + '</a>'
         }
       },
@@ -185,6 +187,7 @@ $(document).ready(function() {
         targets: 2,
         data: '2',
         render: function(data, type, row, meta) {
+          if (type == 'sort' || type == 'type') return data ? data[0] : null
           return `${data[0]} (${data[1]})`
         }
       },
@@ -192,6 +195,7 @@ $(document).ready(function() {
         targets: 3,
         data: '3',
         render: function(data, type, row, meta) {
+          if (type == 'sort' || type == 'type') return data ? data[0] : -1
           var d = data.split('_')
           var s = d[0].charAt(0).toUpperCase() + d[0].slice(1)
           if (d[1] === 'offline') 
@@ -205,8 +209,8 @@ $(document).ready(function() {
         targets: 4,
         data: '4',
         render: function(data, type, row, meta) {
-          if (data === null) 
-            return '-'
+          if (type == 'sort' || type == 'type') return data ? data[0] : null
+          if (data === null) return '-'
           return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
@@ -214,8 +218,8 @@ $(document).ready(function() {
         targets: 5,
         data: '5',
         render: function(data, type, row, meta) {
-          if (data === null) 
-            return '-'
+          if (type == 'sort' || type == 'type') return data ? data[0] : null
+          if (data === null) return '-'
           return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
@@ -223,8 +227,8 @@ $(document).ready(function() {
         targets: 6,
         data: '6',
         render: function(data, type, row, meta) {
-          if (data === null) 
-            return '-'
+          if (type == 'sort' || type == 'type') return data ? data[0] : null
+          if (data === null) return '-'
           return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
@@ -232,8 +236,8 @@ $(document).ready(function() {
         targets: 7,
         data: '7',
         render: function(data, type, row, meta) {
-          if (data === null)
-            return 'No Attestation found'
+          if (type == 'sort' || type == 'type') return data ? data[0] : null
+          if (data === null) return 'No Attestation found'
           return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
         }
       },
@@ -241,6 +245,7 @@ $(document).ready(function() {
         targets: 8,
         data: '8',
         render: function(data, type, row, meta) {
+          if (type == 'sort' || type == 'type') return data ? data[0] + data[1] : null
           return `<span data-toggle="tooltip" data-placement="top" title="${data[0]} executed / ${data[1]} missed"><span class="text-success">${data[0]}</span> / <span class="text-danger">${data[1]}</span></span>`
         }
       }
@@ -504,8 +509,8 @@ $(document).ready(function() {
           }
           // pubkey, idx, currbal, effbal, slashed, acteligepoch, actepoch, exitepoch
           // 0:pubkey, 1:idx, 2:[currbal,effbal], 3:state, 4:[actepoch,acttime], 5:[exit,exittime], 6:[wd,wdt], 7:[lasta,lastat], 8:[exprop,misprop]
-          console.log(`latestEpoch: ${result.latestEpoch}`)
-          var latestEpoch = result.latestEpoch
+          // console.log(`latestEpoch: ${result.latestEpoch}`)
+          // var latestEpoch = result.latestEpoch
           state.validatorsCount.pending = 0
           state.validatorsCount.active_online = 0
           state.validatorsCount.active_offline = 0
@@ -525,7 +530,7 @@ $(document).ready(function() {
             if (el) el.dataset.state = vState
           }
           validatorsDataTable.clear()
-          console.log('search',validatorsDataTable.columns().search())
+          // console.log('search',validatorsDataTable.columns().search())
           validatorsDataTable.rows.add(result.data).draw()
   
           validatorsDataTable.column(6).visible(false)
