@@ -141,7 +141,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				SELECT slot 
 				FROM blocks
 				WHERE CAST(blocks.slot as text) LIKE $1 OR graffiti LIKE convert_to($2, $3) 
-				ORDER BY blocks.slot ASC 
+				ORDER BY blocks.slot DESC 
 				LIMIT $4 
 				OFFSET $5
 			) ORDER BY blocks.slot DESC
