@@ -281,10 +281,12 @@ renderResult: ${t3-t2}ms
 			},{
 				name: 'Costs',
 				data: this.result.costsDollarChartData,
-			},{
-				name: 'Profit',
-				data: this.result.profitDollarChartData,
-			}],
+			},
+			// {
+			// 	name: 'Profit',
+			// 	data: this.result.profitDollarChartData,
+			// }
+			],
 			yAxis: [{ title: { text: '$' } }],
 			legend: { enabled: true },
 			navigator: { enabled: false },
@@ -331,13 +333,31 @@ td,th {
 .currency-switch:hover {
 	color: var(--primary)
 }
+
+.accordion .card-header {
+	cursor: pointer;
+}
+
+.accordion .fas {
+		transform: rotate(0deg);
+		transition: transform .2s linear;
+}
+.accordion div[aria-expanded='true'] .fas {
+    transform: rotate(-180deg);
+}
+.stake {
+
+}
+.variables {
+
+}
 </style>
 {{ end }}
 
 {{ define "content" }}
-<div class="mb-3">
+<div class="my-3">
 	<div class="d-md-flex py-2 justify-content-md-between">
-		<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-chart-bar"></i> Staking Calculator</h1>
+		<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-calculator mr-1"></i> Staking Calculator</h1>
 		<nav aria-label="breadcrumb">
 			<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
 				<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
@@ -346,15 +366,131 @@ td,th {
 		</nav>
 	</div>
 </div>
-<div class="row">
+
+
+
+<div class="row my-3">
+	<div class="col-md-5 py-3 variables">
+		<div class="stake">
+				<h5 class="mb-0">Your Ethereum Stake (<span id="yourStake-currency">ETH</span> <i class="fas fa-random fa-sm currency-switch" data-for="yourStake"></i>) <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="This value represents the amount of ETH you want to use for stacking. If you are not staking on a pool it must be a multiple of 32, since validators can only join the network with a minimum of 32 ETH."></i></h5>
+				<div class="justify-content-between d-flex p-3 align-content-center">
+					<input id="staking-variable-yourStake" class="staking-variable form-control col-6" type="text" value=32>
+					<h5 class="mb-0 mt-1" id="validator-count col-6">0 validators <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="The total number of validators that can be added to the network with your stake. A minimum of 32 ethereum is needed for a validator to participate in the network. Ignore this value when you are staking over a pool."></i></h5>
+				</div>
+		</div>
+		<div class="accordion" id="calculator-accordion">
+			<div class="card">
+				<div class="card-header" role="button" id="pool-heading" data-toggle="collapse" data-target="#pool-parameters" aria-expanded="false" aria-controls="pool-parameters">
+					Staking Pool Parameters <i class="fas fa-caret-down float-right"></i>
+				</div>
+			</div>
+			<div id="pool-parameters"  class="collapse" aria-labelledby="pool-heading" data-target="#pool-heading">
+				<div class="py-3 px-1">
+					<div class="setting mb-3">
+						<h6>Staking fee (%) <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="If you are staking on a pool enter the fee of the pool here. If you are not staking on a pool, just set it to 0."></i></h6>
+						<input id="staking-variable-stakingFee" class="staking-variable form-control pool" type="text" value=0>
+					</div>
+					<div class="setting">
+						<h6>Reinvest gains <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Setting this field will add your staking-income to your initial stake after each epoch. This will only work if you are staking on a pool."></i></h6>
+							<input id="staking-variable-reinvest" class="staking-variable form-check-input pool" type="checkbox">
+					</div>
+				</div>
+			</div>
+			<div class="card" >
+				<div class="card-header" role="button" id="network-heading" data-toggle="collapse" data-target="#network-parameters" aria-expanded="false" aria-controls="network-parameters">
+						Network Parameters <i class="fas fa-caret-down float-right"></i>
+				</div>
+			</div>
+			<div id="network-parameters" class="collapse" aria-labelledby="network-heading" data-target="#network-heading">
+				<div class="p-3">
+					<div class="setting mb-2">
+						<h6 width="50%">Total staked ether (<span id="totalStake-currency">ETH</span> <i class="fas fa-random fa-sm currency-switch" data-for="totalStake"></i>) <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Total staked ether is the sum of effective balances of all active validators attesting in the network."></i></h6>
+						<input id="staking-variable-totalStake" class="staking-variable form-control" type="text" value=524384>
+						<input id="staking-variable-totalStake-slider" class="form-control" type="range" value=524384 min=524384 max=100e6>
+					</div>
+					<div class="setting">
+						<h6>Online propability (%) <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Online propability is the average propability of all active validators to be online and to fulfill their duties."></i></h6>
+							<input id="staking-variable-onlinePropabilty" class="staking-variable form-control" type="text" value=95>
+							<input id="staking-variable-onlinePropabilty-slider" class="form-control" type="range" value=95 min=0 max=100>
+					</div>
+				</div>
+			</div>
+			<div class="card" >
+				<div class="card-header" role="button" id="economic-heading" data-toggle="collapse" data-target="#economic-parameters" aria-expanded="false" aria-controls="economic-parameters">
+						Economic Parameters <i class="fas fa-caret-down float-right"></i>
+				</div>
+			</div>
+			<div id="economic-parameters" class="collapse" aria-labelledby="network-heading" data-target="#economic-heading">
+				<div class="p-3">
+					<div class="setting mb-3">
+						<h6>ETH price in $</h6>
+						<input id="staking-variable-ethPrice" class="staking-variable form-control" type="text" value=134.05>
+					</div>
+					<div class="setting mb-3">
+						<h6>Monthly price change in %</h6>
+						<input id="staking-variable-ethPriceChangePerMonth" class="staking-variable form-control" type="text" value=0>
+					</div>
+					<div class="setting mb-3">
+						<h6>Initial one-time-costs (<span id="initialCosts-currency">$</span> <i class="fas fa-random fa-sm currency-switch" data-for="initialCosts"></i>)</h6>
+						<input id="staking-variable-initialCosts" class="staking-variable form-control noPool" type="text" value=0>
+					</div>
+					<div class="setting mb-3">
+						<h6>Monthly costs (<span id="monthlyCosts-currency">$</span> <i class="fas fa-random fa-sm currency-switch" data-for="monthlyCosts"></i>)</h6>
+						<input id="staking-variable-monthlyCosts" class="staking-variable form-control noPool" type="text" value=10>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col-md-7">
+		<h5 class="my-3">Estimated Rewards</h5>
+		<div id="theoreticalBalanceChart" class="card p-3 my-3"></div>
+		<div class="card my-3">
+			<table class="table p-0">
+				<tbody>
+					<tr>
+						<th>Duration</th>
+						<th>Profit</th>
+						<th>Change in %</th>
+					</tr>
+					<tr>
+						<th>1 day</th>
+						<td id="profit1d"></td>
+						<td id="networkIssuance1d"></td>
+					</tr>
+					<tr>
+						<th>7 days</th>
+						<td id="profit7d"></td>
+						<td id="networkIssuance7d"></td>
+					</tr>
+					<tr>
+						<th>31 days</th>
+						<td id="profit31d"></td>
+						<td id="networkIssuance31d"></td>
+					</tr>
+					<tr>
+						<th>365 days</th>
+						<td id="profit365d"></td>
+						<td id="networkIssuance365d"></td>
+					</tr>
+				</tbody>
+				<div id="breakEvenPointHolder" style="display:none">
+					The break-even-point is reached after <span id="breakEvenPoint">10</span> days
+				</div>
+			</table>
+		</div>
+	</div>
+</div>
+
+
+<!-- <div class="row">
 	<div class="col-md-12">
 		<div class="card">
 			<div class="row">
 				<div class="col-md-6">
-					<div style="padding:10px;padding-bottom:0;">
+					<div style="padding:10px; padding-bottom:0;">
 						<h4>Network parameters</h4>
 						<table class="table table-sm">
-							<!--<caption>Network parameters</caption>-->
 							<tbody>
 								<tr>
 									<th width="50%">Total staked ether (<span id="totalStake-currency">ETH</span> <i class="fas fa-random fa-sm currency-switch" data-for="totalStake"></i>) <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Total staked ether is the sum of effective balances of all active validators attesting in the network."></i></th>
@@ -382,7 +518,6 @@ td,th {
 						</table>
 						<h4>Your staking parameters</h4>
 						<table class="table">
-							<!--<caption>Your staking parameters</caption>-->
 							<tbody>
 								<tr class="staking-variable-holder">
 									<th width="50%">Your staking (<span id="yourStake-currency">ETH</span> <i class="fas fa-random fa-sm currency-switch" data-for="yourStake"></i>) <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="This value represents the amount of ETH you want to use for stacking. If you are not staking on a pool it must be a multiple of 32, since validators can only join the network with a minimum of 32 ETH."></i></th>
@@ -393,8 +528,6 @@ td,th {
 									<th>Staking fee (%) <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="If you are staking on a pool enter the fee of the pool here. If you are not staking on a pool, just set it to 0."></i></th>
 									<td><input id="staking-variable-stakingFee" class="staking-variable form-control pool" type="text" value=0></td>
 								</tr>
-								
-
 								<tr class="staking-variable-holder noPool">
 									<th>Initial one-time-costs (<span id="initialCosts-currency">$</span> <i class="fas fa-random fa-sm currency-switch" data-for="initialCosts"></i>)</th>
 									<td><input id="staking-variable-initialCosts" class="staking-variable form-control noPool" type="text" value=0></td>
@@ -412,8 +545,8 @@ td,th {
 							</tbody>
 						</table>
 					</div>
-				</div>
-				<div class="col-md-6">
+				</div> -->
+				<!-- <div class="col-md-6">
 					<div style="padding:10px;padding-bottom:0;">
 						<h4>Estimated Rewards</h4>
 						<table class="table">
@@ -450,7 +583,7 @@ td,th {
 						</div>
 						<div id="theoreticalBalanceChart"></div>
 					</div>
-				</div>
+				</div> -->
 				<!--
 				<div class="col-md-6">
 					<div style="height:25%; display: flex; flex-direction:column; justify-content: center; align-items:center;">
@@ -476,7 +609,7 @@ td,th {
 					<div id="theoreticalBalanceChart"></div>
 				</div>
 				-->
-				<div class="col-md-6">
+				<!-- <div class="col-md-6">
 					<div id="issuanceOverStakedChart"></div>
 				</div>
 				<div class="col-md-6">
@@ -487,7 +620,7 @@ td,th {
 				</div>
 				<div class="col-md-6">
 					<div id="issuanceOverDailyCostsChart"></div>
-				</div>
+				</div> -->
 			</div>
 		</div>
 	</div>

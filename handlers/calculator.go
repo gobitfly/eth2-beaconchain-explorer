@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var stakingCalculatorTemplate = template.Must(template.New("staking_calculator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/staking_calculator.html"))
+var stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
 
 // StakingCalculator renders stakingCalculatorTemplate
 func StakingCalculator(w http.ResponseWriter, r *http.Request) {
@@ -22,10 +22,10 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - Staking calculator - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/staking_calculator",
+			Path:        "/calculator",
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "staking_calculator",
+		Active:                "calculator",
 		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -33,7 +33,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 	}
 
-	stakingCalculatorTemplate = template.Must(template.New("staking_estimator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/staking_calculator.html"))
+	stakingCalculatorTemplate = template.Must(template.New("staking_estimator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
 	err := stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
