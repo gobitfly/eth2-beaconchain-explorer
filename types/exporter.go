@@ -61,9 +61,11 @@ type Validator struct {
 
 // ValidatorQueue is a struct to hold validator queue data
 type ValidatorQueue struct {
-	ChurnLimit           uint64
-	ActivationPublicKeys [][]byte
-	ExitPublicKeys       [][]byte
+	ChurnLimit                 uint64
+	ActivationPublicKeys       [][]byte
+	ExitPublicKeys             [][]byte
+	ActivationValidatorIndices []uint64
+	ExitValidatorIndices       []uint64
 }
 
 // Block is a struct to hold block data
