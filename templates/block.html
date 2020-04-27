@@ -3,6 +3,10 @@
         function viewGraffitiAs(type) {
             var graffitiHex = $("[aria-graffiti]").attr("aria-graffiti");
 
+            if (!graffitiHex) {
+            	return
+			}
+
             if (type === "hex") {
                 $("#graffiti").text("0x" + graffitiHex)
             } else {
@@ -38,6 +42,8 @@
                 location.hash = e.target.hash;
             }
         })
+
+		viewGraffitiAs('utf-8')
 	</script>
 {{end}}
 

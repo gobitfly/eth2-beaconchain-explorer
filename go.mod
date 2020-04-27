@@ -3,6 +3,7 @@ module eth2-exporter
 go 1.13
 
 require (
+	github.com/cortesi/modd v0.0.0-20200427000656-b4c550997d80 // indirect
 	github.com/ferranbt/fastssz v0.0.0-20200415074633-b062b680417b // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/gorilla/mux v1.7.3
@@ -19,9 +20,6 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
-	golang.org/x/net v0.0.0-20191204025024-5ee1b9f4859a // indirect
-	golang.org/x/sys v0.0.0-20191204072324-ce4227a45e2e // indirect
-	golang.org/x/text v0.3.2 // indirect
 	google.golang.org/grpc v1.27.1
-	gopkg.in/yaml.v2 v2.2.7
+	gopkg.in/yaml.v2 v2.2.8
 )
