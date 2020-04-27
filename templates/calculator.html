@@ -31,6 +31,9 @@ class Calculator {
 		this.params.poolStaking = false
 		this.params.stakingFee = 0
 		this.params.reinvest = false
+		
+		this.params.showCosts = false
+		this.params.showIncome = true
 
 		this.result = {}
 
@@ -43,6 +46,7 @@ class Calculator {
 		this.result.profitEthChartData = []
 		this.result.breakEvenPoint = null
 		this.result.start = null
+		this.result.numberOfPossibleValidators = '0'
 
 		this.run()
 
@@ -124,6 +128,18 @@ renderResult: ${t3-t2}ms
 		p.initialCosts = parseFloat(document.getElementById('staking-variable-initialCosts').value)
 		p.monthlyCosts = parseFloat(document.getElementById('staking-variable-monthlyCosts').value)
 
+		if ((isNaN(p.initialCosts) || p.initialCosts === 0) && (isNaN(p.monthlyCosts) || p.monthlyCosts === 0)) {
+			p.showCosts = false
+		} else {
+			p.showCosts = true
+		}
+
+		if(isNaN(p.stake) || p.stake === 0) {
+			p.showIncome = false
+		} else {
+			p.showIncome = true
+		}
+
 		p.stakingFee = parseInt(document.getElementById('staking-variable-stakingFee').value)/100
 		p.reinvest = document.getElementById('staking-variable-reinvest').checked
 
@@ -194,6 +210,7 @@ renderResult: ${t3-t2}ms
 
 		this.result.ethPriceChartData = []
 		this.result.networkIssuanceChartData = []
+		this.result.incomeChartData = []
 		this.result.incomeDollarChartData = []
 		this.result.incomeEthChartData = []
 		this.result.costsDollarChartData = []
@@ -204,15 +221,15 @@ renderResult: ${t3-t2}ms
 		this.result.numberOfPossibleValidators = (this.params.stake / (32 * 1e9)).toFixed(0) || '0'
 
 		var ethPrice = this.params.ethPrice
-		var costs = this.params.initialCosts + this.params.stake*ethPrice/1e9
+		var costs = this.params.initialCosts + this.params.stake * ethPrice / 1e9
 
-		var epochsPerDay = 3600*24 / this.config.secondsPerEpoch
+		var epochsPerDay = 3600 * 24 / this.config.secondsPerEpoch
 		var epochsPerMonth = epochsPerDay * 31
 		var epochsPerYear = epochsPerDay * 365
 
-		var costsPerEpoch = this.params.monthlyCosts/epochsPerMonth
+		var costsPerEpoch = this.params.monthlyCosts / epochsPerMonth
 
-		var ethPriceChangePerEpoch = this.params.ethPriceChangePerMonth/epochsPerMonth
+		var ethPriceChangePerEpoch = this.params.ethPriceChangePerMonth / epochsPerMonth
 		var onlinePropabilty = this.params.networkOnlinePropability
 		var totalStake = this.params.networkStake
 		var valStake = 32e9
@@ -254,7 +271,7 @@ renderResult: ${t3-t2}ms
 			if (this.params.reinvest)
 				yourStake += valRewards * (yourStake/valStake) * (1-this.params.stakingFee)
 			costs += costsPerEpoch
-			var day = (i+1)/epochsPerDay|0
+			var day = (i+1)/epochsPerDay | 0
 			if (day > this.result.incomeDollarChartData.length-1) {
 				var t = now+(i+1)*12*32*1000
 				this.fillChartData(t, incomeGwei*ethPrice/1e9, costs, ethPrice)
@@ -263,15 +280,15 @@ renderResult: ${t3-t2}ms
 		}
 	}
 	fillChartData(t, incomeDollar, costsDollar, ethPrice) {
+		this.result.incomeChartData.push([t, incomeDollar / ethPrice, incomeDollar, costsDollar])
 		this.result.incomeDollarChartData.push([t,incomeDollar])
 		this.result.incomeEthChartData.push([t,incomeDollar / ethPrice])
-		
 		this.result.costsDollarChartData.push([t,costsDollar])
-
 		this.result.costsEthChartData.push([t,costsDollar / ethPrice])
 
 		this.result.profitDollarChartData.push([t,incomeDollar - costsDollar])
-		this.result.profitEthChartData.push([t,(incomeDollar - costsDollar)/ethPrice])
+		
+		this.result.profitEthChartData.push([t,this.params.stake /1e9 + (incomeDollar - costsDollar) / ethPrice])
 
 		if (!this.result.breakEvenPoint && this.result.profitDollarChartData.length>1) {
 			var pdcd = this.result.profitDollarChartData
@@ -299,27 +316,44 @@ renderResult: ${t3-t2}ms
 			document.getElementById('validator-count').innerText = 	this.result.numberOfPossibleValidators + ' validators'
 		}
 
+
+
 		var chartOpts = {
 			// title: { text: 'Estimated Rewards' },
-			series: [{
-				name: 'Income',
-				data: this.result.incomeDollarChartData,
-			},{
-				name: 'Costs',
-				data: this.result.costsDollarChartData,
+			
+			series: [],
+			tooltip: {
+				shared: true,
+				split: false,
 			},
-			// {
-			// 	name: 'Profit',
-			// 	data: this.result.profitDollarChartData,
-			// }
-			],
-			yAxis: [{ title: { text: '$' } }],
+			yAxis: [{ title: { text: 'Stake in ETH' } }],
 			legend: { enabled: true },
 			navigator: { enabled: false },
 			rangeSelector: { enabled: false },
 			scrollbar: { enabled: false },
 		}
-		if (this.result.breakEvenPoint) {
+		if (this.params.showCosts) {
+			chartOpts.series.push({
+					name: 'Expenditure',
+					data: this.result.costsEthChartData,
+					color: 'orange'
+				})
+			chartOpts.series.push({
+				name: 'Net Value',
+				data: this.result.profitEthChartData,
+				color: 'green'
+			})
+		}
+		if (this.params.showIncome) {
+			chartOpts.series.push({
+				name: 'Stake',
+				color: 'blue',
+				data: this.result.incomeChartData,
+				// data: this.result.incomeDollarChartData,
+				// data: this.result.networkIssuanceChartData
+			})
+		}
+ 		if (this.result.breakEvenPoint) {
 			// console.log('add annotation', this.result.breakEvenPoint)
 			var durMs = this.result.breakEvenPoint - this.result.start
 			var durDays = durMs/1000/3600/24|0
@@ -441,12 +475,12 @@ td,th {
 					</div>
 					<div class="setting">
 						<h6>Initial one-time-costs (<span id="initialCosts-currency">$</span> <i class="fas fa-random fa-sm currency-switch" data-for="initialCosts"></i>)</h6>
-						<input id="staking-variable-initialCosts" class="staking-variable form-control noPool" type="text" value=0>
+						<input id="staking-variable-initialCosts" class="staking-variable form-control noPool" type="text" value=500>
 						<span id="staking-variable-initialCosts-validation" class="input-validation">Initial costs must be greater or equal to 0</span>
 					</div>
 					<div class="setting">
 						<h6>Monthly costs (<span id="monthlyCosts-currency">$</span> <i class="fas fa-random fa-sm currency-switch" data-for="monthlyCosts"></i>)</h6>
-						<input id="staking-variable-monthlyCosts" class="staking-variable form-control noPool" type="text" value=0>
+						<input id="staking-variable-monthlyCosts" class="staking-variable form-control noPool" type="text" value=3>
 						<span id="staking-variable-monthlyCosts-validation" class="input-validation">Monthly costs must be greater or equal to 0</span>
 					</div>
 				</div>
@@ -502,7 +536,7 @@ td,th {
 					<tr>
 						<th>Duration</th>
 						<th>Profit</th>
-						<th>Change in %</th>
+						<th>Yield in %</th>
 					</tr>
 					<tr>
 						<th>1 day</th>
