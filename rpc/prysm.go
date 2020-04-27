@@ -13,7 +13,7 @@ import (
 	"github.com/prysmaticlabs/go-bitfield"
 	"google.golang.org/grpc"
 
-	ptypes "github.com/golang/protobuf/ptypes/empty"
+	ptypes "github.com/gogo/protobuf/types"
 )
 
 // PrysmClient holds information about the Prysm Client
@@ -90,42 +90,22 @@ func (pc *PrysmClient) GetChainHead() (*types.ChainHead, error) {
 }
 
 // GetValidatorQueue will get the validator queue from a Prysm client
-func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]uint64, error) {
+func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	var err error
-
-	validatorIndices := make(map[string]uint64)
-
-	validatorsResponse := &ethpb.Validators{}
-	for {
-		validatorsResponse, err = pc.client.ListValidators(context.Background(), &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken})
-		if err != nil {
-			return nil, nil, fmt.Errorf("error retrieving validator indices for validator queue: %v", err)
-		}
-		if validatorsResponse.TotalSize == 0 {
-			break
-		}
-
-		for _, validator := range validatorsResponse.ValidatorList {
-			logger.Debugf("%x - %v", validator.Validator.PublicKey, validator.Index)
-			validatorIndices[utils.FormatPublicKey(validator.Validator.PublicKey)] = validator.Index
-		}
-
-		if validatorsResponse.NextPageToken == "" {
-			break
-		}
-	}
 
 	validators, err := pc.client.GetValidatorQueue(context.Background(), &ptypes.Empty{})
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("error retrieving validator queue data: %v", err)
+		return nil, fmt.Errorf("error retrieving validator queue data: %v", err)
 	}
 
 	return &types.ValidatorQueue{
-		ChurnLimit:           validators.ChurnLimit,
-		ActivationPublicKeys: validators.ActivationPublicKeys,
-		ExitPublicKeys:       validators.ExitPublicKeys,
-	}, validatorIndices, nil
+		ChurnLimit:                 validators.ChurnLimit,
+		ActivationPublicKeys:       validators.ActivationPublicKeys,
+		ExitPublicKeys:             validators.ExitPublicKeys,
+		ActivationValidatorIndices: validators.ActivationValidatorIndices,
+		ExitValidatorIndices:       validators.ExitValidatorIndices,
+	}, nil
 }
 
 // GetAttestationPool will get the attestation pool from a Prysm client

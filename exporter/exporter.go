@@ -388,13 +388,12 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 }
 
 func exportValidatorQueue(client rpc.Client) error {
-
-	validators, validatorIndices, err := client.GetValidatorQueue()
+	queue, err := client.GetValidatorQueue()
 	if err != nil {
 		return fmt.Errorf("error retrieving validator queue data: %v", err)
 	}
 
-	return db.SaveValidatorQueue(validators, validatorIndices)
+	return db.SaveValidatorQueue(queue)
 }
 
 func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {

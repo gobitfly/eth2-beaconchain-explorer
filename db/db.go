@@ -117,7 +117,7 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte)
 }
 
 // SaveValidatorQueue will save the validator queue into the database
-func SaveValidatorQueue(validators *types.ValidatorQueue, validatorIndices map[string]uint64) error {
+func SaveValidatorQueue(validators *types.ValidatorQueue) error {
 	tx, err := DB.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
@@ -149,14 +149,14 @@ func SaveValidatorQueue(validators *types.ValidatorQueue, validatorIndices map[s
 	}
 	defer stmtValidatorQueueExit.Close()
 
-	for _, publickey := range validators.ActivationPublicKeys {
-		_, err := stmtValidatorQueueActivation.Exec(validatorIndices[utils.FormatPublicKey(publickey)], publickey)
+	for i, publickey := range validators.ActivationPublicKeys {
+		_, err := stmtValidatorQueueActivation.Exec(validators.ActivationValidatorIndices[i], publickey)
 		if err != nil {
 			return fmt.Errorf("error executing stmtValidatorQueueActivation: %v", err)
 		}
 	}
-	for _, publickey := range validators.ExitPublicKeys {
-		_, err := stmtValidatorQueueExit.Exec(validatorIndices[utils.FormatPublicKey(publickey)], publickey)
+	for i, publickey := range validators.ExitPublicKeys {
+		_, err := stmtValidatorQueueExit.Exec(validators.ExitValidatorIndices[i], publickey)
 		if err != nil {
 			return fmt.Errorf("error executing stmtValidatorQueueExit: %v", err)
 		}
