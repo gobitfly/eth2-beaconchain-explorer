@@ -17,7 +17,15 @@
 						render: function (data, type, row, meta) {
 							return '<a href="/epoch/' + data + '">' + data + '</a>'
 						}
-					}, {
+					}, 
+					{
+						targets: 1,
+						data: '1',
+						render: function (data, type, row, meta) {
+							return '<a href="/block/' + data + '">' + data + '</a>'
+						}
+					},
+					{
 						targets: 3,
 						data: '3',
 						render: function (data, type, row, meta) {
@@ -36,12 +44,22 @@
 						}
 					},
 					{
-						targets: 1,
-						data: '1',
+						targets: 9,
+						data: '9',
 						render: function (data, type, row, meta) {
-							return '<a href="/block/' + data + '">' + data + '</a>'
+							var r = ""
+							try {
+								r = decodeURIComponent(data.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'))
+							} catch(e) {
+								console.error('unable to render graffiti', data, e)
+								r = ""
+								var hex = data.toString()
+								for (var i = 0; i < hex.length; i += 2)
+									r += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
+							}
+							return r
 						}
-					}
+					},
 				]
 			});
 			$('#attestations').DataTable({
@@ -70,7 +88,7 @@
 						render: function (data, type, row, meta) {
 							return moment.unix(data).fromNow();
 						}
-					}
+					},
 				]
 			})
 		})
@@ -484,6 +502,7 @@
 													title="Proposers">P</span> /
 									<span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
 								<th>Exits</th>
+								<th>Graffiti</th>
 							</tr>
 							</thead>
 							<tbody></tbody>
