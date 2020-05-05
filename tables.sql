@@ -125,6 +125,7 @@ create table blocks (
     signature bytea not null,
     randaoreveal bytea not null,
     graffiti bytea not null,
+    graffiti_text text null,
     eth1data_depositroot bytea not null,
     eth1data_depositcount int not null,
     eth1data_blockhash bytea not null,

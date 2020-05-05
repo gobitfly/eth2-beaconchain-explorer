@@ -211,12 +211,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
 	}
 
-	if validatorPageData.Income7d == 0 {
-		validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
-	}
+	if len(balanceHistory) > 0 {
+		if validatorPageData.Income1d == 0 {
+			validatorPageData.Income1d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		}
 
-	if validatorPageData.Income31d == 0 {
-		validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		if validatorPageData.Income7d == 0 {
+			validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		}
+
+		if validatorPageData.Income31d == 0 {
+			validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		}
 	}
 
 	depositHistory := []struct {
