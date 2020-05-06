@@ -109,7 +109,6 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Blocks</h3>',
         suggestion: function(data) {
-          console.log('------', data)
           return `<div>${data.slot}: ${data.blockroot.substring(0, 16)}…</div>`
         }
       }
