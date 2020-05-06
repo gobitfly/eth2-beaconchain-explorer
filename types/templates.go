@@ -147,17 +147,9 @@ type ValidatorPageData struct {
 	Income1d                         int64
 	Income7d                         int64
 	Income31d                        int64
-	DailyProposalCount               []DailyProposalCount
+	Proposals                        [][]uint64
 	BalanceHistoryChartData          [][]float64
 	EffectiveBalanceHistoryChartData [][]float64
-}
-
-// DailyProposalCount is a struct for the daily proposal count data
-type DailyProposalCount struct {
-	Day      int64
-	Proposed uint
-	Missed   uint
-	Orphaned uint
 }
 
 // ValidatorBalanceHistory is a struct for the validator balance history data
@@ -479,10 +471,10 @@ type ChartsPageDataChart struct {
 }
 
 type DashboardData struct {
-	BalanceHistory      DashboardValidatorBalanceHistory `json:"balance_history"`
-	Earnings            DashboardEarnings                `json:"earnings"`
-	Validators          [][]interface{}                  `json:"validators"`
-	DailyProposalCounts []DailyProposalCount             `json:"daily_proposal_counts"`
+	BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
+	Earnings       DashboardEarnings                `json:"earnings"`
+	Validators     [][]interface{}                  `json:"validators"`
+	// DailyProposalCounts []DailyProposalCount             `json:"daily_proposal_counts"`
 }
 
 type DashboardValidatorBalanceHistory struct {

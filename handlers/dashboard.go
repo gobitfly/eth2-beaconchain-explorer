@@ -153,12 +153,12 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
-	blocks := []struct {
+	proposals := []struct {
 		Slot   uint64
 		Status uint64
 	}{}
 
-	err = db.DB.Select(&blocks, `
+	err = db.DB.Select(&proposals, `
 		SELECT slot, status
 		FROM blocks
 		WHERE proposer = ANY($1)
@@ -169,15 +169,15 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blocksResult := make([][]uint64, len(blocks))
-	for i, b := range blocks {
-		blocksResult[i] = []uint64{
+	proposalsResult := make([][]uint64, len(proposals))
+	for i, b := range proposals {
+		proposalsResult[i] = []uint64{
 			uint64(utils.SlotToTime(b.Slot).Unix()),
 			b.Status,
 		}
 	}
 
-	err = json.NewEncoder(w).Encode(blocksResult)
+	err = json.NewEncoder(w).Encode(proposalsResult)
 	if err != nil {
 		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
 	}
