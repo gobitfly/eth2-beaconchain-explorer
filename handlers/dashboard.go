@@ -153,89 +153,31 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
-	proposals := []struct {
-		Day    uint64
+	blocks := []struct {
+		Slot   uint64
 		Status uint64
-		Count  uint
 	}{}
 
-	err = db.DB.Select(&proposals, `
-		SELECT slot / 7200 AS day, status, COUNT(*) 
-		FROM blocks 
-		WHERE proposer = ANY($1) 
-		GROUP BY day, status 
-		ORDER BY day`, filter)
+	err = db.DB.Select(&blocks, `
+		SELECT slot, status
+		FROM blocks
+		WHERE proposer = ANY($1)
+		ORDER BY slot`, filter)
 	if err != nil {
-		logger.WithError(err).Error("Error retrieving Daily Proposed Blocks blocks count")
+		logger.WithError(err).Error("Error retrieving block-proposals")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
-	dailyProposalCount := []types.DailyProposalCount{}
-
-	for i := 0; i < len(proposals); i++ {
-		if i == len(proposals)-1 {
-			if proposals[i].Status == 1 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: proposals[i].Count,
-					Missed:   0,
-					Orphaned: 0,
-				})
-			} else if proposals[i].Status == 2 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: 0,
-					Missed:   proposals[i].Count,
-					Orphaned: 0,
-				})
-			} else if proposals[i].Status == 3 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: 0,
-					Missed:   0,
-					Orphaned: proposals[i].Count,
-				})
-			} else {
-				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
-			}
-		} else {
-			if proposals[i].Day == proposals[i+1].Day {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: proposals[i].Count,
-					Missed:   proposals[i+1].Count,
-					Orphaned: proposals[i+1].Count,
-				})
-				i++
-			} else if proposals[i].Status == 1 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: proposals[i].Count,
-					Missed:   0,
-					Orphaned: 0,
-				})
-			} else if proposals[i].Status == 2 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: 0,
-					Missed:   proposals[i].Count,
-					Orphaned: 0,
-				})
-			} else if proposals[i].Status == 3 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: 0,
-					Missed:   0,
-					Orphaned: proposals[i].Count,
-				})
-			} else {
-				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
-			}
+	blocksResult := make([][]uint64, len(blocks))
+	for i, b := range blocks {
+		blocksResult[i] = []uint64{
+			uint64(utils.SlotToTime(b.Slot).Unix()),
+			b.Status,
 		}
 	}
 
-	err = json.NewEncoder(w).Encode(dailyProposalCount)
+	err = json.NewEncoder(w).Encode(blocksResult)
 	if err != nil {
 		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
 	}
