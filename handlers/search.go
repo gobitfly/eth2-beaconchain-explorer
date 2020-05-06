@@ -3,13 +3,19 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
+	"eth2-exporter/version"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
 )
+
+var searchNotFoundTemplate = template.Must(template.New("searchnotfound").ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
 
 // Search handles search requests
 func Search(w http.ResponseWriter, r *http.Request) {
@@ -30,7 +36,25 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	} else if len(search) == 96 {
 		http.Redirect(w, r, "/validator/"+search, 301)
 	} else {
-		http.Error(w, "Not found", 404)
+		w.Header().Set("Content-Type", "text/html")
+		data := &types.PageData{
+			Meta: &types.Meta{
+				Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
+			},
+			ShowSyncingMessage:    services.IsSyncing(),
+			Active:                "search",
+			Data:                  nil,
+			Version:               version.Version,
+			ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
+			ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
+			ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		}
+		err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+		if err != nil {
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 	}
 }
 
