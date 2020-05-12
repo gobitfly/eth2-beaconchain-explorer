@@ -175,9 +175,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
-	cutoff1d := time.Now().Add(time.Hour * 24 * -1)
-	cutoff7d := time.Now().Add(time.Hour * 24 * 7 * -1)
-	cutoff31d := time.Now().Add(time.Hour * 24 * 31 * -1)
+	now := utils.EpochToTime(validatorPageData.Epoch)
+	cutoff1d := now.Add(time.Hour * 24 * -1)
+	cutoff7d := now.Add(time.Hour * 24 * 7 * -1)
+	cutoff31d := now.Add(time.Hour * 24 * 31 * -1)
 
 	for i, balance := range balanceHistory {
 		balanceTs := utils.EpochToTime(balance.Epoch)
@@ -196,16 +197,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(balanceHistory) > 0 {
-		if validatorPageData.Income1d == 0 {
-			validatorPageData.Income1d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		firstBalTime := utils.EpochToTime(balanceHistory[0].Epoch)
+		if firstBalTime.After(cutoff1d) {
+			validatorPageData.Income1d = int64(validatorPageData.CurrentBalance)
 		}
-
-		if validatorPageData.Income7d == 0 {
-			validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		if firstBalTime.After(cutoff7d) {
+			validatorPageData.Income7d = int64(validatorPageData.CurrentBalance)
 		}
-
-		if validatorPageData.Income31d == 0 {
-			validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		if firstBalTime.After(cutoff31d) {
+			validatorPageData.Income31d = int64(validatorPageData.CurrentBalance)
 		}
 	}
 
@@ -225,7 +225,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	for _, deposit := range depositHistory {
 		depositTs := utils.EpochToTime(deposit.Epoch)
-
 		if depositTs.After(cutoff1d) {
 			validatorPageData.Income1d -= int64(deposit.Amount)
 		}
