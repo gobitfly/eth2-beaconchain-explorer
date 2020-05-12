@@ -331,7 +331,7 @@ class Calculator {
 		p.networkOnlinePropability = parseInt(document.getElementById('staking-variable-onlinePropabilty').value)/100
 		p.price = parseFloat(document.getElementById('staking-variable-price').value)
 		p.priceChangePerMonth = parseInt(document.getElementById('staking-variable-priceChangePerMonth').value)/100
-		p.totalStakeMonthlyChange = parseInt(document.getElementById('staking-variable-totalStakeMonthlyChange').value)/100
+		// p.totalStakeMonthlyChange = parseInt(document.getElementById('staking-variable-totalStakeMonthlyChange').value)/100
 
 		p.stake = parseFloat(document.getElementById('staking-variable-yourStake').value)*1e9
 
@@ -388,12 +388,12 @@ class Calculator {
 		} else {
 			document.getElementById('staking-variable-priceChangePerMonth-validation').style.display = "none" 
 		} 
-		if (isNaN(p.totalStakeMonthlyChange) || p.totalStakeMonthlyChange < 0) {
-			p.totalStakeMonthlyChange = 0
-			document.getElementById('staking-variable-totalStakeMonthlyChange-validation').style.display = "initial" 
-		} else {
-			document.getElementById('staking-variable-totalStakeMonthlyChange-validation').style.display = "none" 
-		} 
+		// if (isNaN(p.totalStakeMonthlyChange) || p.totalStakeMonthlyChange < 0) {
+		// 	p.totalStakeMonthlyChange = 0
+		// 	document.getElementById('staking-variable-totalStakeMonthlyChange-validation').style.display = "initial" 
+		// } else {
+		// 	document.getElementById('staking-variable-totalStakeMonthlyChange-validation').style.display = "none" 
+		// } 
 		if (isNaN(p.initialCosts) || p.initialCosts < 0) {
 			p.initialCosts = 0
 			document.getElementById('staking-variable-initialCosts-validation').style.display = "initial" 
@@ -475,7 +475,7 @@ class Calculator {
 		var costsPerEpoch = this.params.monthlyCosts / epochsPerMonth
 
 		var priceChangePerEpoch = this.params.priceChangePerMonth / epochsPerMonth
-		var totalStakeChangePerMonth = this.params.totalStakeMonthlyChange / epochsPerMonth
+		// var totalStakeChangePerMonth = this.params.totalStakeMonthlyChange / epochsPerMonth
 		var onlinePropabilty = this.params.networkOnlinePropability
 		var totalStake = this.params.networkStake
 		var valStake = 32e9
@@ -495,7 +495,7 @@ class Calculator {
 		this.fillChartData(now, incomeDollar, costs, price)
 		// this.fillEarningChartData(now, incomeDollar, costs, price)
 		for (var i=0; i < epochsPerYear; i++) {
-			totalStake = totalStake * ( 1 + totalStakeChangePerMonth)
+			// totalStake = totalStake * ( 1 + totalStakeChangePerMonth)
 
 			var allVal = (totalStake / valStake) | 0
 
@@ -870,11 +870,11 @@ td,th {
 						<input id="staking-variable-totalStake-slider" class="form-control" type="range" value=1100000 min=0 max=100e6>
 						<span id="staking-variable-totalStake-validation" class="input-validation">Total stake must be greater or equal to 524384 (minimum stake required)</span>
 					</div>
-					<div class="setting">
+					<!-- <div class="setting">
 						<h6>Monthly total stake change in %</h6>
 						<input id="staking-variable-totalStakeMonthlyChange" class="staking-variable form-control" type="text" value=0>
 						<span  id="staking-variable-totalStakeMonthlyChange-validation" class="input-validation">Total stake change must be a percentage greater or equal to 0</span>
-					</div>
+					</div> -->
 					<div class="setting">
 						<h6>Online propability % <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Online propability is the average propability of all active validators to be online and to fulfill their duties."></i></h6>
 							<input id="staking-variable-onlinePropabilty" class="staking-variable form-control" type="text" value=90>
