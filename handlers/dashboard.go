@@ -77,8 +77,6 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DashboardData() {}
-
 func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

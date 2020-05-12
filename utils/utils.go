@@ -112,7 +112,7 @@ func SlotToTime(slot uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.SecondsPerSlot), 0)
 }
 
-// TimeToSlot will return time to slot in seconds
+// TimeToSlot will return time to slot in seconds, if the time is before the first slot (0) it will return the first slot (0)
 func TimeToSlot(timestamp uint64) uint64 {
 	if Config.Chain.GenesisTimestamp > timestamp {
 		return 0
@@ -125,7 +125,7 @@ func EpochToTime(epoch uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
 }
 
-// TimeToEpoch will return an epoch for a given time
+// TimeToEpoch will return an epoch for a given time, if the time is before the first epoch (0) it will return the first epoch (0)
 func TimeToEpoch(ts time.Time) int64 {
 	if int64(Config.Chain.GenesisTimestamp) > ts.Unix() {
 		return 0
