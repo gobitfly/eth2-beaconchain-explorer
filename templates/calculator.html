@@ -199,7 +199,8 @@ class Calculator {
 			self.run()
 		})
 
-		document.getElementById('staking-variable-totalStake-slider').oninput = function(){
+		document.getElementById('staking-variable-totalStake-slider').oninput = function() {
+			document.getElementById('staking-variable-totalStake-percentage').innerText = `${((this.value * 1e9 / self.config.totalEthSupply) * 100).toFixed(2)} %`
 			document.getElementById('staking-variable-totalStake').value = this.value
 		}
 		document.getElementById('staking-variable-totalStake-slider').onchange = function(){
@@ -440,6 +441,7 @@ class Calculator {
 
 		}
 		document.getElementById('copy-button').setAttribute('data-clipboard-text', newUrl)
+		document.getElementById('twitter-share').setAttribute('data-url', newUrl)
 		window.history.replaceState(null, 'Calculator', newUrl)
 		// var qryStr = '?validators=' + state.validators.join(',')
     // var newUrl = window.location.pathname + qryStr
@@ -654,7 +656,7 @@ class Calculator {
 				data: this.result.incomeDollarChartData,
 				color: 'var(--blue, blue)'
 		})
-		if (this.params.showCosts && !this.params.stakeWithPool) {
+		if (this.config.showCosts && !this.params.stakeWithPool) {
 			breakOptions.series.push({
 					name: 'Cost',
 					data: this.result.costsDollarChartData,
@@ -887,10 +889,13 @@ td,th {
 		</div>
 	</div>
 	<div class="col-md-7">
-				<h5 class="my-3 col-10">Estimated Rewards <button data-toggle="tooltip" title="Copy Configuration" id="copy-button" data-clipboard-text="https://beaconcha.in/calculator" type="button" class="btn btn-primary btn-sm m-1">
-					<i class="fa fa-copy" style="width: 15px;"></i>
-				</button></h5> 
-				
+				<h5 class="my-3 px-0 col-10">Estimated Rewards</h5> 
+				<div class="my-3 px-0 col-10 d-flex justif-content-center align-items-center">
+					<button style="width:28px; height:28px;" data-toggle="tooltip" title="Copy Link to Configuration" id="copy-button" data-clipboard-text="https://beaconcha.in/calculator" type="button" class="d-flex justify-content-center align-items-center btn btn-primary btn-sm m-1">
+						<i class="fa fa-copy"></i>
+					</button>
+					<a id="twitter-share" href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-size="large" data-text="Find my Ethereum 2.0 validator calculations here!" data-hashtags="ethereum" data-related="@etherchain_org" data-show-count="false">Tweet</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+			</div>
 		<div id="stakeChart" class="card my-3"></div>
 		<div id="breakEvenChart" class="card my-3"></div>
 		<div class="card my-3 table-responsive">
