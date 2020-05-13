@@ -4,7 +4,6 @@
 <script src="/js/highcharts-global-options.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 <script>
-
 	// share
 	document.addEventListener('DOMContentLoaded', function() {
 		document.getElementById('twitter-share').addEventListener('click', function(e){
@@ -15,10 +14,10 @@
 			e.preventDefault()
 			window.open('https://facebook.com/sharer/sharer.php?u='+encodeURIComponent(window.location.href)+'&t=Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!')
 		},false)
-		document.getElementById('linkedin-share').addEventListener('click', function(e){
-			e.preventDefault()
-			window.open('https://linkedin.com/shareArticle?mini=true&url='+encodeURIComponent(window.location.href)+'&title=Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!')
-		},false)
+		// document.getElementById('linkedin-share').addEventListener('click', function(e){
+		// 	e.preventDefault()
+		// 	window.open('https://linkedin.com/shareArticle?mini=true&url='+encodeURIComponent(window.location.href)+'&title=Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!')
+		// },false)
 	})
 
 var clipboard = new ClipboardJS('#copy-button');
@@ -915,9 +914,9 @@ td,th {
 					<button id="facebook-share" style="width:38px; height:28px;background-color:#4267B2;color:#fff" type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
 						<i class="fab fa-facebook-f"></i>
 					</button>
-					<button id="linkedin-share" style="width:38px; height:28px;background-color:#2867B2;color:#fff" type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
+					<!-- <button id="linkedin-share" style="width:38px; height:28px;background-color:#2867B2;color:#fff" type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
 						<i class="fab fa-linkedin-in"></i>
-					</button>
+					</button> -->
 
 					<!-- <div class="m-1 d-flex align-items-center" id="twitter-container">
 						<a id="twitter-share" href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-size="large" data-text="Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!" data-hashtags="ethereum" data-related="@etherchain_org" data-show-count="false">Tweet</a>
