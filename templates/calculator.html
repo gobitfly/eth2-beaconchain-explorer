@@ -5,6 +5,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 <script>
 
+	// share
+
+function createTwitterButton() {
+	// $('#twitter-container').append('<a id="twitter-share m-1" style="display:none;" href="https://twitter.com/share?ref_src=twsrc%5Etfw" data-url="'+window.location.href+'" class="twitter-share-button" data-size="large" data-text="Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!" data-hashtags="ethereum" data-related="@etherchain_org" data-show-count="false">Tweet</a>')
+	// twttr.widgets.load()
+}
+
 var clipboard = new ClipboardJS('#copy-button');
 
 var copyButton = $('#copy-button')
@@ -441,7 +448,8 @@ class Calculator {
 
 		}
 		document.getElementById('copy-button').setAttribute('data-clipboard-text', newUrl)
-		document.getElementById('twitter-share').setAttribute('data-url', newUrl)
+		createTwitterButton()
+		// document.getElementById('twitter-share').setAttribute('data-url', newUrl)
 		window.history.replaceState(null, 'Calculator', newUrl)
 		// var qryStr = '?validators=' + state.validators.join(',')
     // var newUrl = window.location.pathname + qryStr
@@ -769,7 +777,7 @@ td,th {
 
 
 <div class="row my-3">
-	<div class="col-xl-4 col-md-5 col-sm-6 py-3 variables">
+	<div class="col-xl-4 col-md-5 col-sm-12 py-3 variables">
 		<div class="stake">
 				<h5 class="mb-0">Your Ethereum Stake <span id="yourStake-currency">ETH</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="This value represents the amount of ETH you want to use for stacking. If you are not staking on a pool it must be a multiple of 32, since validators can only join the network with a minimum of 32 ETH."></i></h5>
 				<div class="justify-content-between d-flex p-3 pb-0 align-content-center">
@@ -888,13 +896,16 @@ td,th {
 		</div>
 		</div>
 	</div>
-	<div class="col-md-7">
+	<div class="col-md-7 col-sm-12">
 				<h5 class="my-3 px-0 col-10">Estimated Rewards</h5> 
-				<div class="my-3 px-0 col-10 d-flex justif-content-center align-items-center">
+				<div style="height: calc(54px - 1rem);" class="my-3 px-0 col-10 d-flex justif-content-center align-items-center">
 					<button style="width:28px; height:28px;" data-toggle="tooltip" title="Copy Link to Configuration" id="copy-button" data-clipboard-text="https://beaconcha.in/calculator" type="button" class="d-flex justify-content-center align-items-center btn btn-primary btn-sm m-1">
 						<i class="fa fa-copy"></i>
 					</button>
-					<a id="twitter-share" href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-size="large" data-text="Find my Ethereum 2.0 validator calculations here!" data-hashtags="ethereum" data-related="@etherchain_org" data-show-count="false">Tweet</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+					<div class="m-1 d-flex align-items-center" id="twitter-container">
+						<a id="twitter-share" href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-size="large" data-text="Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!" data-hashtags="ethereum" data-related="@etherchain_org" data-show-count="false">Tweet</a>
+					</div>
+					<div class="fb-share-button m-1" data-href="https://developers.facebook.com/docs/plugins/" data-layout="button" data-size="large"><a target="_blank" href="https://beaconcha.in/calculator" class="fb-xfbml-parse-ignore">Share</a></div>
 			</div>
 		<div id="stakeChart" class="card my-3"></div>
 		<div id="breakEvenChart" class="card my-3"></div>
@@ -1083,4 +1094,7 @@ td,th {
 		</div>
 	</div>
 </div>
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v7.0"></script>
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 {{ end }}
