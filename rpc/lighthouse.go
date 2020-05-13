@@ -65,12 +65,14 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 }
 
 // GetValidatorQueue returns an empty validator queue as the Lighthouse RPC api does not support receiving the validator queue.
-func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, map[string]uint64, error) {
+func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	return &types.ValidatorQueue{
-		ChurnLimit:           0,
-		ActivationPublicKeys: [][]byte{},
-		ExitPublicKeys:       [][]byte{},
-	}, make(map[string]uint64), nil
+		ChurnLimit:                 0,
+		ActivationPublicKeys:       [][]byte{},
+		ExitPublicKeys:             [][]byte{},
+		ActivationValidatorIndices: []uint64{},
+		ExitValidatorIndices:       []uint64{},
+	}, nil
 }
 
 // GetAttestationPool returns an empty Attestation as the Lighthouse RPC api does not support receiving the attestation pool.

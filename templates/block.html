@@ -3,6 +3,10 @@
         function viewGraffitiAs(type) {
             var graffitiHex = $("[aria-graffiti]").attr("aria-graffiti");
 
+            if (!graffitiHex) {
+            	return
+			}
+
             if (type === "hex") {
                 $("#graffiti").text("0x" + graffitiHex)
             } else {
@@ -38,6 +42,8 @@
                 location.hash = e.target.hash;
             }
         })
+
+		viewGraffitiAs('utf-8')
 	</script>
 {{end}}
 
@@ -159,10 +165,10 @@
 							<div class="col-md-2">
 								<div class="btn-group btn-group-toggle" data-toggle="buttons">
 									<label class="btn btn-secondary active btn-sm" onclick="viewGraffitiAs('hex')">
-										<input type="radio" name="options" id="optionHex" checked> Hex
+										<input type="radio" name="options" id="optionHex"> Hex
 									</label>
 									<label class="btn btn-secondary btn-sm" onclick="viewGraffitiAs('utf-8')">
-										<input type="radio" name="options" id="optionUTF8"> UTF-8
+										<input type="radio" name="options" id="optionUTF8" checked> UTF-8
 									</label>
 								</div>
 							</div>

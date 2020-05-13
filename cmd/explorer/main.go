@@ -16,9 +16,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
-	negronilogrus "github.com/meatballhat/negroni-logrus"
 	"github.com/phyber/negroni-gzip/gzip"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/negroni"
 	"github.com/zesik/proxyaddr"
 )
@@ -122,16 +120,16 @@ func main() {
 		n := negroni.New(negroni.NewRecovery())
 
 		// Customize the logging middleware to include a proper module entry for the frontend
-		frontendLogger := negronilogrus.NewMiddleware()
-		frontendLogger.Before = func(entry *logrus.Entry, request *http.Request, s string) *logrus.Entry {
-			entry = negronilogrus.DefaultBefore(entry, request, s)
-			return entry.WithField("module", "frontend")
-		}
-		frontendLogger.After = func(entry *logrus.Entry, writer negroni.ResponseWriter, duration time.Duration, s string) *logrus.Entry {
-			entry = negronilogrus.DefaultAfter(entry, writer, duration, s)
-			return entry.WithField("module", "frontend")
-		}
-		n.Use(frontendLogger)
+		//frontendLogger := negronilogrus.NewMiddleware()
+		//frontendLogger.Before = func(entry *logrus.Entry, request *http.Request, s string) *logrus.Entry {
+		//	entry = negronilogrus.DefaultBefore(entry, request, s)
+		//	return entry.WithField("module", "frontend")
+		//}
+		//frontendLogger.After = func(entry *logrus.Entry, writer negroni.ResponseWriter, duration time.Duration, s string) *logrus.Entry {
+		//	entry = negronilogrus.DefaultAfter(entry, writer, duration, s)
+		//	return entry.WithField("module", "frontend")
+		//}
+		//n.Use(frontendLogger)
 
 		n.Use(gzip.Gzip(gzip.DefaultCompression))
 

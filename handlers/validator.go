@@ -77,22 +77,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Title = fmt.Sprintf("%v - Validator %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
-	err = db.DB.Get(&validatorPageData, `SELECT 
-											validators.validatorindex, 
-											validators.withdrawableepoch, 
-											validators.effectivebalance, 
-											validators.slashed, 
-											validators.activationeligibilityepoch, 
-											validators.activationepoch, 
-											validators.exitepoch,
-											validators.lastattestationslot,
-											COALESCE(validator_balances.balance, 0) AS balance
-										FROM validators
-										LEFT JOIN validator_balances 
-											ON validators.validatorindex = validator_balances.validatorindex
-											AND validator_balances.epoch = $1
-										WHERE validators.validatorindex = $2
-										LIMIT 1`, services.LatestEpoch(), index)
+	err = db.DB.Get(&validatorPageData, `
+		SELECT 
+			validators.validatorindex, 
+			validators.withdrawableepoch, 
+			validators.effectivebalance, 
+			validators.slashed, 
+			validators.activationeligibilityepoch, 
+			validators.activationepoch, 
+			validators.exitepoch, 
+			validators.lastattestationslot, 
+			COALESCE(validator_balances.balance, 0) AS balance 
+		FROM validators 
+		LEFT JOIN validator_balances 
+			ON validators.validatorindex = validator_balances.validatorindex 
+			AND validator_balances.epoch = $1 
+		WHERE validators.validatorindex = $2 
+		LIMIT 1`, services.LatestEpoch(), index)
 	if err != nil {
 		logger.Printf("Error retrieving validator page data: %v", err)
 
@@ -210,12 +211,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
 	}
 
-	if validatorPageData.Income7d == 0 {
-		validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
-	}
+	if len(balanceHistory) > 0 {
+		if validatorPageData.Income1d == 0 {
+			validatorPageData.Income1d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		}
 
-	if validatorPageData.Income31d == 0 {
-		validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		if validatorPageData.Income7d == 0 {
+			validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		}
+
+		if validatorPageData.Income31d == 0 {
+			validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
+		}
 	}
 
 	depositHistory := []struct {
@@ -346,21 +353,24 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var blocks []*types.IndexPageDataBlocks
-	err = db.DB.Select(&blocks, `SELECT blocks.epoch, 
-											    blocks.slot,  
-											    blocks.proposer,  
-											    blocks.blockroot, 
-											    blocks.parentroot, 
-											    blocks.attestationscount, 
-											    blocks.depositscount, 
-											    blocks.voluntaryexitscount, 
-											    blocks.proposerslashingscount, 
-											    blocks.attesterslashingscount, 
-											    blocks.status 
-										FROM blocks 
-										WHERE blocks.proposer = $1
-										ORDER BY blocks.slot DESC
-										LIMIT $2 OFFSET $3`, index, length, start)
+	err = db.DB.Select(&blocks, `
+		SELECT 
+			blocks.epoch, 
+			blocks.slot, 
+			blocks.proposer, 
+			blocks.blockroot, 
+			blocks.parentroot, 
+			blocks.attestationscount, 
+			blocks.depositscount, 
+			blocks.voluntaryexitscount, 
+			blocks.proposerslashingscount, 
+			blocks.attesterslashingscount, 
+			blocks.status, 
+			blocks.graffiti 
+		FROM blocks 
+		WHERE blocks.proposer = $1
+		ORDER BY blocks.slot DESC
+		LIMIT $2 OFFSET $3`, index, length, start)
 
 	if err != nil {
 		logger.Errorf("error retrieving proposed blocks data: %v", err)
@@ -380,6 +390,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v", b.Deposits),
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
 			fmt.Sprintf("%v", b.Exits),
+			fmt.Sprintf("%x", b.Graffiti),
 		}
 	}
 
@@ -444,14 +455,16 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var blocks []*types.ValidatorAttestation
-	err = db.DB.Select(&blocks, `SELECT attestation_assignments.epoch, 
-											    attestation_assignments.attesterslot,  
-											    attestation_assignments.committeeindex,  
-											    attestation_assignments.status
-										FROM attestation_assignments 
-										WHERE validatorindex = $1
-										ORDER BY epoch desc, attesterslot DESC
-										LIMIT $2 OFFSET $3`, index, length, start)
+	err = db.DB.Select(&blocks, `
+		SELECT 
+			attestation_assignments.epoch, 
+			attestation_assignments.attesterslot, 
+			attestation_assignments.committeeindex, 
+			attestation_assignments.status 
+		FROM attestation_assignments 
+		WHERE validatorindex = $1
+		ORDER BY epoch desc, attesterslot DESC
+		LIMIT $2 OFFSET $3`, index, length, start)
 
 	if err != nil {
 		logger.Errorf("error retrieving validator attestations data: %v", err)
