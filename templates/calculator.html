@@ -6,11 +6,20 @@
 <script>
 
 	// share
-
-function createTwitterButton() {
-	// $('#twitter-container').append('<a id="twitter-share m-1" style="display:none;" href="https://twitter.com/share?ref_src=twsrc%5Etfw" data-url="'+window.location.href+'" class="twitter-share-button" data-size="large" data-text="Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!" data-hashtags="ethereum" data-related="@etherchain_org" data-show-count="false">Tweet</a>')
-	// twttr.widgets.load()
-}
+	document.addEventListener('DOMContentLoaded', function() {
+		document.getElementById('twitter-share').addEventListener('click', function(e){
+			e.preventDefault()
+			window.open('https://twitter.com/share?url='+encodeURIComponent(window.location.href)+'&text=Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!&hashtag=ethereum&related=@etherchain_org')
+		},false)
+		document.getElementById('facebook-share').addEventListener('click', function(e){
+			e.preventDefault()
+			window.open('https://facebook.com/sharer/sharer.php?u='+encodeURIComponent(window.location.href)+'&t=Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!')
+		},false)
+		document.getElementById('linkedin-share').addEventListener('click', function(e){
+			e.preventDefault()
+			window.open('https://linkedin.com/shareArticle?mini=true&url='+encodeURIComponent(window.location.href)+'&title=Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!')
+		},false)
+	})
 
 var clipboard = new ClipboardJS('#copy-button');
 
@@ -447,10 +456,8 @@ class Calculator {
 			newUrl += key + '=' + value
 
 		}
-		document.getElementById('copy-button').setAttribute('data-clipboard-text', newUrl)
-		createTwitterButton()
-		// document.getElementById('twitter-share').setAttribute('data-url', newUrl)
 		window.history.replaceState(null, 'Calculator', newUrl)
+		document.getElementById('copy-button').setAttribute('data-clipboard-text', window.location.href)
 		// var qryStr = '?validators=' + state.validators.join(',')
     // var newUrl = window.location.pathname + qryStr
     // window.history.pushState(null, 'Dashboard', newUrl)
@@ -899,13 +906,23 @@ td,th {
 	<div class="col-md-7 col-sm-12">
 				<h5 class="my-3 px-0 col-10">Estimated Rewards</h5> 
 				<div style="height: calc(54px - 1rem);" class="my-3 px-0 col-10 d-flex justif-content-center align-items-center">
-					<button style="width:28px; height:28px;" data-toggle="tooltip" title="Copy Link to Configuration" id="copy-button" data-clipboard-text="https://beaconcha.in/calculator" type="button" class="d-flex justify-content-center align-items-center btn btn-primary btn-sm m-1">
+					<button style="width:38px; height:28px;" data-toggle="tooltip" title="Copy Link to Configuration" id="copy-button" data-clipboard-text="https://beaconcha.in/calculator" type="button" class="d-flex justify-content-center align-items-center btn btn-primary btn-sm m-1">
 						<i class="fa fa-copy"></i>
 					</button>
-					<div class="m-1 d-flex align-items-center" id="twitter-container">
+					<button id="twitter-share" style="width:38px; height:28px;color:#fff;background-color:#1DA1F2" type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
+						<i class="fab fa-twitter"></i>
+					</button>
+					<button id="facebook-share" style="width:38px; height:28px;background-color:#4267B2;color:#fff" type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
+						<i class="fab fa-facebook-f"></i>
+					</button>
+					<button id="linkedin-share" style="width:38px; height:28px;background-color:#2867B2;color:#fff" type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">
+						<i class="fab fa-linkedin-in"></i>
+					</button>
+
+					<!-- <div class="m-1 d-flex align-items-center" id="twitter-container">
 						<a id="twitter-share" href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-size="large" data-text="Calculate your potential Ethereum 2.0 earnings via the @etherchain_org beaconcha.in explorer!" data-hashtags="ethereum" data-related="@etherchain_org" data-show-count="false">Tweet</a>
 					</div>
-					<div class="fb-share-button m-1" data-href="https://developers.facebook.com/docs/plugins/" data-layout="button" data-size="large"><a target="_blank" href="https://beaconcha.in/calculator" class="fb-xfbml-parse-ignore">Share</a></div>
+					<div class="fb-share-button m-1" data-href="https://beaconcha.in/calculator" data-layout="button" data-size="large"><a target="_blank" href="https://beaconcha.in/calculator" class="fb-xfbml-parse-ignore">Share</a></div> -->
 			</div>
 		<div id="stakeChart" class="card my-3"></div>
 		<div id="breakEvenChart" class="card my-3"></div>
@@ -1095,6 +1112,4 @@ td,th {
 	</div>
 </div>
 <div id="fb-root"></div>
-<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v7.0"></script>
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 {{ end }}
