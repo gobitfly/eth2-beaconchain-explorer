@@ -156,9 +156,9 @@ class Calculator {
 			["stakingFee", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, true, function(value){ document.getElementById('staking-variable-stakingFee').setAttribute('value', value) }],
 			["reinvest", function(v) { return v }, function(v) {return v}, true, function(value){ document.getElementById('staking-variable-reinvest').checked = value === 'true' } ],
 			["networkStake", function(v){ return v / 1e9 }, function(v) {return parseFloat(v) * 1e9}, true, function(value){ document.getElementById('staking-variable-totalStake').setAttribute('value', value); document.getElementById('staking-variable-totalStake-slider').setAttribute('value', value) }],
-			// ["networkStakePercent", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, false, function(value){ document.getElementById('staking-variable-totalStakeMonthlyChange').setAttribute('value', value) }, ''],
+			// ["networkStakePercent", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, true, function(value){ document.getElementById('staking-variable-totalStakeMonthlyChange').setAttribute('value', value) }],
 			["networkOnlinePropability", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, true, function(value){ document.getElementById('staking-variable-onlinePropabilty').setAttribute('value', value); document.getElementById('staking-variable-onlinePropabilty-slider').setAttribute('value', value) }],
-			["totalStakeMonthlyChange", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, false, function(value){ document.getElementById('staking-variable-totalStakeMonthlyChange').setAttribute('value', value) }],
+			["totalStakeMonthlyChange", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, true, function(value){ document.getElementById('staking-variable-totalStakeMonthlyChange').setAttribute('value', value) }],
 		]
 
 		
@@ -207,8 +207,9 @@ class Calculator {
 			document.getElementById('staking-variable-totalStake-percentage').innerText = `${((this.value * 1e9 / self.config.totalEthSupply) * 100).toFixed(2)} %`
 			document.getElementById('staking-variable-totalStake').value = this.value
 		}
-		document.getElementById('staking-variable-totalStake-slider').onchange = function(){
+		document.getElementById('staking-variable-totalStake-slider').onchange = () => {
 			self.run()
+			this.setUrlParams()
 		}
 		document.getElementById('staking-variable-totalStake').addEventListener('input',function(){
 			document.getElementById('staking-variable-totalStake-slider').value = this.value
@@ -217,11 +218,22 @@ class Calculator {
 		document.getElementById('staking-variable-onlinePropabilty-slider').oninput = function(){
 			document.getElementById('staking-variable-onlinePropabilty').value = this.value
 		}
-		document.getElementById('staking-variable-onlinePropabilty-slider').onchange = function(){
+		document.getElementById('staking-variable-onlinePropabilty-slider').onchange = () => {
 			self.run()
+			this.setUrlParams()
 		}
 		document.getElementById('staking-variable-onlinePropabilty').addEventListener('input',function(){
 			document.getElementById('staking-variable-onlinePropabilty-slider').value = this.value
+		})
+		document.getElementById('staking-variable-totalStakeMonthlyChange-slider').oninput = function(){
+			document.getElementById('staking-variable-totalStakeMonthlyChange').value = this.value
+		}
+		document.getElementById('staking-variable-totalStakeMonthlyChange-slider').onchange = () => {
+			self.run()
+			this.setUrlParams()
+		}
+		document.getElementById('staking-variable-totalStakeMonthlyChange').addEventListener('input',function(){
+			document.getElementById('staking-variable-totalStakeMonthlyChange-slider').value = this.value
 		})
 	}
 	setUrlParams() {
@@ -375,12 +387,19 @@ class Calculator {
 		} else {
 			document.getElementById('staking-variable-priceChangePerMonth-validation').style.display = "none" 
 		} 
-		if (isNaN(p.totalStakeMonthlyChange) || p.totalStakeMonthlyChange < 0) {
-			p.totalStakeMonthlyChange = 0
+		if (isNaN(p.totalStakeMonthlyChange) || p.totalStakeMonthlyChange < -100 || p.totalStakeMonthlyChange > 100) {
+			if (p.totalStakeMonthlyChange > 100) {
+				p.totalStakeMonthlyChange = 100
+			} else if (p.totalStakeMonthlyChange < -100) {
+				p.totalStakeMonthlyChange = - 100
+			} else {
+			  p.totalStakeMonthlyChange = 0
+			}
 			document.getElementById('staking-variable-totalStakeMonthlyChange-validation').style.display = "initial" 
 		} else {
 			document.getElementById('staking-variable-totalStakeMonthlyChange-validation').style.display = "none" 
-		} 
+		}
+		
 		if (isNaN(p.initialCosts) || p.initialCosts < 0) {
 			p.initialCosts = 0
 			document.getElementById('staking-variable-initialCosts-validation').style.display = "initial" 
@@ -430,10 +449,11 @@ class Calculator {
 		var epochsPerMonth = epochsPerDay * 31
 		var epochsPerYear = epochsPerDay * 365
 
+ 
+
 		var costsPerEpoch = this.params.monthlyCosts / epochsPerMonth
 
 		var priceChangePerEpoch = this.params.priceChangePerMonth / epochsPerMonth
-		// var totalStakeChangePerMonth = this.params.totalStakeMonthlyChange / epochsPerMonth
 		var onlinePropabilty = this.params.networkOnlinePropability
 		var totalStake = this.params.networkStake
 		var valStake = 32e9
@@ -451,10 +471,20 @@ class Calculator {
 
 		this.fillChartData(now, incomeDollar, costs, price)
 		// this.fillEarningChartData(now, incomeDollar, costs, price)
-		for (var i=0; i < epochsPerYear; i++) {
-			// totalStake = totalStake * ( 1 + totalStakeChangePerMonth)
 
+		for (var i=0; i < epochsPerYear; i++) {
+			var threshold = Math.max(4, Math.floor((totalStake / valStake | 0) / Math.pow(2, 16)))
+		  var maxStakeGrowth = threshold * valStake
+
+
+			var churn = maxStakeGrowth * this.params.totalStakeMonthlyChange
+			totalStake += churn
+
+
+			baseReward = valStake*baseRewardFactor/(baseRewardsPerEpoch*Math.sqrt(totalStake))
+			
 			var allVal = (totalStake / valStake) | 0
+
 
 			var onlineVal = (allVal * onlinePropabilty) | 0 
 			var offlineVal = allVal - onlineVal
@@ -821,9 +851,10 @@ td,th {
 						<span id="staking-variable-totalStake-validation" class="input-validation">Total stake must be greater or equal to 524384 (minimum stake required)</span>
 					</div>
 					<div class="setting">
-						<h6>Monthly total stake change in %</h6>
+						<h6>Churn rate % <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="The churn rate indicates how many validators join or leave the network. A positive value would indicate a net increase in the number of staking validators."></i></h6>
 						<input id="staking-variable-totalStakeMonthlyChange" class="staking-variable form-control" type="text" value=0>
-						<span  id="staking-variable-totalStakeMonthlyChange-validation" class="input-validation">Total stake change must be a percentage greater or equal to 0</span>
+						<input id="staking-variable-totalStakeMonthlyChange-slider" class="form-control" type="range" value=0 min=-100 max=100>
+						<span  id="staking-variable-totalStakeMonthlyChange-validation" class="input-validation">The churn rate must be percentage between -100 and 100</span>
 					</div>
 					<div class="setting">
 						<h6>Online propability % <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Online propability is the average propability of all active validators to be online and to fulfill their duties."></i></h6>
@@ -859,8 +890,8 @@ td,th {
 				<tbody>
 					<tr>
 						<th>Duration</th>
-						<th>Ethereum Stake</th>
-						<th>Eth Reward</th>
+						<th>ETH Stake</th>
+						<th>ETH Reward</th>
 						<th>Return</th>
 						<th>Return in %</th>
 					</tr>
