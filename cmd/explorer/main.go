@@ -102,6 +102,8 @@ func main() {
 		router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
 		router.HandleFunc("/validators", handlers.Validators).Methods("GET")
 		router.HandleFunc("/validators/data", handlers.ValidatorsData).Methods("GET")
+		router.HandleFunc("/validators/slashings", handlers.ValidatorsSlashings).Methods("GET")
+		router.HandleFunc("/validators/slashings/data", handlers.ValidatorsSlashingsData).Methods("GET")
 		router.HandleFunc("/validators/leaderboard", handlers.ValidatorsLeaderboard).Methods("GET")
 		router.HandleFunc("/validators/leaderboard/data", handlers.ValidatorsLeaderboardData).Methods("GET")
 		router.HandleFunc("/dashboard", handlers.Dashboard).Methods("GET")

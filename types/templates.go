@@ -494,3 +494,11 @@ type DashboardEarnings struct {
 	LastWeek  int64 `json:"lastWeek"`
 	LastMonth int64 `json:"lastMonth"`
 }
+
+type ValidatorAttestationSlashing struct {
+	Epoch                  uint64        `db:"epoch" json:"epoch,omitempty"`
+	Slot                   uint64        `db:"slot" json:"slot,omitempty"`
+	Proposer               uint64        `db:"proposer" json:"proposer,omitempty"`
+	Attestestation1Indices pq.Int64Array `db:"attestation1_indices" json:"attestation1_indices,omitempty"`
+	Attestestation2Indices pq.Int64Array `db:"attestation2_indices" json:"attestation2_indices,omitempty"`
+}
