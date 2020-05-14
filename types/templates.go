@@ -327,26 +327,26 @@ type BlockPageVoluntaryExits struct {
 
 // BlockPageAttesterSlashing is a struct to hold data for attester slashings on the block page
 type BlockPageAttesterSlashing struct {
-	BlockSlot                    uint64        `db:"block_slot"`
-	BlockIndex                   uint64        `db:"block_index"`
-	Attestation1Signature        []byte        `db:"attestation1_signature"`
-	Attestation1Slot             uint64        `db:"attestation1_slot"`
-	Attestation1Index            uint64        `db:"attestation1_index"`
-	Attestation1BeaconBlockRoot  []byte        `db:"attestation1_beaconblockroot"`
-	Attestation1SourceEpoch      uint64        `db:"attestation1_source_epoch"`
-	Attestation1SourceRoot       []byte        `db:"attestation1_source_root"`
-	Attestation1TargetEpoch      uint64        `db:"attestation1_target_epoch"`
-	Attestation1TargetRoot       []byte        `db:"attestation1_target_root"`
-	Attestation1AttestingIndices pq.Int64Array `db:"attestation1_attesting_indices"`
-	Attestation2Signature        []byte        `db:"attestation2_signature"`
-	Attestation2Slot             uint64        `db:"attestation2_slot"`
-	Attestation2Index            uint64        `db:"attestation2_index"`
-	Attestation2BeaconBlockRoot  []byte        `db:"attestation2_beaconblockroot"`
-	Attestation2SourceEpoch      uint64        `db:"attestation2_source_epoch"`
-	Attestation2SourceRoot       []byte        `db:"attestation2_source_root"`
-	Attestation2TargetEpoch      uint64        `db:"attestation2_target_epoch"`
-	Attestation2TargetRoot       []byte        `db:"attestation2_target_root"`
-	Attestation2AttestingIndices pq.Int64Array `db:"attestation2_attesting_indices"`
+	BlockSlot                   uint64        `db:"block_slot"`
+	BlockIndex                  uint64        `db:"block_index"`
+	Attestation1Indices         pq.Int64Array `db:"attestation1_indices"`
+	Attestation1Signature       []byte        `db:"attestation1_signature"`
+	Attestation1Slot            uint64        `db:"attestation1_slot"`
+	Attestation1Index           uint64        `db:"attestation1_index"`
+	Attestation1BeaconBlockRoot []byte        `db:"attestation1_beaconblockroot"`
+	Attestation1SourceEpoch     uint64        `db:"attestation1_source_epoch"`
+	Attestation1SourceRoot      []byte        `db:"attestation1_source_root"`
+	Attestation1TargetEpoch     uint64        `db:"attestation1_target_epoch"`
+	Attestation1TargetRoot      []byte        `db:"attestation1_target_root"`
+	Attestation2Indices         pq.Int64Array `db:"attestation2_indices"`
+	Attestation2Signature       []byte        `db:"attestation2_signature"`
+	Attestation2Slot            uint64        `db:"attestation2_slot"`
+	Attestation2Index           uint64        `db:"attestation2_index"`
+	Attestation2BeaconBlockRoot []byte        `db:"attestation2_beaconblockroot"`
+	Attestation2SourceEpoch     uint64        `db:"attestation2_source_epoch"`
+	Attestation2SourceRoot      []byte        `db:"attestation2_source_root"`
+	Attestation2TargetEpoch     uint64        `db:"attestation2_target_epoch"`
+	Attestation2TargetRoot      []byte        `db:"attestation2_target_root"`
 }
 
 // BlockPageProposerSlashing is a struct to hold data for proposer slashings on the block page

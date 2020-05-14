@@ -162,6 +162,7 @@ drop table if exists blocks_attesterslashings;
 create table blocks_attesterslashings (
     block_slot int not null,
     block_index int not null,
+    attestation1_indices integer[] not null,
     attestation1_signature bytea not null,
     attestation1_slot int not null,
     attestation1_index int not null,
@@ -170,6 +171,7 @@ create table blocks_attesterslashings (
     attestation1_source_root bytea not null,
     attestation1_target_epoch int not null,
     attestation1_target_root bytea not null,
+    attestation2_indices integer[] not null,
     attestation2_signature bytea not null,
     attestation2_slot int not null,
     attestation2_index int not null,

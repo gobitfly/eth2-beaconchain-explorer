@@ -243,6 +243,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		SELECT
 			block_slot,
 			block_index,
+			attestation1_indices,
 			attestation1_signature,
 			attestation1_slot,
 			attestation1_index,
@@ -251,6 +252,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			attestation1_source_root,
 			attestation1_target_epoch,
 			attestation1_target_root,
+		    attestation2_indices,
 			attestation2_signature,
 			attestation2_slot,
 			attestation2_index,

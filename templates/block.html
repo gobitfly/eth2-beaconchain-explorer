@@ -372,16 +372,14 @@
 							<div class="col-md-2">Target Epoch:</div>
 							<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation1TargetEpoch}}">{{$attestationSlashing.Attestation1TargetEpoch}}</a></div>
 						</div>
-						<!--
 						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Attesting Validators:</div>
 							<div class="col-md-10">
-								{{range $validator := $attestationSlashing.Attestation1AttestingIndices}}
+								{{range $validator := $attestationSlashing.Attestation1Indices}}
 									<span><a href="/validator/{{$validator}}">{{$validator}}</a> </span>
 								{{end}}
 							</div>
 						</div>
-						-->
 						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-12 text-center"><b>Attestation 2</b></div>
 						</div>
@@ -409,16 +407,14 @@
 							<div class="col-md-2">Target Epoch:</div>
 							<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation2TargetEpoch}}">{{$attestationSlashing.Attestation2TargetEpoch}}</a></div>
 						</div>
-						<!--
 						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Attesting Validators:</div>
 							<div class="col-md-10">
-								{{range $validator := $attestationSlashing.Attestation1AttestingIndices}}
+								{{range $validator := $attestationSlashing.Attestation2Indices}}
 									<span><a href="/validator/{{$validator}}">{{$validator}}</a> </span>
 								{{end}}
 							</div>
 						</div>
-						-->
 					</div>
 					{{end}}
 				{{end}}
