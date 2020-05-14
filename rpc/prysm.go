@@ -250,7 +250,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	for {
 		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), &ethpb.ListValidatorBalancesRequest{PageToken: validatorBalancesResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}})
 		if err != nil {
-			logger.Printf("error retrieving validator balances response: %v", err)
+			logger.Printf("error retrieving validator balances for epoch %v: %v", epoch, err)
 			break
 		}
 		if validatorBalancesResponse.TotalSize == 0 {
@@ -278,11 +278,6 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	data.Blocks = make(map[uint64]map[string]*types.Block)
 
 	for slot := epoch * utils.Config.Chain.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.SlotsPerEpoch-1; slot++ {
-
-		if slot == 0 { // Currently slot 0 returns all blocks
-			continue
-		}
-
 		blocks, err := pc.GetBlocksBySlot(slot)
 
 		if err != nil {
@@ -411,10 +406,16 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 // GetBlocksBySlot will get blocks by slot from a Prysm client
 func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
-
 	logger.Infof("Retrieving block at slot %v", slot)
+
+	blocksRequest := &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}}
+	if slot == 0 {
+		blocksRequest.QueryFilter = &ethpb.ListBlocksRequest_Genesis{Genesis: true}
+	}
+
 	blocks := make([]*types.Block, 0)
-	blocksResponse, err := pc.client.ListBlocks(context.Background(), &ethpb.ListBlocksRequest{PageSize: utils.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: slot}})
+
+	blocksResponse, err := pc.client.ListBlocks(context.Background(), blocksRequest)
 	if err != nil {
 		return nil, err
 	}
