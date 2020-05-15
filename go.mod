@@ -11,7 +11,6 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/ferranbt/fastssz v0.0.0-20200415074633-b062b680417b // indirect
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/protobuf v1.3.4
 	github.com/gorilla/mux v1.7.3
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/jmoiron/sqlx v1.2.0
