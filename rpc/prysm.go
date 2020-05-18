@@ -491,7 +491,8 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 							Root:  attesterSlashing.Attestation_1.Data.Target.Root,
 						},
 					},
-					Signature: attesterSlashing.Attestation_1.Signature,
+					Signature:        attesterSlashing.Attestation_1.Signature,
+					AttestingIndices: attesterSlashing.Attestation_1.AttestingIndices,
 				},
 				Attestation2: &types.IndexedAttestation{
 					Data: &types.AttestationData{
@@ -507,7 +508,8 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 							Root:  attesterSlashing.Attestation_2.Data.Target.Root,
 						},
 					},
-					Signature: attesterSlashing.Attestation_2.Signature,
+					Signature:        attesterSlashing.Attestation_2.Signature,
+					AttestingIndices: attesterSlashing.Attestation_2.AttestingIndices,
 				},
 			}
 		}
