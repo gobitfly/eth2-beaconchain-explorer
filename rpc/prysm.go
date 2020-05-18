@@ -172,11 +172,12 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	// Retrieve the currently active validator set in order to map public keys to indexes
 	validators := make(map[string]uint64)
 	validatorsResponse := &ethpb.Validators{}
+	validatorsRequest := &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}}
+	if epoch == 0 {
+		validatorsRequest.QueryFilter = &ethpb.ListValidatorsRequest_Genesis{Genesis: true}
+	}
 	for {
-		validatorsRequest := &ethpb.ListValidatorsRequest{PageSize: utils.PageSize, PageToken: validatorsResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}}
-		if epoch == 0 {
-			validatorsRequest.QueryFilter = &ethpb.ListValidatorsRequest_Genesis{Genesis: true}
-		}
+		validatorsRequest.PageToken = validatorsResponse.NextPageToken
 		validatorsResponse, err = pc.client.ListValidators(context.Background(), validatorsRequest)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving validator indices for epoch assignments: %v", err)
@@ -198,12 +199,12 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	// Retrieve the validator assignments for the epoch
 	validatorAssignmentes := make([]*ethpb.ValidatorAssignments_CommitteeAssignment, 0)
 	validatorAssignmentResponse := &ethpb.ValidatorAssignments{}
-
+	validatorAssignmentRequest := &ethpb.ListValidatorAssignmentsRequest{PageToken: validatorAssignmentResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorAssignmentsRequest_Epoch{Epoch: epoch}}
+	if epoch == 0 {
+		validatorAssignmentRequest.QueryFilter = &ethpb.ListValidatorAssignmentsRequest_Genesis{Genesis: true}
+	}
 	for {
-		validatorAssignmentRequest := &ethpb.ListValidatorAssignmentsRequest{PageToken: validatorAssignmentResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorAssignmentsRequest_Epoch{Epoch: epoch}}
-		if epoch == 0 {
-			validatorAssignmentRequest.QueryFilter = &ethpb.ListValidatorAssignmentsRequest_Genesis{Genesis: true}
-		}
+		validatorAssignmentRequest.PageToken = validatorAssignmentResponse.NextPageToken
 		validatorAssignmentResponse, err = pc.client.ListValidatorAssignments(context.Background(), validatorAssignmentRequest)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving validator assignment response for caching: %v", err)
