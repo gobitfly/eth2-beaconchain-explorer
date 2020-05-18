@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
+	"github.com/juliangruber/go-intersect"
 	"html/template"
 	"net/http"
 	"sort"
@@ -268,14 +269,16 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	// for _, s := range blockPageData.AttesterSlashings {
-	// 	sort.Slice(s.Attestation1AttestingIndices, func(i, j int) bool {
-	// 		return s.Attestation1AttestingIndices[i] < s.Attestation1AttestingIndices[j]
-	// 	})
-	// 	sort.Slice(s.Attestation2AttestingIndices, func(i, j int) bool {
-	// 		return s.Attestation2AttestingIndices[i] < s.Attestation2AttestingIndices[j]
-	// 	})
-	// }
+
+	if len(blockPageData.AttesterSlashings) > 0 {
+		for _, slashing := range blockPageData.AttesterSlashings {
+			inter := intersect.Simple(slashing.Attestation1Indices, slashing.Attestation2Indices)
+
+			for _, i := range inter {
+				slashing.SlashedValidators = append(slashing.SlashedValidators, i.(int64))
+			}
+		}
+	}
 
 	err = db.DB.Select(&blockPageData.ProposerSlashings, "SELECT * FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {

@@ -347,6 +347,7 @@ type BlockPageAttesterSlashing struct {
 	Attestation2SourceRoot      []byte        `db:"attestation2_source_root"`
 	Attestation2TargetEpoch     uint64        `db:"attestation2_target_epoch"`
 	Attestation2TargetRoot      []byte        `db:"attestation2_target_root"`
+	SlashedValidators           []int64
 }
 
 // BlockPageProposerSlashing is a struct to hold data for proposer slashings on the block page

@@ -26,14 +26,16 @@ var Config *types.Config
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"formatBlockStatus": FormatBlockStatus,
-		"formatValidator":   FormatValidator,
-		"formatBalance":     FormatBalance,
-		"formatPercentage":  FormatPercentage,
-		"formatIncome":      FormatIncome,
-		"mod":               func(i, j int) bool { return i%j == 0 },
-		"sub":               func(i, j int) int { return i - j },
-		"add":               func(i, j int) int { return i + j },
+		"formatBlockStatus":           FormatBlockStatus,
+		"formatValidator":             FormatValidator,
+		"formatValidatorInt64":        FormatValidatorInt64,
+		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
+		"formatBalance":               FormatBalance,
+		"formatPercentage":            FormatPercentage,
+		"formatIncome":                FormatIncome,
+		"mod":                         func(i, j int) bool { return i%j == 0 },
+		"sub":                         func(i, j int) int { return i - j },
+		"add":                         func(i, j int) int { return i + j },
 	}
 }
 
@@ -88,7 +90,16 @@ func FormatValidatorStatus(status string) string {
 
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf("<span class=\"badge badge-primary\"><i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a></span>", validator, validator))
+}
+
+func FormatValidatorInt64(validator int64) template.HTML {
+	return FormatValidator(uint64(validator))
+}
+
+// FormatSlashedValidatorInt64 will return html formatted text for a slashed validator
+func FormatSlashedValidatorInt64(validator int64) template.HTML {
+	return template.HTML(fmt.Sprintf("<span class=\"badge badge-warning\"><i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a></span>", validator, validator))
 }
 
 // SlotToTime will return a time.Time to slot
