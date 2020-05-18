@@ -290,6 +290,33 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.Status = "Active"
 		}
 	}
+
+	if validatorPageData.Slashed {
+		var slashingInfo struct {
+			Slot    uint64
+			Slasher uint64
+			Reason  string
+		}
+		err = db.DB.Get(&slashingInfo,
+			`select block_slot as slot, proposer as slasher, 'Attestation Violation' as reason
+				from blocks_attesterslashings a1 left join blocks b1 on b1.slot = a1.block_slot
+				where $1 = ANY(a1.attestation1_indices) and $1 = ANY(a1.attestation2_indices)
+			union all
+			select block_slot as slot, proposer as slasher, 'Proposer Violation' as reason
+				from blocks_proposerslashings a2 left join blocks b2 on b2.slot = a2.block_slot
+				where a2.proposerindex = $1
+			limit 1`,
+			index)
+		if err != nil {
+			logger.Errorf("error retrieving validator slashing info: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		validatorPageData.SlashedBy = slashingInfo.Slasher
+		validatorPageData.SlashedAt = slashingInfo.Slot
+		validatorPageData.SlashedFor = slashingInfo.Reason
+	}
+
 	data.Data = validatorPageData
 
 	if utils.IsApiRequest(r) {

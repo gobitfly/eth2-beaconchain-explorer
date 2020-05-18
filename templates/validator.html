@@ -431,7 +431,7 @@
 					</div>
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Slashed:</div>
-						<div class="col-md-10">{{.Slashed}}</div>
+						<div class="col-md-10">{{if .Slashed}}True (Slashed by <a href="/validator/{{.SlashedBy}}">{{.SlashedBy}}</a> at Slot <a href="/block/{{.SlashedAt}}">{{.SlashedAt}}</a>, Reason: {{.SlashedFor}}){{else}}False{{end}}</div>
 					</div>
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Eligible for Activation:</div>
