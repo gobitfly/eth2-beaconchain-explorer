@@ -8,17 +8,34 @@
             searching: false,
             paging: false,
             ajax: '/validators/slashings/data',
+            preDrawCallback: function() {
+                // this does not always work.. not sure how to solve the staying tooltip
+                try {
+                    $('#slashings').find('[data-toggle="tooltip"]').tooltip('dispose')
+                } catch (e) {}
+            },
+            drawCallback: function() {
+                $('#slashings').find('[data-toggle="tooltip"]').tooltip();
+            },
             columnDefs: [
                 {
-                    targets: 3,
-                    data: '3',
+                    targets:2,
+                    data: '2',
+                    render: function(data, type, row, meta) {
+                        if (data === null)
+                            return '-';
+                        return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data).format()}">${moment.unix(data).fromNow()}</span>`
+                    }
+                }, {
+                    targets: 4,
+                    data: '4',
                     render: function (data, type, row, meta) {
                         return '<a href="/block/' + data + '">' + data + '</a>'
                     },
                     "orderable": false
                 }, {
-                    targets: 4,
-                    data: '4',
+                    targets: 5,
+                    data: '5',
                     render: function (data, type, row, meta) {
                         return '<a href="/epoch/' + data + '">' + data + '</a>'
                     },
@@ -55,6 +72,7 @@
 					<tr>
 						<th>Validator</th>
 						<th>Slashed by</th>
+						<th>Age</th>
 						<th>For</th>
 						<th>Block</th>
 						<th>Epoch</th>
