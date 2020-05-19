@@ -123,10 +123,13 @@ type ValidatorPageData struct {
 	Epoch                            uint64 `db:"epoch"`
 	ValidatorIndex                   uint64 `db:"validatorindex"`
 	PublicKey                        []byte
-	WithdrawableEpoch                uint64  `db:"withdrawableepoch"`
-	CurrentBalance                   uint64  `db:"balance"`
-	EffectiveBalance                 uint64  `db:"effectivebalance"`
-	Slashed                          bool    `db:"slashed"`
+	WithdrawableEpoch                uint64 `db:"withdrawableepoch"`
+	CurrentBalance                   uint64 `db:"balance"`
+	EffectiveBalance                 uint64 `db:"effectivebalance"`
+	Slashed                          bool   `db:"slashed"`
+	SlashedBy                        uint64
+	SlashedAt                        uint64
+	SlashedFor                       string
 	ActivationEligibilityEpoch       uint64  `db:"activationeligibilityepoch"`
 	ActivationEpoch                  uint64  `db:"activationepoch"`
 	ExitEpoch                        uint64  `db:"exitepoch"`
