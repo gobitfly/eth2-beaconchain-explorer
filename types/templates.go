@@ -474,7 +474,6 @@ type DashboardData struct {
 	BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
 	Earnings       DashboardEarnings                `json:"earnings"`
 	Validators     [][]interface{}                  `json:"validators"`
-	// DailyProposalCounts []DailyProposalCount             `json:"daily_proposal_counts"`
 }
 
 type DashboardValidatorBalanceHistory struct {
