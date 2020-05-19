@@ -6,14 +6,14 @@ require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
-	github.com/docker/docker v1.13.1
+	github.com/docker/docker v1.13.1 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
+	github.com/ethereum/go-ethereum v1.9.14
 	github.com/ferranbt/fastssz v0.0.0-20200415074633-b062b680417b // indirect
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/protobuf v1.3.4
 	github.com/gorilla/mux v1.7.3
-	github.com/hashicorp/golang-lru v0.5.3
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/juliangruber/go-intersect v1.0.1-0.20200323101606-4bd944a17692
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -30,9 +30,7 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
-	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect
 	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f // indirect
-	golang.org/x/text v0.3.2 // indirect
 	google.golang.org/grpc v1.27.1
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.2.8
