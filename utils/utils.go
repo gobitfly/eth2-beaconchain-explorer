@@ -90,7 +90,7 @@ func FormatValidatorStatus(status string) string {
 
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"badge badge-primary\"><i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a></span>", validator, validator))
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
 func FormatValidatorInt64(validator int64) template.HTML {
@@ -99,7 +99,7 @@ func FormatValidatorInt64(validator int64) template.HTML {
 
 // FormatSlashedValidatorInt64 will return html formatted text for a slashed validator
 func FormatSlashedValidatorInt64(validator int64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"badge badge-warning\"><i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a></span>", validator, validator))
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
 // SlotToTime will return a time.Time to slot
