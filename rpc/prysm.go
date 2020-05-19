@@ -255,11 +255,12 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	validatorBalancesByPubkey := make(map[string]uint64)
 
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
+	validatorBalancesRequest := &ethpb.ListValidatorBalancesRequest{PageSize: utils.PageSize, PageToken: validatorBalancesResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}}
+	if epoch == 0 {
+		validatorBalancesRequest.QueryFilter = &ethpb.ListValidatorBalancesRequest_Genesis{Genesis: true}
+	}
 	for {
-		validatorBalancesRequest := &ethpb.ListValidatorBalancesRequest{PageSize: utils.PageSize, PageToken: validatorBalancesResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}}
-		if epoch == 0 {
-			validatorBalancesRequest.QueryFilter = &ethpb.ListValidatorBalancesRequest_Genesis{Genesis: true}
-		}
+		validatorBalancesRequest.PageToken = validatorBalancesResponse.NextPageToken
 		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), validatorBalancesRequest)
 		if err != nil {
 			logger.Printf("error retrieving validator balances for epoch %v: %v", epoch, err)
@@ -351,11 +352,12 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	// Retrieve the validator set for the epoch
 	data.Validators = make([]*types.Validator, 0)
 	validatorResponse := &ethpb.Validators{}
+	validatorRequest := &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}}
+	if epoch == 0 {
+		validatorRequest.QueryFilter = &ethpb.ListValidatorsRequest_Genesis{Genesis: true}
+	}
 	for {
-		validatorRequest := &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}}
-		if epoch == 0 {
-			validatorRequest.QueryFilter = &ethpb.ListValidatorsRequest_Genesis{Genesis: true}
-		}
+		validatorRequest.PageToken = validatorResponse.NextPageToken
 		validatorResponse, err = pc.client.ListValidators(context.Background(), validatorRequest)
 		if err != nil {
 			logger.Errorf("error retrieving validator response: %v", err)
