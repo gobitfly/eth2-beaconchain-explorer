@@ -102,6 +102,11 @@ func FormatSlashedValidatorInt64(validator int64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
+// FormatSlashedValidator will return html formatted text for a slashed validator
+func FormatSlashedValidator(validator uint64) template.HTML {
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+}
+
 // SlotToTime will return a time.Time to slot
 func SlotToTime(slot uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.SecondsPerSlot), 0)

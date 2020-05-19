@@ -87,7 +87,7 @@ order by blocks.slot desc;`)
 		}
 
 		tableData[i] = []interface{}{
-			utils.FormatValidator(slashedValidator),
+			utils.FormatSlashedValidator(slashedValidator),
 			utils.FormatValidator(b.Proposer),
 			utils.SlotToTime(b.Slot).Unix(),
 			"Attestation rule violation",
