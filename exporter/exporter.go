@@ -58,6 +58,15 @@ func Start(client rpc.Client) error {
 			logger.Fatal(err)
 		}
 
+		if len(epochs) > 0 && epochs[0] != 0 {
+			err := ExportEpoch(0, client)
+			if err != nil {
+				logger.Error(err)
+			}
+			logger.Printf("finished export for epoch %v", 0)
+			epochs = append([]uint64{0}, epochs...)
+		}
+
 		for i := 0; i < len(epochs)-1; i++ {
 			if epochs[i] != epochs[i+1]-1 && epochs[i] != epochs[i+1] {
 				logger.Println("Epochs between", epochs[i], "and", epochs[i+1], "are missing!")
