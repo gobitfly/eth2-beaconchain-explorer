@@ -157,7 +157,7 @@ class Calculator {
 			["reinvest", function(v) { return v }, function(v) {return v}, true, function(value){ document.getElementById('staking-variable-reinvest').checked = value === 'true' } ],
 			["networkStake", function(v){ return v / 1e9 }, function(v) {return parseFloat(v) * 1e9}, true, function(value){ document.getElementById('staking-variable-totalStake').setAttribute('value', value); document.getElementById('staking-variable-totalStake-slider').setAttribute('value', value) }],
 			// ["networkStakePercent", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, true, function(value){ document.getElementById('staking-variable-totalStakeMonthlyChange').setAttribute('value', value) }],
-			["networkOnlinePropability", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, true, function(value){ document.getElementById('staking-variable-onlinePropabilty').setAttribute('value', value); document.getElementById('staking-variable-onlinePropabilty-slider').setAttribute('value', value) }],
+			["networkOnlineProbability", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, true, function(value){ document.getElementById('staking-variable-onlineProbability').setAttribute('value', value); document.getElementById('staking-variable-onlineProbability-slider').setAttribute('value', value) }],
 			["totalStakeMonthlyChange", function(v) { return v * 100 }, function(v) {return parseFloat(v) / 100}, true, function(value){ document.getElementById('staking-variable-totalStakeMonthlyChange').setAttribute('value', value) }],
 		]
 
@@ -177,7 +177,7 @@ class Calculator {
 		this.params.reinvest = false
 		this.params.networkStake = 0
 		this.params.networkStakePercent = this.config.minNetworkStake / this.config.totalEthSupply
-		this.params.networkOnlinePropability = 0
+		this.params.networkOnlineProbability = 0
 		this.params.totalStakeMonthlyChange = 0
 
 		this.result = {}
@@ -215,15 +215,15 @@ class Calculator {
 			document.getElementById('staking-variable-totalStake-slider').value = this.value
 		})
 
-		document.getElementById('staking-variable-onlinePropabilty-slider').oninput = function(){
-			document.getElementById('staking-variable-onlinePropabilty').value = this.value
+		document.getElementById('staking-variable-onlineProbability-slider').oninput = function(){
+			document.getElementById('staking-variable-onlineProbability').value = this.value
 		}
-		document.getElementById('staking-variable-onlinePropabilty-slider').onchange = () => {
+		document.getElementById('staking-variable-onlineProbability-slider').onchange = () => {
 			self.run()
 			this.setUrlParams()
 		}
-		document.getElementById('staking-variable-onlinePropabilty').addEventListener('input',function(){
-			document.getElementById('staking-variable-onlinePropabilty-slider').value = this.value
+		document.getElementById('staking-variable-onlineProbability').addEventListener('input',function(){
+			document.getElementById('staking-variable-onlineProbability-slider').value = this.value
 		})
 		document.getElementById('staking-variable-totalStakeMonthlyChange-slider').oninput = function(){
 			document.getElementById('staking-variable-totalStakeMonthlyChange').value = this.value
@@ -336,7 +336,7 @@ class Calculator {
 
 		var p = this.params
 		p.networkStake = parseFloat(document.getElementById('staking-variable-totalStake').value)*1e9
-		p.networkOnlinePropability = parseInt(document.getElementById('staking-variable-onlinePropabilty').value)/100
+		p.networkOnlineProbability = parseInt(document.getElementById('staking-variable-onlineProbability').value)/100
 		p.price = parseFloat(document.getElementById('staking-variable-price').value)
 		p.priceChangePerMonth = parseInt(document.getElementById('staking-variable-priceChangePerMonth').value)/100
 		p.totalStakeMonthlyChange = parseInt(document.getElementById('staking-variable-totalStakeMonthlyChange').value)/100
@@ -364,16 +364,16 @@ class Calculator {
 		} else {
 			document.getElementById('staking-variable-totalStake-validation').style.display = "none"
 		}
-		if (isNaN(p.networkOnlinePropability) || p.networkOnlinePropability > 1.00 || p.networkOnlinePropability < .01) {
-			document.getElementById('staking-variable-onlinePropabilty-validation').style.display = "initial"
+		if (isNaN(p.networkOnlineProbability) || p.networkOnlineProbability > 1.00 || p.networkOnlineProbability < .01) {
+			document.getElementById('staking-variable-onlineProbability-validation').style.display = "initial"
 		} else {
-			document.getElementById('staking-variable-onlinePropabilty-validation').style.display = "none"
+			document.getElementById('staking-variable-onlineProbability-validation').style.display = "none"
 		}
-		if (isNaN(p.networkOnlinePropability) || p.networkOnlinePropability < .01) {
-			p.networkOnlinePropability = .01
+		if (isNaN(p.networkOnlineProbability) || p.networkOnlineProbability < .01) {
+			p.networkOnlineProbability = .01
 		}
-		if (isNaN(p.networkOnlinePropability) || p.networkOnlinePropability > 1.00) {
-			p.networkOnlinePropability = 1.00
+		if (isNaN(p.networkOnlineProbability) || p.networkOnlineProbability > 1.00) {
+			p.networkOnlineProbability = 1.00
 		}
 		if (isNaN(p.price) || p.price < 0) {
 			p.price = 0
@@ -427,7 +427,7 @@ class Calculator {
 	}
 	calculate() {
 		// this calculation is only a rough estimation, it calculates the total
-		// network issuance based ond total staked ether and online-propability
+		// network issuance based ond total staked ether and online-probability
 		// of the network.
 		this.result.priceChartData = []
 		this.result.networkIssuanceChartData = []
@@ -454,7 +454,7 @@ class Calculator {
 		var costsPerEpoch = this.params.monthlyCosts / epochsPerMonth
 
 		var priceChangePerEpoch = this.params.priceChangePerMonth / epochsPerMonth
-		var onlinePropabilty = this.params.networkOnlinePropability
+		var onlineProbability = this.params.networkOnlineProbability
 		var totalStake = this.params.networkStake
 		var valStake = 32e9
 		var baseRewardFactor = 64
@@ -486,7 +486,7 @@ class Calculator {
 			var allVal = (totalStake / valStake) | 0
 
 
-			var onlineVal = (allVal * onlinePropabilty) | 0 
+			var onlineVal = (allVal * onlineProbability) | 0 
 			var offlineVal = allVal - onlineVal
 
 			var ffgRewards = 3 * baseReward * onlineVal * valStake / totalStake
@@ -857,10 +857,10 @@ td,th {
 						<span  id="staking-variable-totalStakeMonthlyChange-validation" class="input-validation">The churn rate must be percentage between -100 and 100</span>
 					</div>
 					<div class="setting">
-						<h6>Online propability % <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Online propability is the average propability of all active validators to be online and to fulfill their duties."></i></h6>
-							<input id="staking-variable-onlinePropabilty" class="staking-variable form-control" type="text" value=90>
-							<input id="staking-variable-onlinePropabilty-slider" class="form-control" type="range" value=90 min=1 max=100>
-							<span id="staking-variable-onlinePropabilty-validation" class="input-validation">Online probability must be a percentage between 1 and 100</span>
+						<h6>Online probability % <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Online probability is the average probability of all active validators to be online and to fulfill their duties."></i></h6>
+							<input id="staking-variable-onlineProbability" class="staking-variable form-control" type="text" value=90>
+							<input id="staking-variable-onlineProbability-slider" class="form-control" type="range" value=90 min=1 max=100>
+							<span id="staking-variable-onlineProbability-validation" class="input-validation">Online probability must be a percentage between 1 and 100</span>
 					</div>
 				</div>
 			</div>
