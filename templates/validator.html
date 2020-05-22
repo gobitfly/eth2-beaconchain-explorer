@@ -57,7 +57,8 @@
 								for (var i = 0; i < hex.length; i += 2)
 									r += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
 							}
-							return r
+
+							return $.fn.dataTable.render.text().display(r)
 						}
 					},
 				]

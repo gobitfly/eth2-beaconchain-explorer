@@ -391,7 +391,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			break
 		}
 	}
-	logger.Printf("retrieved validator data for epoch %v", epoch)
+	logger.Printf("retrieved data for %v validators for epoch %v", len(data.Validators), epoch)
 
 	// Retrieve the beacon committees for the epoch
 	data.BeaconCommittees = make(map[uint64][]*types.BeaconCommitteItem)
