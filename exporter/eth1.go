@@ -9,7 +9,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
+	ethereum "github.com/prysmaticlabs/bazel-go-ethereum"
 	"github.com/prysmaticlabs/bazel-go-ethereum/common"
 	"github.com/prysmaticlabs/bazel-go-ethereum/common/hexutil"
 	gethTypes "github.com/prysmaticlabs/bazel-go-ethereum/core/types"
