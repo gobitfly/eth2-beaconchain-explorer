@@ -182,3 +182,18 @@ type EpochAssignments struct {
 	ProposerAssignments map[uint64]uint64
 	AttestorAssignments map[string]uint64
 }
+
+// Eth1Deposit is a struct to hold eth1-deposit data
+type Eth1Deposit struct {
+	TxHash                []byte
+	TxInput               []byte
+	TxIndex               uint64
+	BlockNumber           uint64
+	BlockTs               uint64
+	FromAddress           []byte
+	PublicKey             []byte
+	WithdrawalCredentials []byte
+	Amount                uint64
+	Signature             []byte
+	MerkletreeIndex       []byte
+}

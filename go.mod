@@ -9,10 +9,11 @@ require (
 	github.com/docker/docker v1.13.1
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
+	github.com/ethereum/go-ethereum v1.9.14
 	github.com/ferranbt/fastssz v0.0.0-20200415074633-b062b680417b // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/gorilla/mux v1.7.3
-	github.com/hashicorp/golang-lru v0.5.3
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/juliangruber/go-intersect v1.0.1-0.20200323101606-4bd944a17692
 	github.com/kelseyhightower/envconfig v1.4.0

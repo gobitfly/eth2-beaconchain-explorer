@@ -244,3 +244,20 @@ create table graffitiwall (
     validator int not null,
     primary key (x,y)
 );
+
+drop table if exists eth1_deposits;
+create table eth1_deposits (
+    tx_hash bytea not null,
+    tx_input bytea not null,
+    tx_index int not null,
+    block_number int not null,
+    block_ts timestamp without time zone not null,
+    from_address bytea not null,
+    publickey bytea not null,
+    withdrawal_credentials bytea not null,
+    amount bigint not null,
+    signature bytea not null,
+    merkletree_index bytea not null,
+    primary key (tx_hash)
+);
+create index idx_eth1_deposits on eth1_deposits (publickey);
