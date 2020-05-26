@@ -10,7 +10,7 @@ require (
 	github.com/docker/docker v1.13.1
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/ethereum/go-ethereum 67c2efcc89ea09339b13f193a4c0e457f3daed86
+	github.com/ethereum/go-ethereum v1.9.14
 	github.com/ferranbt/fastssz v0.0.0-20200415074633-b062b680417b // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/gorilla/mux v1.7.3
@@ -26,7 +26,6 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
-	github.com/prysmaticlabs/bazel-go-ethereum v0.0.0-20200421124922-0beb54b2147b
 	github.com/prysmaticlabs/ethereumapis v0.0.0-20200424214844-ba9042096e9f
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52
 	github.com/prysmaticlabs/prysm v0.3.1
@@ -41,3 +40,5 @@ require (
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.2.8
 )
+
+replace github.com/ethereum/go-ethereum => github.com/prysmaticlabs/bazel-go-ethereum v0.0.0-20200521064431-67c2efcc89ea
