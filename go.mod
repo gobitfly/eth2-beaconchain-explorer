@@ -9,7 +9,7 @@ require (
 	github.com/docker/docker v1.13.1
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/ethereum/go-ethereum 0beb54b2147b3473a4c55e5ce6f02643ce403b14
+	github.com/prysmaticlabs/bazel-go-ethereum 0beb54b2147b3473a4c55e5ce6f02643ce403b14
 	github.com/ferranbt/fastssz v0.0.0-20200415074633-b062b680417b // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/gorilla/mux v1.7.3
