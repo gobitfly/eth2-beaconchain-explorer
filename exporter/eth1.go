@@ -21,8 +21,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var eth1Blocks map[uint64]*gethTypes.Header
-var eth1Txs map[common.Hash]*gethTypes.Transaction
 var eth1LookBack = uint64(100)
 var eth1MaxFetch = uint64(1000)
 var eth1DepositEventSignature = hashutil.HashKeccak256([]byte("DepositEvent(bytes,bytes,bytes,bytes,bytes)"))
@@ -30,7 +28,6 @@ var eth1DepositContractFirstBlock uint64
 var eth1DepositContractAddress common.Address
 var eth1Client *ethclient.Client
 var eth1RPCClient *gethRPC.Client
-var eth1LastFetchedBlock uint64
 
 // eth1DepositsExporter regularly fetches the depositcontract-logs of the
 // last 100 blocks and exports the deposits into the database.
@@ -48,72 +45,83 @@ func eth1DepositsExporter() {
 	client := ethclient.NewClient(rpcClient)
 	eth1Client = client
 
+	lastFetchedBlock := uint64(0)
+
 	for {
 		t0 := time.Now()
-		depositsToSave, depositsToDelete, syncedToHead, err := fetchEth1Deposits()
+
+		var lastDepositBlock uint64
+		err = db.DB.Get(&lastDepositBlock, "select coalesce(max(block_number),0) from eth1_deposits")
 		if err != nil {
-			logger.WithError(err).Error("error fetching eth1-deposits")
+			logger.WithError(err).Errorf("error retrieving highest block_number of eth1-deposits from db")
 			time.Sleep(time.Second * 5)
 			continue
 		}
+		header, err := eth1Client.HeaderByNumber(context.Background(), nil)
+		if err != nil {
+			logger.WithError(err).Errorf("error getting header from eth1-client")
+			time.Sleep(time.Second * 5)
+			continue
+		}
+		blockHeight := header.Number.Uint64()
+
+		fromBlock := lastDepositBlock + 1
+		toBlock := blockHeight
+
+		// start from the first block
+		if fromBlock < eth1DepositContractFirstBlock {
+			fromBlock = eth1DepositContractFirstBlock
+		}
+		// make sure we are progressing even if there are no deposits in the last batch
+		if fromBlock < lastFetchedBlock+1 {
+			fromBlock = lastFetchedBlock + 1
+		}
+		// if we are synced to the head look at the last 100 blocks
+		if toBlock-fromBlock < eth1LookBack {
+			fromBlock = toBlock - 100
+		}
+		// if we are not synced to the head yet fetch missing blocks in batches of size 1000
+		if toBlock-fromBlock > eth1MaxFetch {
+			toBlock = fromBlock + 1000
+		}
+
+		depositsToSave, depositsToDelete, err := fetchEth1Deposits(fromBlock, toBlock)
+		if err != nil {
+			logger.WithError(err).Errorf("error fetching eth1-deposits")
+			time.Sleep(time.Second * 5)
+			continue
+		}
+
 		err = saveEth1Deposits(depositsToSave, depositsToDelete)
 		if err != nil {
-			eth1LastFetchedBlock = 0 // do not progress the blockchain if saving failed
-			logger.WithError(err).Error("error saving eth1-deposits")
+			logger.WithError(err).Errorf("error saving eth1-deposits")
 			time.Sleep(time.Second * 5)
 			continue
 		}
+
+		// make sure we are progressing even if there are no deposits in the last batch
+		lastFetchedBlock = toBlock
+
 		logger.WithFields(logrus.Fields{
-			"duration":     time.Since(t0),
-			"syncedToHead": syncedToHead,
-			"numDeposits":  len(depositsToSave),
+			"duration":        time.Since(t0),
+			"blockHeight":     blockHeight,
+			"fromBlock":       fromBlock,
+			"toBlock":         toBlock,
+			"depositsSaved":   len(depositsToSave),
+			"depositsDeleted": len(depositsToDelete),
 		}).Info("exported eth1-deposits")
-		if !syncedToHead {
+
+		// progress faster if we are not synced to head yet
+		if blockHeight != toBlock {
 			time.Sleep(time.Second * 5)
 			continue
 		}
+
 		time.Sleep(time.Second * 60)
 	}
 }
 
-func fetchEth1Deposits() (depositsToSave []*types.Eth1Deposit, depositsToDelete [][]byte, syncedToHead bool, err error) {
-	var lastDepositBlock uint64
-	err = db.DB.Get(&lastDepositBlock, "select coalesce(max(block_number),0) from eth1_deposits")
-	if err != nil {
-		return depositsToSave, depositsToDelete, syncedToHead, fmt.Errorf("error retrieving highest block_number of eth1-deposits from db: %w", err)
-	}
-
-	header, err := eth1Client.HeaderByNumber(context.Background(), nil)
-	if err != nil {
-		return depositsToSave, depositsToDelete, syncedToHead, fmt.Errorf("error getting header from eth1-client: %w", err)
-	}
-
-	blockHeight := header.Number.Uint64()
-
-	fromBlock := lastDepositBlock + 1
-	toBlock := blockHeight
-
-	if lastDepositBlock < eth1LastFetchedBlock {
-		fromBlock = eth1LastFetchedBlock
-	}
-
-	if fromBlock < eth1DepositContractFirstBlock+1 {
-		fromBlock = eth1DepositContractFirstBlock + 1
-	}
-
-	// if we are synced to the head look at the last 100 blocks
-	if toBlock-fromBlock < eth1LookBack {
-		fromBlock = toBlock - 100
-		syncedToHead = true
-	}
-
-	// if we are not synced to the head yet fetch missing blocks in batches of size 1000
-	if toBlock-fromBlock > eth1MaxFetch {
-		toBlock = fromBlock + 1000
-	}
-
-	logger.Infof("fetching eth1-blocks from %v to %v", fromBlock, toBlock)
-
+func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1Deposit, depositsToDelete [][]byte, err error) {
 	qry := ethereum.FilterQuery{
 		Addresses: []common.Address{
 			eth1DepositContractAddress,
@@ -124,7 +132,7 @@ func fetchEth1Deposits() (depositsToSave []*types.Eth1Deposit, depositsToDelete 
 
 	depositLogs, err := eth1Client.FilterLogs(context.Background(), qry)
 	if err != nil {
-		return depositsToSave, depositsToDelete, syncedToHead, fmt.Errorf("error getting logs from eth1-client: %w", err)
+		return depositsToSave, depositsToDelete, fmt.Errorf("error getting logs from eth1-client: %w", err)
 	}
 
 	blocksToFetch := []uint64{}
@@ -140,7 +148,7 @@ func fetchEth1Deposits() (depositsToSave []*types.Eth1Deposit, depositsToDelete 
 		}
 		pubkey, withdrawalCredentials, amount, signature, merkletreeIndex, err := contracts.UnpackDepositLogData(depositLog.Data)
 		if err != nil {
-			return depositsToSave, depositsToDelete, syncedToHead, fmt.Errorf("error unpacking eth1-deposit-log: %x: %w", depositLog.Data, err)
+			return depositsToSave, depositsToDelete, fmt.Errorf("error unpacking eth1-deposit-log: %x: %w", depositLog.Data, err)
 		}
 		blocksToFetch = append(blocksToFetch, depositLog.BlockNumber)
 		txsToFetch = append(txsToFetch, depositLog.TxHash.Hex())
@@ -158,45 +166,36 @@ func fetchEth1Deposits() (depositsToSave []*types.Eth1Deposit, depositsToDelete 
 
 	headers, txs, err := eth1BatchRequestHeadersAndTxs(blocksToFetch, txsToFetch)
 	if err != nil {
-		return depositsToSave, depositsToDelete, syncedToHead, fmt.Errorf("error getting eth1-blocks: %w", err)
+		return depositsToSave, depositsToDelete, fmt.Errorf("error getting eth1-blocks: %w", err)
 	}
 
 	for _, d := range depositsToSave {
 		// get corresponding block (for the tx-time)
 		b, exists := headers[d.BlockNumber]
 		if !exists {
-			return depositsToSave, depositsToDelete, syncedToHead, fmt.Errorf("error getting block-timestamp for eth1-deposit: block does not exist in fetched map")
+			return depositsToSave, depositsToDelete, fmt.Errorf("error getting block for eth1-deposit: block does not exist in fetched map")
 		}
 		d.BlockTs = b.Time
 
 		// get corresponding tx (for input and from-address)
 		tx, exists := txs[fmt.Sprintf("0x%x", d.TxHash)]
 		if !exists {
-			return depositsToSave, depositsToDelete, syncedToHead, fmt.Errorf("error getting tx for eth1-deposit: tx does not exist in fetched map")
+			return depositsToSave, depositsToDelete, fmt.Errorf("error getting tx for eth1-deposit: tx does not exist in fetched map")
 		}
 		d.TxInput = tx.Data()
 		chainID := tx.ChainId()
 		if chainID == nil {
-			return depositsToSave, depositsToDelete, syncedToHead, fmt.Errorf("error getting tx-chainId for eth1-deposit")
+			return depositsToSave, depositsToDelete, fmt.Errorf("error getting tx-chainId for eth1-deposit")
 		}
 		signer := gethTypes.NewEIP155Signer(chainID)
 		sender, err := signer.Sender(tx)
 		if err != nil {
-			return depositsToSave, depositsToDelete, syncedToHead, fmt.Errorf("error getting sender for eth1-deposit")
+			return depositsToSave, depositsToDelete, fmt.Errorf("error getting sender for eth1-deposit")
 		}
 		d.FromAddress = sender.Bytes()
-		// logger.WithFields(logrus.Fields{
-		// 	"block":   d.BlockNumber,
-		// 	"blockTs": d.BlockTs,
-		// 	"from":    fmt.Sprintf("%x", d.FromAddress),
-		// 	"pubkey":  fmt.Sprintf("%x", d.PublicKey),
-		// }).Info("eth1-deposit")
 	}
 
-	// make sure that we progress the blockheight
-	eth1LastFetchedBlock = toBlock
-
-	return depositsToSave, depositsToDelete, syncedToHead, nil
+	return depositsToSave, depositsToDelete, nil
 }
 
 func saveEth1Deposits(depositsToSave []*types.Eth1Deposit, depositsToDelete [][]byte) error {
