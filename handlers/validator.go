@@ -266,25 +266,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
 	}
 
-	var firstSlotOfPreviousEpoch uint64
-	if services.LatestEpoch() < 1 {
-		firstSlotOfPreviousEpoch = 0
-	} else {
-		firstSlotOfPreviousEpoch = (services.LatestEpoch() - 1) * utils.Config.Chain.SlotsPerEpoch
-	}
+	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 
 	if validatorPageData.Epoch > validatorPageData.ExitEpoch {
 		validatorPageData.Status = "Exited"
 	} else if validatorPageData.Epoch < validatorPageData.ActivationEpoch {
 		validatorPageData.Status = "Pending"
 	} else if validatorPageData.Slashed {
-		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < firstSlotOfPreviousEpoch) {
+		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < validatorOnlineThresholdSlot) {
 			validatorPageData.Status = "SlashingOffline"
 		} else {
 			validatorPageData.Status = "Slashing"
 		}
 	} else {
-		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < firstSlotOfPreviousEpoch) {
+		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < validatorOnlineThresholdSlot) {
 			validatorPageData.Status = "ActiveOffline"
 		} else {
 			validatorPageData.Status = "Active"

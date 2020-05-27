@@ -244,13 +244,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
-	lastestEpoch := services.LatestEpoch()
-	var firstSlotOfPreviousEpoch uint64
-	if lastestEpoch < 1 {
-		firstSlotOfPreviousEpoch = 0
-	} else {
-		firstSlotOfPreviousEpoch = (lastestEpoch - 1) * utils.Config.Chain.SlotsPerEpoch
-	}
+	latestEpoch := services.LatestEpoch()
+	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators, `SELECT
@@ -295,7 +290,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		) p2 ON validators.validatorindex = p2.validatorindex
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = ANY($3)
-		LIMIT 100`, lastestEpoch, firstSlotOfPreviousEpoch, filter)
+		LIMIT 100`, latestEpoch, validatorOnlineThresholdSlot, filter)
 
 	if err != nil {
 		logger.Errorf("error retrieving validator data: %v", err)
