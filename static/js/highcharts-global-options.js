@@ -1,5 +1,8 @@
 // Highcharts global options
 Highcharts.setOptions({
+    time: {
+      useUTC: false,
+    },
     credits: {
       enabled: true,
       href: 'https://beaconcha.in',

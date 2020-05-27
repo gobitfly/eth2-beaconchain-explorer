@@ -77,8 +77,6 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DashboardData() {}
-
 func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -154,88 +152,30 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	filter := pq.Array(filterArr)
 
 	proposals := []struct {
-		Day    uint64
+		Slot   uint64
 		Status uint64
-		Count  uint
 	}{}
 
 	err = db.DB.Select(&proposals, `
-		SELECT slot / 7200 AS day, status, COUNT(*) 
-		FROM blocks 
-		WHERE proposer = ANY($1) 
-		GROUP BY day, status 
-		ORDER BY day`, filter)
+		SELECT slot, status
+		FROM blocks
+		WHERE proposer = ANY($1)
+		ORDER BY slot`, filter)
 	if err != nil {
-		logger.WithError(err).Error("Error retrieving Daily Proposed Blocks blocks count")
+		logger.WithError(err).Error("Error retrieving block-proposals")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
-	dailyProposalCount := []types.DailyProposalCount{}
-
-	for i := 0; i < len(proposals); i++ {
-		if i == len(proposals)-1 {
-			if proposals[i].Status == 1 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: proposals[i].Count,
-					Missed:   0,
-					Orphaned: 0,
-				})
-			} else if proposals[i].Status == 2 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: 0,
-					Missed:   proposals[i].Count,
-					Orphaned: 0,
-				})
-			} else if proposals[i].Status == 3 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: 0,
-					Missed:   0,
-					Orphaned: proposals[i].Count,
-				})
-			} else {
-				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
-			}
-		} else {
-			if proposals[i].Day == proposals[i+1].Day {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: proposals[i].Count,
-					Missed:   proposals[i+1].Count,
-					Orphaned: proposals[i+1].Count,
-				})
-				i++
-			} else if proposals[i].Status == 1 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: proposals[i].Count,
-					Missed:   0,
-					Orphaned: 0,
-				})
-			} else if proposals[i].Status == 2 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: 0,
-					Missed:   proposals[i].Count,
-					Orphaned: 0,
-				})
-			} else if proposals[i].Status == 3 {
-				dailyProposalCount = append(dailyProposalCount, types.DailyProposalCount{
-					Day:      utils.SlotToTime(proposals[i].Day * 7200).Unix(),
-					Proposed: 0,
-					Missed:   0,
-					Orphaned: proposals[i].Count,
-				})
-			} else {
-				logger.WithError(err).Error("Error parsing Daily Proposed Blocks unkown status")
-			}
+	proposalsResult := make([][]uint64, len(proposals))
+	for i, b := range proposals {
+		proposalsResult[i] = []uint64{
+			uint64(utils.SlotToTime(b.Slot).Unix()),
+			b.Status,
 		}
 	}
 
-	err = json.NewEncoder(w).Encode(dailyProposalCount)
+	err = json.NewEncoder(w).Encode(proposalsResult)
 	if err != nil {
 		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
 	}
@@ -448,63 +388,42 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 	queryValidatorsArr := pq.Array(queryValidators)
 
 	latestEpoch := services.LatestEpoch()
+	now := utils.EpochToTime(latestEpoch)
+	lastDayEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 1 * -1))
+	lastWeekEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 7 * -1))
+	lastMonthEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 31 * -1))
 
-	oneDayEpochs := uint64(3600 * 24 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
-	oneWeekEpochs := oneDayEpochs * 7
-	oneMonthEpochs := oneDayEpochs * 31
-
-	lastDayEpoch := uint64(0)
-	if latestEpoch > oneDayEpochs {
-		lastDayEpoch = latestEpoch - oneDayEpochs
-	}
-
-	lastWeekEpoch := uint64(0)
-	if latestEpoch > oneWeekEpochs {
-		lastWeekEpoch = latestEpoch - oneWeekEpochs
-	}
-
-	lastMonthEpoch := uint64(0)
-	if latestEpoch > oneMonthEpochs {
-		lastMonthEpoch = latestEpoch - oneMonthEpochs
-	}
-
-	earningsTotalQuery := `
+	earningsQuery := `
+		WITH 
+			minmaxepoch AS (
+				SELECT
+					validatorindex,
+					MIN(epoch) AS firstepoch,
+					MAX(epoch) AS lastepoch
+				FROM validator_balances
+				WHERE validatorindex = ANY($1) AND epoch > $2
+				GROUP by validatorindex
+			),
+			deposits AS (
+				SELECT vv.validatorindex, COALESCE(SUM(bd.amount),0) AS amount
+				FROM minmaxepoch
+				INNER JOIN validators vv
+					ON vv.validatorindex = minmaxepoch.validatorindex
+				LEFT JOIN blocks_deposits bd 
+					ON bd.publickey = vv.pubkey
+					AND (bd.block_slot/32)-1 > minmaxepoch.firstepoch
+				GROUP BY vv.validatorindex
+			)
 		SELECT
-			SUM(last.balance - first.balance) AS earnings
-		FROM (
-			SELECT
-				validatorindex,
-				MIN(epoch) AS firstepoch,
-				MAX(epoch) AS lastepoch
-			FROM validator_balances
-			WHERE validatorindex = ANY($1)
-			GROUP by validatorindex
-		) minmaxepoch
+			SUM(last.balance - first.balance - d.amount) AS earnings
+		FROM minmaxepoch
 		INNER JOIN validator_balances first
 			ON first.validatorindex = minmaxepoch.validatorindex
 			AND first.epoch = minmaxepoch.firstepoch
 		INNER JOIN validator_balances last
 			ON last.validatorindex = minmaxepoch.validatorindex
-			AND last.epoch = minmaxepoch.lastepoch`
-
-	earningsRangeQuery := `
-		SELECT
-			SUM(last.balance - first.balance) AS earnings
-		FROM (
-			SELECT
-				validatorindex,
-				MIN(epoch) AS firstepoch,
-				MAX(epoch) AS lastepoch
-			FROM validator_balances
-			WHERE validatorindex = ANY($1) AND epoch > $2
-			GROUP by validatorindex
-		) minmaxepoch
-		INNER JOIN validator_balances first
-			ON first.validatorindex = minmaxepoch.validatorindex
-			AND first.epoch = minmaxepoch.firstepoch
-		INNER JOIN validator_balances last
-			ON last.validatorindex = minmaxepoch.validatorindex
-			AND last.epoch = minmaxepoch.lastepoch`
+			AND last.epoch = minmaxepoch.lastepoch
+		LEFT JOIN deposits d on d.validatorindex = minmaxepoch.validatorindex;`
 
 	var earningsTotal int64
 	var earningsLastDay int64
@@ -517,7 +436,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		defer wg.Done()
-		err := db.DB.Get(&earningsTotal, earningsTotalQuery, queryValidatorsArr)
+		err := db.DB.Get(&earningsTotal, earningsQuery, queryValidatorsArr, 0)
 		if err != nil {
 			logger.WithField("route", r.URL.String()).Errorf("error retrieving total earnings: %v", err)
 		}
@@ -526,7 +445,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		defer wg.Done()
-		err := db.DB.Get(&earningsLastDay, earningsRangeQuery, queryValidatorsArr, lastDayEpoch)
+		err := db.DB.Get(&earningsLastDay, earningsQuery, queryValidatorsArr, lastDayEpoch)
 		if err != nil {
 			logger.WithField("route", r.URL.String()).Errorf("error retrieving earnings of last day: %v", err)
 		}
@@ -535,7 +454,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		defer wg.Done()
-		err := db.DB.Get(&earningsLastWeek, earningsRangeQuery, queryValidatorsArr, lastWeekEpoch)
+		err := db.DB.Get(&earningsLastWeek, earningsQuery, queryValidatorsArr, lastWeekEpoch)
 		if err != nil {
 			logger.WithField("route", r.URL.String()).Errorf("error retrieving earnings of last week: %v", err)
 		}
@@ -544,7 +463,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		defer wg.Done()
-		err := db.DB.Get(&earningsLastMonth, earningsRangeQuery, queryValidatorsArr, lastMonthEpoch)
+		err := db.DB.Get(&earningsLastMonth, earningsQuery, queryValidatorsArr, lastMonthEpoch)
 		if err != nil {
 			logger.WithField("route", r.URL.String()).Errorf("error retrieving earnings of last month: %v", err)
 		}
