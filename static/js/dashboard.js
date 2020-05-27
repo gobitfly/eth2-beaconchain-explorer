@@ -742,7 +742,6 @@ function createProposedChart(data) {
     xAxis: {
       lineWidth: 0,
       tickColor: '#e5e1e1',
-      range: 7 * 24 * 3600 * 1000
     },
     yAxis: [
       {
