@@ -354,7 +354,75 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) err
 }
 
 func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
-	stmtValidators, err := tx.Prepare(`
+	batchSize := 5000
+	var lenActivatedValidators int
+	var lastActivatedValidatorIdx uint64
+
+	for _, v := range validators {
+		if !(v.ActivationEpoch <= epoch && epoch < v.ExitEpoch) {
+			continue
+		}
+		lenActivatedValidators++
+		if v.Index < lastActivatedValidatorIdx {
+			continue
+		}
+		lastActivatedValidatorIdx = v.Index
+	}
+
+	for b := 0; b < len(validators); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(validators) < end {
+			end = len(validators)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*10)
+		for i, v := range validators[start:end] {
+
+			if v.WithdrawableEpoch == 18446744073709551615 {
+				v.WithdrawableEpoch = 9223372036854775807
+			}
+			if v.ExitEpoch == 18446744073709551615 {
+				v.ExitEpoch = 9223372036854775807
+			}
+			if v.ActivationEligibilityEpoch == 18446744073709551615 {
+				v.ActivationEligibilityEpoch = 9223372036854775807
+			}
+			if v.ActivationEpoch == 18446744073709551615 {
+				v.ActivationEpoch = 9223372036854775807
+			}
+			if v.ActivationEligibilityEpoch < 9223372036854775807 && v.ActivationEpoch == 9223372036854775807 {
+				// see: https://github.com/ethereum/eth2.0-specs/blob/master/specs/phase0/beacon-chain.md#get_validator_churn_limit
+				// validator_churn_limit = max(MIN_PER_EPOCH_CHURN_LIMIT, len(active_validator_indices) // CHURN_LIMIT_QUOTIENT)
+				// validator_churn_limit = max(4, len(active_set) / 2**16)
+				// validator.activationepoch = epoch + validator.positioninactivationqueue / validator_churn_limit
+				// note: this is only an estimation
+				positionInActivationQueue := v.Index - lastActivatedValidatorIdx
+				churnLimit := float64(lenActivatedValidators) / 65536
+				if churnLimit < 4 {
+					churnLimit = 4
+				}
+				if v.ActivationEligibilityEpoch > epoch {
+					v.ActivationEpoch = v.ActivationEligibilityEpoch + uint64(float64(positionInActivationQueue)/churnLimit)
+				} else {
+					v.ActivationEpoch = epoch + uint64(float64(positionInActivationQueue)/churnLimit)
+				}
+			}
+
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*10+1, i*10+2, i*10+3, i*10+4, i*10+5, i*10+6, i*10+7, i*10+8, i*10+9, i*10+10))
+			valueArgs = append(valueArgs, v.Index)
+			valueArgs = append(valueArgs, v.PublicKey)
+			valueArgs = append(valueArgs, v.WithdrawableEpoch)
+			valueArgs = append(valueArgs, v.WithdrawalCredentials)
+			valueArgs = append(valueArgs, v.Balance)
+			valueArgs = append(valueArgs, v.EffectiveBalance)
+			valueArgs = append(valueArgs, v.Slashed)
+			valueArgs = append(valueArgs, v.ActivationEligibilityEpoch)
+			valueArgs = append(valueArgs, v.ActivationEpoch)
+			valueArgs = append(valueArgs, v.ExitEpoch)
+		}
+		stmt := fmt.Sprintf(`
 		INSERT INTO validators (
 			validatorindex,
 			pubkey,
@@ -367,7 +435,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			activationepoch,
 			exitepoch
 		) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+		VALUES %s
 		ON CONFLICT (validatorindex) DO UPDATE SET 
 			pubkey                     = EXCLUDED.pubkey,
 			withdrawableepoch          = EXCLUDED.withdrawableepoch,
@@ -377,58 +445,10 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			slashed                    = EXCLUDED.slashed,
 			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
 			activationepoch            = EXCLUDED.activationepoch,
-			exitepoch                  = EXCLUDED.exitepoch`)
-	if err != nil {
-		return err
-	}
-	defer stmtValidators.Close()
-
-	var lenActivatedValidators int
-	var lastActivatedValidatorIdx uint64
-	for _, v := range validators {
-		if !(v.ActivationEpoch <= epoch && epoch < v.ExitEpoch) {
-			continue
-		}
-		lenActivatedValidators++
-		if v.Index < lastActivatedValidatorIdx {
-			continue
-		}
-		lastActivatedValidatorIdx = v.Index
-	}
-
-	for _, v := range validators {
-		if v.WithdrawableEpoch == 18446744073709551615 {
-			v.WithdrawableEpoch = 9223372036854775807
-		}
-		if v.ExitEpoch == 18446744073709551615 {
-			v.ExitEpoch = 9223372036854775807
-		}
-		if v.ActivationEligibilityEpoch == 18446744073709551615 {
-			v.ActivationEligibilityEpoch = 9223372036854775807
-		}
-		if v.ActivationEpoch == 18446744073709551615 {
-			v.ActivationEpoch = 9223372036854775807
-		}
-		if v.ActivationEligibilityEpoch < 9223372036854775807 && v.ActivationEpoch == 9223372036854775807 {
-			// see: https://github.com/ethereum/eth2.0-specs/blob/master/specs/phase0/beacon-chain.md#get_validator_churn_limit
-			// validator_churn_limit = max(MIN_PER_EPOCH_CHURN_LIMIT, len(active_validator_indices) // CHURN_LIMIT_QUOTIENT)
-			// validator_churn_limit = max(4, len(active_set) / 2**16)
-			// validator.activationepoch = epoch + validator.positioninactivationqueue / validator_churn_limit
-			// note: this is only an estimation
-			positionInActivationQueue := v.Index - lastActivatedValidatorIdx
-			churnLimit := float64(lenActivatedValidators) / 65536
-			if churnLimit < 4 {
-				churnLimit = 4
-			}
-			if v.ActivationEligibilityEpoch > epoch {
-				v.ActivationEpoch = v.ActivationEligibilityEpoch + uint64(float64(positionInActivationQueue)/churnLimit)
-			} else {
-				v.ActivationEpoch = epoch + uint64(float64(positionInActivationQueue)/churnLimit)
-			}
-		}
-		_, err = stmtValidators.Exec(v.Index, v.PublicKey, v.WithdrawableEpoch, v.WithdrawalCredentials, v.Balance, v.EffectiveBalance, v.Slashed, v.ActivationEligibilityEpoch, v.ActivationEpoch, v.ExitEpoch)
+			exitepoch                  = EXCLUDED.exitepoch`, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return fmt.Errorf("error executing save validator statement: %v", err)
+			return err
 		}
 	}
 
@@ -456,19 +476,33 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 }
 
 func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sql.Tx) error {
-	stmtAttestationAssignments, err := tx.Prepare(`
-		INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
-		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmtAttestationAssignments.Close()
 
+	args := make([][]interface{}, 0, len(assignments))
 	for key, validator := range assignments {
 		keySplit := strings.Split(key, "-")
+		args = append(args, []interface{}{epoch, validator, keySplit[0], keySplit[1], 0})
+	}
 
-		_, err := stmtAttestationAssignments.Exec(epoch, validator, keySplit[0], keySplit[1], 0)
+	batchSize := 10000
+
+	for b := 0; b < len(args); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(args) < end {
+			end = len(args)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*5)
+		for i, v := range args[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*5+1, i*5+2, i*5+3, i*5+4, i*5+5))
+			valueArgs = append(valueArgs, v...)
+		}
+		stmt := fmt.Sprintf(`
+		INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
+		VALUES %s
+		ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO NOTHING`, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return fmt.Errorf("error executing save validator attestation assignment statement: %v", err)
 		}
@@ -478,21 +512,33 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 }
 
 func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
-	stmt, err := tx.Prepare(`
+	batchSize := 10000
+
+	for b := 0; b < len(validators); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(validators) < end {
+			end = len(validators)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*4)
+		for i, v := range validators[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
+			valueArgs = append(valueArgs, epoch)
+			valueArgs = append(valueArgs, v.Index)
+			valueArgs = append(valueArgs, v.Balance)
+			valueArgs = append(valueArgs, v.EffectiveBalance)
+		}
+		stmt := fmt.Sprintf(`
 		INSERT INTO validator_balances (epoch, validatorindex, balance, effectivebalance)
-		VALUES ($1, $2, $3, $4)
+		VALUES %s
 		ON CONFLICT (epoch, validatorindex) DO UPDATE SET
 			balance          = EXCLUDED.balance,
-			effectivebalance = EXCLUDED.effectivebalance`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	for _, v := range validators {
-		_, err := stmt.Exec(epoch, v.Index, v.Balance, v.EffectiveBalance)
+			effectivebalance = EXCLUDED.effectivebalance`, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return fmt.Errorf("error executing save validator balance statement: %v", err)
+			return err
 		}
 	}
 
