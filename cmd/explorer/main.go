@@ -10,15 +10,17 @@ import (
 	"eth2-exporter/utils"
 	"flag"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/jmoiron/sqlx"
 	"github.com/phyber/negroni-gzip/gzip"
 	"github.com/urfave/negroni"
 	"github.com/zesik/proxyaddr"
+
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 func main() {
@@ -33,7 +35,7 @@ func main() {
 		log.Fatalf("error reading config file: %v", err)
 	}
 
-	dbConn, err := sqlx.Open("postgres", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name))
+	dbConn, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name))
 	if err != nil {
 		log.Fatal(err)
 	}

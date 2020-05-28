@@ -1,6 +1,7 @@
 .idea/
 cmd/playground
 cmd/monitor
+cmd/explorer/explorer
 modd.conf
 bin/
 docker/
