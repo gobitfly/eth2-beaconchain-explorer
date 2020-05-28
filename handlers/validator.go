@@ -129,42 +129,22 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.WithdrawableTs = utils.EpochToTime(validatorPageData.WithdrawableEpoch)
 
 	proposals := []struct {
-		Day    uint64
+		Slot   uint64
 		Status uint64
-		Count  uint
 	}{}
 
-	err = db.DB.Select(&proposals, "select slot / $1 as day, status, count(*) FROM blocks WHERE proposer = $2 group by day, status order by day;", 86400/utils.Config.Chain.SecondsPerSlot, index)
+	err = db.DB.Select(&proposals, "SELECT slot, status FROM blocks WHERE proposer = $1 ORDER BY slot", index)
 	if err != nil {
-		logger.Errorf("error retrieving Daily Proposed Blocks blocks count: %v", err)
+		logger.Errorf("error retrieving block-proposals: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
-	for i := 0; i < len(proposals); i++ {
-		if proposals[i].Status == 1 {
-			validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
-				Day:      utils.SlotToTime(proposals[i].Day * 86400 / utils.Config.Chain.SecondsPerSlot).Unix(),
-				Proposed: proposals[i].Count,
-				Missed:   0,
-				Orphaned: 0,
-			})
-		} else if proposals[i].Status == 2 {
-			validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
-				Day:      utils.SlotToTime(proposals[i].Day * 86400 / utils.Config.Chain.SecondsPerSlot).Unix(),
-				Proposed: 0,
-				Missed:   proposals[i].Count,
-				Orphaned: 0,
-			})
-		} else if proposals[i].Status == 3 {
-			validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
-				Day:      utils.SlotToTime(proposals[i].Day * 86400 / utils.Config.Chain.SecondsPerSlot).Unix(),
-				Proposed: 0,
-				Missed:   0,
-				Orphaned: proposals[i].Count,
-			})
-		} else {
-			logger.Errorf("error parsing Daily Proposed Blocks unknown status: %v", proposals[i].Status)
+	validatorPageData.Proposals = make([][]uint64, len(proposals))
+	for i, b := range proposals {
+		validatorPageData.Proposals[i] = []uint64{
+			uint64(utils.SlotToTime(b.Slot).Unix()),
+			b.Status,
 		}
 	}
 
@@ -191,67 +171,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
-	cutoff1d := time.Now().Add(time.Hour * 24 * -1)
-	cutoff7d := time.Now().Add(time.Hour * 24 * 7 * -1)
-	cutoff31d := time.Now().Add(time.Hour * 24 * 31 * -1)
-
 	for i, balance := range balanceHistory {
 		balanceTs := utils.EpochToTime(balance.Epoch)
-
-		if balanceTs.Before(cutoff1d) {
-			validatorPageData.Income1d = int64(validatorPageData.CurrentBalance) - int64(balance.Balance)
-		}
-		if balanceTs.Before(cutoff7d) {
-			validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balance.Balance)
-		}
-		if balanceTs.Before(cutoff31d) {
-			validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balance.Balance)
-		}
-
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
 	}
 
-	if len(balanceHistory) > 0 {
-		if validatorPageData.Income1d == 0 {
-			validatorPageData.Income1d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
-		}
-
-		if validatorPageData.Income7d == 0 {
-			validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
-		}
-
-		if validatorPageData.Income31d == 0 {
-			validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
-		}
+	earnings, err := GetValidatorEarnings([]uint64{index})
+	if err != nil {
+		logger.Errorf("error retrieving validator effective balance history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
-
-	depositHistory := []struct {
-		Epoch  uint64
-		Amount uint64
-	}{}
-	err = db.DB.Select(&depositHistory, `
-		SELECT
-			(d.block_slot/32) as epoch,
-			d.amount
-		FROM validators
-			LEFT JOIN blocks_deposits d
-				ON d.publickey = validators.pubkey
-		WHERE validators.validatorindex = $1
-		OFFSET 1`, index)
-
-	for _, deposit := range depositHistory {
-		depositTs := utils.EpochToTime(deposit.Epoch)
-
-		if depositTs.After(cutoff1d) {
-			validatorPageData.Income1d -= int64(deposit.Amount)
-		}
-		if depositTs.After(cutoff7d) {
-			validatorPageData.Income7d -= int64(deposit.Amount)
-		}
-		if depositTs.After(cutoff31d) {
-			validatorPageData.Income31d -= int64(deposit.Amount)
-		}
-	}
+	validatorPageData.Income1d = earnings.LastDay
+	validatorPageData.Income7d = earnings.LastWeek
+	validatorPageData.Income31d = earnings.LastMonth
 
 	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
 	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, COALESCE(effectivebalance, 0) as balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
