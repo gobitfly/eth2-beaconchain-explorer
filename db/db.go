@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"math/big"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -619,8 +620,16 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 	}
 	defer stmtValidatorsLastAttestationSlot.Close()
 
-	for _, slot := range blocks {
-		for _, b := range slot {
+	slots := make([]uint64, 0, len(blocks))
+	for slot := range blocks {
+		slots = append(slots, slot)
+	}
+	sort.Slice(slots, func(i, j int) bool {
+		return slots[i] < slots[j]
+	})
+
+	for _, slot := range slots {
+		for _, b := range blocks[slot] {
 			var dbBlockRootHash []byte
 			err := DB.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
 
