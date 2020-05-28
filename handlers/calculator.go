@@ -17,7 +17,7 @@ var stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(u
 // StakingCalculator renders stakingCalculatorTemplate
 func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-
+	stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - Staking calculator - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
@@ -31,6 +31,8 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	// stakingCalculatorTemplate = template.Must(template.New("staking_estimator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))

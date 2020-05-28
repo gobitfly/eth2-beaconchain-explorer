@@ -18,7 +18,7 @@ var epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/
 
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
-
+	epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/layout.html", "templates/epochs.html"))
 	w.Header().Set("Content-Type", "text/html")
 
 	data := &types.PageData{
@@ -34,6 +34,8 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	err := epochsTemplate.ExecuteTemplate(w, "layout", data)

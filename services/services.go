@@ -14,6 +14,7 @@ import (
 )
 
 var latestEpoch uint64
+var latestSlot uint64
 var indexPageData atomic.Value
 var chartsPageData atomic.Value
 var ready = sync.WaitGroup{}
@@ -22,8 +23,9 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(2)
+	ready.Add(3)
 	go epochUpdater()
+	go slotUpdater()
 	go indexPageDataUpdater()
 	ready.Wait()
 
@@ -41,6 +43,26 @@ func epochUpdater() {
 			logger.Errorf("error retrieving latest epoch from the database: %w", err)
 		} else {
 			atomic.StoreUint64(&latestEpoch, epoch)
+			if firstRun {
+				ready.Done()
+				firstRun = false
+			}
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+func slotUpdater() {
+	firstRun := true
+
+	for true {
+		var slot uint64
+		err := db.DB.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks")
+
+		if err != nil {
+			logger.Errorf("error retrieving latest slot from the database: %w", err)
+		} else {
+			atomic.StoreUint64(&latestSlot, slot)
 			if firstRun {
 				ready.Done()
 				firstRun = false
@@ -166,6 +188,11 @@ func getIndexPageData() (*types.IndexPageData, error) {
 // LatestEpoch will return the latest epoch
 func LatestEpoch() uint64 {
 	return atomic.LoadUint64(&latestEpoch)
+}
+
+// LatestSlot will return the latest slot
+func LatestSlot() uint64 {
+	return atomic.LoadUint64(&latestSlot)
 }
 
 // LatestIndexPageData returns the latest index page data

@@ -8,11 +8,12 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
-	"github.com/juliangruber/go-intersect"
 	"html/template"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/juliangruber/go-intersect"
 )
 
 var validatorsSlashingsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators_slashings.html"))
@@ -34,6 +35,8 @@ func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	err := validatorsSlashingsTemplate.ExecuteTemplate(w, "layout", data)

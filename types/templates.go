@@ -19,6 +19,8 @@ type PageData struct {
 	ChainSlotsPerEpoch    uint64
 	ChainSecondsPerSlot   uint64
 	ChainGenesisTimestamp uint64
+	CurrentEpoch          uint64
+	CurrentSlot           uint64
 }
 
 // Meta is a struct to hold metadata about the page

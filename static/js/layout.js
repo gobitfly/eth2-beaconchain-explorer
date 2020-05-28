@@ -202,32 +202,32 @@ $('[aria-ethereum-date]').each(function(item) {
   }
 })
 
-var indicator = $('#nav .nav-indicator')
-var items = document.querySelectorAll('#nav .nav-item')
-var selectedLi = indicator.parent()[0]
-var navigated = false
+// var indicator = $('#nav .nav-indicator')
+// var items = document.querySelectorAll('#nav .nav-item')
+// var selectedLi = indicator.parent()[0]
+// var navigated = false
 
-function handleIndicator(el) {
-  indicator.css({
-    width: `${el.offsetWidth}px`,
-    left: `${el.offsetLeft}px`,
-    bottom: 0
-  })
-}
+// function handleIndicator(el) {
+//   indicator.css({
+//     width: `${el.offsetWidth}px`,
+//     left: `${el.offsetLeft}px`,
+//     bottom: 0
+//   })
+// }
 
-items.forEach(function(item, index) {
-  item.addEventListener('click', el => {
-    if (navigated === false) {
-      indicator
-        .css({
-          width: `${selectedLi.offsetWidth}px`,
-          left: `${selectedLi.offsetLeft}px`,
-          bottom: 0
-        })
-        .detach()
-        .appendTo('.navbar ul') //.appendTo(el.target)
-    }
-    navigated = true
-    handleIndicator(item)
-  })
-})
+// items.forEach(function(item, index) {
+//   item.addEventListener('click', el => {
+//     if (navigated === false) {
+//       indicator
+//         .css({
+//           width: `${selectedLi.offsetWidth}px`,
+//           left: `${selectedLi.offsetLeft}px`,
+//           bottom: 0
+//         })
+//         .detach()
+//         .appendTo('.navbar ul') //.appendTo(el.target)
+//     }
+//     navigated = true
+//     handleIndicator(item)
+//   })
+// })
