@@ -22,6 +22,131 @@ import (
 var DB *sqlx.DB
 var logger = logrus.New().WithField("module", "db")
 
+func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsPageData, error) {
+	deposits := []*types.EthOneDepositsPageData{}
+
+	err := DB.Select(&deposits, `
+	SELECT 
+		tx_hash,
+		tx_input,
+		tx_index,
+		block_number,
+		block_ts as block_ts,
+		from_address,
+		publickey,
+		withdrawal_credentials,
+		amount,
+		signature,
+		merkletree_index
+	FROM 
+		eth1_deposits
+	ORDER BY block_ts DESC
+	LIMIT $1
+	OFFSET $2`, length, start)
+	if err != nil {
+		return nil, err
+	}
+
+	return deposits, nil
+}
+
+func GetEth1DepositsJoinEth2Deposits(address string, length, start uint64) ([]*types.EthOneDepositsPageData, error) {
+	deposits := []*types.EthOneDepositsPageData{}
+
+	err := DB.Select(&deposits, `
+	SELECT 
+		eth1.tx_hash as tx_hash,
+		eth1.tx_input as tx_input,
+		eth1.tx_index as tx_index,
+		eth1.block_number as block_number,
+		eth1.block_ts as block_ts,
+		eth1.from_address as from_address,
+		eth1.publickey as publickey,
+		eth1.withdrawal_credentials as withdrawal_credentials,
+		eth1.amount as amount,
+		eth1.signature as signature,
+		eth1.merkletree_index as merkletree_index,
+		CASE WHEN eth2.publickey IS NULL
+			THEN 'false'::BOOL
+			ELSE 'true'::BOOL 
+		END as activated
+	FROM
+		eth1_deposits as eth1
+	LEFT JOIN
+		(
+			SELECT 
+				publickey
+			FROM
+				blocks_deposits
+		) as eth2
+	ON 
+	  eth1.publickey = eth2.publickey
+	ORDER BY block_ts DESC
+	LIMIT $1
+	OFFSET $2`, length, start)
+	if err != nil {
+		return nil, err
+	}
+
+	return deposits, nil
+}
+
+func GetEth1DepositsCount() (uint64, error) {
+	deposits := uint64(0)
+
+	err := DB.Get(&deposits, `
+	SELECT 
+		Count(*)
+	FROM 
+		eth1_deposits
+	`)
+	if err != nil {
+		return 0, err
+	}
+
+	return deposits, nil
+}
+
+func GetEth2DepositsJoinEth2Deposits(address string, length, start uint64) ([]*types.EthTwoDepositsPageData, error) {
+	deposits := []*types.EthTwoDepositsPageData{}
+
+	err := DB.Select(&deposits, `
+	SELECT 
+		block_slot,
+		block_index,
+		proof,
+		publickey,
+		withdrawalcredentials,
+		amount,
+		signature
+	FROM
+		blocks_deposits
+	ORDER BY block_slot DESC
+	LIMIT $1
+	OFFSET $2`, length, start)
+	if err != nil {
+		return nil, err
+	}
+
+	return deposits, nil
+}
+
+func GetEth2DepositsCount() (uint64, error) {
+	deposits := uint64(0)
+
+	err := DB.Get(&deposits, `
+	SELECT 
+		Count(*)
+	FROM 
+		blocks_deposits
+	`)
+	if err != nil {
+		return 0, err
+	}
+
+	return deposits, nil
+}
+
 // GetLatestEpoch will return the latest epoch from the database
 func GetLatestEpoch() (uint64, error) {
 	var epoch uint64

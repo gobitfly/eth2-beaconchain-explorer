@@ -185,15 +185,15 @@ type EpochAssignments struct {
 
 // Eth1Deposit is a struct to hold eth1-deposit data
 type Eth1Deposit struct {
-	TxHash                []byte
-	TxInput               []byte
-	TxIndex               uint64
-	BlockNumber           uint64
-	BlockTs               uint64
-	FromAddress           []byte
-	PublicKey             []byte
-	WithdrawalCredentials []byte
-	Amount                uint64
-	Signature             []byte
-	MerkletreeIndex       []byte
+	TxHash                []byte `db:"tx_hash"`
+	TxInput               []byte `db:"tx_input"`
+	TxIndex               uint64 `db:"tx_index"`
+	BlockNumber           uint64 `db:"block_number"`
+	BlockTs               uint64 `db:"block_ts"`
+	FromAddress           []byte `db:"from_address"`
+	PublicKey             []byte `db:"publickey"`
+	WithdrawalCredentials []byte `db:"withdrawal_credentials"`
+	Amount                uint64 `db:"amount"`
+	Signature             []byte `db:"signature"`
+	MerkletreeIndex       []byte `db:"merkletree_index"`
 }

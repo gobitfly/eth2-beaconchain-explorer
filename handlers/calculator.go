@@ -25,7 +25,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 			Path:        "/calculator",
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "calculator",
+		Active:                "stats",
 		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,

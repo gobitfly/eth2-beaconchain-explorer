@@ -508,3 +508,29 @@ type ValidatorAttestationSlashing struct {
 	Attestestation1Indices pq.Int64Array `db:"attestation1_indices" json:"attestation1_indices,omitempty"`
 	Attestestation2Indices pq.Int64Array `db:"attestation2_indices" json:"attestation2_indices,omitempty"`
 }
+
+// EpochsPageData is a struct to hold epoch data for the epochs page
+type EthOneDepositsPageData struct {
+	TxHash                []byte    `db:"tx_hash"`
+	TxInput               []byte    `db:"tx_input"`
+	TxIndex               uint64    `db:"tx_index"`
+	BlockNumber           uint64    `db:"block_number"`
+	BlockTs               time.Time `db:"block_ts"`
+	FromAddress           []byte    `db:"from_address"`
+	PublicKey             []byte    `db:"publickey"`
+	WithdrawalCredentials []byte    `db:"withdrawal_credentials"`
+	Amount                uint64    `db:"amount"`
+	Signature             []byte    `db:"signature"`
+	MerkletreeIndex       []byte    `db:"merkletree_index"`
+	Activated             bool      `db:"activated"`
+}
+
+type EthTwoDepositsPageData struct {
+	BlockSlot             uint64 `db:"block_slot"`
+	BlockIndex            uint64 `db:"block_index"`
+	Proof                 []byte `db:"proof"`
+	Publickey             []byte `db:"publickey"`
+	Withdrawalcredentials []byte `db:"withdrawalcredentials"`
+	Amount                uint64 `db:"amount"`
+	Signature             []byte `db:"signature"`
+}

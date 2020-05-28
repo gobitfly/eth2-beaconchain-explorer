@@ -1,0 +1,70 @@
+{{ define "js"}}
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+<script>
+  $(document).ready(function () {
+    $('#deposits').DataTable({
+      processing: true,
+      serverSide: true,
+      ordering: false,
+      searching: true,
+      ajax: '/deposits/eth2/data',
+      pagingType: 'full',
+      language: {
+        searchPlaceholder: 'Block Number / Tx Hash',
+        search: ''
+      },
+      columnDefs: [
+        {
+          targets: 1,
+          data: '1',
+          render: function (data, type, row, meta) {
+            return `<a href="/validator/${ data }">${ data.substr(0, 10) } ...</a>`
+          }
+        },
+        {
+          targets: 2,
+          data: '2',
+          render: function (data, type, row, meta) {
+            return data.substr(0, 10) + '...'
+          }
+        },
+      ]
+    })
+  })
+</script>
+{{end}} {{ define "css"}}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+
+
+{{end}} {{ define "content"}}
+<div class="my-3">
+  <div class="d-md-flex py-2 justify-content-md-between">
+    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-clipboard-check mr-2"></i>Eth2 Deposits</h1>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+        <li class="breadcrumb-item" aria-current="page">Deposits</li>
+        <li class="breadcrumb-item active" aria-current="page">Eth2</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body px-0 py-2">
+    <div class="table-responsive pt-2">
+      <table class="table" id="deposits">
+        <thead>
+          <tr>
+            <th>Slot</th>
+            <!-- <th>Block Index</th> -->
+            <th>Public Key</th>
+            <th>WithdrawalCredentials</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody> </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{{end}}
