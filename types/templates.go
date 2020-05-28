@@ -493,6 +493,14 @@ type DashboardValidatorBalanceHistory struct {
 	ValidatorCount   float64 `db:"validatorcount"`
 }
 
+// ValidatorEarnings is a struct to hold the earnings of one or multiple validators
+type ValidatorEarnings struct {
+	Total     int64 `json:"total"`
+	LastDay   int64 `json:"lastDay"`
+	LastWeek  int64 `json:"lastWeek"`
+	LastMonth int64 `json:"lastMonth"`
+}
+
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing
 type ValidatorAttestationSlashing struct {
 	Epoch                  uint64        `db:"epoch" json:"epoch,omitempty"`
@@ -502,10 +510,9 @@ type ValidatorAttestationSlashing struct {
 	Attestestation2Indices pq.Int64Array `db:"attestation2_indices" json:"attestation2_indices,omitempty"`
 }
 
-// ValidatorEarnings is a struct to hold the earnings of one or multiple validators
-type ValidatorEarnings struct {
-	Total     int64 `json:"total"`
-	LastDay   int64 `json:"lastDay"`
-	LastWeek  int64 `json:"lastWeek"`
-	LastMonth int64 `json:"lastMonth"`
+type ValidatorProposerSlashing struct {
+	Epoch    uint64 `db:"epoch" json:"epoch,omitempty"`
+	Slot     uint64 `db:"slot" json:"slot,omitempty"`
+	Proposer uint64 `db:"proposer" json:"proposer,omitempty"`
+	Slasher  uint64 `db:"proposerindex" json:"slasher,omitempty"`
 }

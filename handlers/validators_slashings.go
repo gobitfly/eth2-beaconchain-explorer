@@ -11,6 +11,7 @@ import (
 	"github.com/juliangruber/go-intersect"
 	"html/template"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -76,8 +77,16 @@ order by blocks.slot desc;`)
 		return
 	}
 
-	tableData := make([][]interface{}, len(attesterSlashings))
-	for i, b := range attesterSlashings {
+	var proposerSlashings []*types.ValidatorProposerSlashing
+	err = db.DB.Select(&proposerSlashings, "SELECT blocks.slot, blocks.epoch, blocks.proposer, blocks_proposerslashings.proposerindex FROM blocks_proposerslashings left join blocks on blocks_proposerslashings.block_slot = blocks.slot")
+	if err != nil {
+		logger.Errorf("error retrieving block proposer slashings data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(attesterSlashings)+len(proposerSlashings))
+	for _, b := range attesterSlashings {
 
 		inter := intersect.Simple(b.Attestestation1Indices, b.Attestestation2Indices)
 
@@ -86,15 +95,30 @@ order by blocks.slot desc;`)
 			slashedValidator = uint64(inter[0].(int64))
 		}
 
-		tableData[i] = []interface{}{
+		tableData = append(tableData, []interface{}{
 			utils.FormatSlashedValidator(slashedValidator),
 			utils.FormatValidator(b.Proposer),
 			utils.SlotToTime(b.Slot).Unix(),
-			"Attestation rule violation",
+			"Attestation Violation",
 			b.Slot,
 			b.Epoch,
-		}
+		})
 	}
+
+	for _, b := range proposerSlashings {
+		tableData = append(tableData, []interface{}{
+			utils.FormatSlashedValidator(b.Proposer),
+			utils.FormatValidator(b.Slasher),
+			utils.SlotToTime(b.Slot).Unix(),
+			"Proposer Violation",
+			b.Slot,
+			b.Epoch,
+		})
+	}
+
+	sort.Slice(tableData, func(i, j int) bool {
+		return tableData[i][2].(int64) > tableData[j][2].(int64)
+	})
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
