@@ -18,18 +18,18 @@ type chartHandler struct {
 }
 
 var chartHandlers = map[string]chartHandler{
-	"blocks":                         chartHandler{1, blocksChartData},
-	"validators":                     chartHandler{2, activeValidatorsChartData},
-	"staked_ether":                   chartHandler{3, stakedEtherChartData},
-	"average_balance":                chartHandler{4, averageBalanceChartData},
-	"network_liveness":               chartHandler{5, networkLivenessChartData},
-	"participation_rate":             chartHandler{6, participationRateChartData},
-	"validator_income":               chartHandler{7, averageDailyValidatorIncomeChartData},
-	"staking_rewards":                chartHandler{8, stakingRewardsChartData},
-	"stake_effectiveness":            chartHandler{9, stakeEffectivenessChartData},
-	"balance_distribution":           chartHandler{10, balanceDistributionChartData},
-	"effective_balance_distribution": chartHandler{11, effectiveBalanceDistributionChartData},
-	"performance_distribution_365d":  chartHandler{12, performanceDistribution365dChartData},
+	"blocks":                         {1, blocksChartData},
+	"validators":                     {2, activeValidatorsChartData},
+	"staked_ether":                   {3, stakedEtherChartData},
+	"average_balance":                {4, averageBalanceChartData},
+	"network_liveness":               {5, networkLivenessChartData},
+	"participation_rate":             {6, participationRateChartData},
+	"validator_income":               {7, averageDailyValidatorIncomeChartData},
+	"staking_rewards":                {8, stakingRewardsChartData},
+	"stake_effectiveness":            {9, stakeEffectivenessChartData},
+	"balance_distribution":           {10, balanceDistributionChartData},
+	"effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
+	"performance_distribution_365d":  {12, performanceDistribution365dChartData},
 }
 
 // LatestChartsPageData returns the latest chart page data
@@ -436,10 +436,11 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 	var prevDay float64
 	for _, row := range rows {
 		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+
 		if prevDay != day && prevRewards != 0 && row.Rewards != 0 {
 			seriesData = append(seriesData, []float64{
 				day,
-				float64(int64(row.Rewards)-int64(prevRewards)) / float64(row.Validatorscount) / 1e9,
+				float64(row.Rewards-prevRewards) / float64(row.Validatorscount) / 1e9,
 			})
 		}
 		if prevDay != day {
