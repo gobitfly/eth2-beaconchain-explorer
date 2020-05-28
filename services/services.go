@@ -24,7 +24,7 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(3)
+	ready.Add(4)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
@@ -42,7 +42,7 @@ func epochUpdater() {
 		err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 
 		if err != nil {
-			logger.Errorf("error retrieving latest epoch from the database: %w", err)
+			logger.Errorf("error retrieving latest epoch from the database: %v", err)
 		} else {
 			atomic.StoreUint64(&latestEpoch, epoch)
 			if firstRun {
@@ -62,7 +62,7 @@ func slotUpdater() {
 		err := db.DB.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks")
 
 		if err != nil {
-			logger.Errorf("error retrieving latest slot from the database: %w", err)
+			logger.Errorf("error retrieving latest slot from the database: %v", err)
 		} else {
 			atomic.StoreUint64(&latestSlot, slot)
 			if firstRun {
@@ -82,7 +82,7 @@ func latestProposedSlotUpdater() {
 		err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
 
 		if err != nil {
-			logger.Errorf("error retrieving latest proposed slot from the database: %w", err)
+			logger.Errorf("error retrieving latest proposed slot from the database: %v", err)
 		} else {
 			atomic.StoreUint64(&latestProposedSlot, epoch)
 			if firstRun {

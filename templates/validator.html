@@ -378,6 +378,12 @@
 				 role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span
 						class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
 		</li>
+		<li class="nav-item">
+			<a class="nav-link" id="pills-deposits-tab" data-toggle="pill"
+				 href="#pills-deposits"
+				 role="tab" aria-controls="pills-attestations" aria-selected="false">Deposits <span
+						class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
+		</li>
 		{{/*
 <li class="nav-item"
 >*/}} {{/* <a class="nav-link" href="#">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a
@@ -518,6 +524,23 @@
 					 aria-labelledby="pills-attestations-tab">
 					<div class="table-responsive my-3">
 						<table class="table" id="attestations" width="100%">
+							<thead>
+							<tr>
+								<th>Epoch</th>
+								<th>Slot</th>
+								<th>Status</th>
+								<th>Time</th>
+								<th>Committee Index</th>
+							</tr>
+							</thead>
+							<tbody></tbody>
+						</table>
+					</div>
+				</div>
+				<div class="tab-pane fade" id="pills-deposits" role="tabpanel"
+					 aria-labelledby="pills-deposits-tab">
+					<div class="table-responsive my-3">
+						<table class="table" id="deposits" width="100%">
 							<thead>
 							<tr>
 								<th>Epoch</th>
