@@ -506,3 +506,10 @@ type ValidatorAttestationSlashing struct {
 	Attestestation1Indices pq.Int64Array `db:"attestation1_indices" json:"attestation1_indices,omitempty"`
 	Attestestation2Indices pq.Int64Array `db:"attestation2_indices" json:"attestation2_indices,omitempty"`
 }
+
+type ValidatorEarnings struct {
+	Total     int64
+	LastDay   int64
+	LastWeek  int64
+	LastMonth int64
+}

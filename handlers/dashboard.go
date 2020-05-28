@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"sync"
 	"time"
 
 	"strconv"
@@ -21,7 +20,7 @@ import (
 
 var dashboardTemplate = template.Must(template.New("dashboard").ParseFiles("templates/layout.html", "templates/dashboard.html"))
 
-func parseValidatorsFromQueryString(str string) ([]int64, error) {
+func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 	if str == "" {
 		return []int64{}, nil
 	}
@@ -38,7 +37,7 @@ func parseValidatorsFromQueryString(str string) ([]int64, error) {
 	keys := make(map[int64]bool, strSplitLen)
 
 	for i, vStr := range strSplit {
-		v, err := strconv.ParseInt(vStr, 10, 64)
+		v, err := strconv.ParseUint(vStr, 10, 64)
 		if err != nil {
 			return []int64{}, err
 		}
@@ -73,7 +72,9 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	err := dashboardTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
-		logger.Fatalf("Error executing template for %v route: %v", r.URL.String(), err)
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error executing template")
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -84,7 +85,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 
 	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"))
 	if err != nil {
-		logger.WithError(err).Error("Failed parsing validators from query string")
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)
 		return
 	}
@@ -120,7 +121,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	data := []*types.DashboardValidatorBalanceHistory{}
 	err = db.DB.Select(&data, query, queryValidatorsArr, queryOffsetEpoch)
 	if err != nil {
-		logger.Errorf("error retrieving validator balance history: %v", err)
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -135,7 +136,9 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
 	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -162,7 +165,7 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 		WHERE proposer = ANY($1)
 		ORDER BY slot`, filter)
 	if err != nil {
-		logger.WithError(err).Error("Error retrieving block-proposals")
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving block-proposals")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -177,7 +180,9 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(proposalsResult)
 	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -210,7 +215,7 @@ func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
 			AND epoch >= $3 
 			AND status = 0`, filter, maxEpoch, minEpoch)
 	if err != nil {
-		logger.WithError(err).Error("Error retrieving Daily Proposed Blocks blocks count")
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving daily proposed blocks blocks count")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -228,7 +233,9 @@ func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(result)
 	if err != nil {
-		logger.Fatalf("Error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -293,7 +300,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		LIMIT 100`, latestEpoch, validatorOnlineThresholdSlot, filter)
 
 	if err != nil {
-		logger.Errorf("error retrieving validator data: %v", err)
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator data")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -366,7 +373,9 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
-		logger.Fatalf("error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error enconding json response")
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 }
 
@@ -380,113 +389,16 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid query", 400)
 		return
 	}
-	queryValidatorsArr := pq.Array(queryValidators)
 
-	latestEpoch := services.LatestEpoch()
-	now := utils.EpochToTime(latestEpoch)
-	lastDayEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 1 * -1))
-	lastWeekEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 7 * -1))
-	lastMonthEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 31 * -1))
-
-	earningsQuery := `
-		WITH 
-			minmaxepoch AS (
-				SELECT
-					validatorindex,
-					MIN(epoch) AS firstepoch,
-					MAX(epoch) AS lastepoch
-				FROM validator_balances
-				WHERE validatorindex = ANY($1) AND epoch > $2
-				GROUP by validatorindex
-			),
-			deposits AS (
-				SELECT vv.validatorindex, COALESCE(SUM(bd.amount),0) AS amount
-				FROM minmaxepoch
-				INNER JOIN validators vv
-					ON vv.validatorindex = minmaxepoch.validatorindex
-				LEFT JOIN blocks_deposits bd 
-					ON bd.publickey = vv.pubkey
-					AND (bd.block_slot/32)-1 > minmaxepoch.firstepoch
-				GROUP BY vv.validatorindex
-			)
-		SELECT
-			SUM(last.balance - first.balance - d.amount) AS earnings
-		FROM minmaxepoch
-		INNER JOIN validator_balances first
-			ON first.validatorindex = minmaxepoch.validatorindex
-			AND first.epoch = minmaxepoch.firstepoch
-		INNER JOIN validator_balances last
-			ON last.validatorindex = minmaxepoch.validatorindex
-			AND last.epoch = minmaxepoch.lastepoch
-		LEFT JOIN deposits d on d.validatorindex = minmaxepoch.validatorindex;`
-
-	var earningsTotal int64
-	var earningsLastDay int64
-	var earningsLastWeek int64
-	var earningsLastMonth int64
-
-	wg := sync.WaitGroup{}
-	wg.Add(4)
-	errs := make(chan error, 4)
-
-	go func() {
-		defer wg.Done()
-		err := db.DB.Get(&earningsTotal, earningsQuery, queryValidatorsArr, 0)
-		if err != nil {
-			logger.WithField("route", r.URL.String()).Errorf("error retrieving total earnings: %v", err)
-		}
-		errs <- err
-	}()
-
-	go func() {
-		defer wg.Done()
-		err := db.DB.Get(&earningsLastDay, earningsQuery, queryValidatorsArr, lastDayEpoch)
-		if err != nil {
-			logger.WithField("route", r.URL.String()).Errorf("error retrieving earnings of last day: %v", err)
-		}
-		errs <- err
-	}()
-
-	go func() {
-		defer wg.Done()
-		err := db.DB.Get(&earningsLastWeek, earningsQuery, queryValidatorsArr, lastWeekEpoch)
-		if err != nil {
-			logger.WithField("route", r.URL.String()).Errorf("error retrieving earnings of last week: %v", err)
-		}
-		errs <- err
-	}()
-
-	go func() {
-		defer wg.Done()
-		err := db.DB.Get(&earningsLastMonth, earningsQuery, queryValidatorsArr, lastMonthEpoch)
-		if err != nil {
-			logger.WithField("route", r.URL.String()).Errorf("error retrieving earnings of last month: %v", err)
-		}
-		errs <- err
-	}()
-
-	go func() {
-		wg.Wait()
-		close(errs)
-	}()
-
-	for err := range errs {
-		if err != nil {
-			http.Error(w, "Internal server error", 503)
-			return
-		}
-	}
-
-	earnings := &types.DashboardEarnings{
-		Total:     earningsTotal,
-		LastDay:   earningsLastDay,
-		LastWeek:  earningsLastWeek,
-		LastMonth: earningsLastMonth,
+	earnings, err := db.GetValidatorEarnings(queryValidators)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator earnings")
+		http.Error(w, "Internal server error", 503)
 	}
 
 	err = json.NewEncoder(w).Encode(earnings)
 	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error enconding json response")
 		http.Error(w, "Internal server error", 503)
 		return
 	}

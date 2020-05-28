@@ -191,67 +191,19 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
-	cutoff1d := time.Now().Add(time.Hour * 24 * -1)
-	cutoff7d := time.Now().Add(time.Hour * 24 * 7 * -1)
-	cutoff31d := time.Now().Add(time.Hour * 24 * 31 * -1)
-
 	for i, balance := range balanceHistory {
-		balanceTs := utils.EpochToTime(balance.Epoch)
-
-		if balanceTs.Before(cutoff1d) {
-			validatorPageData.Income1d = int64(validatorPageData.CurrentBalance) - int64(balance.Balance)
-		}
-		if balanceTs.Before(cutoff7d) {
-			validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balance.Balance)
-		}
-		if balanceTs.Before(cutoff31d) {
-			validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balance.Balance)
-		}
-
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
 	}
 
-	if len(balanceHistory) > 0 {
-		if validatorPageData.Income1d == 0 {
-			validatorPageData.Income1d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
-		}
-
-		if validatorPageData.Income7d == 0 {
-			validatorPageData.Income7d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
-		}
-
-		if validatorPageData.Income31d == 0 {
-			validatorPageData.Income31d = int64(validatorPageData.CurrentBalance) - int64(balanceHistory[0].Balance)
-		}
+	earnings, err := db.GetValidatorEarnings([]uint64{index})
+	if err != nil {
+		logger.Errorf("error retrieving validator effective balance history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
-
-	depositHistory := []struct {
-		Epoch  uint64
-		Amount uint64
-	}{}
-	err = db.DB.Select(&depositHistory, `
-		SELECT
-			(d.block_slot/32) as epoch,
-			d.amount
-		FROM validators
-			LEFT JOIN blocks_deposits d
-				ON d.publickey = validators.pubkey
-		WHERE validators.validatorindex = $1
-		OFFSET 1`, index)
-
-	for _, deposit := range depositHistory {
-		depositTs := utils.EpochToTime(deposit.Epoch)
-
-		if depositTs.After(cutoff1d) {
-			validatorPageData.Income1d -= int64(deposit.Amount)
-		}
-		if depositTs.After(cutoff7d) {
-			validatorPageData.Income7d -= int64(deposit.Amount)
-		}
-		if depositTs.After(cutoff31d) {
-			validatorPageData.Income31d -= int64(deposit.Amount)
-		}
-	}
+	validatorPageData.Income1d = earnings.LastDay
+	validatorPageData.Income7d = earnings.LastWeek
+	validatorPageData.Income31d = earnings.LastMonth
 
 	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
 	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, COALESCE(effectivebalance, 0) as balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
