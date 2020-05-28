@@ -22,7 +22,7 @@ var dashboardTemplate = template.Must(template.New("dashboard").ParseFiles("temp
 
 func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 	if str == "" {
-		return []int64{}, nil
+		return []uint64{}, nil
 	}
 
 	strSplit := strings.Split(str, ",")
@@ -30,16 +30,16 @@ func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 
 	// we only support up to 100 validators
 	if strSplitLen > 100 {
-		return []int64{}, fmt.Errorf("Too much validators")
+		return []uint64{}, fmt.Errorf("Too much validators")
 	}
 
-	validators := make([]int64, strSplitLen)
-	keys := make(map[int64]bool, strSplitLen)
+	validators := make([]uint64, strSplitLen)
+	keys := make(map[uint64]bool, strSplitLen)
 
 	for i, vStr := range strSplit {
 		v, err := strconv.ParseUint(vStr, 10, 64)
 		if err != nil {
-			return []int64{}, err
+			return []uint64{}, err
 		}
 		// make sure keys are uniq
 		if exists := keys[v]; exists {
@@ -390,7 +390,7 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	earnings, err := db.GetValidatorEarnings(queryValidators)
+	earnings, err := GetValidatorEarnings(queryValidators)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator earnings")
 		http.Error(w, "Internal server error", 503)

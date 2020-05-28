@@ -147,7 +147,7 @@ type ValidatorPageData struct {
 	Income1d                         int64
 	Income7d                         int64
 	Income31d                        int64
-	DailyProposalCount               []DailyProposalCount
+	Proposals                        [][]uint64
 	BalanceHistoryChartData          [][]float64
 	EffectiveBalanceHistoryChartData [][]float64
 }
@@ -478,13 +478,14 @@ type ChartsPageDataChart struct {
 	Data  *GenericChartData
 }
 
+// DashboardData is a struct to hold data for the dashboard-page
 type DashboardData struct {
-	BalanceHistory      DashboardValidatorBalanceHistory `json:"balance_history"`
-	Earnings            DashboardEarnings                `json:"earnings"`
-	Validators          [][]interface{}                  `json:"validators"`
-	DailyProposalCounts []DailyProposalCount             `json:"daily_proposal_counts"`
+	BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
+	Earnings       ValidatorEarnings                `json:"earnings"`
+	Validators     [][]interface{}                  `json:"validators"`
 }
 
+// DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
 type DashboardValidatorBalanceHistory struct {
 	Epoch            uint64  `db:"epoch"`
 	Balance          uint64  `db:"balance"`
@@ -492,13 +493,7 @@ type DashboardValidatorBalanceHistory struct {
 	ValidatorCount   float64 `db:"validatorcount"`
 }
 
-type DashboardEarnings struct {
-	Total     int64 `json:"total"`
-	LastDay   int64 `json:"lastDay"`
-	LastWeek  int64 `json:"lastWeek"`
-	LastMonth int64 `json:"lastMonth"`
-}
-
+// ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing
 type ValidatorAttestationSlashing struct {
 	Epoch                  uint64        `db:"epoch" json:"epoch,omitempty"`
 	Slot                   uint64        `db:"slot" json:"slot,omitempty"`
@@ -507,9 +502,10 @@ type ValidatorAttestationSlashing struct {
 	Attestestation2Indices pq.Int64Array `db:"attestation2_indices" json:"attestation2_indices,omitempty"`
 }
 
+// ValidatorEarnings is a struct to hold the earnings of one or multiple validators
 type ValidatorEarnings struct {
-	Total     int64
-	LastDay   int64
-	LastWeek  int64
-	LastMonth int64
+	Total     int64 `json:"total"`
+	LastDay   int64 `json:"lastDay"`
+	LastWeek  int64 `json:"lastWeek"`
+	LastMonth int64 `json:"lastMonth"`
 }

@@ -129,42 +129,22 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.WithdrawableTs = utils.EpochToTime(validatorPageData.WithdrawableEpoch)
 
 	proposals := []struct {
-		Day    uint64
+		Slot   uint64
 		Status uint64
-		Count  uint
 	}{}
 
-	err = db.DB.Select(&proposals, "select slot / $1 as day, status, count(*) FROM blocks WHERE proposer = $2 group by day, status order by day;", 86400/utils.Config.Chain.SecondsPerSlot, index)
+	err = db.DB.Select(&proposals, "SELECT slot, status FROM blocks WHERE proposer = $1 ORDER BY slot", index)
 	if err != nil {
-		logger.Errorf("error retrieving Daily Proposed Blocks blocks count: %v", err)
+		logger.Errorf("error retrieving block-proposals: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
-	for i := 0; i < len(proposals); i++ {
-		if proposals[i].Status == 1 {
-			validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
-				Day:      utils.SlotToTime(proposals[i].Day * 86400 / utils.Config.Chain.SecondsPerSlot).Unix(),
-				Proposed: proposals[i].Count,
-				Missed:   0,
-				Orphaned: 0,
-			})
-		} else if proposals[i].Status == 2 {
-			validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
-				Day:      utils.SlotToTime(proposals[i].Day * 86400 / utils.Config.Chain.SecondsPerSlot).Unix(),
-				Proposed: 0,
-				Missed:   proposals[i].Count,
-				Orphaned: 0,
-			})
-		} else if proposals[i].Status == 3 {
-			validatorPageData.DailyProposalCount = append(validatorPageData.DailyProposalCount, types.DailyProposalCount{
-				Day:      utils.SlotToTime(proposals[i].Day * 86400 / utils.Config.Chain.SecondsPerSlot).Unix(),
-				Proposed: 0,
-				Missed:   0,
-				Orphaned: proposals[i].Count,
-			})
-		} else {
-			logger.Errorf("error parsing Daily Proposed Blocks unknown status: %v", proposals[i].Status)
+	validatorPageData.Proposals = make([][]uint64, len(proposals))
+	for i, b := range proposals {
+		validatorPageData.Proposals[i] = []uint64{
+			uint64(utils.SlotToTime(b.Slot).Unix()),
+			b.Status,
 		}
 	}
 
@@ -192,10 +172,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
 	for i, balance := range balanceHistory {
+		balanceTs := utils.EpochToTime(balance.Epoch)
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
 	}
 
-	earnings, err := db.GetValidatorEarnings([]uint64{index})
+	earnings, err := GetValidatorEarnings([]uint64{index})
 	if err != nil {
 		logger.Errorf("error retrieving validator effective balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
