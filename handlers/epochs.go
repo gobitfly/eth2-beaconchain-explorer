@@ -89,7 +89,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 		startEpoch = epochsCount
 	}
 	if endEpoch > 9223372036854775807 {
-		endEpoch = epochsCount
+		endEpoch = 0
 	}
 
 	var epochs []*types.EpochsPageData

@@ -34,13 +34,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 
 	latestEpoch := services.LatestEpoch()
 
-	var firstSlotOfPreviousEpoch uint64
-	if latestEpoch < 1 {
-		firstSlotOfPreviousEpoch = 0
-	} else {
-		firstSlotOfPreviousEpoch = (latestEpoch - 1) * utils.Config.Chain.SlotsPerEpoch
-	}
-
+	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 	for _, validator := range validators {
 		validatorsPageData.TotalCount++
 		if latestEpoch > validator.ExitEpoch {
@@ -49,14 +43,14 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 			validatorsPageData.PendingCount++
 		} else if validator.Slashed {
 			// offline validators did not attest in the last 2 epochs (and are active for >1 epochs)
-			if validator.ActivationEpoch < latestEpoch && (validator.LastAttestationSlot == nil || uint64(*validator.LastAttestationSlot) < firstSlotOfPreviousEpoch) {
+			if validator.ActivationEpoch < latestEpoch && (validator.LastAttestationSlot == nil || uint64(*validator.LastAttestationSlot) < validatorOnlineThresholdSlot) {
 				validatorsPageData.SlashingOfflineCount++
 			} else {
 				validatorsPageData.SlashingOnlineCount++
 			}
 		} else {
 			// offline validators did not attest in the last 2 epochs (and are active for >1 epochs)
-			if validator.ActivationEpoch < latestEpoch && (validator.LastAttestationSlot == nil || uint64(*validator.LastAttestationSlot) < firstSlotOfPreviousEpoch) {
+			if validator.ActivationEpoch < latestEpoch && (validator.LastAttestationSlot == nil || uint64(*validator.LastAttestationSlot) < validatorOnlineThresholdSlot) {
 				validatorsPageData.ActiveOfflineCount++
 			} else {
 				validatorsPageData.ActiveOnlineCount++
@@ -227,12 +221,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lastestEpoch := services.LatestEpoch()
-	var firstSlotOfPreviousEpoch uint64
-	if lastestEpoch < 1 {
-		firstSlotOfPreviousEpoch = 0
-	} else {
-		firstSlotOfPreviousEpoch = (lastestEpoch - 1) * utils.Config.Chain.SlotsPerEpoch
-	}
+	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 
 	qry := fmt.Sprintf(`
 		SELECT
@@ -280,7 +269,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		LIMIT $4 OFFSET $5`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, qry, lastestEpoch, firstSlotOfPreviousEpoch, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
+	err = db.DB.Select(&validators, qry, lastestEpoch, validatorOnlineThresholdSlot, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
 		http.Error(w, "Internal server error", 503)

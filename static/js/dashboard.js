@@ -720,9 +720,14 @@ function createBalanceChart(effective, balance, utilization, missedAttestations)
 }
 
 function createProposedChart(data) {
-  var proposed = data.map(d => [d.Day * 1000, d.Proposed])
-  var missed = data.map(d => [d.Day * 1000, d.Missed])
-  var orphaned = data.map(d => [d.Day * 1000, d.Orphaned])
+  var proposed = []
+  var missed = []
+  var orphaned = []
+  data.map(d=>{
+    if (d[1] == 1) proposed.push([d[0]*1000,1])
+    else if (d[1] == 2) missed.push([d[0]*1000,1])
+    else if (d[1] == 3) orphaned.push([d[0]*1000,1])
+  })
   Highcharts.stockChart('proposed-chart', {
     chart: {
       type: 'column',
@@ -737,7 +742,6 @@ function createProposedChart(data) {
     xAxis: {
       lineWidth: 0,
       tickColor: '#e5e1e1',
-      range: 7 * 24 * 3600 * 1000
     },
     yAxis: [
       {
