@@ -28,6 +28,7 @@ func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"formatBlockStatus":           FormatBlockStatus,
 		"formatValidator":             FormatValidator,
+		"formatSlashedValidator":      FormatSlashedValidator,
 		"formatValidatorInt64":        FormatValidatorInt64,
 		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
 		"formatBalance":               FormatBalance,
