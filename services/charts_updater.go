@@ -449,7 +449,6 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 		}
 	}
 
-	logger.Info(len(seriesData))
 	chartData := &types.GenericChartData{
 		Title:        "Average Daily Validator Income",
 		Subtitle:     "",
