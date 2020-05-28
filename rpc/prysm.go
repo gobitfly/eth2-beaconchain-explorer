@@ -479,7 +479,7 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 
 		for i, proposerSlashing := range block.Block.Block.Body.ProposerSlashings {
 			b.ProposerSlashings[i] = &types.ProposerSlashing{
-				ProposerIndex: 0,
+				ProposerIndex: proposerSlashing.Header_1.Header.ProposerIndex,
 				Header1: &types.Block{
 					Slot:       proposerSlashing.Header_1.Header.Slot,
 					ParentRoot: proposerSlashing.Header_1.Header.ParentRoot,
