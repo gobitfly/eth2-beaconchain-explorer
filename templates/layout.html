@@ -70,18 +70,6 @@
                     <div class="info-item-header mr-1">Slot</div>
                     <div class="info-item-body">{{.CurrentSlot}}</div>
                 </div>
-                <!-- <div class="info-item d-flex">
-                    <div class="info-item-header mr-1">Validators</div>
-                    <div class="info-item-body">29260</div>
-                </div>
-                <div class="info-item d-flex">
-                    <div class="info-item-header mr-1">Staked Ether</div>
-                    <div class="info-item-body">1168028.00 ETH</div>
-                </div> -->
-                <!-- <div class="info-item d-flex">
-                    <div class="info-item-header mr-1">Average Balance</div>
-                    <div class="info-item-body">32.46 ETH</div>
-                </div> -->
                 {{if .ShowSyncingMessage}}
                 <div class="info-item d-flex mr-3">
                     <div class="info-item-header mr-1">Status</div>
@@ -119,24 +107,13 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav ml-auto">
-                        <!-- <li class="nav-item {{ if eq .Active "index"}}active{{end}}">
-                            <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
-                            {{ if eq .Active "index"}} 
-                            {{end}}
-                        </li> -->
                         <li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
                             <a class="nav-link" href="/epochs"><i class="fas fa-history"></i> Epochs</a>
                             {{ if eq .Active "epochs"}} 
                             {{end}}
                         </li>
-                        <li class="nav-item {{ if eq .Active "blocks"}}active{{end}} dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <i class="fas fa-cubes"></i> Blocks
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item" href="/blocks"><i class="fas fa-table"></i> Overview</a>
-                                <a class="dropdown-item" href="/vis"><i class="fas fa-project-diagram"></i> Block Viz</a>
-                            </div>
+                        <li class="nav-item {{ if eq .Active "blocks"}}active{{end}}">
+                            <a class="nav-link" href="/blocks"><i class="fas fa-cubes"></i> Blocks</a>
                             {{ if eq .Active "blocks"}} 
                             {{end}}
                         </li>
@@ -145,17 +122,22 @@
                                 <i class="fas fa-thumbs-up"></i> Validators
                             </a>
                             <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item" href="/validators"><i class="fas fa-table"></i> Overview</a>
-                                <a class="dropdown-item" href="/validators/leaderboard"><i class="fas fa-medal"></i> Leaderboard</a>
-                                <a class="dropdown-item" href="/validators/slashings"><i class="fas fa-user-slash"></i> Slashings</a>
+                                <a class="dropdown-item" href="/validators"><i class="fas fa-table mr-1"></i> Overview</a>
+                                <a class="dropdown-item" href="/validators/leaderboard"><i class="fas fa-medal mr-1"></i> Leaderboard</a>
+                                <a class="dropdown-item" href="/validators/slashings"><i class="fas fa-user-slash mr-1"></i> Slashings</a>
+                                <a class="dropdown-item" href="/deposits/eth1"><i class="fas fa-file-signature mr-1"></i> Eth1 Deposits</a>
+                                <a class="dropdown-item" href="/deposits/eth2"><i class="fas fa-clipboard-check mr-1"></i> Eth2 Deposits</a>
                             </div>
-                            {{ if eq .Active "validators"}}
-                            {{end}}
                         </li>
-                        <li class="nav-item {{ if eq .Active "charts"}}active{{end}}">
-                            <a class="nav-link" href="/charts"><i class="fas fa-chart-bar"></i> Charts</a>
-                            {{ if eq .Active "charts"}} 
-                            {{end}}
+                        <li class="nav-item {{ if eq .Active "stats"}}active{{end}} dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-cubes"></i> Stats
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <a class="dropdown-item" href="/charts"><i class="fas fa-chart-bar mr-1"></i> Charts</a>
+                                <a class="dropdown-item" href="/calculator"><i class="fas fa-calculator mr-1"></i> Calculator</a>
+                                <a class="dropdown-item" href="/vis"><i class="fas fa-project-diagram mr-1"></i> Block Viz</a>
+                            </div>
                         </li>
                         <style>
                             .nav-cube {
@@ -164,11 +146,24 @@
                                 --lightColor: rgba(0,0,0,.5);
                                 --darkColor: rgba(100,100,100,.8);
                             }
+                            .active .nav-cube {
+                                --mainColor: rgba(55,55,55,1);
+                                --strokeColor: rgba(35,35,35, 1);
+                                --lightColor: rgba(0,0,0,1);
+                                --darkColor: rgba(80,80,80,1);
+                            }
                             [data-theme='dark'] .nav-cube {
                                 --mainColor: rgba(180,180,180,.7);
                                 --strokeColor: rgba(200,200,200, 1);
                                 --lightColor: rgba(255,255,255,.5);
                                 --darkColor: rgba(150,150,150,.8);
+                            }
+
+                            [data-theme='dark'] .active .nav-cube {
+                                --mainColor: rgba(200,200,200,1);
+                                --strokeColor: rgba(220,220,220, 1);
+                                --lightColor: rgba(255,255,255,1);
+                                --darkColor: rgba(170,170,170,1);
                             }
                         </style>
                         <li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
@@ -233,20 +228,11 @@
                             {{ if eq .Active "dashboard"}} 
                             {{end}}
                         </li>
-                        <li class="nav-item {{ if eq .Active "calculator"}}active{{end}}">
-                            <a class="nav-link" href="/calculator"><i class="fas fa-calculator"></i> Calculator</a>
-                            {{ if eq .Active "calculator"}} 
-                            {{end}}
+                        <li class="nav-item {{ if eq .Active "graffitiwall"}}active{{end}}">
+                            <a class="nav-link" href="/graffitiwall"><i class="fas fa-paint-brush"></i> Wall</a>
                         </li>
                         <li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
                             <a class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
-                            {{ if eq .Active "docs"}}
-                            {{end}}
-                        </li>
-                        <li class="nav-item {{ if eq .Active "graffitiwall"}}active{{end}}">
-                            <a class="nav-link" href="/graffitiwall"><i class="fas fa-paint-brush"></i> Wall</a>
-                            {{ if eq .Active "graffitiwall"}}
-                            {{end}}
                         </li>
                     </ul>
                     <!-- <div>

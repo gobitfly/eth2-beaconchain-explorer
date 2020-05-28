@@ -18,7 +18,7 @@ var epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/
 
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {
-	epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/layout.html", "templates/epochs.html"))
+	// epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/layout.html", "templates/epochs.html"))
 	w.Header().Set("Content-Type", "text/html")
 
 	data := &types.PageData{

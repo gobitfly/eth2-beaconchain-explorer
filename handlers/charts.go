@@ -33,7 +33,7 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 			Path:        "/charts",
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "charts",
+		Active:                "stats",
 		Data:                  chartsPageData,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
