@@ -107,8 +107,8 @@ order by blocks.slot desc;`)
 
 	for _, b := range proposerSlashings {
 		tableData = append(tableData, []interface{}{
-			utils.FormatSlashedValidator(b.Proposer),
-			utils.FormatValidator(b.Slasher),
+			utils.FormatSlashedValidator(b.ProposerIndex),
+			utils.FormatValidator(b.Proposer),
 			utils.SlotToTime(b.Slot).Unix(),
 			"Proposer Violation",
 			b.Slot,
