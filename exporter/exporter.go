@@ -288,6 +288,12 @@ func Start(client rpc.Client) error {
 			logger.Printf("finished export for epoch %v", epoch)
 		}
 
+		logger.Infof("marking orphaned blocks of epochs %v-%v", startEpoch, head.HeadEpoch)
+		err = MarkOrphanedBlocks(startEpoch, head.HeadEpoch, nodeBlocks)
+		if err != nil {
+			logger.Errorf("error marking orphaned blocks: %v", err)
+		}
+
 		// Update epoch statistics up to 10 epochs after the last finalized epoch
 		startEpoch = uint64(0)
 		if head.FinalizedEpoch > 10 {
@@ -303,12 +309,6 @@ func Start(client rpc.Client) error {
 		err = exportValidatorQueue(client)
 		if err != nil {
 			logger.Errorf("error exporting validator queue data: %v", err)
-		}
-
-		logger.Infof("marking orphaned blocks of epochs %v-%v", startEpoch, head.HeadEpoch)
-		err = MarkOrphanedBlocks(startEpoch, head.HeadEpoch, nodeBlocks)
-		if err != nil {
-			logger.Errorf("error marking orphaned blocks: %v", err)
 		}
 
 		logger.Infof("finished exporting all new blocks/epochs")
