@@ -146,12 +146,14 @@ type ValidatorPageData struct {
 	AttestationsCount                uint64
 	StatusProposedCount              uint64
 	StatusMissedCount                uint64
+	DepositsCount                    uint64
 	Income1d                         int64
 	Income7d                         int64
 	Income31d                        int64
 	Proposals                        [][]uint64
 	BalanceHistoryChartData          [][]float64
 	EffectiveBalanceHistoryChartData [][]float64
+	Deposits                         *ValidatorDeposits
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -536,4 +538,9 @@ type EthTwoDepositsPageData struct {
 	Withdrawalcredentials []byte `db:"withdrawalcredentials"`
 	Amount                uint64 `db:"amount"`
 	Signature             []byte `db:"signature"`
+}
+
+type ValidatorDeposits struct {
+	Eth1Deposits []Eth1Deposit
+	Eth2Deposits []Eth2Deposit
 }

@@ -6,7 +6,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"log"
 	"math/big"
 	"regexp"
 	"sort"
@@ -188,7 +187,6 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	if !hasColumn {
 		orderBy = "block_slot"
 	}
-	log.Println(orderBy, orderDir)
 
 	if query != "" {
 		err := DB.Select(&deposits, fmt.Sprintf(`
@@ -307,12 +305,29 @@ func GetValidatorPublicKey(index uint64) ([]byte, error) {
 	return publicKey, err
 }
 
-// GetValidatorIndex will return all of the validators for a public key from the database
+// GetValidatorIndex will return the validator-index for a public key from the database
 func GetValidatorIndex(publicKey []byte) (uint64, error) {
 	var index uint64
 	err := DB.Get(&index, "SELECT validatorindex FROM validators WHERE pubkey = $1", publicKey)
 
 	return index, err
+}
+
+// GetValidatorDeposits will return eth1- and eth2-deposits for a public key from the database
+func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
+	deposits := &types.ValidatorDeposits{}
+	err := DB.Select(&deposits.Eth1Deposits, `
+		SELECT tx_hash, tx_input, tx_index, block_number, EXTRACT(epoch FROM block_ts)::INT as block_ts, from_address, publickey, withdrawal_credentials, amount, signature, merkletree_index
+		FROM eth1_deposits WHERE publickey = $1`, publicKey)
+	if err != nil {
+		return nil, err
+	}
+	err = DB.Select(&deposits.Eth2Deposits, "SELECT * FROM blocks_deposits WHERE publickey = $1", publicKey)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("deposits %x %v %v\n", publicKey, len(deposits.Eth1Deposits), len(deposits.Eth2Deposits))
+	return deposits, nil
 }
 
 // UpdateCanonicalBlocks will update the blocks for an epoch range in the database

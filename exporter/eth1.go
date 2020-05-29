@@ -76,13 +76,16 @@ func eth1DepositsExporter() {
 		if fromBlock < lastFetchedBlock+1 {
 			fromBlock = lastFetchedBlock + 1
 		}
-		// if we are synced to the head look at the last 100 blocks
-		if toBlock-fromBlock < eth1LookBack {
-			fromBlock = toBlock - 100
-		}
 		// if we are not synced to the head yet fetch missing blocks in batches of size 1000
 		if toBlock-fromBlock > eth1MaxFetch {
 			toBlock = fromBlock + 1000
+		}
+		if toBlock > blockHeight {
+			toBlock = blockHeight
+		}
+		// if we are synced to the head look at the last 100 blocks
+		if toBlock-fromBlock < eth1LookBack {
+			fromBlock = toBlock - 100
 		}
 
 		depositsToSave, depositsToDelete, err := fetchEth1Deposits(fromBlock, toBlock)
