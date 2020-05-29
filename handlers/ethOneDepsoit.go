@@ -21,6 +21,7 @@ var ethTemplates = template.Must(template.New("deposits").Funcs(utils.GetTemplat
 func EthOneDeposits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
+	ethTemplates = template.Must(template.New("deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethOneDeposit.html"))
 
 	data := &types.PageData{
 		Meta: &types.Meta{
@@ -79,6 +80,23 @@ func EthOneData(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "from_address",
+		"1": "publickey",
+		"2": "amount",
+		"3": "tx_hash",
+		"4": "block_ts",
+		"5": "block_number",
+		"6": "activated",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "block_ts"
+	}
+
+	orderDir := q.Get("order[0][dir]")
+
 	depositCount, err := db.GetEth1DepositsCount()
 	if err != nil {
 		logger.Errorf("GetEth1DepositsCount error retrieving eth1_deposit data: %v", err)
@@ -86,13 +104,12 @@ func EthOneData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deposits, err := db.GetEth1DepositsJoinEth2Deposits("", length, start)
+	deposits, err := db.GetEth1DepositsJoinEth2Deposits(search, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("GetEth1Deposits error retrieving eth1_deposit data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	logger.Printf("found %d results", len(deposits))
 
 	tableData := make([][]interface{}, len(deposits))
 	for i, d := range deposits {

@@ -21,7 +21,7 @@ var ethTwoTemplate = template.Must(template.New("ethTwoDeposits").Funcs(utils.Ge
 func EthTwoDeposits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
-
+	ethTwoTemplate = template.Must(template.New("ethTwoDeposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethTwoDeposit.html"))
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - Eth1 Deposits - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
@@ -79,6 +79,23 @@ func EthTwoData(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "block_slot",
+		// "1": "block_index",
+		// "2": "proof",
+		"1": "publickey",
+		"2": "amount",
+		"3": "withdrawalcredentials",
+		"4": "signature",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "block_ts"
+	}
+
+	orderDir := q.Get("order[0][dir]")
+
 	depositCount, err := db.GetEth2DepositsCount()
 	if err != nil {
 		logger.Errorf("GetEth1DepositsCount error retrieving eth1_deposit data: %v", err)
@@ -86,13 +103,12 @@ func EthTwoData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deposits, err := db.GetEth2DepositsJoinEth2Deposits("", length, start)
+	deposits, err := db.GetEth2Deposits(search, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("GetEth1Deposits error retrieving eth1_deposit data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	logger.Printf("found %d results", len(deposits))
 
 	tableData := make([][]interface{}, len(deposits))
 	for i, d := range deposits {
@@ -100,9 +116,9 @@ func EthTwoData(w http.ResponseWriter, r *http.Request) {
 			d.BlockSlot,
 			// d.BlockIndex,
 			fmt.Sprintf("%#x", d.Publickey),
-			fmt.Sprintf("%#x", d.Withdrawalcredentials),
 			fmt.Sprintf("%g ETH", float64(d.Amount)/float64(1000000000)),
-			// fmt.Sprintf("%#x", d.Signature),
+			fmt.Sprintf("%#x", d.Withdrawalcredentials),
+			fmt.Sprintf("%#x", d.Signature),
 			// d.Proof,
 		}
 	}

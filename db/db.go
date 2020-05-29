@@ -6,13 +6,15 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/jmoiron/sqlx"
+	"log"
 	"math/big"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 
 	"github.com/lib/pq"
 	"github.com/prysmaticlabs/go-bitfield"
@@ -54,42 +56,101 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 	return deposits, nil
 }
 
-func GetEth1DepositsJoinEth2Deposits(address string, length, start uint64) ([]*types.EthOneDepositsPageData, error) {
+func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthOneDepositsPageData, error) {
 	deposits := []*types.EthOneDepositsPageData{}
 
-	err := DB.Select(&deposits, `
-	SELECT 
-		eth1.tx_hash as tx_hash,
-		eth1.tx_input as tx_input,
-		eth1.tx_index as tx_index,
-		eth1.block_number as block_number,
-		eth1.block_ts as block_ts,
-		eth1.from_address as from_address,
-		eth1.publickey as publickey,
-		eth1.withdrawal_credentials as withdrawal_credentials,
-		eth1.amount as amount,
-		eth1.signature as signature,
-		eth1.merkletree_index as merkletree_index,
-		CASE WHEN eth2.publickey IS NULL
-			THEN 'false'::BOOL
-			ELSE 'true'::BOOL 
-		END as activated
-	FROM
-		eth1_deposits as eth1
-	LEFT JOIN
-		(
-			SELECT 
-				publickey
-			FROM
-				blocks_deposits
-		) as eth2
-	ON 
-	  eth1.publickey = eth2.publickey
-	ORDER BY block_ts DESC
-	LIMIT $1
-	OFFSET $2`, length, start)
-	if err != nil {
-		return nil, err
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	columns := []string{"tx_hash", "tx_input", "tx_index", "block_number", "block_ts", "from_address", "publickey", "withdrawal_credentials", "amount", "signature", "merkletree_index", "activated"}
+	hasColumn := false
+	for _, column := range columns {
+		if orderBy == column {
+			hasColumn = true
+		}
+	}
+	if !hasColumn {
+		orderBy = "block_ts"
+	}
+
+	if query != "" {
+		err := DB.Select(&deposits, fmt.Sprintf(`
+		SELECT 
+			eth1.tx_hash as tx_hash,
+			eth1.tx_input as tx_input,
+			eth1.tx_index as tx_index,
+			eth1.block_number as block_number,
+			eth1.block_ts as block_ts,
+			eth1.from_address as from_address,
+			eth1.publickey as publickey,
+			eth1.withdrawal_credentials as withdrawal_credentials,
+			eth1.amount as amount,
+			eth1.signature as signature,
+			eth1.merkletree_index as merkletree_index,
+			CASE WHEN eth2.publickey IS NULL
+				THEN 'false'::BOOL
+				ELSE 'true'::BOOL 
+			END as activated
+		FROM
+			eth1_deposits as eth1
+		LEFT JOIN
+			(
+				SELECT 
+					publickey
+				FROM
+					blocks_deposits
+			) as eth2
+		ON 
+			eth1.publickey = eth2.publickey
+		WHERE
+			ENCODE(eth1.publickey::bytea, 'hex') LIKE $3
+		OR
+			ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE $3
+		OR
+			ENCODE(eth1.from_address::bytea, 'hex') LIKE $3
+		OR
+			ENCODE(tx_hash::bytea, 'hex') LIKE $3 
+		ORDER BY %s %s
+		LIMIT $1
+		OFFSET $2`, orderBy, orderDir), length, start, query+"%")
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := DB.Select(&deposits, fmt.Sprintf(`
+		SELECT 
+			eth1.tx_hash as tx_hash,
+			eth1.tx_input as tx_input,
+			eth1.tx_index as tx_index,
+			eth1.block_number as block_number,
+			eth1.block_ts as block_ts,
+			eth1.from_address as from_address,
+			eth1.publickey as publickey,
+			eth1.withdrawal_credentials as withdrawal_credentials,
+			eth1.amount as amount,
+			eth1.signature as signature,
+			eth1.merkletree_index as merkletree_index,
+			CASE WHEN eth2.publickey IS NULL
+				THEN 'false'::BOOL
+				ELSE 'true'::BOOL 
+			END as activated
+		FROM
+			eth1_deposits as eth1
+		LEFT JOIN
+			(
+				SELECT 
+					publickey
+				FROM
+					blocks_deposits
+			) as eth2
+		ON 
+			eth1.publickey = eth2.publickey
+		ORDER BY %s %s
+		LIMIT $1
+		OFFSET $2`, orderBy, orderDir), length, start)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return deposits, nil
@@ -111,25 +172,62 @@ func GetEth1DepositsCount() (uint64, error) {
 	return deposits, nil
 }
 
-func GetEth2DepositsJoinEth2Deposits(address string, length, start uint64) ([]*types.EthTwoDepositsPageData, error) {
+func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositsPageData, error) {
 	deposits := []*types.EthTwoDepositsPageData{}
+	// ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	columns := []string{"block_slot", "block_index", "proof", "publickey", "withdrawalcredentials", "amount", "signature"}
+	hasColumn := false
+	for _, column := range columns {
+		if orderBy == column {
+			hasColumn = true
+		}
+	}
+	if !hasColumn {
+		orderBy = "block_slot"
+	}
+	log.Println(orderBy, orderDir)
 
-	err := DB.Select(&deposits, `
-	SELECT 
-		block_slot,
-		block_index,
-		proof,
-		publickey,
-		withdrawalcredentials,
-		amount,
-		signature
-	FROM
-		blocks_deposits
-	ORDER BY block_slot DESC
-	LIMIT $1
-	OFFSET $2`, length, start)
-	if err != nil {
-		return nil, err
+	if query != "" {
+		err := DB.Select(&deposits, fmt.Sprintf(`
+		SELECT 
+			block_slot,
+			block_index,
+			proof,
+			publickey,
+			withdrawalcredentials,
+			amount,
+			signature
+		FROM
+			blocks_deposits
+		WHERE
+		ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR CAST(block_slot as varchar) LIKE $3
+		ORDER BY %s %s
+		LIMIT $1
+		OFFSET $2`, orderBy, orderDir), length, start, query+"%")
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := DB.Select(&deposits, fmt.Sprintf(`
+		SELECT 
+			block_slot,
+			block_index,
+			proof,
+			publickey,
+			withdrawalcredentials,
+			amount,
+			signature
+		FROM
+			blocks_deposits
+		ORDER BY %s %s
+		LIMIT $1
+		OFFSET $2`, orderBy, orderDir), length, start)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return deposits, nil

@@ -10,10 +10,11 @@ import (
 	"eth2-exporter/utils"
 	"flag"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 
 	"github.com/gorilla/mux"
 	"github.com/phyber/negroni-gzip/gzip"
@@ -108,10 +109,10 @@ func main() {
 		router.HandleFunc("/validators/slashings/data", handlers.ValidatorsSlashingsData).Methods("GET")
 		router.HandleFunc("/validators/leaderboard", handlers.ValidatorsLeaderboard).Methods("GET")
 		router.HandleFunc("/validators/leaderboard/data", handlers.ValidatorsLeaderboardData).Methods("GET")
-		router.HandleFunc("/deposits/eth1", handlers.EthOneDeposits).Methods("GET")
-		router.HandleFunc("/deposits/eth1/data", handlers.EthOneData).Methods("GET")
-		router.HandleFunc("/deposits/eth2", handlers.EthTwoDeposits).Methods("GET")
-		router.HandleFunc("/deposits/eth2/data", handlers.EthTwoData).Methods("GET")
+		router.HandleFunc("/validators/eth1deposits", handlers.EthOneDeposits).Methods("GET")
+		router.HandleFunc("/validators/eth1deposits/data", handlers.EthOneData).Methods("GET")
+		router.HandleFunc("/validators/eth2deposits", handlers.EthTwoDeposits).Methods("GET")
+		router.HandleFunc("/validators/eth2deposits/data", handlers.EthTwoData).Methods("GET")
 		router.HandleFunc("/dashboard", handlers.Dashboard).Methods("GET")
 		router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET")
 		router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
