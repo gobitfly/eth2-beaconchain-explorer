@@ -122,8 +122,8 @@ order by blocks.slot desc;`)
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    uint64(len(attesterSlashings)),
-		RecordsFiltered: uint64(len(attesterSlashings)),
+		RecordsTotal:    uint64(len(tableData)),
+		RecordsFiltered: uint64(len(tableData)),
 		Data:            tableData,
 	}
 
