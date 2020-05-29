@@ -197,3 +197,14 @@ type Eth1Deposit struct {
 	Signature             []byte `db:"signature"`
 	MerkletreeIndex       []byte `db:"merkletree_index"`
 }
+
+// Eth2Deposit is a struct to hold eth2-deposit data
+type Eth2Deposit struct {
+	BlockSlot             uint64 `db:"block_slot"`
+	BlockIndex            uint64 `db:"block_index"`
+	Proof                 []byte `db:"proof"`
+	Publickey             []byte `db:"publickey"`
+	Withdrawalcredentials []byte `db:"withdrawalcredentials"`
+	Amount                uint64 `db:"amount"`
+	Signature             []byte `db:"signature"`
+}

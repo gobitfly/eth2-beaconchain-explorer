@@ -10,10 +10,11 @@ import (
 	"eth2-exporter/utils"
 	"flag"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 
 	"github.com/gorilla/mux"
 	"github.com/phyber/negroni-gzip/gzip"
@@ -102,6 +103,7 @@ func main() {
 		router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")
 		router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
 		router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
+		router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
 		router.HandleFunc("/validators", handlers.Validators).Methods("GET")
 		router.HandleFunc("/validators/data", handlers.ValidatorsData).Methods("GET")
 		router.HandleFunc("/validators/slashings", handlers.ValidatorsSlashings).Methods("GET")

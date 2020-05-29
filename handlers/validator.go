@@ -56,10 +56,33 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
-			data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
-			data.Meta.Path = fmt.Sprintf("/validator/%v", index)
-			err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+			deposits, err := db.GetValidatorDeposits(pubKey)
+			if err != nil {
+				logger.Errorf("error getting validator-deposits from db: %v", err)
+			}
+			if err != nil || len(deposits.Eth1Deposits) == 0 {
+				data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
+				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
+				err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
+				if err != nil {
+					logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+					http.Error(w, "Internal server error", 503)
+					return
+				}
+				return
+			}
+			// validator is in DEPOSITED state
+			validatorPageData.Status = "Deposited"
+			validatorPageData.PublicKey = []byte(pubKey)
+			validatorPageData.Deposits = deposits
+			data.Data = validatorPageData
+			if utils.IsApiRequest(r) {
+				w.Header().Set("Content-Type", "application/json")
+				err = json.NewEncoder(w).Encode(data.Data)
+			} else {
+				err = validatorTemplate.ExecuteTemplate(w, "layout", data)
+			}
 			if err != nil {
 				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 				http.Error(w, "Internal server error", 503)
@@ -124,6 +147,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
+	if err != nil {
+		logger.Errorf("error getting validator-deposits from db: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	validatorPageData.Deposits = deposits
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -261,7 +292,33 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+}
 
+// ValidatorDeposits returns a validator's deposits in json
+func ValidatorDeposits(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(r)
+
+	pubkey, err := hex.DecodeString(strings.Replace(vars["pubkey"], "0x", "", -1))
+	if err != nil {
+		logger.Errorf("error parsing validator public key %v: %v", vars["pubkey"], err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	deposits, err := db.GetValidatorDeposits(pubkey)
+	if err != nil {
+		logger.Errorf("error getting validator-deposits for %v: %v", vars["pubkey"], err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(deposits)
+	if err != nil {
+		logger.Errorf("error encoding validator-deposits for %v: %v", vars["pubkey"], err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 }
 
 // ValidatorProposedBlocks returns a validator's proposed blocks in json
