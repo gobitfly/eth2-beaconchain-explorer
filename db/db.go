@@ -326,7 +326,6 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("deposits %x %v %v\n", publicKey, len(deposits.Eth1Deposits), len(deposits.Eth2Deposits))
 	return deposits, nil
 }
 

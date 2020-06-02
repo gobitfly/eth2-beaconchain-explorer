@@ -88,14 +88,14 @@ func eth1DepositsExporter() {
 			fromBlock = toBlock - 100
 		}
 
-		depositsToSave, depositsToDelete, err := fetchEth1Deposits(fromBlock, toBlock)
+		depositsToSave, err := fetchEth1Deposits(fromBlock, toBlock)
 		if err != nil {
 			logger.WithError(err).Errorf("error fetching eth1-deposits")
 			time.Sleep(time.Second * 5)
 			continue
 		}
 
-		err = saveEth1Deposits(depositsToSave, depositsToDelete)
+		err = saveEth1Deposits(depositsToSave)
 		if err != nil {
 			logger.WithError(err).Errorf("error saving eth1-deposits")
 			time.Sleep(time.Second * 5)
@@ -106,12 +106,11 @@ func eth1DepositsExporter() {
 		lastFetchedBlock = toBlock
 
 		logger.WithFields(logrus.Fields{
-			"duration":        time.Since(t0),
-			"blockHeight":     blockHeight,
-			"fromBlock":       fromBlock,
-			"toBlock":         toBlock,
-			"depositsSaved":   len(depositsToSave),
-			"depositsDeleted": len(depositsToDelete),
+			"duration":      time.Since(t0),
+			"blockHeight":   blockHeight,
+			"fromBlock":     fromBlock,
+			"toBlock":       toBlock,
+			"depositsSaved": len(depositsToSave),
 		}).Info("exported eth1-deposits")
 
 		// progress faster if we are not synced to head yet
@@ -124,7 +123,7 @@ func eth1DepositsExporter() {
 	}
 }
 
-func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1Deposit, depositsToDelete [][]byte, err error) {
+func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1Deposit, err error) {
 	qry := ethereum.FilterQuery{
 		Addresses: []common.Address{
 			eth1DepositContractAddress,
@@ -135,7 +134,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 
 	depositLogs, err := eth1Client.FilterLogs(context.Background(), qry)
 	if err != nil {
-		return depositsToSave, depositsToDelete, fmt.Errorf("error getting logs from eth1-client: %w", err)
+		return depositsToSave, fmt.Errorf("error getting logs from eth1-client: %w", err)
 	}
 
 	blocksToFetch := []uint64{}
@@ -145,13 +144,9 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 		if depositLog.Topics[0] != eth1DepositEventSignature {
 			continue
 		}
-		if depositLog.Removed {
-			depositsToDelete = append(depositsToDelete, depositLog.TxHash.Bytes())
-			continue
-		}
 		pubkey, withdrawalCredentials, amount, signature, merkletreeIndex, err := contracts.UnpackDepositLogData(depositLog.Data)
 		if err != nil {
-			return depositsToSave, depositsToDelete, fmt.Errorf("error unpacking eth1-deposit-log: %x: %w", depositLog.Data, err)
+			return depositsToSave, fmt.Errorf("error unpacking eth1-deposit-log: %x: %w", depositLog.Data, err)
 		}
 		blocksToFetch = append(blocksToFetch, depositLog.BlockNumber)
 		txsToFetch = append(txsToFetch, depositLog.TxHash.Hex())
@@ -164,55 +159,50 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 			Amount:                bytesutil.FromBytes8(amount),
 			Signature:             signature,
 			MerkletreeIndex:       merkletreeIndex,
+			Removed:               depositLog.Removed,
 		})
 	}
 
 	headers, txs, err := eth1BatchRequestHeadersAndTxs(blocksToFetch, txsToFetch)
 	if err != nil {
-		return depositsToSave, depositsToDelete, fmt.Errorf("error getting eth1-blocks: %w", err)
+		return depositsToSave, fmt.Errorf("error getting eth1-blocks: %w", err)
 	}
 
 	for _, d := range depositsToSave {
 		// get corresponding block (for the tx-time)
 		b, exists := headers[d.BlockNumber]
 		if !exists {
-			return depositsToSave, depositsToDelete, fmt.Errorf("error getting block for eth1-deposit: block does not exist in fetched map")
+			return depositsToSave, fmt.Errorf("error getting block for eth1-deposit: block does not exist in fetched map")
 		}
 		d.BlockTs = b.Time
 
 		// get corresponding tx (for input and from-address)
 		tx, exists := txs[fmt.Sprintf("0x%x", d.TxHash)]
 		if !exists {
-			return depositsToSave, depositsToDelete, fmt.Errorf("error getting tx for eth1-deposit: tx does not exist in fetched map")
+			return depositsToSave, fmt.Errorf("error getting tx for eth1-deposit: tx does not exist in fetched map")
 		}
 		d.TxInput = tx.Data()
 		chainID := tx.ChainId()
 		if chainID == nil {
-			return depositsToSave, depositsToDelete, fmt.Errorf("error getting tx-chainId for eth1-deposit")
+			return depositsToSave, fmt.Errorf("error getting tx-chainId for eth1-deposit")
 		}
 		signer := gethTypes.NewEIP155Signer(chainID)
 		sender, err := signer.Sender(tx)
 		if err != nil {
-			return depositsToSave, depositsToDelete, fmt.Errorf("error getting sender for eth1-deposit")
+			return depositsToSave, fmt.Errorf("error getting sender for eth1-deposit")
 		}
 		d.FromAddress = sender.Bytes()
 	}
 
-	return depositsToSave, depositsToDelete, nil
+	return depositsToSave, nil
 }
 
-func saveEth1Deposits(depositsToSave []*types.Eth1Deposit, depositsToDelete [][]byte) error {
+func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
 	tx, err := db.DB.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-
-	deleteDepositStmt, err := tx.Prepare(`DELETE FROM eth1_deposits WHERE tx_hash = $1`)
-	if err != nil {
-		return err
-	}
-	defer deleteDepositStmt.Close()
 
 	insertDepositStmt, err := tx.Prepare(`
 		INSERT INTO eth1_deposits (
@@ -226,9 +216,10 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit, depositsToDelete [][]
 			withdrawal_credentials,
 			amount,
 			signature,
-			merkletree_index
+			merkletree_index,
+			removed
 		)
-		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, $7, $8, $9, $10, $11) 
+		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, $7, $8, $9, $10, $11, $12) 
 		ON CONFLICT (tx_hash) DO UPDATE SET 
 			tx_input               = EXCLUDED.tx_input,
 			tx_index               = EXCLUDED.tx_index,
@@ -239,23 +230,17 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit, depositsToDelete [][]
 			withdrawal_credentials = EXCLUDED.withdrawal_credentials,
 			amount                 = EXCLUDED.amount,
 			signature              = EXCLUDED.signature,
-			merkletree_index       = EXCLUDED.merkletree_index`)
+			merkletree_index       = EXCLUDED.merkletree_index,
+			removed                = EXCLUDED.removed`)
 	if err != nil {
 		return err
 	}
 	defer insertDepositStmt.Close()
 
 	for _, d := range depositsToSave {
-		_, err := insertDepositStmt.Exec(d.TxHash, d.TxInput, d.TxIndex, d.BlockNumber, d.BlockTs, d.FromAddress, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature, d.MerkletreeIndex)
+		_, err := insertDepositStmt.Exec(d.TxHash, d.TxInput, d.TxIndex, d.BlockNumber, d.BlockTs, d.FromAddress, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature, d.MerkletreeIndex, d.Removed)
 		if err != nil {
-			return fmt.Errorf("error saving deposit to db: %v: %w", fmt.Sprintf("%x", d.TxHash), err)
-		}
-	}
-
-	for _, d := range depositsToDelete {
-		_, err := deleteDepositStmt.Exec(d)
-		if err != nil {
-			return fmt.Errorf("error deleting deposit from db: %v: %w", d, err)
+			return fmt.Errorf("error saving eth1-deposit to db: %v: %w", fmt.Sprintf("%x", d.TxHash), err)
 		}
 	}
 
@@ -267,9 +252,9 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit, depositsToDelete [][]
 	return nil
 }
 
-// eth1BatchRequestHeaders requests the block range specified in the arguments. Instead of requesting
-// each block in one call, it batches all requests into a single rpc call.
-// This code is shamelessly stolen from https://github.com/prysmaticlabs/prysm/blob/2eac24c/beacon-chain/powchain/service.go#L473
+// eth1BatchRequestHeadersAndTxs requests the block range specified in the arguments.
+// Instead of requesting each block in one call, it batches all requests into a single rpc call.
+// This code is shamelessly stolen and adapted from https://github.com/prysmaticlabs/prysm/blob/2eac24c/beacon-chain/powchain/service.go#L473
 func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) (map[uint64]*gethTypes.Header, map[string]*gethTypes.Transaction, error) {
 	elems := make([]gethRPC.BatchElem, 0, len(blocksToFetch)+len(txsToFetch))
 	headers := make(map[uint64]*gethTypes.Header, len(blocksToFetch))

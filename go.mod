@@ -38,4 +38,4 @@ require (
 	gopkg.in/yaml.v2 v2.2.8
 )
 
-replace github.com/ethereum/go-ethereum => github.com/prysmaticlabs/bazel-go-ethereum v0.0.0-20200521064431-67c2efcc89ea
+replace github.com/ethereum/go-ethereum => github.com/prysmaticlabs/bazel-go-ethereum v0.0.0-20200530091827-df74fa9e9621

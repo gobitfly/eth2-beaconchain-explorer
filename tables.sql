@@ -258,6 +258,7 @@ create table eth1_deposits (
     amount bigint not null,
     signature bytea not null,
     merkletree_index bytea not null,
+    removed bool not null,
     primary key (tx_hash)
 );
 create index idx_eth1_deposits on eth1_deposits (publickey);

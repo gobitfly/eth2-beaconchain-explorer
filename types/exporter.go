@@ -196,6 +196,7 @@ type Eth1Deposit struct {
 	Amount                uint64 `db:"amount"`
 	Signature             []byte `db:"signature"`
 	MerkletreeIndex       []byte `db:"merkletree_index"`
+	Removed               bool   `db:"removed"`
 }
 
 // Eth2Deposit is a struct to hold eth2-deposit data
