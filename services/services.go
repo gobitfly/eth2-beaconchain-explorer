@@ -174,7 +174,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
 	}
-	data.AverageBalance = utils.FormatBalance(uint64(averageBalance))
+	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance)))
 
 	var epochHistory []*types.IndexPageEpochHistory
 	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 ORDER BY epoch", epoch)
@@ -191,7 +191,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			}
 		}
 
-		data.StakedEther = utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther)
+		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther))
 		data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
 	}
 

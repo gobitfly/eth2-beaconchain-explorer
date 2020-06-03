@@ -189,7 +189,7 @@ type Eth1Deposit struct {
 	TxInput               []byte `db:"tx_input"`
 	TxIndex               uint64 `db:"tx_index"`
 	BlockNumber           uint64 `db:"block_number"`
-	BlockTs               uint64 `db:"block_ts"`
+	BlockTs               int64  `db:"block_ts"`
 	FromAddress           []byte `db:"from_address"`
 	PublicKey             []byte `db:"publickey"`
 	WithdrawalCredentials []byte `db:"withdrawal_credentials"`

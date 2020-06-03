@@ -1026,3 +1026,48 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 
 	return err
 }
+
+// #TODO:patrick
+func GetTotalValidatorsCount() (uint64, error) {
+	var totalCount uint64
+	err := DB.Get(&totalCount, "SELECT COUNT(*) FROM validators")
+	return totalCount, err
+}
+
+// #TODO:patrick
+type GetValidatorsFilter struct {
+	Indices    []uint64 // validator-indices
+	PublicKeys [][]byte // validator-public-keys
+	State      []string // deposited, pending, active{_online,_offline}, slashing{_online,_offline}, exiting{_online,_offline}, exited
+	OrderBy    []string
+	OrderDir   []string // must be same length as OrderDir
+	Length     uint64   // number of validators to include in the result
+	Offset     uint64   // offset within the result-set
+	Search     string   // searchstring
+}
+
+// #TODO:patrick
+type GetValidatorsResult struct {
+	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
+	ActivationEpoch            uint64 `db:"activationepoch"`
+	CurrentBalance             uint64 `db:"balance"`
+	EffectiveBalance           uint64 `db:"effectivebalance"`
+	Epoch                      uint64 `db:"epoch"`
+	ExecutedAttestations       uint64 `db:"executedattestations"`
+	ExecutedProposals          uint64 `db:"executedproposals"`
+	ExitEpoch                  uint64 `db:"exitepoch"`
+	LastAttestationSlot        *int64 `db:"lastattestationslot"`
+	MissedAttestations         uint64 `db:"missedattestations"`
+	MissedProposals            uint64 `db:"missedproposals"`
+	Performance7d              int64  `db:"performance7d"`
+	PublicKey                  []byte `db:"pubkey"`
+	Slashed                    bool   `db:"slashed"`
+	State                      string `db:"state"`
+	ValidatorIndex             uint64 `db:"validatorindex"`
+	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
+}
+
+// #TODO:patrick
+func GetValidators(filter *GetValidatorsFilter) (*[]GetValidatorsResult, error) {
+	return nil, nil
+}

@@ -231,3 +231,19 @@ $('[aria-ethereum-date]').each(function(item) {
 //     handleIndicator(item)
 //   })
 // })
+
+$('.nav-tabs a').click(function(e) {
+  $(this).tab('show')
+  var seturlhash = $(this).data('seturlhash')
+  if (seturlhash)
+    window.location.hash = this.hash
+  else
+    history.replaceState('', document.title, window.location.pathname + window.location.search)
+})
+
+if (window.location.hash) {
+  $('.nav-tabs a').each(function(){
+    if (this.hash != window.location.hash) return
+    $(this).tab('show')
+  })
+}

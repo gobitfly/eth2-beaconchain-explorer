@@ -3,7 +3,7 @@
 		<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 		<script>
 			$(document).ready(function () {
-				$('#blocks').DataTable({
+				$('#blocks-table').DataTable({
 					processing: true,
 					serverSide: true,
 					ordering: false,
@@ -63,7 +63,7 @@
 						},
 					]
 				});
-				$('#attestations').DataTable({
+				$('#attestations-table').DataTable({
 					processing: true,
 					serverSide: true,
 					ordering: false,
@@ -363,25 +363,23 @@
 	
 	<ul style="margin-bottom: -1px;" class="nav nav-tabs justify-content-start" id="pills-tab" role="tablist">
 		<li class="nav-item">
-			<a class="nav-link active" id="pills-overview-tab" data-toggle="pill" href="#pills-overview"
-				 role="tab" aria-controls="pills-overview" aria-selected="true">Overview</a>
+			<a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab"
+			   aria-controls="overview" aria-selected="true">Overview</a>
 		</li>
 		<li class="nav-item">
-			<a class="nav-link" id="pills-blocks-tab" data-toggle="pill" href="#pills-blocks" role="tab"
-				 aria-controls="pills-blocks" aria-selected="false">Proposed Blocks <span
+			<a class="nav-link" id="blocks-tab" data-toggle="tab" href="#blocks" data-seturlhash="true" role="tab"
+			   aria-controls="blocks" aria-selected="false">Proposed Blocks <span
 						class="badge bg-secondary text-white">{{.ProposedBlocksCount}}</span></a>
 		</li>
 		<li class="nav-item">
-			<a class="nav-link" id="pills-attestations-tab" data-toggle="pill"
-				 href="#pills-attestations"
-				 role="tab" aria-controls="pills-attestations" aria-selected="false">Attestations <span
+			<a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" data-seturlhash="true" role="tab"
+			   aria-controls="attestations" aria-selected="false">Attestations <span
 						class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
 		</li>
 		<li class="nav-item">
-			<a class="nav-link" id="pills-deposits-tab" data-toggle="pill"
-				 href="#pills-deposits"
-				 role="tab" aria-controls="pills-attestations" aria-selected="false">Deposits <span
-						class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
+			<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" data-seturlhash="true" role="tab"
+			   aria-controls="deposits" aria-selected="false">Deposits <span
+						class="badge bg-secondary text-white">{{len .Deposits.Eth1Deposits}}</span></a>
 		</li>
 	</ul>
 	<style>
@@ -392,9 +390,9 @@
 	</style>
 	<div class="card validator-card">
 		<div class="card-body px-0 py-1">
-			<div class="tab-content" id="pills-tabContent">
-				<div class="tab-pane fade show active" id="pills-overview" role="tabpanel"
-					 aria-labelledby="pills-overview-tab">
+			<div class="tab-content">
+				<div class="tab-pane fade show active" id="overview" role="tabpanel"
+					 aria-labelledby="overview-tab" aria-controls="overview">
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Unique Index:</div>
 						<div class="col-md-10">{{if eq .Status "Deposited"}}Pending{{else}}{{.Index}}{{end}}</div>
@@ -489,9 +487,10 @@
 						</div>
 					{{end}}
 				</div>
-				<div class="tab-pane fade" id="pills-blocks" role="tabpanel" aria-labelledby="pills-blocks-tab">
+				<div class="tab-pane fade" id="blocks" role="tabpanel" 
+					 aria-labelledby="blocks-tab" aria-controls="blocks">
 					<div class="table-responsive my-3">
-						<table class="table" id="blocks" width="100%">
+						<table class="table" id="blocks-table" width="100%">
 							<thead>
 							<tr>
 								<th>Epoch</th>
@@ -512,10 +511,10 @@
 						</table>
 					</div>
 				</div>
-				<div class="tab-pane fade" id="pills-attestations" role="tabpanel"
-					 aria-labelledby="pills-attestations-tab">
+				<div class="tab-pane fade" id="attestations" role="tabpanel"
+					 aria-labelledby="attestations-tab" aria-controls="attestations">
 					<div class="table-responsive my-3">
-						<table class="table" id="attestations" width="100%">
+						<table class="table" id="attestations-table" width="100%">
 							<thead>
 							<tr>
 								<th>Epoch</th>
@@ -529,11 +528,11 @@
 						</table>
 					</div>
 				</div>
-				<div class="tab-pane fade" id="pills-deposits" role="tabpanel"
-					 aria-labelledby="pills-deposits-tab">
-					<h3>ETH1 Deposits</h3>
+				<div class="tab-pane fade" id="deposits" role="tabpanel"
+					 aria-labelledby="deposits-tab" aria-controls="deposits">
+					<h4>ETH1 Deposits</h4>
 					<div class="table-responsive my-3">
-						<table class="table" id="deposits-eth1" width="100%">
+						<table class="table" id="deposits-eth1-table" width="100%">
 							<thead>
 								<tr>
 									<th>TX Hash</th>
@@ -546,30 +545,38 @@
 							<tbody>
 								{{range $i, $deposit := .Deposits.Eth1Deposits}}
 									<tr>
-										<td>0x{{printf "%x" $deposit.TxHash}}</td>
+										<td>{{formatHash $deposit.TxHash}}</td>
 										<td>{{$deposit.BlockNumber}}</td>
-										<td>{{$deposit.BlockTs}}</td>
-										<td>{{$deposit.Amount}}</td>
-										<td>0x{{printf "%x" $deposit.FromAddress}}</td>
+										<td>{{formatTimestamp $deposit.BlockTs}}</td>
+										<td>{{formatBalance $deposit.Amount}}</td>
+										<td>{{formatHash $deposit.FromAddress}}</td>
 									</tr>
 								{{end}}
 							</tbody>
 						</table>
 					</div>
-					<h3>ETH2 Deposits</h3>
+					<h4>ETH2 Deposits</h4>
 					<div class="table-responsive my-3">
-						<table class="table" id="deposits-eth2" width="100%">
+						<table class="table" id="deposits-eth2-table" width="100%">
 							<thead>
 								<tr>
+									<th>Epoch</th>
 									<th>BlockSlot</th>
 									<th>Amount</th>
+									<th>Proof</th>
+									<th>Withdrawalcredentials</th>
+									<th>Signature</th>
 								</tr>
 							</thead>
 							<tbody>
 								{{range $i, $deposit := .Deposits.Eth2Deposits}}
 									<tr>
-										<td>{{$deposit.BlockSlot}}</td>
-										<td>{{$deposit.Amount}}</td>
+										<td>{{epochOfSlot $deposit.BlockSlot | formatEpoch}}</td>
+										<td>{{formatBlockSlot $deposit.BlockSlot}}</td>
+										<td>{{formatDepositAmount $deposit.Amount}}</td>
+										<td>{{formatHash $deposit.Proof}}</td>
+										<td>{{formatHash $deposit.Withdrawalcredentials}}</td>
+										<td>{{formatHash $deposit.Signature}}</td>
 									</tr>
 								{{end}}
 							</tbody>

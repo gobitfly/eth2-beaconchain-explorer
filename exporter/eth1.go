@@ -174,7 +174,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 		if !exists {
 			return depositsToSave, fmt.Errorf("error getting block for eth1-deposit: block does not exist in fetched map")
 		}
-		d.BlockTs = b.Time
+		d.BlockTs = int64(b.Time)
 
 		// get corresponding tx (for input and from-address)
 		tx, exists := txs[fmt.Sprintf("0x%x", d.TxHash)]
