@@ -188,7 +188,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 
 		for _, validator := range validatorsResponse.ValidatorList {
 			logger.Debugf("%x - %v", validator.Validator.PublicKey, validator.Index)
-			validators[utils.FormatPublicKey(validator.Validator.PublicKey)] = validator.Index
+			validators[fmt.Sprintf("%x", validator.Validator.PublicKey)] = validator.Index
 		}
 
 		if validatorsResponse.NextPageToken == "" {
@@ -224,7 +224,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	for _, assignment := range validatorAssignmentes {
 		for _, slot := range assignment.ProposerSlots {
 			if slot > 0 {
-				assignments.ProposerAssignments[slot] = validators[utils.FormatPublicKey(assignment.PublicKey)]
+				assignments.ProposerAssignments[slot] = validators[fmt.Sprintf("%x", assignment.PublicKey)]
 			}
 		}
 
@@ -271,8 +271,8 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 
 		for _, balance := range validatorBalancesResponse.Balances {
-			data.ValidatorIndices[utils.FormatPublicKey(balance.PublicKey)] = balance.Index
-			validatorBalancesByPubkey[utils.FormatPublicKey(balance.PublicKey)] = balance.Balance
+			data.ValidatorIndices[fmt.Sprintf("%x", balance.PublicKey)] = balance.Index
+			validatorBalancesByPubkey[fmt.Sprintf("%x", balance.PublicKey)] = balance.Balance
 		}
 
 		if validatorBalancesResponse.NextPageToken == "" {
@@ -368,9 +368,9 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 
 		for _, validator := range validatorResponse.ValidatorList {
-			balance, exists := validatorBalancesByPubkey[utils.FormatPublicKey(validator.Validator.PublicKey)]
+			balance, exists := validatorBalancesByPubkey[fmt.Sprintf("%x", validator.Validator.PublicKey)]
 			if !exists {
-				logger.WithField("pubkey", utils.FormatPublicKey(validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
+				logger.WithField("pubkey", fmt.Sprintf("%x", validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
 				continue
 			}
 			data.Validators = append(data.Validators, &types.Validator{

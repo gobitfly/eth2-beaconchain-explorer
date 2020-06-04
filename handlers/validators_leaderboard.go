@@ -132,7 +132,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			b.Rank,
 			utils.FormatValidator(b.Index),
-			utils.FormatValidatorPublicKey(b.PublicKey),
+			utils.FormatPublicKey(b.PublicKey),
 			fmt.Sprintf("%v", b.Balance),
 			utils.FormatIncome(b.Performance1d),
 			utils.FormatIncome(b.Performance7d),

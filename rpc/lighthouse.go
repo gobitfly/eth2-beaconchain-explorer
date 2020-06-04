@@ -159,7 +159,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	for _, validator := range parsedResponse {
 
 		pubKey := utils.MustParseHex(validator.Pubkey)
-		data.ValidatorIndices[utils.FormatPublicKey(pubKey)] = validator.ValidatorIndex
+		data.ValidatorIndices[fmt.Sprintf("%x", pubKey)] = validator.ValidatorIndex
 
 		data.Validators = append(data.Validators, &types.Validator{
 			Index:                      validator.ValidatorIndex,

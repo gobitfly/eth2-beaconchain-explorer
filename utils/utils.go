@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"gopkg.in/yaml.v2"
 
@@ -27,223 +26,32 @@ var Config *types.Config
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"formatHash":                  FormatHash,
-		"formatTimestamp":             FormatTimestamp,
-		"formatBlockStatus":           FormatBlockStatus,
-		"formatBlockSlot":             FormatBlockSlot,
-		"formatEpoch":                 FormatEpoch,
-		"formatValidator":             FormatValidator,
-		"formatValidatorStatus":       FormatValidatorStatus,
-		"formatValidatorPublicKey":    FormatValidatorPublicKey,
-		"formatSlashedValidator":      FormatSlashedValidator,
-		"formatValidatorInt64":        FormatValidatorInt64,
-		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
 		"formatBalance":               FormatBalance,
 		"formatCurrentBalance":        FormatCurrentBalance,
 		"formatEffectiveBalance":      FormatEffectiveBalance,
-		"formatPercentage":            FormatPercentage,
+		"formatBlockStatus":           FormatBlockStatus,
+		"formatBlockSlot":             FormatBlockSlot,
 		"formatDepositAmount":         FormatDepositAmount,
-		"formatIncome":                FormatIncome,
+		"formatEpoch":                 FormatEpoch,
 		"formatEth1Block":             FormatEth1Block,
 		"formatEth1Address":           FormatEth1Address,
 		"formatEth1TxHash":            FormatEth1TxHash,
 		"formatGraffiti":              FormatGraffiti,
+		"formatHash":                  FormatHash,
+		"formatIncome":                FormatIncome,
+		"formatValidator":             FormatValidator,
+		"formatValidatorInt64":        FormatValidatorInt64,
+		"formatValidatorStatus":       FormatValidatorStatus,
+		"formatPercentage":            FormatPercentage,
+		"formatPublicKey":             FormatPublicKey,
+		"formatSlashedValidator":      FormatSlashedValidator,
+		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
+		"formatTimestamp":             FormatTimestamp,
 		"epochOfSlot":                 EpochOfSlot,
 		"mod":                         func(i, j int) bool { return i%j == 0 },
 		"sub":                         func(i, j int) int { return i - j },
 		"add":                         func(i, j int) int { return i + j },
 	}
-}
-
-func fixUtf(r rune) rune {
-	if r == utf8.RuneError {
-		return -1
-	}
-	return r
-}
-
-// FormatGraffiti will return the graffiti formated as html
-func FormatGraffiti(graffiti []byte) template.HTML {
-	str := strings.Map(fixUtf, template.HTMLEscapeString(string(graffiti)))
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, str))
-}
-
-// FormatHash will return a hash formated as html
-func FormatHash(hash []byte) template.HTML {
-	// if len(hash) > 6 {
-	// 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x…%x</span>", hash[:3], hash[len(hash)-3:]))
-	// }
-	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
-	if len(hash) > 3 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x…</span>", hash[:3]))
-	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
-}
-
-// FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
-func FormatTimestamp(ts int64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))
-}
-
-// FormatEpoch will return the epoch formated as html
-func FormatEpoch(epoch uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%[1]d\">%[1]d</a>", epoch))
-}
-
-// FormatBlockStatus will return an html status for a block.
-func FormatBlockStatus(status uint64) template.HTML {
-	if status == 0 {
-		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
-	} else if status == 1 {
-		return "<span class=\"badge bg-success text-white\">Proposed</span>"
-	} else if status == 2 {
-		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
-	} else if status == 3 {
-		return "<span class=\"badge bg-secondary text-white\">Orphaned</span>"
-	} else {
-		return "Unknown"
-	}
-}
-
-// FormatBlockSlot will return the block-slot formated as html
-func FormatBlockSlot(blockSlot uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", blockSlot))
-}
-
-// FormatBlockRoot will return the block-root formated as html
-func FormatBlockRoot(blockRoot []byte) template.HTML {
-	if len(blockRoot) < 32 {
-		return "N/A"
-	}
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%x\">%v</a>", blockRoot, FormatHash(blockRoot)))
-}
-
-// FormatAttestationStatus will return a user-friendly attestation for an attestation status number
-func FormatAttestationStatus(status uint64) template.HTML {
-	if status == 0 {
-		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
-	} else if status == 1 {
-		return "<span class=\"badge bg-success text-white\">Attested</span>"
-	} else if status == 2 {
-		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
-	} else {
-		return "Unknown"
-	}
-}
-
-// FormatValidatorStatus will return the validator-status formated as html
-func FormatValidatorStatus(status string) template.HTML {
-	if status == "deposited" {
-		return "<b>Deposited (ETH1 deposits have been done, it will take about 8 hours until it will get processed by the beacon-chain)</b>"
-	} else if status == "pending" {
-		return "<b>Pending</b>"
-	} else if status == "active_online" {
-		return "<b>Active</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
-	} else if status == "active_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Active</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
-	} else if status == "exiting_online" {
-		return "<b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
-	} else if status == "exiting_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
-	} else if status == "slashing_online" {
-		return "<b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
-	} else if status == "slashing_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
-	} else if status == "exited" {
-		return "<b>Exited</b>"
-	}
-	return "<b>Unknown</b>"
-}
-
-// FormatValidator will return html formatted text for a validator
-func FormatValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
-}
-
-// FormatValidatorPublicKey will return html formatted text for a validator-public-key
-func FormatValidatorPublicKey(validator []byte) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
-}
-
-// FormatValidatorInt64 will return html formatted text for a validator (for an int64 validator-id)
-func FormatValidatorInt64(validator int64) template.HTML {
-	return FormatValidator(uint64(validator))
-}
-
-// FormatSlashedValidatorInt64 will return html formatted text for a slashed validator
-func FormatSlashedValidatorInt64(validator int64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
-}
-
-// FormatSlashedValidator will return html formatted text for a slashed validator
-func FormatSlashedValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
-}
-
-// FormatBalance will return a string for a balance
-func FormatBalance(balance uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.2f ETH", float64(balance)/float64(1e9)))
-}
-
-// FormatCurrentBalance will return the current balance formated as string with 9 digits after the comma (1 gwei = 1e9 eth)
-func FormatCurrentBalance(balance uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.9f ETH", float64(balance)/float64(1e9)))
-}
-
-// FormatEffectiveBalance will return the effective balance formated as string with 1 digit after the comma
-func FormatEffectiveBalance(balance uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.1f ETH", float64(balance)/float64(1e9)))
-}
-
-// FormatDepositAmount will return the deposit amount formated as string
-func FormatDepositAmount(amount uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.0f ETH", float64(amount)/float64(1e9)))
-}
-
-// FormatIncome will return a string for a balance
-func FormatIncome(income int64) template.HTML {
-	if income > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f ETH</b></span>`, float64(income)/float64(1e9)))
-	} else if income < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f ETH</b></span>`, float64(income)/float64(1e9)))
-	} else {
-		return template.HTML(fmt.Sprintf(`<b>%.4f ETH</b>`, float64(income)/float64(1e9)))
-	}
-}
-
-// FormatPercentage will return a string for a percentage
-func FormatPercentage(percentage float64) string {
-	return fmt.Sprintf("%.0f", percentage*float64(100))
-}
-
-// FormatEth1Block will return the eth1-block formated as html
-func FormatEth1Block(block uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/block/%[1]d\">%[1]d</a>", block))
-}
-
-// FormatEth1Address will return the eth1-address formated as html
-func FormatEth1Address(addr []byte) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\">%v</a>", addr, FormatHash(addr)))
-}
-
-// FormatEth1TxHash will return the eth1-tx-hash formated as html
-func FormatEth1TxHash(hash []byte) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
-}
-
-// FormatGlobalParticipationRate will return the global-participation-rate formated as html
-func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
-	rr := fmt.Sprintf("%.0f%%", r*100)
-	tpl := `<div>%.2[1]f <small class="text-muted ml-3">(%[2]v)</small></div><div class="progress" style="height:5px;"><div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div></div>`
-	return template.HTML(fmt.Sprintf(tpl, float64(e)/1e9, rr))
-}
-
-// FormatYesNo will return yes or no formated as html
-func FormatYesNo(yes bool) template.HTML {
-	if yes {
-		return `<span class="badge bg-success text-white">Yes</span>`
-	}
-	return `<span class="badge bg-warning text-dark">No</span>`
 }
 
 // EpochOfSlot will return the corresponding epoch of a slot
@@ -312,16 +120,6 @@ func readConfigFile(cfg *types.Config, path string) error {
 
 func readConfigEnv(cfg *types.Config) error {
 	return envconfig.Process("", cfg)
-}
-
-// FormatPublicKey will format a public key
-func FormatPublicKey(publicKey []byte) string {
-	return fmt.Sprintf("%x", publicKey)
-}
-
-// FormatAttestorAssignmentKey will format attestor assignment keys
-func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint64) string {
-	return fmt.Sprintf("%v-%v-%v", AttesterSlot, CommitteeIndex, MemberIndex)
 }
 
 // MustParseHex will parse a string into hex

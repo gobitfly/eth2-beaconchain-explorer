@@ -17,7 +17,7 @@ import (
 
 var ethTwoTemplate = template.Must(template.New("ethTwoDeposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethTwoDeposit.html"))
 
-// Blocks will return information about deposits using a go template
+// EthTwoDeposits will return information about deposits using a go template
 func EthTwoDeposits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
@@ -48,8 +48,8 @@ func EthTwoDeposits(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// BlocksData will return information about blocks
-func EthTwoData(w http.ResponseWriter, r *http.Request) {
+// EthTwoDepositsData will return information eth1-deposits in json
+func EthTwoDepositsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -113,13 +113,11 @@ func EthTwoData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, len(deposits))
 	for i, d := range deposits {
 		tableData[i] = []interface{}{
-			d.BlockSlot,
-			// d.BlockIndex,
-			fmt.Sprintf("%#x", d.Publickey),
-			fmt.Sprintf("%g ETH", float64(d.Amount)/float64(1000000000)),
+			utils.FormatBlockSlot(d.BlockSlot),
+			utils.FormatPublicKey(d.Publickey),
+			utils.FormatDepositAmount(d.Amount),
 			fmt.Sprintf("%#x", d.Withdrawalcredentials),
 			fmt.Sprintf("%#x", d.Signature),
-			// d.Proof,
 		}
 	}
 

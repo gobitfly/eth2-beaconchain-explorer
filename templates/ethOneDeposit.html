@@ -1,61 +1,40 @@
 {{ define "js"}}
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 <script>
-  $(document).ready(function() {
-    $('#deposits').DataTable({
-      processing: true,
-      serverSide: true,
-      ordering: true,
-      order: [[4, 'desc']],
-      searching: true,
-      ajax: '/validators/eth1deposits/data',
-      pagingType: 'full',
-      language: {
-        searchPlaceholder: 'Address / Validator Key / Tx Hash',
-        search: ''
-      },
-      columnDefs: [
-      {
-          targets: 0,
-          data: '0',
-          render: function(data, type, row, meta) {
-            return data.substr(0, 10) + '...'
-          }
-      },
-      {
-          orderable: false,
-          targets: 1,
-          data: '1',
-          render: function(data, type, row, meta) {
-            return `<a href="/validator/${data}">${data.substr(0, 10)} ...</a>`
-          }
-      },
-      {
-          targets: 3,
-          data: '3',
-          orderable: false,
-          render: function(data, type, row, meta) {
-            return data.substr(0, 10) + '...'
-          }
-      },
-      {
-          targets: 4,
-          data: '4',
-          render: function(data, type, row, meta) {
-            return moment(data).fromNow()
-          }
-      },
-      {
-          targets: 6,
-          data: '6',
-          render: function(data, type, row, meta) {
-            return data === false ? 'pending' : 'processed'
-          }
-      },
+	$(document).ready(function() {
+		$('#deposits').DataTable({
+			processing: true,
+			serverSide: true,
+			ordering: true,
+			order: [[4, 'desc']],
+			searching: true,
+			ajax: '/validators/eth1deposits/data',
+			pagingType: 'full',
+			preDrawCallback: function() {
+				// this does not always work.. not sure how to solve the staying tooltip
+				try {
+					$('#deposits').find('[data-toggle="tooltip"]').tooltip('dispose')
+				} catch (e) {}
+			},
+			drawCallback: function(settings) {
+				formatTimestamps('#deposits')
+			},
+			language: {
+				searchPlaceholder: 'Address / Validator Key / Tx Hash',
+				search: ''
+			},
+			columnDefs: [
+			{
+					targets: 6,
+					data: '6',
+					render: function(data, type, row, meta) {
+						return data === false ? 'pending' : 'processed'
+					}
+			},
 
-      ]
-    })
-  })
+			]
+		})
+	})
 </script>
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
@@ -63,65 +42,38 @@
 
 {{end}} {{ define "content"}}
 <div class="my-3">
-  <div class="d-md-flex py-2 justify-content-md-between">
-    <div class="heading">
-      <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-file-signature mr-2"></i></i>Eth1 Deposits</h1>
-    </div>
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-        <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Eth1 Deposits</li>
-      </ol>
-    </nav>
-  </div>
+	<div class="d-md-flex py-2 justify-content-md-between">
+		<div class="heading">
+			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-file-signature mr-2"></i></i>Eth1 Deposits</h1>
+		</div>
+		<nav aria-label="breadcrumb">
+			<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+				<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+				<li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+				<li class="breadcrumb-item active" aria-current="page">Eth1 Deposits</li>
+			</ol>
+		</nav>
+	</div>
 </div>
-<!-- <div class="d-flex justify-content-around mb-3 pb-3"> -->
-
-    <!-- <div class="card" style="position:relative">
-      <div class="card-body">
-        some stat
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-body">
-        some stat
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-body">
-        some stat
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-body">
-        some stat
-      </div>
-    </div> -->
-<!-- </div> -->
 <h6 class="">This table displays the deposits made on Eth1 for validators who wish to join the Eth2 Beacon Chain.</h6>
 <div class="card">
-  <div class="card-body px-0 py-2">
-    <div class="table-responsive pt-2">
-      <table class="table" id="deposits">
-        <thead>
-          <tr>
-            <th>Eth1 Address</th>
-            <th>Validator Key</th>
-            <th>Amount</th>
-            <th>Eth1 TxHash</th>
-            <th>Time</th>
-            <th>Eth1 Block</th>
-            <th>Eth2 Validator</th>
-            <!-- <th>TxIndex</th> -->
-            <!-- <th>TxInput</th> -->
-            <!-- <th>WithdrawalCredentials</th> -->
-            <!-- <th>MerkletreeIndex</th> -->
-          </tr>
-        </thead>
-        <tbody> </tbody>
-      </table>
-    </div>
-  </div>
+	<div class="card-body px-0 py-2">
+		<div class="table-responsive pt-2">
+			<table class="table" id="deposits">
+				<thead>
+					<tr>
+						<th>Eth1 Address</th>
+						<th>Validator Key</th>
+						<th>Amount</th>
+						<th>Eth1 TxHash</th>
+						<th>Time</th>
+						<th>Eth1 Block</th>
+						<th>Eth2 Validator</th>
+					</tr>
+				</thead>
+				<tbody> </tbody>
+			</table>
+		</div>
+	</div>
 </div>
 {{end}}
