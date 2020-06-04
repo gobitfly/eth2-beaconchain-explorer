@@ -406,17 +406,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 			b.Deposits,
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
 			b.Exits,
-			fmt.Sprintf("%x", b.Graffiti),
-			// fmt.Sprintf("%v", b.Epoch),
-			// fmt.Sprintf("%v", b.Slot),
-			// fmt.Sprintf("%v", utils.FormatBlockStatus(b.Status)),
-			// fmt.Sprintf("%v", utils.SlotToTime(b.Slot).Unix()),
-			// fmt.Sprintf("%x", b.BlockRoot),
-			// fmt.Sprintf("%v", b.Attestations),
-			// fmt.Sprintf("%v", b.Deposits),
-			// fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
-			// fmt.Sprintf("%v", b.Exits),
-			// fmt.Sprintf("%x", b.Graffiti),
+			utils.FormatGraffiti(b.Graffiti),
 		}
 	}
 
@@ -510,11 +500,6 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 			utils.FormatAttestationStatus(b.Status),
 			utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
 			b.CommitteeIndex,
-			// fmt.Sprintf("%v", b.Epoch),
-			// fmt.Sprintf("%v", b.AttesterSlot),
-			// fmt.Sprintf("%v", utils.FormatAttestationStatus(b.Status)),
-			// fmt.Sprintf("%v", utils.SlotToTime(b.AttesterSlot).Unix()),
-			// fmt.Sprintf("%v", b.CommitteeIndex),
 		}
 	}
 

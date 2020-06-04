@@ -88,7 +88,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 		encoding := "UTF-8"
 
-		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE graffiti LIKE convert_to($1, $2) LIMIT 10", "%"+search+"%", encoding)
+		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE LOWER(convert_to(graffiti, $2)) LIKE LOWER(convert_to($1, $2)) LIMIT 10", "%"+search+"%", encoding)
 
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query")

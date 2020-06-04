@@ -544,3 +544,6 @@ type ValidatorDeposits struct {
 	Eth1Deposits []Eth1Deposit
 	Eth2Deposits []Eth2Deposit
 }
+
+type ValidatorSlashing struct {
+}

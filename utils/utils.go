@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v2"
 
@@ -46,6 +47,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatEth1Block":             FormatEth1Block,
 		"formatEth1Address":           FormatEth1Address,
 		"formatEth1TxHash":            FormatEth1TxHash,
+		"formatGraffiti":              FormatGraffiti,
 		"epochOfSlot":                 EpochOfSlot,
 		"mod":                         func(i, j int) bool { return i%j == 0 },
 		"sub":                         func(i, j int) int { return i - j },
@@ -53,7 +55,20 @@ func GetTemplateFuncs() template.FuncMap {
 	}
 }
 
-// FormatHash will return a hash formated as html.
+func fixUtf(r rune) rune {
+	if r == utf8.RuneError {
+		return -1
+	}
+	return r
+}
+
+// FormatGraffiti will return the graffiti formated as html
+func FormatGraffiti(graffiti []byte) template.HTML {
+	str := strings.Map(fixUtf, template.HTMLEscapeString(string(graffiti)))
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, str))
+}
+
+// FormatHash will return a hash formated as html
 func FormatHash(hash []byte) template.HTML {
 	// if len(hash) > 6 {
 	// 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x…%x</span>", hash[:3], hash[len(hash)-3:]))
@@ -213,16 +228,13 @@ func FormatEth1Address(addr []byte) template.HTML {
 
 // FormatEth1TxHash will return the eth1-tx-hash formated as html
 func FormatEth1TxHash(hash []byte) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/transaction/0x%x\">%v</a>", hash, FormatHash(hash)))
+	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
 func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
 	rr := fmt.Sprintf("%.0f%%", r*100)
-	tpl := `
-<div>%.2[1]f <small class="text-muted ml-3">(%[2]v)</small></div>
-<div class="progress" style="height:5px;"><div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div></div>
-`
+	tpl := `<div>%.2[1]f <small class="text-muted ml-3">(%[2]v)</small></div><div class="progress" style="height:5px;"><div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div></div>`
 	return template.HTML(fmt.Sprintf(tpl, float64(e)/1e9, rr))
 }
 

@@ -40,7 +40,6 @@ $(document).ready(function() {
     queryTokenizer: Bloodhound.tokenizers.whitespace,
     identify: function(obj) {
       return obj.pubkey
-      // return obj.index == 'deposited' ? obj.pubkey : obj.index
     },
     remote: {
       url: '/search/validators/%QUERY',
@@ -237,44 +236,31 @@ $('[aria-ethereum-date]').each(function(item) {
 //   })
 // })
 
-$('.nav-tabs a').click(function(e) {
-  $(this).tab('show')
-  var seturlhash = $(this).data('seturlhash')
-  if (seturlhash)
-    window.location.hash = this.hash
-  else
-    history.replaceState('', document.title, window.location.pathname + window.location.search)
+// With HTML5 history API, we can easily prevent scrolling!
+$('.nav-tabs a').on('shown.bs.tab', function (e) {
+    if (history.replaceState) {
+        history.pushState(null, null, e.target.hash);
+        // history.replaceState('', document.title, window.location.pathname + window.location.search)
+    } else {
+        window.location.hash = e.target.hash; //Polyfill for old browsers
+    }
 })
 
-if (window.location.hash) {
-  $('.nav-tabs a').each(function(){
-    if (this.hash != window.location.hash) return
-    $(this).tab('show')
-  })
+// Javascript to enable link to tab
+var url = document.location.toString();
+if (url.match('#')) {
+    $('.nav-tabs a[href="#'+url.split('#')[1]+'"]').tab('show') ;
 }
 
-function renderGraffiti(data) {
-  var r = ""
-	try {
-		r = decodeURIComponent(data.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'))
-	} catch(e) {
-		console.error('unable to render graffiti', data, e)
-		r = ""
-		var hex = data.toString()
-		for (var i = 0; i < hex.length; i += 2)
-			r += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
-	}
-
-	return $.fn.dataTable.render.text().display(r)
-}
-
-function formatTimestamps() {
-  $('.timestamp').each(function(){
+function formatTimestamps(sel) {
+  if (sel === undefined) {
+    sel = $(document)
+  }
+  sel.find('.timestamp').each(function(){
     var ts = $(this).data('timestamp')
     var tsMoment = moment.unix(ts)
     this.title = ""+tsMoment.format()
     $(this).text(tsMoment.fromNow())
   })
-  $('[data-toggle="tooltip"]').tooltip()
+  sel.find('[data-toggle="tooltip"]').tooltip()
 }
-

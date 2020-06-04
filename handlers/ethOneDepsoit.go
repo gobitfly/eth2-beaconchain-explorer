@@ -116,15 +116,11 @@ func EthOneData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			fmt.Sprintf("%#x", d.FromAddress),
 			fmt.Sprintf("%#x", d.PublicKey),
-			fmt.Sprintf("%g ETH", float64(d.Amount)/float64(1000000000)),
+			fmt.Sprintf("%g ETH", float64(d.Amount)/float64(1e9)),
 			fmt.Sprintf("%#x", d.TxHash),
 			d.BlockTs,
 			d.BlockNumber,
 			d.Activated,
-			// d.TxIndex,
-			// d.TxInput,
-			// utils.FormatPublicKey(d.WithdrawalCredentials),
-			// d.MerkletreeIndex,
 		}
 	}
 

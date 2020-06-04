@@ -20,25 +20,6 @@
 						formatTimestamps()
 						$('#blocks-table').find('[data-toggle="tooltip"]').tooltip()
 					},
-					columnDefs: [
-						{
-							targets: 9,
-							data: '9',
-							render: function (data, type, row, meta) {
-								var r = ""
-								try {
-									r = decodeURIComponent(data.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'))
-								} catch(e) {
-									console.error('unable to render graffiti', data, e)
-									r = ""
-									var hex = data.toString()
-									for (var i = 0; i < hex.length; i += 2)
-										r += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
-								}
-								return $.fn.dataTable.render.text().display(r)
-							}
-						},
-					],
 				});
 				$('#attestations-table').DataTable({
 					processing: true,
@@ -333,17 +314,17 @@
 			   aria-controls="overview" aria-selected="true">Overview</a>
 		</li>
 		<li class="nav-item">
-			<a class="nav-link" id="blocks-tab" data-toggle="tab" href="#blocks" data-seturlhash="true" role="tab"
+			<a class="nav-link" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
 			   aria-controls="blocks" aria-selected="false">Proposed Blocks <span
 						class="badge bg-secondary text-white">{{.ProposedBlocksCount}}</span></a>
 		</li>
 		<li class="nav-item">
-			<a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" data-seturlhash="true" role="tab"
+			<a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab"
 			   aria-controls="attestations" aria-selected="false">Attestations <span
 						class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
 		</li>
 		<li class="nav-item">
-			<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" data-seturlhash="true" role="tab"
+			<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab"
 			   aria-controls="deposits" aria-selected="false">Deposits <span
 						class="badge bg-secondary text-white">{{len .Deposits.Eth1Deposits}}</span></a>
 		</li>
@@ -377,7 +358,6 @@
 							<div class="col-md-10">1 day: {{.Income1d | formatIncome}} | 7 days: {{.Income7d | formatIncome}} | 31 days: {{.Income31d | formatIncome}}</div>
 						</div>
 					{{end}}
-
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Status:</div>
 						<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}</div>
