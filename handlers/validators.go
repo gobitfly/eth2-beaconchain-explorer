@@ -281,8 +281,6 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			[]interface{}{
-				// utils.FormatBalance(v.CurrentBalance),
-				// utils.FormatBalance(v.EffectiveBalance),
 				fmt.Sprintf("%.4f ETH", float64(v.CurrentBalance)/float64(1e9)),
 				fmt.Sprintf("%.1f ETH", float64(v.EffectiveBalance)/float64(1e9)),
 			},
