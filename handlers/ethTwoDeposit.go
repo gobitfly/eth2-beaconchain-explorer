@@ -116,8 +116,8 @@ func EthTwoDepositsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatBlockSlot(d.BlockSlot),
 			utils.FormatPublicKey(d.Publickey),
 			utils.FormatDepositAmount(d.Amount),
-			fmt.Sprintf("%#x", d.Withdrawalcredentials),
-			fmt.Sprintf("%#x", d.Signature),
+			utils.FormatHash(d.Withdrawalcredentials),
+			utils.FormatHash(d.Signature),
 		}
 	}
 

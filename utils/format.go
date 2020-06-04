@@ -203,5 +203,3 @@ func FormatYesNo(yes bool) template.HTML {
 	}
 	return `<span class="badge bg-warning text-dark">No</span>`
 }
-
-func FormatWithDrawalCredentials() template.HTML {}
