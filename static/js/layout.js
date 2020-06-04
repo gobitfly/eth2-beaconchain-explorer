@@ -240,7 +240,6 @@ $('[aria-ethereum-date]').each(function(item) {
 $('.nav-tabs a').on('shown.bs.tab', function (e) {
     if (history.replaceState) {
         history.pushState(null, null, e.target.hash);
-        // history.replaceState('', document.title, window.location.pathname + window.location.search)
     } else {
         window.location.hash = e.target.hash; //Polyfill for old browsers
     }
@@ -252,14 +251,15 @@ if (url.match('#')) {
     $('.nav-tabs a[href="#'+url.split('#')[1]+'"]').tab('show') ;
 }
 
-function formatTimestamps(sel) {
-  if (sel === undefined) {
-    sel = $(document)
+function formatTimestamps(selStr) {
+  var sel = $(document)
+  if (selStr !== undefined) {
+    sel = $(selStr)
   }
   sel.find('.timestamp').each(function(){
     var ts = $(this).data('timestamp')
     var tsMoment = moment.unix(ts)
-    this.title = ""+tsMoment.format()
+    this.title = tsMoment.format()
     $(this).text(tsMoment.fromNow())
   })
   sel.find('[data-toggle="tooltip"]').tooltip()

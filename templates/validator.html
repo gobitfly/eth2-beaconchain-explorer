@@ -10,15 +10,8 @@
 					searching: false,
 					ajax: '/validator/{{.Index}}/proposedblocks',
 					pagingType: 'full',
-					preDrawCallback: function() {
-						// this does not always work.. not sure how to solve the staying tooltip
-						try {
-							$('#blocks-table').find('[data-toggle="tooltip"]').tooltip('dispose')
-						} catch (e) {}
-					},
 					drawCallback: function(settings) {
 						formatTimestamps()
-						$('#blocks-table').find('[data-toggle="tooltip"]').tooltip()
 					},
 				});
 				$('#attestations-table').DataTable({
@@ -28,15 +21,8 @@
 					searching: false,
 					ajax: '/validator/{{.Index}}/attestations',
 					pagingType: 'full',
-					preDrawCallback: function() {
-						// this does not always work.. not sure how to solve the staying tooltip
-						try {
-							$('#attestations-table').find('[data-toggle="tooltip"]').tooltip('dispose')
-						} catch (e) {}
-					},
 					drawCallback: function(settings) {
 						formatTimestamps()
-						$('#attestations-table').find('[data-toggle="tooltip"]').tooltip()
 					},
 				})
 			})
