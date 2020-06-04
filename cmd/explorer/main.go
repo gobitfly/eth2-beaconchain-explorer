@@ -104,6 +104,7 @@ func main() {
 		router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
 		router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
 		router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
+		router.HandleFunc("/validator/{index}/slashings", handlers.ValidatorSlashings).Methods("GET")
 		router.HandleFunc("/validators", handlers.Validators).Methods("GET")
 		router.HandleFunc("/validators/data", handlers.ValidatorsData).Methods("GET")
 		router.HandleFunc("/validators/slashings", handlers.ValidatorsSlashings).Methods("GET")

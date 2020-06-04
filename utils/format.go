@@ -172,6 +172,8 @@ func FormatValidatorStatus(status string) template.HTML {
 		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
 	} else if status == "exited" {
 		return "<b>Exited</b>"
+	} else if status == "slashed" {
+		return "<b>Slashed</b>"
 	}
 	return "<b>Unknown</b>"
 }

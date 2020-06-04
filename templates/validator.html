@@ -1,5 +1,5 @@
 {{ define "js"}}
-	{{if ne .Status "Deposited"}}
+	{{if ne .Status "deposited"}}
 		<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 		<script>
 			$(document).ready(function () {
@@ -20,6 +20,17 @@
 					ordering: false,
 					searching: false,
 					ajax: '/validator/{{.Index}}/attestations',
+					pagingType: 'full',
+					drawCallback: function(settings) {
+						formatTimestamps()
+					},
+				})
+				$('#slashings-table').DataTable({
+					processing: true,
+					serverSide: true,
+					ordering: false,
+					searching: false,
+					ajax: '/validator/{{.Index}}/slashings',
 					pagingType: 'full',
 					drawCallback: function(settings) {
 						formatTimestamps()
@@ -301,19 +312,22 @@
 		</li>
 		<li class="nav-item">
 			<a class="nav-link" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
-			   aria-controls="blocks" aria-selected="false">Proposed Blocks <span
-						class="badge bg-secondary text-white">{{.ProposedBlocksCount}}</span></a>
+			   aria-controls="blocks" aria-selected="false">Proposed Blocks <span class="badge bg-secondary text-white">{{.ProposedBlocksCount}}</span></a>
 		</li>
 		<li class="nav-item">
 			<a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab"
-			   aria-controls="attestations" aria-selected="false">Attestations <span
-						class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
+			   aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{if eq .AttestationsCount 10000}}&gt;10000{{else}}{{.AttestationsCount}}{{end}}</span></a>
 		</li>
 		<li class="nav-item">
 			<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab"
-			   aria-controls="deposits" aria-selected="false">Deposits <span
-						class="badge bg-secondary text-white">{{len .Deposits.Eth1Deposits}}</span></a>
+			   aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{len .Deposits.Eth1Deposits}}</span></a>
 		</li>
+		{{if gt .SlashingsCount 0}}
+			<li class="nav-item">
+				<a class="nav-link" id="slashings-tab" data-toggle="tab" href="#slashings" role="tab"
+				aria-controls="slashings" aria-selected="false">Slashings <span class="badge bg-secondary text-white">{{if gt .SlashingsCount 10000}}>10000{{else}}{{.SlashingsCount}}{{end}}</span></a>
+			</li>
+		{{end}}
 	</ul>
 	<style>
 		.validator-card {
@@ -324,8 +338,7 @@
 	<div class="card validator-card">
 		<div class="card-body px-0 py-1">
 			<div class="tab-content">
-				<div class="tab-pane fade show active" id="overview" role="tabpanel"
-					 aria-labelledby="overview-tab" aria-controls="overview">
+				<div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab" aria-controls="overview">
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Unique Index:</div>
 						<div class="col-md-10">{{if eq .Status "deposited"}}Pending{{else}}{{.Index}}{{end}}</div>
@@ -359,7 +372,7 @@
 							</div>
 						</div>
 						<div class="row border-bottom p-3 mx-0">
-							{{if eq .Status "Pending"}}
+							{{if eq .Status "pending"}}
 								<div class="col-md-2">Estimated Activation:</div>
 							{{else}}
 								<div class="col-md-2">Active since:</div>
@@ -371,7 +384,7 @@
 								(Epoch {{.ActivationEpoch}})
 							</div>
 						</div>
-						{{if eq .Status "Ejected"}}
+						{{if (or (eq .Status "slashed") (eq .Status "exited"))}}
 							<div class="row border-bottom p-3 mx-0">
 								<div class="col-md-2">Exit on:</div>
 								<div class="col-md-10"><span
@@ -403,8 +416,7 @@
 						</div>
 					{{end}}
 				</div>
-				<div class="tab-pane fade" id="blocks" role="tabpanel" 
-					 aria-labelledby="blocks-tab" aria-controls="blocks">
+				<div class="tab-pane fade" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
 					<div class="table-responsive my-3">
 						<table class="table" id="blocks-table" width="100%">
 							<thead>
@@ -416,9 +428,7 @@
 								<th>Root Hash</th>
 								<th>Attestations</th>
 								<th>Deposits</th>
-								<th>Slashings <span data-toggle="tooltip" data-placement="top"
-													title="Proposers">P</span> /
-									<span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+								<th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
 								<th>Exits</th>
 								<th>Graffiti</th>
 							</tr>
@@ -444,9 +454,8 @@
 						</table>
 					</div>
 				</div>
-				<div class="tab-pane fade" id="deposits" role="tabpanel"
-					 aria-labelledby="deposits-tab" aria-controls="deposits">
-					<h4 style="margin:10px;">ETH1 Deposits</h4> <!-- #TODO:stefan is inline-style ok? -->
+				<div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
+					<h4 style="margin:10px;">ETH1 Deposits</h4>
 					<div class="table-responsive my-3">
 						<table class="table" id="deposits-eth1-table" width="100%">
 							<thead>
@@ -471,7 +480,7 @@
 							</tbody>
 						</table>
 					</div>
-					<h4 style="margin:10px;">ETH2 Deposits</h4> <!-- #TODO:stefan is inline-style ok? -->
+					<h4 style="margin:10px;">ETH2 Deposits</h4>
 					<div class="table-responsive my-3">
 						<table class="table" id="deposits-eth2-table" width="100%">
 							<thead>
@@ -496,6 +505,22 @@
 									</tr>
 								{{end}}
 							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="tab-pane fade" id="slashings" role="tabpanel" aria-labelledby="slashings-tab" aria-controls="slashings">
+					<div class="table-responsive my-3">
+						<table class="table" id="slashings-table" width="100%">
+							<thead>
+								<tr>
+									<th>Slashed validator</th>
+									<th>Time</th>
+									<th>Reason</th>
+									<th>Slot</th>
+									<th>Epoch</th>
+								</tr>
+							</thead>
+							<tbody></tbody>
 						</table>
 					</div>
 				</div>
