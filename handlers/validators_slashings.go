@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -18,7 +19,7 @@ import (
 
 var validatorsSlashingsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators_slashings.html"))
 
-// Validators returns the validators using a go template
+// ValidatorsSlashings returns validator slashing using a go template
 func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -48,7 +49,7 @@ func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ValidatorAttestations returns a validators attestations in json
+// ValidatorsSlashingsData returns validator slashings in json
 func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -79,8 +80,16 @@ order by blocks.slot desc;`)
 		return
 	}
 
-	tableData := make([][]interface{}, len(attesterSlashings))
-	for i, b := range attesterSlashings {
+	var proposerSlashings []*types.ValidatorProposerSlashing
+	err = db.DB.Select(&proposerSlashings, "SELECT blocks.slot, blocks.epoch, blocks.proposer, blocks_proposerslashings.proposerindex FROM blocks_proposerslashings left join blocks on blocks_proposerslashings.block_slot = blocks.slot")
+	if err != nil {
+		logger.Errorf("error retrieving block proposer slashings data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(attesterSlashings)+len(proposerSlashings))
+	for _, b := range attesterSlashings {
 
 		inter := intersect.Simple(b.Attestestation1Indices, b.Attestestation2Indices)
 
@@ -89,20 +98,39 @@ order by blocks.slot desc;`)
 			slashedValidator = uint64(inter[0].(int64))
 		}
 
-		tableData[i] = []interface{}{
+		tableData = append(tableData, []interface{}{
 			utils.FormatSlashedValidator(slashedValidator),
 			utils.FormatValidator(b.Proposer),
-			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
-			"Attestation rule violation",
+			utils.SlotToTime(b.Slot).Unix(),
+			"Attestation Violation",
 			utils.FormatBlockSlot(b.Slot),
 			utils.FormatEpoch(b.Epoch),
-		}
+		})
+	}
+
+	for _, b := range proposerSlashings {
+		tableData = append(tableData, []interface{}{
+			utils.FormatSlashedValidator(b.ProposerIndex),
+			utils.FormatValidator(b.Proposer),
+			utils.SlotToTime(b.Slot).Unix(),
+			"Proposer Violation",
+			utils.FormatBlockSlot(b.Slot),
+			utils.FormatEpoch(b.Epoch),
+		})
+	}
+
+	sort.Slice(tableData, func(i, j int) bool {
+		return tableData[i][2].(int64) > tableData[j][2].(int64)
+	})
+
+	for _, b := range tableData {
+		b[2] = utils.FormatTimestamp(b[2].(int64))
 	}
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    uint64(len(attesterSlashings)),
-		RecordsFiltered: uint64(len(attesterSlashings)),
+		RecordsTotal:    uint64(len(tableData)),
+		RecordsFiltered: uint64(len(tableData)),
 		Data:            tableData,
 	}
 

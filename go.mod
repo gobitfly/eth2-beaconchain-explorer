@@ -3,6 +3,7 @@ module eth2-exporter
 go 1.13
 
 require (
+	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
@@ -24,6 +25,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
 	github.com/prysmaticlabs/ethereumapis v0.0.0-20200424214844-ba9042096e9f
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52
