@@ -14,24 +14,6 @@
         searchPlaceholder: 'Slot / Validator Key / Withdrawal Credentials',
         search: ''
       },
-      columnDefs: [
-        {
-          orderable: false,
-          targets: 3,
-          data: '3',
-          render: function (data, type, row, meta) {
-            return data.substr(0, 10) + '...'
-          }
-        },
-        {
-          orderable: false,
-          targets: 4,
-          data: '4',
-          render: function (data, type, row, meta) {
-            return data.substr(0, 10) + '...'
-          }
-        },
-      ]
     })
   })
 </script>
