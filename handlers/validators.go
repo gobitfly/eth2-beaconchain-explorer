@@ -212,8 +212,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var totalCount uint64
-	err = db.DB.Get(&totalCount, `SELECT COUNT(*) FROM validators`)
+	totalCount, err := db.GetTotalValidatorsCount()
 	if err != nil {
 		logger.Errorf("error retrieving ejected validator count: %v", err)
 		http.Error(w, "Internal server error", 503)

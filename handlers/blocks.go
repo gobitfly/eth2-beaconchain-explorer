@@ -159,12 +159,12 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
 		tableData[i] = []interface{}{
-			b.Epoch,
-			b.Slot,
+			utils.FormatEpoch(b.Epoch),
+			utils.FormatBlockSlot(b.Slot),
 			utils.FormatBlockStatus(b.Status),
-			utils.SlotToTime(b.Slot).Unix(),
+			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
 			utils.FormatValidator(b.Proposer),
-			fmt.Sprintf("%x", b.BlockRoot),
+			utils.FormatBlockRoot(b.BlockRoot), // fmt.Sprintf("%x", b.BlockRoot),
 			b.Attestations,
 			b.Deposits,
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),

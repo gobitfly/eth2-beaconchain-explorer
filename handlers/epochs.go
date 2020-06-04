@@ -95,39 +95,41 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 	var epochs []*types.EpochsPageData
 
 	if search == -1 {
-		err = db.DB.Select(&epochs, `SELECT epoch, 
-											    blockscount, 
-											    proposerslashingscount, 
-											    attesterslashingscount, 
-											    attestationscount, 
-											    depositscount, 
-											    voluntaryexitscount, 
-											    validatorscount, 
-											    averagevalidatorbalance, 
-											    finalized,
-											    eligibleether,
-											    globalparticipationrate,
-											    votedether
-										FROM epochs 
-										WHERE epoch >= $1 AND epoch <= $2
-										ORDER BY epoch DESC`, endEpoch, startEpoch)
+		err = db.DB.Select(&epochs, `
+			SELECT epoch, 
+				blockscount, 
+				proposerslashingscount, 
+				attesterslashingscount, 
+				attestationscount, 
+				depositscount, 
+				voluntaryexitscount, 
+				validatorscount, 
+				averagevalidatorbalance, 
+				finalized,
+				eligibleether,
+				globalparticipationrate,
+				votedether
+			FROM epochs 
+			WHERE epoch >= $1 AND epoch <= $2
+			ORDER BY epoch DESC`, endEpoch, startEpoch)
 	} else {
-		err = db.DB.Select(&epochs, `SELECT epoch, 
-											    blockscount, 
-											    proposerslashingscount, 
-											    attesterslashingscount, 
-											    attestationscount, 
-											    depositscount, 
-											    voluntaryexitscount, 
-											    validatorscount, 
-											    averagevalidatorbalance, 
-											    finalized,
-											    eligibleether,
-											    globalparticipationrate,
-											    votedether
-										FROM epochs 
-										WHERE epoch = $1
-										ORDER BY epoch DESC`, search)
+		err = db.DB.Select(&epochs, `
+			SELECT epoch, 
+				blockscount, 
+				proposerslashingscount, 
+				attesterslashingscount, 
+				attestationscount, 
+				depositscount, 
+				voluntaryexitscount, 
+				validatorscount, 
+				averagevalidatorbalance, 
+				finalized,
+				eligibleether,
+				globalparticipationrate,
+				votedether
+			FROM epochs 
+			WHERE epoch = $1
+			ORDER BY epoch DESC`, search)
 	}
 	if err != nil {
 		logger.Errorf("error retrieving epoch data: %v", err)
@@ -138,16 +140,15 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, len(epochs))
 	for i, b := range epochs {
 		tableData[i] = []interface{}{
-			b.Epoch,
-			utils.EpochToTime(b.Epoch).Unix(),
+			utils.FormatEpoch(b.Epoch),
+			utils.FormatTimestamp(utils.EpochToTime(b.Epoch).Unix()),
 			b.BlocksCount,
 			b.AttestationsCount,
 			b.DepositsCount,
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
-			b.Finalized,
+			utils.FormatYesNo(b.Finalized),
 			utils.FormatBalance(b.EligibleEther),
-			utils.FormatBalance(b.VotedEther),
-			fmt.Sprintf("%.0f%%", b.GlobalParticipationRate*100),
+			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate), //fmt.Sprintf("%.0f%%", b.GlobalParticipationRate*100),
 		}
 	}
 

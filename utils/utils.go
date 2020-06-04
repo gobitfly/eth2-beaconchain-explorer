@@ -32,14 +32,20 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBlockSlot":             FormatBlockSlot,
 		"formatEpoch":                 FormatEpoch,
 		"formatValidator":             FormatValidator,
+		"formatValidatorStatus":       FormatValidatorStatus,
+		"formatValidatorPublicKey":    FormatValidatorPublicKey,
 		"formatSlashedValidator":      FormatSlashedValidator,
 		"formatValidatorInt64":        FormatValidatorInt64,
 		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
 		"formatBalance":               FormatBalance,
+		"formatCurrentBalance":        FormatCurrentBalance,
+		"formatEffectiveBalance":      FormatEffectiveBalance,
 		"formatPercentage":            FormatPercentage,
 		"formatDepositAmount":         FormatDepositAmount,
 		"formatIncome":                FormatIncome,
 		"formatEth1Block":             FormatEth1Block,
+		"formatEth1Address":           FormatEth1Address,
+		"formatEth1TxHash":            FormatEth1TxHash,
 		"epochOfSlot":                 EpochOfSlot,
 		"mod":                         func(i, j int) bool { return i%j == 0 },
 		"sub":                         func(i, j int) int { return i - j },
@@ -49,15 +55,19 @@ func GetTemplateFuncs() template.FuncMap {
 
 // FormatHash will return a hash formated as html.
 func FormatHash(hash []byte) template.HTML {
-	if len(hash) > 6 {
-		return template.HTML(fmt.Sprintf("<code>0x%x…%x</code>", hash[:3], hash[len(hash)-3:]))
+	// if len(hash) > 6 {
+	// 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x…%x</span>", hash[:3], hash[len(hash)-3:]))
+	// }
+	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
+	if len(hash) > 3 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x…</span>", hash[:3]))
 	}
-	return template.HTML(fmt.Sprintf("<code>0x%x</code>", hash))
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
 }
 
 // FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTimestamp(ts int64) template.HTML {
-	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))
+	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))
 }
 
 // FormatEpoch will return the epoch formated as html
@@ -85,6 +95,14 @@ func FormatBlockSlot(blockSlot uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", blockSlot))
 }
 
+// FormatBlockRoot will return the block-root formated as html
+func FormatBlockRoot(blockRoot []byte) template.HTML {
+	if len(blockRoot) < 32 {
+		return "N/A"
+	}
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%x\">%v</a>", blockRoot, FormatHash(blockRoot)))
+}
+
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatus(status uint64) template.HTML {
 	if status == 0 {
@@ -101,30 +119,35 @@ func FormatAttestationStatus(status uint64) template.HTML {
 // FormatValidatorStatus will return the validator-status formated as html
 func FormatValidatorStatus(status string) template.HTML {
 	if status == "deposited" {
-		return "<span class=\"badge validator-deposited text-dark\">deposited</span>"
+		return "<b>Deposited (ETH1 deposits have been done, it will take about 8 hours until it will get processed by the beacon-chain)</b>"
 	} else if status == "pending" {
-		return "<span class=\"badge validator-pending text-dark\">pending</span>"
-	} else if status == "active:online" {
-		return "<span class=\"badge validator-active text-dark\">active <span class=\"badge badge-light bg-success\">on</span></span>"
-	} else if status == "active:offline" {
-		return "<span class=\"badge validator-active text-dark\">active <span class=\"badge badge-light bg-danger\">off</span></span>"
-	} else if status == "exiting:online" {
-		return "<span class=\"badge validator-exiting text-dark\">exiting <span class=\"badge badge-light bg-success\">on</span></span>"
-	} else if status == "exiting:offline" {
-		return "<span class=\"badge validator-exiting text-dark\">exiting <span class=\"badge badge-light bg-danger\">off</span></span>"
-	} else if status == "slashing:online" {
-		return "<span class=\"badge validator-slashing text-dark\">slashing <span class=\"badge badge-light bg-success\">on</span></span>"
-	} else if status == "slashing:offline" {
-		return "<span class=\"badge validator-slashing text-dark\">slashing <span class=\"badge badge-light bg-danger\">off</span></span>"
+		return "<b>Pending</b>"
+	} else if status == "active_online" {
+		return "<b>Active</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+	} else if status == "active_offline" {
+		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Active</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+	} else if status == "exiting_online" {
+		return "<b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+	} else if status == "exiting_offline" {
+		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+	} else if status == "slashing_online" {
+		return "<b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+	} else if status == "slashing_offline" {
+		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
 	} else if status == "exited" {
-		return "<span class=\"badge validator-exited text-dark\">exited</span>"
+		return "<b>Exited</b>"
 	}
-	return "<span class=\"badge validator-unknown text-dark\">unknown</span>"
+	return "<b>Unknown</b>"
 }
 
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+}
+
+// FormatValidatorPublicKey will return html formatted text for a validator-public-key
+func FormatValidatorPublicKey(validator []byte) template.HTML {
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
 }
 
 // FormatValidatorInt64 will return html formatted text for a validator (for an int64 validator-id)
@@ -165,11 +188,11 @@ func FormatDepositAmount(amount uint64) template.HTML {
 // FormatIncome will return a string for a balance
 func FormatIncome(income int64) template.HTML {
 	if income > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.9f ETH</b></span>`, float64(income)/float64(1e9)))
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f ETH</b></span>`, float64(income)/float64(1e9)))
 	} else if income < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.9f ETH</b></span>`, float64(income)/float64(1e9)))
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f ETH</b></span>`, float64(income)/float64(1e9)))
 	} else {
-		return template.HTML(fmt.Sprintf(`<b>%.9f ETH</b>`, float64(income)/float64(1e9)))
+		return template.HTML(fmt.Sprintf(`<b>%.4f ETH</b>`, float64(income)/float64(1e9)))
 	}
 }
 
@@ -183,7 +206,35 @@ func FormatEth1Block(block uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/block/%[1]d\">%[1]d</a>", block))
 }
 
-// EpochOfSlot returns the corresponding epoch of a slot
+// FormatEth1Address will return the eth1-address formated as html
+func FormatEth1Address(addr []byte) template.HTML {
+	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\">%v</a>", addr, FormatHash(addr)))
+}
+
+// FormatEth1TxHash will return the eth1-tx-hash formated as html
+func FormatEth1TxHash(hash []byte) template.HTML {
+	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/transaction/0x%x\">%v</a>", hash, FormatHash(hash)))
+}
+
+// FormatGlobalParticipationRate will return the global-participation-rate formated as html
+func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
+	rr := fmt.Sprintf("%.0f%%", r*100)
+	tpl := `
+<div>%.2[1]f <small class="text-muted ml-3">(%[2]v)</small></div>
+<div class="progress" style="height:5px;"><div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div></div>
+`
+	return template.HTML(fmt.Sprintf(tpl, float64(e)/1e9, rr))
+}
+
+// FormatYesNo will return yes or no formated as html
+func FormatYesNo(yes bool) template.HTML {
+	if yes {
+		return `<span class="badge bg-success text-white">Yes</span>`
+	}
+	return `<span class="badge bg-warning text-dark">No</span>`
+}
+
+// EpochOfSlot will return the corresponding epoch of a slot
 func EpochOfSlot(slot uint64) uint64 {
 	return slot / Config.Chain.SlotsPerEpoch
 }

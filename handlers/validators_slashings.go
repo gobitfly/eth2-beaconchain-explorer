@@ -92,10 +92,10 @@ order by blocks.slot desc;`)
 		tableData[i] = []interface{}{
 			utils.FormatSlashedValidator(slashedValidator),
 			utils.FormatValidator(b.Proposer),
-			utils.SlotToTime(b.Slot).Unix(),
+			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
 			"Attestation rule violation",
-			b.Slot,
-			b.Epoch,
+			utils.FormatBlockSlot(b.Slot),
+			utils.FormatEpoch(b.Epoch),
 		}
 	}
 

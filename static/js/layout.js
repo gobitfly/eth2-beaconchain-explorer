@@ -32,13 +32,15 @@ $('#toggleSwitch').on('change', switchTheme)
 
 // typeahead
 $(document).ready(function() {
+  formatTimestamps() // make sure this happens before tooltips
   $('[data-toggle="tooltip"]').tooltip()
 
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
     identify: function(obj) {
-      return obj.index
+      return obj.pubkey
+      // return obj.index == 'deposited' ? obj.pubkey : obj.index
     },
     remote: {
       url: '/search/validators/%QUERY',
@@ -177,7 +179,10 @@ $(document).ready(function() {
     if (sug.slot !== undefined) {
       window.location = '/block/' + sug.slot
     } else if (sug.index !== undefined) {
-      window.location = '/validator/' + sug.index
+      if (sug.index === 'deposited')
+        window.location = '/validator/' + sug.pubkey
+      else 
+        window.location = '/validator/' + sug.index
     } else if (sug.epoch !== undefined) {
       window.location = '/epoch/' + sug.epoch
     } else {
@@ -247,3 +252,29 @@ if (window.location.hash) {
     $(this).tab('show')
   })
 }
+
+function renderGraffiti(data) {
+  var r = ""
+	try {
+		r = decodeURIComponent(data.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'))
+	} catch(e) {
+		console.error('unable to render graffiti', data, e)
+		r = ""
+		var hex = data.toString()
+		for (var i = 0; i < hex.length; i += 2)
+			r += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
+	}
+
+	return $.fn.dataTable.render.text().display(r)
+}
+
+function formatTimestamps() {
+  $('.timestamp').each(function(){
+    var ts = $(this).data('timestamp')
+    var tsMoment = moment.unix(ts)
+    this.title = ""+tsMoment.format()
+    $(this).text(tsMoment.fromNow())
+  })
+  $('[data-toggle="tooltip"]').tooltip()
+}
+

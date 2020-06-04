@@ -10,39 +10,17 @@
 					searching: false,
 					ajax: '/validator/{{.Index}}/proposedblocks',
 					pagingType: 'full',
+					preDrawCallback: function() {
+						// this does not always work.. not sure how to solve the staying tooltip
+						try {
+							$('#blocks-table').find('[data-toggle="tooltip"]').tooltip('dispose')
+						} catch (e) {}
+					},
+					drawCallback: function(settings) {
+						formatTimestamps()
+						$('#blocks-table').find('[data-toggle="tooltip"]').tooltip()
+					},
 					columnDefs: [
-						{
-							targets: 0,
-							data: '0',
-							render: function (data, type, row, meta) {
-								return '<a href="/epoch/' + data + '">' + data + '</a>'
-							}
-						}, 
-						{
-							targets: 1,
-							data: '1',
-							render: function (data, type, row, meta) {
-								return '<a href="/block/' + data + '">' + data + '</a>'
-							}
-						},
-						{
-							targets: 3,
-							data: '3',
-							render: function (data, type, row, meta) {
-								return moment.unix(data).fromNow();
-							}
-						},
-						{
-							targets: 4,
-							data: '4',
-							render: function (data, type, row, meta) {
-								if (data.length < 64) {
-									return 'N/A'
-								} else {
-									return '<a href="/block/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-								}
-							}
-						},
 						{
 							targets: 9,
 							data: '9',
@@ -57,11 +35,10 @@
 									for (var i = 0; i < hex.length; i += 2)
 										r += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
 								}
-
 								return $.fn.dataTable.render.text().display(r)
 							}
 						},
-					]
+					],
 				});
 				$('#attestations-table').DataTable({
 					processing: true,
@@ -70,27 +47,16 @@
 					searching: false,
 					ajax: '/validator/{{.Index}}/attestations',
 					pagingType: 'full',
-					columnDefs: [
-						{
-							targets: 0,
-							data: '0',
-							render: function (data, type, row, meta) {
-								return '<a href="/epoch/' + data + '">' + data + '</a>'
-							}
-						}, {
-							targets: 1,
-							data: '1',
-							render: function (data, type, row, meta) {
-								return '<a href="/block/' + data + '">' + data + '</a>'
-							}
-						}, {
-							targets: 3,
-							data: '3',
-							render: function (data, type, row, meta) {
-								return moment.unix(data).fromNow();
-							}
-						},
-					]
+					preDrawCallback: function() {
+						// this does not always work.. not sure how to solve the staying tooltip
+						try {
+							$('#attestations-table').find('[data-toggle="tooltip"]').tooltip('dispose')
+						} catch (e) {}
+					},
+					drawCallback: function(settings) {
+						formatTimestamps()
+						$('#attestations-table').find('[data-toggle="tooltip"]').tooltip()
+					},
 				})
 			})
 		</script>
@@ -132,7 +98,7 @@
 					},
 					opposite: false
 				}],
-				series: [{
+				series: [{	
 					name: "Balance",
 					data: {{.BalanceHistoryChartData}}
 				}, {
@@ -328,7 +294,7 @@
 		<div class="d-md-flex justify-content-md-between">
 			<div class="d-flex mb-1">
 				<h1 class="h4 mb-1 mb-md-0">
-					<span>Validator{{if ne .Status "Deposited"}} {{.Index}}{{end}}</span>
+					<span>Validator{{if ne .Status "deposited"}} {{.Index}}{{end}}</span>
 					<button class="btn btn-light btn-sm" type="button" id="copy-button"
 							data-toggle="tooltip" data-placement="right"
 							title="Copy public key to clipboard"
@@ -395,16 +361,16 @@
 					 aria-labelledby="overview-tab" aria-controls="overview">
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Unique Index:</div>
-						<div class="col-md-10">{{if eq .Status "Deposited"}}Pending{{else}}{{.Index}}{{end}}</div>
+						<div class="col-md-10">{{if eq .Status "deposited"}}Pending{{else}}{{.Index}}{{end}}</div>
 					</div>
-					{{if ne .Status "Deposited"}}
+					{{if ne .Status "deposited"}}
 						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Current Balance:</div>
-							<div class="col-md-10">{{.CurrentBalance | formatBalance}}</div>
+							<div class="col-md-10">{{.CurrentBalance | formatCurrentBalance}}</div>
 						</div>
 						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Effective Balance:</div>
-							<div class="col-md-10">{{.EffectiveBalance | formatBalance}}</div>
+							<div class="col-md-10">{{.EffectiveBalance | formatEffectiveBalance}}</div>
 						</div>
 						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Income:</div>
@@ -414,25 +380,9 @@
 
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Status:</div>
-						{{if eq .Status "ActiveOffline"}}
-							<div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Active</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
-						{{else if eq .Status "SlashingOffline"}}
-							<div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Slashing</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
-						{{else if eq .Status "ExitingOffline"}}
-							<div class="col-md-10"><span data-toggle="tooltip" title="No attestation in the last 2 epochs"><b>Exiting</b> <i class="fas fa-power-off fa-sm text-danger"></i></span></div>
-						{{else if (or (eq .Status "Active") (eq .Status "Slashing") (eq .Status "Exiting")) }}
-							<div class="col-md-10"><b>{{.Status}}</b> <i class="fas fa-power-off fa-sm text-success"></i></div>
-						{{else if eq .Status "Deposited"}}
-							<div class="col-md-10"><b>Deposited</b> (ETH1 deposits have been done, it will take about 8 hours until it will get processed by the beacon-chain)</div>
-						{{else}}
-							<div class="col-md-10"><b>{{.Status}}</b></div>
-						{{end}}
+						<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}</div>
 					</div>
-					{{if ne .Status "Deposited"}}
-						<div class="row border-bottom p-3 mx-0">
-							<div class="col-md-2">Slashed:</div>
-							<div class="col-md-10">{{if .Slashed}}True (Slashed by <a href="/validator/{{.SlashedBy}}">{{.SlashedBy}}</a> at Slot <a href="/block/{{.SlashedAt}}">{{.SlashedAt}}</a>, Reason: {{.SlashedFor}}){{else}}False{{end}}</div>
-						</div>
+					{{if ne .Status "deposited"}}
 						<div class="row border-bottom p-3 mx-0">
 							<div class="col-md-2">Eligible for Activation:</div>
 							<div class="col-md-10"><span
@@ -530,7 +480,7 @@
 				</div>
 				<div class="tab-pane fade" id="deposits" role="tabpanel"
 					 aria-labelledby="deposits-tab" aria-controls="deposits">
-					<h4>ETH1 Deposits</h4>
+					<h4 style="margin:10px;">ETH1 Deposits</h4> <!-- #TODO:stefan is inline-style ok? -->
 					<div class="table-responsive my-3">
 						<table class="table" id="deposits-eth1-table" width="100%">
 							<thead>
@@ -545,17 +495,17 @@
 							<tbody>
 								{{range $i, $deposit := .Deposits.Eth1Deposits}}
 									<tr>
-										<td>{{formatHash $deposit.TxHash}}</td>
-										<td>{{$deposit.BlockNumber}}</td>
+										<td>{{formatEth1TxHash $deposit.TxHash}}</td>
+										<td>{{formatEth1Block $deposit.BlockNumber}}</td>
 										<td>{{formatTimestamp $deposit.BlockTs}}</td>
-										<td>{{formatBalance $deposit.Amount}}</td>
-										<td>{{formatHash $deposit.FromAddress}}</td>
+										<td>{{formatDepositAmount $deposit.Amount}}</td>
+										<td>{{formatEth1Address $deposit.FromAddress}}</td>
 									</tr>
 								{{end}}
 							</tbody>
 						</table>
 					</div>
-					<h4>ETH2 Deposits</h4>
+					<h4 style="margin:10px;">ETH2 Deposits</h4> <!-- #TODO:stefan is inline-style ok? -->
 					<div class="table-responsive my-3">
 						<table class="table" id="deposits-eth2-table" width="100%">
 							<thead>

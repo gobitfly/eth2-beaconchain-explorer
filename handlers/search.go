@@ -114,8 +114,24 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 		}
 	case "validators":
+		// find all validators that have a publickey or index like the search-query
+		// or validators that have deposited to the eth1-deposit-contract but did not get included into the beaconchain yet
 		validators := &types.SearchAheadValidatorsResult{}
-		err := db.DB.Select(validators, "SELECT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey FROM validators WHERE ENCODE(pubkey::bytea, 'hex') LIKE $1 OR CAST(validatorindex AS text) LIKE $1 ORDER BY index LIMIT 10", search+"%")
+		err := db.DB.Select(validators, `
+			SELECT CAST(validatorindex AS text) AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
+			FROM validators
+			WHERE ENCODE(pubkey::bytea, 'hex') LIKE $1 
+				OR CAST(validatorindex AS text) LIKE $1
+			UNION
+			SELECT 'deposited' AS index, ENCODE(publickey::bytea, 'hex') as pubkey 
+			FROM eth1_deposits 
+			LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey
+			WHERE validators.pubkey IS NULL AND 
+				(
+					ENCODE(publickey::bytea, 'hex') LIKE $1
+					OR ENCODE(from_address::bytea, 'hex') LIKE $1
+				)
+			ORDER BY index LIMIT 10`, search+"%")
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query")
 			http.Error(w, "Internal server error", 503)

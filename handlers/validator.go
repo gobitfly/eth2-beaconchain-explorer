@@ -72,8 +72,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
-			// validator is in DEPOSITED state
-			validatorPageData.Status = "Deposited"
+			// there is no validator-index but there are eth1-deposits for the publickey
+			// which means the validator is in DEPOSITED state
+			// in this state there is nothing to display but the eth1-deposits
+			validatorPageData.Status = "deposited"
 			validatorPageData.PublicKey = []byte(pubKey)
 			validatorPageData.Deposits = deposits
 			data.Data = validatorPageData
@@ -235,20 +237,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 
 	if validatorPageData.Epoch > validatorPageData.ExitEpoch {
-		validatorPageData.Status = "Exited"
+		validatorPageData.Status = "exited"
 	} else if validatorPageData.Epoch < validatorPageData.ActivationEpoch {
-		validatorPageData.Status = "Pending"
+		validatorPageData.Status = "pending"
 	} else if validatorPageData.Slashed {
 		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < validatorOnlineThresholdSlot) {
-			validatorPageData.Status = "SlashingOffline"
+			validatorPageData.Status = "slashing_offline"
 		} else {
-			validatorPageData.Status = "Slashing"
+			validatorPageData.Status = "slashing_online"
 		}
 	} else {
 		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < validatorOnlineThresholdSlot) {
-			validatorPageData.Status = "ActiveOffline"
+			validatorPageData.Status = "active_offline"
 		} else {
-			validatorPageData.Status = "Active"
+			validatorPageData.Status = "active_online"
 		}
 	}
 
@@ -395,16 +397,26 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
 		tableData[i] = []interface{}{
-			fmt.Sprintf("%v", b.Epoch),
-			fmt.Sprintf("%v", b.Slot),
-			fmt.Sprintf("%v", utils.FormatBlockStatus(b.Status)),
-			fmt.Sprintf("%v", utils.SlotToTime(b.Slot).Unix()),
-			fmt.Sprintf("%x", b.BlockRoot),
-			fmt.Sprintf("%v", b.Attestations),
-			fmt.Sprintf("%v", b.Deposits),
+			utils.FormatEpoch(b.Epoch),
+			utils.FormatBlockSlot(b.Slot),
+			utils.FormatBlockStatus(b.Status),
+			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
+			utils.FormatBlockRoot(b.BlockRoot),
+			b.Attestations,
+			b.Deposits,
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
-			fmt.Sprintf("%v", b.Exits),
+			b.Exits,
 			fmt.Sprintf("%x", b.Graffiti),
+			// fmt.Sprintf("%v", b.Epoch),
+			// fmt.Sprintf("%v", b.Slot),
+			// fmt.Sprintf("%v", utils.FormatBlockStatus(b.Status)),
+			// fmt.Sprintf("%v", utils.SlotToTime(b.Slot).Unix()),
+			// fmt.Sprintf("%x", b.BlockRoot),
+			// fmt.Sprintf("%v", b.Attestations),
+			// fmt.Sprintf("%v", b.Deposits),
+			// fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
+			// fmt.Sprintf("%v", b.Exits),
+			// fmt.Sprintf("%x", b.Graffiti),
 		}
 	}
 
@@ -493,11 +505,16 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 			b.Status = 2
 		}
 		tableData[i] = []interface{}{
-			fmt.Sprintf("%v", b.Epoch),
-			fmt.Sprintf("%v", b.AttesterSlot),
-			fmt.Sprintf("%v", utils.FormatAttestationStatus(b.Status)),
-			fmt.Sprintf("%v", utils.SlotToTime(b.AttesterSlot).Unix()),
-			fmt.Sprintf("%v", b.CommitteeIndex),
+			utils.FormatEpoch(b.Epoch),
+			utils.FormatBlockSlot(b.AttesterSlot),
+			utils.FormatAttestationStatus(b.Status),
+			utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
+			b.CommitteeIndex,
+			// fmt.Sprintf("%v", b.Epoch),
+			// fmt.Sprintf("%v", b.AttesterSlot),
+			// fmt.Sprintf("%v", utils.FormatAttestationStatus(b.Status)),
+			// fmt.Sprintf("%v", utils.SlotToTime(b.AttesterSlot).Unix()),
+			// fmt.Sprintf("%v", b.CommitteeIndex),
 		}
 	}
 
