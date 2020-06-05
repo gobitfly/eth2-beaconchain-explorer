@@ -31,6 +31,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatEffectiveBalance":      FormatEffectiveBalance,
 		"formatBlockStatus":           FormatBlockStatus,
 		"formatBlockSlot":             FormatBlockSlot,
+		"formatSlotToTimestamp":       FormatSlotToTimestamp,
 		"formatDepositAmount":         FormatDepositAmount,
 		"formatEpoch":                 FormatEpoch,
 		"formatEth1Block":             FormatEth1Block,

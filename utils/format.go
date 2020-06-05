@@ -44,6 +44,12 @@ func FormatBlockSlot(blockSlot uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", blockSlot))
 }
 
+// FormatSlotToTimestamp will return the momentjs time elapsed since blockSlot
+func FormatSlotToTimestamp(blockSlot uint64) template.HTML {
+	time := SlotToTime(blockSlot)
+	return FormatTimestamp(time.Unix())
+}
+
 // FormatBlockStatus will return an html status for a block.
 func FormatBlockStatus(status uint64) template.HTML {
 	if status == 0 {
@@ -121,9 +127,9 @@ func FormatHash(hash []byte) template.HTML {
 	// }
 	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
 	if len(hash) > 3 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x…</span>", hash[:3]))
+		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span>", hash[:3]))
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
 // FormatIncome will return a string for a balance
@@ -155,7 +161,7 @@ func FormatTimestamp(ts int64) template.HTML {
 // FormatValidatorStatus will return the validator-status formated as html
 func FormatValidatorStatus(status string) template.HTML {
 	if status == "deposited" {
-		return "<b>Deposited (ETH1 deposits have been done, it will take about 8 hours until it will get processed by the beacon-chain)</b>"
+		return "<b>Deposited - </b> An ETH1 deposit has been made, it will take around 8 hours until your deposit is processed by the beacon chain. Check out the deposits tab for more details"
 	} else if status == "pending" {
 		return "<b>Pending</b>"
 	} else if status == "active_online" {
