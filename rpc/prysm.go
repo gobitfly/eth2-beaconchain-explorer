@@ -302,7 +302,12 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 				data.Blocks[block.Slot] = make(map[string]*types.Block)
 			}
 
-			block.Proposer = data.ValidatorAssignmentes.ProposerAssignments[block.Slot]
+			var found bool
+			block.Proposer, found = data.ValidatorAssignmentes.ProposerAssignments[block.Slot]
+
+			if !found {
+				return nil, fmt.Errorf("error: proposer for block %v not found", block.Slot)
+			}
 			data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 		}
 	}
