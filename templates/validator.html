@@ -1,32 +1,43 @@
 {{ define "js"}}
-{{if ne .Status "Deposited"}}
-<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
-<script>
-	$(document).ready(function () {
-		$('#blocks-table').DataTable({
-			processing: true,
-			serverSide: true,
-			ordering: false,
-			searching: false,
-			ajax: '/validator/{{.Index}}/proposedblocks',
-			pagingType: 'full',
-			drawCallback: function (settings) {
-				formatTimestamps()
-			},
-		});
-		$('#attestations-table').DataTable({
-			processing: true,
-			serverSide: true,
-			ordering: false,
-			searching: false,
-			ajax: '/validator/{{.Index}}/attestations',
-			pagingType: 'full',
-			drawCallback: function (settings) {
-				formatTimestamps()
-			},
-		})
-	})
-</script>
+	{{if ne .Status "deposited"}}
+		<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+		<script>
+			$(document).ready(function () {
+				$('#blocks-table').DataTable({
+					processing: true,
+					serverSide: true,
+					ordering: false,
+					searching: false,
+					ajax: '/validator/{{.Index}}/proposedblocks',
+					pagingType: 'full',
+					drawCallback: function(settings) {
+						formatTimestamps()
+					},
+				});
+				$('#attestations-table').DataTable({
+					processing: true,
+					serverSide: true,
+					ordering: false,
+					searching: false,
+					ajax: '/validator/{{.Index}}/attestations',
+					pagingType: 'full',
+					drawCallback: function(settings) {
+						formatTimestamps()
+					},
+				})
+				$('#slashings-table').DataTable({
+					processing: true,
+					serverSide: true,
+					ordering: false,
+					searching: false,
+					ajax: '/validator/{{.Index}}/slashings',
+					pagingType: 'full',
+					drawCallback: function(settings) {
+						formatTimestamps()
+					},
+				})
+			})
+		</script>
 
 <script src="https://code.highcharts.com/stock/highstock.js"></script>
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
@@ -286,17 +297,27 @@
 
 <ul style="margin-bottom: -1px;" class="nav nav-tabs justify-content-start" id="pills-tab" role="tablist">
 	<li class="nav-item">
-		<a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
+		<a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab"
+			 aria-controls="overview" aria-selected="true">Overview</a>
 	</li>
 	<li class="nav-item">
-		<a class="nav-link" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab" aria-controls="blocks" aria-selected="false">Proposed Blocks <span class="badge bg-secondary text-white">{{.ProposedBlocksCount}}</span></a>
+		<a class="nav-link" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
+			 aria-controls="blocks" aria-selected="false">Proposed Blocks <span class="badge bg-secondary text-white">{{.ProposedBlocksCount}}</span></a>
 	</li>
 	<li class="nav-item">
-		<a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
+		<a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab"
+			 aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{if eq .AttestationsCount 10000}}&gt;10000{{else}}{{.AttestationsCount}}{{end}}</span></a>
 	</li>
 	<li class="nav-item">
-		<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{len .Deposits.Eth1Deposits}}</span></a>
+		<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab"
+			 aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{len .Deposits.Eth1Deposits}}</span></a>
 	</li>
+	{{if gt .SlashingsCount 0}}
+		<li class="nav-item">
+			<a class="nav-link" id="slashings-tab" data-toggle="tab" href="#slashings" role="tab"
+			aria-controls="slashings" aria-selected="false">Slashings <span class="badge bg-secondary text-white">{{if gt .SlashingsCount 10000}}>10000{{else}}{{.SlashingsCount}}{{end}}</span></a>
+		</li>
+	{{end}}
 </ul>
 <style>
 	.validator-card {
@@ -338,7 +359,7 @@
 			</div>
 		</div>
 		<div class="row border-bottom p-3 mx-0">
-			{{if eq .Status "Pending"}}
+			{{if eq .Status "pending"}}
 			<div class="col-md-2">Estimated Activation:</div>
 			{{else}}
 			<div class="col-md-2">Active since:</div>
@@ -347,7 +368,7 @@
 				(Epoch {{.ActivationEpoch}})
 			</div>
 		</div>
-		{{if eq .Status "Ejected"}}
+		{{{if (or (eq .Status "slashed") (eq .Status "exited"))}}
 		<div class="row border-bottom p-3 mx-0">
 			<div class="col-md-2">Exit on:</div>
 			<div class="col-md-10"><span title="{{.ExitTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
@@ -478,6 +499,22 @@
 					</table>
 				</div>
 				{{end}}
+		</div>
+	</div>
+	<div class="tab-pane fade card card-body p-0" id="slashings" role="tabpanel" aria-labelledby="slashings-tab" aria-controls="slashings">
+		<div class="table-responsive my-3">
+			<table class="table" id="slashings-table" width="100%">
+				<thead>
+					<tr>
+						<th>Slashed validator</th>
+						<th>Time</th>
+						<th>Reason</th>
+						<th>Slot</th>
+						<th>Epoch</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+			</table>
 		</div>
 	</div>
 </div>

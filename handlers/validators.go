@@ -122,6 +122,8 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 		qryStateFilter = "AND a.state = 'slashing_online'"
 	case "slashing_offline":
 		qryStateFilter = "AND a.state = 'slashing_offline'"
+	case "slashed":
+		qryStateFilter = "AND a.state = 'slashed'"
 	case "exiting":
 		qryStateFilter = "AND a.state LIKE 'exiting%'"
 	case "exiting_online":

@@ -147,6 +147,7 @@ type ValidatorPageData struct {
 	StatusProposedCount              uint64
 	StatusMissedCount                uint64
 	DepositsCount                    uint64
+	SlashingsCount                   uint64
 	Income1d                         int64
 	Income7d                         int64
 	Income31d                        int64
@@ -550,7 +551,4 @@ type EthTwoDepositsPageData struct {
 type ValidatorDeposits struct {
 	Eth1Deposits []Eth1Deposit
 	Eth2Deposits []Eth2Deposit
-}
-
-type ValidatorSlashings struct {
 }
