@@ -447,6 +447,11 @@ type SearchAheadGraffitiResult []struct {
 	Root     string `db:"blockroot" json:"blockroot,omitempty"`
 }
 
+type SearchAheadEth1Result []struct {
+	Publickey   string `db:"publickey" json:"publickey,omitempty"`
+	Eth1Address string `db:"from_address" json:"address,omitempty"`
+}
+
 // SearchAheadValidatorsResult is a struct to hold the search ahead validators results
 type SearchAheadValidatorsResult []struct {
 	Index  string `db:"index" json:"index,omitempty"`

@@ -86,9 +86,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
 
-		encoding := "UTF-8"
-
-		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE LOWER(convert_to(graffiti, $2)) LIKE LOWER(convert_to($1, $2)) LIMIT 10", "%"+search+"%", encoding)
+		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE LOWER(convert_to(graffiti, 'UTF8')) LIKE LOWER(convert_to($1, 'UTF8')) LIMIT 10", "%"+search+"%")
 
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query")
@@ -140,6 +138,26 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err = json.NewEncoder(w).Encode(validators)
 		if err != nil {
 			logger.WithError(err).Error("error encoding searchAhead-validators-result")
+			http.Error(w, "Internal server error", 503)
+		}
+	case "eth1deposits":
+		eth1 := &types.SearchAheadEth1Result{}
+		err := db.DB.Select(eth1, `
+		SELECT DISTINCT
+			ENCODE(from_address::bytea, 'hex') as from_address
+		FROM
+		 eth1_deposits
+		WHERE
+		ENCODE(from_address::bytea, 'hex') LIKE $1
+		LIMIT 10`, search+"%")
+		if err != nil {
+			logger.WithError(err).Error("error doing search-query")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = json.NewEncoder(w).Encode(eth1)
+		if err != nil {
+			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
 			http.Error(w, "Internal server error", 503)
 		}
 	default:

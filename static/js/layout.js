@@ -83,6 +83,18 @@ $(document).ready(function() {
     }
   })
 
+  var bhEth1Accounts = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function(obj) {
+      return obj.account
+    },
+    remote: {
+      url: '/search/eth1deposits/%QUERY',
+      wildcard: '%QUERY'
+    }
+  })
+
   $('.typeahead').typeahead(
     {
       minLength: 1,
@@ -123,6 +135,18 @@ $(document).ready(function() {
         header: '<h3>Epochs</h3>',
         suggestion: function(data) {
           return `<div>${data.epoch}</div>`
+        }
+      }
+    },
+    {
+      limit: 5,
+      name: 'Address',
+      source: bhEth1Accounts,
+      display: 'Address',
+      templates: {
+        header: '<h3>Address</h3>',
+        suggestion: function(data) {
+          return `<div>${'0x'+data.address}</div>`
         }
       }
     },
@@ -184,7 +208,10 @@ $(document).ready(function() {
         window.location = '/validator/' + sug.index
     } else if (sug.epoch !== undefined) {
       window.location = '/epoch/' + sug.epoch
-    } else {
+    } else if(sug.address !== undefined) {
+      window.location = '/validators/eth1deposits?q=' + sug.address
+    } 
+    else {
       console.log('invalid typeahead-selection', sug)
     }
   })

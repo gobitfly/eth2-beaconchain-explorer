@@ -261,7 +261,7 @@ input:checked + .slider:before {
 }
 
 .tt-dataset h3 {
-  padding: 5px 20px;
+  padding: 0px 20px;
   font-size: 1.5em;
 }
 
