@@ -246,6 +246,30 @@ func GetEth2DepositsCount() (uint64, error) {
 
 	return deposits, nil
 }
+func GetSlashingCount() (uint64, error) {
+	slashings := uint64(0)
+
+	err := DB.Get(&slashings, `
+	SELECT 
+	SUM(count)
+	FROM 
+	(
+		SELECT COUNT(*) 
+		FROM 
+			blocks_attesterslashings 
+		UNION 
+		SELECT 
+		  COUNT(*) 
+		FROM 
+			blocks_proposerslashings
+	) as tbl
+	`)
+	if err != nil {
+		return 0, err
+	}
+
+	return slashings, nil
+}
 
 // GetLatestEpoch will return the latest epoch from the database
 func GetLatestEpoch() (uint64, error) {
