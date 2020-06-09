@@ -7,7 +7,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
-	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -86,7 +85,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
-		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE LOWER(convert_to(graffiti, 'UTF8')) LIKE LOWER(convert_to($1, 'UTF8')) LIMIT 10", "%"+search+"%")
+		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1) LIMIT 10", "%"+search+"%")
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query for graffiti")
 			http.Error(w, "Internal server error", 503)
@@ -95,7 +94,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		for i := range *graffiti {
 			(*graffiti)[i].Graffiti = utils.FormatGraffitiString((*graffiti)[i].Graffiti)
 		}
-		fmt.Println(graffiti)
 		err = json.NewEncoder(w).Encode(graffiti)
 		if err != nil {
 			logger.WithError(err).Error("error encoding searchAhead-graffiti-result")
