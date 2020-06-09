@@ -161,7 +161,7 @@ func FormatTimestamp(ts int64) template.HTML {
 // FormatValidatorStatus will return the validator-status formated as html
 func FormatValidatorStatus(status string) template.HTML {
 	if status == "deposited" {
-		return "<b>Deposited - </b> An ETH1 deposit has been made, it will take around 8 hours until your deposit is processed by the beacon chain. Check out the deposits tab for more details"
+		return "<b>Deposited</b>"
 	} else if status == "pending" {
 		return "<b>Pending</b>"
 	} else if status == "active_online" {

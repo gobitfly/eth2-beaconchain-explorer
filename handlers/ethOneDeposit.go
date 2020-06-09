@@ -88,7 +88,7 @@ func EthOneDepositsData(w http.ResponseWriter, r *http.Request) {
 		"3": "tx_hash",
 		"4": "block_ts",
 		"5": "block_number",
-		"6": "activated",
+		"6": "state",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -120,7 +120,7 @@ func EthOneDepositsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatEth1TxHash(d.TxHash),
 			utils.FormatTimestamp(d.BlockTs.Unix()),
 			utils.FormatEth1Block(d.BlockNumber),
-			d.Activated,
+			utils.FormatValidatorStatus(d.State),
 		}
 	}
 
