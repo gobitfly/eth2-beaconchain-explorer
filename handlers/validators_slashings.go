@@ -79,43 +79,40 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 
 	var slashings []*types.ValidatorSlashing
 	err = db.DB.Select(&slashings, `
-	SELECT 
-		slot,
-		epoch,
-		proposer,
-		proposerindex,
-		attestation1_indices,
-		attestation2_indices,
-		type
-	FROM (
-		SELECT
-			blocks.slot, 
-			blocks.epoch, 
-			blocks.proposer,
-			NULL as proposerindex,
-			blocks_attesterslashings.attestation1_indices, 
-			blocks_attesterslashings.attestation2_indices,
-			'Attestation Violation'::varchar as type
-		FROM 
-		blocks_attesterslashings 
-		LEFT JOIN blocks on blocks_attesterslashings.block_slot = blocks.slot
-		UNION ALL
-		SELECT
-			blocks.slot, 
-			blocks.epoch, 
-			blocks.proposer, 
-			blocks_proposerslashings.proposerindex,
-			NULL as attestation1_indices,
-			NULL as attestation2_indices,
-			'Proposer Violation' as type 
-		FROM 
-			blocks_proposerslashings
-		LEFT JOIN blocks on blocks_proposerslashings.block_slot = blocks.slot
+		SELECT 
+			slot,
+			epoch,
+			proposer,
+			slashedvalidator,
+			attestation1_indices,
+			attestation2_indices,
+			type
+		FROM (
+			SELECT
+				blocks.slot, 
+				blocks.epoch, 
+				blocks.proposer,
+				NULL as slashedvalidator,
+				blocks_attesterslashings.attestation1_indices, 
+				blocks_attesterslashings.attestation2_indices,
+				'Attestation Violation'::varchar as type
+			FROM blocks_attesterslashings 
+			LEFT JOIN blocks on blocks_attesterslashings.block_slot = blocks.slot
+			UNION ALL
+			SELECT
+				blocks.slot, 
+				blocks.epoch, 
+				blocks.proposer, 
+				blocks_proposerslashings.proposerindex as slashedvalidator,
+				NULL as attestation1_indices,
+				NULL as attestation2_indices,
+				'Proposer Violation' as type 
+			FROM blocks_proposerslashings
+			LEFT JOIN blocks on blocks_proposerslashings.block_slot = blocks.slot
 		) as query
 		ORDER BY slot desc
 		LIMIT $1
-		OFFSET $2
-	`, length, start)
+		OFFSET $2`, length, start)
 
 	tableData := make([][]interface{}, 0, len(slashings))
 	for _, row := range slashings {
@@ -132,7 +129,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if row.Type == "Proposer Violation" {
-			entry = append(entry, utils.FormatSlashedValidator(*row.ProposerIndex))
+			entry = append(entry, utils.FormatSlashedValidator(*row.SlashedValidator))
 		}
 
 		entry = append(entry, utils.FormatValidator(row.Proposer))

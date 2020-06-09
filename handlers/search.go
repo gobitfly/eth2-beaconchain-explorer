@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
+	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -74,7 +75,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		blocks := &types.SearchAheadBlocksResult{}
 		err := db.DB.Select(blocks, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot FROM blocks WHERE CAST(slot AS text) LIKE $1 OR ENCODE(blockroot::bytea, 'hex') LIKE $1 ORDER BY slot LIMIT 10", search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for blocks")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -85,24 +86,26 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
-
 		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE LOWER(convert_to(graffiti, 'UTF8')) LIKE LOWER(convert_to($1, 'UTF8')) LIMIT 10", "%"+search+"%")
-
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for graffiti")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
+		for i := range *graffiti {
+			(*graffiti)[i].Graffiti = utils.FormatGraffitiString((*graffiti)[i].Graffiti)
+		}
+		fmt.Println(graffiti)
 		err = json.NewEncoder(w).Encode(graffiti)
 		if err != nil {
-			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
+			logger.WithError(err).Error("error encoding searchAhead-graffiti-result")
 			http.Error(w, "Internal server error", 503)
 		}
 	case "epochs":
 		epochs := &types.SearchAheadEpochsResult{}
 		err := db.DB.Select(epochs, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for epochs")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -131,7 +134,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				)
 			ORDER BY index LIMIT 10`, search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for validators")
 			http.Error(w, "Internal server error", 503)
 			return
 		}

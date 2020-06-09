@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v2"
 
@@ -53,6 +54,17 @@ func GetTemplateFuncs() template.FuncMap {
 		"sub":                         func(i, j int) int { return i - j },
 		"add":                         func(i, j int) int { return i + j },
 	}
+}
+
+func FormatGraffitiString(graffiti string) string {
+	return strings.Map(fixUtf, template.HTMLEscapeString(graffiti))
+}
+
+func fixUtf(r rune) rune {
+	if r == utf8.RuneError {
+		return -1
+	}
+	return r
 }
 
 // EpochOfSlot will return the corresponding epoch of a slot

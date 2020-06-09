@@ -531,7 +531,7 @@ type ValidatorSlashing struct {
 	Epoch                  uint64        `db:"epoch" json:"epoch,omitempty"`
 	Slot                   uint64        `db:"slot" json:"slot,omitempty"`
 	Proposer               uint64        `db:"proposer" json:"proposer,omitempty"`
-	ProposerIndex          *uint64       `db:"proposerindex" json:"proposer_index,omitempty"`
+	SlashedValidator       *uint64       `db:"slashedvalidator" json:"slashed_validator,omitempty"`
 	Attestestation1Indices pq.Int64Array `db:"attestation1_indices" json:"attestation1_indices,omitempty"`
 	Attestestation2Indices pq.Int64Array `db:"attestation2_indices" json:"attestation2_indices,omitempty"`
 	Type                   string        `db:"type" json:"type"`

@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
@@ -105,13 +104,6 @@ func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
 	rr := fmt.Sprintf("%.0f%%", r*100)
 	tpl := `<div>%.2[1]f <small class="text-muted ml-3">(%[2]v)</small></div><div class="progress" style="height:5px;"><div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div></div>`
 	return template.HTML(fmt.Sprintf(tpl, float64(e)/1e9, rr))
-}
-
-func fixUtf(r rune) rune {
-	if r == utf8.RuneError {
-		return -1
-	}
-	return r
 }
 
 // FormatGraffiti will return the graffiti formated as html
