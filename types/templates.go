@@ -545,7 +545,7 @@ type EthOneDepositsPageData struct {
 	Amount                uint64    `db:"amount"`
 	Signature             []byte    `db:"signature"`
 	MerkletreeIndex       []byte    `db:"merkletree_index"`
-	Activated             bool      `db:"activated"`
+	State                 string    `db:"state"`
 }
 
 type EthTwoDepositsPageData struct {

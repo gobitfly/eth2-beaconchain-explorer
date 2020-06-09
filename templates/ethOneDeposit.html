@@ -25,17 +25,7 @@
 			language: {
 				searchPlaceholder: 'Address / Validator Key / Tx Hash',
 				search: ''
-			},
-			columnDefs: [
-			{
-					targets: 6,
-					data: '6',
-					render: function(data, type, row, meta) {
-						return data === false ? 'pending' : 'processed'
-					}
-			},
-
-			]
+			}
 		})
 		if(q) {
 			tbl.search(q);
@@ -84,7 +74,7 @@
 						<th>Eth1 TxHash</th>
 						<th>Time</th>
 						<th>Eth1 Block</th>
-						<th>Eth2 Validator</th>
+						<th>Eth2 Validator State</th>
 					</tr>
 				</thead>
 				<tbody> </tbody>

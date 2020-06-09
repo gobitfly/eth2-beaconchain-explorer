@@ -86,21 +86,24 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			eth1.amount as amount,
 			eth1.signature as signature,
 			eth1.merkletree_index as merkletree_index,
-			CASE WHEN eth2.publickey IS NULL
-				THEN 'false'::BOOL
-				ELSE 'true'::BOOL 
-			END as activated
+			COALESCE(v.state, 'deposited') as state
 		FROM
 			eth1_deposits as eth1
 		LEFT JOIN
 			(
-				SELECT 
-					publickey
-				FROM
-					blocks_deposits
-			) as eth2
-		ON 
-			eth1.publickey = eth2.publickey
+				SELECT pubkey,
+				CASE 
+					WHEN exitepoch <= $1 then 'exited'
+					WHEN activationepoch > $1 then 'pending'
+					WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
+					WHEN slashed then 'slashing_online'
+					WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
+					ELSE 'active_online'
+				END AS state
+				FROM validators
+			) as v
+		ON
+			v.pubkey = eth1.publickey
 		WHERE
 			ENCODE(eth1.publickey::bytea, 'hex') LIKE $3
 		OR
@@ -129,21 +132,24 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			eth1.amount as amount,
 			eth1.signature as signature,
 			eth1.merkletree_index as merkletree_index,
-			CASE WHEN eth2.publickey IS NULL
-				THEN 'false'::BOOL
-				ELSE 'true'::BOOL 
-			END as activated
+			COALESCE(v.state, 'deposited') as state
 		FROM
 			eth1_deposits as eth1
-		LEFT JOIN
+			LEFT JOIN
 			(
-				SELECT 
-					publickey
-				FROM
-					blocks_deposits
-			) as eth2
-		ON 
-			eth1.publickey = eth2.publickey
+				SELECT pubkey,
+				CASE 
+					WHEN exitepoch <= $1 then 'exited'
+					WHEN activationepoch > $1 then 'pending'
+					WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
+					WHEN slashed then 'slashing_online'
+					WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
+					ELSE 'active_online'
+				END AS state
+				FROM validators
+			) as v
+		ON
+			v.pubkey = eth1.publickey
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir), length, start)
