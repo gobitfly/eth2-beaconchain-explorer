@@ -144,8 +144,8 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				FROM blocks
 				WHERE CAST(blocks.slot as text) LIKE $1 OR LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($2) 
 				ORDER BY blocks.slot DESC 
-				LIMIT $4 
-				OFFSET $5
+				LIMIT $3 
+				OFFSET $4
 			) ORDER BY blocks.slot DESC
 			`, search+"%", "%"+search+"%", length, start)
 	}
