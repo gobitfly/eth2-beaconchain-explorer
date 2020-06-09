@@ -368,7 +368,7 @@
 				(Epoch {{.ActivationEpoch}})
 			</div>
 		</div>
-		{{{if (or (eq .Status "slashed") (eq .Status "exited"))}}
+		{{if (or (eq .Status "slashed") (eq .Status "exited"))}}
 		<div class="row border-bottom p-3 mx-0">
 			<div class="col-md-2">Exit on:</div>
 			<div class="col-md-10"><span title="{{.ExitTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>

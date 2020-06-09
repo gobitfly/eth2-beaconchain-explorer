@@ -2,11 +2,12 @@
 	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.js"></script>
 	<script>
         $('#slashings').DataTable({
-            processing: true,
-            serverSide: true,
-            ordering: false,
-            searching: false,
-            paging: false,
+						processing: true,
+						serverSide: true,
+						ordering: false,
+						searching: false,
+            paging: true,
+						pagingType: 'full',
             ajax: '/validators/slashings/data',
             preDrawCallback: function() {
                 // this does not always work.. not sure how to solve the staying tooltip
@@ -40,7 +41,7 @@
 		</div>
 	</div>
 	<div class="card">
-		<div class="card-body p-0">
+		<div class="card-body px-0 py-2">
 			<div class="table-responsive pt-2">
 				<table class="table" id="slashings" width="100%">
 					<thead>

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"sort"
 	"strconv"
 	"time"
 
@@ -62,75 +61,98 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var attesterSlashings []*types.ValidatorAttestationSlashing
-	err = db.DB.Select(&attesterSlashings, `select 
-       blocks.slot, 
-       blocks.epoch, 
-       blocks.proposer, 
-       blocks_attesterslashings.attestation1_indices, 
-       blocks_attesterslashings.attestation2_indices 
-from blocks_attesterslashings 
-    left join blocks on blocks_attesterslashings.block_slot = blocks.slot 
-where attestation1_indices is not null and attestation2_indices is not null
-order by blocks.slot desc;`)
-
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
-		logger.Errorf("error retrieving validator attestations data: %v", err)
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-
-	var proposerSlashings []*types.ValidatorProposerSlashing
-	err = db.DB.Select(&proposerSlashings, "SELECT blocks.slot, blocks.epoch, blocks.proposer, blocks_proposerslashings.proposerindex FROM blocks_proposerslashings left join blocks on blocks_proposerslashings.block_slot = blocks.slot")
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
-		logger.Errorf("error retrieving block proposer slashings data: %v", err)
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+	if length > 100 {
+		length = 100
+	}
 
-	tableData := make([][]interface{}, 0, len(attesterSlashings)+len(proposerSlashings))
-	for _, b := range attesterSlashings {
+	var slashings []*types.ValidatorSlashing
+	err = db.DB.Select(&slashings, `
+	SELECT 
+		slot,
+		epoch,
+		proposer,
+		proposerindex,
+		attestation1_indices,
+		attestation2_indices,
+		type
+	FROM (
+		SELECT
+			blocks.slot, 
+			blocks.epoch, 
+			blocks.proposer,
+			NULL as proposerindex,
+			blocks_attesterslashings.attestation1_indices, 
+			blocks_attesterslashings.attestation2_indices,
+			'Attestation Violation'::varchar as type
+		FROM 
+		blocks_attesterslashings 
+		LEFT JOIN blocks on blocks_attesterslashings.block_slot = blocks.slot
+		UNION ALL
+		SELECT
+			blocks.slot, 
+			blocks.epoch, 
+			blocks.proposer, 
+			blocks_proposerslashings.proposerindex,
+			NULL as attestation1_indices,
+			NULL as attestation2_indices,
+			'Proposer Violation' as type 
+		FROM 
+			blocks_proposerslashings
+		LEFT JOIN blocks on blocks_proposerslashings.block_slot = blocks.slot
+		) as query
+		ORDER BY slot desc
+		LIMIT $1
+		OFFSET $2
+	`, length, start)
 
-		inter := intersect.Simple(b.Attestestation1Indices, b.Attestestation2Indices)
-
-		slashedValidator := uint64(0)
-		if len(inter) > 0 {
-			slashedValidator = uint64(inter[0].(int64))
+	tableData := make([][]interface{}, 0, len(slashings))
+	for _, row := range slashings {
+		entry := []interface{}{}
+		if row.Type == "Attestation Violation" {
+			inter := intersect.Simple(row.Attestestation1Indices, row.Attestestation2Indices)
+			slashedValidator := uint64(0)
+			if len(inter) > 0 {
+				slashedValidator = uint64(inter[0].(int64))
+			} else {
+				logger.Warning("No intersection found for attestation violation slashed validator defaulting to 0 for proposer", row.Proposer, "and slot", row.Slot)
+			}
+			entry = append(entry, utils.FormatSlashedValidator(slashedValidator))
 		}
 
-		tableData = append(tableData, []interface{}{
-			utils.FormatSlashedValidator(slashedValidator),
-			utils.FormatValidator(b.Proposer),
-			utils.SlotToTime(b.Slot).Unix(),
-			"Attestation Violation",
-			utils.FormatBlockSlot(b.Slot),
-			utils.FormatEpoch(b.Epoch),
-		})
+		if row.Type == "Proposer Violation" {
+			entry = append(entry, utils.FormatSlashedValidator(*row.ProposerIndex))
+		}
+
+		entry = append(entry, utils.FormatValidator(row.Proposer))
+		entry = append(entry, utils.FormatTimestamp(utils.SlotToTime(row.Slot).Unix()))
+		entry = append(entry, row.Type)
+		entry = append(entry, utils.FormatBlockSlot(row.Slot))
+		entry = append(entry, utils.FormatEpoch(row.Epoch))
+
+		tableData = append(tableData, entry)
 	}
-
-	for _, b := range proposerSlashings {
-		tableData = append(tableData, []interface{}{
-			utils.FormatSlashedValidator(b.ProposerIndex),
-			utils.FormatValidator(b.Proposer),
-			utils.SlotToTime(b.Slot).Unix(),
-			"Proposer Violation",
-			utils.FormatBlockSlot(b.Slot),
-			utils.FormatEpoch(b.Epoch),
-		})
-	}
-
-	sort.Slice(tableData, func(i, j int) bool {
-		return tableData[i][2].(int64) > tableData[j][2].(int64)
-	})
-
-	for _, b := range tableData {
-		b[2] = utils.FormatTimestamp(b[2].(int64))
+	records, err := db.GetSlashingCount()
+	if err != nil {
+		logger.Errorf("GetSlashingCount failed to retrieve record count: %v", err)
+		http.Error(w, "Internal server error", 503)
 	}
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    uint64(len(tableData)),
-		RecordsFiltered: uint64(len(tableData)),
+		RecordsTotal:    records,
+		RecordsFiltered: records,
 		Data:            tableData,
 	}
 

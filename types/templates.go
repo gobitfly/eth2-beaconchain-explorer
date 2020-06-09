@@ -522,6 +522,16 @@ type ValidatorProposerSlashing struct {
 	ProposerIndex uint64 `db:"proposerindex" json:"proposer_index,omitempty"`
 }
 
+type ValidatorSlashing struct {
+	Epoch                  uint64        `db:"epoch" json:"epoch,omitempty"`
+	Slot                   uint64        `db:"slot" json:"slot,omitempty"`
+	Proposer               uint64        `db:"proposer" json:"proposer,omitempty"`
+	ProposerIndex          *uint64       `db:"proposerindex" json:"proposer_index,omitempty"`
+	Attestestation1Indices pq.Int64Array `db:"attestation1_indices" json:"attestation1_indices,omitempty"`
+	Attestestation2Indices pq.Int64Array `db:"attestation2_indices" json:"attestation2_indices,omitempty"`
+	Type                   string        `db:"type" json:"type"`
+}
+
 // EpochsPageData is a struct to hold epoch data for the epochs page
 type EthOneDepositsPageData struct {
 	TxHash                []byte    `db:"tx_hash"`
