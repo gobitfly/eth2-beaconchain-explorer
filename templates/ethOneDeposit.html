@@ -2,7 +2,10 @@
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 <script>
 	$(document).ready(function() {
-		$('#deposits').DataTable({
+    var usp = new URLSearchParams(window.location.search)
+		var q = usp.get('q')
+
+		var tbl = $('#deposits').DataTable({
 			processing: true,
 			serverSide: true,
 			ordering: true,
@@ -34,6 +37,19 @@
 
 			]
 		})
+		if(q) {
+			tbl.search(q);
+			tbl.draw();
+		}
+		$("#deposits_filter > label > input").on('input', function(ev) {
+			if(ev && ev.target && ev.target.value) {
+				var newUrl = window.location.pathname + "?q=" + ev.target.value
+				window.history.replaceState(null, 'Eth1Deposits', newUrl)
+			} else {
+				window.history.replaceState(null, 'Eth1Deposits', window.location.pathname)
+			}
+		})
+		
 	})
 </script>
 {{end}} {{ define "css"}}
