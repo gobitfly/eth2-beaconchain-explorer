@@ -93,6 +93,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 			return
 		}
+		for i := range *graffiti {
+			(*graffiti)[i].Graffiti = utils.FormatGraffitiString((*graffiti)[i].Graffiti)
+		}
 		err = json.NewEncoder(w).Encode(graffiti)
 		if err != nil {
 			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
