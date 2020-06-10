@@ -25,6 +25,18 @@ const PageSize = 500
 // Config is the globally accessible configuration
 var Config *types.Config
 
+// FormatGraffitiString formats (and escapes) the graffiti
+func FormatGraffitiString(graffiti string) string {
+	return strings.Map(fixUtf, template.HTMLEscapeString(graffiti))
+}
+
+func fixUtf(r rune) rune {
+	if r == utf8.RuneError {
+		return -1
+	}
+	return r
+}
+
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
