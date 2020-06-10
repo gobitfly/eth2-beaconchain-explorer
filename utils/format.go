@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"strings"
 	"time"
+
+	eth1common "github.com/ethereum/go-ethereum/common"
 )
 
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
@@ -86,7 +88,8 @@ func FormatEpoch(epoch uint64) template.HTML {
 
 // FormatEth1Address will return the eth1-address formated as html
 func FormatEth1Address(addr []byte) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\">%v</a>", addr, FormatHash(addr)))
+	eth1Addr := eth1common.BytesToAddress(addr)
+	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>", addr, eth1Addr.Hex()[:8]))
 }
 
 // FormatEth1Block will return the eth1-block formated as html
