@@ -104,11 +104,11 @@ $(document).ready(function() {
     },
     {
       limit: 5,
-      name: 'address',
+      name: 'addresses',
       source: bhEth1Accounts,
-      display: 'address',
+      display: 'addresses',
       templates: {
-        header: '<h3>Address</h3>',
+        header: '<h3>ETH1 Addresses</h3>',
         suggestion: function(data) {
           return `<div>${'0x'+data.address}</div>`
         }
