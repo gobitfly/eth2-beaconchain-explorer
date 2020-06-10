@@ -104,6 +104,18 @@ $(document).ready(function() {
     },
     {
       limit: 5,
+      name: 'address',
+      source: bhEth1Accounts,
+      display: 'address',
+      templates: {
+        header: '<h3>Address</h3>',
+        suggestion: function(data) {
+          return `<div>${'0x'+data.address}</div>`
+        }
+      }
+    },
+    {
+      limit: 5,
       name: 'validators',
       source: bhValidators,
       display: 'pubkey',
@@ -135,18 +147,6 @@ $(document).ready(function() {
         header: '<h3>Epochs</h3>',
         suggestion: function(data) {
           return `<div>${data.epoch}</div>`
-        }
-      }
-    },
-    {
-      limit: 5,
-      name: 'Address',
-      source: bhEth1Accounts,
-      display: 'Address',
-      templates: {
-        header: '<h3>Address</h3>',
-        suggestion: function(data) {
-          return `<div>${'0x'+data.address}</div>`
         }
       }
     },
