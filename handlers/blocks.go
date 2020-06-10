@@ -82,7 +82,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	var blocksCount uint64
 	var blocks []*types.IndexPageDataBlocks
 	if search == "" {
-		err = db.DB.Get(&blocksCount, "SELECT MAX(slot) + 1 FROM blocks")
+		err = db.DB.Get(&blocksCount, "SELECT COALESCE(MAX(slot) + 1,0) FROM blocks")
 		if err != nil {
 			logger.Errorf("error retrieving max slot number: %v", err)
 			http.Error(w, "Internal server error", 503)
