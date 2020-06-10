@@ -440,21 +440,21 @@
 				<table class="table" id="deposits-eth1-table" width="100%">
 					<thead>
 						<tr>
+							<th>From Address</th>
 							<th>Tx Hash</th>
 							<th>Block</th>
 							<th>Time</th>
 							<th>Amount</th>
-							<th>From Address</th>
 						</tr>
 					</thead>
 					<tbody>
 						{{range $i, $deposit := .Deposits.Eth1Deposits}}
 						<tr>
+							<td>{{formatEth1Address $deposit.FromAddress}}</td>
 							<td>{{formatEth1TxHash $deposit.TxHash}}</td>
 							<td>{{formatEth1Block $deposit.BlockNumber}}</td>
 							<td>{{formatTimestamp $deposit.BlockTs}}</td>
 							<td>{{formatDepositAmount $deposit.Amount}}</td>
-							<td>{{formatEth1Address $deposit.FromAddress}}</td>
 						</tr>
 						{{end}}
 					</tbody>
