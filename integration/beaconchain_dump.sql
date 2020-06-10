@@ -127,8 +127,7 @@ ALTER TABLE public.blocks_attestations OWNER TO beaconchain;
 CREATE TABLE public.blocks_attesterslashings (
     block_slot integer NOT NULL,
     block_index integer NOT NULL,
-    attestation1_custodybit_0indices integer[] NOT NULL,
-    attestation1_custodybit_1indices integer[] NOT NULL,
+    attestation1_indices integer[] NOT NULL,
     attestation1_signature bytea NOT NULL,
     attestation1_slot integer NOT NULL,
     attestation1_index integer NOT NULL,
@@ -137,8 +136,7 @@ CREATE TABLE public.blocks_attesterslashings (
     attestation1_source_root bytea NOT NULL,
     attestation1_target_epoch integer NOT NULL,
     attestation1_target_root bytea NOT NULL,
-    attestation2_custodybit_0indices integer[] NOT NULL,
-    attestation2_custodybit_1indices integer[] NOT NULL,
+    attestation2_indices integer[] NOT NULL,
     attestation2_signature bytea NOT NULL,
     attestation2_slot integer NOT NULL,
     attestation2_index integer NOT NULL,
@@ -177,12 +175,12 @@ CREATE TABLE public.blocks_proposerslashings (
     block_slot integer NOT NULL,
     block_index integer NOT NULL,
     proposerindex integer NOT NULL,
-    header1_slot integer NOT NULL,
+    header1_slot bigint NOT NULL,
     header1_parentroot bytea NOT NULL,
     header1_stateroot bytea NOT NULL,
     header1_bodyroot bytea NOT NULL,
     header1_signature bytea NOT NULL,
-    header2_slot integer NOT NULL,
+    header2_slot bigint NOT NULL,
     header2_parentroot bytea NOT NULL,
     header2_stateroot bytea NOT NULL,
     header2_bodyroot bytea NOT NULL,
@@ -230,6 +228,28 @@ CREATE TABLE public.epochs (
 
 
 ALTER TABLE public.epochs OWNER TO beaconchain;
+
+--
+-- Name: eth1_deposits; Type: TABLE; Schema: public; Owner: beaconchain
+--
+
+CREATE TABLE public.eth1_deposits (
+    tx_hash bytea NOT NULL,
+    tx_input bytea NOT NULL,
+    tx_index integer NOT NULL,
+    block_number integer NOT NULL,
+    block_ts timestamp without time zone NOT NULL,
+    from_address bytea NOT NULL,
+    publickey bytea NOT NULL,
+    withdrawal_credentials bytea NOT NULL,
+    amount bigint NOT NULL,
+    signature bytea NOT NULL,
+    merkletree_index bytea NOT NULL,
+    removed boolean NOT NULL
+);
+
+
+ALTER TABLE public.eth1_deposits OWNER TO beaconchain;
 
 --
 -- Name: proposal_assignments; Type: TABLE; Schema: public; Owner: beaconchain
@@ -947,7 +967,7 @@ COPY public.blocks_attestations (block_slot, block_index, aggregationbits, valid
 -- Data for Name: blocks_attesterslashings; Type: TABLE DATA; Schema: public; Owner: beaconchain
 --
 
-COPY public.blocks_attesterslashings (block_slot, block_index, attestation1_custodybit_0indices, attestation1_custodybit_1indices, attestation1_signature, attestation1_slot, attestation1_index, attestation1_beaconblockroot, attestation1_source_epoch, attestation1_source_root, attestation1_target_epoch, attestation1_target_root, attestation2_custodybit_0indices, attestation2_custodybit_1indices, attestation2_signature, attestation2_slot, attestation2_index, attestation2_beaconblockroot, attestation2_source_epoch, attestation2_source_root, attestation2_target_epoch, attestation2_target_root) FROM stdin;
+COPY public.blocks_attesterslashings (block_slot, block_index, attestation1_indices, attestation1_signature, attestation1_slot, attestation1_index, attestation1_beaconblockroot, attestation1_source_epoch, attestation1_source_root, attestation1_target_epoch, attestation1_target_root, attestation2_indices, attestation2_signature, attestation2_slot, attestation2_index, attestation2_beaconblockroot, attestation2_source_epoch, attestation2_source_root, attestation2_target_epoch, attestation2_target_root) FROM stdin;
 \.
 
 
@@ -985,6 +1005,14 @@ COPY public.epochs (epoch, blockscount, proposerslashingscount, attesterslashing
 2	8	0	0	23	0	0	70	3200303854	t	223200000000	0.814068078994751	181700000000	224021269786
 3	8	0	0	0	0	0	70	3200963978	t	223200000000	1	223200000000	224067478493
 4	7	0	0	35	0	0	70	7544191053	t	223200000000	1	223200000000	528093373716
+\.
+
+
+--
+-- Data for Name: eth1_deposits; Type: TABLE DATA; Schema: public; Owner: beaconchain
+--
+
+COPY public.eth1_deposits (tx_hash, tx_input, tx_index, block_number, block_ts, from_address, publickey, withdrawal_credentials, amount, signature, merkletree_index, removed) FROM stdin;
 \.
 
 
@@ -1678,6 +1706,14 @@ ALTER TABLE ONLY public.epochs
 
 
 --
+-- Name: eth1_deposits eth1_deposits_pkey; Type: CONSTRAINT; Schema: public; Owner: beaconchain
+--
+
+ALTER TABLE ONLY public.eth1_deposits
+    ADD CONSTRAINT eth1_deposits_pkey PRIMARY KEY (tx_hash);
+
+
+--
 -- Name: proposal_assignments proposal_assignments_pkey; Type: CONSTRAINT; Schema: public; Owner: beaconchain
 --
 
@@ -1723,6 +1759,13 @@ ALTER TABLE ONLY public.validatorqueue_exit
 
 ALTER TABLE ONLY public.validators2
     ADD CONSTRAINT validators2_pkey PRIMARY KEY (validatorindex);
+
+
+--
+-- Name: idx_eth1_deposits; Type: INDEX; Schema: public; Owner: beaconchain
+--
+
+CREATE INDEX idx_eth1_deposits ON public.eth1_deposits USING btree (publickey);
 
 
 --
