@@ -55,7 +55,7 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 	return deposits, nil
 }
 
-func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthOneDepositsPageData, error) {
+func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsPageData, error) {
 	deposits := []*types.EthOneDepositsPageData{}
 
 	if orderDir != "desc" && orderDir != "asc" {
@@ -93,11 +93,11 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			(
 				SELECT pubkey,
 				CASE 
-					WHEN exitepoch <= $1 then 'exited'
-					WHEN activationepoch > $1 then 'pending'
-					WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
+					WHEN exitepoch <= $4 then 'exited'
+					WHEN activationepoch > $4 then 'pending'
+					WHEN slashed and activationepoch < $4 and (lastattestationslot < $5 OR lastattestationslot is null) then 'slashing_offline'
 					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
+					WHEN activationepoch < $4 and (lastattestationslot < $5 OR lastattestationslot is null) then 'active_offline' 
 					ELSE 'active_online'
 				END AS state
 				FROM validators
@@ -105,16 +105,16 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ON
 			v.pubkey = eth1.publickey
 		WHERE
-			ENCODE(eth1.publickey::bytea, 'hex') LIKE $3
+			ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($3)
 		OR
-			ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE $3
+			ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($3)
 		OR
-			ENCODE(eth1.from_address::bytea, 'hex') LIKE $3
+			ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($3)
 		OR
-			ENCODE(tx_hash::bytea, 'hex') LIKE $3 
+			ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($3)
 		ORDER BY %s %s
 		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, query+"%")
+		OFFSET $2`, orderBy, orderDir), length, start, query+"%", latestEpoch, validatorOnlineThresholdSlot)
 		if err != nil {
 			return nil, err
 		}
@@ -139,11 +139,11 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			(
 				SELECT pubkey,
 				CASE 
-					WHEN exitepoch <= $1 then 'exited'
-					WHEN activationepoch > $1 then 'pending'
-					WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
+					WHEN exitepoch <= $3 then 'exited'
+					WHEN activationepoch > $3 then 'pending'
+					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
 					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
+					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline' 
 					ELSE 'active_online'
 				END AS state
 				FROM validators
@@ -152,7 +152,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			v.pubkey = eth1.publickey
 		ORDER BY %s %s
 		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start)
+		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot)
 		if err != nil {
 			return nil, err
 		}

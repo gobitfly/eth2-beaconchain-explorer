@@ -72,7 +72,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	switch searchType {
 	case "blocks":
 		blocks := &types.SearchAheadBlocksResult{}
-		err := db.DB.Select(blocks, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot FROM blocks WHERE CAST(slot AS text) LIKE $1 OR ENCODE(blockroot::bytea, 'hex') LIKE $1 ORDER BY slot LIMIT 10", search+"%")
+		err := db.DB.Select(blocks, `
+			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
+			FROM blocks 
+			WHERE CAST(slot AS text) LIKE $1 OR ENCODE(blockroot::bytea, 'hex') LIKE $1
+			ORDER BY slot LIMIT 10`, search+"%")
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query for blocks")
 			http.Error(w, "Internal server error", 503)
@@ -85,7 +89,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
-		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1) LIMIT 10", "%"+search+"%")
+		err := db.DB.Select(graffiti, `
+			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti 
+			FROM blocks 
+			WHERE LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1) 
+			LIMIT 10`, "%"+search+"%")
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query for graffiti")
 			http.Error(w, "Internal server error", 503)
@@ -144,13 +152,10 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "eth1deposits":
 		eth1 := &types.SearchAheadEth1Result{}
 		err := db.DB.Select(eth1, `
-		SELECT DISTINCT
-			ENCODE(from_address::bytea, 'hex') as from_address
-		FROM
-		 eth1_deposits
-		WHERE
-		ENCODE(from_address::bytea, 'hex') LIKE $1
-		LIMIT 10`, search+"%")
+			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
+			FROM eth1_deposits
+			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
+			LIMIT 10`, search+"%")
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query")
 			http.Error(w, "Internal server error", 503)

@@ -104,7 +104,10 @@ func EthOneDepositsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deposits, err := db.GetEth1DepositsJoinEth2Deposits(search, length, start, orderBy, orderDir)
+	latestEpoch := services.LatestEpoch()
+	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
+
+	deposits, err := db.GetEth1DepositsJoinEth2Deposits(search, length, start, orderBy, orderDir, latestEpoch, validatorOnlineThresholdSlot)
 	if err != nil {
 		logger.Errorf("GetEth1Deposits error retrieving eth1_deposit data: %v", err)
 		http.Error(w, "Internal server error", 503)
