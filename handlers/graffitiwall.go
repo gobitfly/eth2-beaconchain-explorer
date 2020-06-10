@@ -43,6 +43,8 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	err = graffitiwallTemplate.ExecuteTemplate(w, "layout", data)

@@ -7,7 +7,7 @@
         
         <meta name="keywords"
               content="ethereum 2.0 block explorer, eth2 block explorer, beacon chain explorer, ethereum blockchain explorer"/>
-        <meta name="description" content={{.Meta.Description}}/>
+        <meta name="description" content={{.Meta.Description}}>
 
         <meta property="og:title" content="{{.Meta.Title}}"/>
         <meta property="og:type" content="website"/>
@@ -32,6 +32,7 @@
         <link rel="stylesheet" href="/css/fontawesome.min.css">
         <link rel="stylesheet" href="/bootstrap/css/bootstrap.min.css">
         <link rel="stylesheet" href="/css/layout.css">
+        <link rel="stylesheet" href="/css/styles.css">
         <script>
                 var mql = window.matchMedia('(prefers-color-scheme: light)');
                 var lightScheme = mql.matches;
@@ -58,13 +59,41 @@
         <strong>We're sorry but beaconcha.in doesn't work properly without JavaScript enabled. Please enable it to
             continue.</strong>
     </noscript>
-    <nav id="nav" style="background-color: var(--bg-color-nav, #007bff)" class="navbar navbar-expand-lg">
+    <div class="info-banner-container">
+      <div class="info-banner-content container d-flex align-items-center">
+            <div class="info-banner-stats">
+                <div class="info-item d-flex mr-3">
+                    <div class="info-item-header mr-1">Epoch</div>
+                    <div class="info-item-body">{{.CurrentEpoch}}</div>
+                </div>
+                <div class="info-item d-flex mr-3">
+                    <div class="info-item-header mr-1">Slot</div>
+                    <div class="info-item-body">{{.CurrentSlot}}</div>
+                </div>
+                {{if .ShowSyncingMessage}}
+                <div class="info-item d-flex mr-3">
+                    <div class="info-item-header mr-1">Status</div>
+                    <div class="info-item-body">Syncing</div>
+                </div>
+                {{end}}
+            </div>
+            <div class="d-flex flex-fill"></div>
+        <div class="search-container">
+            <form  class="form-inline" action="/search" method="POST">
+                <i class="fas fa-search"></i>
+                <input class="typeahead" autocomplete="off" name="search" type="text"
+                placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
+            </form>
+        </div>
+      </div>
+    </div>
+    <nav id="nav" class="navbar navbar-expand-lg">
     <script>
         if(document.documentElement.getAttribute('data-theme') === 'light') { 
             document.getElementById('nav').classList.add('navbar-light')
         } else {
             document.getElementById('nav').classList.add('navbar-dark')
-        }
+        } 
     </script>
         <div  class="container">
                     <a class=navbar-brand href="/">
@@ -77,29 +106,15 @@
                 <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <ul class="navbar-nav mr-auto">
-                        <!-- <li class="nav-item {{ if eq .Active "index"}}active{{end}}">
-                            <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
-                            {{ if eq .Active "index"}} 
-                                <span class="nav-indicator"></span>
-                            {{end}}
-                        </li> -->
+                    <ul class="navbar-nav ml-auto">
                         <li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
                             <a class="nav-link" href="/epochs"><i class="fas fa-history"></i> Epochs</a>
                             {{ if eq .Active "epochs"}} 
-                                <span class="nav-indicator"></span>
                             {{end}}
                         </li>
-                        <li class="nav-item {{ if eq .Active "blocks"}}active{{end}} dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <i class="fas fa-cubes"></i> Blocks
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item" href="/blocks"><i class="fas fa-table"></i> Overview</a>
-                                <a class="dropdown-item" href="/vis"><i class="fas fa-project-diagram"></i> Block Viz</a>
-                            </div>
+                        <li class="nav-item {{ if eq .Active "blocks"}}active{{end}}">
+                            <a class="nav-link" href="/blocks"><i class="fas fa-cubes"></i> Blocks</a>
                             {{ if eq .Active "blocks"}} 
-                                <span class="nav-indicator"></span>
                             {{end}}
                         </li>
                         <li class="nav-item {{ if eq .Active "validators"}}active{{end}} dropdown">
@@ -107,27 +122,22 @@
                                 <i class="fas fa-thumbs-up"></i> Validators
                             </a>
                             <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <a class="dropdown-item" href="/validators"><i class="fas fa-table"></i> Overview</a>
-                                <a class="dropdown-item" href="/validators/leaderboard"><i class="fas fa-medal"></i> Leaderboard</a>
-                                <a class="dropdown-item" href="/validators/slashings"><i class="fas fa-user-slash"></i> Slashings</a>
+                                <a class="dropdown-item" href="/validators"><i class="fas fa-table mr-1"></i> Overview</a>
+                                <a class="dropdown-item" href="/validators/leaderboard"><i class="fas fa-medal mr-1"></i> Leaderboard</a>
+                                <a class="dropdown-item" href="/validators/slashings"><i class="fas fa-user-slash mr-1"></i> Slashings</a>
+                                <a class="dropdown-item" href="/validators/eth1deposits"><i class="fas fa-file-signature mr-1"></i> Eth1 Deposits</a>
+                                <a class="dropdown-item" href="/validators/eth2deposits"><i class="fas fa-clipboard-check mr-1"></i> Eth2 Deposits</a>
                             </div>
-                            {{ if eq .Active "validators"}}
-                                <span class="nav-indicator"></span>
-                            {{end}}
                         </li>
-                        <!--
-                        <li class="nav-item {{ if eq .Active "vis"}}active{{end}}">
-                            <a class="nav-link" href="/vis"><i class="fas fa-project-diagram"></i> Block Viz</a>
-                            {{ if eq .Active "vis"}} 
-                                <span class="nav-indicator"></span>
-                            {{end}}
-                        </li>
-                        -->
-                        <li class="nav-item {{ if eq .Active "charts"}}active{{end}}">
-                            <a class="nav-link" href="/charts"><i class="fas fa-chart-bar"></i> Charts</a>
-                            {{ if eq .Active "charts"}} 
-                                <span class="nav-indicator"></span>
-                            {{end}}
+                        <li class="nav-item {{ if eq .Active "stats"}}active{{end}} dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-cubes"></i> Stats
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <a class="dropdown-item" href="/charts"><i class="fas fa-chart-bar mr-1"></i> Charts</a>
+                                <a class="dropdown-item" href="/calculator"><i class="fas fa-calculator mr-1"></i> Calculator</a>
+                                <a class="dropdown-item" href="/vis"><i class="fas fa-project-diagram mr-1"></i> Block Viz</a>
+                            </div>
                         </li>
                         <style>
                             .nav-cube {
@@ -136,11 +146,24 @@
                                 --lightColor: rgba(0,0,0,.5);
                                 --darkColor: rgba(100,100,100,.8);
                             }
+                            .active .nav-cube {
+                                --mainColor: rgba(55,55,55,1);
+                                --strokeColor: rgba(35,35,35, 1);
+                                --lightColor: rgba(0,0,0,1);
+                                --darkColor: rgba(80,80,80,1);
+                            }
                             [data-theme='dark'] .nav-cube {
                                 --mainColor: rgba(180,180,180,.7);
                                 --strokeColor: rgba(200,200,200, 1);
                                 --lightColor: rgba(255,255,255,.5);
                                 --darkColor: rgba(150,150,150,.8);
+                            }
+
+                            [data-theme='dark'] .active .nav-cube {
+                                --mainColor: rgba(200,200,200,1);
+                                --strokeColor: rgba(220,220,220, 1);
+                                --lightColor: rgba(255,255,255,1);
+                                --darkColor: rgba(170,170,170,1);
                             }
                         </style>
                         <li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
@@ -203,41 +226,28 @@
                                   </g>
                                 </svg> Dashboard</a>
                             {{ if eq .Active "dashboard"}} 
-                                <span class="nav-indicator"></span>
-                            {{end}}
-                        </li>
-                        <li class="nav-item {{ if eq .Active "calculator"}}active{{end}}">
-                            <a class="nav-link" href="/calculator"><i class="fas fa-calculator"></i> Calculator</a>
-                            {{ if eq .Active "calculator"}} 
-                                <span class="nav-indicator"></span>
-                            {{end}}
-                        </li>
-                        <li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
-                            <a class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
-                            {{ if eq .Active "docs"}}
-                                <span class="nav-indicator"></span>
                             {{end}}
                         </li>
                         <li class="nav-item {{ if eq .Active "graffitiwall"}}active{{end}}">
                             <a class="nav-link" href="/graffitiwall"><i class="fas fa-paint-brush"></i> Wall</a>
-                            {{ if eq .Active "graffitiwall"}}
-                                <span class="nav-indicator"></span>
-                            {{end}}
+                        </li>
+                        <li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
+                            <a class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
                         </li>
                     </ul>
                     <!-- <div>
                         <span class="fas fa-search search-icon"></span>
                         <i class="fab fa-github"></i>
                     </div> -->
-                    <div class="search-container">
+                    <!-- <div class="search-container">
                         <form  class="form-inline ml-auto" action="/search" method="POST">
                             <span>
-                                <input class="form-control mr-2 typeahead" name="search" type="text"
+                                <input class="form-control typeahead" name="search" type="text"
                                 placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
                                 <span class="fas fa-search"></span>
                             </span>
                         </form>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </div>
@@ -286,7 +296,7 @@
         </footer>
     </div>
 
-    <div class="fab-message">
+    <!-- <div class="fab-message">
             <div class="fab-message-button">
               <a href="#" class="at-button" onclick="toggleFAB();return false;">
                     <i class="svg-question-mark fas fa-exclamation-circle fa-3x"></i>
@@ -301,7 +311,7 @@
                         </p>
                 {{end}}
             </div>
-          </div>
+          </div> -->
 
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
@@ -340,6 +350,8 @@
             return slot
         }
     </script>
+
+
     
     {{ template "js" .Data }}
     <script src="//instant.page/3.0.0" type="module" defer integrity="sha384-OeDn4XE77tdHo8pGtE1apMPmAipjoxUQ++eeJa6EtJCfHlvijigWiJpD7VDPWXV1"></script>

@@ -11,11 +11,13 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/juliangruber/go-intersect"
 )
 
 var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator.html"))
@@ -42,6 +44,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
@@ -54,10 +58,35 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
-			data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
-			data.Meta.Path = fmt.Sprintf("/validator/%v", index)
-			err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+			deposits, err := db.GetValidatorDeposits(pubKey)
+			if err != nil {
+				logger.Errorf("error getting validator-deposits from db: %v", err)
+			}
+			if err != nil || len(deposits.Eth1Deposits) == 0 {
+				data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
+				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
+				err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
+				if err != nil {
+					logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+					http.Error(w, "Internal server error", 503)
+					return
+				}
+				return
+			}
+			// there is no validator-index but there are eth1-deposits for the publickey
+			// which means the validator is in DEPOSITED state
+			// in this state there is nothing to display but the eth1-deposits
+			validatorPageData.Status = "deposited"
+			validatorPageData.PublicKey = []byte(pubKey)
+			validatorPageData.Deposits = deposits
+			data.Data = validatorPageData
+			if utils.IsApiRequest(r) {
+				w.Header().Set("Content-Type", "application/json")
+				err = json.NewEncoder(w).Encode(data.Data)
+			} else {
+				err = validatorTemplate.ExecuteTemplate(w, "layout", data)
+			}
 			if err != nil {
 				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 				http.Error(w, "Internal server error", 503)
@@ -122,6 +151,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
+	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
+	if err != nil {
+		logger.Errorf("error getting validator-deposits from db: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	validatorPageData.Deposits = deposits
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -202,20 +239,24 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 
 	if validatorPageData.Epoch > validatorPageData.ExitEpoch {
-		validatorPageData.Status = "Exited"
+		if validatorPageData.Slashed {
+			validatorPageData.Status = "slashed"
+		} else {
+			validatorPageData.Status = "exited"
+		}
 	} else if validatorPageData.Epoch < validatorPageData.ActivationEpoch {
-		validatorPageData.Status = "Pending"
+		validatorPageData.Status = "pending"
 	} else if validatorPageData.Slashed {
 		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < validatorOnlineThresholdSlot) {
-			validatorPageData.Status = "SlashingOffline"
+			validatorPageData.Status = "slashing_offline"
 		} else {
-			validatorPageData.Status = "Slashing"
+			validatorPageData.Status = "slashing_online"
 		}
 	} else {
 		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < validatorOnlineThresholdSlot) {
-			validatorPageData.Status = "ActiveOffline"
+			validatorPageData.Status = "active_offline"
 		} else {
-			validatorPageData.Status = "Active"
+			validatorPageData.Status = "active_online"
 		}
 	}
 
@@ -245,6 +286,22 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.SlashedFor = slashingInfo.Reason
 	}
 
+	err = db.DB.Get(&validatorPageData.SlashingsCount, `
+		select
+			(
+				select count(*) from blocks_attesterslashings a
+				inner join blocks b on b.slot = a.block_slot and b.proposer = $1
+				where attestation1_indices is not null and attestation2_indices is not null
+			) + (
+				select count(*) from blocks_proposerslashings c
+				inner join blocks d on d.slot = c.block_slot and d.proposer = $1
+			)`, index)
+	if err != nil {
+		logger.Errorf("error retrieving slashings-count: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 	data.Data = validatorPageData
 
 	if utils.IsApiRequest(r) {
@@ -259,7 +316,33 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+}
 
+// ValidatorDeposits returns a validator's deposits in json
+func ValidatorDeposits(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	vars := mux.Vars(r)
+
+	pubkey, err := hex.DecodeString(strings.Replace(vars["pubkey"], "0x", "", -1))
+	if err != nil {
+		logger.Errorf("error parsing validator public key %v: %v", vars["pubkey"], err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	deposits, err := db.GetValidatorDeposits(pubkey)
+	if err != nil {
+		logger.Errorf("error getting validator-deposits for %v: %v", vars["pubkey"], err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(deposits)
+	if err != nil {
+		logger.Errorf("error encoding validator-deposits for %v: %v", vars["pubkey"], err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 }
 
 // ValidatorProposedBlocks returns a validator's proposed blocks in json
@@ -336,16 +419,16 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
 		tableData[i] = []interface{}{
-			fmt.Sprintf("%v", b.Epoch),
-			fmt.Sprintf("%v", b.Slot),
-			fmt.Sprintf("%v", utils.FormatBlockStatus(b.Status)),
-			fmt.Sprintf("%v", utils.SlotToTime(b.Slot).Unix()),
-			fmt.Sprintf("%x", b.BlockRoot),
-			fmt.Sprintf("%v", b.Attestations),
-			fmt.Sprintf("%v", b.Deposits),
+			utils.FormatEpoch(b.Epoch),
+			utils.FormatBlockSlot(b.Slot),
+			utils.FormatBlockStatus(b.Status),
+			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
+			utils.FormatBlockRoot(b.BlockRoot),
+			b.Attestations,
+			b.Deposits,
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
-			fmt.Sprintf("%v", b.Exits),
-			fmt.Sprintf("%x", b.Graffiti),
+			b.Exits,
+			utils.FormatGraffiti(b.Graffiti),
 		}
 	}
 
@@ -434,12 +517,131 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 			b.Status = 2
 		}
 		tableData[i] = []interface{}{
-			fmt.Sprintf("%v", b.Epoch),
-			fmt.Sprintf("%v", b.AttesterSlot),
-			fmt.Sprintf("%v", utils.FormatAttestationStatus(b.Status)),
-			fmt.Sprintf("%v", utils.SlotToTime(b.AttesterSlot).Unix()),
-			fmt.Sprintf("%v", b.CommitteeIndex),
+			utils.FormatEpoch(b.Epoch),
+			utils.FormatBlockSlot(b.AttesterSlot),
+			utils.FormatAttestationStatus(b.Status),
+			utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
+			b.CommitteeIndex,
 		}
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+// ValidatorSlashings returns a validators slashings in json
+func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	q := r.URL.Query()
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var totalCount uint64
+	err = db.DB.Get(&totalCount, `
+		select
+			(
+				select count(*) from blocks_attesterslashings a
+				inner join blocks b on b.slot = a.block_slot and b.proposer = $1
+				where attestation1_indices is not null and attestation2_indices is not null
+			) + (
+				select count(*) from blocks_proposerslashings c
+				inner join blocks d on d.slot = c.block_slot and d.proposer = $1
+			)`, index)
+	if err != nil {
+		logger.Errorf("error retrieving totalCount of validator-slashings: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var attesterSlashings []*types.ValidatorAttestationSlashing
+	err = db.DB.Select(&attesterSlashings, `
+		SELECT 
+			blocks.slot, 
+			blocks.epoch, 
+			blocks.proposer, 
+			blocks_attesterslashings.attestation1_indices, 
+			blocks_attesterslashings.attestation2_indices 
+		FROM blocks_attesterslashings 
+		INNER JOIN blocks ON blocks.proposer = $1 and blocks_attesterslashings.block_slot = blocks.slot 
+		WHERE attestation1_indices IS NOT NULL AND attestation2_indices IS NOT NULL`, index)
+
+	if err != nil {
+		logger.Errorf("error retrieving validator attestations data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var proposerSlashings []*types.ValidatorProposerSlashing
+	err = db.DB.Select(&proposerSlashings, `
+		SELECT blocks.slot, blocks.epoch, blocks.proposer, blocks_proposerslashings.proposerindex 
+		FROM blocks_proposerslashings 
+		INNER JOIN blocks ON blocks.proposer = $1 AND blocks_proposerslashings.block_slot = blocks.slot`, index)
+	if err != nil {
+		logger.Errorf("error retrieving block proposer slashings data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(attesterSlashings)+len(proposerSlashings))
+	for _, b := range attesterSlashings {
+
+		inter := intersect.Simple(b.Attestestation1Indices, b.Attestestation2Indices)
+
+		slashedValidator := uint64(0)
+		if len(inter) > 0 {
+			slashedValidator = uint64(inter[0].(int64))
+		}
+
+		tableData = append(tableData, []interface{}{
+			utils.FormatSlashedValidator(slashedValidator),
+			utils.SlotToTime(b.Slot).Unix(),
+			"Attestation Violation",
+			utils.FormatBlockSlot(b.Slot),
+			utils.FormatEpoch(b.Epoch),
+		})
+	}
+
+	for _, b := range proposerSlashings {
+		tableData = append(tableData, []interface{}{
+			utils.FormatSlashedValidator(b.ProposerIndex),
+			utils.SlotToTime(b.Slot).Unix(),
+			"Proposer Violation",
+			utils.FormatBlockSlot(b.Slot),
+			utils.FormatEpoch(b.Epoch),
+		})
+	}
+
+	sort.Slice(tableData, func(i, j int) bool {
+		return tableData[i][1].(int64) > tableData[j][1].(int64)
+	})
+
+	for _, b := range tableData {
+		b[1] = utils.FormatTimestamp(b[1].(int64))
 	}
 
 	data := &types.DataTableResponse{

@@ -14,6 +14,7 @@ import (
 )
 
 var latestEpoch uint64
+var latestSlot uint64
 var latestProposedSlot uint64
 var indexPageData atomic.Value
 var chartsPageData atomic.Value
@@ -23,8 +24,9 @@ var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
 func Init() {
-	ready.Add(3)
+	ready.Add(4)
 	go epochUpdater()
+	go slotUpdater()
 	go latestProposedSlotUpdater()
 	go indexPageDataUpdater()
 	ready.Wait()
@@ -40,9 +42,29 @@ func epochUpdater() {
 		err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 
 		if err != nil {
-			logger.Errorf("error retrieving latest epoch from the database: %w", err)
+			logger.Errorf("error retrieving latest epoch from the database: %v", err)
 		} else {
 			atomic.StoreUint64(&latestEpoch, epoch)
+			if firstRun {
+				ready.Done()
+				firstRun = false
+			}
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+func slotUpdater() {
+	firstRun := true
+
+	for true {
+		var slot uint64
+		err := db.DB.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks")
+
+		if err != nil {
+			logger.Errorf("error retrieving latest slot from the database: %v", err)
+		} else {
+			atomic.StoreUint64(&latestSlot, slot)
 			if firstRun {
 				ready.Done()
 				firstRun = false
@@ -60,7 +82,7 @@ func latestProposedSlotUpdater() {
 		err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
 
 		if err != nil {
-			logger.Errorf("error retrieving latest proposed slot from the database: %w", err)
+			logger.Errorf("error retrieving latest proposed slot from the database: %v", err)
 		} else {
 			atomic.StoreUint64(&latestProposedSlot, epoch)
 			if firstRun {
@@ -152,7 +174,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
 	}
-	data.AverageBalance = utils.FormatBalance(uint64(averageBalance))
+	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance)))
 
 	var epochHistory []*types.IndexPageEpochHistory
 	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 ORDER BY epoch", epoch)
@@ -169,7 +191,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			}
 		}
 
-		data.StakedEther = utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther)
+		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther))
 		data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
 	}
 
@@ -188,6 +210,11 @@ func getIndexPageData() (*types.IndexPageData, error) {
 // LatestEpoch will return the latest epoch
 func LatestEpoch() uint64 {
 	return atomic.LoadUint64(&latestEpoch)
+}
+
+// LatestSlot will return the latest slot
+func LatestSlot() uint64 {
+	return atomic.LoadUint64(&latestSlot)
 }
 
 // LatestProposedSlot will return the latest proposed slot

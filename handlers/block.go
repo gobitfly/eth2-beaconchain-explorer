@@ -9,13 +9,14 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
-	"github.com/juliangruber/go-intersect"
 	"html/template"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/juliangruber/go-intersect"
 
 	"github.com/gorilla/mux"
 )
@@ -48,6 +49,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	if err != nil {

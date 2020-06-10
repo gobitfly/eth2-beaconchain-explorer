@@ -33,12 +33,14 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 			Path:        "/charts",
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "charts",
+		Active:                "stats",
 		Data:                  chartsPageData,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	err := chartsTemplate.ExecuteTemplate(w, "layout", data)

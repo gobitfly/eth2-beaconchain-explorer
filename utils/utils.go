@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -24,6 +25,38 @@ const PageSize = 500
 // Config is the globally accessible configuration
 var Config *types.Config
 
+// GetTemplateFuncs will get the template functions
+func GetTemplateFuncs() template.FuncMap {
+	return template.FuncMap{
+		"formatBalance":               FormatBalance,
+		"formatCurrentBalance":        FormatCurrentBalance,
+		"formatEffectiveBalance":      FormatEffectiveBalance,
+		"formatBlockStatus":           FormatBlockStatus,
+		"formatBlockSlot":             FormatBlockSlot,
+		"formatSlotToTimestamp":       FormatSlotToTimestamp,
+		"formatDepositAmount":         FormatDepositAmount,
+		"formatEpoch":                 FormatEpoch,
+		"formatEth1Block":             FormatEth1Block,
+		"formatEth1Address":           FormatEth1Address,
+		"formatEth1TxHash":            FormatEth1TxHash,
+		"formatGraffiti":              FormatGraffiti,
+		"formatHash":                  FormatHash,
+		"formatIncome":                FormatIncome,
+		"formatValidator":             FormatValidator,
+		"formatValidatorInt64":        FormatValidatorInt64,
+		"formatValidatorStatus":       FormatValidatorStatus,
+		"formatPercentage":            FormatPercentage,
+		"formatPublicKey":             FormatPublicKey,
+		"formatSlashedValidator":      FormatSlashedValidator,
+		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
+		"formatTimestamp":             FormatTimestamp,
+		"epochOfSlot":                 EpochOfSlot,
+		"mod":                         func(i, j int) bool { return i%j == 0 },
+		"sub":                         func(i, j int) int { return i - j },
+		"add":                         func(i, j int) int { return i + j },
+	}
+}
+
 // FormatGraffitiString formats (and escapes) the graffiti
 func FormatGraffitiString(graffiti string) string {
 	return strings.Map(fixUtf, template.HTMLEscapeString(graffiti))
@@ -36,89 +69,9 @@ func fixUtf(r rune) rune {
 	return r
 }
 
-// GetTemplateFuncs will get the template functions
-func GetTemplateFuncs() template.FuncMap {
-	return template.FuncMap{
-		"formatBlockStatus":           FormatBlockStatus,
-		"formatValidator":             FormatValidator,
-		"formatSlashedValidator":      FormatSlashedValidator,
-		"formatValidatorInt64":        FormatValidatorInt64,
-		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
-		"formatBalance":               FormatBalance,
-		"formatPercentage":            FormatPercentage,
-		"formatIncome":                FormatIncome,
-		"mod":                         func(i, j int) bool { return i%j == 0 },
-		"sub":                         func(i, j int) int { return i - j },
-		"add":                         func(i, j int) int { return i + j },
-	}
-}
-
-// FormatBlockStatus will return an html status for a block
-func FormatBlockStatus(status uint64) template.HTML {
-	if status == 0 {
-		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
-	} else if status == 1 {
-		return "<span class=\"badge bg-success text-white\">Proposed</span>"
-	} else if status == 2 {
-		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
-	} else if status == 3 {
-		return "<span class=\"badge bg-secondary text-white\">Orphaned</span>"
-	} else {
-		return "Unknown"
-	}
-}
-
-// FormatAttestationStatus will return a user-friendly attestation for an attestation status number
-func FormatAttestationStatus(status uint64) string {
-	if status == 0 {
-		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
-	} else if status == 1 {
-		return "<span class=\"badge bg-success text-white\">Attested</span>"
-	} else if status == 2 {
-		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
-	} else {
-		return "Unknown"
-	}
-}
-
-func FormatValidatorStatus(status string) string {
-	if status == "pending" {
-		return "<span class=\"badge validator-pending text-dark\">pending</span>"
-	} else if status == "active:online" {
-		return "<span class=\"badge validator-active text-dark\">active <span class=\"badge badge-light bg-success\">on</span></span>"
-	} else if status == "active:offline" {
-		return "<span class=\"badge validator-active text-dark\">active <span class=\"badge badge-light bg-danger\">off</span></span>"
-	} else if status == "exiting:online" {
-		return "<span class=\"badge validator-exiting text-dark\">exiting <span class=\"badge badge-light bg-success\">on</span></span>"
-	} else if status == "exiting:offline" {
-		return "<span class=\"badge validator-exiting text-dark\">exiting <span class=\"badge badge-light bg-danger\">off</span></span>"
-	} else if status == "slashing:online" {
-		return "<span class=\"badge validator-slashing text-dark\">slashing <span class=\"badge badge-light bg-success\">on</span></span>"
-	} else if status == "slashing:offline" {
-		return "<span class=\"badge validator-slashing text-dark\">slashing <span class=\"badge badge-light bg-danger\">off</span></span>"
-	} else if status == "exited" {
-		return "<span class=\"badge validator-exited text-dark\">exited</span>"
-	}
-	return "Unknown"
-}
-
-// FormatValidator will return html formatted text for a validator
-func FormatValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
-}
-
-func FormatValidatorInt64(validator int64) template.HTML {
-	return FormatValidator(uint64(validator))
-}
-
-// FormatSlashedValidatorInt64 will return html formatted text for a slashed validator
-func FormatSlashedValidatorInt64(validator int64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
-}
-
-// FormatSlashedValidator will return html formatted text for a slashed validator
-func FormatSlashedValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+// EpochOfSlot will return the corresponding epoch of a slot
+func EpochOfSlot(slot uint64) uint64 {
+	return slot / Config.Chain.SlotsPerEpoch
 }
 
 // SlotToTime will return a time.Time to slot
@@ -145,27 +98,6 @@ func TimeToEpoch(ts time.Time) int64 {
 		return 0
 	}
 	return (ts.Unix() - int64(Config.Chain.GenesisTimestamp)) / int64(Config.Chain.SecondsPerSlot) / int64(Config.Chain.SlotsPerEpoch)
-}
-
-// FormatBalance will return a string for a balance
-func FormatBalance(balance uint64) string {
-	return fmt.Sprintf("%.2f ETH", float64(balance)/float64(1000000000))
-}
-
-// FormatIncome will return a string for a balance
-func FormatIncome(income int64) template.HTML {
-	if income > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f ETH</b></span>`, float64(income)/float64(1000000000)))
-	} else if income < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f ETH</b></span>`, float64(income)/float64(1000000000)))
-	} else {
-		return template.HTML(fmt.Sprintf(`<b>%.4f ETH</b>`, float64(income)/float64(1000000000)))
-	}
-}
-
-// FormatPercentage will return a string for a percentage
-func FormatPercentage(percentage float64) string {
-	return fmt.Sprintf("%.0f", percentage*float64(100))
 }
 
 // WaitForCtrlC will block/wait until a control-c is pressed
@@ -205,16 +137,6 @@ func readConfigEnv(cfg *types.Config) error {
 	return envconfig.Process("", cfg)
 }
 
-// FormatPublicKey will format a public key
-func FormatPublicKey(publicKey []byte) string {
-	return fmt.Sprintf("%x", publicKey)
-}
-
-// FormatAttestorAssignmentKey will format attestor assignment keys
-func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint64) string {
-	return fmt.Sprintf("%v-%v-%v", AttesterSlot, CommitteeIndex, MemberIndex)
-}
-
 // MustParseHex will parse a string into hex
 func MustParseHex(hexString string) []byte {
 	data, err := hex.DecodeString(strings.Replace(hexString, "0x", "", -1))
@@ -227,4 +149,12 @@ func MustParseHex(hexString string) []byte {
 func IsApiRequest(r *http.Request) bool {
 	query, ok := r.URL.Query()["format"]
 	return ok && len(query) > 0 && query[0] == "json"
+}
+
+var eth1AddressRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{40}$")
+var zeroHashRE = regexp.MustCompile("^0?x?0+$")
+
+// IsValidEth1Address verifies whether a string can represents a valid eth1-address.
+func IsValidEth1Address(s string) bool {
+	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
 }

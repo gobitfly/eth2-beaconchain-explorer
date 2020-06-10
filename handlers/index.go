@@ -17,6 +17,7 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 // Index will return the main "index" page using a go template
 func Index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
+	// indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/index.html"))
 
 	data := &types.PageData{
 		Meta: &types.Meta{
@@ -31,6 +32,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	err := indexTemplate.ExecuteTemplate(w, "layout", data)

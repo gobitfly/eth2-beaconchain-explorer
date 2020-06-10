@@ -35,6 +35,8 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	err := blocksTemplate.ExecuteTemplate(w, "layout", data)
@@ -115,7 +117,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			WHERE blocks.slot >= $1 AND blocks.slot <= $2 
 			ORDER BY blocks.slot DESC`, endSlot, startSlot)
 	} else {
-		err = db.DB.Get(&blocksCount, "SELECT count(*) FROM blocks WHERE CAST(blocks.slot as text) LIKE $1 OR graffiti LIKE convert_to($2, $3)", search+"%", "%"+search+"%", "UTF-8")
+		err = db.DB.Get(&blocksCount, "SELECT count(*) FROM blocks WHERE CAST(blocks.slot as text) LIKE $1 OR LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($2)", search+"%", "%"+search+"%")
 		if err != nil {
 			logger.Errorf("error retrieving max slot number: %v", err)
 			http.Error(w, "Internal server error", 503)
@@ -140,12 +142,12 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			WHERE slot IN (
 				SELECT slot 
 				FROM blocks
-				WHERE CAST(blocks.slot as text) LIKE $1 OR graffiti LIKE convert_to($2, $3) 
+				WHERE CAST(blocks.slot as text) LIKE $1 OR LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($2) 
 				ORDER BY blocks.slot DESC 
-				LIMIT $4 
-				OFFSET $5
+				LIMIT $3 
+				OFFSET $4
 			) ORDER BY blocks.slot DESC
-			`, search+"%", "%"+search+"%", "UTF-8", length, start)
+			`, search+"%", "%"+search+"%", length, start)
 	}
 
 	if err != nil {
@@ -157,18 +159,18 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
 		tableData[i] = []interface{}{
-			b.Epoch,
-			b.Slot,
+			utils.FormatEpoch(b.Epoch),
+			utils.FormatBlockSlot(b.Slot),
 			utils.FormatBlockStatus(b.Status),
-			utils.SlotToTime(b.Slot).Unix(),
+			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
 			utils.FormatValidator(b.Proposer),
-			fmt.Sprintf("%x", b.BlockRoot),
+			utils.FormatBlockRoot(b.BlockRoot),
 			b.Attestations,
 			b.Deposits,
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
 			b.Exits,
 			b.Votes,
-			fmt.Sprintf("%x", b.Graffiti),
+			utils.FormatGraffiti(b.Graffiti),
 		}
 	}
 

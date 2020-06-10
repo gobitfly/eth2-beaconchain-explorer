@@ -145,12 +145,12 @@ create table blocks_proposerslashings (
     block_slot int not null,
     block_index int not null,
     proposerindex int not null,
-    header1_slot int not null,
+    header1_slot bigint not null,
     header1_parentroot bytea not null,
     header1_stateroot bytea not null,
     header1_bodyroot bytea not null,
     header1_signature bytea not null,
-    header2_slot int not null,
+    header2_slot bigint not null,
     header2_parentroot bytea not null,
     header2_stateroot bytea not null,
     header2_bodyroot bytea not null,
@@ -244,3 +244,21 @@ create table graffitiwall (
     validator int not null,
     primary key (x,y)
 );
+
+drop table if exists eth1_deposits;
+create table eth1_deposits (
+    tx_hash bytea not null,
+    tx_input bytea not null,
+    tx_index int not null,
+    block_number int not null,
+    block_ts timestamp without time zone not null,
+    from_address bytea not null,
+    publickey bytea not null,
+    withdrawal_credentials bytea not null,
+    amount bigint not null,
+    signature bytea not null,
+    merkletree_index bytea not null,
+    removed bool not null,
+    primary key (tx_hash)
+);
+create index idx_eth1_deposits on eth1_deposits (publickey);

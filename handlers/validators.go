@@ -74,6 +74,8 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	err = validatorsTemplate.ExecuteTemplate(w, "layout", data)
@@ -120,6 +122,8 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 		qryStateFilter = "AND a.state = 'slashing_online'"
 	case "slashing_offline":
 		qryStateFilter = "AND a.state = 'slashing_offline'"
+	case "slashed":
+		qryStateFilter = "AND a.state = 'slashed'"
 	case "exiting":
 		qryStateFilter = "AND a.state LIKE 'exiting%'"
 	case "exiting_online":
@@ -210,8 +214,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var totalCount uint64
-	err = db.DB.Get(&totalCount, `SELECT COUNT(*) FROM validators`)
+	totalCount, err := db.GetTotalValidatorsCount()
 	if err != nil {
 		logger.Errorf("error retrieving ejected validator count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -280,8 +283,6 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			[]interface{}{
-				// utils.FormatBalance(v.CurrentBalance),
-				// utils.FormatBalance(v.EffectiveBalance),
 				fmt.Sprintf("%.4f ETH", float64(v.CurrentBalance)/float64(1e9)),
 				fmt.Sprintf("%.1f ETH", float64(v.EffectiveBalance)/float64(1e9)),
 			},

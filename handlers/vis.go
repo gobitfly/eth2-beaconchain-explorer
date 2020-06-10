@@ -31,12 +31,14 @@ func Vis(w http.ResponseWriter, r *http.Request) {
 			Path:        "/blocks",
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "blocks",
+		Active:                "stats",
 		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
 	}
 
 	err = visTemplate.ExecuteTemplate(w, "layout", data)

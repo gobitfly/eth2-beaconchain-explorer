@@ -32,13 +32,14 @@ $('#toggleSwitch').on('change', switchTheme)
 
 // typeahead
 $(document).ready(function() {
+  formatTimestamps() // make sure this happens before tooltips
   $('[data-toggle="tooltip"]').tooltip()
 
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
     identify: function(obj) {
-      return obj.index
+      return obj.pubkey
     },
     remote: {
       url: '/search/validators/%QUERY',
@@ -78,6 +79,18 @@ $(document).ready(function() {
     },
     remote: {
       url: '/search/epochs/%QUERY',
+      wildcard: '%QUERY'
+    }
+  })
+
+  var bhEth1Accounts = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function(obj) {
+      return obj.account
+    },
+    remote: {
+      url: '/search/eth1deposits/%QUERY',
       wildcard: '%QUERY'
     }
   })
@@ -122,6 +135,18 @@ $(document).ready(function() {
         header: '<h3>Epochs</h3>',
         suggestion: function(data) {
           return `<div>${data.epoch}</div>`
+        }
+      }
+    },
+    {
+      limit: 5,
+      name: 'addresses',
+      source: bhEth1Accounts,
+      display: 'addresses',
+      templates: {
+        header: '<h3>ETH1 Addresses</h3>',
+        suggestion: function(data) {
+          return `<div>${'0x'+data.address}</div>`
         }
       }
     },
@@ -177,10 +202,16 @@ $(document).ready(function() {
     if (sug.slot !== undefined) {
       window.location = '/block/' + sug.slot
     } else if (sug.index !== undefined) {
-      window.location = '/validator/' + sug.index
+      if (sug.index === 'deposited')
+        window.location = '/validator/' + sug.pubkey
+      else 
+        window.location = '/validator/' + sug.index
     } else if (sug.epoch !== undefined) {
       window.location = '/epoch/' + sug.epoch
-    } else {
+    } else if(sug.address !== undefined) {
+      window.location = '/validators/eth1deposits?q=' + sug.address
+    } 
+    else {
       console.log('invalid typeahead-selection', sug)
     }
   })
@@ -202,32 +233,61 @@ $('[aria-ethereum-date]').each(function(item) {
   }
 })
 
-var indicator = $('#nav .nav-indicator')
-var items = document.querySelectorAll('#nav .nav-item')
-var selectedLi = indicator.parent()[0]
-var navigated = false
+// var indicator = $('#nav .nav-indicator')
+// var items = document.querySelectorAll('#nav .nav-item')
+// var selectedLi = indicator.parent()[0]
+// var navigated = false
 
-function handleIndicator(el) {
-  indicator.css({
-    width: `${el.offsetWidth}px`,
-    left: `${el.offsetLeft}px`,
-    bottom: 0
-  })
+// function handleIndicator(el) {
+//   indicator.css({
+//     width: `${el.offsetWidth}px`,
+//     left: `${el.offsetLeft}px`,
+//     bottom: 0
+//   })
+// }
+
+// items.forEach(function(item, index) {
+//   item.addEventListener('click', el => {
+//     if (navigated === false) {
+//       indicator
+//         .css({
+//           width: `${selectedLi.offsetWidth}px`,
+//           left: `${selectedLi.offsetLeft}px`,
+//           bottom: 0
+//         })
+//         .detach()
+//         .appendTo('.navbar ul') //.appendTo(el.target)
+//     }
+//     navigated = true
+//     handleIndicator(item)
+//   })
+// })
+
+// With HTML5 history API, we can easily prevent scrolling!
+$('.nav-tabs a').on('shown.bs.tab', function (e) {
+    if (history.replaceState) {
+        history.pushState(null, null, e.target.hash);
+    } else {
+        window.location.hash = e.target.hash; //Polyfill for old browsers
+    }
+})
+
+// Javascript to enable link to tab
+var url = document.location.toString();
+if (url.match('#')) {
+    $('.nav-tabs a[href="#'+url.split('#')[1]+'"]').tab('show') ;
 }
 
-items.forEach(function(item, index) {
-  item.addEventListener('click', el => {
-    if (navigated === false) {
-      indicator
-        .css({
-          width: `${selectedLi.offsetWidth}px`,
-          left: `${selectedLi.offsetLeft}px`,
-          bottom: 0
-        })
-        .detach()
-        .appendTo('.navbar ul') //.appendTo(el.target)
-    }
-    navigated = true
-    handleIndicator(item)
+function formatTimestamps(selStr) {
+  var sel = $(document)
+  if (selStr !== undefined) {
+    sel = $(selStr)
+  }
+  sel.find('.timestamp').each(function(){
+    var ts = $(this).data('timestamp')
+    var tsMoment = moment.unix(ts)
+    this.title = tsMoment.format()
+    $(this).text(tsMoment.fromNow())
   })
-})
+  sel.find('[data-toggle="tooltip"]').tooltip()
+}

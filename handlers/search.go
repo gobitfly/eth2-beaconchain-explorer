@@ -35,6 +35,8 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/block/"+search, 301)
 	} else if len(search) == 96 {
 		http.Redirect(w, r, "/validator/"+search, 301)
+	} else if utils.IsValidEth1Address(search) {
+		http.Redirect(w, r, "/validators/eth1deposits?q="+search, 301)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 		data := &types.PageData{
@@ -48,6 +50,8 @@ func Search(w http.ResponseWriter, r *http.Request) {
 			ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 			ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 			ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+			CurrentEpoch:          services.LatestEpoch(),
+			CurrentSlot:           services.LatestSlot(),
 		}
 		err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
@@ -70,9 +74,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	switch searchType {
 	case "blocks":
 		blocks := &types.SearchAheadBlocksResult{}
-		err := db.DB.Select(blocks, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot FROM blocks WHERE CAST(slot AS text) LIKE $1 OR ENCODE(blockroot::bytea, 'hex') LIKE $1 ORDER BY slot LIMIT 10", search+"%")
+		err := db.DB.Select(blocks, `
+			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
+			FROM blocks 
+			WHERE CAST(slot AS text) LIKE $1 OR ENCODE(blockroot::bytea, 'hex') LIKE $1
+			ORDER BY slot LIMIT 10`, search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for blocks")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -83,13 +91,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
-
-		encoding := "UTF-8"
-
-		err := db.DB.Select(graffiti, "SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti FROM blocks WHERE graffiti LIKE convert_to($1, $2) LIMIT 10", "%"+search+"%", encoding)
-
+		err := db.DB.Select(graffiti, `
+			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti 
+			FROM blocks 
+			WHERE LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1) 
+			LIMIT 10`, "%"+search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for graffiti")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -98,14 +106,14 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		err = json.NewEncoder(w).Encode(graffiti)
 		if err != nil {
-			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
+			logger.WithError(err).Error("error encoding searchAhead-graffiti-result")
 			http.Error(w, "Internal server error", 503)
 		}
 	case "epochs":
 		epochs := &types.SearchAheadEpochsResult{}
 		err := db.DB.Select(epochs, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for epochs")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -115,16 +123,49 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 		}
 	case "validators":
+		// find all validators that have a publickey or index like the search-query
+		// or validators that have deposited to the eth1-deposit-contract but did not get included into the beaconchain yet
 		validators := &types.SearchAheadValidatorsResult{}
-		err := db.DB.Select(validators, "SELECT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey FROM validators WHERE ENCODE(pubkey::bytea, 'hex') LIKE $1 OR CAST(validatorindex AS text) LIKE $1 ORDER BY index LIMIT 10", search+"%")
+		err := db.DB.Select(validators, `
+			SELECT CAST(validatorindex AS text) AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
+			FROM validators
+			WHERE ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
+				OR CAST(validatorindex AS text) LIKE $1
+			UNION
+			SELECT 'deposited' AS index, ENCODE(publickey::bytea, 'hex') as pubkey 
+			FROM eth1_deposits 
+			LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey
+			WHERE validators.pubkey IS NULL AND 
+				(
+					ENCODE(publickey::bytea, 'hex') LIKE LOWER($1)
+					OR ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
+				)
+			ORDER BY index LIMIT 10`, search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for validators")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
 		err = json.NewEncoder(w).Encode(validators)
 		if err != nil {
 			logger.WithError(err).Error("error encoding searchAhead-validators-result")
+			http.Error(w, "Internal server error", 503)
+		}
+	case "eth1deposits":
+		eth1 := &types.SearchAheadEth1Result{}
+		err := db.DB.Select(eth1, `
+			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
+			FROM eth1_deposits
+			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
+			LIMIT 10`, search+"%")
+		if err != nil {
+			logger.WithError(err).Error("error doing search-query")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = json.NewEncoder(w).Encode(eth1)
+		if err != nil {
+			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
 			http.Error(w, "Internal server error", 503)
 		}
 	default:

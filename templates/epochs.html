@@ -2,102 +2,64 @@
 
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 <script>
-  $(document).ready(function() {
-    $('#epochs').DataTable({
-      processing: true,
-      serverSide: true,
-      ordering: false,
-      searching: true,
-      ajax: '/epochs/data',
-      pagingType: 'full',
-      language: {
-        searchPlaceholder: 'Search by Epoch Number',
-        search: ''
-      },
-      columnDefs: [
-        {
-          targets: 0,
-          data: '0',
-          render: function(data, type, row, meta) {
-            return '<a href="/epoch/' + data + '">' + data + '</a>'
-          }
-        },
-        {
-          targets: 1,
-          data: '1',
-          render: function(data, type, row, meta) {
-            return moment.unix(data).fromNow()
-          }
-        },
-        {
-          targets: 6,
-          data: '6',
-          render: function(data, type, row, meta) {
-            if (data) {
-              return '<span class="badge bg-success text-white">Yes</span>'
-            } else {
-              return '<span class="badge bg-warning text-dark">No</span>'
-            }
-          }
-        },
-        {
-          targets: 8,
-          data: '8',
-          render: function(data, type, row, meta) {
-            return (
-              '<div>' +
-              data +
-              '<small class="text-muted ml-3">(' +
-              row[9] +
-              ')</small></div><div class="progress" style="height:5px;">\n' +
-              '  <div class="progress-bar" role="progressbar" style="width: ' +
-              row[9] +
-              ';" aria-valuenow="' +
-              row[9] +
-              '" aria-valuemin="0" aria-valuemax="100"></div>\n' +
-              '</div>'
-            )
-          }
-        }
-      ]
-    })
-    $('div.toolbar').html('<b>Custom tool bar! Text/images etc.</b>')
-  })
+	$(document).ready(function() {
+		$('#epochs').DataTable({
+			processing: true,
+			serverSide: true,
+			ordering: false,
+			searching: true,
+			ajax: '/epochs/data',
+			pagingType: 'full',
+			language: {
+				searchPlaceholder: 'Search by Epoch Number',
+				search: ''
+			},
+			preDrawCallback: function() {
+				// this does not always work.. not sure how to solve the staying tooltip
+				try {
+					$('#epochs').find('[data-toggle="tooltip"]').tooltip('dispose')
+				} catch (e) {}
+			},
+			drawCallback: function(settings) {
+				formatTimestamps()
+			},
+		})
+		$('div.toolbar').html('<b>Custom tool bar! Text/images etc.</b>')
+	})
 </script>
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
 {{end}} {{ define "content"}}
 <div class="my-3">
-  <div class="d-md-flex py-2 justify-content-md-between">
-    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-history mr-2"></i>Epochs</h1>
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Epochs</li>
-      </ol>
-    </nav>
-  </div>
+	<div class="d-md-flex py-2 justify-content-md-between">
+		<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-history mr-2"></i>Epochs</h1>
+		<nav aria-label="breadcrumb">
+			<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+				<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+				<li class="breadcrumb-item active" aria-current="page">Epochs</li>
+			</ol>
+		</nav>
+	</div>
 </div>
 <div class="card">
-  <div class="card-body px-0 py-2">
-    <div class="table-responsive pt-2">
-      <table class="table" id="epochs">
-        <thead>
-          <tr>
-            <th>Epoch</th>
-            <th>Time</th>
-            <th>Blocks</th>
-            <th>Attestations</th>
-            <th>Deposits</th>
-            <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-            <th>Finalized</th>
-            <th>Eligible</th>
-            <th>Voted</th>
-          </tr>
-        </thead>
-        <tbody> </tbody>
-      </table>
-    </div>
-  </div>
+	<div class="card-body px-0 py-2">
+		<div class="table-responsive pt-2">
+			<table class="table" id="epochs">
+				<thead>
+					<tr>
+						<th>Epoch</th>
+						<th>Time</th>
+						<th>Attestations</th>
+						<th>Deposits</th>
+						<th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+						<th>Finalized</th>
+						<th>Eligible</th>
+						<th>Voted</th>
+					</tr>
+				</thead>
+				<tbody> </tbody>
+			</table>
+		</div>
+	</div>
 </div>
 {{end}}

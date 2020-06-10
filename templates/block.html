@@ -1,46 +1,31 @@
 {{ define "js"}}
 	<script type="text/javascript">
-        function viewGraffitiAs(type) {
-            var graffitiHex = $("[aria-graffiti]").attr("aria-graffiti");
+		function viewGraffitiAs(type) {
+			var graffitiHex = $("[aria-graffiti]").attr("aria-graffiti");
 
-            if (!graffitiHex) {
-            	return
+			if (!graffitiHex) {
+				return
 			}
 
-            if (type === "hex") {
-                $("#graffiti").text("0x" + graffitiHex)
-            } else {
-                try {
-                    var r = decodeURIComponent(graffitiHex.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'));
-                    $("#graffiti").text(r)
-                } catch (e) {
-                    $("#graffiti").text(hex2a(graffitiHex.replace("0x", "")))
-                }
-            }
-        }
+			if (type === "hex") {
+				$("#graffiti").text("0x" + graffitiHex)
+			} else {
+				try {
+					var r = decodeURIComponent(graffitiHex.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&'));
+					$("#graffiti").text(r)
+				} catch (e) {
+					$("#graffiti").text(hex2a(graffitiHex.replace("0x", "")))
+				}
+			}
+		}
 
-        function hex2a(hexx) {
-            var hex = hexx.toString();//force conversion
-            var str = '';
-            for (var i = 0; i < hex.length; i += 2)
-                str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-            return str;
-        }
-
-        // Javascript to enable link to tab
-        var url = document.location.toString();
-        if (url.match('#')) {
-            $('.nav-tabs a[href="#'+url.split('#')[1]+'"]').tab('show') ;
-        }
-
-        // With HTML5 history API, we can easily prevent scrolling!
-        $('.nav-tabs a').on('shown.bs.tab', function (e) {
-            if(history.pushState) {
-                history.pushState(null, null, e.target.hash);
-            } else {
-                window.location.hash = e.target.hash; //Polyfill for old browsers
-            }
-        })
+		function hex2a(hexx) {
+			var hex = hexx.toString();//force conversion
+			var str = '';
+			for (var i = 0; i < hex.length; i += 2)
+				str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+			return str;
+		}
 
 		viewGraffitiAs('utf-8')
 	</script>
@@ -259,7 +244,7 @@
 							<div class="col-md-2">Validators:</div>
 							<div class="col-md-10">
 								{{range $validator := $attestation.Validators}}
-                                    {{formatValidatorInt64 $validator}}
+									{{formatValidatorInt64 $validator}}
 								{{end}}
 							</div>
 						</div>
@@ -347,9 +332,9 @@
 						<div class="row border-bottom p-1 mx-0">
 							<div class="col-md-2">Slashed Validator(s):</div>
 							<div class="col-md-10">
-                                {{range $validator := $attestationSlashing.SlashedValidators}}
-                                    {{formatSlashedValidatorInt64 $validator}}
-                                {{end}}
+								{{range $validator := $attestationSlashing.SlashedValidators}}
+									{{formatSlashedValidatorInt64 $validator}}
+								{{end}}
 							</div>
 						</div>
 						<div class="row border-bottom p-1 mx-0">
@@ -383,7 +368,7 @@
 							<div class="col-md-2">Attesting Validators:</div>
 							<div class="col-md-10">
 								{{range $validator := $attestationSlashing.Attestation1Indices}}
-                                    {{formatValidatorInt64 $validator}}
+									{{formatValidatorInt64 $validator}}
 								{{end}}
 							</div>
 						</div>
@@ -418,7 +403,7 @@
 							<div class="col-md-2">Attesting Validators:</div>
 							<div class="col-md-10">
 								{{range $validator := $attestationSlashing.Attestation2Indices}}
-                                    {{formatValidatorInt64 $validator}}
+									{{formatValidatorInt64 $validator}}
 								{{end}}
 							</div>
 						</div>
@@ -427,7 +412,7 @@
 				{{end}}
 				{{if gt .ProposerSlashingsCount 0}}
 					<div class="tab-pane fade" id="pills-proposer-slashings" role="tabpanel" aria-labelledby="pills-proposer-slashings-tab">
-                        {{range $i, $proposerSlashing := .ProposerSlashings}}
+						{{range $i, $proposerSlashing := .ProposerSlashings}}
 							<div class="row border-bottom p-1 mx-0">
 								<div class="col-md-12 text-center"><b>Slashing {{$i}}</b></div>
 							</div>
@@ -475,7 +460,7 @@
 								<div class="col-md-2">Header 2 Signature:</div>
 								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header2Signature}}</div>
 							</div>
-                        {{end}}
+						{{end}}
 					</div>
 				{{end}}
 			</div>

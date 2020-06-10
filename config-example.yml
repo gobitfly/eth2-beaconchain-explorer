@@ -32,3 +32,6 @@ indexer:
     host: "localhost" # Address of the backend node
     port: "4000" # port of the backend node
     type: "prysm" # can be either prysm or lighthouse
+  eth1Endpoint: 'https://goerli.infura.io/v3/<api-token>'
+  eth1DepositContractAddress: '0x5cA1e00004366Ac85f492887AAab12d0e6418876'
+  eth1DepositContractFirstBlock: 2523557

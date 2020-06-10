@@ -15,20 +15,22 @@ import (
 	"time"
 )
 
-var validatorsLeaderboardTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators_leaderboard.html"))
+var ethTemplates = template.Must(template.New("deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethOneDeposit.html"))
 
-// ValidatorsLeaderboard returns the validator-leaderboard using a go template
-func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
+// EthOneDeposits will return information about deposits using a go template
+func EthOneDeposits(w http.ResponseWriter, r *http.Request) {
+
 	w.Header().Set("Content-Type", "text/html")
+	ethTemplates = template.Must(template.New("deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethOneDeposit.html"))
 
 	data := &types.PageData{
 		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Validator Staking Leaderboard - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
+			Title:       fmt.Sprintf("%v - Eth1 Deposits - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/validators/leaderboard",
+			Path:        "/deposits/eth1",
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "validators",
+		Active:                "ethOneDeposit",
 		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -38,7 +40,7 @@ func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		CurrentSlot:           services.LatestSlot(),
 	}
 
-	err := validatorsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)
+	err := ethTemplates.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -47,16 +49,14 @@ func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ValidatorsLeaderboardData returns the leaderboard of validators according to their income in json
-func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
+// EthOneDepositsData will return eth1-deposits as json
+func EthOneDepositsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
 
-	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
-	if len(search) > 128 {
-		search = search[:128]
-	}
+	search := q.Get("search[value]")
+	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
@@ -82,69 +82,55 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
-		"4": "performance1d",
-		"5": "performance7d",
-		"6": "performance31d",
-		"7": "performance365d",
+		"0": "from_address",
+		"1": "publickey",
+		"2": "amount",
+		"3": "tx_hash",
+		"4": "block_ts",
+		"5": "block_number",
+		"6": "state",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
-		orderBy = "performance7d"
+		orderBy = "block_ts"
 	}
 
 	orderDir := q.Get("order[0][dir]")
-	if orderDir != "desc" && orderDir != "asc" {
-		orderDir = "desc"
-	}
 
-	var totalCount uint64
-
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_performance")
+	depositCount, err := db.GetEth1DepositsCount()
 	if err != nil {
-		logger.Errorf("error retrieving proposed blocks count: %v", err)
+		logger.Errorf("GetEth1DepositsCount error retrieving eth1_deposit data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
-	var performanceData []*types.ValidatorPerformance
-	err = db.DB.Select(&performanceData, `
-		SELECT * FROM (
-			SELECT 
-				ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
-				validator_performance.*,
-				validators.pubkey 
-			FROM validator_performance 
-				LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
-			ORDER BY `+orderBy+` `+orderDir+`
-		) AS a
-		WHERE (encode(a.pubkey::bytea, 'hex') LIKE $3
-			OR CAST(a.validatorindex AS text) LIKE $3)
-		LIMIT $1 OFFSET $2`, length, start, "%"+search+"%")
+	latestEpoch := services.LatestEpoch()
+	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 
+	deposits, err := db.GetEth1DepositsJoinEth2Deposits(search, length, start, orderBy, orderDir, latestEpoch, validatorOnlineThresholdSlot)
 	if err != nil {
-		logger.Errorf("error retrieving validator attestations data: %v", err)
+		logger.Errorf("GetEth1Deposits error retrieving eth1_deposit data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
-	tableData := make([][]interface{}, len(performanceData))
-	for i, b := range performanceData {
+	tableData := make([][]interface{}, len(deposits))
+	for i, d := range deposits {
 		tableData[i] = []interface{}{
-			b.Rank,
-			utils.FormatValidator(b.Index),
-			utils.FormatPublicKey(b.PublicKey),
-			fmt.Sprintf("%v", b.Balance),
-			utils.FormatIncome(b.Performance1d),
-			utils.FormatIncome(b.Performance7d),
-			utils.FormatIncome(b.Performance31d),
-			utils.FormatIncome(b.Performance365d),
+			utils.FormatEth1Address(d.FromAddress),
+			utils.FormatPublicKey(d.PublicKey),
+			utils.FormatDepositAmount(d.Amount),
+			utils.FormatEth1TxHash(d.TxHash),
+			utils.FormatTimestamp(d.BlockTs.Unix()),
+			utils.FormatEth1Block(d.BlockNumber),
+			utils.FormatValidatorStatus(d.State),
 		}
 	}
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    totalCount,
-		RecordsFiltered: totalCount,
+		RecordsTotal:    depositCount,
+		RecordsFiltered: depositCount,
 		Data:            tableData,
 	}
 

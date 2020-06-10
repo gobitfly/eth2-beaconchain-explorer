@@ -19,6 +19,8 @@ type PageData struct {
 	ChainSlotsPerEpoch    uint64
 	ChainSecondsPerSlot   uint64
 	ChainGenesisTimestamp uint64
+	CurrentEpoch          uint64
+	CurrentSlot           uint64
 }
 
 // Meta is a struct to hold metadata about the page
@@ -144,12 +146,15 @@ type ValidatorPageData struct {
 	AttestationsCount                uint64
 	StatusProposedCount              uint64
 	StatusMissedCount                uint64
+	DepositsCount                    uint64
+	SlashingsCount                   uint64
 	Income1d                         int64
 	Income7d                         int64
 	Income31d                        int64
 	Proposals                        [][]uint64
 	BalanceHistoryChartData          [][]float64
 	EffectiveBalanceHistoryChartData [][]float64
+	Deposits                         *ValidatorDeposits
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -442,6 +447,11 @@ type SearchAheadGraffitiResult []struct {
 	Root     string `db:"blockroot" json:"blockroot,omitempty"`
 }
 
+type SearchAheadEth1Result []struct {
+	Publickey   string `db:"publickey" json:"publickey,omitempty"`
+	Eth1Address string `db:"from_address" json:"address,omitempty"`
+}
+
 // SearchAheadValidatorsResult is a struct to hold the search ahead validators results
 type SearchAheadValidatorsResult []struct {
 	Index  string `db:"index" json:"index,omitempty"`
@@ -515,4 +525,45 @@ type ValidatorProposerSlashing struct {
 	Slot          uint64 `db:"slot" json:"slot,omitempty"`
 	Proposer      uint64 `db:"proposer" json:"proposer,omitempty"`
 	ProposerIndex uint64 `db:"proposerindex" json:"proposer_index,omitempty"`
+}
+
+type ValidatorSlashing struct {
+	Epoch                  uint64        `db:"epoch" json:"epoch,omitempty"`
+	Slot                   uint64        `db:"slot" json:"slot,omitempty"`
+	Proposer               uint64        `db:"proposer" json:"proposer,omitempty"`
+	SlashedValidator       *uint64       `db:"slashedvalidator" json:"slashed_validator,omitempty"`
+	Attestestation1Indices pq.Int64Array `db:"attestation1_indices" json:"attestation1_indices,omitempty"`
+	Attestestation2Indices pq.Int64Array `db:"attestation2_indices" json:"attestation2_indices,omitempty"`
+	Type                   string        `db:"type" json:"type"`
+}
+
+// EpochsPageData is a struct to hold epoch data for the epochs page
+type EthOneDepositsPageData struct {
+	TxHash                []byte    `db:"tx_hash"`
+	TxInput               []byte    `db:"tx_input"`
+	TxIndex               uint64    `db:"tx_index"`
+	BlockNumber           uint64    `db:"block_number"`
+	BlockTs               time.Time `db:"block_ts"`
+	FromAddress           []byte    `db:"from_address"`
+	PublicKey             []byte    `db:"publickey"`
+	WithdrawalCredentials []byte    `db:"withdrawal_credentials"`
+	Amount                uint64    `db:"amount"`
+	Signature             []byte    `db:"signature"`
+	MerkletreeIndex       []byte    `db:"merkletree_index"`
+	State                 string    `db:"state"`
+}
+
+type EthTwoDepositsPageData struct {
+	BlockSlot             uint64 `db:"block_slot"`
+	BlockIndex            uint64 `db:"block_index"`
+	Proof                 []byte `db:"proof"`
+	Publickey             []byte `db:"publickey"`
+	Withdrawalcredentials []byte `db:"withdrawalcredentials"`
+	Amount                uint64 `db:"amount"`
+	Signature             []byte `db:"signature"`
+}
+
+type ValidatorDeposits struct {
+	Eth1Deposits []Eth1Deposit
+	Eth2Deposits []Eth2Deposit
 }
