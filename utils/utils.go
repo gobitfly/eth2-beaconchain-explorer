@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -147,4 +148,12 @@ func MustParseHex(hexString string) []byte {
 func IsApiRequest(r *http.Request) bool {
 	query, ok := r.URL.Query()["format"]
 	return ok && len(query) > 0 && query[0] == "json"
+}
+
+var eth1AddressRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{40}$")
+var zeroHashRE = regexp.MustCompile("^0?x?0+$")
+
+// IsValidEth1Address verifies whether a string can represents a valid eth1-address.
+func IsValidEth1Address(s string) bool {
+	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
 }
