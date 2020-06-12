@@ -55,7 +55,7 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 				GROUP BY vv.validatorindex
 			)
 		SELECT
-			SUM(last.balance - first.balance - d.amount) AS earnings
+			COALESCE(SUM(last.balance - first.balance - d.amount), 0) AS earnings
 		FROM minmaxepoch
 		INNER JOIN validator_balances first
 			ON first.validatorindex = minmaxepoch.validatorindex
