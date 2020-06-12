@@ -1,6 +1,6 @@
-# Database credentials
+# Database credentials main dev debug
 database:
-  user: "<dbuser>"
+  user: "beacon"
   name: "<dbname>"
   host: "<dbhost>"
   port: "<dbport>"
@@ -10,7 +10,7 @@ database:
 chain:
   slotsPerEpoch: 32
   secondsPerSlot: 12
-  genesisTimestamp: 1573489682
+  genesisTimestamp: 1592111844 #2020-06-14T05:17:24Z
 
 # Note: It is possible to run either the frontend or the indexer or both at the same time
 # Frontend config
@@ -33,5 +33,5 @@ indexer:
     port: "4000" # port of the backend node
     type: "prysm" # can be either prysm or lighthouse
   eth1Endpoint: 'https://goerli.infura.io/v3/<api-token>'
-  eth1DepositContractAddress: '0x5cA1e00004366Ac85f492887AAab12d0e6418876'
-  eth1DepositContractFirstBlock: 2523557
+  eth1DepositContractAddress: '0x0F0F0fc0530007361933EaB5DB97d09aCDD6C1c8'
+  eth1DepositContractFirstBlock: 2844925
