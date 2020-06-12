@@ -1,4 +1,4 @@
-# Database credentials main dev debug
+# Database credentials
 database:
   user: "beacon"
   name: "<dbname>"
