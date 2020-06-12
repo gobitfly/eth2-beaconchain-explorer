@@ -55,7 +55,7 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 	return deposits, nil
 }
 
-func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsPageData, error) {
+func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsPageData, uint64, error) {
 	deposits := []*types.EthOneDepositsPageData{}
 
 	if orderDir != "desc" && orderDir != "asc" {
@@ -72,8 +72,25 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		orderBy = "block_ts"
 	}
 
+	var err error
+	var totalCount uint64
 	if query != "" {
-		err := DB.Select(&deposits, fmt.Sprintf(`
+		err = DB.Get(&totalCount, `
+			SELECT COUNT(*) FROM eth1_deposits as eth1
+			WHERE 
+				ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($1)
+				OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($1)
+				OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($1)
+				OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($1)`, query+"%")
+	} else {
+		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits")
+	}
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if query != "" {
+		err = DB.Select(&deposits, fmt.Sprintf(`
 		SELECT 
 			eth1.tx_hash as tx_hash,
 			eth1.tx_input as tx_input,
@@ -115,11 +132,8 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir), length, start, query+"%", latestEpoch, validatorOnlineThresholdSlot)
-		if err != nil {
-			return nil, err
-		}
 	} else {
-		err := DB.Select(&deposits, fmt.Sprintf(`
+		err = DB.Select(&deposits, fmt.Sprintf(`
 		SELECT 
 			eth1.tx_hash as tx_hash,
 			eth1.tx_input as tx_input,
@@ -153,12 +167,12 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot)
-		if err != nil {
-			return nil, err
-		}
+	}
+	if err != nil {
+		return nil, 0, err
 	}
 
-	return deposits, nil
+	return deposits, totalCount, nil
 }
 
 func GetEth1DepositsCount() (uint64, error) {

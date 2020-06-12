@@ -15,19 +15,18 @@ import (
 	"time"
 )
 
-var ethTemplates = template.Must(template.New("deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethOneDeposit.html"))
+var ethTwoTemplate = template.Must(template.New("ethTwoDeposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethTwoDeposit.html"))
 
-// EthOneDeposits will return information about deposits using a go template
-func EthOneDeposits(w http.ResponseWriter, r *http.Request) {
+// Eth2Deposits will return information about deposits using a go template
+func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
-	ethTemplates = template.Must(template.New("deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethOneDeposit.html"))
-
+	ethTwoTemplate = template.Must(template.New("ethTwoDeposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethTwoDeposit.html"))
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - Eth1 Deposits - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/deposits/eth1",
+			Path:        "/deposits/eth2",
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "ethOneDeposit",
@@ -40,7 +39,7 @@ func EthOneDeposits(w http.ResponseWriter, r *http.Request) {
 		CurrentSlot:           services.LatestSlot(),
 	}
 
-	err := ethTemplates.ExecuteTemplate(w, "layout", data)
+	err := ethTwoTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -49,8 +48,8 @@ func EthOneDeposits(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// EthOneDepositsData will return eth1-deposits as json
-func EthOneDepositsData(w http.ResponseWriter, r *http.Request) {
+// Eth2DepositsData will return information eth1-deposits in json
+func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -82,13 +81,13 @@ func EthOneDepositsData(w http.ResponseWriter, r *http.Request) {
 
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
-		"0": "from_address",
+		"0": "block_slot",
+		// "1": "block_index",
+		// "2": "proof",
 		"1": "publickey",
 		"2": "amount",
-		"3": "tx_hash",
-		"4": "block_ts",
-		"5": "block_number",
-		"6": "state",
+		"3": "withdrawalcredentials",
+		"4": "signature",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -97,17 +96,14 @@ func EthOneDepositsData(w http.ResponseWriter, r *http.Request) {
 
 	orderDir := q.Get("order[0][dir]")
 
-	depositCount, err := db.GetEth1DepositsCount()
+	depositCount, err := db.GetEth2DepositsCount()
 	if err != nil {
 		logger.Errorf("GetEth1DepositsCount error retrieving eth1_deposit data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
-	latestEpoch := services.LatestEpoch()
-	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
-
-	deposits, err := db.GetEth1DepositsJoinEth2Deposits(search, length, start, orderBy, orderDir, latestEpoch, validatorOnlineThresholdSlot)
+	deposits, err := db.GetEth2Deposits(search, length, start, orderBy, orderDir)
 	if err != nil {
 		logger.Errorf("GetEth1Deposits error retrieving eth1_deposit data: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -117,13 +113,11 @@ func EthOneDepositsData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, len(deposits))
 	for i, d := range deposits {
 		tableData[i] = []interface{}{
-			utils.FormatEth1Address(d.FromAddress),
-			utils.FormatPublicKey(d.PublicKey),
+			utils.FormatBlockSlot(d.BlockSlot),
+			utils.FormatPublicKey(d.Publickey),
 			utils.FormatDepositAmount(d.Amount),
-			utils.FormatEth1TxHash(d.TxHash),
-			utils.FormatTimestamp(d.BlockTs.Unix()),
-			utils.FormatEth1Block(d.BlockNumber),
-			utils.FormatValidatorStatus(d.State),
+			utils.FormatHash(d.Withdrawalcredentials),
+			utils.FormatHash(d.Signature),
 		}
 	}
 
