@@ -1,6 +1,6 @@
 # Database credentials
 database:
-  user: "beacon"
+  user: "<dbuser>"
   name: "<dbname>"
   host: "<dbhost>"
   port: "<dbport>"
