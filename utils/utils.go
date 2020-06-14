@@ -20,7 +20,7 @@ import (
 )
 
 // PageSize is the number of records used when fetching RPC data
-const PageSize = 10000
+const PageSize = 500
 
 // Config is the globally accessible configuration
 var Config *types.Config
