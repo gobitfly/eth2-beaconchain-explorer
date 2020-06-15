@@ -16,15 +16,16 @@ $(document).ready(function() {
 
 // Theme switch
 function switchTheme(e) {
+  var d1 = document.getElementById('app-theme');
+  //checked is light
   if (e.target.checked) {
+    d1.href = "/bootstrap/css/beacon-light.min.css"
     document.documentElement.setAttribute('data-theme', 'light')
     localStorage.setItem('theme', 'light')
-    document.getElementById('nav').classList.remove('navbar-dark')
-    document.getElementById('nav').classList.add('navbar-light')
-  } else {
+
+  } else { // dark theme
+    d1.href = "/bootstrap/css/beacon-dark.min.css"
     document.documentElement.setAttribute('data-theme', 'dark')
-    document.getElementById('nav').classList.remove('navbar-light')
-    document.getElementById('nav').classList.add('navbar-dark')
     localStorage.setItem('theme', 'dark')
   }
 }
