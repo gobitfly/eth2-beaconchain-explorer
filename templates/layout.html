@@ -62,6 +62,9 @@
     <div class="info-banner-container">
       <div class="info-banner-content container d-flex align-items-center">
             <div class="info-banner-stats">
+                <a style="color: inherit;" class="mr-2" href="/">
+                    <i class="fas fa-home"></i>
+                </a>
                 <div class="info-item d-flex mr-3">
                     <div class="info-item-header mr-1">Epoch</div>
                     <div class="info-item-body">{{.CurrentEpoch}}</div>
@@ -96,7 +99,7 @@
         } 
     </script>
         <div  class="container">
-                    <a class=navbar-brand href="/">
+                <a class=navbar-brand href="/">
                     <i {{ if eq .Active "index"}}style="color: var(--font-color)"{{else}}style="opacity: .7"{{end}} class="fas fa-satellite-dish mr-1"></i>
                     <span class="brand-text">beaconcha.in</span>
                 </a>
