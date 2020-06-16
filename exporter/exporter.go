@@ -379,10 +379,6 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 
 // ExportEpoch will export an epoch from rpc into the database
 func ExportEpoch(epoch uint64, client rpc.Client) error {
-	if epoch == 0 {
-		logger.Printf("Skipping export of epoch 0")
-		return nil
-	}
 	start := time.Now()
 
 	logger.Printf("retrieving data for epoch %v", epoch)

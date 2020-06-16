@@ -223,15 +223,11 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	// Attestation assignments are cached by the slot & committee key
 	for _, assignment := range validatorAssignmentes {
 		for _, slot := range assignment.ProposerSlots {
-			if slot > 0 {
-				assignments.ProposerAssignments[slot] = validators[fmt.Sprintf("%x", assignment.PublicKey)]
-			}
+			assignments.ProposerAssignments[slot] = validators[fmt.Sprintf("%x", assignment.PublicKey)]
 		}
 
-		if assignment.AttesterSlot > 0 {
-			for memberIndex, validatorIndex := range assignment.BeaconCommittees {
-				assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(assignment.AttesterSlot, assignment.CommitteeIndex, uint64(memberIndex))] = validatorIndex
-			}
+		for memberIndex, validatorIndex := range assignment.BeaconCommittees {
+			assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(assignment.AttesterSlot, assignment.CommitteeIndex, uint64(memberIndex))] = validatorIndex
 		}
 	}
 
