@@ -165,7 +165,7 @@ ul.multiselect input:focus {
 }
 
 .dashboard-container > div {
-  margin: 2rem auto;
+  margin: .5rem auto;
 }
  
 .dashboard-header {
@@ -222,9 +222,9 @@ ul.multiselect input:focus {
     margin: .5rem;
   }
 
-  .dashboard-container > div {
-  margin: 1rem auto;
-}
+    .dashboard-container > div {
+    margin: .5rem auto;
+  }
 }
 
 .dashboard-header-content .title, .dashboard-title-value .title {

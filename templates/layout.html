@@ -31,9 +31,12 @@
 
         <link rel="stylesheet" href="/css/fontawesome.min.css">
 
-        <link id="app-style-initial" rel="stylesheet" href="/bootstrap/css/beacon-light.min.css">
+        <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
         <link id="app-style" rel="stylesheet" href="/css/layout.css">
-        <link rel="stylesheet" href="/css/styles.css">
+        <!-- <link rel="stylesheet" href="/css/styles.css"> -->
+        <link rel="stylesheet" href="/css/layout/toggle.css">
+        <link rel="stylesheet" href="/css/layout/typeahead.css">
+        <link rel="stylesheet" href="/css/layout/banner.css">
         <script>
             var mql = window.matchMedia('(prefers-color-scheme: light)');
             var lightScheme = mql.matches;
@@ -53,7 +56,7 @@
                     document.getElementById('app-style-initial').remove()
                     document.documentElement.style.visibility = 'visible'
                 })
-                d1.insertAdjacentHTML('beforebegin', '<link id="app-theme" rel="stylesheet" type="text/css" href="/bootstrap/css/beacon-'+currentTheme+'.min.css" onload="document.documentElement.style.display = ``">');
+                d1.insertAdjacentHTML('beforebegin', '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-'+currentTheme+'.min.css" onload="document.documentElement.style.display = ``">');
             } else {
                 document.getElementById('app-style-initial').id = 'app-theme'
             }
@@ -322,7 +325,7 @@
             integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
             crossorigin="anonymous"></script>
     
-            <script src="/bootstrap/js/bootstrap.min.js"></script>
+            <script src="/theme/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
     <script src="/js/layout.js"></script>

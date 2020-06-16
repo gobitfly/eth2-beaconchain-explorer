@@ -1,0 +1,30 @@
+.info-banner-container {
+  position: fixed;
+  z-index: 999;
+  width: 100%;
+  background-color: var(--banner-background);
+  color: var(--banner-text);
+}
+
+.info-banner-content {
+  height: inherit;
+}
+
+.info-item-body {
+  font-weight: bold;
+}
+
+.info-item-header:after {
+  content: ':';
+}
+
+.info-banner-stats {
+  display: flex;
+  font-size: 90%;
+}
+
+@media (max-width: 960px) {
+  .info-banner-stats {
+    display: none;
+  }
+}

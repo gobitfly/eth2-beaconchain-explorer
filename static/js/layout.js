@@ -19,12 +19,12 @@ function switchTheme(e) {
   var d1 = document.getElementById('app-theme');
   //checked is light
   if (e.target.checked) {
-    d1.href = "/bootstrap/css/beacon-light.min.css"
+    d1.href = "/theme/css/beacon-light.min.css"
     document.documentElement.setAttribute('data-theme', 'light')
     localStorage.setItem('theme', 'light')
 
   } else { // dark theme
-    d1.href = "/bootstrap/css/beacon-dark.min.css"
+    d1.href = "/theme/css/beacon-dark.min.css"
     document.documentElement.setAttribute('data-theme', 'dark')
     localStorage.setItem('theme', 'dark')
   }

@@ -1,0 +1,84 @@
+.theme-switch-wrapper {
+  position: relative;
+  display: contents;
+}
+
+.theme-switch {
+  height: calc(var(--font-size, 1rem) * 1.2);
+  position: absolute;
+  width: calc(var(--font-size, 1rem) * 2.4);
+  margin-top: 0.1rem;
+  margin-bottom: 0rem;
+  margin-left: 0.1rem;
+}
+
+.theme-switch input {
+  display: none;
+}
+
+.slider {
+  background-color: var(--shadow-light, rgba(151, 152, 155, 0.2));
+  bottom: 0;
+  cursor: pointer;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transition: 0.4s;
+}
+
+.sun,
+.moon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  width: auto;
+  height: calc(var(--font-size, 1rem) * 0.6);
+}
+
+.moon {
+  left: calc(var(--font-size, 1rem) * 0.3);
+}
+.sun {
+  right: calc(var(--font-size, 1rem) * 0.28);
+}
+
+.slider:before {
+  background: var(--primary, #222);
+  bottom: calc(var(--font-size, 1rem) * 0.1);
+  content: '';
+  height: var(--font-size, 1rem);
+  left: calc(var(--font-size, 1rem) * 0.1);
+  position: absolute;
+  transition: 0.4s;
+  width: var(--font-size, 1rem);
+}
+
+input:checked ~ .moon path {
+  fill: var(--shadow-dark, rgba(159, 162, 177, 0.8));
+}
+
+input:checked ~ .sun path {
+  fill: #f5f3ce;
+}
+
+input ~ .sun path {
+  fill: var(--shadow-dark, rgba(159, 162, 177, 0.8));
+}
+
+input ~ .moon path {
+  fill: #f5f3ce;
+}
+
+input:checked + .slider:before {
+  transform: translateX(calc(var(--font-size, 1rem) * 1.2));
+}
+
+.slider.round {
+  border-radius: 30px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
