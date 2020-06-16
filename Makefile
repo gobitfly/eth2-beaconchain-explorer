@@ -5,14 +5,10 @@ BUILDDATE=`date -u +"%Y-%m-%dT%H:%M:%S%:z"`
 PACKAGE=eth2-exporter
 LDFLAGS="-X ${PACKAGE}/version.Version=${VERSION} -X ${PACKAGE}/version.BuildDate=${BUILDDATE} -X ${PACKAGE}/version.GitCommit=${GITCOMMIT} -X ${PACKAGE}/version.GitDate=${GITDATE}"
 
-all: bootstrap explorer
+all: explorer
 
 lint:
 	golint ./...
-
-bootstrap:
-	rm static/bootstrap/css/bootstrap*
-	npm ci --prefix ./bootstrap && npm run --prefix ./bootstrap dist-css
 
 explorer:
 	rm -rf bin/

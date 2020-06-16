@@ -100,11 +100,6 @@ ul.multiselect li.input span {
 }
 
 ul.multiselect li.input input {
-  /* margin: 0 2px;
-  background: var(--bg-color);
-  color: var(--font-color);
-  border: none;
-  padding: 0 0.2rem; */
   color: var(--font-color);
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -144,14 +139,8 @@ ul.multiselect input:focus {
 }
 .stats-box {
   flex: 1;
-  /*flex-basis: auto;
-  flex-grow: 1;
-  min-width: 100px;
-  max-width: 120px;*/
   margin: 10px;
   padding: 10px;
-  /*border: 1px solid black;*/
-  /*background: #e1d8d8;*/
   box-shadow: 0 2px 8px 0 var(--shadow-light);
   border-radius: 10px;
 }
@@ -171,13 +160,12 @@ ul.multiselect input:focus {
   }
 }
 
-
 .dashboard-container {
   margin: 2rem 0;
 }
 
 .dashboard-container > div {
-  margin: 2rem auto;
+  margin: .5rem auto;
 }
  
 .dashboard-header {
@@ -234,9 +222,9 @@ ul.multiselect input:focus {
     margin: .5rem;
   }
 
-  .dashboard-container > div {
-  margin: 1rem auto;
-}
+    .dashboard-container > div {
+    margin: .5rem auto;
+  }
 }
 
 .dashboard-header-content .title, .dashboard-title-value .title {
@@ -268,8 +256,6 @@ ul.multiselect input:focus {
 }
 
 .dashboard-charts > div {
-  /* width: 200px; */
-  /* padding: 1rem 1.5rem; */
   flex: 1 600px;
   margin: .5rem;
 }
