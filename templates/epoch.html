@@ -85,14 +85,14 @@
                 <div class="col-md-3">Avg. Validator Balance:</div>
                 <div class="col-md-9">{{.AverageValidatorBalance | formatBalance}}</div>
             </div>
-            <a style="cursor:pointer;" data-toggle="collapse" data-target="#epoch-blocks" aria-expand="true" aria-controls="epoch-blocks" class="row p-3 mx-0 collapsed">
+            <span style="cursor:pointer;" data-toggle="collapse" data-target="#epoch-blocks" aria-expand="true" aria-controls="epoch-blocks" class="row p-3 mx-0 collapsed">
                 <div style="position:relative" class="col-md-3">Blocks: </div>
                 <div class="col-md-9"></i> {{.BlocksCount}}</div>
-            </a>
+            </span>
         </div>
     </div>
     
-    <div id="epoch-blocks" class="card my-3 collapse show">
+    <div id="epoch-blocks" class="card my-3 py-0 collapse show">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table">
