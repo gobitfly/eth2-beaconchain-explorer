@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -25,6 +26,7 @@ func Start(client rpc.Client) error {
 	go performanceDataUpdater()
 	go networkLivenessUpdater(client)
 	go eth1DepositsExporter()
+	go genesisDepositsExporter()
 
 	// wait until the beacon-node is available
 	for {
@@ -32,7 +34,7 @@ func Start(client rpc.Client) error {
 		if err == nil {
 			break
 		}
-		logger.Errorf("beacon-node seems to be unavailable: %w", err)
+		logger.Errorf("beacon-node seems to be unavailable: %v", err)
 		time.Sleep(time.Second * 10)
 	}
 
@@ -653,5 +655,87 @@ func networkLivenessUpdater(client rpc.Client) {
 		}
 
 		time.Sleep(slotDuration)
+	}
+}
+
+func genesisDepositsExporter() {
+	for {
+		// check if the beaconchain has started
+		latestEpoch := services.LatestEpoch()
+		if latestEpoch == 0 {
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
+		// check if genesis-deposits have already been exported
+		var genesisDepositsCount uint64
+		err := db.DB.Get(&genesisDepositsCount, "SELECT COUNT(*) FROM blocks_deposits WHERE block_slot=0")
+		if err != nil {
+			logger.Errorf("error retrieving genesis-deposits-count when exporting genesis-deposits: %v", err)
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
+		// if genesis-deposits have already been exported exit this go-routine
+		if genesisDepositsCount > 0 {
+			return
+		}
+
+		// get genesis-validators-count
+		var genesisValidatorsCount uint64
+		err = db.DB.Get(&genesisValidatorsCount, "SELECT validatorscount FROM epochs WHERE epoch=0")
+		if err != nil {
+			logger.Errorf("error retrieving validatorscount for genesis-epoch when exporting genesis-deposits: %v", err)
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
+		// check if eth1-deposits have already been exported
+		var missingEth1Deposits uint64
+		err = db.DB.Get(&missingEth1Deposits, `
+			SELECT COUNT(*)
+			FROM validators v
+			LEFT JOIN ( 
+				SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
+			) d ON d.publickey = v.pubkey
+			WHERE d.publickey IS NULL AND v.validatorindex < $1`, genesisValidatorsCount)
+		if err != nil {
+			logger.Errorf("error retrieving missing-eth1-deposits-count when exporting genesis-deposits")
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
+		if missingEth1Deposits > 0 {
+			logger.Infof("delaying export of genesis-deposits until eth1-deposits have been exported")
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
+		// export genesis-deposits from eth1-deposits and data already gathered from the eth2-client
+		_, err = db.DB.Exec(`
+				INSERT INTO blocks_deposits (block_slot, block_index, publickey, withdrawalcredentials, amount, signature)
+				SELECT
+					0 as block_slot,
+					v.validatorindex as block_index,
+					v.pubkey as publickey,
+					v.withdrawalcredentials,
+					b.balance as amount,
+					d.signature as signature
+				FROM validators v
+				LEFT JOIN validator_balances b 
+					ON v.validatorindex = b.validatorindex
+					AND b.epoch = 0
+				LEFT JOIN ( 
+					SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
+				) d ON d.publickey = v.pubkey
+				WHERE v.validatorindex < $1`, genesisValidatorsCount)
+		if err != nil {
+			logger.Errorf("error exporting genesis-deposits when exporting genesis-deposits: %v", err)
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
+		logger.Infof("exported genesis-deposits for %v genesis-validators", genesisValidatorsCount)
+		return
 	}
 }
