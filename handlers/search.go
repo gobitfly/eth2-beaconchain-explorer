@@ -151,6 +151,27 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			logger.WithError(err).Error("error encoding searchAhead-validators-result")
 			http.Error(w, "Internal server error", 503)
 		}
+	case "indexedvalidators":
+		// find all validators that have a publickey or index like the search-query
+		validators := &types.SearchAheadValidatorsResult{}
+		err := db.DB.Select(validators, `
+			SELECT DISTINCT CAST(validatorindex AS text) AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
+			FROM validators
+			LEFT JOIN eth1_deposits ON eth1_deposits.publickey = validators.pubkey
+			WHERE ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
+				OR CAST(validatorindex AS text) LIKE $1
+				OR ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
+			ORDER BY index LIMIT 10`, search+"%")
+		if err != nil {
+			logger.WithError(err).Error("error doing search-query for indexedvalidators")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = json.NewEncoder(w).Encode(validators)
+		if err != nil {
+			logger.WithError(err).Error("error encoding searchAhead-indexedvalidators-result")
+			http.Error(w, "Internal server error", 503)
+		}
 	case "eth1deposits":
 		eth1 := &types.SearchAheadEth1Result{}
 		err := db.DB.Select(eth1, `

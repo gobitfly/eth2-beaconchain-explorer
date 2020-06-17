@@ -260,7 +260,7 @@ $(document).ready(function() {
       return obj.index
     },
     remote: {
-      url: '/search/validators/%QUERY',
+      url: '/search/indexedvalidators/%QUERY',
       wildcard: '%QUERY'
     }
   })
