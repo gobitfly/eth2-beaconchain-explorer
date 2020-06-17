@@ -711,8 +711,15 @@ func genesisDepositsExporter() {
 			continue
 		}
 
+		tx, err := db.DB.Beginx()
+		if err != nil {
+			logger.Errorf("error beginning db-tx when exporting genesis-deposits: %v", err)
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
 		// export genesis-deposits from eth1-deposits and data already gathered from the eth2-client
-		_, err = db.DB.Exec(`
+		_, err = tx.Exec(`
 				INSERT INTO blocks_deposits (block_slot, block_index, publickey, withdrawalcredentials, amount, signature)
 				SELECT
 					0 as block_slot,
@@ -730,7 +737,24 @@ func genesisDepositsExporter() {
 				) d ON d.publickey = v.pubkey
 				WHERE v.validatorindex < $1`, genesisValidatorsCount)
 		if err != nil {
-			logger.Errorf("error exporting genesis-deposits when exporting genesis-deposits: %v", err)
+			tx.Rollback()
+			logger.Errorf("error exporting genesis-deposits: %v", err)
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
+		// update deposits-count
+		_, err = tx.Exec("UPDATE blocks SET depositscount = $1 WHERE slot = 0", genesisValidatorsCount)
+		if err != nil {
+			tx.Rollback()
+			logger.Errorf("error exporting genesis-deposits: %v", err)
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			logger.Errorf("error committing db-tx when exporting genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)
 			continue
 		}
