@@ -273,13 +273,13 @@
 		<div class="d-flex mb-1">
 			<h1 class="h4 mb-1 mb-md-0">
 				<span>Validator{{if ne .Status "deposited"}} {{.Index}}{{end}}</span>
-				<button class="btn btn-light btn-sm" type="button" id="copy-button" data-toggle="tooltip" data-placement="right" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
+				<button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" data-placement="right" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
 					<i class="fa fa-copy"></i>
 				</button>
-				<button class="btn btn-light btn-sm" type="button" id="add-to-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Add validator to dashboard">
+				<button class="btn btn-dark text-white btn-sm" type="button" id="add-to-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Add validator to dashboard">
 					<i class="fa fa-plus"></i>
 				</button>
-				<button class="btn btn-light btn-sm" type="button" id="remove-from-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Remove validator from dashboard">
+				<button class="btn btn-dark text-white btn-sm" type="button" id="remove-from-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Remove validator from dashboard">
 					<i class="fa fa-minus"></i>
 				</button>
 			</h1>

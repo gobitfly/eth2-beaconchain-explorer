@@ -50,12 +50,12 @@
             localStorage.setItem('theme', currentTheme);
             
             if(currentTheme === 'dark') {
-                document.documentElement.style.visibility = 'hidden'
+                d1.insertAdjacentHTML('beforebegin', '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-'+currentTheme+'.min.css" onload="document.documentElement.style.display = ``">');
+                // document.documentElement.style.visibility = 'hidden'
                 window.addEventListener('load', function() {
                     document.getElementById('app-style-initial').remove()
-                    document.documentElement.style.visibility = 'visible'
+                    // document.documentElement.style.visibility = 'visible'
                 })
-                d1.insertAdjacentHTML('beforebegin', '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-'+currentTheme+'.min.css" onload="document.documentElement.style.display = ``">');
             } else {
                 document.getElementById('app-style-initial').id = 'app-theme'
             }
