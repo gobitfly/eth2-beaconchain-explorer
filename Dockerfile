@@ -7,6 +7,7 @@ RUN cd /src && make -B all
 # final stage
 FROM alpine
 WORKDIR /app
+RUN apk --no-cache add libstdc++ libgcc
 COPY --from=build-env /src/bin /app/
 COPY ./config-example.yml /app/config.yml
 CMD ["./explorer"]
