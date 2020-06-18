@@ -445,6 +445,7 @@
 							<th>Block</th>
 							<th>Time</th>
 							<th>Amount</th>
+							<th>Valid</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -455,6 +456,7 @@
 							<td>{{formatEth1Block $deposit.BlockNumber}}</td>
 							<td>{{formatTimestamp $deposit.BlockTs}}</td>
 							<td>{{formatDepositAmount $deposit.Amount}}</td>
+							<td>{{$deposit.ValidSignature}}</td>
 						</tr>
 						{{end}}
 					</tbody>
@@ -481,6 +483,7 @@
 							<!-- <th>Proof</th> -->
 							<th>Withdrawal Credentials</th>
 							<th>Signature</th>
+							
 						</tr>
 					</thead>
 					 <tbody>

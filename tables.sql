@@ -259,6 +259,7 @@ create table eth1_deposits (
     signature bytea not null,
     merkletree_index bytea not null,
     removed bool not null,
+    valid_signature bool not null,
     primary key (tx_hash)
 );
 create index idx_eth1_deposits on eth1_deposits (publickey);
