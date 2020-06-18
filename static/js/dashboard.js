@@ -260,7 +260,18 @@ $(document).ready(function() {
       return obj.index
     },
     remote: {
-      url: '/search/indexedvalidators/%QUERY',
+      url: '/search/indexed_validators/%QUERY',
+      wildcard: '%QUERY'
+    }
+  })
+  var bhEth1Addresses = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function(obj) {
+      return obj.index
+    },
+    remote: {
+      url: '/search/indexed_eth1_addresses/%QUERY',
       wildcard: '%QUERY'
     }
   })
@@ -278,8 +289,21 @@ $(document).ready(function() {
       source: bhValidators,
       display: 'index',
       templates: {
+        header: '<h3>Validators</h3>',
         suggestion: function(data) {
           return `<div>${data.index}: ${data.pubkey.substring(0, 16)}…</div>`
+        }
+      }
+    },
+    {
+      limit: 5,
+      name: 'addresses',
+      source: bhEth1Addresses,
+      display: 'address',
+      templates: {
+        header: '<h3>ETH1 Addresses</h3>',
+        suggestion: function(data) {
+          return `<div>0x${data.address}</div>`
         }
       }
     }

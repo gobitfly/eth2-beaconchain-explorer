@@ -458,6 +458,7 @@ type SearchAheadGraffitiResult []struct {
 	Root     string `db:"blockroot" json:"blockroot,omitempty"`
 }
 
+// SearchAheadEth1Result is a struct to hold the search ahead eth1 results
 type SearchAheadEth1Result []struct {
 	Publickey   string `db:"publickey" json:"publickey,omitempty"`
 	Eth1Address string `db:"from_address" json:"address,omitempty"`

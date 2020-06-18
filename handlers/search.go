@@ -151,7 +151,24 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			logger.WithError(err).Error("error encoding searchAhead-validators-result")
 			http.Error(w, "Internal server error", 503)
 		}
-	case "indexedvalidators":
+	case "eth1_addresses":
+		eth1 := &types.SearchAheadEth1Result{}
+		err := db.DB.Select(eth1, `
+			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
+			FROM eth1_deposits
+			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
+			LIMIT 10`, search+"%")
+		if err != nil {
+			logger.WithError(err).Error("error doing search-query")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = json.NewEncoder(w).Encode(eth1)
+		if err != nil {
+			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
+			http.Error(w, "Internal server error", 503)
+		}
+	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		validators := &types.SearchAheadValidatorsResult{}
 		err := db.DB.Select(validators, `
@@ -172,7 +189,27 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			logger.WithError(err).Error("error encoding searchAhead-indexedvalidators-result")
 			http.Error(w, "Internal server error", 503)
 		}
-	case "eth1deposits":
+	case "indexed_validators_by_eth1_addresses":
+		result := []struct {
+			Eth1Address string   `json:"eth1_address"`
+			Valiators   []uint64 `json:"validators"`
+		}{}
+		err := db.DB.Select(result, `
+			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
+			FROM eth1_deposits
+			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
+			LIMIT 10`, search+"%")
+		if err != nil {
+			logger.WithError(err).Error("error doing search-query")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = json.NewEncoder(w).Encode(result)
+		if err != nil {
+			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
+			http.Error(w, "Internal server error", 503)
+		}
+	case "indexed_validators_by_graffiti":
 		eth1 := &types.SearchAheadEth1Result{}
 		err := db.DB.Select(eth1, `
 			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
