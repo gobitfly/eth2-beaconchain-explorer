@@ -55,7 +55,7 @@ func chartsPageDataUpdater() {
 		now := time.Now()
 		data, err := getChartsPageData()
 		if err != nil {
-			logger.Errorf("error updating chartPageData: %w", err)
+			logger.Errorf("error updating chartPageData: %v", err)
 			time.Sleep(sleepDuration)
 			continue
 		}
@@ -83,7 +83,7 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 			defer wg.Done()
 			data, err := ch.DataFunc()
 			if err != nil {
-				logger.Errorf("error getting chart data for %v: %w", i, err)
+				logger.Errorf("error getting chart data for %v: %v", i, err)
 			}
 			chartHandlerResChan <- &chartHandlerRes{ch.Order, i, data, err}
 		}(i, ch)

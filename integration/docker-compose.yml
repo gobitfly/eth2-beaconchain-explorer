@@ -15,7 +15,7 @@ services:
       timeout: 5s
       retries: 5
   explorer:
-    image: golang
+    image: golang:1.14
     volumes:
       - ./..:/app
     working_dir: /app
