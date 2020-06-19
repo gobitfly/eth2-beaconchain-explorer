@@ -76,7 +76,7 @@ func TestHTTPEndpoints(t *testing.T) {
 	for {
 		_, err := checkEndpoint("http://localhost:3333")
 		if err != nil {
-			if time.Now().After(start.Add(time.Second * 60)) {
+			if time.Now().After(start.Add(time.Second * 120)) {
 				t.Fatalf("error for %v: %v", "http://localhost:3333", err)
 			}
 			t.Log("waiting for explorer to come up")

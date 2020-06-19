@@ -15,9 +15,15 @@ import (
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
+	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
+	"github.com/prysmaticlabs/go-ssz"
+	"github.com/prysmaticlabs/prysm/beacon-chain/core/helpers"
 	contracts "github.com/prysmaticlabs/prysm/contracts/deposit-contract"
+	pb "github.com/prysmaticlabs/prysm/proto/beacon/p2p/v1"
+	"github.com/prysmaticlabs/prysm/shared/bls"
 	"github.com/prysmaticlabs/prysm/shared/bytesutil"
 	"github.com/prysmaticlabs/prysm/shared/hashutil"
+	"github.com/prysmaticlabs/prysm/shared/params"
 	"github.com/sirupsen/logrus"
 )
 
@@ -148,6 +154,13 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 		if err != nil {
 			return depositsToSave, fmt.Errorf("error unpacking eth1-deposit-log: %x: %w", depositLog.Data, err)
 		}
+		err = VerifyEth1DepositSignature(&ethpb.Deposit_Data{
+			PublicKey:             pubkey,
+			WithdrawalCredentials: withdrawalCredentials,
+			Amount:                bytesutil.FromBytes8(amount),
+			Signature:             signature,
+		})
+		validSignature := err == nil
 		blocksToFetch = append(blocksToFetch, depositLog.BlockNumber)
 		txsToFetch = append(txsToFetch, depositLog.TxHash.Hex())
 		depositsToSave = append(depositsToSave, &types.Eth1Deposit{
@@ -160,6 +173,7 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 			Signature:             signature,
 			MerkletreeIndex:       merkletreeIndex,
 			Removed:               depositLog.Removed,
+			ValidSignature:        validSignature,
 		})
 	}
 
@@ -217,9 +231,10 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
 			amount,
 			signature,
 			merkletree_index,
-			removed
+			removed,
+			valid_signature
 		)
-		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, $7, $8, $9, $10, $11, $12) 
+		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, $7, $8, $9, $10, $11, $12, $13) 
 		ON CONFLICT (tx_hash) DO UPDATE SET 
 			tx_input               = EXCLUDED.tx_input,
 			tx_index               = EXCLUDED.tx_index,
@@ -231,14 +246,15 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
 			amount                 = EXCLUDED.amount,
 			signature              = EXCLUDED.signature,
 			merkletree_index       = EXCLUDED.merkletree_index,
-			removed                = EXCLUDED.removed`)
+			removed                = EXCLUDED.removed,
+			valid_signature        = EXCLUDED.valid_signature`)
 	if err != nil {
 		return err
 	}
 	defer insertDepositStmt.Close()
 
 	for _, d := range depositsToSave {
-		_, err := insertDepositStmt.Exec(d.TxHash, d.TxInput, d.TxIndex, d.BlockNumber, d.BlockTs, d.FromAddress, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature, d.MerkletreeIndex, d.Removed)
+		_, err := insertDepositStmt.Exec(d.TxHash, d.TxInput, d.TxIndex, d.BlockNumber, d.BlockTs, d.FromAddress, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature, d.MerkletreeIndex, d.Removed, d.ValidSignature)
 		if err != nil {
 			return fmt.Errorf("error saving eth1-deposit to db: %v: %w", fmt.Sprintf("%x", d.TxHash), err)
 		}
@@ -299,4 +315,35 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 	}
 
 	return headers, txs, nil
+}
+
+func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
+	domain, err := helpers.ComputeDomain(params.BeaconConfig().DomainDeposit, nil, nil)
+	if err != nil {
+		return fmt.Errorf("could not get domain: %w", err)
+	}
+	blsPubkey, err := bls.PublicKeyFromBytes(obj.PublicKey)
+	if err != nil {
+		return fmt.Errorf("could not get pubkey: %w", err)
+	}
+	blsSig, err := bls.SignatureFromBytes(obj.Signature)
+	if err != nil {
+		return fmt.Errorf("could not get sig %w", err)
+	}
+	root, err := ssz.SigningRoot(obj)
+	if err != nil {
+		return fmt.Errorf("could not get root: %w", err)
+	}
+	signingData := &pb.SigningData{
+		ObjectRoot: root[:],
+		Domain:     domain,
+	}
+	ctrRoot, err := ssz.HashTreeRoot(signingData)
+	if err != nil {
+		return fmt.Errorf("could not get ctr root: %w", err)
+	}
+	if !blsSig.Verify(blsPubkey, ctrRoot[:]) {
+		return fmt.Errorf("invalid sig")
+	}
+	return nil
 }

@@ -907,6 +907,7 @@ github.com/prysmaticlabs/bazel-go-ethereum v0.0.0-20200530091827-df74fa9e9621 h1
 github.com/prysmaticlabs/bazel-go-ethereum v0.0.0-20200530091827-df74fa9e9621/go.mod h1:oP8FC5+TbICUyftkTWs+8JryntjIJLJvWvApK3z2AYw=
 github.com/prysmaticlabs/ethereumapis v0.0.0-20200608211251-7dafd77461b5 h1:9igaafiIE223IAcWdw7LyFOzAh4okr1/b4JtvfDMI9A=
 github.com/prysmaticlabs/ethereumapis v0.0.0-20200608211251-7dafd77461b5/go.mod h1:rs05kpTfWKl0KflsBWzBQFstoyPFMTWQTbxSAyGHe78=
+github.com/prysmaticlabs/ethereumapis v0.0.0-20200617012222-f52a0eff2886 h1:0zB+DtS1NdwgYtto4JcvV3OX3m1wmM7ocjLvveNaMgA=
 github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52 h1:kxZ+xSWX0qbxoiDXQBLztKeEmEQg6TgCYWAOa7gSGGU=
 github.com/prysmaticlabs/go-bitfield v0.0.0-20191017011753-53b773adde52/go.mod h1:hCwmef+4qXWjv0jLDbQdWnL0Ol7cS7/lCSS26WR+u6s=
 github.com/prysmaticlabs/go-bitfield v0.0.0-20200322041314-62c2aee71669 h1:cX6YRZnZ9sgMqM5U14llxUiXVNJ3u07Res1IIjTOgtI=
@@ -915,6 +916,7 @@ github.com/prysmaticlabs/go-ssz v0.0.0-20200101200214-e24db4d9e963/go.mod h1:Vec
 github.com/prysmaticlabs/go-ssz v0.0.0-20200605034351-b6a925e519d0 h1:V4o7uJqGXAuz6ZpwxhT4cnVjRb/XxpBmTKp/lVVr05k=
 github.com/prysmaticlabs/go-ssz v0.0.0-20200605034351-b6a925e519d0/go.mod h1:VecIJZrewdAuhVckySLFt2wAAHRME934bSDurP8ftkc=
 github.com/prysmaticlabs/prombbolt v0.0.0-20200324184628-09789ef63796/go.mod h1:5JkKm84FcLZQPNuHwjX8Mtd5emni/PH5CylWCNqnKos=
+github.com/prysmaticlabs/prysm v0.3.10 h1:BxCWTHJ3C81N7MTt888k3Of+9WyBrNhBom/BikxEmBo=
 github.com/prysmaticlabs/prysm v1.0.0-alpha.11 h1:Y5+6QE+qNqT4mBnLOzJ3AdOlrQVnyVyx7EkYBT0MsQ4=
 github.com/prysmaticlabs/prysm v1.0.0-alpha.11/go.mod h1:PJrnS/0pN6nxTMrz08Wcj3vvUkmMaJ+CKx1zSj7KmV4=
 github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=

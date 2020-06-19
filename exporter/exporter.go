@@ -432,7 +432,7 @@ func performanceDataUpdater() {
 		err := updateValidatorPerformance()
 
 		if err != nil {
-			logger.Errorf("error updating validator performance data: %w", err)
+			logger.Errorf("error updating validator performance data: %v", err)
 		} else {
 			logger.Info("validator performance data update completed")
 		}
