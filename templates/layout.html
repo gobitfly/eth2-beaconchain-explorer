@@ -51,10 +51,8 @@
             
             if(currentTheme === 'dark') {
                 d1.insertAdjacentHTML('beforebegin', '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-'+currentTheme+'.min.css" onload="document.documentElement.style.display = ``">');
-                // document.documentElement.style.visibility = 'hidden'
                 window.addEventListener('load', function() {
                     document.getElementById('app-style-initial').remove()
-                    // document.documentElement.style.visibility = 'visible'
                 })
             } else {
                 document.getElementById('app-style-initial').id = 'app-theme'
@@ -76,12 +74,23 @@
                     </a>
                     <div class="info-item d-flex mr-3">
                         <div class="info-item-header mr-1">Epoch</div>
-                        <div class="info-item-body">{{.CurrentEpoch}}</div>
+                        <div class="info-item-body"><a style="color:inherit;" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
                     </div>
                     <div class="info-item d-flex mr-3">
                         <div class="info-item-header mr-1">Slot</div>
-                        <div class="info-item-body">{{.CurrentSlot}}</div>
+                        <div class="info-item-body"><a style="color:inherit;" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
                     </div>
+                    {{if not .ShowSyncingMessage}}
+                        {{if gt .FinalizationDelay 3}}
+                        <div class="info-item d-flex mr-3">
+                            <div class="info-item-header mr-1 text-warning">Finality</div>
+                            <div class="info-item-body text-warning">
+                                {{.FinalizationDelay}}
+                                <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
+                            </div>
+                        </div>
+                        {{end}}
+                    {{end}}
                     {{if .ShowSyncingMessage}}
                     <div class="info-item d-flex mr-3">
                         <div class="info-item-header mr-1">Status</div>
@@ -89,6 +98,32 @@
                     </div>
                     {{end}}
                 </div>
+                <script>
+                    // update banner stats
+                    fetch('/latestStats').then(function(res) {
+                        return res.json()
+                    }).then(function(data) {
+                        data.lastProposedSlot
+                        data.currentSlot
+                        data.currentEpoch
+                        data.currentFinalizedEpoch
+                        data.finalityDelay
+                        data.syncing
+                        var epochel = document.getElementById('banner-epoch-data')
+                        var slotel = document.getElementById('banner-slot-data')
+                        var finel = document.getElementById('banner-fin-data')
+
+                        if(data.syncing === true) {
+                            var synel = document.getElementById('banner-syncing-data')
+                            if(synel === undefined) {
+                                var newsynel = document.createElement('div')
+                                var header = document.createElement('div')
+                                var body = document.createElement('div')
+                                header.setAttribute('', '')
+                            }
+                        }
+                    })
+                </script>
                 <div class="d-flex flex-fill"></div>
             <div class="search-container">
                 <form  class="form-inline" action="/search" method="POST">
