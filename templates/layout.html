@@ -68,62 +68,36 @@
     </noscript>
         <div class="info-banner-container">
           <div class="info-banner-content container d-flex align-items-center">
-                <div class="info-banner-stats">
+                <div id="banner" class="info-banner-stats">
                     <a style="color: inherit;" class="mr-2" href="/">
                         <i class="fas fa-home"></i>
                     </a>
-                    <div class="info-item d-flex mr-3">
+                    <div id="banner-epoch" class="info-item d-flex mr-3">
                         <div class="info-item-header mr-1">Epoch</div>
-                        <div class="info-item-body"><a style="color:inherit;" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
+                        <div class="info-item-body"><a id="banner-epoch-data" style="color:inherit;" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
                     </div>
-                    <div class="info-item d-flex mr-3">
+                    <div id="banner-slot" class="info-item d-flex mr-3">
                         <div class="info-item-header mr-1">Slot</div>
-                        <div class="info-item-body"><a style="color:inherit;" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
+                        <div class="info-item-body"><a id="banner-slot-data" style="color:inherit;" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
                     </div>
                     {{if not .ShowSyncingMessage}}
                         {{if gt .FinalizationDelay 3}}
-                        <div class="info-item d-flex mr-3">
+                        <div id="banner-fin" class="info-item d-flex mr-3">
                             <div class="info-item-header mr-1 text-warning">Finality</div>
                             <div class="info-item-body text-warning">
-                                {{.FinalizationDelay}}
+                                <span id="banner-fin-data">{{.FinalizationDelay}}</span>
                                 <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
                             </div>
                         </div>
                         {{end}}
                     {{end}}
                     {{if .ShowSyncingMessage}}
-                    <div class="info-item d-flex mr-3">
+                    <div id="banner-status" class="info-item d-flex mr-3">
                         <div class="info-item-header mr-1">Status</div>
                         <div class="info-item-body">Syncing</div>
                     </div>
                     {{end}}
                 </div>
-                <script>
-                    // update banner stats
-                    fetch('/latestStats').then(function(res) {
-                        return res.json()
-                    }).then(function(data) {
-                        data.lastProposedSlot
-                        data.currentSlot
-                        data.currentEpoch
-                        data.currentFinalizedEpoch
-                        data.finalityDelay
-                        data.syncing
-                        var epochel = document.getElementById('banner-epoch-data')
-                        var slotel = document.getElementById('banner-slot-data')
-                        var finel = document.getElementById('banner-fin-data')
-
-                        if(data.syncing === true) {
-                            var synel = document.getElementById('banner-syncing-data')
-                            if(synel === undefined) {
-                                var newsynel = document.createElement('div')
-                                var header = document.createElement('div')
-                                var body = document.createElement('div')
-                                header.setAttribute('', '')
-                            }
-                        }
-                    })
-                </script>
                 <div class="d-flex flex-fill"></div>
             <div class="search-container">
                 <form  class="form-inline" action="/search" method="POST">
@@ -363,6 +337,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
     <script src="/js/layout.js"></script>
+    <script src="/js/banner.js"></script>
+    <script>
+        // update the banner every 12 seconds
+        setInterval(updateBanner, 12000)
+    </script>
     <script>
         function slotToTime(slot) {
             var gts = {{.ChainGenesisTimestamp}}
