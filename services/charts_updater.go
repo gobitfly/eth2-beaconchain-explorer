@@ -55,7 +55,7 @@ func chartsPageDataUpdater() {
 		now := time.Now()
 		data, err := getChartsPageData()
 		if err != nil {
-			logger.Errorf("error updating chartPageData: %w", err)
+			logger.Errorf("error updating chartPageData: %v", err)
 			time.Sleep(sleepDuration)
 			continue
 		}
@@ -83,7 +83,7 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 			defer wg.Done()
 			data, err := ch.DataFunc()
 			if err != nil {
-				logger.Errorf("error getting chart data for %v: %w", i, err)
+				logger.Errorf("error getting chart data for %v: %v", i, err)
 			}
 			chartHandlerResChan <- &chartHandlerRes{ch.Order, i, data, err}
 		}(i, ch)
@@ -328,7 +328,7 @@ func networkLivenessChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:                           "Network Liveness",
-		Subtitle:                        "Network Liveness measures how far the last Finalized Epoch is behind the Head Epoch. The protocol allows epochs to be finalized after 2 epochs. If the last Finalized Epoch is more than 4 epochs behind the Head Epoch all validators will get penalized.",
+		Subtitle:                        "Network Liveness measures how far the last Finalized Epoch is behind the Head Epoch. The protocol allows epochs to be finalized after 2 epochs.",
 		XAxisTitle:                      "",
 		YAxisTitle:                      "Network Liveness [epochs]",
 		StackingMode:                    "false",

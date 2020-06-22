@@ -562,6 +562,7 @@ type EthOneDepositsPageData struct {
 	Signature             []byte    `db:"signature"`
 	MerkletreeIndex       []byte    `db:"merkletree_index"`
 	State                 string    `db:"state"`
+	ValidSignature        bool      `db:"valid_signature"`
 }
 
 type EthTwoDepositsPageData struct {
