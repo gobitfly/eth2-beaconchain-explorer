@@ -29,15 +29,16 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/deposits/eth1",
 		},
-		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "ethOneDeposit",
 		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		ShowSyncingMessage:    services.IsSyncing(),
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
+		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
 	err := ethTemplates.ExecuteTemplate(w, "layout", data)

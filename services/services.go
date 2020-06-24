@@ -14,6 +14,7 @@ import (
 )
 
 var latestEpoch uint64
+var latestFinalizedEpoch uint64
 var latestSlot uint64
 var latestProposedSlot uint64
 var indexPageData atomic.Value
@@ -38,9 +39,17 @@ func epochUpdater() {
 	firstRun := true
 
 	for true {
-		var epoch uint64
-		err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 
+		var latestFinalized uint64
+		err := db.DB.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
+		if err != nil {
+			logger.Errorf("error retrieving latest finalized epoch from the database: %v", err)
+		} else {
+			atomic.StoreUint64(&latestFinalizedEpoch, latestFinalized)
+		}
+
+		var epoch uint64
+		err = db.DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 		if err != nil {
 			logger.Errorf("error retrieving latest epoch from the database: %v", err)
 		} else {
@@ -59,7 +68,7 @@ func slotUpdater() {
 
 	for true {
 		var slot uint64
-		err := db.DB.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks")
+		err := db.DB.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks where slot < $1", utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
 
 		if err != nil {
 			logger.Errorf("error retrieving latest slot from the database: %v", err)
@@ -78,13 +87,13 @@ func latestProposedSlotUpdater() {
 	firstRun := true
 
 	for true {
-		var epoch uint64
-		err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
+		var slot uint64
+		err := db.DB.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
 
 		if err != nil {
 			logger.Errorf("error retrieving latest proposed slot from the database: %v", err)
 		} else {
-			atomic.StoreUint64(&latestProposedSlot, epoch)
+			atomic.StoreUint64(&latestProposedSlot, slot)
 			if firstRun {
 				ready.Done()
 				firstRun = false
@@ -212,9 +221,19 @@ func LatestEpoch() uint64 {
 	return atomic.LoadUint64(&latestEpoch)
 }
 
+// LatestFinalizedEpoch will return the most recent epoch that has been finalized.
+func LatestFinalizedEpoch() uint64 {
+	return atomic.LoadUint64(&latestFinalizedEpoch)
+}
+
 // LatestSlot will return the latest slot
 func LatestSlot() uint64 {
 	return atomic.LoadUint64(&latestSlot)
+}
+
+//FinalizationDelay will return the current Finalization Delay
+func FinalizationDelay() uint64 {
+	return LatestEpoch() - LatestFinalizedEpoch()
 }
 
 // LatestProposedSlot will return the latest proposed slot
@@ -225,6 +244,18 @@ func LatestProposedSlot() uint64 {
 // LatestIndexPageData returns the latest index page data
 func LatestIndexPageData() *types.IndexPageData {
 	return indexPageData.Load().(*types.IndexPageData)
+}
+
+// LatestState returns statistics about the current eth2 state
+func LatestState() *types.LatestState {
+	data := &types.LatestState{}
+	data.CurrentEpoch = LatestEpoch()
+	data.CurrentSlot = LatestSlot()
+	data.CurrentFinalizedEpoch = LatestFinalizedEpoch()
+	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
+	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
+	data.IsSyncing = IsSyncing()
+	return data
 }
 
 // IsSyncing returns true if the chain is still syncing
