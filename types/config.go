@@ -10,6 +10,7 @@ type Config struct {
 		Port     string `yaml:"port" envconfig:"DB_PORT"`
 	} `yaml:"database"`
 	Chain struct {
+		Network          string `yaml:"network" envconfig:"CHAIN_NETWORK"`
 		SlotsPerEpoch    uint64 `yaml:"slotsPerEpoch" envconfig:"CHAIN_SLOTS_PER_EPOCH"`
 		SecondsPerSlot   uint64 `yaml:"secondsPerSlot" envconfig:"CHAIN_SECONDS_PER_SLOT"`
 		GenesisTimestamp uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
