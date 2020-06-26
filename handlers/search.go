@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/lib/pq"
 )
 
 var searchNotFoundTemplate = template.Must(template.New("searchnotfound").ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
@@ -159,7 +160,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
 			LIMIT 10`, search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for eth1_addresses")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -180,7 +181,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
 			ORDER BY index LIMIT 10`, search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query for indexedvalidators")
+			logger.WithError(err).Error("error doing search-query for indexed_validators")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -191,16 +192,25 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 	case "indexed_validators_by_eth1_addresses":
 		result := []struct {
-			Eth1Address string   `json:"eth1_address"`
-			Valiators   []uint64 `json:"validators"`
+			Eth1Address      string        `db:"from_address" json:"eth1_address"`
+			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 		}{}
-		err := db.DB.Select(result, `
-			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
-			FROM eth1_deposits
-			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
-			LIMIT 10`, search+"%")
+		// find validators per eth1-address (limit result by 10 addresses and 100 validators per address)
+		err := db.DB.Select(&result, `
+			SELECT from_address, ARRAY_AGG(validatorindex) validatorindices FROM (
+				SELECT 
+					DISTINCT ENCODE(from_address::bytea, 'hex') as from_address, 
+					validatorindex,
+					ROW_NUMBER() OVER (PARTITION BY from_address ORDER BY validatorindex) as validatorrow,
+					DENSE_RANK() OVER (ORDER BY from_address) as addressrow
+				FROM eth1_deposits
+				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+				WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1) 
+			) a 
+			WHERE validatorrow <= 100 AND addressrow <= 10
+			GROUP BY from_address`, search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for indexed_validators_by_eth1_addresses")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
@@ -217,7 +227,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
 			LIMIT 10`, search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for indexed_validators_by_graffiti")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
