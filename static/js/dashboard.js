@@ -210,6 +210,17 @@ $(document).ready(function() {
       wildcard: '%QUERY'
     }
   })
+  var bhGraffiti = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function(obj) {
+      return obj.graffiti
+    },
+    remote: {
+      url: '/search/indexed_validators_by_graffiti/%QUERY',
+      wildcard: '%QUERY'
+    }
+  })
 
   $('.typeahead-dashboard').typeahead(
     {
@@ -239,6 +250,18 @@ $(document).ready(function() {
         header: '<h3>Validators by ETH1 Addresses</h3>',
         suggestion: function(data) {
           return `<div class="text-monospace">0x${data.eth1_address.substring(0, 16)}…: ${data.validator_indices.length}</div>`
+        }
+      }
+    },
+    {
+      limit: 5,
+      name: 'graffiti',
+      source: bhGraffiti,
+      display: 'graffiti',
+      templates: {
+        header: '<h3>Validators by Graffiti</h3>',
+        suggestion: function(data) {
+          return `<div class="text-monospace">0x${data.graffiti.substring(0, 16)}…: ${data.validator_indices.length}</div>`
         }
       }
     }
