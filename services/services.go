@@ -134,8 +134,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	cutoffSlot := utils.TimeToSlot(uint64(time.Now().Add(time.Second * 10).Unix()))
 
-	if epoch == 0 {
-		cutoffSlot = 32
+	// If we are before the genesis block show the first 20 slots by default
+	startSlotTime := utils.SlotToTime(0)
+	if startSlotTime.After(time.Now()) {
+		cutoffSlot = 20
 	}
 
 	var blocks []*types.IndexPageDataBlocks
