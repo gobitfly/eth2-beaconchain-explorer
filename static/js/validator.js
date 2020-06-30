@@ -125,7 +125,7 @@ function createProposedBlockChart(data) {
 		colors: ["#7cb5ec", "#ff835c", "#e4a354", "#2b908f", "#f45b5b",
 			"#91e8e1"],
 		title: {
-			text: 'Proposal History for Validator {{.Index}}'
+			text: 'Proposal History'
 		},
 		chart: {
 			type: 'column',
@@ -187,7 +187,7 @@ function createBalanceChart(balanceHistory, effectiveBalanceHistory) {
 			type: 'line'
 		},
 		title: {
-			text: 'Balance History for Validator {{.Index}}'
+			text: 'Balance History'
 		},
 		legend: {
 			enabled: true
