@@ -258,7 +258,16 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, `SELECT
+	err = db.DB.Select(&validators, `
+		WITH
+			proposals AS (
+				SELECT validatorindex, pa.status, count(*)
+				FROM proposal_assignments pa
+				INNER JOIN blocks b ON pa.proposerslot = b.slot AND b.status = '1'
+				WHERE validatorindex = ANY($3)
+				GROUP BY validatorindex, pa.status
+			)
+		SELECT
 			validators.validatorindex,
 			validators.pubkey,
 			validators.withdrawableepoch,
@@ -270,8 +279,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch,
 			validators.exitepoch,
 			a.state,
-			COALESCE(p1.c, 0) as executedproposals,
-			COALESCE(p2.c, 0) as missedproposals,
+			COALESCE(p1.count, 0) as executedproposals,
+			COALESCE(p2.count, 0) as missedproposals,
 			COALESCE(validator_performance.performance7d, 0) as performance7d
 		FROM validators
 		INNER JOIN (
@@ -286,18 +295,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			END AS state
 			FROM validators
 		) a ON a.validatorindex = validators.validatorindex
-		LEFT JOIN (
-			SELECT validatorindex, count(*) AS c 
-			FROM proposal_assignments
-			WHERE status = 1
-			GROUP BY validatorindex
-		) p1 ON validators.validatorindex = p1.validatorindex
-		LEFT JOIN (
-			SELECT validatorindex, count(*) AS c 
-			FROM proposal_assignments
-			WHERE status = 2
-			GROUP BY validatorindex
-		) p2 ON validators.validatorindex = p2.validatorindex
+		LEFT JOIN proposals p1 ON validators.validatorindex = p1.validatorindex AND p1.status = 1
+		LEFT JOIN proposals p2 ON validators.validatorindex = p2.validatorindex AND p2.status = 2
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = ANY($3)
 		LIMIT 100`, latestEpoch, validatorOnlineThresholdSlot, filter)

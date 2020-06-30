@@ -571,6 +571,7 @@ type EthTwoDepositsPageData struct {
 	BlockIndex            uint64 `db:"block_index"`
 	Proof                 []byte `db:"proof"`
 	Publickey             []byte `db:"publickey"`
+	ValidatorIndex        uint64 `db:"validatorindex"`
 	Withdrawalcredentials []byte `db:"withdrawalcredentials"`
 	Amount                uint64 `db:"amount"`
 	Signature             []byte `db:"signature"`

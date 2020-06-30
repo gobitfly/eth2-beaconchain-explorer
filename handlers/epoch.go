@@ -22,6 +22,7 @@ var epochNotFoundTemplate = template.Must(template.New("epochnotfound").ParseFil
 
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	epochString := strings.Replace(vars["epoch"], "0x", "", -1)
 
@@ -138,7 +139,6 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(data.Data)
 	} else {
-		w.Header().Set("Content-Type", "text/html")
 		err = epochTemplate.ExecuteTemplate(w, "layout", data)
 	}
 

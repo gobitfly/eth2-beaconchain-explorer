@@ -384,7 +384,7 @@ $(document).ready(function() {
         limitReached = true
         break indicesLoop
       }
-      var index = indices[j]
+      var index = indices[j]+"" // make sure index is string
       for (var i = 0; i < state.validators.length; i++) {
         if (state.validators[i] === index)
           continue indicesLoop
@@ -405,6 +405,7 @@ $(document).ready(function() {
       alert('Too much validators, you can not add more than 100 validators to your dashboard!')
       return
     }
+    index = index+"" // make sure index is string
     for (var i = 0; i < state.validators.length; i++) {
       if (state.validators[i] === index) return
     }
