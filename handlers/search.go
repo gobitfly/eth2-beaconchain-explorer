@@ -199,15 +199,15 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err := db.DB.Select(&result, `
 			SELECT from_address, ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
-					DISTINCT ENCODE(from_address::bytea, 'hex') as from_address, 
-					validatorindex,
+					DISTINCT ON(validatorindex) validatorindex,
+					ENCODE(from_address::bytea, 'hex') as from_address,
 					ROW_NUMBER() OVER (PARTITION BY from_address ORDER BY validatorindex) as validatorrow,
 					DENSE_RANK() OVER (ORDER BY from_address) as addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
 				WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1) 
 			) a 
-			WHERE validatorrow <= 100 AND addressrow <= 10
+			WHERE validatorrow <= 101 AND addressrow <= 10
 			GROUP BY from_address`, search+"%")
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query for indexed_validators_by_eth1_addresses")
@@ -228,15 +228,15 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err := db.DB.Select(&result, `
 			SELECT graffiti, array_agg(validatorindex) as validatorindices FROM (
 				SELECT 
-					validatorindex, 
+					DISTINCT ON(validatorindex) validatorindex,
 					graffiti,
-					ROW_NUMBER() OVER(PARTITION BY graffiti ORDER BY validatorindex) as validatorrow,
+					DENSE_RANK() OVER(PARTITION BY graffiti ORDER BY validatorindex) as validatorrow,
 					DENSE_RANK() OVER(ORDER BY graffiti) as graffitirow
 				FROM blocks 
 				LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 				WHERE LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1)
 			) a 
-			WHERE validatorrow <= 100 AND graffitirow <= 10
+			WHERE validatorrow <= 101 AND graffitirow <= 10
 			GROUP BY graffiti`, "%"+search+"%")
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query for indexed_validators_by_graffiti")

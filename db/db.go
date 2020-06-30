@@ -213,7 +213,6 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	if query != "" {
 		err := DB.Select(&deposits, fmt.Sprintf(`
 			SELECT 
-				validators.validatorindex,
 				blocks_deposits.block_slot,
 				blocks_deposits.block_index,
 				blocks_depositsproof,
@@ -222,7 +221,6 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 				blocks_deposits.amount,
 				blocks_deposits.signature
 			FROM blocks_deposits
-			LEFT JOIN validators ON validators.pubkey = blocks_deposits.publickey
 			WHERE ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR CAST(block_slot as varchar) LIKE $3
 			ORDER BY %s %s
 			LIMIT $1
@@ -233,7 +231,6 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	} else {
 		err := DB.Select(&deposits, fmt.Sprintf(`
 			SELECT 
-				validators.validatorindex, 
 				blocks_deposits.block_slot,
 				blocks_deposits.block_index,
 				blocks_deposits.proof,
@@ -242,7 +239,6 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 				blocks_deposits.amount,
 				blocks_deposits.signature
 			FROM blocks_deposits
-			LEFT JOIN validators ON validators.pubkey = blocks_deposits.publickey
 			ORDER BY %s %s
 			LIMIT $1
 			OFFSET $2`, orderBy, orderDir), length, start)

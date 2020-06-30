@@ -226,6 +226,13 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 
 	qry := fmt.Sprintf(`
+		WITH
+			proposals AS (
+				SELECT validatorindex, pa.status, count(*)
+				FROM proposal_assignments pa
+				INNER JOIN blocks b ON pa.proposerslot = b.slot AND b.status = '1'
+				GROUP BY validatorindex, pa.status
+			)
 		SELECT
 			validators.validatorindex,
 			validators.pubkey,
@@ -237,34 +244,24 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			validators.lastattestationslot,
 			a.state,
-			COALESCE(p1.c,0) as executedproposals,
-			COALESCE(p2.c,0) as missedproposals
+			COALESCE(p1.count,0) AS executedproposals,
+			COALESCE(p2.count,0) AS missedproposals
 		FROM validators
 		INNER JOIN (
 			SELECT validatorindex,
 			CASE 
-				WHEN exitepoch <= $1 then 'exited'
-				WHEN activationepoch > $1 then 'pending'
-				WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
-				WHEN slashed then 'slashing_online'
-				WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
+				WHEN exitepoch <= $1 THEN 'exited'
+				WHEN activationepoch > $1 THEN 'pending'
+				WHEN slashed AND activationepoch < $1 AND (lastattestationslot < $2 OR lastattestationslot IS NULL) THEN 'slashing_offline'
+				WHEN slashed THEN 'slashing_online'
+				WHEN activationepoch < $1 AND (lastattestationslot < $2 OR lastattestationslot IS NULL) THEN 'active_offline' 
 				ELSE 'active_online'
 			END AS state
 			FROM validators
 		) a ON a.validatorindex = validators.validatorindex
-		LEFT JOIN (
-			select validatorindex, count(*) as c 
-			from proposal_assignments
-			where status = 1
-			group by validatorindex
-		) p1 ON validators.validatorindex = p1.validatorindex
-		LEFT JOIN (
-			select validatorindex, count(*) as c 
-			from proposal_assignments
-			where status = 2
-			group by validatorindex
-		) p2 ON validators.validatorindex = p2.validatorindex
-		WHERE (encode(validators.pubkey::bytea, 'hex') LIKE $3
+		LEFT JOIN proposals p1 ON validators.validatorindex = p1.validatorindex AND p1.status = 1
+		LEFT JOIN proposals p2 ON validators.validatorindex = p2.validatorindex AND p2.status = 2
+		WHERE (ENCODE(validators.pubkey::bytea, 'hex') LIKE $3
 			OR CAST(validators.validatorindex AS text) LIKE $3)
 		%s
 		ORDER BY %s %s

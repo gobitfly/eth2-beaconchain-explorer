@@ -249,6 +249,9 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Validators by ETH1 Addresses</h3>',
         suggestion: function(data) {
+          if (data.validator_indices.length>100) {
+            return `<div class="text-monospace">0x${data.eth1_address.substring(0, 16)}…: 100+</div>`
+          }
           return `<div class="text-monospace">0x${data.eth1_address.substring(0, 16)}…: ${data.validator_indices.length}</div>`
         }
       }
@@ -261,7 +264,10 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Validators by Graffiti</h3>',
         suggestion: function(data) {
-          return `<div class="text-monospace">0x${data.graffiti.substring(0, 16)}…: ${data.validator_indices.length}</div>`
+          if (data.validator_indices.length>100) {
+            return `<div class="text-monospace">0x${data.graffiti.substring(0, 32)}…: 100+</div>`
+          }
+          return `<div class="text-monospace">0x${data.graffiti.substring(0, 32)}…: ${data.validator_indices.length}</div>`
         }
       }
     }
