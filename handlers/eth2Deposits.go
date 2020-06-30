@@ -82,13 +82,11 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
 		"0": "block_slot",
-		// "1": "block_index",
-		// "2": "proof",
-		"1": "validatorindex",
-		"2": "publickey",
-		"3": "amount",
-		"4": "withdrawalcredentials",
-		"5": "signature",
+		// "1": "validatorindex",
+		"1": "publickey",
+		"2": "amount",
+		"3": "withdrawalcredentials",
+		"4": "signature",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -115,7 +113,6 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 	for i, d := range deposits {
 		tableData[i] = []interface{}{
 			utils.FormatBlockSlot(d.BlockSlot),
-			utils.FormatValidator(d.ValidatorIndex),
 			utils.FormatPublicKey(d.Publickey),
 			utils.FormatDepositAmount(d.Amount),
 			utils.FormatHash(d.Withdrawalcredentials),
