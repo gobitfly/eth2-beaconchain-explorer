@@ -27,7 +27,7 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/deposits/eth1",
 		},
-		Active:                "ethOneDeposit",
+		Active:                "eth1Deposits",
 		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
