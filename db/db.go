@@ -199,7 +199,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
-	columns := []string{"block_slot", "block_index", "proof", "publickey", "withdrawalcredentials", "amount", "signature"}
+	columns := []string{"block_slot", "validatorindex", "publickey", "amount", "withdrawalcredentials", "signature"}
 	hasColumn := false
 	for _, column := range columns {
 		if orderBy == column {
@@ -212,39 +212,40 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 
 	if query != "" {
 		err := DB.Select(&deposits, fmt.Sprintf(`
-		SELECT 
-			block_slot,
-			block_index,
-			proof,
-			publickey,
-			withdrawalcredentials,
-			amount,
-			signature
-		FROM
-			blocks_deposits
-		WHERE
-		ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR CAST(block_slot as varchar) LIKE $3
-		ORDER BY %s %s
-		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, query+"%")
+			SELECT 
+				validators.validatorindex,
+				blocks_deposits.block_slot,
+				blocks_deposits.block_index,
+				blocks_depositsproof,
+				blocks_deposits.publickey,
+				blocks_deposits.withdrawalcredentials,
+				blocks_deposits.amount,
+				blocks_deposits.signature
+			FROM blocks_deposits
+			LEFT JOIN validators ON validators.pubkey = blocks_deposits.publickey
+			WHERE ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR CAST(block_slot as varchar) LIKE $3
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start, query+"%")
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		err := DB.Select(&deposits, fmt.Sprintf(`
-		SELECT 
-			block_slot,
-			block_index,
-			proof,
-			publickey,
-			withdrawalcredentials,
-			amount,
-			signature
-		FROM
-			blocks_deposits
-		ORDER BY %s %s
-		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start)
+			SELECT 
+				validators.validatorindex, 
+				blocks_deposits.block_slot,
+				blocks_deposits.block_index,
+				blocks_deposits.proof,
+				blocks_deposits.publickey,
+				blocks_deposits.withdrawalcredentials,
+				blocks_deposits.amount,
+				blocks_deposits.signature
+			FROM blocks_deposits
+			LEFT JOIN validators ON validators.pubkey = blocks_deposits.publickey
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start)
 		if err != nil {
 			return nil, err
 		}
