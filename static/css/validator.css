@@ -108,6 +108,7 @@
   position: absolute;
   font-size: 60%;
   color: white;
+  margin-bottom: 1px;
 }
 
 .validator__lifecycle-container .done.validator__lifecycle-deposited .deposit-success,
@@ -185,6 +186,7 @@
 
   .validator__lifecycle-container i {
     font-size: 80%;
+    margin-bottom: 0;
   }
 
   .validator__lifecycle-node {
