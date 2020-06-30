@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/lib/pq"
 )
 
 var searchNotFoundTemplate = template.Must(template.New("searchnotfound").ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
@@ -151,7 +152,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			logger.WithError(err).Error("error encoding searchAhead-validators-result")
 			http.Error(w, "Internal server error", 503)
 		}
-	case "eth1deposits":
+	case "eth1_addresses":
 		eth1 := &types.SearchAheadEth1Result{}
 		err := db.DB.Select(eth1, `
 			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
@@ -159,11 +160,93 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
 			LIMIT 10`, search+"%")
 		if err != nil {
-			logger.WithError(err).Error("error doing search-query")
+			logger.WithError(err).Error("error doing search-query for eth1_addresses")
 			http.Error(w, "Internal server error", 503)
 			return
 		}
 		err = json.NewEncoder(w).Encode(eth1)
+		if err != nil {
+			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
+			http.Error(w, "Internal server error", 503)
+		}
+	case "indexed_validators":
+		// find all validators that have a publickey or index like the search-query
+		validators := &types.SearchAheadValidatorsResult{}
+		err := db.DB.Select(validators, `
+			SELECT DISTINCT CAST(validatorindex AS text) AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
+			FROM validators
+			LEFT JOIN eth1_deposits ON eth1_deposits.publickey = validators.pubkey
+			WHERE ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
+				OR CAST(validatorindex AS text) LIKE $1
+				OR ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
+			ORDER BY index LIMIT 10`, search+"%")
+		if err != nil {
+			logger.WithError(err).Error("error doing search-query for indexed_validators")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = json.NewEncoder(w).Encode(validators)
+		if err != nil {
+			logger.WithError(err).Error("error encoding searchAhead-indexedvalidators-result")
+			http.Error(w, "Internal server error", 503)
+		}
+	case "indexed_validators_by_eth1_addresses":
+		result := []struct {
+			Eth1Address      string        `db:"from_address" json:"eth1_address"`
+			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
+		}{}
+		// find validators per eth1-address (limit result by 10 addresses and 100 validators per address)
+		err := db.DB.Select(&result, `
+			SELECT from_address, ARRAY_AGG(validatorindex) validatorindices FROM (
+				SELECT 
+					DISTINCT ENCODE(from_address::bytea, 'hex') as from_address, 
+					validatorindex,
+					ROW_NUMBER() OVER (PARTITION BY from_address ORDER BY validatorindex) as validatorrow,
+					DENSE_RANK() OVER (ORDER BY from_address) as addressrow
+				FROM eth1_deposits
+				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+				WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1) 
+			) a 
+			WHERE validatorrow <= 100 AND addressrow <= 10
+			GROUP BY from_address`, search+"%")
+		if err != nil {
+			logger.WithError(err).Error("error doing search-query for indexed_validators_by_eth1_addresses")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = json.NewEncoder(w).Encode(result)
+		if err != nil {
+			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
+			http.Error(w, "Internal server error", 503)
+		}
+	case "indexed_validators_by_graffiti":
+		result := []struct {
+			Graffiti         string        `db:"graffiti" json:"graffiti"`
+			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
+		}{}
+		// find validators per graffiti (limit result by 10 graffities and 100 validators per graffiti)
+		err := db.DB.Select(&result, `
+			SELECT graffiti, array_agg(validatorindex) as validatorindices FROM (
+				SELECT 
+					validatorindex, 
+					graffiti,
+					ROW_NUMBER() OVER(PARTITION BY graffiti ORDER BY validatorindex) as validatorrow,
+					DENSE_RANK() OVER(ORDER BY graffiti) as graffitirow
+				FROM blocks 
+				LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+				WHERE LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1)
+			) a 
+			WHERE validatorrow <= 100 AND graffitirow <= 10
+			GROUP BY graffiti`, "%"+search+"%")
+		if err != nil {
+			logger.WithError(err).Error("error doing search-query for indexed_validators_by_graffiti")
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		for i := range result {
+			result[i].Graffiti = utils.FormatGraffitiString(result[i].Graffiti)
+		}
+		err = json.NewEncoder(w).Encode(result)
 		if err != nil {
 			logger.WithError(err).Error("error encoding searchAhead-blocks-result")
 			http.Error(w, "Internal server error", 503)

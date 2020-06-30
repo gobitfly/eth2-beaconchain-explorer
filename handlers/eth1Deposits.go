@@ -15,13 +15,11 @@ import (
 	"time"
 )
 
-var ethTemplates = template.Must(template.New("deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethOneDeposit.html"))
+var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1Deposits.html"))
 
 // Eth1Deposits will return information about deposits using a go template
 func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
-
 	w.Header().Set("Content-Type", "text/html")
-	ethTemplates = template.Must(template.New("deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethOneDeposit.html"))
 
 	data := &types.PageData{
 		Meta: &types.Meta{
@@ -29,18 +27,19 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/deposits/eth1",
 		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "ethOneDeposit",
+		Active:                "eth1Deposits",
 		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		ShowSyncingMessage:    services.IsSyncing(),
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
+		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
-	err := ethTemplates.ExecuteTemplate(w, "layout", data)
+	err := eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)

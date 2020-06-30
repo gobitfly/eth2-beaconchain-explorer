@@ -318,7 +318,15 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 }
 
 func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
-	domain, err := helpers.ComputeDomain(params.BeaconConfig().DomainDeposit, nil, nil)
+	cfg := params.BeaconConfig()
+	if utils.Config.Chain.Network == "altona" {
+		cfg = params.AltonaConfig()
+	}
+	domain, err := helpers.ComputeDomain(
+		cfg.DomainDeposit,
+		cfg.GenesisForkVersion,
+		cfg.ZeroHash[:],
+	)
 	if err != nil {
 		return fmt.Errorf("could not get domain: %w", err)
 	}
@@ -343,7 +351,7 @@ func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
 		return fmt.Errorf("could not get ctr root: %w", err)
 	}
 	if !blsSig.Verify(blsPubkey, ctrRoot[:]) {
-		return fmt.Errorf("invalid sig")
+		return fmt.Errorf("invalid signature")
 	}
 	return nil
 }

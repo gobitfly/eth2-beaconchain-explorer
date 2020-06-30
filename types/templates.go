@@ -21,6 +21,7 @@ type PageData struct {
 	ChainGenesisTimestamp uint64
 	CurrentEpoch          uint64
 	CurrentSlot           uint64
+	FinalizationDelay     uint64
 }
 
 // Meta is a struct to hold metadata about the page
@@ -32,6 +33,16 @@ type Meta struct {
 	Tdata1      string
 	Tlabel2     string
 	Tdata2      string
+}
+
+//LatestState is a struct to hold data for the banner
+type LatestState struct {
+	LastProposedSlot      uint64 `json:"lastProposedSlot"`
+	CurrentSlot           uint64 `json:"currentSlot"`
+	CurrentEpoch          uint64 `json:"currentEpoch"`
+	CurrentFinalizedEpoch uint64 `json:"currentFinalizedEpoch"`
+	FinalityDelay         uint64 `json:"finalityDelay"`
+	IsSyncing             bool   `json:"syncing"`
 }
 
 // IndexPageData is a struct to hold info for the main web page
@@ -447,6 +458,7 @@ type SearchAheadGraffitiResult []struct {
 	Root     string `db:"blockroot" json:"blockroot,omitempty"`
 }
 
+// SearchAheadEth1Result is a struct to hold the search ahead eth1 results
 type SearchAheadEth1Result []struct {
 	Publickey   string `db:"publickey" json:"publickey,omitempty"`
 	Eth1Address string `db:"from_address" json:"address,omitempty"`
@@ -559,6 +571,7 @@ type EthTwoDepositsPageData struct {
 	BlockIndex            uint64 `db:"block_index"`
 	Proof                 []byte `db:"proof"`
 	Publickey             []byte `db:"publickey"`
+	ValidatorIndex        uint64 `db:"validatorindex"`
 	Withdrawalcredentials []byte `db:"withdrawalcredentials"`
 	Amount                uint64 `db:"amount"`
 	Signature             []byte `db:"signature"`

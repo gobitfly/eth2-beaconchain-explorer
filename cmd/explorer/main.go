@@ -67,6 +67,10 @@ func main() {
 		var rpcClient rpc.Client
 
 		if utils.Config.Indexer.Node.Type == "prysm" {
+			if utils.Config.Indexer.Node.PageSize == 0 {
+				log.Printf("setting default rpc page size to 500")
+				utils.Config.Indexer.Node.PageSize = 500
+			}
 			rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
 			if err != nil {
 				log.Fatal(err)
@@ -88,6 +92,7 @@ func main() {
 
 		router := mux.NewRouter()
 		router.HandleFunc("/", handlers.Index).Methods("GET")
+		router.HandleFunc("/latestState", handlers.LatestState).Methods("GET")
 		router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
 		router.HandleFunc("/block/{slotOrHash}", handlers.Block).Methods("GET")
 		router.HandleFunc("/blocks", handlers.Blocks).Methods("GET")

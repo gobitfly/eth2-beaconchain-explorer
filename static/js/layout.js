@@ -91,7 +91,7 @@ $(document).ready(function() {
       return obj.account
     },
     remote: {
-      url: '/search/eth1deposits/%QUERY',
+      url: '/search/eth1_addresses/%QUERY',
       wildcard: '%QUERY'
     }
   })
@@ -143,7 +143,7 @@ $(document).ready(function() {
       limit: 5,
       name: 'addresses',
       source: bhEth1Accounts,
-      display: 'addresses',
+      display: 'address',
       templates: {
         header: '<h3>ETH1 Addresses</h3>',
         suggestion: function(data) {
