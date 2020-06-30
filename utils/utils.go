@@ -19,9 +19,6 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
-// PageSize is the number of records used when fetching RPC data
-const PageSize = 400
-
 // Config is the globally accessible configuration
 var Config *types.Config
 

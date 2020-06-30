@@ -22,9 +22,10 @@ type Config struct {
 		CheckAllBlocksOnStartup     bool `yaml:"checkAllBlocksOnStartup" envconfig:"INDEXER_CHECK_ALL_BLOCKS_ON_STARTUP"`
 		UpdateAllEpochStatistics    bool `yaml:"updateAllEpochStatistics" envconfig:"INDEXER_UPDATE_ALL_EPOCH_STATISTICS"`
 		Node                        struct {
-			Port string `yaml:"port" envconfig:"INDEXER_NODE_PORT"`
-			Host string `yaml:"host" envconfig:"INDEXER_NODE_HOST"`
-			Type string `yaml:"type" envconfig:"INDEXER_NODE_TYPE"`
+			Port     string `yaml:"port" envconfig:"INDEXER_NODE_PORT"`
+			Host     string `yaml:"host" envconfig:"INDEXER_NODE_HOST"`
+			Type     string `yaml:"type" envconfig:"INDEXER_NODE_TYPE"`
+			PageSize int32  `yaml:"pageSize" envconfig:"INDEXER_NODE_PAGE_SIZE"`
 		} `yaml:"node"`
 		Eth1Endpoint                  string `yaml:"eth1Endpoint" envconfig:"INDEXER_ETH1_ENDPOINT"`
 		Eth1DepositContractAddress    string `yaml:"eth1DepositContractAddress" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_ADDRESS"`
