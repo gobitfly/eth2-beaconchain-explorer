@@ -80,6 +80,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.Status = "deposited"
 			validatorPageData.PublicKey = []byte(pubKey)
 			validatorPageData.Deposits = deposits
+
+			sumValid := uint64(0)
+			// check if a valid deposit exists
+			for _, d := range deposits.Eth1Deposits {
+				if d.ValidSignature {
+					sumValid += d.Amount
+				} else {
+					validatorPageData.Status = "deposited_invalid"
+				}
+			}
+
+			if sumValid >= 32e9 {
+				validatorPageData.Status = "deposited_valid"
+			}
+
 			data.Data = validatorPageData
 			if utils.IsApiRequest(r) {
 				w.Header().Set("Content-Type", "application/json")
