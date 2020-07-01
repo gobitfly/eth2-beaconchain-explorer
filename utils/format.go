@@ -155,7 +155,7 @@ func FormatTimestamp(ts int64) template.HTML {
 
 // FormatValidatorStatus will return the validator-status formated as html
 func FormatValidatorStatus(status string) template.HTML {
-	if status == "deposited" {
+	if status == "deposited" || status == "deposited_valid" || status == "deposited_invalid" {
 		return "<b>Deposited</b>"
 	} else if status == "pending" {
 		return "<b>Pending</b>"
