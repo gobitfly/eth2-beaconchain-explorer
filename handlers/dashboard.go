@@ -263,7 +263,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			proposals AS (
 				SELECT validatorindex, pa.status, count(*)
 				FROM proposal_assignments pa
-				INNER JOIN blocks b ON pa.proposerslot = b.slot AND b.status = '1'
+				INNER JOIN blocks b ON pa.proposerslot = b.slot AND b.status <> '3'
 				WHERE validatorindex = ANY($3)
 				GROUP BY validatorindex, pa.status
 			)
