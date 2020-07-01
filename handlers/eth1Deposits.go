@@ -90,6 +90,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 		"4": "block_ts",
 		"5": "block_number",
 		"6": "state",
+		"7": "valid_signature",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -118,6 +119,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatTimestamp(d.BlockTs.Unix()),
 			utils.FormatEth1Block(d.BlockNumber),
 			utils.FormatValidatorStatus(d.State),
+			d.ValidSignature,
 		}
 	}
 

@@ -245,7 +245,8 @@ CREATE TABLE public.eth1_deposits (
     amount bigint NOT NULL,
     signature bytea NOT NULL,
     merkletree_index bytea NOT NULL,
-    removed boolean NOT NULL
+    removed boolean NOT NULL,
+    valid_signature boolean NOT NULL
 );
 
 
@@ -1012,7 +1013,7 @@ COPY public.epochs (epoch, blockscount, proposerslashingscount, attesterslashing
 -- Data for Name: eth1_deposits; Type: TABLE DATA; Schema: public; Owner: beaconchain
 --
 
-COPY public.eth1_deposits (tx_hash, tx_input, tx_index, block_number, block_ts, from_address, publickey, withdrawal_credentials, amount, signature, merkletree_index, removed) FROM stdin;
+COPY public.eth1_deposits (tx_hash, tx_input, tx_index, block_number, block_ts, from_address, publickey, withdrawal_credentials, amount, signature, merkletree_index, removed, valid_signature) FROM stdin;
 \.
 
 

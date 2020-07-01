@@ -61,7 +61,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
-	columns := []string{"tx_hash", "tx_input", "tx_index", "block_number", "block_ts", "from_address", "publickey", "withdrawal_credentials", "amount", "signature", "merkletree_index", "activated"}
+	columns := []string{"tx_hash", "tx_input", "tx_index", "block_number", "block_ts", "from_address", "publickey", "withdrawal_credentials", "amount", "signature", "merkletree_index", "state", "valid_signature"}
 	hasColumn := false
 	for _, column := range columns {
 		if orderBy == column {
@@ -103,6 +103,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			eth1.amount as amount,
 			eth1.signature as signature,
 			eth1.merkletree_index as merkletree_index,
+			eth1.valid_signature as valid_signature,
 			COALESCE(v.state, 'deposited') as state
 		FROM
 			eth1_deposits as eth1
@@ -146,6 +147,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			eth1.amount as amount,
 			eth1.signature as signature,
 			eth1.merkletree_index as merkletree_index,
+			eth1.valid_signature as valid_signature,
 			COALESCE(v.state, 'deposited') as state
 		FROM
 			eth1_deposits as eth1
@@ -361,7 +363,7 @@ func GetValidatorIndex(publicKey []byte) (uint64, error) {
 func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	deposits := &types.ValidatorDeposits{}
 	err := DB.Select(&deposits.Eth1Deposits, `
-		SELECT tx_hash, tx_input, tx_index, block_number, EXTRACT(epoch FROM block_ts)::INT as block_ts, from_address, publickey, withdrawal_credentials, amount, signature, merkletree_index
+		SELECT tx_hash, tx_input, tx_index, block_number, EXTRACT(epoch FROM block_ts)::INT as block_ts, from_address, publickey, withdrawal_credentials, amount, signature, merkletree_index, valid_signature
 		FROM eth1_deposits WHERE publickey = $1`, publicKey)
 	if err != nil {
 		return nil, err
