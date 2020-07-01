@@ -15,16 +15,11 @@ import (
 
 var chartsTemplate = template.Must(template.New("charts").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/charts.html"))
 var genericChartTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/genericchart.html"))
+var chartsUnavailableTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/chartsunavailable.html"))
 
 // Charts uses a go template for presenting the page to show charts
 func Charts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-
-	chartsPageData := services.LatestChartsPageData()
-	if chartsPageData == nil {
-		http.Error(w, "The requested data is currently unavailable, please retry in a few seconds", http.StatusServiceUnavailable)
-		return
-	}
 
 	data := &types.PageData{
 		Meta: &types.Meta{
@@ -34,7 +29,7 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "stats",
-		Data:                  chartsPageData,
+		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -43,6 +38,19 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
+
+	chartsPageData := services.LatestChartsPageData()
+	if chartsPageData == nil {
+		err := chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)
+		if err != nil {
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		return
+	}
+
+	data.Data = chartsPageData
 
 	err := chartsTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -56,9 +64,28 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 func GenericChart(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
+	data := &types.PageData{
+		Meta: &types.Meta{
+			Title:       fmt.Sprintf("Chart - beaconcha.in - %v", time.Now().Year()),
+			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
+		},
+		ShowSyncingMessage:    services.IsSyncing(),
+		Active:                "charts",
+		Data:                  nil,
+		Version:               version.Version,
+		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
+		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
+		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+	}
+
 	chartsPageData := services.LatestChartsPageData()
 	if chartsPageData == nil {
-		http.Error(w, "The requested data is currently unavailable, please retry in a few seconds", http.StatusServiceUnavailable)
+		err := chartsUnavailableTemplate.ExecuteTemplate(w, "layout", data)
+		if err != nil {
+			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 		return
 	}
 
@@ -77,20 +104,9 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - %v Chart - beaconcha.in - %v", chartData.Title, utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/charts/" + chartVar,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "charts",
-		Data:                  chartData,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-	}
+	data.Meta.Title = fmt.Sprintf("%v - %v Chart - beaconcha.in - %v", chartData.Title, utils.Config.Frontend.SiteName, time.Now().Year())
+	data.Meta.Path = "/charts/" + chartVar
+	data.Data = chartData
 
 	err := genericChartTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -154,4 +155,10 @@ var zeroHashRE = regexp.MustCompile("^0?x?0+$")
 // IsValidEth1Address verifies whether a string can represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
+}
+
+// RoundDecimals rounds (nearest) a number to the specified number of digits after comma
+func RoundDecimals(f float64, n int) float64 {
+	d := math.Pow10(n)
+	return math.Round(f*d) / d
 }

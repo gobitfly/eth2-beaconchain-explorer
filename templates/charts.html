@@ -3,6 +3,7 @@
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
 <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
+
 <script>
 var chartFns = []
 chartFns.push(function(){
@@ -18,7 +19,7 @@ chartFns.push(function(){
             },
             subtitle: {
                 useHTML: true,
-                text: {{.Data.Subtitle}} + ' <button class="button btn-secondary btn-xs hide-gaps" data-index="{{$i}}">hide gaps</button>'
+                text: {{.Data.Subtitle}} + ' <button class="button btn-secondary btn-xs hide-gaps text-light" data-index="{{$i}}">hide gaps</button>'
             },
             plotOptions: { column: { stacking: {{.Data.StackingMode}} } },
             xAxis: {
@@ -100,8 +101,8 @@ chartFns.push(function(){
                     stacking: {{.Data.StackingMode}},
                     dataGrouping: {
                         {{ if .Data.ColumnDataGroupingApproximation }}approximation: {{.Data.ColumnDataGroupingApproximation}},{{end}}
-                    },
-                } 
+                    }
+                }
             },
             xAxis: {
                 type: 'datetime',
@@ -115,7 +116,7 @@ chartFns.push(function(){
             },
             yAxis: [{ 
                 title: { text: {{.Data.YAxisTitle}} },
-                opposite: false
+                opposite: false,
             }],
             series: {{.Data.Series}},
             navigator: { enabled: false },

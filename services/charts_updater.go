@@ -246,7 +246,7 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Staked Ether",
-		Subtitle:     "History of daily staked Ether, which is the sum of all effctive balances.",
+		Subtitle:     "History of daily staked Ether, which is the sum of all Effective Balances.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Ether",
 		StackingMode: "false",
@@ -279,13 +279,13 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
 
 		if len(dailyAverageBalance) == 0 || dailyAverageBalance[len(dailyAverageBalance)-1][0] != day {
-			dailyAverageBalance = append(dailyAverageBalance, []float64{day, float64(row.AverageValidatorBalance) / 1000000000})
+			dailyAverageBalance = append(dailyAverageBalance, []float64{day, utils.RoundDecimals(float64(row.AverageValidatorBalance)/1e9, 4)})
 		}
 	}
 
 	chartData := &types.GenericChartData{
 		Title:        "Validator Balance",
-		Subtitle:     "Average Daily Validator Balance",
+		Subtitle:     "Average Daily Validator Balance.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Ether",
 		StackingMode: "false",
@@ -361,7 +361,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
 			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
-			row.Globalparticipationrate * 100,
+			utils.RoundDecimals(row.Globalparticipationrate*100, 2),
 		})
 	}
 
@@ -432,30 +432,38 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 
 	seriesData := [][]float64{}
 
-	var prevRewards int64
-	var prevDay float64
+	var rewards int64
+	var day float64
+	validatorsCount := uint64(0)
+	prevDayRewards := int64(0)
+	prevDay := float64(utils.EpochToTime(0).Truncate(time.Hour*24).Unix() * 1000)
 	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-
-		if prevDay != day && prevRewards != 0 && row.Rewards != 0 {
+		validatorsCount = row.Validatorscount
+		rewards = row.Rewards
+		day = float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+		if day != prevDay {
+			// data for previous day
 			seriesData = append(seriesData, []float64{
-				day,
-				float64(row.Rewards-prevRewards) / float64(row.Validatorscount) / 1e9,
+				prevDay,
+				utils.RoundDecimals(float64(rewards-prevDayRewards)/float64(validatorsCount)/1e9, 4),
 			})
-		}
-		if prevDay != day {
+			prevDayRewards = row.Rewards
 			prevDay = day
-			prevRewards = row.Rewards
 		}
 	}
+	// data for current day
+	seriesData = append(seriesData, []float64{
+		day,
+		utils.RoundDecimals(float64(rewards-prevDayRewards)/float64(validatorsCount)/1e9, 4),
+	})
 
 	chartData := &types.GenericChartData{
-		Title:        "Average Daily Validator Income",
-		Subtitle:     "",
+		Title:        "Validator Income",
+		Subtitle:     "Average Daily Validator Income.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Average Daily Validator Income [ETH/day]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Average Daily Validator Income",
@@ -514,23 +522,30 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 
 	seriesData := [][]float64{}
 
-	var prevDay float64
+	var rewards float64
+	var day float64
+	prevDay := float64(utils.EpochToTime(0).Truncate(time.Hour*24).Unix() * 1000)
 	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if prevDay != day && row.Rewards != 0 {
+		rewards = utils.RoundDecimals(float64(row.Rewards)/1e9, 4)
+		day = float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+		if day != prevDay {
+			// data for previous day
 			seriesData = append(seriesData, []float64{
-				day,
-				float64(row.Rewards) / 1e9,
+				prevDay,
+				rewards,
 			})
-		}
-		if prevDay != day {
 			prevDay = day
 		}
 	}
+	// data for current day
+	seriesData = append(seriesData, []float64{
+		day,
+		rewards,
+	})
 
 	chartData := &types.GenericChartData{
 		Title:        "Staking Rewards",
-		Subtitle:     "",
+		Subtitle:     "Total Accumulated Staking Rewards",
 		XAxisTitle:   "",
 		YAxisTitle:   "Staking Rewards [ETH]",
 		StackingMode: "false",
@@ -688,7 +703,7 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 		}
 		seriesData = append(seriesData, []float64{
 			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
-			100 * float64(row.Eligibleether) / float64(row.Totalvalidatorbalance),
+			utils.RoundDecimals(100*float64(row.Eligibleether)/float64(row.Totalvalidatorbalance), 2),
 		})
 	}
 
