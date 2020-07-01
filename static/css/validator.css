@@ -1,0 +1,228 @@
+.validator__lifecycle-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 3rem auto;
+  font-size: 90%;
+  width: 80%;
+}
+
+.validator__lifecycle-content {
+  display: flex;
+  justify-content: space-around;
+  max-width: 375px;
+  width: 100%;
+}
+
+.validator__lifecycle-node-container {
+  position: relative;
+}
+
+.validator__lifecycle-node-header {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 20%;
+}
+
+.validator__lifecycle-node::before {
+  content: '';
+  position: absolute;
+  opacity: 20%;
+  height: 8px;
+  border-right: solid 1px var(--font-color, black);
+  top: -12px;
+}
+
+.validator__lifecycle-node {
+  width: 18px;
+  height: 18px;
+  position: relative;
+  border-radius: 50%;
+  border: solid 4px var(--shadow-light, #00000033);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.validator__lifecycle-progress {
+  position: relative;
+  flex: 1 1 20px;
+}
+
+.validator__lifecycle-progress::before {
+  content: '';
+  position: absolute;
+  border-bottom: solid 1px var(--font-color, black);
+  top: 50%;
+  left: 50%;
+  width: 85%;
+  transform: translateX(-50%);
+  opacity: 20%;
+}
+
+.validator__lifecycle-container .validator__lifecycle-progress::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+}
+
+.validator__lifecycle-container .active.validator__lifecycle-progress::after {
+  border-bottom: solid 1px var(--font-color, black);
+  left: 7.5%;
+  width: 45%;
+}
+
+.validator__lifecycle-container .complete.validator__lifecycle-progress::after {
+  border-bottom: solid 1px var(--font-color, black);
+  left: 7.5%;
+  width: 85%;
+}
+
+.validator__lifecycle-container .active .validator__lifecycle-node-header,
+.validator__lifecycle-container .failed .validator__lifecycle-node-header,
+.validator__lifecycle-container .online .validator__lifecycle-node-header,
+.validator__lifecycle-container .offline .validator__lifecycle-node-header,
+.validator__lifecycle-container .done .validator__lifecycle-node-header {
+  opacity: 1;
+}
+
+.validator__lifecycle-container .done .validator__lifecycle-node,
+.validator__lifecycle-container .online.validator__lifecycle-active .validator__lifecycle-node {
+  border: solid 4px var(--success, green);
+  background-color: var(--success, green);
+}
+
+.validator__lifecycle-container .failed .validator__lifecycle-node,
+.validator__lifecycle-container .offline.validator__lifecycle-active .validator__lifecycle-node {
+  border: solid 4px var(--danger, red);
+  background-color: var(--danger, red);
+}
+
+.validator__lifecycle-container i {
+  display: none;
+  position: absolute;
+  font-size: 60%;
+  color: white;
+  margin-bottom: 1px;
+}
+
+.validator__lifecycle-container .done.validator__lifecycle-deposited .deposit-success,
+.validator__lifecycle-container .failed.validator__lifecycle-deposited .deposit-fail,
+.validator__lifecycle-container .done .fa-check,
+.validator__lifecycle-container .done .fa-door-open,
+.validator__lifecycle-container .failed .fa-door-open,
+.validator__lifecycle-container .online.validator__lifecycle-active .online,
+.validator__lifecycle-container .offline.validator__lifecycle-active .offline {
+  display: initial;
+}
+
+.validator__lifecycle-container  .spinner {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.validator__lifecycle-container .active .double-bounce1,
+.validator__lifecycle-container .active .double-bounce2 {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #219653;
+  opacity: 0.6;
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  -webkit-animation: sk-bounce 3.0s infinite ease-in-out;
+  animation: sk-bounce 3.0s infinite ease-in-out;
+}
+
+.validator__lifecycle-container .active.slashed .double-bounce1,
+.validator__lifecycle-container .active.slashed .double-bounce2 {
+  background-color: red;
+}
+
+.validator__lifecycle-container .active .double-bounce2 {
+  -webkit-animation-delay: -1.5s;
+  animation-delay: -1.5s;
+}
+
+@-webkit-keyframes sk-bounce {
+
+  0%,
+  100% {
+    -webkit-transform: scale(0.0)
+  }
+
+  50% {
+    -webkit-transform: scale(1.5)
+  }
+}
+
+@keyframes sk-bounce {
+
+  0%,
+  100% {
+    transform: scale(0.0);
+    -webkit-transform: scale(0.0);
+  }
+
+  50% {
+    transform: scale(1.5);
+    -webkit-transform: scale(1.5);
+  }
+}
+
+@media screen and (min-width: 960px) {
+  .validator__lifecycle-container {
+    font-size: 100%;
+    max-width: 60rem;
+  }
+
+  .validator__lifecycle-container i {
+    font-size: 80%;
+    margin-bottom: 0;
+  }
+
+  .validator__lifecycle-node {
+    width: 24px;
+    height: 24px;
+    border-width: 5px;
+  }
+  .validator__lifecycle-node-header {
+    top: -30px;
+  }
+}
+
+/* responsive tabs for mobile screens (shows icons when tab is not selected and text when selected */
+@media screen and (max-width: 960px) {
+  .nav-tabs .tab-text {
+    display: none;
+  }
+  
+  .nav-tabs .active .tab-text {
+    display: initial;
+  }
+
+  .nav-tabs .active .tab-icon {
+    display: none;
+  }
+
+  .nav-tabs .active i {
+    margin-right: .25rem;
+  }
+
+  .nav-tabs .tab-text + .badge {
+    display: none;
+  }
+}
+
+.validator-card {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}

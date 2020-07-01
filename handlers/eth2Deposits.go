@@ -15,21 +15,20 @@ import (
 	"time"
 )
 
-var ethTwoTemplate = template.Must(template.New("ethTwoDeposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethTwoDeposit.html"))
+var eth2DepositsTemplate = template.Must(template.New("eth2Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth2Deposits.html"))
 
 // Eth2Deposits will return information about deposits using a go template
 func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
-	ethTwoTemplate = template.Must(template.New("ethTwoDeposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/ethTwoDeposit.html"))
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - Eth1 Deposits - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/deposits/eth2",
 		},
+		Active:                "eth2Deposits",
 		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "ethOneDeposit",
 		Data:                  nil,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -40,7 +39,7 @@ func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
-	err := ethTwoTemplate.ExecuteTemplate(w, "layout", data)
+	err := eth2DepositsTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -83,8 +82,7 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
 		"0": "block_slot",
-		// "1": "block_index",
-		// "2": "proof",
+		// "1": "validatorindex",
 		"1": "publickey",
 		"2": "amount",
 		"3": "withdrawalcredentials",
@@ -99,14 +97,14 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 
 	depositCount, err := db.GetEth2DepositsCount()
 	if err != nil {
-		logger.Errorf("GetEth1DepositsCount error retrieving eth1_deposit data: %v", err)
+		logger.Errorf("error retrieving eth2_deposit count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
 	deposits, err := db.GetEth2Deposits(search, length, start, orderBy, orderDir)
 	if err != nil {
-		logger.Errorf("GetEth1Deposits error retrieving eth1_deposit data: %v", err)
+		logger.Errorf("error retrieving eth2_deposit data: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}

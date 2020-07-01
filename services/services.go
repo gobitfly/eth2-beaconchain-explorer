@@ -132,6 +132,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 	data.CurrentEpoch = epoch
 
+	cutoffSlot := utils.TimeToSlot(uint64(time.Now().Add(time.Second * 10).Unix()))
+
+	// If we are before the genesis block show the first 20 slots by default
+	startSlotTime := utils.SlotToTime(0)
+	if startSlotTime.After(time.Now()) {
+		cutoffSlot = 20
+	}
+
 	var blocks []*types.IndexPageDataBlocks
 	err = db.DB.Select(&blocks, `
 		SELECT
@@ -148,7 +156,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.status
 		FROM blocks 
 		WHERE blocks.slot < $1
-		ORDER BY blocks.slot DESC LIMIT 20`, utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
+		ORDER BY blocks.slot DESC LIMIT 20`, cutoffSlot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index block data: %v", err)
 	}

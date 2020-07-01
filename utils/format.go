@@ -154,6 +154,8 @@ func FormatTimestamp(ts int64) template.HTML {
 }
 
 // FormatValidatorStatus will return the validator-status formated as html
+// possible states
+// pending, active_online, active_offline, exiting_online, exciting_offline, slashing_online, slashing_offline, exited, slashed
 func FormatValidatorStatus(status string) template.HTML {
 	if status == "deposited" || status == "deposited_valid" || status == "deposited_invalid" {
 		return "<b>Deposited</b>"
