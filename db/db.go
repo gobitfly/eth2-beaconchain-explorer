@@ -199,7 +199,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
-	columns := []string{"block_slot", "validatorindex", "publickey", "amount", "withdrawalcredentials", "signature"}
+	columns := []string{"block_slot", "publickey", "amount", "withdrawalcredentials", "signature"}
 	hasColumn := false
 	for _, column := range columns {
 		if orderBy == column {
@@ -215,7 +215,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 			SELECT 
 				blocks_deposits.block_slot,
 				blocks_deposits.block_index,
-				blocks_depositsproof,
+				blocks_deposits.proof,
 				blocks_deposits.publickey,
 				blocks_deposits.withdrawalcredentials,
 				blocks_deposits.amount,
