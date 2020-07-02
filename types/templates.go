@@ -476,6 +476,8 @@ type GenericChartData struct {
 	ShowGapHider                    bool
 	XAxisLabelsFormatter            template.JS
 	TooltipFormatter                template.JS
+	PlotOptionsSeriesEventsClick    template.JS
+	PlotOptionsSeriesCursor         string
 	Title                           string                    `json:"title"`
 	Subtitle                        string                    `json:"subtitle"`
 	XAxisTitle                      string                    `json:"x_axis_title"`

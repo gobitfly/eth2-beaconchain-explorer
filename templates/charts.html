@@ -32,6 +32,12 @@ chartFns.push(function(){
                     },
                     minFontSize: 8,
                     maxFontSize: 25,
+                },
+                series: {
+                    {{ if .Data.PlotOptionsSeriesCursor }}cursor: {{.Data.PlotOptionsSeriesCursor}},{{end}}
+                    events: {
+                        {{ if .Data.PlotOptionsSeriesEventsClick }}click: {{.Data.PlotOptionsSeriesEventsClick}},{{end}}
+                    }
                 }
             },
             xAxis: {
@@ -88,6 +94,12 @@ chartFns.push(function(){
                             },
                             minFontSize: 8,
                             maxFontSize: 25,
+                        },
+                        series: {
+                            {{ if .Data.PlotOptionsSeriesCursor }}cursor: {{.Data.PlotOptionsSeriesCursor}},{{end}}
+                            events: {
+                                {{ if .Data.PlotOptionsSeriesEventsClick }}click: {{.Data.PlotOptionsSeriesEventsClick}},{{end}}
+                            }
                         }
                     },
                     xAxis: {
@@ -131,6 +143,12 @@ chartFns.push(function(){
                     },
                     minFontSize: 8,
                     maxFontSize: 25,
+                },
+                series: {
+                    {{ if .Data.PlotOptionsSeriesCursor }}cursor: {{.Data.PlotOptionsSeriesCursor}},{{end}}
+                    events: {
+                        {{ if .Data.PlotOptionsSeriesEventsClick }}click: {{.Data.PlotOptionsSeriesEventsClick}},{{end}}
+                    }
                 }
             },
             xAxis: {
