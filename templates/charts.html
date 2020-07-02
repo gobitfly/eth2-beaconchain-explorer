@@ -1,14 +1,18 @@
 {{ define "js"}}
 <script src="https://code.highcharts.com/stock/highstock.js"></script>
+<script src="https://code.highcharts.com/stock/highcharts-more.js"></script>
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/wordcloud.js"></script>
+
 <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+<script src="https://code.highcharts.com/modules/accessibility.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
+
 <script>
 var chartFns = []
 chartFns.push(function(){
 {{range $i, $e := .}}
     {{if .Data.IsNormalChart}}
-        /**/
         Highcharts.chart('chart-{{$i}}',{
             chart: { type: {{.Data.Type}} },
             rangeSelector: {  enabled: false },
@@ -18,9 +22,24 @@ chartFns.push(function(){
             },
             subtitle: {
                 useHTML: true,
-                text: {{.Data.Subtitle}} + ' <button class="button btn-secondary btn-xs hide-gaps" data-index="{{$i}}">hide gaps</button>'
+                text: {{.Data.Subtitle}}{{ if .Data.ShowGapHider }} + ' <button class="button btn-secondary btn-xs hide-gaps text-light" data-index="{{$i}}">hide gaps</button>'{{end}}
             },
-            plotOptions: { column: { stacking: {{.Data.StackingMode}} } },
+            plotOptions: { 
+                column: { stacking: {{.Data.StackingMode}} }, 
+                wordcloud: {
+                    rotation: {
+                        from: -10, to: 10, orientations: 5,
+                    },
+                    minFontSize: 8,
+                    maxFontSize: 25,
+                },
+                series: {
+                    {{ if .Data.PlotOptionsSeriesCursor }}cursor: {{.Data.PlotOptionsSeriesCursor}},{{end}}
+                    events: {
+                        {{ if .Data.PlotOptionsSeriesEventsClick }}click: {{.Data.PlotOptionsSeriesEventsClick}},{{end}}
+                    }
+                }
+            },
             xAxis: {
                 labels: {
                     {{ if .Data.XAxisLabelsFormatter }}formatter: {{.Data.XAxisLabelsFormatter}},{{end}}
@@ -34,58 +53,74 @@ chartFns.push(function(){
             legend: {enabled:false},
             series: {{.Data.Series}},
             navigator: { enabled: false },
-            scrollbar: { enabled: false }
+            scrollbar: { enabled: false },
+            tooltip: {
+                {{ if .Data.TooltipFormatter }}formatter: {{.Data.TooltipFormatter}},{{end}}
+            }
         })
-        /**/
-        {
-            var series = {{.Data.Series}}
-            var xAxisCategories = []
-            series.forEach(s => {
-                var d = []
-                s.data.forEach(data => {
-                    xAxisCategories.push((data[0]).toFixed(4))
-                    d.push(data[1])
+        {{ if .Data.ShowGapHider }}
+            {
+                var series = {{.Data.Series}}
+                var xAxisCategories = []
+                series.forEach(s => {
+                    var d = []
+                    s.data.forEach(data => {
+                        xAxisCategories.push((data[0]).toFixed(4))
+                        d.push(data[1])
+                    })
+                    s.data = d
                 })
-                s.data = d
-            })
-            Highcharts.chart('chart-{{$i}}-nogaps',{
-                chart: { type: {{.Data.Type}} },
-                rangeSelector: {  enabled: false },
-                title: { 
-                    useHTML: true,
-                    text: '<a href="charts/{{.Path}}">{{.Data.Title}}</a>',
-                },
-                subtitle: { 
-                    useHTML: true,
-                    text: {{.Data.Subtitle}} + ' <button class="button btn-secondary btn-xs show-gaps" data-index="{{$i}}">show gaps</button>'
-                },
-                plotOptions: { 
-                    column: { 
-                        pointPadding: 0,
-                        groupPadding: 0,
-                        borderWidth: 1,
-                        shadow: false
-                    } 
-                },
-                xAxis: {
-                    type: 'category',
-                    categories: xAxisCategories,
-                    labels: {
-                        {{ if .Data.XAxisLabelsFormatter }}formatter: {{.Data.XAxisLabelsFormatter}},{{end}}
-                    }
-                },
-                yAxis: [{ 
-                    title: { text: {{.Data.YAxisTitle}} },
-                    opposite: false,
-                    type: 'logarithmic',
-                }],
-                series: series,
-                navigator: { enabled: false },
-                scrollbar: { enabled: false },
-                legend: {enabled:false},
-            })
-        }
-        /**/
+                Highcharts.chart('chart-{{$i}}-nogaps',{
+                    chart: { type: {{.Data.Type}} },
+                    rangeSelector: {  enabled: false },
+                    title: { 
+                        useHTML: true,
+                        text: '<a href="charts/{{.Path}}">{{.Data.Title}}</a>',
+                    },
+                    subtitle: { 
+                        useHTML: true,
+                        text: {{.Data.Subtitle}} + ' <button class="button btn-secondary btn-xs show-gaps" data-index="{{$i}}">show gaps</button>'
+                    },
+                    plotOptions: { 
+                        column: { 
+                            pointPadding: 0,
+                            groupPadding: 0,
+                            borderWidth: 1,
+                            shadow: false
+                        },
+                        wordcloud: {
+                            rotation: {
+                                from: -10, to: 10, orientations: 5,
+                            },
+                            minFontSize: 8,
+                            maxFontSize: 25,
+                        },
+                        series: {
+                            {{ if .Data.PlotOptionsSeriesCursor }}cursor: {{.Data.PlotOptionsSeriesCursor}},{{end}}
+                            events: {
+                                {{ if .Data.PlotOptionsSeriesEventsClick }}click: {{.Data.PlotOptionsSeriesEventsClick}},{{end}}
+                            }
+                        }
+                    },
+                    xAxis: {
+                        type: 'category',
+                        categories: xAxisCategories,
+                        labels: {
+                            {{ if .Data.XAxisLabelsFormatter }}formatter: {{.Data.XAxisLabelsFormatter}},{{end}}
+                        }
+                    },
+                    yAxis: [{ 
+                        title: { text: {{.Data.YAxisTitle}} },
+                        opposite: false,
+                        type: 'logarithmic',
+                    }],
+                    series: series,
+                    navigator: { enabled: false },
+                    scrollbar: { enabled: false },
+                    legend: {enabled:false},
+                })
+            }
+        {{end}}
     {{else}}
         Highcharts.stockChart('chart-{{$i}}',{
             chart: { type: {{.Data.Type}} },
@@ -100,8 +135,21 @@ chartFns.push(function(){
                     stacking: {{.Data.StackingMode}},
                     dataGrouping: {
                         {{ if .Data.ColumnDataGroupingApproximation }}approximation: {{.Data.ColumnDataGroupingApproximation}},{{end}}
+                    }
+                },
+                wordcloud: {
+                    rotation: {
+                        from: -10, to: 10, orientations: 5,
                     },
-                } 
+                    minFontSize: 8,
+                    maxFontSize: 25,
+                },
+                series: {
+                    {{ if .Data.PlotOptionsSeriesCursor }}cursor: {{.Data.PlotOptionsSeriesCursor}},{{end}}
+                    events: {
+                        {{ if .Data.PlotOptionsSeriesEventsClick }}click: {{.Data.PlotOptionsSeriesEventsClick}},{{end}}
+                    }
+                }
             },
             xAxis: {
                 type: 'datetime',
@@ -115,7 +163,7 @@ chartFns.push(function(){
             },
             yAxis: [{ 
                 title: { text: {{.Data.YAxisTitle}} },
-                opposite: false
+                opposite: false,
             }],
             series: {{.Data.Series}},
             navigator: { enabled: false },

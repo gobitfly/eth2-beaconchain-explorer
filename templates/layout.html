@@ -375,6 +375,7 @@
             var spe = {{.ChainSlotsPerEpoch}}
             var slot = Math.floor((ts/1000 - gts) / sps)
             var epoch = Math.floor(slot/spe)
+            if (epoch < 0) return 0
             return epoch
         }
         function timeToSlot(ts) {
@@ -382,6 +383,7 @@
             var sps = {{.ChainSecondsPerSlot}}
             var spe = {{.ChainSlotsPerEpoch}}
             var slot = Math.floor((ts/1000 - gts) / sps)
+            if (slot < 0) return 0
             return slot
         }
     </script>
