@@ -34,7 +34,6 @@
         <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
         <link id="app-style" rel="stylesheet" href="/css/layout.css">
         <link rel="stylesheet" href="/css/layout/toggle.css">
-        <link rel="stylesheet" href="/css/layout/typeahead.css">
         <link rel="stylesheet" href="/css/layout/banner.css">
         <script>
             var mql = window.matchMedia('(prefers-color-scheme: light)');
@@ -66,48 +65,68 @@
         <strong>We're sorry but beaconcha.in doesn't work properly without JavaScript enabled. Please enable it to
             continue.</strong>
     </noscript>
-        <div class="info-banner-container">
-          <div class="info-banner-content container d-flex align-items-center">
-                <div id="banner" class="info-banner-stats">
-                    <a style="color: inherit;" class="mr-2" href="/">
-                        <i class="fas fa-home"></i>
-                    </a>
-                    <div id="banner-epoch" class="info-item d-flex mr-3">
-                        <div class="info-item-header mr-1">Epoch</div>
-                        <div class="info-item-body"><a id="banner-epoch-data" style="color:inherit;" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
-                    </div>
-                    <div id="banner-slot" class="info-item d-flex mr-3">
-                        <div class="info-item-header mr-1">Slot</div>
-                        <div class="info-item-body"><a id="banner-slot-data" style="color:inherit;" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
-                    </div>
-                    {{if not .ShowSyncingMessage}}
-                        {{if gt .FinalizationDelay 3}}
-                        <div id="banner-fin" class="info-item d-flex mr-3">
-                            <div class="info-item-header mr-1 text-warning">Finality</div>
-                            <div class="info-item-body text-warning">
-                                <span id="banner-fin-data">{{.FinalizationDelay}}</span>
-                                <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
-                            </div>
-                        </div>
-                        {{end}}
-                    {{end}}
-                    {{if .ShowSyncingMessage}}
-                    <div id="banner-status" class="info-item d-flex mr-3">
-                        <div class="info-item-header mr-1">Status</div>
-                        <div class="info-item-body">Syncing</div>
-                    </div>
-                    {{end}}
-                </div>
-                <div class="d-flex flex-fill"></div>
-            <div class="search-container">
-                <form  class="form-inline" action="/search" method="POST">
-                    <i class="fas fa-search"></i>
-                    <input class="typeahead" autocomplete="off" name="search" type="text"
-                    placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
-                </form>
+    <!-- Banner -->
+    <div class="info-banner-container">
+      <div class="info-banner-content container d-flex align-items-center">
+        <div id="banner" class="info-banner-stats">
+          <a style="color: inherit; white-space:nowrap;" class="mr-2" href="/">
+            <i class="fas fa-home"></i> <span>|</span>
+          </a>
+          <div id="banner-epoch" class="info-item d-flex mr-3">
+            <div class="info-item-header mr-1">
+              <span class="item-icon">
+                <i class="fas fa-history"></i>
+              </span> 
+              <span class="item-text">Epoch:</span>
+            </div>
+            <div class="info-item-body">
+              <a id="banner-epoch-data" style="color:inherit;" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
+          </div>
+          <div id="banner-slot" class="info-item d-flex mr-3">
+            <div class="info-item-header mr-1">
+              <span class="item-icon">
+                <i class="fas fa-cubes"></i>
+              </span>
+              <span class="item-text">Slot:</span>
+            </div>
+            <div class="info-item-body"><a id="banner-slot-data" style="color:inherit;" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
+          </div>
+          {{if not .ShowSyncingMessage}}
+          {{if gt .FinalizationDelay 3}}
+          <div id="banner-fin" class="info-item d-flex mr-3">
+            <div class="info-item-header mr-1 text-warning">
+              <span class="item-icon">
+                <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
+              </span>
+              <span class="item-text">
+                Finality
+              </span>
+            </div>
+            <div class="info-item-body text-warning">
+              <span id="banner-fin-data">{{.FinalizationDelay}}</span>
+              <i class="fas fa-exclamation-triangle item-text" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
             </div>
           </div>
+          {{end}}
+          {{end}}
+          {{if .ShowSyncingMessage}}
+          <div id="banner-status" class="info-item d-flex mr-3">
+            <div class="info-item-body">
+              <i class="fas fa-sync" data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network"></i>
+            </div>
+          </div>
+          {{end}}
         </div>
+        <div class="d-flex flex-fill"></div>
+        <div class="search-container">
+          <form class="form-inline" action="/search" method="POST">
+            <i id="banner-search" class="fas fa-search"></i>
+            <input id="banner-search-input" class="typeahead" autocomplete="off" name="search" type="text" placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- Banner END -->
         <nav id="nav" class="navbar navbar-expand-lg navbar-light">
             <div  class="container">
                     <a class=navbar-brand href="/">
@@ -338,10 +357,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.11.1/typeahead.bundle.min.js"></script>
     <script src="/js/layout.js"></script>
     <script src="/js/banner.js"></script>
-    <script>
-        // update the banner every 12 seconds
-        setInterval(updateBanner, 12000)
-    </script>
     <script>
         function slotToTime(slot) {
             var gts = {{.ChainGenesisTimestamp}}
