@@ -30,6 +30,8 @@ var chartHandlers = map[string]chartHandler{
 	"balance_distribution":           {10, balanceDistributionChartData},
 	"effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
 	"performance_distribution_365d":  {12, performanceDistribution365dChartData},
+	"deposits":                       {13, depositsChartData},
+	"graffiti_wordcloud":             {14, graffitiCloudChartData},
 }
 
 // LatestChartsPageData returns the latest chart page data
@@ -785,6 +787,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart:        true,
+		ShowGapHider:         true,
 		Title:                "Balance Distribution",
 		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d.", currentEpoch),
 		XAxisTitle:           "Balance",
@@ -863,6 +866,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart:        true,
+		ShowGapHider:         true,
 		Title:                "Effective Balance Distribution",
 		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d.", currentEpoch),
 		XAxisTitle:           "Effective Balance",
@@ -920,6 +924,7 @@ func performanceDistribution1dChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
+		ShowGapHider:  true,
 		Title:         "Income Distribution (1 day)",
 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last day at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Income",
@@ -981,6 +986,7 @@ func performanceDistribution7dChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
+		ShowGapHider:  true,
 		Title:         "Income Distribution (7 days)",
 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 7 days at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Income",
@@ -1042,6 +1048,7 @@ func performanceDistribution31dChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
+		ShowGapHider:  true,
 		Title:         "Income Distribution (31 days)",
 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 31 days at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Income",
@@ -1106,6 +1113,7 @@ func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
+		ShowGapHider:  true,
 		Title:         "Income Distribution (365 days)",
 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 365 days at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Income",
@@ -1121,6 +1129,148 @@ func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 			{
 				Name: "# of Validators",
 				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func depositsChartData() (*types.GenericChartData, error) {
+	var err error
+
+	eth1Rows := []struct {
+		Timestamp int64
+		Amount    uint64
+		Valid     bool
+	}{}
+
+	err = db.DB.Select(&eth1Rows, `
+		select
+			extract(epoch from block_ts)::int as timestamp,
+			amount,
+			valid_signature as valid
+		from eth1_deposits
+		order by timestamp`)
+	if err != nil {
+		return nil, fmt.Errorf("error getting eth1-deposits: %w", err)
+	}
+
+	eth2Rows := []struct {
+		Slot   uint64
+		Amount uint64
+	}{}
+
+	err = db.DB.Select(&eth2Rows, `
+		select block_slot as slot, amount 
+		from blocks_deposits
+		order by slot`)
+	if err != nil {
+		return nil, fmt.Errorf("error getting eth2-deposits: %w", err)
+	}
+
+	dailySuccessfulEth1Deposits := [][]float64{}
+	dailyFailedEth1Deposits := [][]float64{}
+	dailyEth2Deposits := [][]float64{}
+
+	for _, row := range eth1Rows {
+		day := float64(time.Unix(row.Timestamp, 0).Truncate(time.Hour*24).Unix() * 1000)
+
+		if row.Valid {
+			if len(dailySuccessfulEth1Deposits) == 0 || dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][0] != day {
+				dailySuccessfulEth1Deposits = append(dailySuccessfulEth1Deposits, []float64{day, float64(row.Amount / 1e9)})
+			} else {
+				dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][1] += float64(row.Amount / 1e9)
+			}
+		} else {
+			if len(dailyFailedEth1Deposits) == 0 || dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][0] != day {
+				dailyFailedEth1Deposits = append(dailyFailedEth1Deposits, []float64{day, float64(row.Amount / 1e9)})
+			} else {
+				dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][1] += float64(row.Amount / 1e9)
+			}
+		}
+	}
+
+	for _, row := range eth2Rows {
+		day := float64(utils.SlotToTime(row.Slot).Truncate(time.Hour*24).Unix() * 1000)
+
+		if len(dailyEth2Deposits) == 0 || dailyEth2Deposits[len(dailyEth2Deposits)-1][0] != day {
+			dailyEth2Deposits = append(dailyEth2Deposits, []float64{day, float64(row.Amount / 1e9)})
+		} else {
+			dailyEth2Deposits[len(dailyEth2Deposits)-1][1] += float64(row.Amount / 1e9)
+		}
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Deposits",
+		Subtitle:     "Daily Amount of deposited ETH.",
+		XAxisTitle:   "Income",
+		YAxisTitle:   "Deposited ETH",
+		StackingMode: "normal",
+		Type:         "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name:  "ETH2",
+				Data:  dailyEth2Deposits,
+				Stack: "eth2",
+			},
+			{
+				Name:  "ETH1 (success)",
+				Data:  dailySuccessfulEth1Deposits,
+				Stack: "eth1",
+			},
+			{
+				Name:  "ETH1 (failed)",
+				Data:  dailyFailedEth1Deposits,
+				Stack: "eth1",
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func graffitiCloudChartData() (*types.GenericChartData, error) {
+	rows := []struct {
+		Name       string `json:"name"`
+		Weight     uint64 `json:"weight"`
+		Validators uint64 `json:"validators"`
+	}{}
+
+	// \x are missed blocks
+	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities
+	err := db.DB.Select(&rows, `
+		with 
+			graffities as (
+				select count(*), graffiti
+				from blocks 
+				where graffiti <> '\x' and graffiti <> '\x0000000000000000000000000000000000000000000000000000000000000000'
+				group by graffiti order by count desc limit 25
+			)
+		select count(distinct blocks.proposer) as validators, graffities.graffiti as name, graffities.count as weight
+		from blocks 
+			inner join graffities on blocks.graffiti = graffities.graffiti 
+		group by graffities.graffiti, graffities.count
+		order by weight desc`)
+	if err != nil {
+		return nil, fmt.Errorf("error getting graffiti-occurences: %w", err)
+	}
+
+	for i := range rows {
+		rows[i].Name = utils.FormatGraffitiString(rows[i].Name)
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart:    true,
+		Type:             "wordcloud",
+		Title:            "Graffiti Word Cloud",
+		Subtitle:         "Word Cloud of the 25 most occuring graffities.",
+		TooltipFormatter: `function(){ return '<b>'+this.point.name+'</b><br\>Occurences: '+this.point.weight+'<br\>Validators: '+this.point.validators }`,
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Occurences",
+				Data: rows,
+				Type: "wordcloud",
 			},
 		},
 	}

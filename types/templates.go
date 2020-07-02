@@ -473,7 +473,9 @@ type SearchAheadValidatorsResult []struct {
 // GenericChartData is a struct to hold chart data
 type GenericChartData struct {
 	IsNormalChart                   bool
+	ShowGapHider                    bool
 	XAxisLabelsFormatter            template.JS
+	TooltipFormatter                template.JS
 	Title                           string                    `json:"title"`
 	Subtitle                        string                    `json:"subtitle"`
 	XAxisTitle                      string                    `json:"x_axis_title"`
@@ -486,8 +488,10 @@ type GenericChartData struct {
 
 // GenericChartDataSeries is a struct to hold chart series data
 type GenericChartDataSeries struct {
-	Name string      `json:"name"`
-	Data [][]float64 `json:"data"`
+	Name  string      `json:"name"`
+	Data  interface{} `json:"data"`
+	Stack string      `json:"stack,omitempty"`
+	Type  string      `json:"type,omitempty"`
 }
 
 // ChartsPageData is an array to hold charts for the charts-page
