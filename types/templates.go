@@ -453,9 +453,8 @@ type SearchAheadBlocksResult []struct {
 
 // SearchAheadGraffitiResult is a struct to hold the search ahead blocks results with a given graffiti
 type SearchAheadGraffitiResult []struct {
-	Slot     string `db:"slot" json:"slot,omitempty"`
 	Graffiti string `db:"graffiti" json:"graffiti,omitempty"`
-	Root     string `db:"blockroot" json:"blockroot,omitempty"`
+	Count    string `db:"count" json:"count,omitempty"`
 }
 
 // SearchAheadEth1Result is a struct to hold the search ahead eth1 results

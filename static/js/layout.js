@@ -159,12 +159,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Graffiti</h3>',
         suggestion: function(data) {
-          if (data.graffiti) {
-            data.graffiti = data.graffiti.replace(/(^\")|(\"$)'/, '').trim()
-            return `<div>${data.graffiti}</div>`
-          } else {
-            return `<div>${data.slot}<div>`
-          }
+          return `<div>${data.count} Blocks: ${data.graffiti}</div>`
         }
       }
     }
@@ -209,10 +204,11 @@ $(document).ready(function() {
         window.location = '/validator/' + sug.index
     } else if (sug.epoch !== undefined) {
       window.location = '/epoch/' + sug.epoch
-    } else if(sug.address !== undefined) {
+    } else if (sug.address !== undefined) {
       window.location = '/validators/eth1deposits?q=' + sug.address
-    } 
-    else {
+    } else if (sug.graffiti !== undefined) {
+      window.location = '/blocks?q=' + encodeURIComponent(sug.graffiti)
+    } else {
       console.log('invalid typeahead-selection', sug)
     }
   })
