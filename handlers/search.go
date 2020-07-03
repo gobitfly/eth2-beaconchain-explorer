@@ -93,9 +93,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
 		err := db.DB.Select(graffiti, `
-			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot, graffiti 
-			FROM blocks 
-			WHERE LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1) 
+			SELECT graffiti, count(*)
+			FROM blocks
+			WHERE LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1)
+			GROUP BY graffiti
+			ORDER BY count desc
 			LIMIT 10`, "%"+search+"%")
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query for graffiti")
