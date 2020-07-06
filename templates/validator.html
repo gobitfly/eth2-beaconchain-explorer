@@ -1,27 +1,21 @@
 {{ define "js"}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 <script src="/js/validator.js"></script>
-	<script>
-		setValidatorStatus({{.Status}})
- </script>	
+<script>setValidatorStatus({{.Status}})</script>
 
-	{{if ne .Status "deposited"}}
-		<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
-		<script>
-			createValidatorDataTable({{.Index}})
-		</script>
-
-		<script src="https://code.highcharts.com/stock/highstock.js"></script>
-		<script src="https://code.highcharts.com/modules/exporting.js"></script>
-		<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
-		<script src="/js/highcharts-global-options.js"></script>
-
+{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+<script>createValidatorDataTable({{.Index}})</script>
+<script src="https://code.highcharts.com/stock/highstock.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+<script src="/js/highcharts-global-options.js"></script>
 <script>
 	createBalanceChart({{.BalanceHistoryChartData}}, {{.EffectiveBalanceHistoryChartData}})
 {{if .ProposedBlocksCount}}
 	createProposedBlockChart({{.Proposals}})
 {{end}}
-  setupDashboardButtons({{.Index }}+'')
+	setupDashboardButtons({{.Index }}+'')
 </script>
 {{end}}
 {{end}}
