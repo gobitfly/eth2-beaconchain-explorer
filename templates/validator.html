@@ -1,27 +1,21 @@
 {{ define "js"}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 <script src="/js/validator.js"></script>
-	<script>
-		setValidatorStatus({{.Status}})
- </script>	
+<script>setValidatorStatus({{.Status}})</script>
 
-	{{if ne .Status "deposited"}}
-		<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
-		<script>
-			createValidatorDataTable({{.Index}})
-		</script>
-
-		<script src="https://code.highcharts.com/stock/highstock.js"></script>
-		<script src="https://code.highcharts.com/modules/exporting.js"></script>
-		<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
-		<script src="/js/highcharts-global-options.js"></script>
-
+{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+<script>createValidatorDataTable({{.Index}})</script>
+<script src="https://code.highcharts.com/stock/highstock.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+<script src="/js/highcharts-global-options.js"></script>
 <script>
 	createBalanceChart({{.BalanceHistoryChartData}}, {{.EffectiveBalanceHistoryChartData}})
 {{if .ProposedBlocksCount}}
 	createProposedBlockChart({{.Proposals}})
 {{end}}
-  setupDashboardButtons({{.Index }}+'')
+	setupDashboardButtons({{.Index }}+'')
 </script>
 {{end}}
 {{end}}
@@ -36,7 +30,7 @@
 	<div class="d-md-flex justify-content-md-between">
 		<div class="d-flex mb-1">
 			<h1 class="h4 mb-1 mb-md-0">
-				<span>Validator{{if ne .Status "deposited"}} {{.Index}}{{end}}</span>
+				<span>Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}</span>
 				<button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" data-placement="right" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
 					<i class="fa fa-copy"></i>
 				</button>

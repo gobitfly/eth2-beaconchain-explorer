@@ -147,7 +147,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>ETH1 Addresses</h3>',
         suggestion: function(data) {
-          return `<div>${'0x'+data.address}</div>`
+          return `<div>${'0x'+data.address.substring(0, 16)}…</div>`
         }
       }
     },
@@ -159,7 +159,10 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Graffiti</h3>',
         suggestion: function(data) {
-          return `<div>${data.count} Blocks: ${data.graffiti}</div>`
+          if (data.graffiti.length > 16) {
+            return `<div>${data.count} Blocks: ${data.graffiti.substring(0, 16)}…</div>`
+          }
+          return `<div>${data.count} Blocks: ${data.graffiti.substring(0, 16)}</div>`
         }
       }
     }
