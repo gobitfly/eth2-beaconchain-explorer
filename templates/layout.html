@@ -76,7 +76,7 @@
             <div class="info-item-header mr-1">
               <span class="item-icon">
                 <i class="fas fa-history"></i>
-              </span> 
+              </span>
               <span class="item-text">Epoch:</span>
             </div>
             <div class="info-item-body">
@@ -117,12 +117,20 @@
           </div>
           {{end}}
         </div>
+        <!-- Fill content so that the other elements -->
         <div class="d-flex flex-fill"></div>
-        <div class="search-container">
-          <form class="form-inline" action="/search" method="POST">
+        <div class="info-banner-right">
+          <div class="search-container">
+            <form class="form-inline" action="/search" method="POST">
+              <input id="banner-search-input" class="typeahead" autocomplete="off" name="search" type="text" placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
+            </form>
+          </div>
+          <a type="button" data-toggle="modal" data-target="#staticBackdrop">
+            <i class="fas fa-sign-in-alt"></i>
+          </a>
+          <a type="button">
             <i id="banner-search" class="fas fa-search"></i>
-            <input id="banner-search-input" class="typeahead" autocomplete="off" name="search" type="text" placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
-          </form>
+          </a>
         </div>
       </div>
     </div>
@@ -329,22 +337,69 @@
             </footer>
         </div>
     
-        <!-- <div class="fab-message">
-                <div class="fab-message-button">
-                  <a href="#" class="at-button" onclick="toggleFAB();return false;">
-                        <i class="svg-question-mark fas fa-exclamation-circle fa-3x"></i>
-                        <svg class="svg-cross" xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24"><path fill="#FFF" d="M24 2.5L21.5 0 12 9.5 2.5 0 0 2.5 9.5 12 0 21.5 2.5 24l9.5-9.5 9.5 9.5 2.5-2.5-9.5-9.5"/></svg> 
-                  </a>
-                </div>
-                <div class="fab-message-content">
-                     {{if .ShowSyncingMessage}}
-                        <h3 class="text-warning">Syncing in Progress</h3>
-                            <p>
-                                We are currently re-indexing our database. Displayed data might be inaccurate and outdated.
-                            </p>
-                    {{end}}
-                </div>
-              </div> -->
+      <!-- Login Modal -->
+      <div class="modal fade" id="staticBackdrop" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog ">
+          <div class="modal-content">
+            <div class="modal-header pb-0">
+              <!-- <h5 class="modal-title" id="staticBackdropLabel">Login</h5> -->
+              <ul style="border-bottom: none;" class="nav nav-tabs ">
+                <li class="nav-item">
+                  <a class="nav-link active" aria-selected="true" data-toggle="tab" role="tab" aria-controls="login" href="#login">Login</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" aria-selected="false" data-toggle="tab" role="tab" href="#register">Register</a>
+                </li>
+              </ul>
+              <button type="button" class="close" data-dismiss="modal" aria-controls="register">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="tab-content" id="loginModal-tabContent">
+              <div class="tab-pane fade show active" id="login" data-toggle="tab" role="tab" aria-controls="login" aria-selected="true">
+                <form action="/login" method="post">
+                  <div class="modal-body">
+                    <div class="form-group">
+                      <label for="loginEmailInput">Email address</label>
+                      <input required type="email" class="form-control" id="loginEmailInput" aria-describedby="emailHelp">
+                      <!-- <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small> -->
+                    </div>
+                    <div class="form-group">
+                      <label for="loginPassword">Password</label>
+                      <input required type="password" class="form-control" id="loginPassword">
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Login</button>
+                  </div>
+                </form>
+              </div>
+              <div class="tab-pane fade" id="register" data-toggle="tab" role="tab" aria-controls="register" aria-selected="false">
+                <form action="/register" method="post">
+                  <div class="modal-body">
+                    <div class="form-group">
+                      <label for="registerEmailInput">Email address</label>
+                      <input required type="email" class="form-control" id="registerEmailInput" aria-describedby="emailHelp">
+                      <!-- <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small> -->
+                    </div>
+                    <div class="form-group">
+                      <label for="registerPassword">Password</label>
+                      <input required type="password" class="form-control" id="registerPassword">
+                    </div>
+                    <div class="form-group">
+                      <label for="registerPasswordRepeat">Repeat Password</label>
+                      <input required type="password" class="form-control" id="registerPasswordRepeat">
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Register</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
 
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
