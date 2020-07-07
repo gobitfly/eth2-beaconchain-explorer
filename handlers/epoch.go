@@ -99,7 +99,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 											    blocks.voluntaryexitscount, 
 											    blocks.proposerslashingscount, 
 											    blocks.attesterslashingscount,
-       											blocks.status
+       										blocks.status
 										FROM blocks 
 										WHERE epoch = $1
 										ORDER BY blocks.slot DESC`, epoch)
@@ -118,6 +118,17 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	for _, block := range epochPageData.Blocks {
 		block.Ts = utils.SlotToTime(block.Slot)
+
+		switch block.Status {
+		case 0:
+			epochPageData.ScheduledCount += 1
+		case 1:
+			epochPageData.ProposedCount += 1
+		case 2:
+			epochPageData.MissedCount += 1
+		case 3:
+			epochPageData.OrphanedCount += 1
+		}
 	}
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
