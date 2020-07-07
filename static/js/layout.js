@@ -111,7 +111,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Validators</h3>',
         suggestion: function(data) {
-          return `<div>${data.index}: ${data.pubkey.substring(0, 16)}…</div>`
+          return `<div class="text-monospace text-truncate">${data.index}: ${data.pubkey}</div>`
         }
       }
     },
@@ -123,7 +123,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Blocks</h3>',
         suggestion: function(data) {
-          return `<div>${data.slot}: ${data.blockroot.substring(0, 16)}…</div>`
+          return `<div class="text-monospace text-truncate">${data.slot}: ${data.blockroot}</div>`
         }
       }
     },
@@ -147,7 +147,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>ETH1 Addresses</h3>',
         suggestion: function(data) {
-          return `<div>${'0x'+data.address.substring(0, 16)}…</div>`
+          return `<div class="text-monospace text-truncate">0x${data.address}</div>`
         }
       }
     },
@@ -157,12 +157,9 @@ $(document).ready(function() {
       source: bhGraffiti,
       display: 'graffiti',
       templates: {
-        header: '<h3>Graffiti</h3>',
+        header: '<h3>Blocks by Graffiti</h3>',
         suggestion: function(data) {
-          if (data.graffiti.length > 16) {
-            return `<div>${data.count} Blocks: ${data.graffiti.substring(0, 16)}…</div>`
-          }
-          return `<div>${data.count} Blocks: ${data.graffiti.substring(0, 16)}</div>`
+          return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.graffiti}</div><div style="max-width:fit-content;white-space:nowrap;">${data.count}</div></div>`
         }
       }
     }
