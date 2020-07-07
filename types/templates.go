@@ -429,9 +429,13 @@ type EpochPageData struct {
 
 	Blocks []*IndexPageDataBlocks
 
-	Ts            time.Time
-	NextEpoch     uint64
-	PreviousEpoch uint64
+	Ts             time.Time
+	NextEpoch      uint64
+	PreviousEpoch  uint64
+	ProposedCount  uint64
+	MissedCount    uint64
+	ScheduledCount uint64
+	OrphanedCount  uint64
 }
 
 // EpochPageMinMaxSlot is a struct for the min/max epoch data
