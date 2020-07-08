@@ -33,7 +33,7 @@
 		}
 		$("#deposits_filter > label > input").on('input', function(ev) {
 			if(ev && ev.target && ev.target.value) {
-				var newUrl = window.location.pathname + "?q=" + ev.target.value
+				var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
 				window.history.replaceState(null, 'Eth1Deposits', newUrl)
 			} else {
 				window.history.replaceState(null, 'Eth1Deposits', window.location.pathname)

@@ -237,7 +237,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Validators</h3>',
         suggestion: function(data) {
-          return `<div class="text-monospace">${data.index}: ${data.pubkey.substring(0, 16)}…</div>`
+          return `<div class="text-monospace text-truncate">${data.index}: ${data.pubkey}</div>`
         }
       }
     },
@@ -249,10 +249,8 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Validators by ETH1 Addresses</h3>',
         suggestion: function(data) {
-          if (data.validator_indices.length>100) {
-            return `<div class="text-monospace">0x${data.eth1_address.substring(0, 16)}…: 100+</div>`
-          }
-          return `<div class="text-monospace">0x${data.eth1_address.substring(0, 16)}…: ${data.validator_indices.length}</div>`
+          var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
+          return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         }
       }
     },
@@ -264,10 +262,8 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Validators by Graffiti</h3>',
         suggestion: function(data) {
-          if (data.validator_indices.length>100) {
-            return `<div class="text-monospace">0x${data.graffiti.substring(0, 32)}…: 100+</div>`
-          }
-          return `<div class="text-monospace">0x${data.graffiti.substring(0, 32)}…: ${data.validator_indices.length}</div>`
+          var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
+          return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.graffiti}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         }
       }
     }

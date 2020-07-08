@@ -12,6 +12,7 @@
   --banner-text: var(--manhattan);
   --highlight: rgba(251, 166, 105, 0.5);
   --shadow-only-light: 0 1px 4px var(--shadow-light);
+
 }
 
 [data-theme='dark'] { 
@@ -21,6 +22,9 @@
   --highlight: rgba(248, 184, 139, 0.2);
   --bg: var(--bg-color);
   --shadow-only-light: none;
+
+
+  --nav-bg: #353135;
 }
 
 

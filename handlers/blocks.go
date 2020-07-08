@@ -19,7 +19,6 @@ var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplat
 
 // Blocks will return information about blocks using a go template
 func Blocks(w http.ResponseWriter, r *http.Request) {
-
 	w.Header().Set("Content-Type", "text/html")
 
 	data := &types.PageData{

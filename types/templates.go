@@ -429,9 +429,13 @@ type EpochPageData struct {
 
 	Blocks []*IndexPageDataBlocks
 
-	Ts            time.Time
-	NextEpoch     uint64
-	PreviousEpoch uint64
+	Ts             time.Time
+	NextEpoch      uint64
+	PreviousEpoch  uint64
+	ProposedCount  uint64
+	MissedCount    uint64
+	ScheduledCount uint64
+	OrphanedCount  uint64
 }
 
 // EpochPageMinMaxSlot is a struct for the min/max epoch data
@@ -453,9 +457,8 @@ type SearchAheadBlocksResult []struct {
 
 // SearchAheadGraffitiResult is a struct to hold the search ahead blocks results with a given graffiti
 type SearchAheadGraffitiResult []struct {
-	Slot     string `db:"slot" json:"slot,omitempty"`
 	Graffiti string `db:"graffiti" json:"graffiti,omitempty"`
-	Root     string `db:"blockroot" json:"blockroot,omitempty"`
+	Count    string `db:"count" json:"count,omitempty"`
 }
 
 // SearchAheadEth1Result is a struct to hold the search ahead eth1 results
@@ -473,7 +476,11 @@ type SearchAheadValidatorsResult []struct {
 // GenericChartData is a struct to hold chart data
 type GenericChartData struct {
 	IsNormalChart                   bool
+	ShowGapHider                    bool
 	XAxisLabelsFormatter            template.JS
+	TooltipFormatter                template.JS
+	PlotOptionsSeriesEventsClick    template.JS
+	PlotOptionsSeriesCursor         string
 	Title                           string                    `json:"title"`
 	Subtitle                        string                    `json:"subtitle"`
 	XAxisTitle                      string                    `json:"x_axis_title"`
@@ -486,8 +493,10 @@ type GenericChartData struct {
 
 // GenericChartDataSeries is a struct to hold chart series data
 type GenericChartDataSeries struct {
-	Name string      `json:"name"`
-	Data [][]float64 `json:"data"`
+	Name  string      `json:"name"`
+	Data  interface{} `json:"data"`
+	Stack string      `json:"stack,omitempty"`
+	Type  string      `json:"type,omitempty"`
 }
 
 // ChartsPageData is an array to hold charts for the charts-page
