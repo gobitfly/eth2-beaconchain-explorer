@@ -1,0 +1,170 @@
+{{ define "js"}}
+<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+<script>
+var clients = {{.PoapClients}}
+var graffitiFlagData = {
+	address: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+	client: "prysm",
+}
+var hexRE = /^[0-9A-F]{40}$/i
+
+function setAddress(addr) {
+	graffitiFlagData.address = addr
+	renderFlag()
+}
+
+function setClient(client) {
+	graffitiFlagData.client = client
+	renderFlag()
+}
+
+function renderFlag() {
+	var clientId = ''
+	for (var i = 0; i<clients.length; i++) {
+		if (clients[i] === graffitiFlagData.client) {
+			clientId = ('00' + (i).toString(16)).substr(-2)
+			break
+		}
+	}
+	if (clientId === '') {
+		console.error('invalid client: '+graffitiFlagData.client)
+		log('invalid client: '+graffitiFlagData.client)
+		return
+	}
+	var addr = graffitiFlagData.address
+	if (addr.substring(0,2) === '0x') addr = addr.slice(2)
+	if (addr.length !== 40 || !hexRE.test(addr)) {
+		console.error('invalid address: '+graffitiFlagData.address, addr, addr.length, hexRE.test(addr))
+		log('invalid address: '+graffitiFlagData.address)
+		return
+	}
+	var flagHex = addr+clientId
+	var flagB64 = btoa(flagHex.match(/\w{2}/g).map(function(a) {
+		return String.fromCharCode(parseInt(a, 16))
+	}).join(""))
+	// console.log(flagHex, flagB64, b64ToHex(flagB64))
+	document.getElementById('graffiti-flag').innerText = 'poap'+flagB64
+}
+
+function b64ToHex(str) {
+	var raw = atob(str)
+	let res = ''
+	for (let i = 0; i < raw.length; i++) {
+		const hex = raw.charCodeAt(i).toString(16)
+		res += (hex.length === 2 ? hex : '0' + hex)
+	}
+	return res
+}
+
+function log(msg) {
+	document.getElementById('graffiti-flag').innerText = msg
+}
+
+$(document).ready(function() {
+	var poapTable = $('#poap-table').DataTable({
+		processing: true,
+		serverSide: false,
+		ordering: true,
+		searching: true,
+		// ajax: '/poap/data',
+		pagingType: 'full',
+		language: {
+			searchPlaceholder: 'Search by ETH1 Address',
+			search: ''
+		},
+	})
+
+
+	$.ajax({
+        url: '/poap/data',
+        success: function(result) {
+			if (!result || !result.data.length) {
+				document.getElementById('poap-table').style.display = 'none'
+				return
+			}
+			poapTable.clear()
+			poapTable.rows.add(result.data).draw()
+			requestAnimationFrame(()=>{poapTable.columns.adjust().responsive.recalc()})
+		}
+	})
+
+	// var data = []
+	// for (var i=0; i<1000; i++) {
+	// 	data.push(['0x'+genHexString(40),Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0])
+	// }
+	// poapTable.rows.add(data).draw()
+})
+
+function genHexString(len) {
+    const hex = '0123456789ABCDEF';
+    let output = '';
+    for (let i = 0; i < len; ++i) {
+        output += hex.charAt(Math.floor(Math.random() * hex.length));
+    }
+    return output;
+}
+
+</script>
+{{end}}
+
+{{ define "css"}}
+{{end}}
+
+{{ define "content"}}
+	<div class="my-3">
+		<div class="d-md-flex py-2 justify-content-md-between">
+			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-paint-brush"></i> POAP - Something something</h1>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+					<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+					<li class="breadcrumb-item active" aria-current="page">POAP</li>
+				</ol>
+			</nav>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-12">
+			<h2 class="h5">What is POAP?</h2>
+			<p>
+				Explain, explain, explain, explain, explain, explain, explain, explain, explain, explain, explain.</p>
+			<h2 class="h5">Generate the flag for you validator:</h2>
+			<p>
+				<input id="address-input" oninput="setAddress(this.value);" class="from-control" type="text" placeholder="ETH1 Address (eg: 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B)"></input>
+				<div class="dropdown">
+					<button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+						ETH2 Client
+					</button>
+					<div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+						<a class="dropdown-item" href="#" onclick="setClient('prysm');">prysm</a>
+						<a class="dropdown-item" href="#" onclick="setClient('lighthouse');">lighthouse</a>
+						<a class="dropdown-item" href="#" onclick="setClient('teku');">teku</a>
+						<a class="dropdown-item" href="#" onclick="setClient('nimbus');">nimbus</a>
+					</div>
+					<div style="display:flex;"><div>Use this graffiti for you validator:</div><div class="text-monospace" style="margin:2px;" id="graffiti-flag"></div></div>
+				</div>
+			</p>
+		</div>
+	</div>
+	<div class="row">
+		<table class="table" id="poap-table" width="100%">
+			<thead>
+				<tr>
+					<th rowspan="2">ETH1 Address</th>
+					<th rowspan="2">Total blocks</th>
+					<th rowspan="2">Total Validators</th>
+					{{range $i, $client := .PoapClients}}
+						<th colspan="2">{{$client}}</th>
+					{{end}}
+				</tr>
+				<tr>
+					{{range $i, $client := .PoapClients}}
+						<th>Blocks</th>
+						<th>Validators</th>
+					{{end}}
+				</tr>
+			</thead>
+			 <tbody>
+			 </tbody>
+		</table>
+	</div>
+{{end}}
