@@ -196,21 +196,23 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		result := []struct {
 			Eth1Address      string        `db:"from_address" json:"eth1_address"`
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
+			Count            uint64        `db:"count" json:"-"`
 		}{}
 		// find validators per eth1-address (limit result by 10 addresses and 100 validators per address)
 		err := db.DB.Select(&result, `
-			SELECT from_address, ARRAY_AGG(validatorindex) validatorindices FROM (
+			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
 					ENCODE(from_address::bytea, 'hex') as from_address,
-					ROW_NUMBER() OVER (PARTITION BY from_address ORDER BY validatorindex) as validatorrow,
-					DENSE_RANK() OVER (ORDER BY from_address) as addressrow
+					ROW_NUMBER() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
+					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
 				WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1) 
 			) a 
 			WHERE validatorrow <= 101 AND addressrow <= 10
-			GROUP BY from_address`, search+"%")
+			GROUP BY from_address
+			ORDER BY count DESC`, search+"%")
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query for indexed_validators_by_eth1_addresses")
 			http.Error(w, "Internal server error", 503)
@@ -225,21 +227,23 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		result := []struct {
 			Graffiti         string        `db:"graffiti" json:"graffiti"`
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
+			Count            uint64        `db:"count" json:"-"`
 		}{}
 		// find validators per graffiti (limit result by 10 graffities and 100 validators per graffiti)
 		err := db.DB.Select(&result, `
-			SELECT graffiti, array_agg(validatorindex) as validatorindices FROM (
+			SELECT graffiti, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
 					graffiti,
-					DENSE_RANK() OVER(PARTITION BY graffiti ORDER BY validatorindex) as validatorrow,
-					DENSE_RANK() OVER(ORDER BY graffiti) as graffitirow
+					DENSE_RANK() OVER(PARTITION BY graffiti ORDER BY validatorindex) AS validatorrow,
+					DENSE_RANK() OVER(ORDER BY graffiti) AS graffitirow
 				FROM blocks 
 				LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 				WHERE LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1)
 			) a 
 			WHERE validatorrow <= 101 AND graffitirow <= 10
-			GROUP BY graffiti`, "%"+search+"%")
+			GROUP BY graffiti
+			ORDER BY count DESC`, "%"+search+"%")
 		if err != nil {
 			logger.WithError(err).Error("error doing search-query for indexed_validators_by_graffiti")
 			http.Error(w, "Internal server error", 503)
