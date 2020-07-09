@@ -21,7 +21,7 @@ import (
 var poapTemplate = template.Must(template.ParseFiles("templates/layout.html", "templates/poap.html"))
 
 // do not change existing entries, only append new entries
-var poapClients = []string{"prysm", "lighthouse", "teku", "nimbus"}
+var poapClients = []string{"Prysm", "Lighthouse", "Teku", "Nimbus"}
 
 func Poap(w http.ResponseWriter, r *http.Request) {
 	poapTemplate = template.Must(template.ParseFiles("templates/layout.html", "templates/poap.html"))
@@ -99,7 +99,7 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 	// [<eth1-addr>, <total-block-count>, <total-validator-count>, <client1-block-count>, <client1-validator-count>, ..]
 	tableData := [][]interface{}{}
 	for eth1Addr, d := range res {
-		eth1AddrFormated := fmt.Sprintf(`<a href="https://etherchain.org/account/%v" class="text-monospace">%s</a>`, eth1Addr, eth1common.HexToAddress(eth1Addr).Hex())
+		eth1AddrFormated := fmt.Sprintf(`<a href="https://etherchain.org/account/%v" class="text-monospace">%s…</a>`, eth1Addr, eth1common.HexToAddress(eth1Addr).Hex()[:8])
 		f := []interface{}{eth1AddrFormated, uint64(0), uint64(0)}
 		totalBlocks := uint64(0)
 		totalValidators := uint64(0)

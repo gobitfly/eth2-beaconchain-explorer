@@ -69,8 +69,12 @@ $(document).ready(function() {
 	var poapTable = $('#poap-table').DataTable({
 		processing: true,
 		serverSide: false,
-		ordering: true,
+		// ordering: false,
+		order: [[2, 'desc']],
 		searching: true,
+		columnDefs: [{ 
+				orderable: false, targets: [0, 3, 4, 5, 6, 7, 8, 9, 10] 
+			}],
 		// ajax: '/poap/data',
 		pagingType: 'full',
 		language: {
@@ -89,7 +93,7 @@ $(document).ready(function() {
 			}
 			poapTable.clear()
 			poapTable.rows.add(result.data).draw()
-			requestAnimationFrame(()=>{poapTable.columns.adjust().responsive.recalc()})
+			requestAnimationFrame(()=>{poapTable.columns.adjust()})
 		}
 	})
 
@@ -180,7 +184,7 @@ $(document).ready(function() {
 {{ define "content"}}
 	<div class="my-3">
 		<div class="d-md-flex py-2 justify-content-md-between">
-			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-coins"></i> POAP - Proof of Attendance Protocol</h1>
+			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-medal"></i> POAP - Proof of Attendance Protocol</h1>
 			<nav aria-label="breadcrumb">
 				<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
 					<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
@@ -194,17 +198,21 @@ $(document).ready(function() {
 			<p>
 			To celebrate the upcoming launch of the Eth2.0 multiclient testnet, and to encourage as much community engagement as possible, we have teamed up with our friends at <a href="https://poap.xyz">POAP.xyz</a> and the <a href="https://ethereum.org">Ethereum Foundation</a> to create and distribute badges that will prove via the Ethereum Blockchain that you participated in the launch of the multiclient testnet.
 			</p>
+			<p>
+				The current plan is to <b>create a unique POAP badge for each client</b>, to encourage everyone to try out all the available clients.
+			</p>
 			<h2 class="h5">What is POAP?</h2>
 			<p>
-				The Proof of Attendance Protocol is a dapp that distributes badges in the form of ERC-721 tokens to prove you participated in an event. The current plan is to <b>create a unique POAP badge for each client</b>, with the goal of encouraging everyone to try out all the available clients. More info on the dapp and the multiclient token can be found <a href="https://app.poap.xyz/scan/poap.eth">here</a>.
+				The Proof of Attendance Protocol is a dapp that distributes badges in the form of ERC-721 tokens to prove you participated in an event. More info on the dapp and the multiclient token can be found <a href="https://app.poap.xyz/scan/poap.eth">here</a>.
 			</p>
 			<h2 class="h5">How will it work?</h2>
 			<p>
 				<ol class="poap-how-list">
 					<li>Install an Eth2.0 client and set up a node and validator.</li>
-					<li>Add the Eth1.0 address you want to receive the badge with in the graffiti field of your validator client. With Prysm this is as easy as running your validator with an additional flag: --graffiti “your address here.”</li>
-					<li>If you propose a block between genesis and block 100,000, (within the first 2 weeks) your Eth1 address will be recorded on the beacon chain, and you will be able to claim a token with that address using POAP’s website.</li>
-					<li>The tokens will be distributed via a mechanism called a [merkle drop.](https://blog.ricmoo.com/merkle-air-drops-e6406945584d) This is like an air drop, but badges are only distributed to those who actively claim them reducing state bloat and chain congestion.</li>
+					<li>Add the Eth1.0 (Mainnet) address you want to receive the badge within the field below.</li>
+					<li>Add the generated graffiti flag to your validator client.</li>
+					<li>If you propose a block between genesis and block 100,000, (within the first two weeks), your Eth1.0 address will be recorded on the beacon-chain, and you will be able to claim a token with that address using POAP’s website.</li>
+					<li>The tokens will be distributed via a mechanism called a <a href="https://blog.ricmoo.com/merkle-air-drops-e6406945584d">merkle drop</a>. This is like an airdrop, but badges are only distributed to those who actively claim them reducing state bloat and chain congestion.</li>
 				</ol>  
 			</p>
 			<p>
@@ -249,9 +257,9 @@ $(document).ready(function() {
 					</div>
 					<div class="col-lg-6">
 						<div class="form-group my-3">
-							<label for="client-input">Ethereum Address</label>
+							<label for="client-input">Ethereum Address 1.0 (Mainnet)</label>
 							<input id="client-input" type="text" oninput="setAddress(this.value);" class="form-control" placeholder="e.g. 0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B" aria-describedby="eth-input-help">
-					    <small id="eth-input-help" class="form-text text-muted">Enter the Eth 1 address for which you want to receive the poap tokens</small>
+					    <!-- <small id="eth-input-help" class="form-text text-muted">Enter the Eth 1 address for which you want to receive the poap tokens</small> -->
 						</div>
 
 						<div class="card my-3">
@@ -321,13 +329,14 @@ $(document).ready(function() {
 					<thead>
 						<tr>
 							<th rowspan="2">ETH1 Address</th>
-							<th rowspan="2">Total Blocks</th>
-							<th rowspan="2">Total Validators</th>
+							<th colspan="2">Total</th>
 							{{range $i, $client := .PoapClients}}
 								<th colspan="2">{{$client}}</th>
 							{{end}}
 						</tr>
 						<tr>
+							<th>Blocks</th>
+							<th>Validators</th>
 							{{range $i, $client := .PoapClients}}
 								<th>Blocks</th>
 								<th>Validators</th>
