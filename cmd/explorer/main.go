@@ -113,10 +113,9 @@ func main() {
 		router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 		router.HandleFunc("/faq", handlers.Faq).Methods("GET")
 		router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
-		router.HandleFunc("/login", handlers.Login).Methods("GET")
 		router.HandleFunc("/login", handlers.LoginPost).Methods("POST")
 		router.HandleFunc("/logout", handlers.Logout).Methods("GET")
-		router.HandleFunc("/signup", handlers.Signup).Methods("POST")
+		router.HandleFunc("/register", handlers.Signup).Methods("POST")
 
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 

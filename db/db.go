@@ -65,15 +65,12 @@ func MustInitDB(username, password, host, port, name string) {
 func MustInitFrontendDB(username, password, host, port, name, sessionSecret string) {
 	FrontendDB = mustInitDB(username, password, host, port, name)
 
-	fmt.Println("============= new session store", username, password, host, port, name, sessionSecret)
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", username, password, host, port, name)
 	store, err := pgstore.NewPGStore(connStr, []byte(sessionSecret))
 	if err != nil {
 		logger.Fatalf(err.Error())
 	}
 	SessionStore = store
-
-	// SessionStore = sessions.NewCookieStore([]byte("991c174c5f370eaf826fc9ec78f193c4c94b684cfe3eea86fa658cfd72af66b3"))
 }
 
 func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsPageData, error) {

@@ -275,9 +275,6 @@
                             <li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
                                 <a class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
                             </li>
-                            <li class="nav-item {{ if eq .Active "login"}}active{{end}}">
-                              <a class="nav-link" href="/login"><i class="fas fa-external-link-alt"></i> Login</a>
-                            </li>
                         </ul>
                         <!-- <div>
                             <span class="fas fa-search search-icon"></span>
@@ -380,14 +377,20 @@
               <div class="tab-pane fade" id="register" data-toggle="tab" role="tab" aria-controls="register" aria-selected="false">
                 <form action="/register" method="post">
                   <div class="modal-body">
+                    <!--
                     <div class="form-group">
                       <label for="registerEmailInput">Email address</label>
                       <input required type="email" class="form-control" id="registerEmailInput" aria-describedby="emailHelp">
-                      <!-- <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small> -->
+                      <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small>
+                    </div>
+                    -->
+                    <div class="form-group">
+                      <label for="registerUsernameInput">Username</label>
+                      <input required type="text" class="form-control" id="registerUsernameInput" name="username">
                     </div>
                     <div class="form-group">
                       <label for="registerPassword">Password</label>
-                      <input required type="password" class="form-control" id="registerPassword">
+                      <input required type="password" class="form-control" id="registerPassword" name="password">
                     </div>
                     <div class="form-group">
                       <label for="registerPasswordRepeat">Repeat Password</label>
