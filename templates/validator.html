@@ -3,7 +3,7 @@
 	<script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}})</script>
 
-    {{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
+	{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
 		<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 		<script>createValidatorDataTable({{.Index}})</script>
 		<script src="https://code.highcharts.com/stock/highstock.js"></script>
@@ -11,29 +11,33 @@
 		<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 		<script src="/js/highcharts-global-options.js"></script>
 		<script>
-            createBalanceChart({{.BalanceHistoryChartData}}, {{.EffectiveBalanceHistoryChartData}})
-            {{if .ProposedBlocksCount}}
-            createProposedBlockChart({{.Proposals}})
-            {{end}}
-            setupDashboardButtons({{.Index }}+'')
+			createBalanceChart({{.BalanceHistoryChartData}}, {{.EffectiveBalanceHistoryChartData}})
+			{{if .ProposedBlocksCount}}
+			createProposedBlockChart({{.Proposals}})
+			{{end}}
+			setupDashboardButtons({{.Index }}+'')
 		</script>
-    {{end}}
+	{{end}}
 {{end}}
 
 {{ define "css"}}
 	<link rel="stylesheet" href="/css/validator.css">
 	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
+	<style>
+		/* #TODO:stefan maybe make this prettier somehow? */
+		#slashings-table td:first-child { white-space: break-spaces; }
+	</style>
 {{end}}
 
 {{ define "content"}}
-    {{if ne .FlashMessage ""}}
+	{{if ne .FlashMessage ""}}
 		<div class="alert {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
 			<div class="p-2">{{.FlashMessage}}</div>
 			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 			</button>
 		</div>
-    {{end}}
+	{{end}}
 
 	<div class="my-3 py-2">
 		<div class="d-md-flex justify-content-md-between">
@@ -184,22 +188,22 @@
 			<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab"
 			   aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span> <span class="badge bg-secondary text-white">{{len .Deposits.Eth1Deposits}}</span></a>
 		</li>
-        {{if gt .SlashingsCount 0}}
+		{{if gt .SlashingsCount 0}}
 			<li class="nav-item">
 				<a class="nav-link" id="slashings-tab" data-toggle="tab" href="#slashings" role="tab"
 				   aria-controls="slashings" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-user-slash"></i><span class="tab-text">Slashings</span> <span class="badge bg-secondary text-white">{{if gt .SlashingsCount 10000}}>10000{{else}}{{.SlashingsCount}}{{end}}</span></a>
 			</li>
-        {{end}}
+		{{end}}
 	</ul>
 
-    {{ $deposited := or (or (eq .Status "deposited") (eq .Status "deposited_valid")) (eq .Status "deposited_invalid")  }}
+	{{ $deposited := or (or (eq .Status "deposited") (eq .Status "deposited_valid")) (eq .Status "deposited_invalid")  }}
 	<div class="tab-content">
 		<div class="card card-body p-0 tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab" aria-controls="overview">
 			<div class="row border-bottom p-3 mx-0">
 				<div class="col-md-2">Unique Index:</div>
 				<div class="col-md-10">{{if $deposited}}Index Pending{{else}}{{.Index}}{{end}}</div>
 			</div>
-            {{if not $deposited }}
+			{{if not $deposited }}
 				<div class="row border-bottom p-3 mx-0">
 					<div class="col-md-2">Current Balance:</div>
 					<div class="col-md-10">{{.CurrentBalance | formatCurrentBalance}}</div>
@@ -212,12 +216,12 @@
 					<div class="col-md-2">Income:</div>
 					<div class="col-md-10">1 day: {{.Income1d | formatIncome}} | 7 days: {{.Income7d | formatIncome}} | 31 days: {{.Income31d | formatIncome}}</div>
 				</div>
-            {{end}}
+			{{end}}
 			<div class="row border-bottom p-3 mx-0">
 				<div class="col-md-2">Status:</div>
 				<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}{{if $deposited}}(An ETH1 deposit has been made, it will take around 8 hours until your deposit is processed by the beacon chain. Check out the deposits tab for more details){{end}}</div>
 			</div>
-            {{if not $deposited}}
+			{{if not $deposited}}
 				<div class="row border-bottom p-3 mx-0">
 					<div class="col-md-2">Eligible for Activation:</div>
 					<div class="col-md-10"><span title="{{.ActivationEligibilityTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
@@ -225,16 +229,16 @@
 					</div>
 				</div>
 				<div class="row border-bottom p-3 mx-0">
-                    {{if eq .Status "pending"}}
+					{{if eq .Status "pending"}}
 						<div class="col-md-2">Estimated Activation:</div>
-                    {{else}}
+					{{else}}
 						<div class="col-md-2">Active since:</div>
-                    {{end}}
+					{{end}}
 					<div class="col-md-10"><span title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
 						(Epoch {{.ActivationEpoch}})
 					</div>
 				</div>
-                {{if (or (eq .Status "slashed") (eq .Status "exited"))}}
+				{{if (or (eq .Status "slashed") (eq .Status "exited"))}}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Exit on:</div>
 						<div class="col-md-10"><span title="{{.ExitTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
@@ -247,7 +251,7 @@
 							(Epoch {{.WithdrawableEpoch}})
 						</div>
 					</div>
-                {{end}}
+				{{end}}
 				<div class="row border-bottom p-3 mx-0">
 					<div class="col-md-12">
 						<div id="balancechart" height="200px"></div>
@@ -258,7 +262,7 @@
 						<div id="proposedChart" height="200px"></div>
 					</div>
 				</div>
-            {{end}}
+			{{end}}
 		</div>
 		<div class="tab-pane fade card card-body p-0" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
 			<div class="table-responsive my-3">
@@ -315,7 +319,7 @@
 						</tr>
 						</thead>
 						<tbody>
-                        {{range $i, $deposit := .Deposits.Eth1Deposits}}
+						{{range $i, $deposit := .Deposits.Eth1Deposits}}
 							<tr>
 								<td>{{formatEth1Address $deposit.FromAddress}}</td>
 								<td>{{formatEth1TxHash $deposit.TxHash}}</td>
@@ -324,14 +328,14 @@
 								<td>{{formatDepositAmount $deposit.Amount}}</td>
 								<td>{{$deposit.ValidSignature}}</td>
 							</tr>
-                        {{end}}
+						{{end}}
 						</tbody>
 					</table>
 				</div>
 			</div>
 			<div class="table-eth2">
 				<h4 class="my-3">Eth2 Deposits</h4>
-                {{if not .Deposits.Eth2Deposits}}
+				{{if not .Deposits.Eth2Deposits}}
 					<h6 class="">No beacon chain deposits found for this validator. It takes around 8 hours for a deposit to be processed by the beacon chain.</h6>
 					<div class="wip d-flex justify-content-center p-3">
 						<svg id="a1bb6ffe-8d83-4899-8fa0-fcb3165ea164" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" width="442.595" height="314.60077" viewBox="0 0 884.595 628.60077">
@@ -430,7 +434,7 @@
 							<polygon points="100.347 228.146 101.028 223.466 106.541 225.669 123.885 252.923 87.958 271.506 100.347 228.146" fill="#cfcce0"/>
 						</svg>
 					</div>
-                {{else}}
+				{{else}}
 					<h6 class="">This table displays the deposits received and processed by the beacon chain.</h6>
 					<div class="table-responsive my-3 card card-body p-0">
 						<table class="table" id="deposits-eth2-table" width="100%">
@@ -447,7 +451,7 @@
 							</tr>
 							</thead>
 							<tbody>
-                            {{range $i, $deposit := .Deposits.Eth2Deposits}}
+							{{range $i, $deposit := .Deposits.Eth2Deposits}}
 								<tr>
 									<td>{{epochOfSlot $deposit.BlockSlot | formatEpoch}}</td>
 									<td>{{formatBlockSlot $deposit.BlockSlot}}</td>
@@ -457,11 +461,11 @@
 									<td>{{formatHash $deposit.Withdrawalcredentials}}</td>
 									<td>{{formatHash $deposit.Signature}}</td>
 								</tr>
-                            {{end}}
+							{{end}}
 							</tbody>
 						</table>
 					</div>
-                {{end}}
+				{{end}}
 			</div>
 		</div>
 		<div class="tab-pane fade card card-body p-0" id="slashings" role="tabpanel" aria-labelledby="slashings-tab" aria-controls="slashings">
@@ -469,7 +473,7 @@
 				<table class="table" id="slashings-table" width="100%">
 					<thead>
 					<tr>
-						<th>Slashed validator</th>
+						<th>Slashed Validators</th>
 						<th>Time</th>
 						<th>Reason</th>
 						<th>Slot</th>

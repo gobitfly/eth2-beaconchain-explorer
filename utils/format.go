@@ -201,6 +201,32 @@ func FormatSlashedValidator(validator uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
+// FormatSlashedValidatorsInt64 will return html formatted text for slashed validators
+func FormatSlashedValidatorsInt64(validators []int64) template.HTML {
+	str := ""
+	for i, v := range validators {
+		if i == len(validators)+1 {
+			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", v, v)
+		} else {
+			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>, ", v, v)
+		}
+	}
+	return template.HTML(str)
+}
+
+// FormatSlashedValidators will return html formatted text for slashed validators
+func FormatSlashedValidators(validators []uint64) template.HTML {
+	str := ""
+	for i, v := range validators {
+		if i == len(validators)+1 {
+			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", v, v)
+		} else {
+			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>, ", v, v)
+		}
+	}
+	return template.HTML(str)
+}
+
 // FormatYesNo will return yes or no formated as html
 func FormatYesNo(yes bool) template.HTML {
 	if yes {

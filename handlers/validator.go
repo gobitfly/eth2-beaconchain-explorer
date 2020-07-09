@@ -9,13 +9,14 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"html/template"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
@@ -133,7 +134,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch, 
 			validators.exitepoch, 
 			validators.lastattestationslot, 
-		    COALESCE(validators.name, '') AS name,
+			COALESCE(validators.name, '') AS name,
 			COALESCE(validator_balances.balance, 0) AS balance 
 		FROM validators 
 		LEFT JOIN validator_balances 
@@ -637,14 +638,16 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 	for _, b := range attesterSlashings {
 
 		inter := intersect.Simple(b.Attestestation1Indices, b.Attestestation2Indices)
-
-		slashedValidator := uint64(0)
-		if len(inter) > 0 {
-			slashedValidator = uint64(inter[0].(int64))
+		slashedValidators := []uint64{}
+		if len(inter) == 0 {
+			logger.Warning("No intersection found for attestation violation")
+		}
+		for _, v := range inter {
+			slashedValidators = append(slashedValidators, uint64(v.(int64)))
 		}
 
 		tableData = append(tableData, []interface{}{
-			utils.FormatSlashedValidator(slashedValidator),
+			utils.FormatSlashedValidators(slashedValidators),
 			utils.SlotToTime(b.Slot).Unix(),
 			"Attestation Violation",
 			utils.FormatBlockSlot(b.Slot),
