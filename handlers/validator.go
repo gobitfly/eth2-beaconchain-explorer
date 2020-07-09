@@ -640,7 +640,7 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 		inter := intersect.Simple(b.Attestestation1Indices, b.Attestestation2Indices)
 		slashedValidators := []uint64{}
 		if len(inter) == 0 {
-			logger.Warning("No intersection found for attestation violation slashed validator defaulting to 0 for proposer", row.Proposer, "and slot", row.Slot)
+			logger.Warning("No intersection found for attestation violation")
 		}
 		for _, v := range inter {
 			slashedValidators = append(slashedValidators, uint64(v.(int64)))
