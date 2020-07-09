@@ -7,6 +7,8 @@ require (
 	github.com/ethereum/go-ethereum v1.9.14
 	github.com/gogo/protobuf v1.3.1
 	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/securecookie v1.1.1
+	github.com/gorilla/sessions v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-todocounter v0.0.1 // indirect
 	github.com/jackc/pgx/v4 v4.6.0

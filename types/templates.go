@@ -148,6 +148,7 @@ type ValidatorPageData struct {
 	ExitEpoch                        uint64  `db:"exitepoch"`
 	Index                            uint64  `db:"index"`
 	LastAttestationSlot              *uint64 `db:"lastattestationslot"`
+	Name                             string  `db:"name"`
 	WithdrawableTs                   time.Time
 	ActivationEligibilityTs          time.Time
 	ActivationTs                     time.Time
@@ -166,6 +167,8 @@ type ValidatorPageData struct {
 	BalanceHistoryChartData          [][]float64
 	EffectiveBalanceHistoryChartData [][]float64
 	Deposits                         *ValidatorDeposits
+	Eth1DepositAddress               []byte
+	FlashMessage                     string
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -589,4 +592,11 @@ type EthTwoDepositsPageData struct {
 type ValidatorDeposits struct {
 	Eth1Deposits []Eth1Deposit
 	Eth2Deposits []Eth2Deposit
+}
+
+type MyCryptoSignature struct {
+	Address string `json:"address"`
+	Msg     string `json:"msg"`
+	Sig     string `json:"sig"`
+	Version string `json:"version"`
 }

@@ -22,6 +22,7 @@ frontend:
   server:
     host: "localhost" # Address to listen on
     port: "3333" # Port to listen on
+  flashSecret: "" # Encryption secret for flash cookies
 
 # Indexer config
 indexer:
