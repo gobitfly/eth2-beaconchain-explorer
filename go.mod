@@ -3,10 +3,12 @@ module eth2-exporter
 go 1.14
 
 require (
+	github.com/antonlindstrom/pgstore v0.0.0-20200229204646-b08ebf1105e0
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/ethereum/go-ethereum v1.9.14
 	github.com/gogo/protobuf v1.3.1
 	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/sessions v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-todocounter v0.0.1 // indirect
 	github.com/jackc/pgx/v4 v4.6.0
@@ -27,6 +29,7 @@ require (
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc // indirect
 	github.com/whyrusleeping/go-notifier v0.0.0-20170827234753-097c5d47330f // indirect
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
+	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	google.golang.org/grpc v1.29.1
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.2.8

@@ -263,3 +263,12 @@ create table eth1_deposits (
     primary key (tx_hash)
 );
 create index idx_eth1_deposits on eth1_deposits (publickey);
+
+drop table if exists users;
+create table users (
+    id serial not null,
+    username character varying(32) not null unique,
+    password character varying(256) not null,
+    email character varying(100),
+    primary key (id)
+);

@@ -9,12 +9,9 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/jmoiron/sqlx"
 
 	"github.com/gorilla/mux"
 	"github.com/phyber/negroni-gzip/gzip"
@@ -35,29 +32,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("error reading config file: %v", err)
 	}
-
-	dbConn, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// The golang sql driver does not properly implement PingContext
-	// therefore we use a timer to catch db connection timeouts
-	dbConnectionTimeout := time.NewTimer(15 * time.Second)
-	go func() {
-		<-dbConnectionTimeout.C
-		log.Fatal("timeout while connecting to the database")
-	}()
-	err = dbConn.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
-	dbConnectionTimeout.Stop()
-
-	db.DB = dbConn
-	defer db.DB.Close()
-
 	utils.Config = cfg
+
+	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
+	defer db.DB.Close()
 
 	if utils.Config.Chain.SlotsPerEpoch == 0 || utils.Config.Chain.SecondsPerSlot == 0 || utils.Config.Chain.GenesisTimestamp == 0 {
 		log.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
@@ -88,6 +66,10 @@ func main() {
 	}
 
 	if cfg.Frontend.Enabled {
+		db.MustInitFrontendDB(cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name, cfg.Frontend.SessionSecret)
+		defer db.FrontendDB.Close()
+		defer db.SessionStore.Close()
+
 		services.Init() // Init frontend services
 
 		router := mux.NewRouter()
@@ -131,6 +113,10 @@ func main() {
 		router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 		router.HandleFunc("/faq", handlers.Faq).Methods("GET")
 		router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
+		router.HandleFunc("/login", handlers.Login).Methods("GET")
+		router.HandleFunc("/login", handlers.LoginPost).Methods("POST")
+		router.HandleFunc("/logout", handlers.Logout).Methods("GET")
+		router.HandleFunc("/signup", handlers.Signup).Methods("POST")
 
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 

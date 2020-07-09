@@ -15,6 +15,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"github.com/antonlindstrom/pgstore"
 	"github.com/lib/pq"
 	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/sirupsen/logrus"
@@ -22,10 +23,58 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-// DB is a pointer to the database
 var DBPGX *pgxpool.Conn
+
+// DB is a pointer to the explorer-database
 var DB *sqlx.DB
+
+// FrontendDB is a pointer to the auth-database
+var FrontendDB *sqlx.DB
+
+// SessionStore is a pointer to the session-store
+var SessionStore *pgstore.PGStore
+
 var logger = logrus.New().WithField("module", "db")
+
+func mustInitDB(username, password, host, port, name string) *sqlx.DB {
+	dbConn, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", username, password, host, port, name))
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	// The golang sql driver does not properly implement PingContext
+	// therefore we use a timer to catch db connection timeouts
+	dbConnectionTimeout := time.NewTimer(15 * time.Second)
+	go func() {
+		<-dbConnectionTimeout.C
+		logger.Fatalf("timeout while connecting to the database")
+	}()
+	err = dbConn.Ping()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	dbConnectionTimeout.Stop()
+
+	return dbConn
+}
+
+func MustInitDB(username, password, host, port, name string) {
+	DB = mustInitDB(username, password, host, port, name)
+}
+
+func MustInitFrontendDB(username, password, host, port, name, sessionSecret string) {
+	FrontendDB = mustInitDB(username, password, host, port, name)
+
+	fmt.Println("============= new session store", username, password, host, port, name, sessionSecret)
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", username, password, host, port, name)
+	store, err := pgstore.NewPGStore(connStr, []byte(sessionSecret))
+	if err != nil {
+		logger.Fatalf(err.Error())
+	}
+	SessionStore = store
+
+	// SessionStore = sessions.NewCookieStore([]byte("991c174c5f370eaf826fc9ec78f193c4c94b684cfe3eea86fa658cfd72af66b3"))
+}
 
 func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsPageData, error) {
 	deposits := []*types.EthOneDepositsPageData{}

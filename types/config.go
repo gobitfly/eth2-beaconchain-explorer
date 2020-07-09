@@ -40,5 +40,13 @@ type Config struct {
 			Port string `yaml:"port" envconfig:"FRONTEND_SERVER_PORT"`
 			Host string `yaml:"host" envconfig:"FRONTEND_SERVER_HOST"`
 		} `yaml:"server"`
+		Database struct {
+			Username string `yaml:"user" envconfig:"FRONTEND_DB_USERNAME"`
+			Password string `yaml:"password" envconfig:"FRONTEND_DB_PASSWORD"`
+			Name     string `yaml:"name" envconfig:"FRONTEND_DB_NAME"`
+			Host     string `yaml:"host" envconfig:"FRONTEND_DB_HOST"`
+			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
+		} `yaml:"database"`
+		SessionSecret string `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
 	} `yaml:"frontend"`
 }
