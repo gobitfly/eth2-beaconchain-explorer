@@ -242,5 +242,5 @@ func FormatYesNo(yes bool) template.HTML {
 
 func FormatValidatorName(name string) template.HTML {
 	str := strings.Map(fixUtf, template.HTMLEscapeString(name))
-	return template.HTML(fmt.Sprintf("<b><abbr title=\"The name has been set by the owner of this validator\">%s</abbr></b>", str))
+	return template.HTML(fmt.Sprintf("<b><abbr title=\"This name has been set by the owner of this validator\">%s</abbr></b>", str))
 }
