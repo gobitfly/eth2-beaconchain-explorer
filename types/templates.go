@@ -275,6 +275,7 @@ type BlockPageData struct {
 	Signature              []byte `db:"signature"`
 	RandaoReveal           []byte `db:"randaoreveal"`
 	Graffiti               []byte `db:"graffiti"`
+	ProposerName           string `db:"name"`
 	Eth1dataDepositroot    []byte `db:"eth1data_depositroot"`
 	Eth1dataDepositcount   uint64 `db:"eth1data_depositcount"`
 	Eth1dataBlockhash      []byte `db:"eth1data_blockhash"`

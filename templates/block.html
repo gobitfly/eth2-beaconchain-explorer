@@ -117,7 +117,7 @@
 					</div>
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Proposer:</div>
-						<div class="col-md-10">{{formatValidator .Proposer}}</div>
+						<div class="col-md-10">{{formatValidatorWithName .Proposer .ProposerName}}</div>
 					</div>
 					{{ if (or (eq .Status 1) (eq .Status 3)) }}
 						<div class="row border-bottom p-3 mx-0">
