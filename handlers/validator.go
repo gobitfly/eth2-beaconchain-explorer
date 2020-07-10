@@ -792,6 +792,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			}
 
 			utils.SetFlash(w, r, "edit_validator_flash", "Your custom name has been saved.")
+			http.Redirect(w, r, "/validator/"+pubkey, 301)
 		}
 
 	} else {

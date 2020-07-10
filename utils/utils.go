@@ -48,6 +48,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlashedValidator":      FormatSlashedValidator,
 		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
 		"formatTimestamp":             FormatTimestamp,
+		"formatValidatorName":         FormatValidatorName,
 		"epochOfSlot":                 EpochOfSlot,
 		"contains":                    strings.Contains,
 		"mod":                         func(i, j int) bool { return i%j == 0 },
