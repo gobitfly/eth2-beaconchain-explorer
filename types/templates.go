@@ -81,6 +81,7 @@ type IndexPageDataBlocks struct {
 	StatusFormatted    template.HTML `json:"status_formatted"`
 	Votes              uint64        `db:"votes" json:"votes"`
 	Graffiti           []byte        `db:"graffiti"`
+	ProposerName       string        `db:"name"`
 }
 
 // IndexPageEpochHistory is a struct to hold the epoch history for the main web page
