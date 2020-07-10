@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"html"
 	"html/template"
 	"strings"
 	"time"
@@ -184,6 +185,14 @@ func FormatValidatorStatus(status string) template.HTML {
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+}
+
+func FormatValidatorWithName(validator uint64, name string) template.HTML {
+	if name != "" {
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v (<span class=\"text-truncate\">"+html.EscapeString(name)+"</span>)</a>", validator, validator))
+	} else {
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+	}
 }
 
 // FormatValidatorInt64 will return html formatted text for a validator (for an int64 validator-id)

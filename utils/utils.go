@@ -41,6 +41,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatHash":                  FormatHash,
 		"formatIncome":                FormatIncome,
 		"formatValidator":             FormatValidator,
+		"formatValidatorWithName":     FormatValidatorWithName,
 		"formatValidatorInt64":        FormatValidatorInt64,
 		"formatValidatorStatus":       FormatValidatorStatus,
 		"formatPercentage":            FormatPercentage,

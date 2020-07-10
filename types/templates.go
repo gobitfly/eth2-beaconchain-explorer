@@ -200,6 +200,7 @@ type ValidatorPerformance struct {
 	Rank            uint64 `db:"rank"`
 	Index           uint64 `db:"validatorindex"`
 	PublicKey       []byte `db:"pubkey"`
+	Name            string `db:"name"`
 	Balance         uint64 `db:"balance"`
 	Performance1d   int64  `db:"performance1d"`
 	Performance7d   int64  `db:"performance7d"`

@@ -113,7 +113,8 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			SELECT 
 				ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
 				validator_performance.*,
-				validators.pubkey 
+				validators.pubkey, 
+				COALESCE(validators.name, '') AS name
 			FROM validator_performance 
 				LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
 			ORDER BY `+orderBy+` `+orderDir+`
@@ -132,7 +133,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	for i, b := range performanceData {
 		tableData[i] = []interface{}{
 			b.Rank,
-			utils.FormatValidator(b.Index),
+			utils.FormatValidatorWithName(b.Index, b.Name),
 			utils.FormatPublicKey(b.PublicKey),
 			fmt.Sprintf("%v", b.Balance),
 			utils.FormatIncome(b.Performance1d),
