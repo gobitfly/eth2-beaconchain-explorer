@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
+	"time"
 
 	"html/template"
 	"net/http"
@@ -18,7 +19,7 @@ var loginTemplate = template.Must(template.New("login").Funcs(utils.GetTemplateF
 
 var sessionName = "beaconchain"
 
-func Signup(w http.ResponseWriter, r *http.Request) {
+func Register(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		logger.Errorf("Error parsing form data for signup route: %v", err)
@@ -28,6 +29,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 
 	u := r.FormValue("username")
 	p := r.FormValue("password")
+	email := r.FormValue("password")
 
 	pHash, err := bcrypt.GenerateFromPassword([]byte(p), 10)
 	if err != nil {
@@ -36,14 +38,20 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = db.FrontendDB.Exec("INSERT INTO users (username, password) VALUES ($1, $2)", u, string(pHash))
+	registerTimestamp := time.Now().Unix()
+	emailConfirmationHash := utils.RandomString(40)
+	_, err = db.FrontendDB.Exec(`
+		INSERT INTO users (username, password, email, email_confirmation_hash, register_ts)
+		VALUES ($1, $2, $3, $4, $5)`,
+		u, string(pHash), email, emailConfirmationHash, registerTimestamp,
+	)
 	if err != nil {
 		logger.Errorf("error saving new user into db: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +68,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/login",
+			Path:        "/",
 		},
 		Active:                "login",
 		Data:                  flashes,
@@ -136,7 +144,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
@@ -167,5 +175,15 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func SendConfirmationEmail(w http.ResponseWriter, r *http.Request) {
+	session, err := db.SessionStore.Get(r, sessionName)
+	if err != nil {
+		logger.Errorf("error retrieving session for login route: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	session.Values["authenticated"] = false
 }

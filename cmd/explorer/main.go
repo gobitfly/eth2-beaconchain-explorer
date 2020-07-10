@@ -115,7 +115,7 @@ func main() {
 		router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
 		router.HandleFunc("/login", handlers.LoginPost).Methods("POST")
 		router.HandleFunc("/logout", handlers.Logout).Methods("GET")
-		router.HandleFunc("/register", handlers.Signup).Methods("POST")
+		router.HandleFunc("/register", handlers.Register).Methods("POST")
 
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 

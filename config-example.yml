@@ -22,6 +22,19 @@ frontend:
   server:
     host: "localhost" # Address to listen on
     port: "3333" # Port to listen on
+  database:
+    user: "<dbuser>"
+    name: "<dbname>"
+    host: "<dbhost>"
+    port: "<dbport>"
+    password: "<dbpassword>"
+  sessionSecret: "<sessionSecret>"
+  email:
+    smtp:
+      server: "<emailserver>"
+      host: "<emailhost>"
+      user: "<emailuser>"
+      password: "<emailpassword>"
 
 # Indexer config
 indexer:
