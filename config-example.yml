@@ -35,6 +35,7 @@ frontend:
       host: "<emailhost>"
       user: "<emailuser>"
       password: "<emailpassword>"
+  flashSecret: "" # Encryption secret for flash cookies
 
 # Indexer config
 indexer:

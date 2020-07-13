@@ -112,7 +112,11 @@
           targets: 1,
           data: '1',
           render: function(data, type, row, meta) {
-            return '<a href="/validator/' + data + '">' + data + '</a>'
+            var title = data
+            if (row[9]) { // If a name for a validator is present display it alongside the index
+              title = data + ' (<span class="text-truncate">' + row[9] + '</span>)'
+            }
+            return '<a href="/validator/' + data + '">' + title + '</a>'
           }
         },
         {
@@ -268,7 +272,7 @@
             <th>State</th>
             <th>Activation</th>
             <th>Exit</th>
-            <th>Withdrawable</th>
+            <th title="Withdrawable epoch number">W/able</th>
             <th>Last Attestation</th>
             <th>Proposals</th>
           </tr>

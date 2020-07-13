@@ -407,7 +407,7 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	deposits := &types.ValidatorDeposits{}
 	err := DB.Select(&deposits.Eth1Deposits, `
 		SELECT tx_hash, tx_input, tx_index, block_number, EXTRACT(epoch FROM block_ts)::INT as block_ts, from_address, publickey, withdrawal_credentials, amount, signature, merkletree_index, valid_signature
-		FROM eth1_deposits WHERE publickey = $1`, publicKey)
+		FROM eth1_deposits WHERE publickey = $1 ORDER BY block_number ASC`, publicKey)
 	if err != nil {
 		return nil, err
 	}

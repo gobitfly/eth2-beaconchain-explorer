@@ -61,5 +61,6 @@ type Config struct {
 				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_GUNMAIL_SENDER"`
 			} `yaml:"gunmail"`
 		} `yaml:"mail"`
+		FlashSecret string `yaml:"flashSecret" envconfig:"FRONTEND_FLASH_SECRET"`
 	} `yaml:"frontend"`
 }

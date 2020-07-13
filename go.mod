@@ -3,11 +3,11 @@ module eth2-exporter
 go 1.14
 
 require (
-	github.com/antonlindstrom/pgstore v0.0.0-20200229204646-b08ebf1105e0
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/ethereum/go-ethereum v1.9.14
 	github.com/gogo/protobuf v1.3.1
 	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-todocounter v0.0.1 // indirect
@@ -18,7 +18,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-libp2p-routing v0.1.0 // indirect
-	github.com/mailgun/mailgun-go/v4 v4.1.3
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
 	github.com/prysmaticlabs/ethereumapis v0.0.0-20200617012222-f52a0eff2886
@@ -30,7 +29,6 @@ require (
 	github.com/whyrusleeping/base32 v0.0.0-20170828182744-c30ac30633cc // indirect
 	github.com/whyrusleeping/go-notifier v0.0.0-20170827234753-097c5d47330f // indirect
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
-	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	google.golang.org/grpc v1.29.1
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.2.8
