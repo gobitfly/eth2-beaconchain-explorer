@@ -27,6 +27,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "index",
+		User:                  getUser(w, r),
 		Data:                  services.LatestIndexPageData(),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,

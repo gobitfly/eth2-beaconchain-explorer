@@ -27,10 +27,12 @@ func SendMailSMTP(to, subject, msg string) error {
 	from := Config.Frontend.Mail.SMTP.User     // eg. userxyz123@gmail.com
 	password := Config.Frontend.Mail.SMTP.Password
 	auth := smtp.PlainAuth("", from, password, host)
+
 	err := smtp.SendMail(server, auth, from, []string{to}, []byte(msg))
 	if err != nil {
 		logrus.Errorf("error sending mail via smtp: %v", err)
 	}
+
 	return err
 }
 
@@ -40,13 +42,7 @@ func SendMailGunmail(to, subject, msg string) error {
 		Config.Frontend.Mail.Gunmail.Domain,
 		Config.Frontend.Mail.Gunmail.PrivateKey,
 	)
-
-	message := mg.NewMessage(
-		Config.Frontend.Mail.Gunmail.Sender,
-		subject,
-		msg,
-		to,
-	)
+	message := mg.NewMessage(Config.Frontend.Mail.Gunmail.Sender, subject, msg, to)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -56,5 +52,6 @@ func SendMailGunmail(to, subject, msg string) error {
 	if err != nil {
 		logrus.WithField("resp", resp).WithField("id", id).Errorf("error sending mail via mailgun: %v", err)
 	}
+
 	return err
 }

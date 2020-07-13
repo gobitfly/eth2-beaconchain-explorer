@@ -14,6 +14,7 @@ type PageData struct {
 	Active                string
 	Meta                  *Meta
 	ShowSyncingMessage    bool
+	User                  *User
 	Data                  interface{}
 	Version               string
 	ChainSlotsPerEpoch    uint64
@@ -603,4 +604,10 @@ type MyCryptoSignature struct {
 	Msg     string `json:"msg"`
 	Sig     string `json:"sig"`
 	Version string `json:"version"`
+}
+
+type User struct {
+	UserID        int64 `json:"user_id"`
+	Authenticated bool  `json:"authenticated"`
+	Flashes       []interface{}
 }

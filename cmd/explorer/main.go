@@ -68,10 +68,10 @@ func main() {
 	if cfg.Frontend.Enabled {
 		db.MustInitFrontendDB(cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name, cfg.Frontend.SessionSecret)
 		defer db.FrontendDB.Close()
-		defer db.SessionStore.Close()
 
 		services.Init() // Init frontend services
 		utils.InitFlash(cfg.Frontend.FlashSecret)
+		utils.InitSession(cfg.Frontend.SessionSecret)
 
 		router := mux.NewRouter()
 		router.HandleFunc("/", handlers.Index).Methods("GET")
@@ -115,7 +115,7 @@ func main() {
 		router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 		router.HandleFunc("/faq", handlers.Faq).Methods("GET")
 		router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
-		router.HandleFunc("/login", handlers.LoginPost).Methods("POST")
+		router.HandleFunc("/login", handlers.Login).Methods("POST")
 		router.HandleFunc("/logout", handlers.Logout).Methods("GET")
 		router.HandleFunc("/register", handlers.Register).Methods("POST")
 

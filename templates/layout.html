@@ -57,6 +57,7 @@
                 document.getElementById('app-style-initial').id = 'app-theme'
             }
         </script>
+        
 </head>
 <header>
 </header>
@@ -131,6 +132,8 @@
           <a type="button">
             <i id="banner-search" class="fas fa-search"></i>
           </a>
+          {{if .User.Authenticated}}user_id: {{.User.UserID}} <a href="/logout">logout</a>{{end}}
+          {{.User.Flashes}}
         </div>
       </div>
     </div>
@@ -357,37 +360,37 @@
             </div>
             <div class="tab-content" id="loginModal-tabContent">
               <div class="tab-pane fade show active" id="login" data-toggle="tab" role="tab" aria-controls="login" aria-selected="true">
-                <form action="/login" method="post">
+                <form action="/login" method="post" id="login-form">
                   <div class="modal-body">
                     <div class="form-group">
                       <label for="loginEmailInput">Email address</label>
-                      <input required type="email" class="form-control" id="loginEmailInput" aria-describedby="emailHelp">
+                      <input required type="email" class="form-control" id="loginEmailInput" aria-describedby="emailHelp" name="email">
                       <!-- <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small> -->
                     </div>
                     <div class="form-group">
                       <label for="loginPassword">Password</label>
-                      <input required type="password" class="form-control" id="loginPassword">
+                      <input required type="password" class="form-control" id="loginPassword" name="password">
                     </div>
                   </div>
                   <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Login</button>
+                    <button type="submit" class="btn btn-primary" id="login-submit">Login</button>
                   </div>
                 </form>
               </div>
               <div class="tab-pane fade" id="register" data-toggle="tab" role="tab" aria-controls="register" aria-selected="false">
-                <form action="/register" method="post">
+                <form action="/register" method="post" id="register-form">
                   <div class="modal-body">
-                    <!--
                     <div class="form-group">
                       <label for="registerEmailInput">Email address</label>
-                      <input required type="email" class="form-control" id="registerEmailInput" aria-describedby="emailHelp">
+                      <input required type="email" class="form-control" id="registerEmailInput" aria-describedby="emailHelp" name="email">
                       <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small>
                     </div>
-                    -->
+                    <!--
                     <div class="form-group">
                       <label for="registerUsernameInput">Username</label>
                       <input required type="text" class="form-control" id="registerUsernameInput" name="username">
                     </div>
+                    -->
                     <div class="form-group">
                       <label for="registerPassword">Password</label>
                       <input required type="password" class="form-control" id="registerPassword" name="password">
@@ -398,7 +401,7 @@
                     </div>
                   </div>
                   <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Register</button>
+                    <button type="submit" class="btn btn-primary" id="register-submit">Register</button>
                   </div>
                 </form>
               </div>
@@ -449,7 +452,18 @@
         }
     </script>
 
-
+    <script>
+      document.getElementById('login-submit').addEventListener('click', function(ev) {
+        ev.preventDefault()
+        console.log('click login form')
+        document.getElementById('login-form').submit()
+      })
+      document.getElementById('register-submit').addEventListener('click', function(ev) {
+        ev.preventDefault()
+        console.log('click register form')
+        document.getElementById('register-form').submit()
+      })
+    </script>
     
     {{ template "js" .Data }}
     <script src="//instant.page/5.1.0" type="module" integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script>

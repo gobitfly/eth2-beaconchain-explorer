@@ -286,9 +286,8 @@ create index idx_eth1_deposits on eth1_deposits (publickey);
 drop table if exists users;
 create table users (
     id serial not null,
-    username character varying(40) not null unique,
     password character varying(256) not null,
-    email character varying(100),
+    email character varying(100) unique,
     email_confirmed bool not null,
     email_confirmation_hash character varying(40) not null unique,
     register_ts timestamp without time zone not null,
