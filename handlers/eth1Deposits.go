@@ -29,6 +29,7 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 		},
 		Active:                "eth1Deposits",
 		Data:                  nil,
+		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,

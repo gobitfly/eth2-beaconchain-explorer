@@ -29,14 +29,15 @@ var authSessionName = "beaconchain"
 func User(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
+	user := getUser(w, r)
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/user",
 		},
 		Active:                "user",
-		Data:                  nil,
-		User:                  getUser(w, r),
+		Data:                  user,
+		User:                  user,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -141,14 +142,15 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 func Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
+	user := getUser(w, r)
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/login",
 		},
 		Active:                "login",
-		Data:                  nil,
-		User:                  getUser(w, r),
+		Data:                  user,
+		User:                  user,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -169,14 +171,15 @@ func Login(w http.ResponseWriter, r *http.Request) {
 func Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
+	user := getUser(w, r)
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
 		},
 		Active:                "register",
-		Data:                  nil,
-		User:                  getUser(w, r),
+		Data:                  user,
+		User:                  user,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -197,14 +200,15 @@ func Register(w http.ResponseWriter, r *http.Request) {
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
+	user := getUser(w, r)
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
 		},
 		Active:                "register",
-		Data:                  nil,
-		User:                  getUser(w, r),
+		Data:                  user,
+		User:                  user,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -254,14 +258,15 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
+	user := getUser(w, r)
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
 		},
 		Active:                "register",
-		Data:                  nil,
-		User:                  getUser(w, r),
+		Data:                  user,
+		User:                  user,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -282,14 +287,15 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
+	user := getUser(w, r)
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
 		},
 		Active:                "resendConfirmation",
-		Data:                  nil,
-		User:                  getUser(w, r),
+		Data:                  user,
+		User:                  user,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
