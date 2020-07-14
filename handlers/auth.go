@@ -14,7 +14,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -81,7 +80,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
 
@@ -95,7 +94,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
 		return
 	}
 
@@ -113,9 +112,6 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 		string(pHash), email, registerTs,
 	)
 	if err != nil {
-		if err, ok := err.(*pq.Error); ok {
-			fmt.Println("pq error:", err.Code.Name())
-		}
 		logger.Errorf("error saving new user into db: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -130,7 +126,15 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 		logger.Infof("sent confirmation-email")
 	}(email)
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	session.AddFlash("Your account has been created please confirm your email by clicking the link in the email we just sent you")
+	err = session.Save(r, w)
+	if err != nil {
+		logger.Errorf("error saving session data for register route: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/register", http.StatusSeeOther)
 }
 
 // Login handler sends a template that allows a user to login
