@@ -389,19 +389,6 @@
             return slot
         }
     </script>
-
-    <script>
-      document.getElementById('login-submit').addEventListener('click', function(ev) {
-        ev.preventDefault()
-        console.log('click login form')
-        document.getElementById('login-form').submit()
-      })
-      document.getElementById('register-submit').addEventListener('click', function(ev) {
-        ev.preventDefault()
-        console.log('click register form')
-        document.getElementById('register-form').submit()
-      })
-    </script>
     
     {{ template "js" .Data }}
     <script src="//instant.page/5.1.0" type="module" integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script>

@@ -12,14 +12,14 @@
         <form action="/login" method="post">
             <div class="form-group">
                 <label for="email">Email address</label>
-                <input required type="email" class="form-control" id="email" name="username">
+                <input inputmode="email" required type="email" class="form-control" id="email" maxlength="100" autocomplete="email" name="username">
             </div>
             <div class="form-group">
                 <label class="d-flex justify-content-between align-items-center" for="password">
                     <span>Password</span>
                     <a href="/forgotPassword">Forgot Password?</a>
                 </label> 
-                <input required type="password" class="form-control" id="password" name="password">
+                <input required type="password" maxlength="256" class="form-control" autocomplete="current-password" id="password" name="password">
             </div>
             <button type="submit" class="btn btn-primary float-right">Login</button>
         </form>
