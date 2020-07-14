@@ -71,6 +71,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "validators",
 		Data:                  validatorsPageData,
+		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,

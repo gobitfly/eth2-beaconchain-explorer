@@ -30,6 +30,7 @@ func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
 		Active:                "eth2Deposits",
 		ShowSyncingMessage:    services.IsSyncing(),
 		Data:                  nil,
+		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
