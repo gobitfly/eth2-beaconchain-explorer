@@ -74,7 +74,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	pwd := r.FormValue("password")
 
 	if !utils.IsValidEmail(email) {
-		session.AddFlash("Error: Invalid email!")
+		session.AddFlash("Error: Invalid email format! <a href=\"https://support.bitfly.at/support/home\">Contact us</a>")
 		err = session.Save(r, w)
 		if err != nil {
 			logger.Errorf("error saving session data for register route: %v", err)
@@ -88,7 +88,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	var existingEmails int
 	err = db.FrontendDB.Get(&existingEmails, "SELECT COUNT(*) FROM users WHERE email = $1", email)
 	if existingEmails > 0 {
-		session.AddFlash("Error: Email already exists!")
+		session.AddFlash("Error: Email already exists! <a href=\"/resend\">Resend Confirmation</a>")
 		err = session.Save(r, w)
 		if err != nil {
 			logger.Errorf("error saving session data for register route: %v", err)

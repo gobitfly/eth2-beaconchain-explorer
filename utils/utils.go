@@ -27,6 +27,7 @@ var Config *types.Config
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
+		"formatHTML":                  FormatMessageToHtml,
 		"formatBalance":               FormatBalance,
 		"formatCurrentBalance":        FormatCurrentBalance,
 		"formatEffectiveBalance":      FormatEffectiveBalance,
