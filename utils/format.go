@@ -10,6 +10,11 @@ import (
 	eth1common "github.com/ethereum/go-ethereum/common"
 )
 
+func FormatMessageToHtml(message string) template.HTML {
+	message = fmt.Sprint(strings.Replace(message, "Error: ", "", 1))
+	return template.HTML(message)
+}
+
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatus(status uint64) template.HTML {
 	if status == 0 {
