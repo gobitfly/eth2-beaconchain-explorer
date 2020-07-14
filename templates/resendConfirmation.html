@@ -8,15 +8,15 @@
 <div class="row my-3">
     <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
         <h1 class="h2">Resend Email Confirmation</h1>
-        <p>Enter your email and we will send another confirmation.</p>
-        <form action="/login" method="post">
+        <p>Enter your email and we will send you another validation link.</p>
+        <form action="/resend" method="post">
             <div class="form-group">
                 <label for="email">Email</label>
-                <input type="text" class="form-control" id="email" name="email" placeholder="Email">
+                <input type="text" class="form-control" id="email" name="email" inputmode="email" maxlength="100" required>
             </div>
-            <button type="submit" class="btn btn-primary float-right">Register</button>
+            <button type="submit" class="btn btn-primary float-right">Send</button>
         </form>
-        <a href="/login">Login</a>
+        <a href="/login"><i class="fas fa-chevron-left"></i> back to login</a>
     </div>
 </div>
 {{end}}
