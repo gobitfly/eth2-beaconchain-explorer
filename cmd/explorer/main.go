@@ -71,7 +71,7 @@ func main() {
 
 		services.Init() // Init frontend services
 		utils.InitFlash(cfg.Frontend.FlashSecret)
-		utils.InitSession(cfg.Frontend.SessionSecret)
+		utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
 		router := mux.NewRouter()
 		router.HandleFunc("/", handlers.Index).Methods("GET")
@@ -119,15 +119,15 @@ func main() {
 		router.HandleFunc("/login", handlers.Login).Methods("GET")
 		router.HandleFunc("/login", handlers.LoginPost).Methods("POST")
 		router.HandleFunc("/logout", handlers.Logout).Methods("GET")
-		router.HandleFunc("/confirm/{hash}", handlers.ConfirmEmail).Methods("GET")
 		router.HandleFunc("/register", handlers.Register).Methods("GET")
 		router.HandleFunc("/register", handlers.RegisterPost).Methods("POST")
-		router.HandleFunc("/reset", handlers.ResetPasswordPost).Methods("POST")
-		router.HandleFunc("/reset", handlers.ResetPassword).Methods("GET")
 		router.HandleFunc("/resend", handlers.ResendConfirmation).Methods("GET")
 		router.HandleFunc("/resend", handlers.ResendConfirmationPost).Methods("POST")
 		router.HandleFunc("/requestReset", handlers.RequestResetPassword).Methods("GET")
-		router.HandleFunc("/requestReset", handlers.RequestResetPassword).Methods("POST")
+		router.HandleFunc("/requestReset", handlers.RequestResetPasswordPost).Methods("POST")
+		router.HandleFunc("/confirm/{hash}", handlers.ConfirmEmail).Methods("GET")
+		router.HandleFunc("/reset/{hash}", handlers.ResetPassword).Methods("GET")
+		router.HandleFunc("/reset", handlers.ResetPasswordPost).Methods("POST")
 		router.HandleFunc("/user", handlers.User).Methods("GET")
 
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))

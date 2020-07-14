@@ -609,5 +609,9 @@ type MyCryptoSignature struct {
 type User struct {
 	UserID        int64 `json:"user_id"`
 	Authenticated bool  `json:"authenticated"`
-	Flashes       []interface{}
+}
+
+type AuthData struct {
+	User    *User
+	Flashes []interface{}
 }
