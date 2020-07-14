@@ -54,6 +54,7 @@ func User(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// RegisterPost handles the register-formular to register a new user
 func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	session, err := utils.SessionStore.Get(r, authSessionName)
 	if err != nil {
@@ -452,6 +453,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+// SendConfirmationEmail sends an email which contains a link to confirm the email-address of the user
 func SendConfirmationEmail(w http.ResponseWriter, r *http.Request) {
 	session, err := utils.SessionStore.Get(r, authSessionName)
 	if err != nil {
@@ -481,25 +483,24 @@ func SendConfirmationEmail(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Email has been sent")
 }
 
+// ConfirmEmail confirms an users email-address
 func ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hash := vars["hash"]
-
-	var userID int64
-	err := db.FrontendDB.Get(&userID, "SELECT id FROM users WHERE email_confirmation_hash = $1", hash)
-	if err != nil {
-		logger.Errorf("error retrieving user-id for confirm-email route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	_, err = db.FrontendDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE id = $1", userID)
+	_, err := db.FrontendDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE email_confirmation_hash = $1", hash)
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	// try to get session and add flash, fail silently if it does not work
+	session, err := utils.SessionStore.Get(r, authSessionName)
+	if err == nil {
+		session.AddFlash("Your email has been confirmed")
+		session.Save(r, w)
+	}
+
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 func getUser(w http.ResponseWriter, r *http.Request) *types.User {
@@ -530,7 +531,7 @@ func sendConfirmationEmail(email string) error {
 	emailConfirmationHash := utils.RandomString(40)
 	_, err := db.FrontendDB.Exec(`
 		UPDATE users 
-		SET (email_confirmation_hash, email_confirmation_hash_ts) = ($1, $2)
+		SET (email_confirmation_hash, email_confirmation_hash_ts) = ($1, TO_TIMESTAMP($2))
 		WHERE email = $3`, emailConfirmationHash, emailConfirmationHashTs, email)
 	if err != nil {
 		return err
@@ -553,7 +554,7 @@ func sendResetEmail(email string) error {
 	resetHash := utils.RandomString(40)
 	_, err := db.FrontendDB.Exec(`
 		UPDATE users 
-		SET (password_reset_hash, password_reset_hash_ts) = ($1, $2)
+		SET (password_reset_hash, password_reset_hash_ts) = ($1, TO_TIMESTAMP($2))
 		WHERE email = $3`, resetHash, resetHashTs, email)
 	if err != nil {
 		return err
