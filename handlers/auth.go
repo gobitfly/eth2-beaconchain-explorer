@@ -137,21 +137,13 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 func Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("error retrieving session for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	flashes := session.Flashes()
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/login",
 		},
 		Active:                "login",
-		Data:                  flashes,
+		Data:                  nil,
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -162,14 +154,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
-	err = sessions.Save(r, w)
-	if err != nil {
-		logger.Errorf("error saving session data for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	err = loginTemplate.ExecuteTemplate(w, "layout", data)
+	err := loginTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -180,21 +165,13 @@ func Login(w http.ResponseWriter, r *http.Request) {
 func Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("error retrieving session for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	flashes := session.Flashes()
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
 		},
 		Active:                "register",
-		Data:                  flashes,
+		Data:                  nil,
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -204,14 +181,8 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
-	err = sessions.Save(r, w)
-	if err != nil {
-		logger.Errorf("error saving session data for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
 
-	err = registerTemplate.ExecuteTemplate(w, "layout", data)
+	err := registerTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -222,21 +193,13 @@ func Register(w http.ResponseWriter, r *http.Request) {
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("error retrieving session for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	flashes := session.Flashes()
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
 		},
 		Active:                "register",
-		Data:                  flashes,
+		Data:                  nil,
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -247,14 +210,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
-	err = sessions.Save(r, w)
-	if err != nil {
-		logger.Errorf("error saving session data for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	err = resetPasswordTemplate.ExecuteTemplate(w, "layout", data)
+	err := resetPasswordTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -263,6 +219,30 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 // ResetPasswordPost handles resetting the users password.
 func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	email := vars["email"]
+	if !utils.IsValidEmail(email) {
+		http.Error(w, "Bad request: Invalid email", http.StatusBadRequest)
+		return
+	}
+	var exists int
+	err := db.FrontendDB.Get("SELECT COUNT(*) FROM users WHERE email = $1", email)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if exists == 0 {
+		http.Error(w, "Bad request: Email does not exist", http.StatusBadRequest)
+		return
+	}
+
+	err = sendResetEmail(email)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -270,21 +250,13 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("error retrieving session for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	flashes := session.Flashes()
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
 		},
 		Active:                "register",
-		Data:                  flashes,
+		Data:                  nil,
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -295,44 +267,24 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
-	err = sessions.Save(r, w)
-	if err != nil {
-		logger.Errorf("error saving session data for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	err = requestResetPaswordTemplate.ExecuteTemplate(w, "layout", data)
+	err := requestResetPaswordTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
 
-// RequestResetPasswordPost handles sending a reset link to the user and validating the email
-func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
 // ResendConfirmation handler sends a template for the user to request another confirmation link via email.
 func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("error retrieving session for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	flashes := session.Flashes()
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
 		},
 		Active:                "resendConfirmation",
-		Data:                  flashes,
+		Data:                  nil,
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -343,14 +295,7 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
-	err = sessions.Save(r, w)
-	if err != nil {
-		logger.Errorf("error saving session data for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	err = resendConfirmationTemplate.ExecuteTemplate(w, "layout", data)
+	err := resendConfirmationTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -359,6 +304,30 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 
 // ResendConfirmationPost handles sending another confirmation email to the user
 func ResendConfirmationPost(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	email := vars["email"]
+	if !utils.IsValidEmail(email) {
+		http.Error(w, "Bad request: Invalid email", http.StatusBadRequest)
+		return
+	}
+	var exists int
+	err := db.FrontendDB.Get("SELECT COUNT(*) FROM users WHERE email = $1", email)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if exists == 0 {
+		http.Error(w, "Bad request: Email does not exist", http.StatusBadRequest)
+		return
+	}
+
+	err = sendConfirmationEmail(email)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
