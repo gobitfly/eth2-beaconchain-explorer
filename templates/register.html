@@ -1,4 +1,19 @@
 {{ define "js"}}
+<script>
+    var email = document.getElementById('email')
+    var pass = document.getElementById('password')
+    var pwConfirm = document.getElementById('pw-confirm')
+
+
+    // form validations
+    function checkPasswordsMatch(input) {
+      if (pass.value !== input.value) {
+        input.setCustomValidity('Passwords do not match');
+      } else {
+        input.setCustomValidity('');
+      }
+    }
+</script>
 {{end}}
 
 {{ define "css"}}
@@ -9,18 +24,18 @@
       <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
           <h1 class="h2">Sign up to <i>beaconcha.in</i></h1>
           <p>Manage and track the progress of your validator.</p>
-          <form action="/register" method="post">
+                <form action="/register" method="post">
               <div class="form-group">
                   <label for="email">Email address</label>
-                  <input inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email">
+                  <input required inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email">
               </div>
               <div class="form-group">
                   <label for="password">Password</label>
-                  <input type="password" maxlength="256" class="form-control" autocomplete="new-password" id="password" name="password">
+                  <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="password" name="password">
               </div>
               <div class="form-group">
                   <label for="pw-confirm">Confirm Password</label>
-                  <input type="password" maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm" name="password">
+                  <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm" name="pw-confirm">
               </div>
               <button type="submit" class="btn btn-primary float-right">Register</button>
           </form>
