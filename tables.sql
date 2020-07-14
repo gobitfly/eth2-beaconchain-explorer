@@ -287,9 +287,21 @@ drop table if exists users;
 create table users (
     id serial not null,
     password character varying(256) not null,
-    email character varying(100) unique,
-    email_confirmed bool not null,
-    email_confirmation_hash character varying(40) not null unique,
-    register_ts timestamp without time zone not null,
+    email character varying(100) not null unique,
+    email_confirmed bool default 'f' not null,
+    email_confirmation_hash character varying(40),
+    email_confirmation_hash_ts timestamp without time zone,
+    password_reset_hash character varying(40),
+    password_reset_hash_ts timestamp without time zone,
+    register_ts timestamp without time zone,
     primary key (id)
+);
+
+drop table if exists user_links;
+create table user_links (
+    user_id int not null,
+    type character varying(10) not null, /* "reset", "confirm", .. */
+    hash character varying(40) not null,
+    ts timestamp without time zone not null,
+    primary key (user_id, type)
 );

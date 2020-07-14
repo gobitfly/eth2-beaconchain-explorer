@@ -55,11 +55,11 @@ type Config struct {
 				User     string `yaml:"user" envconfig:"FRONTEND_MAIL_SMTP_USER"`
 				Password string `yaml:"password" envconfig:"FRONTEND_MAIL_SMTP_PASSWORD"`
 			} `yaml:"smtp"`
-			Gunmail struct {
-				Domain     string `yaml:"domain" envconfig:"FRONTEND_MAIL_GUNMAIL_DOMAIN"`
-				PrivateKey string `yaml:"privateKey" envconfig:"FRONTEND_MAIL_GUNMAIL_PRIVATE_KEY"`
-				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_GUNMAIL_SENDER"`
-			} `yaml:"gunmail"`
+			Mailgun struct {
+				Domain     string `yaml:"domain" envconfig:"FRONTEND_MAIL_MAILGUN_DOMAIN"`
+				PrivateKey string `yaml:"privateKey" envconfig:"FRONTEND_MAIL_MAILGUN_PRIVATE_KEY"`
+				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
+			} `yaml:"mailgun"`
 		} `yaml:"mail"`
 		FlashSecret string `yaml:"flashSecret" envconfig:"FRONTEND_FLASH_SECRET"`
 	} `yaml:"frontend"`

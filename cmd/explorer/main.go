@@ -118,6 +118,7 @@ func main() {
 		router.HandleFunc("/login", handlers.Login).Methods("POST")
 		router.HandleFunc("/logout", handlers.Logout).Methods("GET")
 		router.HandleFunc("/register", handlers.Register).Methods("POST")
+		router.HandleFunc("/confirm/{hash}", handlers.ConfirmEmail).Methods("GET")
 
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 

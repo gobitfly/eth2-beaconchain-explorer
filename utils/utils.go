@@ -156,9 +156,17 @@ func IsApiRequest(r *http.Request) bool {
 var eth1AddressRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{40}$")
 var zeroHashRE = regexp.MustCompile("^0?x?0+$")
 
-// IsValidEth1Address verifies whether a string can represents a valid eth1-address.
+// IsValidEth1Address verifies whether a string represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
+}
+
+// https://github.com/badoux/checkmail/blob/f9f80cb795fa/checkmail.go#L37
+var emailRE = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+// IsValidEmail verifies wheter a string represents a valid email-address.
+func IsValidEmail(s string) bool {
+	return emailRE.MatchString(s)
 }
 
 // RoundDecimals rounds (nearest) a number to the specified number of digits after comma
