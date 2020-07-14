@@ -141,7 +141,6 @@
             <!-- <i class="fas fa-sign-in-alt"></i> --> <span class="text-white"><b>Sign Up</b></span>
           </a>
           {{if .User.Authenticated}}user_id: {{.User.UserID}} <a href="/logout">logout</a>{{end}}
-          {{.User.Flashes}}
         </div>
       </div>
     </div>
@@ -308,6 +307,16 @@
     
         <main>
             <div class="container mt-1">
+                {{if .User.Flashes}}
+                  {{range $i, $flash := .User.Flashes}}
+                  <div class="alert alert-success alert-dismissible fade show my-3 py-2" role="alert">
+                    <div class="p-2">{{$flash}}</div>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                  {{end}}
+                {{end}}
                 {{ template "content" .Data }}
             </div>
         </main>

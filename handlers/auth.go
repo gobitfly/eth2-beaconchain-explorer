@@ -391,36 +391,33 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error retrieving password for user %v: %v", email, err)
 		session.AddFlash("Error: Invalid email or password!")
-
 		err = session.Save(r, w)
 		if err != nil {
 			logger.Errorf("error saving session data for login route: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(up.Password), []byte(pwd))
-
 	if err != nil {
 		logger.Errorf("error verifying password for user %v: %v", up.Email, err)
 		session.AddFlash("Error: Invalid email or password!")
-
 		err = session.Save(r, w)
 		if err != nil {
 			logger.Errorf("error saving session data for login route: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
 	session.Values["authenticated"] = true
 	session.Values["user_id"] = up.ID
-
+	session.AddFlash("Successfully logged in")
 	err = session.Save(r, w)
 	if err != nil {
 		logger.Errorf("error saving session data for login route: %v", err)
