@@ -129,16 +129,7 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var decodePoapGraffitiI = 0
-
 func decodePoapGraffiti(graffiti string) (eth1Address, client string, err error) {
-	if true {
-		decodePoapGraffitiI++
-		// eth1Address = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"
-		eth1Address = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC" + fmt.Sprintf("%03x", decodePoapGraffitiI%(16*16*16))[:3]
-		client = poapClients[decodePoapGraffitiI%len(poapClients)]
-		return
-	}
 	if len(graffiti) != 32 {
 		return "", "", fmt.Errorf("invalid graffiti-length")
 	}
