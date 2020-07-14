@@ -59,10 +59,6 @@
   color: inherit;
 }
 
-.info-banner-container a:hover {
-  color: var(--highlight)
-}
-
 .info-banner-container .item-icon {
   display: none;
 }

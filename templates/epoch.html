@@ -61,7 +61,7 @@
 
     .epoch__next-loading::after {
         position: absolute;
-        content: '';
+        content: '...';
         animation: dots 3s linear infinite;
         left: 50%;
         transform: translateX(-50%);
@@ -69,22 +69,22 @@
 
     @keyframes dots {
         0% {
-            content: "";
+            content: "..";
         }
         20% {
             content: ".";
         }
         40% {
-            content: ".."
+            content: ""
         }
         60% {
-            content: "..."
+            content: "."
         }
         80% {
             content: ".."
         }
         100% {
-            content: "."
+            content: "..."
         }
     }
 </style>
