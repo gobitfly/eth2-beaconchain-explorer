@@ -629,14 +629,36 @@ func getUserSession(w http.ResponseWriter, r *http.Request) (*types.User, *sessi
 }
 
 func sendConfirmationEmail(email string) error {
-	emailConfirmationHashTs := time.Now().Unix()
+	now := time.Now()
+	emailConfirmationTs := now.Unix()
 	emailConfirmationHash := utils.RandomString(40)
-	_, err := db.FrontendDB.Exec(`
-		UPDATE users 
-		SET (email_confirmation_hash, email_confirmation_hash_ts) = ($1, TO_TIMESTAMP($2))
-		WHERE email = $3`, emailConfirmationHash, emailConfirmationHashTs, email)
+
+	tx, err := db.FrontendDB.Beginx()
 	if err != nil {
 		return err
+	}
+	defer tx.Rollback()
+
+	var lastTs *int64
+	err = tx.Get(&lastTs, "SELECT email_confirmation_ts FROM users WHERE email = $1", email)
+	if err != nil {
+		return fmt.Errorf("error getting confirmation-ts: %w", err)
+	}
+	if lastTs != nil && time.Unix(*lastTs, 0).After(now.Add(-60*15*time.Second)) {
+		return fmt.Errorf("only one email can be sent every 15m")
+	}
+
+	_, err = tx.Exec(`
+		UPDATE users 
+		SET (email_confirmation_hash, email_confirmation_ts) = ($1, TO_TIMESTAMP($2))
+		WHERE email = $3`, emailConfirmationHash, emailConfirmationTs, email)
+	if err != nil {
+		return fmt.Errorf("error updating confirmation-hash: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error commiting db-tx: %w", err)
 	}
 
 	subject := "beaconcha.in: Verify your email-address"
@@ -652,14 +674,36 @@ beaconcha.in
 }
 
 func sendResetEmail(email string) error {
-	resetHashTs := time.Now().Unix()
+	now := time.Now()
+	resetTs := now.Unix()
 	resetHash := utils.RandomString(40)
-	_, err := db.FrontendDB.Exec(`
-		UPDATE users 
-		SET (password_reset_hash, password_reset_hash_ts) = ($1, TO_TIMESTAMP($2))
-		WHERE email = $3`, resetHash, resetHashTs, email)
+
+	tx, err := db.FrontendDB.Beginx()
 	if err != nil {
 		return err
+	}
+	defer tx.Rollback()
+
+	var lastTs *int64
+	err = tx.Get(&lastTs, "SELECT password_reset_ts FROM users WHERE email = $1", email)
+	if err != nil {
+		return fmt.Errorf("error getting reset-ts: %w", err)
+	}
+	if lastTs != nil && time.Unix(*lastTs, 0).After(now.Add(-60*15*time.Second)) {
+		return fmt.Errorf("only one email can be sent every 15m")
+	}
+
+	_, err = tx.Exec(`
+		UPDATE users 
+		SET (password_reset_hash, password_reset_ts) = ($1, TO_TIMESTAMP($2))
+		WHERE email = $3`, resetHash, resetTs, email)
+	if err != nil {
+		return fmt.Errorf("error updating reset-hash: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error commiting db-tx: %w", err)
 	}
 
 	subject := "beaconcha.in: Reset your password"

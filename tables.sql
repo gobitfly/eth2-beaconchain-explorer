@@ -290,9 +290,9 @@ create table users (
     email character varying(100) not null unique,
     email_confirmed bool default 'f' not null,
     email_confirmation_hash character varying(40) unique,
-    email_confirmation_hash_ts timestamp without time zone,
+    email_confirmation_ts timestamp without time zone,
     password_reset_hash character varying(40),
-    password_reset_hash_ts timestamp without time zone,
+    password_reset_ts timestamp without time zone,
     register_ts timestamp without time zone,
     primary key (id)
 );
