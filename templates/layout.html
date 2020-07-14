@@ -67,9 +67,9 @@
     </noscript>
     <!-- Banner -->
     <div class="info-banner-container">
-      <div class="info-banner-content container d-flex align-items-center">
-        <div id="banner" class="info-banner-stats">
-          <a style="color: inherit; white-space:nowrap;" class="mr-2" href="/">
+      <div class="info-banner-content container">
+        <div id="banner-stats" class="info-banner-left">
+          <a style="white-space:nowrap;" class="mr-2" href="/">
             <i class="fas fa-home"></i> <span>|</span>
           </a>
           <div id="banner-epoch" class="info-item d-flex mr-3">
@@ -80,7 +80,7 @@
               <span class="item-text">Epoch:</span>
             </div>
             <div class="info-item-body">
-              <a id="banner-epoch-data" style="color:inherit;" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
+              <a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
           </div>
           <div id="banner-slot" class="info-item d-flex mr-3">
             <div class="info-item-header mr-1">
@@ -89,7 +89,7 @@
               </span>
               <span class="item-text">Slot:</span>
             </div>
-            <div class="info-item-body"><a id="banner-slot-data" style="color:inherit;" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
+            <div class="info-item-body"><a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
           </div>
           {{if not .ShowSyncingMessage}}
           {{if gt .FinalizationDelay 3}}
@@ -118,18 +118,26 @@
           {{end}}
         </div>
         <!-- Fill content so that the other elements -->
-        <div class="d-flex flex-fill"></div>
-        <div class="info-banner-right">
-          <div class="search-container">
-            <form class="form-inline" action="/search" method="POST">
-              <input id="banner-search-input" class="typeahead" autocomplete="off" name="search" type="text" placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
-            </form>
+        <!-- <div class="d-flex flex-fill"></div> -->
+
+        <div class="info-banner-center">
+          <div class="info-banner-search">
+            <div class="search-container">
+              <form class="form-inline" action="/search" method="POST">
+                <input id="banner-search-input" class="typeahead" autocomplete="off" name="search" type="text" placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
+              </form>
+            </div>
+            <a class="search-button" type="button">
+              <i id="banner-search" class="fas fa-search"></i>
+            </a>
           </div>
-          <a type="button" data-toggle="modal" data-target="#staticBackdrop">
-            <i class="fas fa-sign-in-alt"></i>
+        </div>
+        <div class="info-banner-right">
+          <a href="/login" class="mr-3" type="button">
+            <!-- <i class="fas fa-sign-in-alt"></i> --> <span>Sign In</span>
           </a>
-          <a type="button">
-            <i id="banner-search" class="fas fa-search"></i>
+          <a href="/register" class="btn btn-primary btn-sm" type="button">
+            <!-- <i class="fas fa-sign-in-alt"></i> --> <span class="text-white"><b>Sign Up</b></span>
           </a>
         </div>
       </div>
@@ -336,76 +344,6 @@
                 </div>
             </footer>
         </div>
-    
-      <!-- Login Modal -->
-      <div class="modal fade" id="staticBackdrop" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-        <div class="modal-dialog ">
-          <div class="modal-content">
-            <div class="modal-header pb-0">
-              <!-- <h5 class="modal-title" id="staticBackdropLabel">Login</h5> -->
-              <ul style="border-bottom: none;" class="nav nav-tabs ">
-                <li class="nav-item">
-                  <a class="nav-link active" aria-selected="true" data-toggle="tab" role="tab" aria-controls="login" href="#login">Login</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" aria-selected="false" data-toggle="tab" role="tab" href="#register">Register</a>
-                </li>
-              </ul>
-              <button type="button" class="close" data-dismiss="modal" aria-controls="register">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-            <div class="tab-content" id="loginModal-tabContent">
-              <div class="tab-pane fade show active" id="login" data-toggle="tab" role="tab" aria-controls="login" aria-selected="true">
-                <form action="/login" method="post">
-                  <div class="modal-body">
-                    <div class="form-group">
-                      <label for="loginEmailInput">Email address</label>
-                      <input required type="email" class="form-control" id="loginEmailInput" aria-describedby="emailHelp">
-                      <!-- <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small> -->
-                    </div>
-                    <div class="form-group">
-                      <label for="loginPassword">Password</label>
-                      <input required type="password" class="form-control" id="loginPassword">
-                    </div>
-                  </div>
-                  <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Login</button>
-                  </div>
-                </form>
-              </div>
-              <div class="tab-pane fade" id="register" data-toggle="tab" role="tab" aria-controls="register" aria-selected="false">
-                <form action="/register" method="post">
-                  <div class="modal-body">
-                    <!--
-                    <div class="form-group">
-                      <label for="registerEmailInput">Email address</label>
-                      <input required type="email" class="form-control" id="registerEmailInput" aria-describedby="emailHelp">
-                      <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small>
-                    </div>
-                    -->
-                    <div class="form-group">
-                      <label for="registerUsernameInput">Username</label>
-                      <input required type="text" class="form-control" id="registerUsernameInput" name="username">
-                    </div>
-                    <div class="form-group">
-                      <label for="registerPassword">Password</label>
-                      <input required type="password" class="form-control" id="registerPassword" name="password">
-                    </div>
-                    <div class="form-group">
-                      <label for="registerPasswordRepeat">Repeat Password</label>
-                      <input required type="password" class="form-control" id="registerPasswordRepeat">
-                    </div>
-                  </div>
-                  <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Register</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
 
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>

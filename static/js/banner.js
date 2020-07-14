@@ -1,21 +1,15 @@
+var bannerContainer = document.querySelector('.info-banner-container')
+var bannerSearch = document.querySelector('.info-banner-search') 
 var bannerSearchIcon = document.getElementById('banner-search');
 var bannerSearchInput = document.getElementById('banner-search-input');
-var banner = document.getElementById('banner');
-var bannerRight = document.querySelector('.info-banner-right')
 
-bannerSearchIcon.addEventListener('click', function (event) {
-  banner.classList.add('hide-mobile')
-  bannerRight.classList.add('show-search')
-  bannerSearchIcon.classList.add('show')
-  bannerSearchInput.classList.add('show')
+bannerSearch.addEventListener('click', function () {
+  bannerContainer.classList.add('searching')
   bannerSearchInput.focus()
 })
 
 bannerSearchInput.addEventListener('blur', function () {
-  bannerSearchIcon.classList.remove('show')
-  bannerSearchInput.classList.remove('show')
-  bannerRight.classList.remove('show-search')
-  banner.classList.remove('hide-mobile')
+  bannerContainer.classList.remove('searching')
 })
 
 function updateBanner() {
@@ -100,4 +94,4 @@ function updateBanner() {
   })
 }
 // update the banner every 12 seconds
-setInterval(updateBanner, 12000)
+// setInterval(updateBanner, 12000)
