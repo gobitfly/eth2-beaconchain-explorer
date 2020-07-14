@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
 )
@@ -132,6 +134,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch, 
 			validators.exitepoch, 
 			validators.lastattestationslot, 
+			COALESCE(validators.name, '') AS name,
 			COALESCE(validator_balances.balance, 0) AS balance 
 		FROM validators 
 		LEFT JOIN validator_balances 
@@ -176,6 +179,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	validatorPageData.Deposits = deposits
 
+	for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
+		if deposit.ValidSignature {
+			validatorPageData.Eth1DepositAddress = deposit.FromAddress
+			break
+		}
+	}
+
+	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, "edit_validator_flash")
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)
@@ -627,14 +638,16 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 	for _, b := range attesterSlashings {
 
 		inter := intersect.Simple(b.Attestestation1Indices, b.Attestestation2Indices)
-
-		slashedValidator := uint64(0)
-		if len(inter) > 0 {
-			slashedValidator = uint64(inter[0].(int64))
+		slashedValidators := []uint64{}
+		if len(inter) == 0 {
+			logger.Warning("No intersection found for attestation violation")
+		}
+		for _, v := range inter {
+			slashedValidators = append(slashedValidators, uint64(v.(int64)))
 		}
 
 		tableData = append(tableData, []interface{}{
-			utils.FormatSlashedValidator(slashedValidator),
+			utils.FormatSlashedValidators(slashedValidators),
 			utils.SlotToTime(b.Slot).Unix(),
 			"Attestation Violation",
 			utils.FormatBlockSlot(b.Slot),
@@ -673,4 +686,118 @@ func ValidatorSlashings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+}
+
+func ValidatorSave(w http.ResponseWriter, r *http.Request) {
+
+	pubkey := r.FormValue("pubkey")
+	pubkey = strings.ToLower(pubkey)
+	pubkey = strings.Replace(pubkey, "0x", "", -1)
+
+	pubkeyDecoded, err := hex.DecodeString(pubkey)
+	if err != nil {
+		logger.Errorf("error parsing submitted pubkey %v: %v", pubkey, err)
+		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		return
+	}
+
+	name := r.FormValue("name")
+	if len(name) > 40 {
+		name = name[:40]
+	}
+
+	applyNameToAll := r.FormValue("apply-to-all")
+
+	signature := r.FormValue("signature")
+	signatureWrapper := &types.MyCryptoSignature{}
+	err = json.Unmarshal([]byte(signature), signatureWrapper)
+	if err != nil {
+		logger.Errorf("error decoding submitted signature %v: %v", signature, err)
+		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		return
+	}
+
+	msgForHashing := "\x19Ethereum Signed Message:\n" + strconv.Itoa(len(signatureWrapper.Msg)) + signatureWrapper.Msg
+	msgHash := crypto.Keccak256Hash([]byte(msgForHashing))
+
+	signatureParsed, err := hex.DecodeString(strings.Replace(signatureWrapper.Sig, "0x", "", -1))
+	if err != nil {
+		logger.Errorf("error parsing submitted signature %v: %v", signatureWrapper.Sig, err)
+		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		return
+	}
+
+	if len(signatureParsed) != 65 {
+		logger.Errorf("signature must be 65 bytes long")
+		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		return
+	}
+	if signatureParsed[64] != 27 && signatureParsed[64] != 28 {
+		logger.Errorf("invalid Ethereum signature (V is not 27 or 28)")
+		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		return
+	}
+
+	signatureParsed[64] -= 27
+
+	recoveredPubkey, err := crypto.SigToPub(msgHash.Bytes(), signatureParsed)
+	if err != nil {
+		logger.Errorf("error recovering pubkey: %v", err)
+		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		http.Redirect(w, r, "/validator/"+pubkey, 301)
+		return
+	}
+	recoveredAddress := crypto.PubkeyToAddress(*recoveredPubkey)
+
+	var depositedAddress string
+	deposits, err := db.GetValidatorDeposits(pubkeyDecoded)
+	if err != nil {
+		logger.Errorf("error getting validator-deposits from db for signature verification: %v", err)
+		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		http.Redirect(w, r, "/validator/"+pubkey, 301)
+	}
+	for _, deposit := range deposits.Eth1Deposits {
+		if deposit.ValidSignature {
+			depositedAddress = "0x" + fmt.Sprintf("%x", deposit.FromAddress)
+			break
+		}
+	}
+
+	if strings.ToLower(depositedAddress) == strings.ToLower(recoveredAddress.Hex()) {
+		if applyNameToAll == "on" {
+			res, err := db.DB.Exec("UPDATE validators SET name = $1 WHERE pubkey IN (SELECT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature)", name, recoveredAddress.Bytes())
+
+			if err != nil {
+				logger.Errorf("error saving validator name: %v", err)
+				utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+				http.Redirect(w, r, "/validator/"+pubkey, 301)
+				return
+			}
+
+			rowsAffected, _ := res.RowsAffected()
+			utils.SetFlash(w, r, "edit_validator_flash", fmt.Sprintf("Your custom name has been saved for %v validator(s).", rowsAffected))
+			http.Redirect(w, r, "/validator/"+pubkey, 301)
+		} else {
+			_, err := db.DB.Exec("UPDATE validators SET name = $1 WHERE pubkey = $2", name, pubkeyDecoded)
+			if err != nil {
+				logger.Errorf("error saving validator name: %v", err)
+				utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+				http.Redirect(w, r, "/validator/"+pubkey, 301)
+				return
+			}
+
+			utils.SetFlash(w, r, "edit_validator_flash", "Your custom name has been saved.")
+			http.Redirect(w, r, "/validator/"+pubkey, 301)
+		}
+
+	} else {
+		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		http.Redirect(w, r, "/validator/"+pubkey, 301)
+	}
+
 }

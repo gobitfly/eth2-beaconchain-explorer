@@ -118,15 +118,18 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, 0, len(slashings))
 	for _, row := range slashings {
 		entry := []interface{}{}
+
+		slashedValidators := []uint64{}
+
 		if row.Type == "Attestation Violation" {
 			inter := intersect.Simple(row.Attestestation1Indices, row.Attestestation2Indices)
-			slashedValidator := uint64(0)
-			if len(inter) > 0 {
-				slashedValidator = uint64(inter[0].(int64))
-			} else {
-				logger.Warning("No intersection found for attestation violation slashed validator defaulting to 0 for proposer", row.Proposer, "and slot", row.Slot)
+			if len(inter) == 0 {
+				logger.Warningf("No intersection found for attestation violation, proposer: %v, slot: %v", row.Proposer, row.Slot)
 			}
-			entry = append(entry, utils.FormatSlashedValidator(slashedValidator))
+			for _, v := range inter {
+				slashedValidators = append(slashedValidators, uint64(v.(int64)))
+			}
+			entry = append(entry, utils.FormatSlashedValidators(slashedValidators))
 		}
 
 		if row.Type == "Proposer Violation" {

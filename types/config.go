@@ -48,5 +48,19 @@ type Config struct {
 			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
 		} `yaml:"database"`
 		SessionSecret string `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
+		Mail          struct {
+			SMTP struct {
+				Server   string `yaml:"server" envconfig:"FRONTEND_MAIL_SMTP_SERVER"`
+				Host     string `yaml:"host" envconfig:"FRONTEND_MAIL_SMTP_HOST"`
+				User     string `yaml:"user" envconfig:"FRONTEND_MAIL_SMTP_USER"`
+				Password string `yaml:"password" envconfig:"FRONTEND_MAIL_SMTP_PASSWORD"`
+			} `yaml:"smtp"`
+			Gunmail struct {
+				Domain     string `yaml:"domain" envconfig:"FRONTEND_MAIL_GUNMAIL_DOMAIN"`
+				PrivateKey string `yaml:"privateKey" envconfig:"FRONTEND_MAIL_GUNMAIL_PRIVATE_KEY"`
+				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_GUNMAIL_SENDER"`
+			} `yaml:"gunmail"`
+		} `yaml:"mail"`
+		FlashSecret string `yaml:"flashSecret" envconfig:"FRONTEND_FLASH_SECRET"`
 	} `yaml:"frontend"`
 }

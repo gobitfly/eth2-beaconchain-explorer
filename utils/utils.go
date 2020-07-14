@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -41,6 +42,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatHash":                  FormatHash,
 		"formatIncome":                FormatIncome,
 		"formatValidator":             FormatValidator,
+		"formatValidatorWithName":     FormatValidatorWithName,
 		"formatValidatorInt64":        FormatValidatorInt64,
 		"formatValidatorStatus":       FormatValidatorStatus,
 		"formatPercentage":            FormatPercentage,
@@ -48,7 +50,9 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlashedValidator":      FormatSlashedValidator,
 		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
 		"formatTimestamp":             FormatTimestamp,
+		"formatValidatorName":         FormatValidatorName,
 		"epochOfSlot":                 EpochOfSlot,
+		"contains":                    strings.Contains,
 		"mod":                         func(i, j int) bool { return i%j == 0 },
 		"sub":                         func(i, j int) int { return i - j },
 		"add":                         func(i, j int) int { return i + j },
@@ -161,4 +165,17 @@ func IsValidEth1Address(s string) bool {
 func RoundDecimals(f float64, n int) float64 {
 	d := math.Pow10(n)
 	return math.Round(f*d) / d
+}
+
+const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+
+var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+// RandomString returns a random hex-string
+func RandomString(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
 }

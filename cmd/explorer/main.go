@@ -68,9 +68,10 @@ func main() {
 	if cfg.Frontend.Enabled {
 		db.MustInitFrontendDB(cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name, cfg.Frontend.SessionSecret)
 		defer db.FrontendDB.Close()
-		defer db.SessionStore.Close()
 
 		services.Init() // Init frontend services
+		utils.InitFlash(cfg.Frontend.FlashSecret)
+		utils.InitSession(cfg.Frontend.SessionSecret)
 
 		router := mux.NewRouter()
 		router.HandleFunc("/", handlers.Index).Methods("GET")
@@ -92,6 +93,7 @@ func main() {
 		router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
 		router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
 		router.HandleFunc("/validator/{index}/slashings", handlers.ValidatorSlashings).Methods("GET")
+		router.HandleFunc("/validator/{pubkey}/save", handlers.ValidatorSave).Methods("POST")
 		router.HandleFunc("/validators", handlers.Validators).Methods("GET")
 		router.HandleFunc("/validators/data", handlers.ValidatorsData).Methods("GET")
 		router.HandleFunc("/validators/slashings", handlers.ValidatorsSlashings).Methods("GET")
@@ -117,7 +119,7 @@ func main() {
 		router.HandleFunc("/login", handlers.LoginPost).Methods("POST")
 		router.HandleFunc("/logout", handlers.Logout).Methods("GET")
 		router.HandleFunc("/register", handlers.Register).Methods("GET")
-		router.HandleFunc("/register", handlers.Signup).Methods("POST")
+		router.HandleFunc("/register", handlers.RegisterPost).Methods("POST")
 		router.HandleFunc("/reset", handlers.ResetPasswordPost).Methods("POST")
 		router.HandleFunc("/reset", handlers.ResetPassword).Methods("GET")
 		router.HandleFunc("/resend", handlers.ResendConfirmation).Methods("GET")

@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
+	"html"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -243,6 +244,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch,
 			validators.exitepoch,
 			validators.lastattestationslot,
+			COALESCE(validators.name, '') AS name,
 			a.state,
 			COALESCE(p1.count,0) AS executedproposals,
 			COALESCE(p2.count,0) AS missedproposals
@@ -322,6 +324,8 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			v.ExecutedProposals,
 			v.MissedProposals,
 		})
+
+		tableData[i] = append(tableData[i], html.EscapeString(v.Name))
 	}
 
 	data := &types.DataTableResponse{

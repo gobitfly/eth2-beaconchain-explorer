@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
+	"time"
 
 	"html/template"
 	"net/http"
@@ -22,8 +23,7 @@ var requestResetPaswordTemplate = template.Must(template.New("resetPassword").Fu
 
 var sessionName = "beaconchain"
 
-// Signup handles the creation of a new user by writing the form values to the frontend database.
-func Signup(w http.ResponseWriter, r *http.Request) {
+func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		logger.Errorf("Error parsing form data for signup route: %v", err)
@@ -31,24 +31,30 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u := r.FormValue("username")
-	p := r.FormValue("password")
+	email := r.FormValue("email")
+	pwd := r.FormValue("password")
 
-	pHash, err := bcrypt.GenerateFromPassword([]byte(p), 10)
+	pHash, err := bcrypt.GenerateFromPassword([]byte(pwd), 10)
 	if err != nil {
 		logger.Errorf("error generating hash for password: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	_, err = db.FrontendDB.Exec("INSERT INTO users (username, password) VALUES ($1, $2)", u, string(pHash))
+	registerTimestamp := time.Now().Unix()
+	emailConfirmationHash := utils.RandomString(40)
+	_, err = db.FrontendDB.Exec(`
+		INSERT INTO users (password, email, email_confirmed, email_confirmation_hash, register_ts)
+		VALUES ($1, $2, 'FALSE', $3, TO_TIMESTAMP($4))`,
+		string(pHash), email, emailConfirmationHash, registerTimestamp,
+	)
 	if err != nil {
 		logger.Errorf("error saving new user into db: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // Login handler sends a template that allows a user to login
@@ -284,54 +290,56 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := db.SessionStore.Get(r, sessionName)
+	session, err := utils.SessionStore.Get(r, sessionName)
 	if err != nil {
 		logger.Errorf("Error retrieving session for login route: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	u := r.FormValue("username")
-	p := r.FormValue("password")
+	email := r.FormValue("email")
+	pwd := r.FormValue("password")
 
 	up := struct {
-		Username string
+		ID       int64
+		Email    string
 		Password string
 	}{}
-	err = db.FrontendDB.Get(&up, "SELECT username, password FROM users WHERE username = $1", u)
+	err = db.FrontendDB.Get(&up, "SELECT id, email, password FROM users WHERE email = $1", email)
 	if err != nil {
-		logger.Errorf("error retrieving password for user %v: %v", u, err)
-		session.AddFlash("Invalid username or password!")
+		logger.Errorf("error retrieving password for user %v: %v", email, err)
+		session.AddFlash("Error: Invalid email or password!")
 
-		err = sessions.Save(r, w)
+		err = session.Save(r, w)
 		if err != nil {
 			logger.Errorf("error saving session data for login route: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(up.Password), []byte(p))
+	err = bcrypt.CompareHashAndPassword([]byte(up.Password), []byte(pwd))
 
 	if err != nil {
-		logger.Errorf("error verifying password for user %v: %v", up.Username, err)
-		session.AddFlash("Invalid username or password!")
+		logger.Errorf("error verifying password for user %v: %v", up.Email, err)
+		session.AddFlash("Error: Invalid email or password!")
 
-		err = sessions.Save(r, w)
+		err = session.Save(r, w)
 		if err != nil {
 			logger.Errorf("error saving session data for login route: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
 	session.Values["authenticated"] = true
+	session.Values["user_id"] = up.ID
 
-	err = sessions.Save(r, w)
+	err = session.Save(r, w)
 	if err != nil {
 		logger.Errorf("error saving session data for login route: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -343,7 +351,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 // Logout handles ending the user session.
 func Logout(w http.ResponseWriter, r *http.Request) {
-	session, err := db.SessionStore.Get(r, sessionName)
+	session, err := utils.SessionStore.Get(r, sessionName)
 	if err != nil {
 		logger.Errorf("error retrieving session for login route: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -357,5 +365,42 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func SendConfirmationEmail(w http.ResponseWriter, r *http.Request) {
+	session, err := utils.SessionStore.Get(r, sessionName)
+	if err != nil {
+		logger.Errorf("error retrieving session for login route: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	session.Values["authenticated"] = false
+}
+
+func getUser(w http.ResponseWriter, r *http.Request) *types.User {
+	u := &types.User{}
+	session, err := utils.SessionStore.Get(r, sessionName)
+	if err != nil {
+		logger.Errorf("error getting session from sessionStore: %v", err)
+		return u
+	}
+	u.Flashes = session.Flashes()
+	ok := false
+	u.Authenticated, ok = session.Values["authenticated"].(bool)
+	if !ok {
+		u.Authenticated = false
+		return u
+	}
+	u.UserID, ok = session.Values["user_id"].(int64)
+	if !ok {
+		u.Authenticated = false
+		return u
+	}
+	session.Save(r, w)
+	return u
+}
+
+func sendConfirmationEmail() {
+
 }

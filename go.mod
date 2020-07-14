@@ -8,6 +8,7 @@ require (
 	github.com/ethereum/go-ethereum v1.9.14
 	github.com/gogo/protobuf v1.3.1
 	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.2.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/ipfs/go-todocounter v0.0.1 // indirect
@@ -18,6 +19,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/libp2p/go-libp2p-routing v0.1.0 // indirect
+	github.com/mailgun/mailgun-go/v4 v4.1.3
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
 	github.com/prysmaticlabs/ethereumapis v0.0.0-20200617012222-f52a0eff2886

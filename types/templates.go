@@ -14,6 +14,7 @@ type PageData struct {
 	Active                string
 	Meta                  *Meta
 	ShowSyncingMessage    bool
+	User                  *User
 	Data                  interface{}
 	Version               string
 	ChainSlotsPerEpoch    uint64
@@ -81,6 +82,7 @@ type IndexPageDataBlocks struct {
 	StatusFormatted    template.HTML `json:"status_formatted"`
 	Votes              uint64        `db:"votes" json:"votes"`
 	Graffiti           []byte        `db:"graffiti"`
+	ProposerName       string        `db:"name"`
 }
 
 // IndexPageEpochHistory is a struct to hold the epoch history for the main web page
@@ -123,6 +125,7 @@ type ValidatorsPageDataValidators struct {
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
 	LastAttestationSlot        *int64 `db:"lastattestationslot"`
+	Name                       string `db:"name"`
 	State                      string `db:"state"`
 	MissedProposals            uint64 `db:"missedproposals"`
 	ExecutedProposals          uint64 `db:"executedproposals"`
@@ -148,6 +151,7 @@ type ValidatorPageData struct {
 	ExitEpoch                        uint64  `db:"exitepoch"`
 	Index                            uint64  `db:"index"`
 	LastAttestationSlot              *uint64 `db:"lastattestationslot"`
+	Name                             string  `db:"name"`
 	WithdrawableTs                   time.Time
 	ActivationEligibilityTs          time.Time
 	ActivationTs                     time.Time
@@ -166,6 +170,8 @@ type ValidatorPageData struct {
 	BalanceHistoryChartData          [][]float64
 	EffectiveBalanceHistoryChartData [][]float64
 	Deposits                         *ValidatorDeposits
+	Eth1DepositAddress               []byte
+	FlashMessage                     string
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -196,6 +202,7 @@ type ValidatorPerformance struct {
 	Rank            uint64 `db:"rank"`
 	Index           uint64 `db:"validatorindex"`
 	PublicKey       []byte `db:"pubkey"`
+	Name            string `db:"name"`
 	Balance         uint64 `db:"balance"`
 	Performance1d   int64  `db:"performance1d"`
 	Performance7d   int64  `db:"performance7d"`
@@ -269,6 +276,7 @@ type BlockPageData struct {
 	Signature              []byte `db:"signature"`
 	RandaoReveal           []byte `db:"randaoreveal"`
 	Graffiti               []byte `db:"graffiti"`
+	ProposerName           string `db:"name"`
 	Eth1dataDepositroot    []byte `db:"eth1data_depositroot"`
 	Eth1dataDepositcount   uint64 `db:"eth1data_depositcount"`
 	Eth1dataBlockhash      []byte `db:"eth1data_blockhash"`
@@ -589,4 +597,17 @@ type EthTwoDepositsPageData struct {
 type ValidatorDeposits struct {
 	Eth1Deposits []Eth1Deposit
 	Eth2Deposits []Eth2Deposit
+}
+
+type MyCryptoSignature struct {
+	Address string `json:"address"`
+	Msg     string `json:"msg"`
+	Sig     string `json:"sig"`
+	Version string `json:"version"`
+}
+
+type User struct {
+	UserID        int64 `json:"user_id"`
+	Authenticated bool  `json:"authenticated"`
+	Flashes       []interface{}
 }

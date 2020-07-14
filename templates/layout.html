@@ -57,6 +57,7 @@
                 document.getElementById('app-style-initial').id = 'app-theme'
             }
         </script>
+        
 </head>
 <header>
 </header>
@@ -139,6 +140,8 @@
           <a href="/register" class="btn btn-primary btn-sm" type="button">
             <!-- <i class="fas fa-sign-in-alt"></i> --> <span class="text-white"><b>Sign Up</b></span>
           </a>
+          {{if .User.Authenticated}}user_id: {{.User.UserID}} <a href="/logout">logout</a>{{end}}
+          {{.User.Flashes}}
         </div>
       </div>
     </div>
@@ -387,7 +390,18 @@
         }
     </script>
 
-
+    <script>
+      document.getElementById('login-submit').addEventListener('click', function(ev) {
+        ev.preventDefault()
+        console.log('click login form')
+        document.getElementById('login-form').submit()
+      })
+      document.getElementById('register-submit').addEventListener('click', function(ev) {
+        ev.preventDefault()
+        console.log('click register form')
+        document.getElementById('register-form').submit()
+      })
+    </script>
     
     {{ template "js" .Data }}
     <script src="//instant.page/5.1.0" type="module" integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script>
