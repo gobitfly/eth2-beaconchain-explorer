@@ -127,6 +127,9 @@ func main() {
 		router.HandleFunc("/resend", handlers.ResendConfirmation).Methods("GET")
 		router.HandleFunc("/resend", handlers.ResendConfirmationPost).Methods("POST")
 
+		router.HandleFunc("/requestReset", handlers.RequestResetPassword).Methods("GET")
+		router.HandleFunc("/requestReset", handlers.RequestResetPassword).Methods("POST")
+
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 
 		n := negroni.New(negroni.NewRecovery())

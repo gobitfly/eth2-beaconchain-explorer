@@ -134,13 +134,28 @@
           </div>
         </div>
         <div class="info-banner-right">
-          <a href="/login" class="mr-3" type="button">
-            <!-- <i class="fas fa-sign-in-alt"></i> --> <span>Sign In</span>
-          </a>
-          <a href="/register" class="btn btn-primary btn-sm" type="button">
-            <!-- <i class="fas fa-sign-in-alt"></i> --> <span class="text-white"><b>Sign Up</b></span>
-          </a>
-          {{if .User.Authenticated}}user_id: {{.User.UserID}} <a href="/logout">logout</a>{{end}}
+
+          {{if .User.Authenticated}}
+
+          <div class="dropdown">
+            <a class="btn btn-transparent btn-sm dropdown-toggle" type="button" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-user-circle m-0 p-0"></i>
+            </a>
+              <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
+                <h6 class="dropdown-header">Logged in as: {{.User.UserID}}</h6>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="/user">Profile</a>
+                <a class="dropdown-item" href="/logout">Logout</a>
+              </div>
+            </div>
+          {{else}}
+            <a href="/login" class="mr-3" type="button">
+              <span>Sign In</span>
+            </a>
+            <a href="/register" class="btn btn-primary btn-sm" type="button">
+              <span class="text-white"><b>Sign Up</b></span>
+            </a>
+          {{end}}
         </div>
       </div>
     </div>
@@ -307,7 +322,7 @@
     
         <main>
             <div class="container mt-1">
-                {{if .User.Flashes}}
+                <!-- {{if .User.Flashes}}
                   {{range $i, $flash := .User.Flashes}}
                   <div class="alert alert-success alert-dismissible fade show my-3 py-2" role="alert">
                     <div class="p-2">{{$flash}}</div>
@@ -316,7 +331,7 @@
                     </button>
                   </div>
                   {{end}}
-                {{end}}
+                {{end}} -->
                 {{ template "content" .Data }}
             </div>
         </main>
