@@ -1,0 +1,29 @@
+{{ define "js"}}
+{{end}}
+
+{{ define "css"}}
+{{end}}
+
+{{ define "content"}}
+<div class="row my-3">
+    <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
+        <h1 class="h2">Sign in to <i>beaconcha.in</i></h1>
+        <p>Manage and track the progress of your validator.</p>
+        <form action="/login" method="post">
+            <div class="form-group">
+                <label for="email">Email address</label>
+                <input required type="email" class="form-control" id="email" name="username">
+            </div>
+            <div class="form-group">
+                <label class="d-flex justify-content-between align-items-center" for="password">
+                    <span>Password</span>
+                    <a href="/forgotPassword">Forgot Password?</a>
+                </label> 
+                <input required type="password" class="form-control" id="password" name="password">
+            </div>
+            <button type="submit" class="btn btn-primary float-right">Login</button>
+        </form>
+         <span class="text-muted">Don't have an account? </span><a href="/register">Sign up</a>
+    </div>
+</div>
+{{end}}

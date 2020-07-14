@@ -115,10 +115,17 @@ func main() {
 		router.HandleFunc("/search/{type}/{search}", handlers.SearchAhead).Methods("GET")
 		router.HandleFunc("/faq", handlers.Faq).Methods("GET")
 		router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
-		router.HandleFunc("/login", handlers.Login).Methods("POST")
+
+		router.HandleFunc("/login", handlers.Login).Methods("GET")
+		router.HandleFunc("/login", handlers.LoginPost).Methods("POST")
 		router.HandleFunc("/logout", handlers.Logout).Methods("GET")
-		router.HandleFunc("/register", handlers.Register).Methods("POST")
 		router.HandleFunc("/confirm/{hash}", handlers.ConfirmEmail).Methods("GET")
+		router.HandleFunc("/register", handlers.Register).Methods("GET")
+		router.HandleFunc("/register", handlers.RegisterPost).Methods("POST")
+		router.HandleFunc("/reset", handlers.ResetPasswordPost).Methods("POST")
+		router.HandleFunc("/reset", handlers.ResetPassword).Methods("GET")
+		router.HandleFunc("/resend", handlers.ResendConfirmation).Methods("GET")
+		router.HandleFunc("/resend", handlers.ResendConfirmationPost).Methods("POST")
 
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 
