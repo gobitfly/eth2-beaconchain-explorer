@@ -126,9 +126,9 @@ func main() {
 		router.HandleFunc("/reset", handlers.ResetPassword).Methods("GET")
 		router.HandleFunc("/resend", handlers.ResendConfirmation).Methods("GET")
 		router.HandleFunc("/resend", handlers.ResendConfirmationPost).Methods("POST")
-
 		router.HandleFunc("/requestReset", handlers.RequestResetPassword).Methods("GET")
 		router.HandleFunc("/requestReset", handlers.RequestResetPassword).Methods("POST")
+		router.HandleFunc("/user", handlers.User).Methods("GET")
 
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 
