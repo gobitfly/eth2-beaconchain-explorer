@@ -289,7 +289,7 @@ create table users (
     password character varying(256) not null,
     email character varying(100) not null unique,
     email_confirmed bool default 'f' not null,
-    email_confirmation_hash character varying(40),
+    email_confirmation_hash character varying(40) unique,
     email_confirmation_hash_ts timestamp without time zone,
     password_reset_hash character varying(40),
     password_reset_hash_ts timestamp without time zone,
