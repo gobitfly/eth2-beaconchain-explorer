@@ -70,7 +70,6 @@ func main() {
 		defer db.FrontendDB.Close()
 
 		services.Init() // Init frontend services
-		utils.InitFlash(cfg.Frontend.FlashSecret)
 		utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
 		router := mux.NewRouter()
