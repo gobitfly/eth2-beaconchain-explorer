@@ -454,7 +454,7 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error sending reset-email: %v", err)
 		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 	} else if err != nil && errors.As(err, &rateLimitError) {
-		utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: The ratelimit of sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
+		utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
 	} else {
 		utils.SetFlash(w, r, authSessionName, "An email has been sent which contains a link to reset your password.")
 	}
@@ -527,7 +527,7 @@ func ResendConfirmationPost(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error sending confirmation-email: %v", err)
 		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 	} else if err != nil && errors.As(err, &rateLimitError) {
-		utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: The ratelimit of sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
+		utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
 	} else {
 		utils.SetFlash(w, r, authSessionName, "Email has been sent!")
 	}
