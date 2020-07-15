@@ -273,7 +273,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	err = db.FrontendDB.Get(&dbUser, "SELECT id, email_confirmed FROM users WHERE password_reset_hash = $1", hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			session.AddFlash("Error: Invalid reset link, please retry")
+			session.AddFlash("Error: Invalid reset link, please retry.")
 			session.Save(r, w)
 			http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 			return
@@ -295,6 +295,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 			return
 		}
+		session.AddFlash("Your email-address has been confirmed.")
 	}
 
 	user := &types.User{}
@@ -427,7 +428,7 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 
 	if !utils.IsValidEmail(email) {
-		utils.SetFlash(w, r, authSessionName, "Error: Invalid email address")
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid email address.")
 		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
@@ -442,15 +443,18 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if exists == 0 {
-		utils.SetFlash(w, r, authSessionName, "Error: Email does not exist")
+		utils.SetFlash(w, r, authSessionName, "Error: Email does not exist.")
 		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
 
+	var rateLimitError *types.RateLimitError
 	err = sendResetEmail(email)
-	if err != nil {
+	if err != nil && !errors.As(err, &rateLimitError) {
 		logger.Errorf("error sending reset-email: %v", err)
 		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+	} else if err != nil && errors.As(err, &rateLimitError) {
+		utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: The ratelimit of sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
 	} else {
 		utils.SetFlash(w, r, authSessionName, "An email has been sent which contains a link to reset your password.")
 	}
@@ -489,7 +493,7 @@ func ResendConfirmationPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		logger.Errorf("error parsing form: %v", err)
-		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong :( Please retry later")
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
 		http.Redirect(w, r, "/resend", http.StatusSeeOther)
 		return
 	}
@@ -512,17 +516,20 @@ func ResendConfirmationPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if exists == 0 {
-		utils.SetFlash(w, r, authSessionName, "Error: Email does not exist")
+		utils.SetFlash(w, r, authSessionName, "Error: Email does not exist!")
 		http.Redirect(w, r, "/resend", http.StatusSeeOther)
 		return
 	}
 
+	var rateLimitError *types.RateLimitError
 	err = sendConfirmationEmail(email)
-	if err != nil {
-		logger.Errorf("error sending email-confirmation: %v", err)
-		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong :( Please retry later")
+	if err != nil && !errors.As(err, &rateLimitError) {
+		logger.Errorf("error sending confirmation-email: %v", err)
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+	} else if err != nil && errors.As(err, &rateLimitError) {
+		utils.SetFlash(w, r, authSessionName, fmt.Sprintf("Error: The ratelimit of sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
 	} else {
-		utils.SetFlash(w, r, authSessionName, "Email has been sent")
+		utils.SetFlash(w, r, authSessionName, "Email has been sent!")
 	}
 
 	http.Redirect(w, r, "/resend", http.StatusSeeOther)
@@ -599,7 +606,6 @@ func getUserSession(w http.ResponseWriter, r *http.Request) (*types.User, *sessi
 }
 
 func sendConfirmationEmail(email string) error {
-	rateLimit := 60 * 15 * time.Second
 	now := time.Now()
 	emailConfirmationTs := now.Unix()
 	emailConfirmationHash := utils.RandomString(40)
@@ -610,13 +616,13 @@ func sendConfirmationEmail(email string) error {
 	}
 	defer tx.Rollback()
 
-	var lastTs *time.Time
+	var lastTs time.Time
 	err = tx.Get(&lastTs, "SELECT email_confirmation_ts FROM users WHERE email = $1", email)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("error getting confirmation-ts: %w", err)
 	}
-	if lastTs != nil && (*lastTs).Add(rateLimit).Before(now) {
-		return fmt.Errorf("only one email can be sent every %v, last email was sent %v", rateLimit, *lastTs)
+	if err == nil && lastTs.Add(authConfirmEmailRateLimit).After(now) {
+		return &types.RateLimitError{lastTs.Add(authConfirmEmailRateLimit).Sub(now)}
 	}
 
 	_, err = tx.Exec(`
@@ -632,20 +638,19 @@ func sendConfirmationEmail(email string) error {
 		return fmt.Errorf("error commiting db-tx: %w", err)
 	}
 
-	subject := "beaconcha.in: Verify your email-address"
-	msg := fmt.Sprintf(`Please verify your email on https://beaconcha.in by clicking this link:
+	subject := fmt.Sprintf("%s: Verify your email-address", utils.Config.Frontend.SiteDomain)
+	msg := fmt.Sprintf(`Please verify your email on %[1]s by clicking this link:
 
-https://beaconcha.in/confirm/%s
+https://%[1]s/confirm/%[2]s
 
 Best regards,
 
-beaconcha.in
-`, emailConfirmationHash)
+%[1]s
+`, utils.Config.Frontend.SiteDomain, emailConfirmationHash)
 	return utils.SendMail(email, subject, msg)
 }
 
 func sendResetEmail(email string) error {
-	rateLimit := 60 * 15 * time.Second
 	now := time.Now()
 	resetTs := now.Unix()
 	resetHash := utils.RandomString(40)
@@ -656,13 +661,13 @@ func sendResetEmail(email string) error {
 	}
 	defer tx.Rollback()
 
-	var lastTs *time.Time
+	var lastTs time.Time
 	err = tx.Get(&lastTs, "SELECT password_reset_ts FROM users WHERE email = $1", email)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("error getting reset-ts: %w", err)
 	}
-	if lastTs != nil && (*lastTs).Add(rateLimit).Before(now) {
-		return fmt.Errorf("only one email can be sent every %v, last email was sent %v", rateLimit, *lastTs)
+	if err == nil && lastTs.Add(authResetEmailRateLimit).After(now) {
+		return &types.RateLimitError{lastTs.Add(authResetEmailRateLimit).Sub(now)}
 	}
 
 	_, err = tx.Exec(`
@@ -678,14 +683,14 @@ func sendResetEmail(email string) error {
 		return fmt.Errorf("error commiting db-tx: %w", err)
 	}
 
-	subject := "beaconcha.in: Reset your password"
-	msg := fmt.Sprintf(`You can reset your password on https://beaconcha.in by clicking this link:
+	subject := fmt.Sprintf("%s: Reset your password", utils.Config.Frontend.SiteDomain)
+	msg := fmt.Sprintf(`You can reset your password on %[1]s by clicking this link:
 
-https://beaconcha.in/reset/%s
+https://%[1]s/reset/%[2]s
 
 Best regards,
 
-beaconcha.in
-`, resetHash)
+%[1]s
+`, utils.Config.Frontend.SiteDomain, resetHash)
 	return utils.SendMail(email, subject, msg)
 }

@@ -66,6 +66,10 @@ func main() {
 	}
 
 	if cfg.Frontend.Enabled {
+		if utils.Config.Frontend.SiteDomain == "" {
+			utils.Config.Frontend.SiteDomain = "beaconcha.in"
+		}
+
 		db.MustInitFrontendDB(cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name, cfg.Frontend.SessionSecret)
 		defer db.FrontendDB.Close()
 
