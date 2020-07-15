@@ -619,3 +619,11 @@ type UserSettingsPageData struct {
 	Email string `json:"email"`
 	AuthData
 }
+
+type RateLimitError struct {
+	TimeLeft time.Duration
+}
+
+func (e *RateLimitError) Error() string {
+	return fmt.Sprintf("rate limit has been exceeded, %v left", e.TimeLeft)
+}
