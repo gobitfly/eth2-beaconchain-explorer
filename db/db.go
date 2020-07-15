@@ -27,9 +27,6 @@ var DBPGX *pgxpool.Conn
 // DB is a pointer to the explorer-database
 var DB *sqlx.DB
 
-// FrontendDB is a pointer to the auth-database
-var FrontendDB *sqlx.DB
-
 var logger = logrus.New().WithField("module", "db")
 
 func mustInitDB(username, password, host, port, name string) *sqlx.DB {
@@ -56,10 +53,6 @@ func mustInitDB(username, password, host, port, name string) *sqlx.DB {
 
 func MustInitDB(username, password, host, port, name string) {
 	DB = mustInitDB(username, password, host, port, name)
-}
-
-func MustInitFrontendDB(username, password, host, port, name, sessionSecret string) {
-	FrontendDB = mustInitDB(username, password, host, port, name)
 }
 
 func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsPageData, error) {

@@ -612,6 +612,9 @@ type User struct {
 }
 
 type AuthData struct {
-	User    *User
 	Flashes []interface{}
+}
+
+type UserSettingsPageData struct {
+	Email string `json:"email"`
 }
