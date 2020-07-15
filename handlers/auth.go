@@ -368,7 +368,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = db.FrontendDB.Exec("UPDATE users SET password = $1", pHash)
+	_, err = db.FrontendDB.Exec("UPDATE users SET password = $1 WHERE id = $2", pHash, user.UserID)
 	if err != nil {
 		logger.Errorf("error updating password for user: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
