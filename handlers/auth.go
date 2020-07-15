@@ -267,8 +267,8 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	hash := vars["hash"]
 
 	dbUser := struct {
-		ID             int64
-		EmailConfirmed bool
+		ID             int64 `db:"id"`
+		EmailConfirmed bool  `db:"email_confirmed"`
 	}{}
 	err = db.FrontendDB.Get(&dbUser, "SELECT id, email_confirmed FROM users WHERE password_reset_hash = $1", hash)
 	if err != nil {
@@ -615,13 +615,13 @@ func sendConfirmationEmail(email string) error {
 	}
 	defer tx.Rollback()
 
-	var lastTs time.Time
+	var lastTs *time.Time
 	err = tx.Get(&lastTs, "SELECT email_confirmation_ts FROM users WHERE email = $1", email)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return fmt.Errorf("error getting confirmation-ts: %w", err)
 	}
-	if err == nil && lastTs.Add(authConfirmEmailRateLimit).After(now) {
-		return &types.RateLimitError{lastTs.Add(authConfirmEmailRateLimit).Sub(now)}
+	if lastTs != nil && (*lastTs).Add(authConfirmEmailRateLimit).After(now) {
+		return &types.RateLimitError{(*lastTs).Add(authConfirmEmailRateLimit).Sub(now)}
 	}
 
 	_, err = tx.Exec("UPDATE users SET email_confirmation_hash = $1 WHERE email = $2", emailConfirmationHash, email)
@@ -666,13 +666,13 @@ func sendResetEmail(email string) error {
 	}
 	defer tx.Rollback()
 
-	var lastTs time.Time
+	var lastTs *time.Time
 	err = tx.Get(&lastTs, "SELECT password_reset_ts FROM users WHERE email = $1", email)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("error getting reset-ts: %w", err)
 	}
-	if err == nil && lastTs.Add(authResetEmailRateLimit).After(now) {
-		return &types.RateLimitError{lastTs.Add(authResetEmailRateLimit).Sub(now)}
+	if lastTs != nil && (*lastTs).Add(authResetEmailRateLimit).After(now) {
+		return &types.RateLimitError{(*lastTs).Add(authResetEmailRateLimit).Sub(now)}
 	}
 
 	_, err = tx.Exec("UPDATE users SET password_reset_hash = $1 WHERE email = $2", resetHash, email)
