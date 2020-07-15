@@ -607,7 +607,6 @@ func getUserSession(w http.ResponseWriter, r *http.Request) (*types.User, *sessi
 
 func sendConfirmationEmail(email string) error {
 	now := time.Now()
-	emailConfirmationTs := now.Unix()
 	emailConfirmationHash := utils.RandomString(40)
 
 	tx, err := db.FrontendDB.Beginx()
@@ -625,10 +624,7 @@ func sendConfirmationEmail(email string) error {
 		return &types.RateLimitError{lastTs.Add(authConfirmEmailRateLimit).Sub(now)}
 	}
 
-	_, err = tx.Exec(`
-		UPDATE users 
-		SET (email_confirmation_hash, email_confirmation_ts) = ($1, TO_TIMESTAMP($2))
-		WHERE email = $3`, emailConfirmationHash, emailConfirmationTs, email)
+	_, err = tx.Exec("UPDATE users SET email_confirmation_hash = $1 WHERE email = $2", emailConfirmationHash, email)
 	if err != nil {
 		return fmt.Errorf("error updating confirmation-hash: %w", err)
 	}
@@ -647,12 +643,21 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, emailConfirmationHash)
-	return utils.SendMail(email, subject, msg)
+	err = utils.SendMail(email, subject, msg)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.FrontendDB.Exec("UPDATE users SET email_confirmation_ts = TO_TIMESTAMP($1) WHERE email = $2", time.Now().Unix(), email)
+	if err != nil {
+		return fmt.Errorf("error updating confirmation-ts: %w", err)
+	}
+
+	return nil
 }
 
 func sendResetEmail(email string) error {
 	now := time.Now()
-	resetTs := now.Unix()
 	resetHash := utils.RandomString(40)
 
 	tx, err := db.FrontendDB.Beginx()
@@ -670,10 +675,7 @@ func sendResetEmail(email string) error {
 		return &types.RateLimitError{lastTs.Add(authResetEmailRateLimit).Sub(now)}
 	}
 
-	_, err = tx.Exec(`
-		UPDATE users 
-		SET (password_reset_hash, password_reset_ts) = ($1, TO_TIMESTAMP($2))
-		WHERE email = $3`, resetHash, resetTs, email)
+	_, err = tx.Exec("UPDATE users SET password_reset_hash = $1 WHERE email = $2", resetHash, email)
 	if err != nil {
 		return fmt.Errorf("error updating reset-hash: %w", err)
 	}
@@ -692,5 +694,15 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, resetHash)
-	return utils.SendMail(email, subject, msg)
+	err = utils.SendMail(email, subject, msg)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.FrontendDB.Exec("UPDATE users SET password_reset_ts = TO_TIMESTAMP($1) WHERE email = $2", time.Now().Unix(), email)
+	if err != nil {
+		return fmt.Errorf("error updating reset-ts: %w", err)
+	}
+
+	return nil
 }
