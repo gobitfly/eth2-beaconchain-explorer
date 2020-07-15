@@ -617,4 +617,5 @@ type AuthData struct {
 
 type UserSettingsPageData struct {
 	Email string `json:"email"`
+	AuthData
 }

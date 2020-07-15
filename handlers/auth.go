@@ -209,7 +209,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !user.Confirmed {
-		session.AddFlash("Error: Email has not been comfirmed yet, please click the link in the confirmation-email we sent you!")
+		session.AddFlash("Error: Email has not been comfirmed, please click the link in the email we sent you or <a href='/resend'>resend link</a>!")
 		session.Save(r, w)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
@@ -226,7 +226,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	session.Values["authenticated"] = true
 	session.Values["user_id"] = user.ID
-	session.AddFlash("Successfully logged in")
+	// session.AddFlash("Successfully logged in")
 
 	session.Save(r, w)
 
@@ -244,6 +244,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	session.Values["authenticated"] = false
 	delete(session.Values, "user_id")
 	session.Save(r, w)
+
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -348,7 +349,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = db.FrontendDB.Exec("UPDATE users SET password = $1", pHash)
+	err = db.UpdatePassword(user.UserID, pHash)
 	if err != nil {
 		logger.Errorf("error updating password for user: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)

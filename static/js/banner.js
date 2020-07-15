@@ -82,7 +82,7 @@ function updateBanner() {
               </div>
             </div>
             `
-        document.getElementById('banner').insertAdjacentHTML('beforeend', statusHtml)
+        document.getElementById('banner-stats').insertAdjacentHTML('beforeend', statusHtml)
       }
     } else {
       // delete sync if it exists otherwise do nothing
@@ -94,4 +94,4 @@ function updateBanner() {
   })
 }
 // update the banner every 12 seconds
-// setInterval(updateBanner, 12000)
+setInterval(updateBanner, 12000)

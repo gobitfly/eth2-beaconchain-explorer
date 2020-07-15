@@ -1,19 +1,17 @@
 {{ define "js"}}
 <script>
-    var email = document.getElementById('email')
-    var pass = document.getElementById('password')
-    var pwConfirm = document.getElementById('pw-confirm')
-
-
     // form validations
     function checkPasswordsMatch(input) {
-      if (pass.value !== input.value) {
-        input.setCustomValidity('Passwords do not match');
-      } else {
-        input.setCustomValidity('');
-      }
+        var pass = document.getElementById('password')
+        var pwConfirm = document.getElementById('pw-confirm')
+        if (pass.value !== input.value) {
+            input.setCustomValidity('Passwords do not match');
+        } else {
+            input.setCustomValidity('');
+        }
     }
 </script>
+
 {{end}}
 
 {{ define "css"}}
