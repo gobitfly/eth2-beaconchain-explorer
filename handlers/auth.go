@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"database/sql"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -24,9 +26,11 @@ var resendConfirmationTemplate = template.Must(template.New("resetPassword").Fun
 var requestResetPaswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/requestResetPassword.html"))
 
 var authSessionName = "auth"
+var authResetEmailRateLimit = time.Second * 60 * 15
+var authConfirmEmailRateLimit = time.Second * 60 * 15
 var authInternalServerErrorFlashMsg = "Error: Something went wrong :( Please retry later"
 
-// Register handler sends a template that allows for the creation of a new user
+// Register handler renders a template that allows for the creation of a new user.
 func Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	data := &types.PageData{
@@ -52,7 +56,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// RegisterPost handles the register-formular to register a new user
+// RegisterPost handles the register-formular to register a new user.
 func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	logger = logger.WithField("route", r.URL.String())
 	session, err := utils.SessionStore.Get(r, authSessionName)
@@ -145,7 +149,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/register", http.StatusSeeOther)
 }
 
-// Login handler sends a template that allows a user to login
+// Login handler renders a template that allows a user to login.
 func Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	data := &types.PageData{
@@ -217,7 +221,6 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(pwd))
 	if err != nil {
-		logger.Errorf("error verifying password for user %v: %v", user.Email, err)
 		session.AddFlash("Error: Invalid email or password!")
 		session.Save(r, w)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
@@ -226,7 +229,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	session.Values["authenticated"] = true
 	session.Values["user_id"] = user.ID
-	session.AddFlash("Successfully logged in")
+	// session.AddFlash("Successfully logged in")
 
 	session.Save(r, w)
 
@@ -247,7 +250,9 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-// ResetPassword handler sends a template that lets the user reset his password
+// ResetPassword renders a template that lets the user reset his password.
+// This only works if the hash in the url is correct. This will also confirm
+// the email of the user if it has not been confirmed yet.
 func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -261,26 +266,40 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 
-	var userID *int64
-	err = db.FrontendDB.Get(&userID, "SELECT id FROM users WHERE password_reset_hash = $1", hash)
+	dbUser := struct {
+		ID             int64
+		EmailConfirmed bool
+	}{}
+	err = db.FrontendDB.Get(&dbUser, "SELECT id, email_confirmed FROM users WHERE password_reset_hash = $1", hash)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			session.AddFlash("Error: Invalid reset link, please retry")
+			session.Save(r, w)
+			http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
+			return
+		}
 		logger.Errorf("error resetting password: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
-		http.Redirect(w, r, "/reset", http.StatusSeeOther)
+		http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
 		return
 	}
 
-	if userID == nil {
-		session.AddFlash("Error: Invalid reset link, please <a href='/requestReset'>retry</a>")
-		session.Save(r, w)
-		http.Redirect(w, r, "/reset", http.StatusSeeOther)
-		return
+	// if the user has not confirmed her email yet, just confirm it since she clicked this reset-password-link that has been sent to her email aswell anyway
+	if !dbUser.EmailConfirmed {
+		_, err = db.FrontendDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE id = $1", dbUser.ID)
+		if err != nil {
+			logger.Errorf("error setting confirmed when user is resetting password: %v", err)
+			session.AddFlash(authInternalServerErrorFlashMsg)
+			session.Save(r, w)
+			http.Redirect(w, r, "/requestReset", http.StatusSeeOther)
+			return
+		}
 	}
 
 	user := &types.User{}
 	user.Authenticated = true
-	user.UserID = *userID
+	user.UserID = dbUser.ID
 
 	session.Values["authenticated"] = true
 	session.Values["user_id"] = user.UserID
@@ -290,9 +309,9 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/register",
+			Path:        "/requestReset",
 		},
-		Active:                "register",
+		Active:                "requestReset",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
 		User:                  getUser(w, r),
 		Version:               version.Version,
@@ -367,7 +386,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-// RequestResetPassword send a template that lets the user enter his email and request a reset link
+// RequestResetPassword renders a template that lets the user enter his email and request a reset link.
 func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	data := &types.PageData{
@@ -393,7 +412,7 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// RequestResetPasswordPost sends a password-reset-link to the provided (via form) email
+// RequestResetPasswordPost sends a password-reset-link to the provided (via form) email.
 func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	logger = logger.WithField("route", r.URL.String())
 
@@ -445,7 +464,7 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/register",
+			Path:        "/resendConfirmation",
 		},
 		Active:                "resendConfirmation",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
@@ -465,7 +484,7 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ResendConfirmationPost handles sending another confirmation email to the user
+// ResendConfirmationPost handles sending another confirmation email to the user.
 func ResendConfirmationPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -484,7 +503,7 @@ func ResendConfirmationPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var exists int
-	err = db.FrontendDB.Get("SELECT COUNT(*) FROM users WHERE email = $1", email)
+	err = db.FrontendDB.Get(&exists, "SELECT COUNT(*) FROM users WHERE email = $1", email)
 	if err != nil {
 		logger.Errorf("error checking if user exists for email-confirmation: %v", err)
 		utils.SetFlash(w, r, authSessionName, "Error: Something went wrong :( Please retry later")
@@ -509,7 +528,7 @@ func ResendConfirmationPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/resend", http.StatusSeeOther)
 }
 
-// ConfirmEmail confirms the email-address of a user
+// ConfirmEmail confirms the email-address of a user.
 func ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hash := vars["hash"]
@@ -529,11 +548,11 @@ func ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if n == 0 {
-		utils.SetFlash(w, r, authSessionName, "Error: Invalid confirmation-link, please <a href='/resend'>retry</a>")
-	} else {
-		utils.SetFlash(w, r, authSessionName, "Your email has been confirmed! You can log in now.")
+		utils.SetFlash(w, r, authSessionName, "Error: Invalid confirmation-link, please retry.")
+		http.Redirect(w, r, "/resend", http.StatusSeeOther)
 	}
 
+	utils.SetFlash(w, r, authSessionName, "Your email has been confirmed! You can log in now.")
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
