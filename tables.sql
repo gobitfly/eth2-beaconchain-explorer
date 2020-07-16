@@ -285,15 +285,24 @@ create index idx_eth1_deposits on eth1_deposits (publickey);
 
 drop table if exists users;
 create table users (
-    id serial not null,
-    password character varying(256) not null,
-    email character varying(100) not null unique,
-    email_confirmed bool default 'f' not null,
-    email_confirmation_hash character varying(40) unique,
-    email_confirmation_ts timestamp without time zone,
-    password_reset_hash character varying(40),
-    password_reset_ts timestamp without time zone,
-    register_ts timestamp without time zone,
-    primary key (id)
+    id                      serial                      not null,
+    password                character varying(256)      not null,
+    email                   character varying(100)      not null unique,
+    email_confirmed         bool                        not null default 'f',
+    email_confirmation_hash character varying(40)                unique,
+    email_confirmation_ts   timestamp without time zone,
+    password_reset_hash     character varying(40),
+    password_reset_ts       timestamp without time zone,
+    register_ts             timestamp without time zone,
+    primary key (id, email)
 );
 
+drop table if exists notifications_subscriptions;
+create table notifications_subscriptions (
+    id                   serial                 not null,
+    user_id              int                    not null,
+    event_name           character varying(100) not null,
+    validatorindex       int,
+    last_notification_ts timestamp without time zone,
+    primary key (id)
+);

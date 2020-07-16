@@ -33,6 +33,7 @@ func Init() {
 	ready.Wait()
 
 	go chartsPageDataUpdater()
+	go notificationsSender()
 }
 
 func epochUpdater() {

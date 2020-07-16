@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// SendMail sends an email to the given address with the given message.
+// SendMail sends an email to the given address with the given message, it will use smtp if configured otherwise it will use gunmail if configured.
 func SendMail(to, subject, msg string) error {
 	if Config.Frontend.Mail.SMTP.User != "" {
 		return SendMailSMTP(to, subject, msg)
