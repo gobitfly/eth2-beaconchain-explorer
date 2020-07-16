@@ -237,7 +237,7 @@ func UpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session.AddFlash("To complete the update verify your new email.")
+	session.AddFlash("Verification link sent to your new email " + email)
 	session.Save(r, w)
 	http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 }
