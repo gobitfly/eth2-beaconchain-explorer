@@ -613,6 +613,7 @@ type User struct {
 
 type AuthData struct {
 	Flashes []interface{}
+	Email   string
 }
 
 type UserSettingsPageData struct {

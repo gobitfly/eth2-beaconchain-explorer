@@ -26,7 +26,6 @@
             document.getElementById('email-form').submit()
         }
     }
-
 </script>
 {{end}}
 
@@ -84,6 +83,7 @@
                 </div>
                 <div class="card-body">
                     <form action="/user/updatePassword" method="post">
+                        <input value="{{.Email}}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" id="email" name="email">
                         <div class="form-group">
                             <label for="old-password">Old Password</label>
                             <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="current-password" id="old-password" name="old-password">

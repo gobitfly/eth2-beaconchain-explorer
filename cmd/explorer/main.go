@@ -135,6 +135,8 @@ func main() {
 		router.HandleFunc("/user/updateEmail", handlers.UpdateEmailPost).Methods("POST")
 		router.HandleFunc("/user/updatePassword", handlers.UpdatePasswordPost).Methods("POST")
 		router.HandleFunc("/user/delete", handlers.DeleteUserPost).Methods("POST")
+		router.HandleFunc("/updateEmail/{hash}", handlers.ConfirmUpdateEmail).Methods("GET")
+
 		// router.HandleFunc("/user/validators", handlers.UserValidators).Methods("GET")
 
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
