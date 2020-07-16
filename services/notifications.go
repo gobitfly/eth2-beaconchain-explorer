@@ -8,10 +8,13 @@ import (
 	"time"
 )
 
+var notificationRateLimit = time.Second * 60 * 10
+
 var notifications = map[int64]map[types.EventName][]types.Notification{}
 
 func notificationsSender() {
 	for {
+		start := time.Now()
 		var err error
 		err = updateSubscriptions()
 		if err != nil {
@@ -19,24 +22,27 @@ func notificationsSender() {
 			time.Sleep(time.Second * 60)
 			continue
 		}
-		collectNofitications()
+		collectNotifications()
 		sendNotifications()
+		logger.WithField("duration", time.Since(start)).Info("notifications completed")
 		time.Sleep(time.Second * 60)
 	}
 }
 
 func updateSubscriptions() error {
 	updateValidatorBalanceDecreasedSubscriptions()
+	return nil
 }
 
-func collectNotifcations() {
-	notifications = map[int64]map[types.EventName]types.Notification{}
+func collectNotifications() {
+	// reset notifications
+	notifications = map[int64]map[types.EventName][]types.Notification{}
 	collectValidatorBalanceDecreasedNotifications()
 }
 
 func sendNotifications() {
 	for userID, userNotifications := range notifications {
-		go func(userID, userNotifications) {
+		go func(userID int64, userNotifications map[types.EventName][]types.Notification) {
 			email, err := db.GetUserEmailById(userID)
 			if err != nil {
 				logger.Errorf("error getting email of user: %v", err)
@@ -69,11 +75,11 @@ type validatorBalanceDecreasedNotification struct {
 	NewBalance     uint64
 }
 
-func (n *validatorBalanceDecreasedNotification) EventName() types.EventName {
+func (n validatorBalanceDecreasedNotification) EventName() types.EventName {
 	return types.ValidatorBalanceDecreasedEventName
 }
 
-func (n *validatorBalanceDecreasedNotification) Info() string {
+func (n validatorBalanceDecreasedNotification) Info() string {
 	return fmt.Sprintf(`the balance of validator %v decreased from %v to %v at epoch %v`, n.ValidatorIndex, n.Epoch, n.OldBalance, n.NewBalance)
 }
 
@@ -81,14 +87,19 @@ var validatorBalanceDecreasedSubscriptions = map[uint64][]int64{}
 var validatorBalances = map[uint64]uint64{}
 
 func updateValidatorBalanceDecreasedSubscriptions() error {
+	now := time.Now()
 	validatorBalanceDecreasedSubscriptions = map[uint64][]int64{}
 
-	subs, err := db.GetSubscriptions(ValidatorBalanceDecreased)
+	subs, err := db.GetSubscriptions(types.ValidatorBalanceDecreasedEventName)
 	if err != nil {
 		return err
 	}
 	for _, s := range subs {
 		if s.ValidatorIndex == nil {
+			continue
+		}
+		// if we already sent a notification for this validator skip it
+		if s.LastNotification != nil && (*s.LastNotification).Add(notificationRateLimit).Before(now) {
 			continue
 		}
 		_, exists := validatorBalanceDecreasedSubscriptions[*s.ValidatorIndex]
@@ -101,8 +112,16 @@ func updateValidatorBalanceDecreasedSubscriptions() error {
 	return nil
 }
 
+var collectValidatorBalanceDecreasedNotificationsLastEpoch = uint64(0)
+
 func collectValidatorBalanceDecreasedNotifications() error {
 	latestEpoch := LatestEpoch()
+
+	// only check if there is a new epoch
+	if latestEpoch == 0 || latestEpoch == collectValidatorBalanceDecreasedNotificationsLastEpoch {
+		return nil
+	}
+	collectValidatorBalanceDecreasedNotificationsLastEpoch = latestEpoch
 
 	newValidatorBalances := []struct {
 		Index   uint64 `db:"validatorindex"`
@@ -128,7 +147,7 @@ func collectValidatorBalanceDecreasedNotifications() error {
 			if len(validatorBalanceDecreasedSubscriptions[v.Index]) == 0 {
 				continue
 			}
-			n = validatorBalanceDecreasedNotification{
+			n := validatorBalanceDecreasedNotification{
 				ValidatorIndex: v.Index,
 				Epoch:          latestEpoch,
 				OldBalance:     oldValidatorBalance,
@@ -137,11 +156,13 @@ func collectValidatorBalanceDecreasedNotifications() error {
 			for _, userID := range validatorBalanceDecreasedSubscriptions[v.Index] {
 				_, exists := notifications[userID]
 				if !exists {
-					notifications[userID] = map[types.EventName]types.Notification{}
+					notifications[userID] = map[types.EventName][]types.Notification{}
 				}
 				_, exists = notifications[userID][types.ValidatorBalanceDecreasedEventName]
 				if !exists {
-					notifications[userID][types.ValidatorBalanceDecreasedEventName] = []types.Notification{}
+					notifications[userID][types.ValidatorBalanceDecreasedEventName] = []types.Notification{n}
+				} else {
+					notifications[userID][types.ValidatorBalanceDecreasedEventName] = append(notifications[userID][types.ValidatorBalanceDecreasedEventName], n)
 				}
 			}
 		}

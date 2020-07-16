@@ -123,8 +123,8 @@ func AddSubscription(userID int64, eventName string, validatorIndex *uint64) err
 	return nil
 }
 
-func GetSubscriptions(eventName string) ([]*types.Subscription, error) {
-	subs := []*EventSubscription{}
+func GetSubscriptions(eventName types.EventName) ([]*types.Subscription, error) {
+	subs := []*types.Subscription{}
 	err := FrontendDB.Select(&subs, "SELECT * FROM notifications_subscriptions WHERE event_name = $1", eventName)
 	return subs, err
 }
