@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -23,7 +24,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	userSettingsData := &types.UserSettingsPageData{}
 
 	// TODO: remove before production
-	userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/settings.html"))
+	// userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/settings.html"))
 
 	w.Header().Set("Content-Type", "text/html")
 
@@ -206,20 +207,11 @@ func UpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// var GenericUpdateEmailError string = "Error: Something went wrong updating your email 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>"
-
-	// tx, err := db.FrontendDB.Beginx()
-	// if err != nil {
-	// 	logger.Errorf("error creating db-tx for registering user: %v", err)
-	// 	session.AddFlash(GenericUpdateEmailError)
-	// }
-	// defer tx.Rollback()
 	var existingEmails struct {
 		Count int
 		Email string
 	}
 	err = db.FrontendDB.Get(&existingEmails, "SELECT email FROM users WHERE email = $1", email)
-	// tx.Commit()
 
 	if existingEmails.Email == email {
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -231,13 +223,21 @@ func UpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var rateLimitError *types.RateLimitError
 	err = sendEmailUpdateConfirmation(user.UserID, email)
 	if err != nil {
 		logger.Errorf("error sending confirmation-email: %v", err)
-		session.AddFlash(authInternalServerErrorFlashMsg)
+		if errors.As(err, &rateLimitError) {
+			session.AddFlash(fmt.Sprintf("Error: The ratelimit for sending emails has been exceeded, please try again in %v.", err.(*types.RateLimitError).TimeLeft.Round(time.Second)))
+		} else {
+			session.AddFlash(authInternalServerErrorFlashMsg)
+		}
+		session.Save(r, w)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
 	}
 
-	session.AddFlash("To complete the update verify your new email to complete the update.")
+	session.AddFlash("To complete the update verify your new email.")
 	session.Save(r, w)
 	http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 }
@@ -258,7 +258,7 @@ func ConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	newEmail, err := url.QueryUnescape(q.Get("email"))
 	if err != nil {
 		utils.SetFlash(w, r, authSessionName, "Error: Could not update your email please try again.")
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
@@ -273,19 +273,19 @@ func ConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error retreiveing email for confirmation_hash %v %v", hash, err)
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
 	if user.Confirmed != true {
 		utils.SetFlash(w, r, authSessionName, "Error: Cannot update email for an unconfirmed address.")
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
 	if user.ConfirmTs.Add(time.Minute * 30).Before(time.Now()) {
 		utils.SetFlash(w, r, authSessionName, "Confirmation link has expired.")
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
@@ -293,7 +293,7 @@ func ConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	err = db.FrontendDB.Get(&emailExists, "SELECT email FROM users WHERE email = $1", newEmail)
 	if emailExists != "" {
 		utils.SetFlash(w, r, authSessionName, "Error: Email already exists. We could not update your email.")
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
@@ -301,15 +301,15 @@ func ConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error: updating email for user: %v", err)
 		utils.SetFlash(w, r, authSessionName, "Error: Could not Update Email.")
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
 	session.Values["authenticated"] = false
 	delete(session.Values, "user_id")
 
-	utils.SetFlash(w, r, authSessionName, "Your email has been updated successfully! You can log in with your new email.")
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	utils.SetFlash(w, r, authSessionName, "Your email has been updated successfully! <br> You can log in with your new email.")
+	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 }
 
 func sendEmailUpdateConfirmation(userId int64, newEmail string) error {

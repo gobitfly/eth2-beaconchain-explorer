@@ -347,7 +347,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	if !user.Authenticated {
 		session.AddFlash("Error: You are not authenticated (or did not use the correct reset-link).")
 		session.Save(r, w)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
@@ -356,7 +356,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error parsing form: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
@@ -366,7 +366,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error generating hash for password: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
@@ -375,7 +375,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error updating password for user: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
 		session.Save(r, w)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
@@ -386,7 +386,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 
 	session.Save(r, w)
 
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 }
 
 // RequestResetPassword renders a template that lets the user enter his email and request a reset link.
