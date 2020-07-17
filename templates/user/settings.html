@@ -26,7 +26,6 @@
             document.getElementById('email-form').submit()
         }
     }
-
 </script>
 {{end}}
 
@@ -45,7 +44,7 @@
     </div>
 </div>
 <div class="row ">
-    <div class="col-xl-7 col-lg-6 col-md-8 col-sm-12 m-auto">
+    <div class="col-xl-7 col-lg-7 col-md-10 col-sm-12 m-auto">
         {{if .Flashes}}
             {{range $i, $flash := .Flashes}}
             <div class="alert {{if contains $flash "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
@@ -84,6 +83,7 @@
                 </div>
                 <div class="card-body">
                     <form action="/user/updatePassword" method="post">
+                        <input value="{{.Email}}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" id="email" name="email">
                         <div class="form-group">
                             <label for="old-password">Old Password</label>
                             <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="current-password" id="old-password" name="old-password">
