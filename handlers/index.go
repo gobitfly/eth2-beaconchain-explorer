@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"time"
 )
@@ -18,7 +19,8 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 func Index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	// indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/index.html"))
-
+	user := getUser(w, r)
+	log.Println("user is auth, id", user.Authenticated, user.UserID)
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - Index - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
@@ -27,7 +29,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "index",
-		User:                  getUser(w, r),
+		User:                  user,
 		Data:                  services.LatestIndexPageData(),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,

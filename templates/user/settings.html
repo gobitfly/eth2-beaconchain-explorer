@@ -62,7 +62,7 @@
                     <h3 class="h5">Update Email</h3>
                 </div>
                 <div class="card-body">
-                    <form id="email-form" action="/user/updateEmail" method="POST">
+                    <form id="email-form" action="email" method="POST">
                         <div class="form-group">
                             <label for="email">Email address</label>
                             <div class="input-group">
@@ -82,7 +82,7 @@
                     <h3 class="h5">Update Password</h3>
                 </div>
                 <div class="card-body">
-                    <form action="/user/updatePassword" method="post">
+                    <form action="password" method="post">
                         <input value="{{.Email}}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" id="email" name="email">
                         <div class="form-group">
                             <label for="old-password">Old Password</label>
@@ -137,7 +137,7 @@
             <i class="text-warning fas fa-exclamation-triangle"></i> Warning, you will not be able to recover your account!
         </div>
         <div class="modal-footer">
-            <form id="delete-form" action="/user/delete" method="POST">
+            <form id="delete-form" action="delete" method="POST">
                 <button id="delete-button" type="submit" class="btn btn-outline-danger btn-sm" data-dismiss="modal">Delete</button>
             </form>
         </div>

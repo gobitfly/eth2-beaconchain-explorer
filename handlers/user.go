@@ -79,7 +79,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func DeleteUserPost(w http.ResponseWriter, r *http.Request) {
+func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 	logger = logger.WithField("route", r.URL.String())
 	user, session, err := getUserSession(w, r)
 	if err != nil {
@@ -106,7 +106,7 @@ func DeleteUserPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
+func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	var GenericUpdatePasswordError string = "Error: Something went wrong updating your password 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>"
 
 	user, session, err := getUserSession(w, r)
@@ -181,8 +181,8 @@ func UpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 }
 
-// UpdateEmailPost gets called from the settings page to request a new email update. Only once the update link is pressed does the email actually change.
-func UpdateEmailPost(w http.ResponseWriter, r *http.Request) {
+// UserUpdateEmailPost gets called from the settings page to request a new email update. Only once the update link is pressed does the email actually change.
+func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 	user, session, err := getUserSession(w, r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
@@ -243,7 +243,7 @@ func UpdateEmailPost(w http.ResponseWriter, r *http.Request) {
 }
 
 // ConfirmUpdateEmail confirms and updates the email address of the user. Given an update link the email in the db is changed.
-func ConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
+func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 
@@ -312,6 +312,10 @@ func ConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 }
 
+func UserFollowValidator(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func sendEmailUpdateConfirmation(userId int64, newEmail string) error {
 	now := time.Now()
 	emailConfirmationHash := utils.RandomString(40)
@@ -344,7 +348,7 @@ func sendEmailUpdateConfirmation(userId int64, newEmail string) error {
 	subject := fmt.Sprintf("%s: Verify your email-address", utils.Config.Frontend.SiteDomain)
 	msg := fmt.Sprintf(`To update your email on %[1]s please verify it by clicking this link:
 
-https://%[1]s/updateEmail/%[2]s?email=%[3]s
+https://%[1]s/user/settings/email/%[2]s?email=%[3]s
 
 Best regards,
 

@@ -131,11 +131,13 @@ func main() {
 		router.HandleFunc("/confirm/{hash}", handlers.ConfirmEmail).Methods("GET")
 		router.HandleFunc("/reset/{hash}", handlers.ResetPassword).Methods("GET")
 		router.HandleFunc("/reset", handlers.ResetPasswordPost).Methods("POST")
+
 		router.HandleFunc("/user/settings", handlers.UserSettings).Methods("GET")
-		router.HandleFunc("/user/updateEmail", handlers.UpdateEmailPost).Methods("POST")
-		router.HandleFunc("/user/updatePassword", handlers.UpdatePasswordPost).Methods("POST")
-		router.HandleFunc("/user/delete", handlers.DeleteUserPost).Methods("POST")
-		router.HandleFunc("/updateEmail/{hash}", handlers.ConfirmUpdateEmail).Methods("GET")
+		router.HandleFunc("/user/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
+		router.HandleFunc("/user/settings/delete", handlers.UserDeletePost).Methods("POST")
+		router.HandleFunc("/user/settings/email", handlers.UserUpdateEmailPost).Methods("POST")
+		router.HandleFunc("/user/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
+		router.HandleFunc("/user/follow/{validator}", handlers.UserFollowValidator).Methods("POST")
 
 		router.HandleFunc("/confirmation", handlers.Confirmation).Methods("GET")
 

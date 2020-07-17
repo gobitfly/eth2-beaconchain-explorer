@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
+	"log"
 	"time"
 
 	"html/template"
@@ -232,7 +233,8 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	// session.AddFlash("Successfully logged in")
 
 	session.Save(r, w)
-
+	log.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"])
+	// Index(w, r)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
