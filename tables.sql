@@ -302,7 +302,7 @@ create table notifications_subscriptions (
     id                   serial                 not null,
     user_id              int                    not null,
     event_name           character varying(100) not null,
-    validatorindex       int,
+    validator_publickey  bytea,
     last_notification_ts timestamp without time zone,
     primary key (id)
 );

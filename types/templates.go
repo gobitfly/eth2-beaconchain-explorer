@@ -607,8 +607,8 @@ type MyCryptoSignature struct {
 }
 
 type User struct {
-	UserID        int64 `json:"user_id"`
-	Authenticated bool  `json:"authenticated"`
+	UserID        uint64 `json:"user_id"`
+	Authenticated bool   `json:"authenticated"`
 }
 
 type AuthData struct {

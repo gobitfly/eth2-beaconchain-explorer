@@ -198,7 +198,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	pwd := r.FormValue("password")
 
 	user := struct {
-		ID        int64  `db:"id"`
+		ID        uint64 `db:"id"`
 		Email     string `db:"email"`
 		Password  string `db:"password"`
 		Confirmed bool   `db:"email_confirmed"`
@@ -270,7 +270,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	hash := vars["hash"]
 
 	dbUser := struct {
-		ID             int64  `db:"id"`
+		ID             uint64 `db:"id"`
 		EmailConfirmed bool   `db:"email_confirmed"`
 		Email          string `db:"email"`
 	}{}
@@ -580,7 +580,7 @@ func getUser(w http.ResponseWriter, r *http.Request) *types.User {
 		u.Authenticated = false
 		return u
 	}
-	u.UserID, ok = session.Values["user_id"].(int64)
+	u.UserID, ok = session.Values["user_id"].(uint64)
 	if !ok {
 		u.Authenticated = false
 		return u
@@ -601,7 +601,7 @@ func getUserSession(w http.ResponseWriter, r *http.Request) (*types.User, *sessi
 		u.Authenticated = false
 		return u, session, nil
 	}
-	u.UserID, ok = session.Values["user_id"].(int64)
+	u.UserID, ok = session.Values["user_id"].(uint64)
 	if !ok {
 		u.Authenticated = false
 		return u, session, nil

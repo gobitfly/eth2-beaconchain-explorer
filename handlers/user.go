@@ -316,7 +316,7 @@ func UserFollowValidator(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func sendEmailUpdateConfirmation(userId int64, newEmail string) error {
+func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
 	now := time.Now()
 	emailConfirmationHash := utils.RandomString(40)
 
