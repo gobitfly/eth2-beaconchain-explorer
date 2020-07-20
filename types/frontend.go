@@ -9,8 +9,9 @@ const (
 )
 
 type Notification interface {
-	EventName() EventName
-	Info() string
+	GetSubscriptionID() uint64
+	GetEventName() EventName
+	GetInfo() string
 }
 
 type Subscription struct {
