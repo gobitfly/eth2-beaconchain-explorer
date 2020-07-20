@@ -50,7 +50,7 @@ func AddSubscription(userID uint64, eventName types.EventName, eventFilter strin
 
 // DeleteSubscription removes a subscription from the database.
 func DeleteSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
-	_, err := FrontendDB.Exec("DELETE FROM notifications_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, eventName, eventFilter)
+	_, err := FrontendDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, eventName, eventFilter)
 	return err
 }
 
@@ -65,7 +65,7 @@ type GetSubscriptionsFilter struct {
 func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, error) {
 	subs := []*types.Subscription{}
 
-	qry := "SELECT id, user_id, event_name, event_filter, last_notification_ts FROM notifications_subscriptions"
+	qry := "SELECT id, user_id, event_name, event_filter, sent_ts FROM users_subscriptions"
 	if filter.EventNames == nil || filter.UserIDs == nil || filter.EventFilters == nil {
 		err := FrontendDB.Select(&subs, qry)
 		return subs, err

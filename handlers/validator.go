@@ -149,7 +149,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $2 
 		LIMIT 1`, services.LatestEpoch(), index)
 	if err != nil {
-		logger.Printf("Error retrieving validator page data: %v", err)
+		logger.Errorf("error retrieving validator page data: %v", err)
 
 		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -165,7 +165,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.Index = index
 	validatorPageData.PublicKey, err = db.GetValidatorPublicKey(index)
 	if err != nil {
-		logger.Printf("Error retrieving validator public key %v: %v", index, err)
+		logger.Errorf("error retrieving validator public key %v: %v", index, err)
 
 		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -185,7 +185,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	subs, err := db.GetSubscriptions(filter)
 	if err != nil {
-		logger.Errorf("Error retrieving subscriptions for validator %v: %v", pKey, err)
+		logger.Errorf("error retrieving subscriptions for validator %v: %v", pKey, err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
