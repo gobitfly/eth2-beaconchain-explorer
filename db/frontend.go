@@ -81,25 +81,30 @@ func AddSubscription(userID uint64, eventName string, validatorPublickey *string
 	}
 
 	if len(subs) != 0 {
-		return errors.Errorf("This subscription already exist. user: %v, event: %v validator: %v", userID, eventName, *validatorPublickey)
+		return errors.Errorf("This subscription already exist. user: %v, event: %v validator: %v", userID, event, *validatorPublickey)
 	}
 
 	if validatorPublickey == nil {
-		_, err = FrontendDB.Exec("INSERT INTO notifications_subscriptions (user_id, event_name) VALUES ($1, $2)", userID, eventName)
+		_, err = FrontendDB.Exec("INSERT INTO notifications_subscriptions (user_id, event_name) VALUES ($1, $2)", userID, event)
 		return err
 	}
 	pubKey, err := hex.DecodeString(*validatorPublickey)
 	if err != nil {
 		return err
 	}
-	_, err = FrontendDB.Exec("INSERT INTO notifications_subscriptions (user_id, event_name, validator_publickey) VALUES ($1, $2, $3)", userID, eventName, pubKey)
+	_, err = FrontendDB.Exec("INSERT INTO notifications_subscriptions (user_id, event_name, validator_publickey) VALUES ($1, $2, $3)", userID, event, pubKey)
 	return err
 }
 
 // DeleteSubscription removes a subscription from the database.
-func DeleteSubscription(userID uint64, eventName types.EventName, validatorPublickey *string) error {
+func DeleteSubscription(userID uint64, eventName string, validatorPublickey *string) error {
+	event, err := types.EventFromString(eventName)
+	if err != nil {
+		return err
+	}
+
 	if validatorPublickey == nil {
-		_, err := FrontendDB.Exec("DELETE FROM notifications_subscriptions WHERE user_id = $1 and event_name = $2 and validator_publickey IS NULL", userID, eventName)
+		_, err := FrontendDB.Exec("DELETE FROM notifications_subscriptions WHERE user_id = $1 and event_name = $2 and validator_publickey IS NULL", userID, event)
 		return err
 	}
 	pubKey, err := hex.DecodeString(*validatorPublickey)
@@ -107,7 +112,7 @@ func DeleteSubscription(userID uint64, eventName types.EventName, validatorPubli
 		return err
 	}
 
-	_, err = FrontendDB.Exec("DELETE FROM notifications_subscriptions WHERE user_id = $1 and event_name = $2 and validator_publickey = $3", userID, eventName, pubKey)
+	_, err = FrontendDB.Exec("DELETE FROM notifications_subscriptions WHERE user_id = $1 and event_name = $2 and validator_publickey = $3", userID, event, pubKey)
 	return err
 }
 

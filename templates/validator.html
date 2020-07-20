@@ -59,14 +59,14 @@
 						<i class="fa fa-edit"></i>
 					</button>
 					{{ if len .Subscriptions }}
-					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}?events=validator_balance_decreased" method="delete">
-						<button class="btn btn-primary btn-sm" type="submit" id="unfollow-button" data-target="#edit-follow-modal" title="Stop following this validator." >
+					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/unsubscribe?events=validator_balance_decreased" method="post">
+						<button class="btn btn-primary btn-sm" type="submit" id="unfollow-button" data-target="#edit-follow-modal" title="Stop receiving updates for this validator." >
 							Unsubscribe
 						</button>
 					</form>
 					{{else}}
-					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}?events=validator_balance_decreased" method="post">
-						<button class="btn btn-primary btn-sm" type="submit" id="follow-button" data-target="#edit-follow-modal" title="Follow validator and receive email notifications">
+					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/subscribe?events=validator_balance_decreased" method="post">
+						<button class="btn btn-primary btn-sm" type="submit" id="follow-button" data-target="#edit-follow-modal" title="Follow this validator and receive email notifications">
 							Subscribe
 						</button>
 					</form>

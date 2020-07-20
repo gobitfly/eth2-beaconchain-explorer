@@ -863,22 +863,22 @@ func ValidatorSubscribe(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	utils.SetFlash(w, r, validatorEditFlash, "Subscribed to this validator")
+	// utils.SetFlash(w, r, validatorEditFlash, "Subscribed to this validator")
 	http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
 }
 
 // ValidatorUnsubscribe unsubscribes a user from a specific validator
 func ValidatorUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
+	log.Println("Unsubscribing from validator")
 
 	user := getUser(w, r)
-	eventName := types.ValidatorBalanceDecreasedEventName
 	vars := mux.Vars(r)
 
 	q := r.URL.Query()
 
-	event := q.Get("events")
-	events := strings.Split(event, ",")
+	eventQuery := q.Get("events")
+	events := strings.Split(eventQuery, ",")
 
 	if len(events) == 0 {
 		events = append(events, string(types.ValidatorBalanceDecreasedEventName))
@@ -896,14 +896,16 @@ func ValidatorUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
 		return
 	}
-
-	err := db.DeleteSubscription(user.UserID, eventName, &pubKey)
-	if err != nil {
-		logger.Errorf("Could not delete subscription from db", err)
-		utils.SetFlash(w, r, validatorEditFlash, "Error: Could not unsubscribe.")
-		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-		return
+	for _, event := range events {
+		err := db.DeleteSubscription(user.UserID, event, &pubKey)
+		if err != nil {
+			logger.Errorf("Could not delete subscription from db", err)
+			utils.SetFlash(w, r, validatorEditFlash, "Error: Could not unsubscribe.")
+			http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+			return
+		}
 	}
-	utils.SetFlash(w, r, validatorEditFlash, "Unsubscribed from this validator")
+
+	// utils.SetFlash(w, r, validatorEditFlash, "Unsubscribed from this validator")
 	http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
 }
