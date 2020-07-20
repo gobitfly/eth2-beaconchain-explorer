@@ -22,7 +22,7 @@ func notificationsSender() {
 			continue
 		}
 		sendNotifications()
-		logger.WithField("duration", time.Since(start)).Info("notifications completed")
+		logger.WithField("emails", len(notificationsByEmail)).WithField("duration", time.Since(start)).Info("notifications completed")
 		time.Sleep(time.Second * 60)
 	}
 }
@@ -86,7 +86,7 @@ func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
 
 func (n *validatorBalanceDecreasedNotification) GetInfo() string {
 	balance := utils.RoundDecimals(float64(n.Balance)/1e9, 9)
-	prevBalance := utils.RoundDecimals(float64(n.Balance)/1e9, 9)
+	prevBalance := utils.RoundDecimals(float64(n.PrevBalance)/1e9, 9)
 	return fmt.Sprintf(`The balance of validator %v decreased from %v ETH to %v ETH at epoch %v.`, n.ValidatorIndex, prevBalance, balance, n.Epoch)
 }
 
@@ -115,7 +115,7 @@ func collectValidatorBalanceDecreasedNotifications() error {
 				FROM validator_balances vb
 				INNER JOIN validators v ON v.validatorindex = vb.validatorindex
 				INNER JOIN validator_balances vb2 ON vb.validatorindex = vb2.validatorindex AND vb2.epoch = $2
-				WHERE vb.epoch = $1 AND (vb.balance - vb2.balance) < 0
+				WHERE vb.epoch = $1 AND vb.balance < vb2.balance
 			)
 		SELECT us.id, u.email, dbv.validatorindex, dbv.balance, dbv.prevbalance
 		FROM users_subscriptions us
