@@ -334,7 +334,7 @@ func UserFollowValidator(w http.ResponseWriter, r *http.Request) {
 	db.AddSubscription(user.UserID, string(types.ValidatorBalanceDecreasedEventName), &validatorIndex)
 }
 
-func sendEmailUpdateConfirmation(userId int64, newEmail string) error {
+func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
 	now := time.Now()
 	emailConfirmationHash := utils.RandomString(40)
 
