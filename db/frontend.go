@@ -6,6 +6,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"github.com/pkg/errors"
 )
 
 // FrontendDB is a pointer to the auth-database
@@ -54,8 +55,28 @@ func UpdateSubscriptionTime(subscriptionID uint64, t time.Time) error {
 	return err
 }
 
-func AddSubscription(userID uint64, eventName string, validatorPublickey *string) error {
-	var err error
+func AddSubscription(userID uint64, eventName types.EventName, validatorPublickey *string) error {
+
+	// check if the subscription already exists
+	filter := GetSubscriptionsFilter{
+		EventNames: &[]types.EventName{eventName},
+		UserIDs:    &[]uint64{userID},
+	}
+	
+	if validatorPublickey != nil {
+		
+		filter.ValidatorPubkey = []string{validatorPublicKey}
+	}
+
+	subs, err := GetSubscriptions(filter)
+	if err != nil {
+		return err
+	}
+
+	if len(subs) != 0 {
+		return errors.Errorf("This subscription does not already exist. user: %v, event: %v", userID, eventName)
+	}
+
 	if validatorPublickey == nil {
 		_, err = FrontendDB.Exec("INSERT INTO notifications_subscriptions (user_id, event_name) VALUES ($1, $2)", userID, eventName)
 		return err
@@ -67,6 +88,7 @@ func AddSubscription(userID uint64, eventName string, validatorPublickey *string
 type GetSubscriptionsFilter struct {
 	EventNames *[]types.EventName
 	UserIDs    *[]uint64
+	validatorPubkey *[]string
 }
 
 func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, error) {
@@ -87,13 +109,13 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 	return subs, err
 }
 
-func GetUserSubscription(userId int64, pubKey []byte) (*types.Subscription, error) {
-	sub := &types.Subscription{}
-	err := FrontendDB.Get(&sub, "SELECT * FROM notifications_subscriptions WHERE user_id = $1 and pubkey = $2", userId, pubKey)
-	return sub, err
+func GetUserValidatorSubscriptions(userId uint64, pubKey []byte) ([]*types.Subscription, error) {
+	subs := []*types.Subscription{}
+	err := FrontendDB.Select(&subs, "SELECT * FROM notifications_subscriptions WHERE user_id = $1 and validator_publickey = $2", userId, pubKey)
+	return subs, err
 }
 
-func GetUserSubscriptions(userId int64) ([]*types.Subscription, error) {
+func GetUserSubscriptions(userId uint64) ([]*types.Subscription, error) {
 	subs := []*types.Subscription{}
 	err := FrontendDB.Select(&subs, "SELECT * FROM notifications_subscriptions WHERE user_id = $1", userId)
 	return subs, err
