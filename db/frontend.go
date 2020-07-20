@@ -68,3 +68,15 @@ func GetSubscriptions(eventName types.EventName) ([]*types.Subscription, error) 
 	err := FrontendDB.Select(&subs, "SELECT * FROM notifications_subscriptions WHERE event_name = $1", eventName)
 	return subs, err
 }
+
+func GetUserSubscription(userId int64, pubKey []byte) (*types.Subscription, error) {
+	sub := &types.Subscription{}
+	err := FrontendDB.Get(&sub, "SELECT * FROM notifications_subscriptions WHERE user_id = $1 and pubkey = $2", userId, pubKey)
+	return sub, err
+}
+
+func GetUserSubscriptions(userId int64) ([]*types.Subscription, error) {
+	subs := []*types.Subscription{}
+	err := FrontendDB.Select(&subs, "SELECT * FROM notifications_subscriptions WHERE user_id = $1", userId)
+	return subs, err
+}

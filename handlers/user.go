@@ -11,6 +11,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -313,7 +314,24 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserFollowValidator(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	validatorIndexString := vars["validator"]
 
+	validatorIndex, err := strconv.ParseUint(validatorIndexString, 10, 64)
+	if err != nil {
+		logger.Error("error converting validator index to string")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	user := getUser(w, r)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	db.AddSubscription(user.UserID, string(types.ValidatorBalanceDecreasedEventName), &validatorIndex)
 }
 
 func sendEmailUpdateConfirmation(userId int64, newEmail string) error {

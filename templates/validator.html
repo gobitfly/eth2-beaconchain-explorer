@@ -58,9 +58,16 @@
 					<button class="btn btn-dark text-white btn-sm" type="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" title="Edit validator name">
 						<i class="fa fa-edit"></i>
 					</button>
-					<button type="button" id="follow-button" data-target="#edit-follow-modal" title="Follow validator and receive email notifications" class="btn btn-outline-primary btn-sm">
+					{{ if not .Subscription }}
+					<button class="btn btn-primary btn-sm" type="button" id="follow-button" data-target="#edit-follow-modal" title="Follow validator and receive email notifications" >
 						Follow
 					</button>
+					{{else}}
+					<button class="btn btn-transparent text-white btn-sm" type="button" id="unfollow-button" data-target="#edit-follow-modal" title="Stop following this validator." >
+						Unfollow
+					</button>
+					{{end}}
+					
 				</h1>
 			</div>
 			<nav aria-label="breadcrumb">

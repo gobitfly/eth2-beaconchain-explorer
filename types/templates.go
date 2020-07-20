@@ -172,6 +172,7 @@ type ValidatorPageData struct {
 	Deposits                         *ValidatorDeposits
 	Eth1DepositAddress               []byte
 	FlashMessage                     string
+	Subscription                     *Subscription
 }
 
 // DailyProposalCount is a struct for the daily proposal count data

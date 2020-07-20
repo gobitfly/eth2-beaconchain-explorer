@@ -32,6 +32,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	var index uint64
 	var err error
+	user := getUser(w, r)
 
 	validatorPageData := types.ValidatorPageData{}
 
@@ -42,7 +43,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "validators",
 		Data:                  nil,
-		User:                  getUser(w, r),
+		User:                  user,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -59,6 +60,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 			return
 		}
+
+		sub, err := db.GetUserSubscription(user.UserID, pubKey)
+		if err != nil {
+			logger.Warning("Could not get User %v subscription to %v", user.UserID, string(pubKey))
+		}
+
+		validatorPageData.Subscription = sub
 
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
