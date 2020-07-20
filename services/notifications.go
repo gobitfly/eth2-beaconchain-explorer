@@ -11,6 +11,8 @@ import (
 var notificationRateLimit = time.Second * 60 * 10
 
 var notifications = map[uint64]map[types.EventName][]types.Notification{}
+var subscriptions = map[types.EventName]map[string][]*types.Subscription{}
+var subscriptionsByUser = map[uint64][]*types.Subscription{}
 
 func notificationsSender() {
 	for {
@@ -30,15 +32,33 @@ func notificationsSender() {
 }
 
 func updateSubscriptions() error {
-	err := updateValidatorBalanceDecreasedSubscriptions()
+	now := time.Now()
+
+	subscriptions = map[types.EventName]map[string][]*types.Subscription{}
+	subscriptionsByUser = map[uint64][]*types.Subscription{}
+
+	subs, err := db.GetSubscriptions(db.GetSubscriptionsFilter{})
 	if err != nil {
 		return err
+	}
+	for _, s := range subs {
+		// if we already sent a notification for this subscription skip it
+		if s.Sent != nil && (*s.Sent).Add(notificationRateLimit).Before(now) {
+			continue
+		}
+		if _, exists := subscriptions[s.EventName]; !exists {
+			subscriptions[s.EventName] = map[string][]*types.Subscription{}
+		}
+		if _, exists := subscriptions[s.EventName][s.EventFilter]; !exists {
+			subscriptions[s.EventName][s.EventFilter] = []*types.Subscription{s}
+		} else {
+			subscriptions[s.EventName][s.EventFilter] = append(subscriptions[s.EventName][s.EventFilter], s)
+		}
 	}
 	return nil
 }
 
 func collectNotifications() {
-	// reset notifications
 	notifications = map[uint64]map[types.EventName][]types.Notification{}
 	collectValidatorBalanceDecreasedNotifications()
 }
@@ -67,6 +87,20 @@ func sendNotifications() {
 				logger.Errorf("error sending notification-email: %v", err)
 				return
 			}
+
+			if _, exists := subscriptionsByUser[userID]; !exists {
+				return
+			}
+
+			sentNotificationIDs := []uint64{}
+			for _, s := range subscriptionsByUser[userID] {
+				sentNotificationIDs = append(sentNotificationIDs, s.ID)
+			}
+			err = db.UpdateSubscriptionsSent(sentNotificationIDs, time.Now())
+			if err != nil {
+				logger.Errorf("error updating sent-time of sent notifications: %v", err)
+				return
+			}
 		}(userID, userNotifications)
 	}
 }
@@ -75,8 +109,8 @@ type validatorBalanceDecreasedNotification struct {
 	ValidatorIndex     uint64
 	ValidatorPublicKey string
 	Epoch              uint64
-	OldBalance         uint64
-	NewBalance         uint64
+	PrevBalance        uint64
+	Balance            uint64
 }
 
 func (n validatorBalanceDecreasedNotification) EventName() types.EventName {
@@ -84,96 +118,78 @@ func (n validatorBalanceDecreasedNotification) EventName() types.EventName {
 }
 
 func (n validatorBalanceDecreasedNotification) Info() string {
-	return fmt.Sprintf(`the balance of validator %v decreased from %v to %v at epoch %v`, n.ValidatorIndex, n.Epoch, n.OldBalance, n.NewBalance)
+	balance := utils.RoundDecimals(float64(n.Balance)/1e9, 9)
+	prevBalance := utils.RoundDecimals(float64(n.Balance)/1e9, 9)
+	return fmt.Sprintf(`The balance of validator %v decreased from %v ETH to %v ETH at epoch %v.`, n.ValidatorIndex, prevBalance, balance, n.Epoch)
 }
-
-var validatorBalanceDecreasedSubscriptions = map[string][]uint64{}
-var validatorBalances = map[string]uint64{}
-
-func updateValidatorBalanceDecreasedSubscriptions() error {
-	now := time.Now()
-	validatorBalanceDecreasedSubscriptions = map[string][]uint64{}
-
-	subs, err := db.GetSubscriptions(db.GetSubscriptionsFilter{EventNames: &[]types.EventName{types.ValidatorBalanceDecreasedEventName}})
-	if err != nil {
-		return err
-	}
-	for _, s := range subs {
-		if s.ValidatorPublicKey == nil {
-			continue
-		}
-		// if we already sent a notification for this validator skip it
-		if s.LastNotification != nil && (*s.LastNotification).Add(notificationRateLimit).Before(now) {
-			continue
-		}
-		_, exists := validatorBalanceDecreasedSubscriptions[*s.ValidatorPublicKey]
-		if !exists {
-			validatorBalanceDecreasedSubscriptions[*s.ValidatorPublicKey] = []uint64{s.UserID}
-		} else {
-			validatorBalanceDecreasedSubscriptions[*s.ValidatorPublicKey] = append(validatorBalanceDecreasedSubscriptions[*s.ValidatorPublicKey], s.UserID)
-		}
-	}
-	return nil
-}
-
-var collectValidatorBalanceDecreasedNotificationsLastEpoch = uint64(0)
 
 func collectValidatorBalanceDecreasedNotifications() error {
+	subs, exists := subscriptions[types.ValidatorBalanceDecreasedEventName]
+	if !exists {
+		return nil
+	}
+
 	latestEpoch := LatestEpoch()
 
 	// only check if there is a new epoch
-	if latestEpoch == 0 || latestEpoch == collectValidatorBalanceDecreasedNotificationsLastEpoch {
+	if latestEpoch == 0 {
 		return nil
 	}
-	collectValidatorBalanceDecreasedNotificationsLastEpoch = latestEpoch
 
-	newValidatorBalances := []struct {
-		Index     uint64 `db:"validatorindex"`
-		PublicKey string `db:"pubkey"`
-		Balance   uint64 `db:"balance"`
+	prevEpoch := latestEpoch - 1
+
+	validators := []struct {
+		Index       uint64 `db:"validatorindex"`
+		PublicKey   string `db:"pubkey"`
+		Balance     uint64 `db:"balance"`
+		PrevBalance uint64 `db:"balance_prev"`
+		BalanceDiff int64  `db:"balance_diff"`
 	}{}
 
-	err := db.DB.Select(&validatorBalances, `
-		SELECT vb.validatorindex, vb.balance, encode(v.pubkey, 'hex')
+	err := db.DB.Select(&validators, `
+		SELECT 
+			vb.validatorindex, 
+			encode(v.pubkey, 'hex') as pubkey,
+			vb.balance, 
+			vb2.balance as balance_prev,
+			vb.balance - vb2.balance as balance_diff
 		FROM validator_balances vb
 		INNER JOIN validators v ON v.validatorindex = vb.validatorindex
-		WHERE epoch = $1`, latestEpoch)
+		INNER JOIN validator_balances vb2 ON vb.validatorindex = vb2.validatorindex AND vb2.epoch = $2
+		WHERE vb.epoch = $1 AND (vb.balance - vb2.balance) < 0`, latestEpoch, prevEpoch)
 	if err != nil {
 		return err
 	}
 
-	for _, v := range newValidatorBalances {
-		oldValidatorBalance, exists := validatorBalances[v.PublicKey]
-		if !exists {
-			validatorBalances[v.PublicKey] = v.Balance
-		} else {
-			if oldValidatorBalance <= v.Balance {
-				continue
+	for _, v := range validators {
+		if _, exists := subs[v.PublicKey]; !exists {
+			continue
+		}
+		if len(subs[v.PublicKey]) == 0 {
+			continue
+		}
+		n := &validatorBalanceDecreasedNotification{
+			ValidatorIndex:     v.Index,
+			ValidatorPublicKey: v.PublicKey,
+			Epoch:              latestEpoch,
+			Balance:            v.Balance,
+			PrevBalance:        v.PrevBalance,
+		}
+		for _, s := range subs[v.PublicKey] {
+			if _, exists = notifications[s.UserID]; !exists {
+				notifications[s.UserID] = map[types.EventName][]types.Notification{}
 			}
-			if _, exists = validatorBalanceDecreasedSubscriptions[v.PublicKey]; !exists {
-				continue
+			_, exists = notifications[s.UserID][types.ValidatorBalanceDecreasedEventName]
+			if !exists {
+				notifications[s.UserID][types.ValidatorBalanceDecreasedEventName] = []types.Notification{n}
+			} else {
+				notifications[s.UserID][types.ValidatorBalanceDecreasedEventName] = append(notifications[s.UserID][types.ValidatorBalanceDecreasedEventName], n)
 			}
-			if len(validatorBalanceDecreasedSubscriptions[v.PublicKey]) == 0 {
-				continue
-			}
-			n := validatorBalanceDecreasedNotification{
-				ValidatorIndex:     v.Index,
-				ValidatorPublicKey: v.PublicKey,
-				Epoch:              latestEpoch,
-				OldBalance:         oldValidatorBalance,
-				NewBalance:         v.Balance,
-			}
-			for _, userID := range validatorBalanceDecreasedSubscriptions[v.PublicKey] {
-				_, exists := notifications[userID]
-				if !exists {
-					notifications[userID] = map[types.EventName][]types.Notification{}
-				}
-				_, exists = notifications[userID][types.ValidatorBalanceDecreasedEventName]
-				if !exists {
-					notifications[userID][types.ValidatorBalanceDecreasedEventName] = []types.Notification{n}
-				} else {
-					notifications[userID][types.ValidatorBalanceDecreasedEventName] = append(notifications[userID][types.ValidatorBalanceDecreasedEventName], n)
-				}
+
+			if _, exists = subscriptionsByUser[s.UserID]; !exists {
+				subscriptionsByUser[s.UserID] = []*types.Subscription{s}
+			} else {
+				subscriptionsByUser[s.UserID] = append(subscriptionsByUser[s.UserID], s)
 			}
 		}
 	}

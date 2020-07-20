@@ -297,12 +297,13 @@ create table users (
     primary key (id, email)
 );
 
-drop table if exists notifications_subscriptions;
-create table notifications_subscriptions (
-    id                   serial                 not null,
-    user_id              int                    not null,
-    event_name           character varying(100) not null,
-    validator_publickey  bytea,
-    last_notification_ts timestamp without time zone,
-    primary key (id)
+drop table if exists users_subscriptions;
+create table users_subscriptions (
+    id           serial                 not null,
+    user_id      int                    not null,
+    event_name   character varying(100) not null,
+    event_filter text                   not null default '',
+    sent_ts      timestamp without time zone,
+    primary key (user_id, event_name, event_filter),
+    constraint fk_user_id foreign key(user_id) references users(id) on delete cascade
 );

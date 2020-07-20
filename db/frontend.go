@@ -52,30 +52,25 @@ func UpdatePassword(userId uint64, hash []byte) error {
 }
 
 func UpdateSubscriptionTime(subscriptionID uint64, t time.Time) error {
-	_, err := FrontendDB.Exec("UPDATE notifications_subscriptions SET last_notification_ts = TO_TIMESTAMP($1) WHERE id = $2", t.Unix(), subscriptionID)
+	_, err := FrontendDB.Exec("UPDATE users_subscriptions SET last_notification_ts = TO_TIMESTAMP($1) WHERE id = $2", t.Unix(), subscriptionID)
 	return err
 }
 
-func AddSubscription(userID uint64, eventName string, validatorPublickey *string) error {
-	var err error
-	if validatorPublickey == nil {
-		_, err = FrontendDB.Exec("INSERT INTO notifications_subscriptions (user_id, event_name) VALUES ($1, $2)", userID, eventName)
-		return err
-	}
-	_, err = FrontendDB.Exec("INSERT INTO notifications_subscriptions (user_id, event_name, validator_publickey) VALUES ($1, $2, $3)", userID, eventName, *validatorPublickey)
+func AddSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
+	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter) VALUES ($1, $2, $3)", userID, eventName, eventFilter)
 	return err
 }
 
 type GetSubscriptionsFilter struct {
-	EventNames          *[]types.EventName
-	UserIDs             *[]uint64
-	ValidatorPublicKeys *[]string
+	EventNames   *[]types.EventName
+	UserIDs      *[]uint64
+	EventFilters *[]string
 }
 
 func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, error) {
 	subs := []*types.Subscription{}
-	qry := "SELECT id, user_id, event_name, encode(validator_publickey::bytea, 'hex'), last_notification_ts FROM notifications_subscriptions"
-	if filter.EventNames == nil || filter.UserIDs == nil || filter.ValidatorPublicKeys == nil {
+	qry := "SELECT * FROM users_subscriptions"
+	if filter.EventNames == nil || filter.UserIDs == nil || filter.EventFilters == nil {
 		err := FrontendDB.Select(&subs, qry)
 		return subs, err
 	}
@@ -93,13 +88,18 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 		args = append(args, pq.Array(*filter.UserIDs))
 	}
 
-	if filter.ValidatorPublicKeys != nil {
-		filters = append(filters, fmt.Sprintf("validator_publickey = ANY($%d)", len(filters)+1))
-		args = append(args, pq.Array(*filter.ValidatorPublicKeys))
+	if filter.EventFilters != nil {
+		filters = append(filters, fmt.Sprintf("event_filter = ANY($%d)", len(filters)+1))
+		args = append(args, pq.Array(*filter.EventFilters))
 	}
 
 	qry += " WHERE " + strings.Join(filters, " AND ")
 
 	err := FrontendDB.Select(&subs, qry, args...)
 	return subs, err
+}
+
+func UpdateSubscriptionsSent(subscriptionIDs []uint64, sent time.Time) error {
+	_, err := FrontendDB.Exec("UPDATE users_subscriptions SET sent_ts = TO_TIMESTAMP($1) WHERE id = ANY($2)", sent.Unix(), pq.Array(subscriptionIDs))
+	return err
 }
