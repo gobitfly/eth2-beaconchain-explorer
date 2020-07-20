@@ -10,6 +10,7 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -24,6 +25,7 @@ import (
 
 var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator.html"))
 var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validatornotfound.html"))
+var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
@@ -53,6 +55,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
+	// Request came with a hash
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
@@ -60,13 +63,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-
-		sub, err := db.GetUserSubscription(user.UserID, pubKey)
-		if err != nil {
-			logger.Warning("Could not get User %v subscription to %v", user.UserID, string(pubKey))
-		}
-
-		validatorPageData.Subscription = sub
 
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
@@ -122,6 +118,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
+		// Request came with a validator index number
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
 		if err != nil {
 			logger.Errorf("error parsing validator index: %v", err)
@@ -179,6 +176,22 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	pKey := hex.EncodeToString(validatorPageData.PublicKey)
+	filter := db.GetSubscriptionsFilter{
+		EventNames:          &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
+		UserIDs:             &[]uint64{user.UserID},
+		ValidatorPublicKeys: &[]string{pKey},
+	}
+
+	subs, err := db.GetSubscriptions(filter)
+	if err != nil {
+		logger.Errorf("Error retrieving subscriptions for validator %v: %v", pKey, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	log.Printf("found %v subscriptions for %v", len(subs), pKey)
+
+	validatorPageData.Subscriptions = subs
 
 	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
 	if err != nil {
@@ -195,7 +208,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, "edit_validator_flash")
+	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)
@@ -706,7 +719,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	pubkeyDecoded, err := hex.DecodeString(pubkey)
 	if err != nil {
 		logger.Errorf("error parsing submitted pubkey %v: %v", pubkey, err)
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
@@ -723,7 +736,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal([]byte(signature), signatureWrapper)
 	if err != nil {
 		logger.Errorf("error decoding submitted signature %v: %v", signature, err)
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
@@ -734,20 +747,20 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	signatureParsed, err := hex.DecodeString(strings.Replace(signatureWrapper.Sig, "0x", "", -1))
 	if err != nil {
 		logger.Errorf("error parsing submitted signature %v: %v", signatureWrapper.Sig, err)
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
 
 	if len(signatureParsed) != 65 {
 		logger.Errorf("signature must be 65 bytes long")
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
 	if signatureParsed[64] != 27 && signatureParsed[64] != 28 {
 		logger.Errorf("invalid Ethereum signature (V is not 27 or 28)")
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
@@ -757,7 +770,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	recoveredPubkey, err := crypto.SigToPub(msgHash.Bytes(), signatureParsed)
 	if err != nil {
 		logger.Errorf("error recovering pubkey: %v", err)
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
@@ -767,7 +780,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	deposits, err := db.GetValidatorDeposits(pubkeyDecoded)
 	if err != nil {
 		logger.Errorf("error getting validator-deposits from db for signature verification: %v", err)
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 	}
 	for _, deposit := range deposits.Eth1Deposits {
@@ -783,30 +796,114 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				logger.Errorf("error saving validator name: %v", err)
-				utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
 			}
 
 			rowsAffected, _ := res.RowsAffected()
-			utils.SetFlash(w, r, "edit_validator_flash", fmt.Sprintf("Your custom name has been saved for %v validator(s).", rowsAffected))
+			utils.SetFlash(w, r, validatorEditFlash, fmt.Sprintf("Your custom name has been saved for %v validator(s).", rowsAffected))
 			http.Redirect(w, r, "/validator/"+pubkey, 301)
 		} else {
 			_, err := db.DB.Exec("UPDATE validators SET name = $1 WHERE pubkey = $2", name, pubkeyDecoded)
 			if err != nil {
 				logger.Errorf("error saving validator name: %v", err)
-				utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
 			}
 
-			utils.SetFlash(w, r, "edit_validator_flash", "Your custom name has been saved.")
+			utils.SetFlash(w, r, validatorEditFlash, "Your custom name has been saved.")
 			http.Redirect(w, r, "/validator/"+pubkey, 301)
 		}
 
 	} else {
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 	}
 
+}
+
+// Validator Subscribe subscribes a user to get notifications from a specific validator
+func ValidatorSubscribe(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+
+	user := getUser(w, r)
+	vars := mux.Vars(r)
+
+	q := r.URL.Query()
+
+	eventQuery := q.Get("events")
+	events := strings.Split(eventQuery, ",")
+
+	if len(events) == 0 {
+		events = append(events, string(types.ValidatorBalanceDecreasedEventName))
+	}
+
+	pubKey := strings.Replace(vars["pubkey"], "0x", "", -1)
+	if !user.Authenticated {
+		utils.SetFlash(w, r, validatorEditFlash, "Error: You need a user account to follow a validator <a href=\"/login\">Login</a> or <a href=\"/register\">Sign up</a>")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	if len(pubKey) != 96 {
+		utils.SetFlash(w, r, validatorEditFlash, "Error: Validator not found")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	for _, event := range events {
+		err := db.AddSubscription(user.UserID, event, &pubKey)
+		if err != nil {
+			logger.Errorf("Could not add subscription to db", err)
+			utils.SetFlash(w, r, validatorEditFlash, "Error: Could not subscribe.")
+			http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+			return
+		}
+	}
+
+	utils.SetFlash(w, r, validatorEditFlash, "Subscribed to this validator")
+	http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+}
+
+// ValidatorUnsubscribe unsubscribes a user from a specific validator
+func ValidatorUnsubscribe(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+
+	user := getUser(w, r)
+	eventName := types.ValidatorBalanceDecreasedEventName
+	vars := mux.Vars(r)
+
+	q := r.URL.Query()
+
+	event := q.Get("events")
+	events := strings.Split(event, ",")
+
+	if len(events) == 0 {
+		events = append(events, string(types.ValidatorBalanceDecreasedEventName))
+	}
+
+	pubKey := strings.Replace(vars["pubkey"], "0x", "", -1)
+	if !user.Authenticated {
+		utils.SetFlash(w, r, validatorEditFlash, "Error: You need a user account to follow a validator <a href=\"/login\">Login</a> or <a href=\"/register\">Sign up</a>")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	if len(pubKey) != 96 {
+		utils.SetFlash(w, r, validatorEditFlash, "Error: Validator not found")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	err := db.DeleteSubscription(user.UserID, eventName, &pubKey)
+	if err != nil {
+		logger.Errorf("Could not delete subscription from db", err)
+		utils.SetFlash(w, r, validatorEditFlash, "Error: Could not unsubscribe.")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+	utils.SetFlash(w, r, validatorEditFlash, "Unsubscribed from this validator")
+	http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
 }

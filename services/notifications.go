@@ -94,7 +94,11 @@ func updateValidatorBalanceDecreasedSubscriptions() error {
 	now := time.Now()
 	validatorBalanceDecreasedSubscriptions = map[string][]uint64{}
 
-	subs, err := db.GetSubscriptions(db.GetSubscriptionsFilter{EventNames: &[]types.EventName{types.ValidatorBalanceDecreasedEventName}})
+	filter := db.GetSubscriptionsFilter{
+		EventNames: &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
+	}
+
+	subs, err := db.GetSubscriptions(filter)
 	if err != nil {
 		return err
 	}

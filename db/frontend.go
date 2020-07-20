@@ -1,7 +1,10 @@
 package db
 
 import (
+	"encoding/hex"
 	"eth2-exporter/types"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -55,17 +58,21 @@ func UpdateSubscriptionTime(subscriptionID uint64, t time.Time) error {
 	return err
 }
 
-func AddSubscription(userID uint64, eventName types.EventName, validatorPublickey *string) error {
+// AddSubscription adds a new subscription to the database. It checkes if the subscription already exists before inserting.
+func AddSubscription(userID uint64, eventName string, validatorPublickey *string) error {
 
-	// check if the subscription already exists
+	event, err := types.EventFromString(eventName)
+	if err != nil {
+		return err
+	}
+
 	filter := GetSubscriptionsFilter{
-		EventNames: &[]types.EventName{eventName},
+		EventNames: &[]types.EventName{event},
 		UserIDs:    &[]uint64{userID},
 	}
-	
+
 	if validatorPublickey != nil {
-		
-		filter.ValidatorPubkey = []string{validatorPublicKey}
+		filter.ValidatorPublicKeys = &[]string{*validatorPublickey}
 	}
 
 	subs, err := GetSubscriptions(filter)
@@ -74,49 +81,70 @@ func AddSubscription(userID uint64, eventName types.EventName, validatorPublicke
 	}
 
 	if len(subs) != 0 {
-		return errors.Errorf("This subscription does not already exist. user: %v, event: %v", userID, eventName)
+		return errors.Errorf("This subscription already exist. user: %v, event: %v validator: %v", userID, eventName, *validatorPublickey)
 	}
 
 	if validatorPublickey == nil {
 		_, err = FrontendDB.Exec("INSERT INTO notifications_subscriptions (user_id, event_name) VALUES ($1, $2)", userID, eventName)
 		return err
 	}
-	_, err = FrontendDB.Exec("INSERT INTO notifications_subscriptions (user_id, event_name, validator_publickey) VALUES ($1, $2, $3)", userID, eventName, *validatorPublickey)
+	pubKey, err := hex.DecodeString(*validatorPublickey)
+	if err != nil {
+		return err
+	}
+	_, err = FrontendDB.Exec("INSERT INTO notifications_subscriptions (user_id, event_name, validator_publickey) VALUES ($1, $2, $3)", userID, eventName, pubKey)
+	return err
+}
+
+// DeleteSubscription removes a subscription from the database.
+func DeleteSubscription(userID uint64, eventName types.EventName, validatorPublickey *string) error {
+	if validatorPublickey == nil {
+		_, err := FrontendDB.Exec("DELETE FROM notifications_subscriptions WHERE user_id = $1 and event_name = $2 and validator_publickey IS NULL", userID, eventName)
+		return err
+	}
+	pubKey, err := hex.DecodeString(*validatorPublickey)
+	if err != nil {
+		return err
+	}
+
+	_, err = FrontendDB.Exec("DELETE FROM notifications_subscriptions WHERE user_id = $1 and event_name = $2 and validator_publickey = $3", userID, eventName, pubKey)
 	return err
 }
 
 type GetSubscriptionsFilter struct {
-	EventNames *[]types.EventName
-	UserIDs    *[]uint64
-	validatorPubkey *[]string
+	EventNames          *[]types.EventName
+	UserIDs             *[]uint64
+	ValidatorPublicKeys *[]string
 }
 
 func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, error) {
 	subs := []*types.Subscription{}
-	qry := "SELECT id, user_id, event_name, encode(validator_publickey::bytea, 'hex'), last_notification_ts FROM notifications_subscriptions"
-	var args []interface{}
-	if filter.EventNames != nil && filter.UserIDs != nil {
-		qry += " WHERE event_name = ANY($1) AND user_id = ANY($2)"
-		args = []interface{}{pq.Array(*filter.EventNames), pq.Array(*filter.UserIDs)}
-	} else if filter.EventNames != nil {
-		qry += " WHERE event_name = ANY($1)"
-		args = []interface{}{pq.Array(*filter.EventNames)}
-	} else if filter.UserIDs != nil {
-		qry += " WHERE user_id = ANY($1)"
-		args = []interface{}{pq.Array(*filter.UserIDs)}
+	qry := "SELECT id, user_id, event_name, encode(validator_publickey::bytea, 'hex') as validator_publickey, last_notification_ts FROM notifications_subscriptions"
+	if filter.EventNames == nil || filter.UserIDs == nil || filter.ValidatorPublicKeys == nil {
+		err := FrontendDB.Select(&subs, qry)
+		return subs, err
 	}
+
+	filters := []string{}
+	args := []interface{}{}
+
+	if filter.EventNames != nil {
+		filters = append(filters, fmt.Sprintf("event_name = ANY($%d)", len(filters)+1))
+		args = append(args, pq.Array(*filter.EventNames))
+	}
+
+	if filter.UserIDs != nil {
+		filters = append(filters, fmt.Sprintf("user_id = ANY($%d)", len(filters)+1))
+		args = append(args, pq.Array(*filter.UserIDs))
+	}
+
+	if filter.ValidatorPublicKeys != nil {
+		filters = append(filters, fmt.Sprintf("encode(validator_publickey::bytea, 'hex') = ANY($%d)", len(filters)+1))
+		args = append(args, pq.Array(*filter.ValidatorPublicKeys))
+	}
+
+	qry += " WHERE " + strings.Join(filters, " AND ")
+
 	err := FrontendDB.Select(&subs, qry, args...)
-	return subs, err
-}
-
-func GetUserValidatorSubscriptions(userId uint64, pubKey []byte) ([]*types.Subscription, error) {
-	subs := []*types.Subscription{}
-	err := FrontendDB.Select(&subs, "SELECT * FROM notifications_subscriptions WHERE user_id = $1 and validator_publickey = $2", userId, pubKey)
-	return subs, err
-}
-
-func GetUserSubscriptions(userId uint64) ([]*types.Subscription, error) {
-	subs := []*types.Subscription{}
-	err := FrontendDB.Select(&subs, "SELECT * FROM notifications_subscriptions WHERE user_id = $1", userId)
 	return subs, err
 }
