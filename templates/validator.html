@@ -49,25 +49,25 @@
 					<button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" data-placement="right" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
 						<i class="fa fa-copy"></i>
 					</button>
-					<button class="btn btn-dark text-white btn-sm" type="button" id="add-to-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Add validator to dashboard">
+					<!-- <button class="btn btn-dark text-white btn-sm" type="button" id="add-to-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Add validator to dashboard">
 						<i class="fa fa-plus"></i>
 					</button>
 					<button class="btn btn-dark text-white btn-sm" type="button" id="remove-from-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Remove validator from dashboard">
 						<i class="fa fa-minus"></i>
-					</button>
+					</button> -->
 					<button class="btn btn-dark text-white btn-sm" type="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" title="Edit validator name">
 						<i class="fa fa-edit"></i>
 					</button>
 					{{ if len .Subscriptions }}
 					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/unsubscribe?events=validator_balance_decreased" method="post">
-						<button class="btn btn-primary btn-sm" type="submit" id="unfollow-button" data-target="#edit-follow-modal" title="Stop receiving updates for this validator." >
-							Unsubscribe
+						<button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button" data-target="#edit-follow-modal" title="Stop receiving updates for this validator." >
+							<i class="fas fa-bookmark"></i>
 						</button>
 					</form>
 					{{else}}
 					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/subscribe?events=validator_balance_decreased" method="post">
-						<button class="btn btn-primary btn-sm" type="submit" id="follow-button" data-target="#edit-follow-modal" title="Follow this validator and receive email notifications">
-							Subscribe
+						<button class="btn btn-dark text-white btn-sm" type="submit" id="follow-button" data-target="#edit-follow-modal" title="Follow this validator and receive email notifications">
+							<i class="far fa-bookmark"></i>
 						</button>
 					</form>
 					{{end}}
