@@ -304,6 +304,6 @@ create table users_subscriptions (
     event_name   character varying(100) not null,
     event_filter text                   not null default '',
     sent_ts      timestamp without time zone,
-    primary key (user_id, event_name, event_filter),
+    primary key (id, user_id, event_name, event_filter),
     constraint fk_user_id foreign key(user_id) references users(id) on delete cascade
 );

@@ -91,7 +91,10 @@ func main() {
 		router.HandleFunc("/epoch/{epoch}", handlers.Epoch).Methods("GET")
 		router.HandleFunc("/epochs", handlers.Epochs).Methods("GET")
 		router.HandleFunc("/epochs/data", handlers.EpochsData).Methods("GET")
+
 		router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")
+		router.HandleFunc("/validator/{pubkey}/subscribe", handlers.ValidatorSubscribe).Methods("POST")
+		router.HandleFunc("/validator/{pubkey}/unsubscribe", handlers.ValidatorUnsubscribe).Methods("POST")
 		router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
 		router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
 		router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
@@ -107,6 +110,7 @@ func main() {
 		router.HandleFunc("/validators/eth1deposits/data", handlers.Eth1DepositsData).Methods("GET")
 		router.HandleFunc("/validators/eth2deposits", handlers.Eth2Deposits).Methods("GET")
 		router.HandleFunc("/validators/eth2deposits/data", handlers.Eth2DepositsData).Methods("GET")
+
 		router.HandleFunc("/dashboard", handlers.Dashboard).Methods("GET")
 		router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET")
 		router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
@@ -137,7 +141,6 @@ func main() {
 		router.HandleFunc("/user/settings/delete", handlers.UserDeletePost).Methods("POST")
 		router.HandleFunc("/user/settings/email", handlers.UserUpdateEmailPost).Methods("POST")
 		router.HandleFunc("/user/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
-		router.HandleFunc("/user/follow/{validator}", handlers.UserFollowValidator).Methods("POST")
 
 		router.HandleFunc("/confirmation", handlers.Confirmation).Methods("GET")
 
