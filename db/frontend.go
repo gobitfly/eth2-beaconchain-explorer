@@ -2,6 +2,8 @@ package db
 
 import (
 	"eth2-exporter/types"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -65,24 +67,39 @@ func AddSubscription(userID uint64, eventName string, validatorPublickey *string
 }
 
 type GetSubscriptionsFilter struct {
-	EventNames *[]types.EventName
-	UserIDs    *[]uint64
+	EventNames          *[]types.EventName
+	UserIDs             *[]uint64
+	ValidatorPublicKeys *[]string
 }
 
 func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, error) {
 	subs := []*types.Subscription{}
 	qry := "SELECT id, user_id, event_name, encode(validator_publickey::bytea, 'hex'), last_notification_ts FROM notifications_subscriptions"
-	var args []interface{}
-	if filter.EventNames != nil && filter.UserIDs != nil {
-		qry += " WHERE event_name = ANY($1) AND user_id = ANY($2)"
-		args = []interface{}{pq.Array(*filter.EventNames), pq.Array(*filter.UserIDs)}
-	} else if filter.EventNames != nil {
-		qry += " WHERE event_name = ANY($1)"
-		args = []interface{}{pq.Array(*filter.EventNames)}
-	} else if filter.UserIDs != nil {
-		qry += " WHERE user_id = ANY($1)"
-		args = []interface{}{pq.Array(*filter.UserIDs)}
+	if filter.EventNames == nil || filter.UserIDs == nil || filter.ValidatorPublicKeys == nil {
+		err := FrontendDB.Select(&subs, qry)
+		return subs, err
 	}
+
+	filters := []string{}
+	args := []interface{}{}
+
+	if filter.EventNames != nil {
+		filters = append(filters, fmt.Sprintf("event_name = ANY($%d)", len(filters)+1))
+		args = append(args, pq.Array(*filter.EventNames))
+	}
+
+	if filter.UserIDs != nil {
+		filters = append(filters, fmt.Sprintf("user_id = ANY($%d)", len(filters)+1))
+		args = append(args, pq.Array(*filter.UserIDs))
+	}
+
+	if filter.ValidatorPublicKeys != nil {
+		filters = append(filters, fmt.Sprintf("validator_publickey = ANY($%d)", len(filters)+1))
+		args = append(args, pq.Array(*filter.ValidatorPublicKeys))
+	}
+
+	qry += " WHERE " + strings.Join(filters, " AND ")
+
 	err := FrontendDB.Select(&subs, qry, args...)
 	return subs, err
 }
