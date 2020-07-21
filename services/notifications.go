@@ -87,8 +87,8 @@ func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
 
 func (n *validatorBalanceDecreasedNotification) GetInfo() string {
 	balance := utils.RoundDecimals(float64(n.Balance)/1e9, 9)
-	prevBalance := utils.RoundDecimals(float64(n.PrevBalance)/1e9, 9)
-	return fmt.Sprintf(`The balance of validator <a href="https://%[1]s/validator/%[2]v">%[2]v</a> decreased by %[3]v ETH to %[4]v ETH at epoch <a href="https://%[1]s/epoch/%[5]v">%[5]v</a>.`, utils.Config.Frontend.SiteDomain, n.ValidatorIndex, balance-prevBalance, balance, n.Epoch)
+	diff := utils.RoundDecimals(float64(n.Balance-n.PrevBalance)/1e9, 9)
+	return fmt.Sprintf(`The balance of validator %v decreased by %v ETH to %v ETH at epoch %v.`, n.ValidatorIndex, diff, balance, n.Epoch)
 }
 
 func collectValidatorBalanceDecreasedNotifications() error {

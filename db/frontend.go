@@ -44,7 +44,8 @@ func UpdatePassword(userId uint64, hash []byte) error {
 
 // AddSubscription adds a new subscription to the database.
 func AddSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
-	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter) VALUES ($1, $2, $3)", userID, eventName, eventFilter)
+	now := time.Now().Unix()
+	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts) VALUES ($1, $2, $3, TO_TIMESTAMP($4))", userID, eventName, eventFilter, now)
 	return err
 }
 
@@ -105,8 +106,7 @@ func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time) error
 func CountSentMail(email string) error {
 	day := time.Now().Truncate(time.Hour * 24).Unix()
 	_, err := FrontendDB.Exec(`
-		INSERT INTO mails_sent
-		SET (email, ts, cnt) VALUES ($1, $2, 1)
+		INSERT INTO mails_sent (email, ts, cnt) VALUES ($1, $2, 1)
 		ON CONFLICT (email, ts) DO UPDATE SET cnt = cnt+1`, email, day)
 	return err
 }
