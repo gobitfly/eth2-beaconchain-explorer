@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"eth2-exporter/db"
+	"eth2-exporter/mail"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -647,7 +648,7 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, emailConfirmationHash)
-	err = utils.SendMail(email, subject, msg)
+	err = mail.SendMail(email, subject, msg)
 	if err != nil {
 		return err
 	}
@@ -698,7 +699,7 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, resetHash)
-	err = utils.SendMail(email, subject, msg)
+	err = mail.SendMail(email, subject, msg)
 	if err != nil {
 		return err
 	}
