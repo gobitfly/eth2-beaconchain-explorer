@@ -623,6 +623,12 @@ type UserSettingsPageData struct {
 	AuthData
 }
 
+type UserNotificationsPageData struct {
+	Email string `json:"email"`
+	AuthData
+	// Subscriptions []*Subscription
+}
+
 type RateLimitError struct {
 	TimeLeft time.Duration
 }

@@ -29,7 +29,7 @@
 </script>
 {{end}}
 
-{{ define "css"}}
+{{ define "css" }}
 {{end}}
 
 {{ define "content"}}
@@ -38,6 +38,7 @@
         <h1 class="h4 mb-1 mb-md-0"><i class="mr-2 fas fa-user-circle"></i>Account Settings</h1>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+				<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
                 <li class="breadcrumb-item active" aria-current="page">Settings</li>
             </ol>
         </nav>
@@ -62,7 +63,7 @@
                     <h3 class="h5">Update Email</h3>
                 </div>
                 <div class="card-body">
-                    <form id="email-form" action="email" method="POST">
+                    <form id="email-form" action="settings/email" method="POST">
                         <div class="form-group">
                             <label for="email">Email address</label>
                             <div class="input-group">
@@ -82,8 +83,8 @@
                     <h3 class="h5">Update Password</h3>
                 </div>
                 <div class="card-body">
-                    <form action="password" method="post">
-                        <input value="{{.Email}}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" id="email" name="email">
+                    <form action="settings/password" method="post">
+                        <input value="{{.Email}}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" name="email">
                         <div class="form-group">
                             <label for="old-password">Old Password</label>
                             <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="current-password" id="old-password" name="old-password">
@@ -137,7 +138,7 @@
             <i class="text-warning fas fa-exclamation-triangle"></i> Warning, you will not be able to recover your account!
         </div>
         <div class="modal-footer">
-            <form id="delete-form" action="delete" method="POST">
+            <form id="delete-form" action="settings/delete" method="POST">
                 <button id="delete-button" type="submit" class="btn btn-outline-danger btn-sm" data-dismiss="modal">Delete</button>
             </form>
         </div>

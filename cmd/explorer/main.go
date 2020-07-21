@@ -136,11 +136,21 @@ func main() {
 		router.HandleFunc("/reset/{hash}", handlers.ResetPassword).Methods("GET")
 		router.HandleFunc("/reset", handlers.ResetPasswordPost).Methods("POST")
 
-		router.HandleFunc("/user/settings", handlers.UserSettings).Methods("GET")
-		router.HandleFunc("/user/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
-		router.HandleFunc("/user/settings/delete", handlers.UserDeletePost).Methods("POST")
-		router.HandleFunc("/user/settings/email", handlers.UserUpdateEmailPost).Methods("POST")
-		router.HandleFunc("/user/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
+		authRouter := mux.NewRouter().PathPrefix("/user").Subrouter()
+		authRouter.HandleFunc("/settings", handlers.UserSettings).Methods("GET")
+		authRouter.HandleFunc("/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
+		authRouter.HandleFunc("/settings/delete", handlers.UserDeletePost).Methods("POST")
+		authRouter.HandleFunc("/settings/email", handlers.UserUpdateEmailPost).Methods("POST")
+		authRouter.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
+		authRouter.HandleFunc("/notifications", handlers.UserNotifications).Methods("GET")
+		authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
+
+		router.PathPrefix("/user").Handler(
+			negroni.New(
+				negroni.HandlerFunc(handlers.UserAuthMiddleware),
+				negroni.Wrap(authRouter),
+			),
+		)
 
 		router.HandleFunc("/confirmation", handlers.Confirmation).Methods("GET")
 

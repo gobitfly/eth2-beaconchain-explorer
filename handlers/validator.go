@@ -189,7 +189,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	log.Printf("found %v subscriptions for %v", len(subs), pKey)
 
 	validatorPageData.Subscriptions = subs
 
