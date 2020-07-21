@@ -113,8 +113,8 @@ func collectValidatorBalanceDecreasedNotifications() error {
 					vb.balance, 
 					vb2.balance AS prevbalance
 				FROM validator_balances vb
-				INNER JOIN validators v ON v.validatorindex = vb.validatorindex
-				INNER JOIN validator_balances vb2 ON vb.validatorindex = vb2.validatorindex AND vb2.epoch = $2
+					INNER JOIN validators v ON v.validatorindex = vb.validatorindex
+					INNER JOIN validator_balances vb2 ON vb.validatorindex = vb2.validatorindex AND vb2.epoch = $2
 				WHERE vb.epoch = $1 AND vb.balance < vb2.balance
 			)
 		SELECT us.id, u.email, dbv.validatorindex, dbv.balance, dbv.prevbalance
