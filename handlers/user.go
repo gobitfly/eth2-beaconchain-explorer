@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
@@ -9,8 +10,10 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -18,28 +21,28 @@ import (
 )
 
 var userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/settings.html"))
+var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notifications.html"))
+
+func UserAuthMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	user := getUser(w, r)
+	if user.Authenticated == false {
+		log.Println("User not authorized")
+		utils.SetFlash(w, r, authSessionName, "Error: Please login first")
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	next(w, r)
+}
 
 // UserSettings renders the user-template
 func UserSettings(w http.ResponseWriter, r *http.Request) {
-	userSettingsData := &types.UserSettingsPageData{}
-
-	// TODO: remove before production
-	// userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/settings.html"))
-
 	w.Header().Set("Content-Type", "text/html")
+	userSettingsData := &types.UserSettingsPageData{}
 
 	user, session, err := getUserSession(w, r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	// TODO: check if user is authenticated
-	if user.Authenticated == false {
-		session.Flashes("Error: Please authenticate first")
-		session.Save(r, w)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
@@ -77,6 +80,110 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+}
+
+func UserNotifications(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	userNotificationsData := &types.UserNotificationsPageData{}
+
+	user := getUser(w, r)
+
+	userNotificationsData.Flashes = utils.GetFlashes(w, r, authSessionName)
+
+	data := &types.PageData{
+		Meta: &types.Meta{
+			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
+			Path:        "/user",
+		},
+		Active:                "user",
+		Data:                  userNotificationsData,
+		User:                  user,
+		Version:               version.Version,
+		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
+		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
+		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
+		FinalizationDelay:     services.FinalizationDelay(),
+	}
+
+	err := notificationTemplate.ExecuteTemplate(w, "layout", data)
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+
+	// search, err := strconv.ParseInt(q.Get("search[value]"), 10, 64)
+	// if err != nil {
+	// 	search = -1
+	// }
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	// start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	// if err != nil {
+	// 	logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	if length > 100 {
+		length = 100
+	}
+
+	user := getUser(w, r)
+
+	filter := db.GetSubscriptionsFilter{
+		// EventNames:   &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
+		UserIDs: &[]uint64{user.UserID},
+	}
+
+	subs, err := db.GetSubscriptions(filter)
+	if err != nil {
+		logger.Errorf("error retrieving subscriptions for user %v: %v", user.UserID, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, len(subs))
+	for i, s := range subs {
+		tableData[i] = []interface{}{
+			s.ID,
+			s.EventName,
+			s.EventFilter,
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    uint64(len(subs)),
+		RecordsFiltered: 0,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 }
 
 func UserDeletePost(w http.ResponseWriter, r *http.Request) {
