@@ -151,8 +151,8 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	filter := db.GetSubscriptionsFilter{
-		// EventNames:   &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
-		UserIDs: &[]uint64{user.UserID},
+		EventNames: &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
+		UserIDs:    &[]uint64{user.UserID},
 	}
 
 	subs, err := db.GetSubscriptions(filter)

@@ -12,7 +12,9 @@ const (
 	ValidatorBalanceDecreasedEventName  EventName = "validator_balance_decreased"
 	ValidatorProposalMissedEventName    EventName = "validator_proposal_missed"
 	ValidatorAttestationMissedEventName EventName = "validator_attestation_missed"
-	ValidatorSlashedEventName           EventName = "validator_slashed"
+	ValidatorGotSlashedEventName        EventName = "validator_got_slashed"
+	ValidatorDidSlashEventName          EventName = "validator_did_slash"
+	ValidatorStateChangedEventName      EventName = "validator_state_changed"
 )
 
 func EventFromString(event string) (EventName, error) {
@@ -23,8 +25,12 @@ func EventFromString(event string) (EventName, error) {
 		return ValidatorProposalMissedEventName, nil
 	case "validator_attestation_missed":
 		return ValidatorAttestationMissedEventName, nil
-	case "validator_slashed":
-		return ValidatorSlashedEventName, nil
+	case "validator_got_slashed":
+		return ValidatorGotSlashedEventName, nil
+	case "validator_did_slash":
+		return ValidatorDidSlashEventName, nil
+	case "validator_state_changed":
+		return ValidatorStateChangedEventName, nil
 	default:
 		return "", errors.Errorf("Could not convert event to string. %v is not a known event type", event)
 	}

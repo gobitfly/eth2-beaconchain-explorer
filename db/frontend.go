@@ -67,7 +67,7 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 	subs := []*types.Subscription{}
 
 	qry := "SELECT * FROM users_subscriptions"
-	if filter.EventNames == nil || filter.UserIDs == nil || filter.EventFilters == nil {
+	if filter.EventNames == nil && filter.UserIDs == nil && filter.EventFilters == nil {
 		err := FrontendDB.Select(&subs, qry)
 		return subs, err
 	}
