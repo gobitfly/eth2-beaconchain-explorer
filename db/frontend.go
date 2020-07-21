@@ -44,7 +44,8 @@ func UpdatePassword(userId uint64, hash []byte) error {
 
 // AddSubscription adds a new subscription to the database.
 func AddSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
-	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter) VALUES ($1, $2, $3)", userID, eventName, eventFilter)
+	now := time.Now().Unix()
+	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts) VALUES ($1, $2, $3, TO_TIMESTAMP($4))", userID, eventName, eventFilter, now)
 	return err
 }
 
@@ -68,7 +69,7 @@ type GetSubscriptionsFilter struct {
 func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, error) {
 	subs := []*types.Subscription{}
 
-	qry := "SELECT id, user_id, event_name, event_filter, sent_ts FROM users_subscriptions"
+	qry := "SELECT * FROM users_subscriptions"
 	if filter.EventNames == nil || filter.UserIDs == nil || filter.EventFilters == nil {
 		err := FrontendDB.Select(&subs, qry)
 		return subs, err
@@ -110,8 +111,25 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 	return subs, err
 }
 
-// UpdateSubscriptionsSent upates `sent_ts` column of the `users_subscriptions` table.
-func UpdateSubscriptionsSent(subscriptionIDs []uint64, sent time.Time) error {
-	_, err := FrontendDB.Exec("UPDATE users_subscriptions SET sent_ts = TO_TIMESTAMP($1) WHERE id = ANY($2)", sent.Unix(), pq.Array(subscriptionIDs))
+// UpdateSubscriptionsLastSent upates `last_sent_ts` column of the `users_subscriptions` table.
+func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time) error {
+	_, err := FrontendDB.Exec("UPDATE users_subscriptions SET last_sent_ts = TO_TIMESTAMP($1) WHERE id = ANY($2)", sent.Unix(), pq.Array(subscriptionIDs))
 	return err
+}
+
+// CountSentMail increases the count of sent mails in the table `mails_sent` for this day.
+func CountSentMail(email string) error {
+	day := time.Now().Truncate(time.Hour * 24).Unix()
+	_, err := FrontendDB.Exec(`
+		INSERT INTO mails_sent (email, ts, cnt) VALUES ($1, $2, 1)
+		ON CONFLICT (email, ts) DO UPDATE SET cnt = cnt+1`, email, day)
+	return err
+}
+
+// GetMailsSentCount returns the number of sent mails for the day of the passed time.
+func GetMailsSentCount(email string, t time.Time) (int, error) {
+	day := t.Truncate(time.Hour * 24).Unix()
+	count := 0
+	err := FrontendDB.Get(&count, "SELECT cnt FROM mails_sent WHERE email = $1 AND ts = $2", email, day)
+	return count, err
 }

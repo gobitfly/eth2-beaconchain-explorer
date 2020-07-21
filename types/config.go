@@ -48,8 +48,9 @@ type Config struct {
 			Host     string `yaml:"host" envconfig:"FRONTEND_DB_HOST"`
 			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
 		} `yaml:"database"`
-		SessionSecret string `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
-		Mail          struct {
+		SessionSecret          string `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
+		MaxMailsPerEmailPerDay int    `yaml:"maxMailsPerEmailPerDay" envconfig:"FRONTEND_MAX_MAIL_PER_EMAIL_PER_DAY"`
+		Mail                   struct {
 			SMTP struct {
 				Server   string `yaml:"server" envconfig:"FRONTEND_MAIL_SMTP_SERVER"`
 				Host     string `yaml:"host" envconfig:"FRONTEND_MAIL_SMTP_HOST"`

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"eth2-exporter/db"
+	"eth2-exporter/mail"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -488,7 +489,7 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, emailConfirmationHash, url.QueryEscape(newEmail))
-	err = utils.SendMail(newEmail, subject, msg)
+	err = mail.SendMail(newEmail, subject, msg)
 	if err != nil {
 		return err
 	}

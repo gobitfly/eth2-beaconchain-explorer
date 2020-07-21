@@ -41,5 +41,6 @@ type Subscription struct {
 	UserID      uint64     `db:"user_id"`
 	EventName   EventName  `db:"event_name"`
 	EventFilter string     `db:"event_filter"`
-	Sent        *time.Time `db:"sent_ts"`
+	LastSent    *time.Time `db:"last_sent_ts"`
+	Created     time.Time  `db:"created_ts"`
 }
