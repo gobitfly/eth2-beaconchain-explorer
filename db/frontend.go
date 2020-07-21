@@ -59,6 +59,9 @@ type GetSubscriptionsFilter struct {
 	EventNames   *[]types.EventName
 	UserIDs      *[]uint64
 	EventFilters *[]string
+	Search       string
+	Limit        uint64
+	Offset       uint64
 }
 
 // GetSubscriptions returns the subscriptions filtered by the provided filter.
@@ -75,21 +78,33 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 	args := []interface{}{}
 
 	if filter.EventNames != nil {
-		filters = append(filters, fmt.Sprintf("event_name = ANY($%d)", len(filters)+1))
 		args = append(args, pq.Array(*filter.EventNames))
+		filters = append(filters, fmt.Sprintf("event_name = ANY($%d)", len(args)+1))
 	}
 
 	if filter.UserIDs != nil {
-		filters = append(filters, fmt.Sprintf("user_id = ANY($%d)", len(filters)+1))
 		args = append(args, pq.Array(*filter.UserIDs))
+		filters = append(filters, fmt.Sprintf("user_id = ANY($%d)", len(args)+1))
 	}
 
 	if filter.EventFilters != nil {
-		filters = append(filters, fmt.Sprintf("event_filter = ANY($%d)", len(filters)+1))
 		args = append(args, pq.Array(*filter.EventFilters))
+		filters = append(filters, fmt.Sprintf("event_filter = ANY($%d)", len(args)+1))
+	}
+	qry += " WHERE " + strings.Join(filters, " AND ")
+
+	if filter.Search != "" {
+		args = append(args, filter.Search)
+		qry += fmt.Sprintf(" AND event_filter LIKE LOWER($%d)", len(args) + 1)
 	}
 
-	qry += " WHERE " + strings.Join(filters, " AND ")
+	if filter.Limit > 0 {
+		args = append(args, filter.Limit)
+		qry += fmt.Sprintf("\n LIMIT $%d", len(args)+1)
+	}
+
+	args = append(args, filter.Offset)
+	qry += fmt.Sprintf("OFFSET $%d", len(args)+1)
 
 	err := FrontendDB.Select(&subs, qry, args...)
 	return subs, err

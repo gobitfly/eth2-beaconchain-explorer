@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -120,10 +121,8 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	// search, err := strconv.ParseInt(q.Get("search[value]"), 10, 64)
-	// if err != nil {
-	// 	search = -1
-	// }
+	search := q.Get("search[value]")
+	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
@@ -131,12 +130,12 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	// start, err := strconv.ParseUint(q.Get("start"), 10, 64)
-	// if err != nil {
-	// 	logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-	// 	http.Error(w, "Internal server error", 503)
-	// 	return
-	// }
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
@@ -149,9 +148,20 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	user := getUser(w, r)
 
+	var countSubscriptions uint64
+	err = db.FrontendDB.Get(&countSubscriptions, "SELECT count(*) FROM users_subscriptions where user_id = $1", user.UserID)
+	if err != nil {
+		logger.Errorf("Failed getting subscription count for user %v", user.UserID)
+		http.Error(w, "Internal server error", 503)
+
+	}
+
 	filter := db.GetSubscriptionsFilter{
 		// EventNames:   &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
 		UserIDs: &[]uint64{user.UserID},
+		Search:  search,
+		Limit:   length,
+		Offset:  start,
 	}
 
 	subs, err := db.GetSubscriptions(filter)
@@ -172,8 +182,8 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    uint64(len(subs)),
-		RecordsFiltered: 0,
+		RecordsTotal:    countSubscriptions,
+		RecordsFiltered: countSubscriptions,
 		Data:            tableData,
 	}
 
