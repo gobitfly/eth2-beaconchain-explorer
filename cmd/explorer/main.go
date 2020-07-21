@@ -146,9 +146,6 @@ func main() {
 
 		// router.HandleFunc("/user/validators", handlers.UserValidators).Methods("GET")
 
-		router.HandleFunc("/foo/addsub/{userID}/{validatorKey}", handlers.AddSubscription).Methods("GET")
-		router.HandleFunc("/foo/getsubs/{userID}", handlers.GetSubscriptions).Methods("GET")
-
 		router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 
 		n := negroni.New(negroni.NewRecovery())
