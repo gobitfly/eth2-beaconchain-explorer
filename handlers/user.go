@@ -152,10 +152,10 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	var countSubscriptions uint64
 	err = db.FrontendDB.Get(&countSubscriptions, "SELECT count(*) FROM users_subscriptions where user_id = $1", user.UserID)
 	if err != nil {
-		logger.Errorf("Failed getting subscription count for user %v", user.UserID)
+		logger.Errorf("error getting subscription count for user %v", user.UserID)
 		http.Error(w, "Internal server error", 503)
-
 	}
+	log.Printf("The number of subscriptions %v", countSubscriptions)
 
 	filter := db.GetSubscriptionsFilter{
 		// EventNames:   &[]types.EventName{types.ValidatorBalanceDecreasedEventName},

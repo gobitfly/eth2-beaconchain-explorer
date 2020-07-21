@@ -15,7 +15,7 @@ var notificationsByEmail = map[string]map[types.EventName][]types.Notification{}
 
 func notificationsSender() {
 	for {
-		start := time.Now()
+		// start := time.Now()
 		err := collectNotifications()
 		if err != nil {
 			logger.Errorf("error collecting notifications: %v", err)
@@ -23,7 +23,7 @@ func notificationsSender() {
 			continue
 		}
 		sendNotifications()
-		logger.WithField("emails", len(notificationsByEmail)).WithField("duration", time.Since(start)).Info("notifications completed")
+		// logger.WithField("emails", len(notificationsByEmail)).WithField("duration", time.Since(start)).Info("notifications completed")
 		time.Sleep(time.Second * 60)
 	}
 }

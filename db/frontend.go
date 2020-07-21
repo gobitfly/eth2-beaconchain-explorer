@@ -70,7 +70,7 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 	subs := []*types.Subscription{}
 
 	qry := "SELECT * FROM users_subscriptions"
-	if filter.EventNames == nil || filter.UserIDs == nil || filter.EventFilters == nil {
+	if filter.EventNames == nil && filter.UserIDs == nil && filter.EventFilters == nil {
 		err := FrontendDB.Select(&subs, qry)
 		return subs, err
 	}
@@ -80,33 +80,32 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 
 	if filter.EventNames != nil {
 		args = append(args, pq.Array(*filter.EventNames))
-		filters = append(filters, fmt.Sprintf("event_name = ANY($%d)", len(args)+1))
+		filters = append(filters, fmt.Sprintf("event_name = ANY($%d)", len(args)))
 	}
 
 	if filter.UserIDs != nil {
 		args = append(args, pq.Array(*filter.UserIDs))
-		filters = append(filters, fmt.Sprintf("user_id = ANY($%d)", len(args)+1))
+		filters = append(filters, fmt.Sprintf("user_id = ANY($%d)", len(args)))
 	}
 
 	if filter.EventFilters != nil {
 		args = append(args, pq.Array(*filter.EventFilters))
-		filters = append(filters, fmt.Sprintf("event_filter = ANY($%d)", len(args)+1))
+		filters = append(filters, fmt.Sprintf("event_filter = ANY($%d)", len(args)))
 	}
 	qry += " WHERE " + strings.Join(filters, " AND ")
 
 	if filter.Search != "" {
-		args = append(args, filter.Search)
-		qry += fmt.Sprintf(" AND event_filter LIKE LOWER($%d)", len(args) + 1)
+		args = append(args, filter.Search+"%")
+		qry += fmt.Sprintf(" AND event_filter LIKE LOWER($%d)", len(args))
 	}
 
 	if filter.Limit > 0 {
 		args = append(args, filter.Limit)
-		qry += fmt.Sprintf("\n LIMIT $%d", len(args)+1)
+		qry += fmt.Sprintf(" LIMIT $%d", len(args))
 	}
 
 	args = append(args, filter.Offset)
-	qry += fmt.Sprintf("OFFSET $%d", len(args)+1)
-
+	qry += fmt.Sprintf(" OFFSET $%d", len(args))
 	err := FrontendDB.Select(&subs, qry, args...)
 	return subs, err
 }
