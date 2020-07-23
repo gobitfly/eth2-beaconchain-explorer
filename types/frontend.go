@@ -15,6 +15,12 @@ const (
 	ValidatorSlashedEventName           EventName = "validator_slashed"
 )
 
+type Tag string
+
+const (
+	ValidatorTagsWatchlist Tag = "watchlist"
+)
+
 func EventFromString(event string) (EventName, error) {
 	switch event {
 	case "validator_balance_decreased":
@@ -43,4 +49,11 @@ type Subscription struct {
 	EventFilter string     `db:"event_filter"`
 	LastSent    *time.Time `db:"last_sent_ts"`
 	Created     time.Time  `db:"created_ts"`
+}
+
+type TaggedValidators struct {
+	UserID uint64 `db:"user_id"`
+	Tag    string `db:"tag"`
+	Validator
+	Events []EventName `db:"events"`
 }

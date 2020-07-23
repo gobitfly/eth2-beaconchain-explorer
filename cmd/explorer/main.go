@@ -93,8 +93,8 @@ func main() {
 		router.HandleFunc("/epochs/data", handlers.EpochsData).Methods("GET")
 
 		router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")
-		router.HandleFunc("/validator/{pubkey}/subscribe", handlers.ValidatorSubscribe).Methods("POST")
-		router.HandleFunc("/validator/{pubkey}/unsubscribe", handlers.ValidatorUnsubscribe).Methods("POST")
+		router.HandleFunc("/validator/{pubkey}/follow", handlers.UserValidatorFollow).Methods("POST")
+		router.HandleFunc("/validator/{pubkey}/unfollow", handlers.UserValidatorUnfollow).Methods("POST")
 		router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
 		router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
 		router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
@@ -144,6 +144,8 @@ func main() {
 		authRouter.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
 		authRouter.HandleFunc("/notifications", handlers.UserNotifications).Methods("GET")
 		authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
+		authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
+		authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
 
 		router.PathPrefix("/user").Handler(
 			negroni.New(

@@ -1,26 +1,113 @@
 {{ define "js"}}
 
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+
 <script>
-	$(document).ready(function() {
+	var events = {
+		//<span class="d-flex align-item-center"><input class="mr-2" checked data-target="validator_balance_decreased" type="checkbox"> <span style="height: 1rem;" class="mb-1">balance decreases</span></span>
+		validator_balance_decreased: 'balance decreases',
+		validator_proposal_missed: 'proposals missed',
+		validator_attestation_missed: 'attestations missed',
+		validator_slashed: 'validator slashed',
+	}
+	var debounceTimeouts = {}
+	function ToggleEvent(box) {
+		console.log('toggle event called', box)
+		if (debounceTimeouts[box.id]) {
+			clearTimeout(debounceTimeouts[box.id])
+			debounceTimeouts[box.id] = null
+		} else {
+			debounceTimeouts[box.id] = setTimeout(function() {
+				var filter = box.getAttribute('data-filter')
+				var event = box.getAttribute('data-event')
+				filter = encodeURI(filter)
+				event = encodeURI(event)
+
+				debounceTimeouts[box.id] = null
+				if (box.checked) {
+					// subscribe
+					console.log('subscribing')
+					fetch('/user/notifications/subscribe?filter='+filter+'&event='+event, {
+						method: 'POST'
+					})
+				} else {
+					// unsubscribe
+					console.log('unsubscribing')
+					fetch('/user/notifications/unsubscribe?filter='+filter+'&event='+event, {
+						method: 'POST'
+					})
+				}
+			}, 500)
+		}
+	}
+
+	// function editRow(row) {
+	// 	console.log('editing row:', row)
+	// 	var rows = document.getElementById('notifications').querySelectorAll('tbody tr')
+	// 	rows[row].querySelector('input[type="checkbox"').toggleAttribute('disabled')
+	// 	var edit = rows[row].querySelector('i.fas.fa-edit')
+	// 	var initalValue 
+	// 	if (edit) {
+	// 		edit.classList.remove('fa-edit')
+	// 		edit.classList.add('fa-save')
+	// 		initalValue = rows[row].querySelector('input[type="checkbox"]').checked
+	// 	} else {
+	// 		var save = rows[row].querySelector('i.fas.fa-save')
+	// 		save.classList.remove('fa-save')
+	// 		save.classList.add('fa-edit')
+	// 		var value = rows[row].querySelector('input[type="checkbox"]').checked
+	// 		console.log('value', value)
+
+	// 		if (initalValue !== value) {
+	// 			// fetch()
+	// 		}
+	// 	}
+	// }
+
+	$(document).ready(function () {
 		$('#notifications').DataTable({
 			processing: true,
 			serverSide: true,
 			ordering: false,
-			searching: true,
+			searching: false,
 			ajax: '/user/notifications/data',
 			pagingType: 'full',
 			language: {
 				searchPlaceholder: 'Search by Validator Id',
 				search: ''
 			},
-			preDrawCallback: function() {
+			columnDefs: [
+				{
+					targets: 2,
+					data: '2',
+					render: function (data, type, row, meta) {
+						// var subscriptions = data.split(',')
+						// console.log(data)
+						var checked = ''
+						console.log(data, type, row, meta)
+						if(row.length) {
+							var address = (/0x[0-9a-fA-F]{96}/).exec(row[0])
+							if (address.length) {
+								data.map(function(event) {
+									console.log(event)
+									if(event === 'validator_balance_decreased') {
+										checked = 'checked'
+									}
+								})
+								return '<span class="d-flex align-item-center"><input onchange="ToggleEvent(this)" data-filter="'+address+'" data-event="validator_balance_decreased" class="mr-2" '+checked+' data-target="validator_balance_decreased" type="checkbox"> <span style="height: 1rem;" class="mb-1">balance decreases</span></span>'
+							}
+						}
+						return data
+					}
+				},
+			],
+			preDrawCallback: function () {
 				// this does not always work.. not sure how to solve the staying tooltip
 				try {
 					$('#notifications').find('[data-toggle="tooltip"]').tooltip('dispose')
-				} catch (e) {}
+				} catch (e) { }
 			},
-			drawCallback: function(settings) {
+			drawCallback: function (settings) {
 				formatTimestamps()
 			},
 		})
@@ -47,9 +134,10 @@
 			<table class="table" id="notifications">
 				<thead>
 					<tr>
-						<th>ID</th>
-						<th>EventName</th>
-						<th>EventFilter</th>
+						<th>Validator</th>
+						<th>Balance</th>
+						<th>Notify me when</th>
+						<!-- <th>Action</th> -->
 					</tr>
 				</thead>
 				<tbody> </tbody>

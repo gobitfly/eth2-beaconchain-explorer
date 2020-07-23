@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/hex"
 	"eth2-exporter/types"
 	"fmt"
 	"strings"
@@ -55,21 +56,85 @@ func DeleteSubscription(userID uint64, eventName types.EventName, eventFilter st
 	return err
 }
 
+func AddToWatchlist(userId uint64, validator_publickey string) error {
+	key, err := hex.DecodeString(validator_publickey)
+	if err != nil {
+		return err
+	}
+	_, err = FrontendDB.Exec("INSERT INTO users_validators_tags (user_id, validator_publickey, tag) VALUES ($1, $2, $3)", userId, key, string(types.ValidatorTagsWatchlist))
+	return err
+}
+
+func RemoveFromWatchlist(userId uint64, validator_publickey string) error {
+	key, err := hex.DecodeString(validator_publickey)
+	if err != nil {
+		return err
+	}
+	_, err = FrontendDB.Exec("DELETE FROM users_validators_tags WHERE user_id = $1 and validator_publickey = $2 and tag = $3", userId, key, types.ValidatorTagsWatchlist)
+	return err
+}
+
+type WatchlistFilter struct {
+	Tag        types.Tag
+	UserId     uint64
+	Validators *pq.ByteaArray
+}
+
+func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, error) {
+	list := []*types.TaggedValidators{}
+	args := make([]interface{}, 0)
+
+	// var userId uint64
+	// SELECT users_validators_tags.user_id, users_validators_tags.validator_publickey, event_name
+	// FROM users_validators_tags inner join users_subscriptions
+	// ON users_validators_tags.user_id = users_subscriptions.user_id and ENCODE(users_validators_tags.validator_publickey::bytea, 'hex') = users_subscriptions.event_filter;
+
+	args = append(args, filter.Tag)
+	args = append(args, filter.UserId)
+	qry := `
+		SELECT user_id, balance, pubkey
+		FROM users_validators_tags 
+		INNER JOIN validators 
+		ON users_validators_tags.validator_publickey = validators.pubkey
+		
+		WHERE tag = $1 AND user_id = $2`
+	// select * from users_validators_tags inner join validators on users_validators_tags.validator_publickey = validators.pubkey
+
+	// , ARRAY_AGG(
+	// 	SELECT event_name FROM users_subscriptions
+	// 	WHERE user_id = $2 and ENCODE(users_validators_tags.validator_publickey::bytea, 'hex') = users_subscriptions.event_filter
+	// ) as events
+
+	if filter.Validators != nil {
+		args = append(args, *filter.Validators)
+		qry += " AND "
+		qry += fmt.Sprintf("validator_publickey = ANY($%d)", len(args))
+	}
+
+	err := FrontendDB.Select(&list, qry, args...)
+	return list, err
+}
+
 // GetSubscriptionsFilter can be passed to GetSubscriptions() to filter subscriptions.
 type GetSubscriptionsFilter struct {
-	EventNames   *[]types.EventName
-	UserIDs      *[]uint64
-	EventFilters *[]string
-	Search       string
-	Limit        uint64
-	Offset       uint64
+	EventNames    *[]types.EventName
+	UserIDs       *[]uint64
+	EventFilters  *[]string
+	Search        string
+	Limit         uint64
+	Offset        uint64
+	JoinValidator bool
 }
 
 // GetSubscriptions returns the subscriptions filtered by the provided filter.
 func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, error) {
 	subs := []*types.Subscription{}
-
 	qry := "SELECT * FROM users_subscriptions"
+
+	if filter.JoinValidator {
+		qry = "SELECT id, user_id, event_name, event_filter, last_sent_ts, created_ts, validators.balance as balance FROM users_subscriptions INNER JOIN validators ON users_subscriptions.event_filter = ENCODE(validators.pubkey::bytea, 'hex')"
+	}
+
 	if filter.EventNames == nil && filter.UserIDs == nil && filter.EventFilters == nil {
 		err := FrontendDB.Select(&subs, qry)
 		return subs, err
