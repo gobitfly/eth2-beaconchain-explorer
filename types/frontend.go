@@ -49,6 +49,12 @@ func EventFromString(event string) (EventName, error) {
 	return "", errors.Errorf("Could not convert event to string. %v is not a known event type", event)
 }
 
+type Tag string
+
+const (
+	ValidatorTagsWatchlist Tag = "watchlist"
+)
+
 type Notification interface {
 	GetSubscriptionID() uint64
 	GetEventName() EventName
@@ -62,4 +68,11 @@ type Subscription struct {
 	EventFilter string     `db:"event_filter"`
 	LastSent    *time.Time `db:"last_sent_ts"`
 	Created     time.Time  `db:"created_ts"`
+}
+
+type TaggedValidators struct {
+	UserID uint64 `db:"user_id"`
+	Tag    string `db:"tag"`
+	Validator
+	Events []EventName `db:"events"`
 }

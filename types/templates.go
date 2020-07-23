@@ -172,7 +172,7 @@ type ValidatorPageData struct {
 	Deposits                         *ValidatorDeposits
 	Eth1DepositAddress               []byte
 	FlashMessage                     string
-	Subscriptions                    []*Subscription
+	Watchlist                        []*TaggedValidators
 	SubscriptionFlash                []interface{}
 }
 

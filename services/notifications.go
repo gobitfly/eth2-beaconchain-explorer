@@ -14,7 +14,7 @@ var notificationsByEmail = map[string]map[types.EventName][]types.Notification{}
 
 func notificationsSender() {
 	for {
-		start := time.Now()
+		// start := time.Now()
 		err := collectNotifications()
 		if err != nil {
 			logger.Errorf("error collecting notifications: %v", err)
@@ -22,7 +22,7 @@ func notificationsSender() {
 			continue
 		}
 		sendNotifications()
-		logger.WithField("emails", len(notificationsByEmail)).WithField("duration", time.Since(start)).Info("notifications completed")
+		// logger.WithField("emails", len(notificationsByEmail)).WithField("duration", time.Since(start)).Info("notifications completed")
 		time.Sleep(time.Second * 60)
 	}
 }
@@ -46,7 +46,7 @@ func sendNotifications() {
 				if len(msg) > 0 {
 					msg += "\n"
 				}
-				// msg += fmt.Sprintf("%s\n====\n\n", event)
+				msg += fmt.Sprintf("%s\n====\n\n", event)
 				for _, n := range ns {
 					msg += fmt.Sprintf("%s\n", n.GetInfo())
 					sentSubIDs = append(sentSubIDs, n.GetSubscriptionID())

@@ -15,9 +15,11 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -121,10 +123,8 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	// search, err := strconv.ParseInt(q.Get("search[value]"), 10, 64)
-	// if err != nil {
-	// 	search = -1
-	// }
+	search := q.Get("search[value]")
+	search = strings.Replace(search, "0x", "", -1)
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
@@ -150,31 +150,132 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	user := getUser(w, r)
 
-	filter := db.GetSubscriptionsFilter{
-		EventNames: &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
-		UserIDs:    &[]uint64{user.UserID},
+	// var countSubscriptions uint64
+	// err = db.FrontendDB.Get(&countSubscriptions, "SELECT count(*) FROM users_subscriptions where user_id = $1", user.UserID)
+	// if err != nil {
+	// 	logger.Errorf("error getting subscription count for user %v", user.UserID)
+	// 	http.Error(w, "Internal server error", 503)
+	// }
+	// log.Printf("The number of subscriptions %v", countSubscriptions)
+
+	// filter := db.GetSubscriptionsFilter{
+	// 	// EventNames:   &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
+	// 	UserIDs:       &[]uint64{user.UserID},
+	// 	Search:        search,
+	// 	Limit:         length,
+	// 	Offset:        start,
+	// 	JoinValidator: true,
+	// }
+
+	// subs, err := db.GetSubscriptions(filter)
+	// if err != nil {
+	// 	logger.Errorf("error retrieving subscriptions for user %v: %v", user.UserID, err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
+
+	// type TableSubscriptions struct {
+	// 	Subscription types.Subscription
+	// 	EventNames   []string
+	// }
+
+	// subscriptionsMap := make(map[string]TableSubscriptions)
+	// count := 0
+
+	// for _, s := range subs {
+	// 	if s != nil {
+	// 		pKey := s.EventFilter
+	// 		subMap, found := subscriptionsMap[pKey]
+	// 		if !found {
+	// 			count += 1
+	// 			entry := TableSubscriptions{
+	// 				Subscription: *s,
+	// 			}
+	// 			entry.EventNames = []string{string(s.EventName)}
+	// 			subscriptionsMap[pKey] = entry
+	// 		} else {
+	// 			subMap.EventNames = append(subMap.EventNames, string(s.EventName))
+	// 			subscriptionsMap[pKey] = subMap
+	// 		}
+	// 	}
+	// }
+
+	// tableData := make([][]interface{}, 0, count)
+	// for k, v := range subscriptionsMap {
+	// 	if len(k) == 96 {
+	// 		key, err := hex.DecodeString(k)
+	// 		if err != nil {
+	// 			logger.Errorf("error converting string public key to byte %v: %v", user.UserID, err)
+	// 			http.Error(w, "Internal server error", 503)
+	// 		}
+	// 		tableData = append(tableData, []interface{}{
+	// 			utils.FormatPublicKey(key),
+	// 			// v.Subscription.LastSent,
+	// 			// utils.FormatBalance(v.Subscription),
+	// 			v.EventNames,
+	// 		})
+	// 	} else {
+	// 		log.Println("UNEXPECTED KEY LENGTH", k)
+	// 	}
+	// }
+
+	// filter := db.WatchlistFilter{
+	// 	UserId: user.UserID,
+	// 	Tag:    types.ValidatorTagsWatchlist,
+	// }
+
+	// watchlist, err := db.GetTaggedValidators(filter)
+	// if err != nil {
+	// 	logger.Errorf("error retrieving watchlist for user %v: %v", user.UserID, err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
+	type watchlistSubscription struct {
+		Publickey []byte
+		Balance   uint64
+		Events    *pq.StringArray
 	}
 
-	subs, err := db.GetSubscriptions(filter)
+	wl := []watchlistSubscription{}
+	err = db.FrontendDB.Select(&wl, `
+	SELECT 
+			users_validators_tags.validator_publickey as publickey,
+			MAX(validators.balance) as balance,
+			ARRAY_REMOVE(ARRAY_AGG(users_subscriptions.event_name), NULL) as events
+		FROM users_validators_tags
+		LEFT JOIN users_subscriptions
+		ON 
+			users_validators_tags.user_id = users_subscriptions.user_id
+		AND 
+			ENCODE(users_validators_tags.validator_publickey::bytea, 'hex') = users_subscriptions.event_filter
+		LEFT JOIN validators
+		ON
+			users_validators_tags.validator_publickey = validators.pubkey
+		WHERE users_validators_tags.user_id = $1
+		GROUP BY users_validators_tags.user_id, users_validators_tags.validator_publickey, users_subscriptions.event_name;
+	`, user.UserID)
 	if err != nil {
-		logger.Errorf("error retrieving subscriptions for user %v: %v", user.UserID, err)
+		logger.Errorf("error retrieving subscriptions for users validators %v: %v", user.UserID, err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
-	tableData := make([][]interface{}, len(subs))
-	for i, s := range subs {
-		tableData[i] = []interface{}{
-			s.ID,
-			s.EventName,
-			s.EventFilter,
-		}
+	tableData := make([][]interface{}, 0, len(wl))
+	for _, entry := range wl {
+		tableData = append(tableData, []interface{}{
+			utils.FormatPublicKey(entry.Publickey),
+			utils.FormatBalance(entry.Balance),
+			entry.Events,
+			// utils.FormatBalance(item.Balance),
+			// item.Events[0],
+		})
 	}
 
+	// log.Println("COUNT", len(watchlist))
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    uint64(len(subs)),
-		RecordsFiltered: 0,
+		RecordsTotal:    uint64(len(wl)),
+		RecordsFiltered: uint64(len(wl)),
 		Data:            tableData,
 	}
 
@@ -490,4 +591,123 @@ Best regards,
 	}
 
 	return nil
+}
+
+// ValidatorSubscribe subscribes a user to get notifications from a specific validator
+func UserValidatorFollow(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+
+	user := getUser(w, r)
+	vars := mux.Vars(r)
+
+	pubKey := strings.Replace(vars["pubkey"], "0x", "", -1)
+	if !user.Authenticated {
+		utils.SetFlash(w, r, validatorEditFlash, "Error: You need a user account to follow a validator <a href=\"/login\">Login</a> or <a href=\"/register\">Sign up</a>")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	if len(pubKey) != 96 {
+		utils.SetFlash(w, r, validatorEditFlash, "Error: Validator not found")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	err := db.AddToWatchlist(user.UserID, pubKey)
+	if err != nil {
+		logger.Errorf("error adding validator to watchlist to db: %v", err)
+		utils.SetFlash(w, r, validatorEditFlash, "Error: Could not follow validator.")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	// utils.SetFlash(w, r, validatorEditFlash, "Subscribed to this validator")
+	http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+}
+
+// ValidatorUnsubscribe unsubscribes a user from a specific validator
+func UserValidatorUnfollow(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+
+	user := getUser(w, r)
+	vars := mux.Vars(r)
+
+	pubKey := strings.Replace(vars["pubkey"], "0x", "", -1)
+	if !user.Authenticated {
+		utils.SetFlash(w, r, validatorEditFlash, "Error: You need a user account to follow a validator <a href=\"/login\">Login</a> or <a href=\"/register\">Sign up</a>")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	if len(pubKey) != 96 {
+		utils.SetFlash(w, r, validatorEditFlash, "Error: Validator not found")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	err := db.RemoveFromWatchlist(user.UserID, pubKey)
+	if err != nil {
+		logger.Errorf("error deleting subscription: %v", err)
+		utils.SetFlash(w, r, validatorEditFlash, "Error: Could not remove bookmark.")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+}
+
+func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
+	q := r.URL.Query()
+	event := q.Get("event")
+	filter := q.Get("filter")
+	filter = strings.Replace(filter, "0x", "", -1)
+
+	log.Println("USER NOTIFICATION CALLED with", event, filter)
+
+	eventName, err := types.EventFromString(event)
+	if err != nil {
+		logger.Errorf("error invalid event name: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	isPkey := !pkeyRegex.MatchString(filter)
+
+	if len(filter) != 96 && isPkey {
+		logger.Errorf("error invalid pubkey characters or length: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	db.AddSubscription(user.UserID, eventName, filter)
+	w.WriteHeader(200)
+}
+
+func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
+	q := r.URL.Query()
+	event := q.Get("event")
+	filter := q.Get("filter")
+	filter = strings.Replace(filter, "0x", "", -1)
+
+	eventName, err := types.EventFromString(event)
+	if err != nil {
+		logger.Errorf("error invalid event name: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	isPkey := !pkeyRegex.MatchString(filter)
+
+	if len(filter) != 96 && isPkey {
+		logger.Errorf("error invalid pubkey characters or length: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	db.DeleteSubscription(user.UserID, eventName, filter)
+	w.WriteHeader(200)
 }

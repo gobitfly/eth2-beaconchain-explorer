@@ -8,11 +8,14 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sync"
 	"time"
 
 	"github.com/lib/pq"
 )
+
+var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
 
 func GetValidatorOnlineThresholdSlot() uint64 {
 	latestProposedSlot := services.LatestProposedSlot()

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/lib/pq"
 
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
@@ -176,21 +177,30 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	pKey := hex.EncodeToString(validatorPageData.PublicKey)
-	filter := db.GetSubscriptionsFilter{
-		EventNames:   &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
-		UserIDs:      &[]uint64{user.UserID},
-		EventFilters: &[]string{pKey},
+
+	filter := db.WatchlistFilter{
+		UserId:     user.UserID,
+		Validators: &pq.ByteaArray{validatorPageData.PublicKey},
+		Tag:        types.ValidatorTagsWatchlist,
 	}
 
-	subs, err := db.GetSubscriptions(filter)
-	if err != nil {
-		logger.Errorf("error retrieving subscriptions for validator %v: %v", pKey, err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
+	watchlist, err := db.GetTaggedValidators(filter)
+	log.Println("Watchlist", watchlist)
 
-	validatorPageData.Subscriptions = subs
+	// filter := db.GetSubscriptionsFilter{
+	// 	EventNames:   &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
+	// 	UserIDs:      &[]uint64{user.UserID},
+	// 	EventFilters: &[]string{pKey},
+	// }
+
+	// subs, err := db.GetSubscriptions(filter)
+	// if err != nil {
+	// 	logger.Errorf("error retrieving subscriptions for validator %v: %v", pKey, err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
+
+	validatorPageData.Watchlist = watchlist
 
 	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
 	if err != nil {
@@ -821,104 +831,4 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 	}
 
-}
-
-// ValidatorSubscribe subscribes a user to get notifications from a specific validator
-func ValidatorSubscribe(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-
-	user := getUser(w, r)
-	vars := mux.Vars(r)
-
-	q := r.URL.Query()
-
-	eventQuery := q.Get("events")
-	events := strings.Split(eventQuery, ",")
-
-	if len(events) == 0 {
-		events = append(events, string(types.ValidatorBalanceDecreasedEventName))
-	}
-
-	pubKey := strings.Replace(vars["pubkey"], "0x", "", -1)
-	if !user.Authenticated {
-		utils.SetFlash(w, r, validatorEditFlash, "Error: You need a user account to follow a validator <a href=\"/login\">Login</a> or <a href=\"/register\">Sign up</a>")
-		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-		return
-	}
-
-	if len(pubKey) != 96 {
-		utils.SetFlash(w, r, validatorEditFlash, "Error: Validator not found")
-		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-		return
-	}
-
-	for _, eventName := range events {
-		event, err := types.EventFromString(eventName)
-		if err != nil {
-			logger.Errorf("error converting string to eventname: %v", err)
-			utils.SetFlash(w, r, validatorEditFlash, "Error: Could not subscribe.")
-			http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-			return
-		}
-		err = db.AddSubscription(user.UserID, event, pubKey)
-		if err != nil {
-			logger.Errorf("error adding subscription to db: %v", err)
-			utils.SetFlash(w, r, validatorEditFlash, "Error: Could not subscribe.")
-			http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-			return
-		}
-	}
-
-	// utils.SetFlash(w, r, validatorEditFlash, "Subscribed to this validator")
-	http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-}
-
-// ValidatorUnsubscribe unsubscribes a user from a specific validator
-func ValidatorUnsubscribe(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	log.Println("Unsubscribing from validator")
-
-	user := getUser(w, r)
-	vars := mux.Vars(r)
-
-	q := r.URL.Query()
-
-	eventQuery := q.Get("events")
-	events := strings.Split(eventQuery, ",")
-
-	if len(events) == 0 {
-		events = append(events, string(types.ValidatorBalanceDecreasedEventName))
-	}
-
-	pubKey := strings.Replace(vars["pubkey"], "0x", "", -1)
-	if !user.Authenticated {
-		utils.SetFlash(w, r, validatorEditFlash, "Error: You need a user account to follow a validator <a href=\"/login\">Login</a> or <a href=\"/register\">Sign up</a>")
-		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-		return
-	}
-
-	if len(pubKey) != 96 {
-		utils.SetFlash(w, r, validatorEditFlash, "Error: Validator not found")
-		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-		return
-	}
-	for _, eventName := range events {
-		event, err := types.EventFromString(eventName)
-		if err != nil {
-			logger.Errorf("error converting string to eventname: %v", err)
-			utils.SetFlash(w, r, validatorEditFlash, "Error: Could not unsubscribe.")
-			http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-			return
-		}
-		err = db.DeleteSubscription(user.UserID, event, pubKey)
-		if err != nil {
-			logger.Errorf("error deleting subscription: %v", err)
-			utils.SetFlash(w, r, validatorEditFlash, "Error: Could not unsubscribe.")
-			http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-			return
-		}
-	}
-
-	// utils.SetFlash(w, r, validatorEditFlash, "Unsubscribed from this validator")
-	http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
 }
