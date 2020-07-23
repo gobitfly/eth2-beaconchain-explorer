@@ -24,7 +24,6 @@ function setAddress(addr) {
 setAddress('0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B')
 
 function renderFlag() {
-	if(graffitiFlagData.address)
 	var clientId = ''
 	for (var i = 0; i<clientRefs.length; i++) {
 		var ref = clientRefs[i]
@@ -51,6 +50,14 @@ function renderFlag() {
 	}
 }
 
+function addrClientToFlag(addr, client) {
+	var clientId = ('00' + (client).toString(16)).substr(-2)
+	var flagHex = addr+clientId
+	return "poap"+btoa(flagHex.match(/\w{2}/g).map(function(a) {
+		return String.fromCharCode(parseInt(a, 16))
+	}).join(""))
+}
+
 function b64ToHex(str) {
 	var raw = atob(str)
 	let res = ''
@@ -66,15 +73,39 @@ function log(msg, ref) {
 }
 
 $(document).ready(function() {
+	var columnDefs = [{ 
+		orderable: false, targets: [0] 
+	}, {
+		targets: 0,
+		data: '0',
+		render: function(data, type, row) {
+			return `<a href="https://etherchain.org/account/${data}">${data.substr(0,8)}…</a>`
+		}
+	}, {
+		targets: 1,
+		data: '1',
+		render: function(data, type, row) {
+			if (data == 0) return 0
+			return `<a href="/blocks?q=${addrClientToFlag(row[0].slice(2),0).substr(0,31)}">${data}</a>`
+		}
+	}]
+	for (var i=0; i<clients.length; i++) {
+		columnDefs.push({
+			targets: i*2+3,
+			data: (i*2+3)+'',
+			render: function(i){return function(data, type, row) {
+				if (data == 0) return 0
+				return `<a href="/blocks?q=${addrClientToFlag(row[0].slice(2),i)}">${data}</a>`
+			}}(i)
+		})
+	}
 	var poapTable = $('#poap-table').DataTable({
 		processing: true,
 		serverSide: false,
-		// ordering: false,
+		ordering: true,
 		order: [[2, 'desc']],
 		searching: true,
-		columnDefs: [{ 
-				orderable: false, targets: [0, 3, 4, 5, 6, 7, 8, 9, 10] 
-			}],
+		columnDefs: columnDefs,
 		// ajax: '/poap/data',
 		pagingType: 'full',
 		language: {
