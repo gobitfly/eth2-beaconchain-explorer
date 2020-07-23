@@ -21,7 +21,7 @@ import (
 var poapTemplate = template.Must(template.ParseFiles("templates/layout.html", "templates/poap.html"))
 
 // do not change existing entries, only append new entries
-var poapClients = []string{"Prysm", "Lighthouse", "Teku", "Nimbus"}
+var poapClients = []string{"Prysm", "Lighthouse", "Teku", "Nimbus", "Lodestar"}
 
 func Poap(w http.ResponseWriter, r *http.Request) {
 	poapTemplate = template.Must(template.ParseFiles("templates/layout.html", "templates/poap.html"))

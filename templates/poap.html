@@ -9,7 +9,7 @@ var graffitiFlagData = {
 }
 var hexRE = /^[0-9A-F]{40}$/i
 
-var clientRefs = ['prysm-graffiti', 'lighthouse-graffiti', 'teku-graffiti', 'nimbus-graffiti']
+var clientRefs = ['prysm-graffiti', 'lighthouse-graffiti', 'teku-graffiti', 'nimbus-graffiti', 'lodestar-graffiti']
 
 function setAddress(addr) {
 	graffitiFlagData.address = addr
@@ -274,9 +274,7 @@ $(document).ready(function() {
 										</thead>
 										<tbody>
 											<tr>
-												<td>
-													<a  href="https://github.com/prysmaticlabs/prysm">Prysm</a>
-												</td>
+												<td><a  href="https://github.com/prysmaticlabs/prysm">Prysm</a></td>
 												<td>
 													<span id="prysm-graffiti" class="text-monospace text-truncate">poapq1gBp9OYNRuL4RxDngXFsyWa7JsA</span>
 													<a id="copy-prysm-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary btn-icon-inside btn-sm text-white">
@@ -305,10 +303,17 @@ $(document).ready(function() {
 											<tr>
 												<td><a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a></td>
 												<td>
-													<span id="nimbus-graffiti" class="text-monospace text-truncate">
-														poapq1gBp9OYNRuL4RxDngXFsyWa7JsA
-													</span>
+													<span id="nimbus-graffiti" class="text-monospace text-truncate">poapq1gBp9OYNRuL4RxDngXFsyWa7JsA</span>
 													<a id="copy-nimbus-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary btn-icon-inside btn-sm text-white">
+														<span class="fa fa-copy icon-inside"></span>
+													</a>
+												</td>
+											</tr>
+											<tr>
+												<td><a href="https://github.com/ChainSafe/lodestar">Lodestar</a></td>
+												<td>
+													<span id="lodestar-graffiti" class="text-monospace text-truncate">poapq1gBp9OYNRuL4RxDngXFsyWa7JsA</span>
+													<a id="copy-lodestar-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary btn-icon-inside btn-sm text-white">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>
