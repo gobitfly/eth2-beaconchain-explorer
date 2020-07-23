@@ -316,3 +316,12 @@ create table mails_sent (
     cnt   int                         not null,
     primary key (email, ts)
 );
+
+drop table if exists users_validators_tags;
+create table users_validators_tags (
+    user_id             int                    not null,
+    validator_publickey bytea                  not null,
+    tag                 character varying(100) not null,
+    primary key (user_id, validator_publickey, tag),
+    constraint fk_user_id foreign key(user_id) references users(id) on delete cascade
+);

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"eth2-exporter/types"
 	"fmt"
 	"strings"
@@ -106,8 +107,8 @@ func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time) error
 func CountSentMail(email string) error {
 	day := time.Now().Truncate(time.Hour * 24).Unix()
 	_, err := FrontendDB.Exec(`
-		INSERT INTO mails_sent (email, ts, cnt) VALUES ($1, $2, 1)
-		ON CONFLICT (email, ts) DO UPDATE SET cnt = cnt+1`, email, day)
+		INSERT INTO mails_sent (email, ts, cnt) VALUES ($1, TO_TIMESTAMP($2), 1)
+		ON CONFLICT (email, ts) DO UPDATE SET cnt = mails_sent.cnt+1`, email, day)
 	return err
 }
 
@@ -115,6 +116,9 @@ func CountSentMail(email string) error {
 func GetMailsSentCount(email string, t time.Time) (int, error) {
 	day := t.Truncate(time.Hour * 24).Unix()
 	count := 0
-	err := FrontendDB.Get(&count, "SELECT cnt FROM mails_sent WHERE email = $1 AND ts = $2", email, day)
+	err := FrontendDB.Get(&count, "SELECT cnt FROM mails_sent WHERE email = $1 AND ts = TO_TIMESTAMP($2)", email, day)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
 	return count, err
 }

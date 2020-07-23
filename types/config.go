@@ -48,6 +48,9 @@ type Config struct {
 			Host     string `yaml:"host" envconfig:"FRONTEND_DB_HOST"`
 			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
 		} `yaml:"database"`
+		Notifications struct {
+			Enabled bool `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+		} `yaml:"notifications"`
 		SessionSecret          string `yaml:"sessionSecret" envconfig:"FRONTEND_SESSION_SECRET"`
 		MaxMailsPerEmailPerDay int    `yaml:"maxMailsPerEmailPerDay" envconfig:"FRONTEND_MAX_MAIL_PER_EMAIL_PER_DAY"`
 		Mail                   struct {

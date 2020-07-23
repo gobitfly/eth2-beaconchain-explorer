@@ -9,31 +9,44 @@ import (
 type EventName string
 
 const (
-	ValidatorBalanceDecreasedEventName  EventName = "validator_balance_decreased"
-	ValidatorProposalMissedEventName    EventName = "validator_proposal_missed"
-	ValidatorAttestationMissedEventName EventName = "validator_attestation_missed"
-	ValidatorGotSlashedEventName        EventName = "validator_got_slashed"
-	ValidatorDidSlashEventName          EventName = "validator_did_slash"
-	ValidatorStateChangedEventName      EventName = "validator_state_changed"
+	ValidatorBalanceDecreasedEventName              EventName = "validator_balance_decreased"
+	ValidatorMissedProposalEventName                EventName = "validator_missed_proposal"
+	ValidatorMissedAttestationEventName             EventName = "validator_missed_attestation"
+	ValidatorGotSlashedEventName                    EventName = "validator_got_slashed"
+	ValidatorDidSlashEventName                      EventName = "validator_did_slash"
+	ValidatorStateChangedEventName                  EventName = "validator_state_changed"
+	ValidatorReceivedDepositEventName               EventName = "validator_received_deposit"
+	NetworkSlashingEventName                        EventName = "network_slashing"
+	NetworkValidatorActivationQueueFullEventName    EventName = "network_validator_activation_queue_full"
+	NetworkValidatorActivationQueueNotFullEventName EventName = "network_validator_activation_queue_not_full"
+	NetworkValidatorExitQueueFullEventName          EventName = "network_validator_exit_queue_full"
+	NetworkValidatorExitQueueNotFullEventName       EventName = "network_validator_exit_queue_not_full"
+	NetworkLivenessIncreasedEventName               EventName = "network_liveness_increased"
 )
 
+var EventNames = []EventName{
+	ValidatorBalanceDecreasedEventName,
+	ValidatorMissedProposalEventName,
+	ValidatorMissedAttestationEventName,
+	ValidatorGotSlashedEventName,
+	ValidatorDidSlashEventName,
+	ValidatorStateChangedEventName,
+	ValidatorReceivedDepositEventName,
+	NetworkSlashingEventName,
+	NetworkValidatorActivationQueueFullEventName,
+	NetworkValidatorActivationQueueNotFullEventName,
+	NetworkValidatorExitQueueFullEventName,
+	NetworkValidatorExitQueueNotFullEventName,
+	NetworkLivenessIncreasedEventName,
+}
+
 func EventFromString(event string) (EventName, error) {
-	switch event {
-	case "validator_balance_decreased":
-		return ValidatorBalanceDecreasedEventName, nil
-	case "validator_proposal_missed":
-		return ValidatorProposalMissedEventName, nil
-	case "validator_attestation_missed":
-		return ValidatorAttestationMissedEventName, nil
-	case "validator_got_slashed":
-		return ValidatorGotSlashedEventName, nil
-	case "validator_did_slash":
-		return ValidatorDidSlashEventName, nil
-	case "validator_state_changed":
-		return ValidatorStateChangedEventName, nil
-	default:
-		return "", errors.Errorf("Could not convert event to string. %v is not a known event type", event)
+	for _, en := range EventNames {
+		if string(en) == event {
+			return en, nil
+		}
 	}
+	return "", errors.Errorf("Could not convert event to string. %v is not a known event type", event)
 }
 
 type Notification interface {

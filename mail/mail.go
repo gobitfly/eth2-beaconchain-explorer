@@ -33,7 +33,7 @@ func SendMail(to, subject, msg string) error {
 	if utils.Config.Frontend.Mail.SMTP.User != "" {
 		err = SendMailSMTP(to, subject, msg)
 	} else if utils.Config.Frontend.Mail.Mailgun.PrivateKey != "" {
-		err = SendMailGunmail(to, subject, msg)
+		err = SendMailMailgun(to, subject, msg)
 	} else {
 		err = fmt.Errorf("invalid config for mail-service")
 	}
@@ -68,8 +68,8 @@ func SendMailSMTP(to, subject, body string) error {
 	return nil
 }
 
-// SendMailGunmail sends an email to the given address with the given message, using gunmail.
-func SendMailGunmail(to, subject, msg string) error {
+// SendMailMailgun sends an email to the given address with the given message, using mailgun.
+func SendMailMailgun(to, subject, msg string) error {
 	mg := mailgun.NewMailgun(
 		utils.Config.Frontend.Mail.Mailgun.Domain,
 		utils.Config.Frontend.Mail.Mailgun.PrivateKey,
@@ -83,7 +83,7 @@ func SendMailGunmail(to, subject, msg string) error {
 	resp, id, err := mg.Send(ctx, message)
 	if err != nil {
 		logrus.WithField("resp", resp).WithField("id", id).Errorf("error sending mail via mailgun: %v", err)
-		return fmt.Errorf("error sending mail via gunmail: %w", err)
+		return fmt.Errorf("error sending mail via mailgun: %w", err)
 	}
 
 	return nil

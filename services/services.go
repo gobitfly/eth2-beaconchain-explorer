@@ -33,7 +33,11 @@ func Init() {
 	ready.Wait()
 
 	go chartsPageDataUpdater()
-	go notificationsSender()
+
+	if utils.Config.Frontend.Notifications.Enabled {
+		logger.Infof("starting notifications-sender")
+		go notificationsSender()
+	}
 }
 
 func epochUpdater() {
