@@ -15,24 +15,24 @@ var notificationsByEmail = map[string]map[types.EventName][]types.Notification{}
 
 func notificationsSender() {
 	for {
-		// start := time.Now()
-		err := collectNotifications()
-		if err != nil {
-			logger.Errorf("error collecting notifications: %v", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
+		start := time.Now()
+		collectNotifications()
 		sendNotifications()
-		// logger.WithField("emails", len(notificationsByEmail)).WithField("duration", time.Since(start)).Info("notifications completed")
+		logger.WithField("emails", len(notificationsByEmail)).WithField("duration", time.Since(start)).Info("notifications completed")
 		time.Sleep(time.Second * 60)
 	}
 }
 
 func collectNotifications() error {
 	notificationsByEmail = map[string]map[types.EventName][]types.Notification{}
-	err := collectValidatorBalanceDecreasedNotifications()
+	var err error
+	err = collectValidatorBalanceDecreasedNotifications()
 	if err != nil {
-		return err
+		logger.Errorf("error collecting validator_balance_decreased notifications: %v", err)
+	}
+	err = collectValidatorGotSlashedNotifications()
+	if err != nil {
+		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
 	return nil
 }
