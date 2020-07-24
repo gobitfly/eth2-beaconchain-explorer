@@ -1,0 +1,19 @@
+/* .placeholder-loading {
+  animation-duration: 2s;
+  animation-fill-mode: forwards;
+  animation-iteration-count: infinite;
+  animation-name: placeHolderShimmer;
+  animation-timing-function: linear;
+  background: linear-gradient(to right, #f6f6f6 8%, #f0f0f0 18%, #f6f6f6 33%);
+  background-size: 800px 104px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.1) 8%, rgba(255, 255, 255, 0.118) 18%, rgba(255, 255, 255, 0.1) 33%);
+}
+
+@keyframes placeHolderShimmer {
+  0% {
+    background-position: -468px 0;
+  }
+  100% {
+    background-position: 468px 0;
+  }
+} */
