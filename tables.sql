@@ -285,7 +285,7 @@ create index idx_eth1_deposits on eth1_deposits (publickey);
 
 drop table if exists users;
 create table users (
-    id                      serial                      not null,
+    id                      serial                      not null unique,
     password                character varying(256)      not null,
     email                   character varying(100)      not null unique,
     email_confirmed         bool                        not null default 'f',
@@ -301,14 +301,12 @@ drop table if exists users_subscriptions;
 create table users_subscriptions (
     id           serial                      not null,
     user_id      int                         not null,
-    watchlist_id int,
     event_name   character varying(100)      not null,
     event_filter text                        not null default '',
     last_sent_ts timestamp without time zone,
     created_ts   timestamp without time zone not null,
     primary key (user_id, event_name, event_filter),
     constraint fk_user_id foreign key(user_id) references users(id) on delete cascade
-    constraint fk_watchlist foreign key(watchlist_id) references users_watchlist(id) on delete cascade
 );
 
 drop table if exists users_validators_tags;

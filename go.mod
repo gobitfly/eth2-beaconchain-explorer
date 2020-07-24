@@ -30,7 +30,7 @@ require (
 	github.com/prysmaticlabs/ethereumapis v0.0.0-20200709024211-e8095222f77b
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20200618145306-2ae0807bef65
 	github.com/prysmaticlabs/go-ssz v0.0.0-20200612203617-6d5c9aa213ae
-	github.com/prysmaticlabs/prysm v1.0.0-alpha.12.0.20200625100731-5fdf6310f7a0
+	github.com/prysmaticlabs/prysm v1.0.0-alpha.16.0.20200724054315-0b9212c6850e
 	github.com/sirupsen/logrus v1.6.0
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d

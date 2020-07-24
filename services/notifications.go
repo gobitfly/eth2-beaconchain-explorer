@@ -97,6 +97,8 @@ func collectValidatorBalanceDecreasedNotifications() error {
 		return nil
 	}
 	prevEpoch := latestEpoch - 1
+	sentTimeThreshold := time.Duration(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch) * time.Second
+	sentTimeThresholdTs := time.Now().Add(-sentTimeThreshold).Unix()
 
 	dbResult := []struct {
 		SubscriptionID uint64 `db:"id"`
@@ -123,7 +125,7 @@ func collectValidatorBalanceDecreasedNotifications() error {
 			INNER JOIN users u ON u.id = us.user_id
 			INNER JOIN decreased_balance_validators dbv ON dbv.pubkey = us.event_filter
 		WHERE us.event_name = $1 AND (us.last_sent_ts IS NULL OR us.last_sent_ts < TO_TIMESTAMP($4))`,
-		types.ValidatorBalanceDecreasedEventName, latestEpoch, prevEpoch, time.Now().Add(-notificationRateLimit).Unix())
+		types.ValidatorBalanceDecreasedEventName, latestEpoch, prevEpoch, sentTimeThresholdTs)
 	if err != nil {
 		return err
 	}
