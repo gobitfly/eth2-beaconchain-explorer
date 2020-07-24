@@ -666,7 +666,7 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("USER NOTIFICATION CALLED with", event, filter)
 
-	eventName, err := types.EventFromString(event)
+	eventName, err := types.EventNameFromString(event)
 	if err != nil {
 		logger.Errorf("error invalid event name: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -693,7 +693,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	filter := q.Get("filter")
 	filter = strings.Replace(filter, "0x", "", -1)
 
-	eventName, err := types.EventFromString(event)
+	eventName, err := types.EventNameFromString(event)
 	if err != nil {
 		logger.Errorf("error invalid event name: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

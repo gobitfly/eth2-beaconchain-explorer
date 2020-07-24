@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"time"
 )
@@ -14,24 +15,24 @@ var notificationsByEmail = map[string]map[types.EventName][]types.Notification{}
 
 func notificationsSender() {
 	for {
-		// start := time.Now()
-		err := collectNotifications()
-		if err != nil {
-			logger.Errorf("error collecting notifications: %v", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
+		start := time.Now()
+		collectNotifications()
 		sendNotifications()
-		// logger.WithField("emails", len(notificationsByEmail)).WithField("duration", time.Since(start)).Info("notifications completed")
+		logger.WithField("emails", len(notificationsByEmail)).WithField("duration", time.Since(start)).Info("notifications completed")
 		time.Sleep(time.Second * 60)
 	}
 }
 
 func collectNotifications() error {
 	notificationsByEmail = map[string]map[types.EventName][]types.Notification{}
-	err := collectValidatorBalanceDecreasedNotifications()
+	var err error
+	err = collectValidatorBalanceDecreasedNotifications()
 	if err != nil {
-		return err
+		logger.Errorf("error collecting validator_balance_decreased notifications: %v", err)
+	}
+	err = collectValidatorGotSlashedNotifications()
+	if err != nil {
+		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
 	return nil
 }
@@ -52,6 +53,7 @@ func sendNotifications() {
 					sentSubIDs = append(sentSubIDs, n.GetSubscriptionID())
 				}
 			}
+			msg += fmt.Sprintf("Best regards\n\n%s", utils.Config.Frontend.SiteDomain)
 			err := mail.SendMail(userEmail, subject, msg)
 			if err != nil {
 				logger.Errorf("error sending notification-email: %v", err)
@@ -87,7 +89,7 @@ func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
 func (n *validatorBalanceDecreasedNotification) GetInfo() string {
 	balance := float64(n.Balance) / 1e9
 	diff := float64(n.PrevBalance-n.Balance) / 1e9
-	return fmt.Sprintf(`The balance of validator %v decreased by %.9f ETH to %.9f ETH at epoch %v.`, n.ValidatorIndex, diff, balance, n.Epoch)
+	return fmt.Sprintf(`The balance of validator %[1]v decreased by %.9[2]f ETH to %.9[3]f ETH at epoch %[4]v. For more information visit: https://%[5]s/validator/%[1]v`, n.ValidatorIndex, diff, balance, n.Epoch, utils.Config.Frontend.SiteDomain)
 }
 
 func collectValidatorBalanceDecreasedNotifications() error {
@@ -96,6 +98,8 @@ func collectValidatorBalanceDecreasedNotifications() error {
 		return nil
 	}
 	prevEpoch := latestEpoch - 1
+	sentTimeThreshold := time.Duration(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch) * time.Second
+	sentTimeThresholdTs := time.Now().Add(-sentTimeThreshold).Unix()
 
 	dbResult := []struct {
 		SubscriptionID uint64 `db:"id"`
@@ -122,7 +126,7 @@ func collectValidatorBalanceDecreasedNotifications() error {
 			INNER JOIN users u ON u.id = us.user_id
 			INNER JOIN decreased_balance_validators dbv ON dbv.pubkey = us.event_filter
 		WHERE us.event_name = $1 AND (us.last_sent_ts IS NULL OR us.last_sent_ts < TO_TIMESTAMP($4))`,
-		types.ValidatorBalanceDecreasedEventName, latestEpoch, prevEpoch, time.Now().Add(-notificationRateLimit).Unix())
+		types.ValidatorBalanceDecreasedEventName, latestEpoch, prevEpoch, sentTimeThresholdTs)
 	if err != nil {
 		return err
 	}
@@ -165,7 +169,7 @@ func (n *validatorGotSlashedNotification) GetEventName() types.EventName {
 }
 
 func (n *validatorGotSlashedNotification) GetInfo() string {
-	return fmt.Sprintf(`Validator %v has been slashed at epoch %v by validator %v. Reason: %s.`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason)
+	return fmt.Sprintf(`Validator %[1]v has been slashed at epoch %[2]v by validator %[3]v for %[4]s. For more information visit: https://%[5]v/validator/%[1]v`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason, utils.Config.Frontend.SiteDomain)
 }
 
 func collectValidatorGotSlashedNotifications() error {
@@ -175,12 +179,13 @@ func collectValidatorGotSlashedNotifications() error {
 	}
 
 	dbResult := []struct {
-		SubscriptionID uint64 `db:"id"`
-		Email          string `db:"email"`
-		ValidatorIndex uint64 `db:"validatorindex"`
-		Slasher        uint64 `db:"slasher"`
-		Epoch          uint64 `db:"epoch"`
-		Reason         string `db:"reason"`
+		SubscriptionID uint64    `db:"id"`
+		Email          string    `db:"email"`
+		ValidatorIndex uint64    `db:"validatorindex"`
+		Slasher        uint64    `db:"slasher"`
+		Epoch          uint64    `db:"epoch"`
+		Reason         string    `db:"reason"`
+		Created        time.Time `db:"created_ts"`
 	}{}
 	err := db.DB.Select(&dbResult, `
 		WITH
@@ -210,7 +215,7 @@ func collectValidatorGotSlashedNotifications() error {
 				) a
 				ORDER BY slashedvalidator, slot
 			)
-		SELECT us.id, u.email, us.created, v.validatorindex, s.slasher, s.epoch
+		SELECT us.id, u.email, us.created_ts, v.validatorindex, s.slasher, s.epoch
 		FROM users_subscriptions us
 		INNER JOIN users u ON u.id = us.user_id
 		INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
@@ -222,6 +227,11 @@ func collectValidatorGotSlashedNotifications() error {
 	}
 
 	for _, r := range dbResult {
+		// skip if slashing happened before user subscribed
+		if utils.EpochToTime(r.Epoch).Before(r.Created) {
+			continue
+		}
+
 		n := &validatorGotSlashedNotification{
 			SubscriptionID: r.SubscriptionID,
 			ValidatorIndex: r.ValidatorIndex,

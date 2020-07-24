@@ -40,7 +40,7 @@ var EventNames = []EventName{
 	NetworkLivenessIncreasedEventName,
 }
 
-func EventFromString(event string) (EventName, error) {
+func EventNameFromString(event string) (EventName, error) {
 	for _, en := range EventNames {
 		if string(en) == event {
 			return en, nil
