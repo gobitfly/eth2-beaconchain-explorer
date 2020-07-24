@@ -227,7 +227,7 @@ func collectValidatorGotSlashedNotifications() error {
 				) a
 				ORDER BY slashedvalidator, slot
 			)
-		SELECT us.id, u.email, v.validatorindex, s.slasher, s.epoch
+		SELECT us.id, u.email, v.validatorindex, s.slasher, s.epoch, s.reason
 		FROM users_subscriptions us
 		INNER JOIN users u ON u.id = us.user_id
 		INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
