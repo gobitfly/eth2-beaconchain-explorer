@@ -88,7 +88,7 @@ func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
 func (n *validatorBalanceDecreasedNotification) GetInfo() string {
 	balance := float64(n.Balance) / 1e9
 	diff := float64(n.PrevBalance-n.Balance) / 1e9
-	return fmt.Sprintf(`The balance of validator %[1]v decreased by %[2].9f ETH to %[3].9f ETH at epoch %[4]v. For more information visit: https://%[5]s/validator/%[1]v`, n.ValidatorIndex, diff, balance, n.Epoch, utils.Config.Frontend.SiteDomain)
+	return fmt.Sprintf(`The balance of validator %[1]v decreased by %.9[2]f ETH to %.9[3]f ETH at epoch %[4]v. For more information visit: https://%[5]s/validator/%[1]v`, n.ValidatorIndex, diff, balance, n.Epoch, utils.Config.Frontend.SiteDomain)
 }
 
 func collectValidatorBalanceDecreasedNotifications() error {
