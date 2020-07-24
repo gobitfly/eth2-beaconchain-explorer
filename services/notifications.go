@@ -53,6 +53,7 @@ func sendNotifications() {
 					sentSubIDs = append(sentSubIDs, n.GetSubscriptionID())
 				}
 			}
+			msg += fmt.Sprintf("Best regards\n\n%s", utils.Config.Frontend.SiteDomain)
 			err := mail.SendMail(userEmail, subject, msg)
 			if err != nil {
 				logger.Errorf("error sending notification-email: %v", err)
