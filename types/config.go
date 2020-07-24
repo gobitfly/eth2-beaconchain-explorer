@@ -10,10 +10,12 @@ type Config struct {
 		Port     string `yaml:"port" envconfig:"DB_PORT"`
 	} `yaml:"database"`
 	Chain struct {
-		Network          string `yaml:"network" envconfig:"CHAIN_NETWORK"`
-		SlotsPerEpoch    uint64 `yaml:"slotsPerEpoch" envconfig:"CHAIN_SLOTS_PER_EPOCH"`
-		SecondsPerSlot   uint64 `yaml:"secondsPerSlot" envconfig:"CHAIN_SECONDS_PER_SLOT"`
-		GenesisTimestamp uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
+		Network                        string `yaml:"network" envconfig:"CHAIN_NETWORK"`
+		SlotsPerEpoch                  uint64 `yaml:"slotsPerEpoch" envconfig:"CHAIN_SLOTS_PER_EPOCH"`
+		SecondsPerSlot                 uint64 `yaml:"secondsPerSlot" envconfig:"CHAIN_SECONDS_PER_SLOT"`
+		GenesisTimestamp               uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
+		MinGenesisActiveValidatorCount uint64 `yaml:"minGenesisActiveValidatorCount" envconfig:"CHAIN_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT"`
+		GenesisDelay                   uint64 `yaml:"genesisDelay" envconfig:"CHAIN_GENESIS_DELAY"`
 	} `yaml:"chain"`
 	Indexer struct {
 		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
