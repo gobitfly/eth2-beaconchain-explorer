@@ -89,6 +89,7 @@ func main() {
 
 	if cfg.Frontend.Enabled {
 		services.Init() // Init frontend services
+		utils.InitFlash(cfg.Frontend.FlashSecret)
 
 		router := mux.NewRouter()
 		router.HandleFunc("/", handlers.Index).Methods("GET")
@@ -110,6 +111,7 @@ func main() {
 		router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
 		router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
 		router.HandleFunc("/validator/{index}/slashings", handlers.ValidatorSlashings).Methods("GET")
+		router.HandleFunc("/validator/{pubkey}/save", handlers.ValidatorSave).Methods("POST")
 		router.HandleFunc("/validators", handlers.Validators).Methods("GET")
 		router.HandleFunc("/validators/data", handlers.ValidatorsData).Methods("GET")
 		router.HandleFunc("/validators/slashings", handlers.ValidatorsSlashings).Methods("GET")

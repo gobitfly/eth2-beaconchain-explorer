@@ -153,8 +153,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.voluntaryexitscount,
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
-			blocks.status
+			blocks.status,
+			COALESCE(validators.name, '') AS name
 		FROM blocks 
+		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		WHERE blocks.slot < $1
 		ORDER BY blocks.slot DESC LIMIT 20`, cutoffSlot)
 	if err != nil {
@@ -164,7 +166,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	for _, block := range data.Blocks {
 		block.StatusFormatted = utils.FormatBlockStatus(block.Status)
-		block.ProposerFormatted = utils.FormatValidator(block.Proposer)
+		block.ProposerFormatted = utils.FormatValidatorWithName(block.Proposer, block.ProposerName)
 		block.BlockRootFormatted = fmt.Sprintf("%x", block.BlockRoot)
 	}
 

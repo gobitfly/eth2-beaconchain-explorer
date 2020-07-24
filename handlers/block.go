@@ -88,8 +88,10 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			depositscount,
 			voluntaryexitscount,
 			proposer,
-			status
-		FROM blocks
+			status,
+			COALESCE(validators.name, '') AS name
+		FROM blocks 
+		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		WHERE slot = $1 OR blockroot = $2 ORDER BY status LIMIT 1`,
 		blockSlot, blockRootHash)
 

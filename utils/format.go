@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"html"
 	"html/template"
 	"strings"
 	"time"
@@ -186,6 +187,14 @@ func FormatValidator(validator uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
+func FormatValidatorWithName(validator uint64, name string) template.HTML {
+	if name != "" {
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v (<span class=\"text-truncate\">"+html.EscapeString(name)+"</span>)</a>", validator, validator))
+	} else {
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+	}
+}
+
 // FormatValidatorInt64 will return html formatted text for a validator (for an int64 validator-id)
 func FormatValidatorInt64(validator int64) template.HTML {
 	return FormatValidator(uint64(validator))
@@ -201,10 +210,37 @@ func FormatSlashedValidator(validator uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
+// FormatSlashedValidatorsInt64 will return html formatted text for slashed validators
+func FormatSlashedValidatorsInt64(validators []int64) template.HTML {
+	str := ""
+	for i, v := range validators {
+		if i == len(validators)+1 {
+			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", v, v)
+		} else {
+			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>, ", v, v)
+		}
+	}
+	return template.HTML(str)
+}
+
+// FormatSlashedValidators will return html formatted text for slashed validators
+func FormatSlashedValidators(validators []uint64) template.HTML {
+	vals := make([]string, 0, len(validators))
+	for _, v := range validators {
+		vals = append(vals, fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", v, v))
+	}
+	return template.HTML(strings.Join(vals, ","))
+}
+
 // FormatYesNo will return yes or no formated as html
 func FormatYesNo(yes bool) template.HTML {
 	if yes {
 		return `<span class="badge bg-success text-white">Yes</span>`
 	}
 	return `<span class="badge bg-warning text-dark">No</span>`
+}
+
+func FormatValidatorName(name string) template.HTML {
+	str := strings.Map(fixUtf, template.HTMLEscapeString(name))
+	return template.HTML(fmt.Sprintf("<b><abbr title=\"This name has been set by the owner of this validator\">%s</abbr></b>", str))
 }

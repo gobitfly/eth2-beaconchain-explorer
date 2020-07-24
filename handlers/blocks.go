@@ -112,8 +112,10 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				blocks.attesterslashingscount, 
 				blocks.status, 
 				COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes,
-				blocks.graffiti
+				blocks.graffiti,
+			    COALESCE(validators.name, '') AS name
 			FROM blocks 
+			LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 			WHERE blocks.slot >= $1 AND blocks.slot <= $2 
 			ORDER BY blocks.slot DESC`, endSlot, startSlot)
 	} else {
@@ -137,8 +139,10 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				blocks.attesterslashingscount, 
 				blocks.status, 
 				COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes, 
-				blocks.graffiti 
-			FROM blocks
+				blocks.graffiti,
+			    COALESCE(validators.name, '') AS name
+			FROM blocks 
+			LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 			WHERE slot IN (
 				SELECT slot 
 				FROM blocks
@@ -163,7 +167,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatBlockSlot(b.Slot),
 			utils.FormatBlockStatus(b.Status),
 			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
-			utils.FormatValidator(b.Proposer),
+			utils.FormatValidatorWithName(b.Proposer, b.ProposerName),
 			utils.FormatBlockRoot(b.BlockRoot),
 			b.Attestations,
 			b.Deposits,
