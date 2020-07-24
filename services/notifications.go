@@ -178,12 +178,13 @@ func collectValidatorGotSlashedNotifications() error {
 	}
 
 	dbResult := []struct {
-		SubscriptionID uint64 `db:"id"`
-		Email          string `db:"email"`
-		ValidatorIndex uint64 `db:"validatorindex"`
-		Slasher        uint64 `db:"slasher"`
-		Epoch          uint64 `db:"epoch"`
-		Reason         string `db:"reason"`
+		SubscriptionID uint64    `db:"id"`
+		Email          string    `db:"email"`
+		ValidatorIndex uint64    `db:"validatorindex"`
+		Slasher        uint64    `db:"slasher"`
+		Epoch          uint64    `db:"epoch"`
+		Reason         string    `db:"reason"`
+		Created        time.Time `db:"created_ts"`
 	}{}
 	err := db.DB.Select(&dbResult, `
 		WITH
@@ -213,7 +214,7 @@ func collectValidatorGotSlashedNotifications() error {
 				) a
 				ORDER BY slashedvalidator, slot
 			)
-		SELECT us.id, u.email, us.created, v.validatorindex, s.slasher, s.epoch
+		SELECT us.id, u.email, us.created_ts, v.validatorindex, s.slasher, s.epoch
 		FROM users_subscriptions us
 		INNER JOIN users u ON u.id = us.user_id
 		INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
@@ -225,6 +226,11 @@ func collectValidatorGotSlashedNotifications() error {
 	}
 
 	for _, r := range dbResult {
+		// skip if slashing happened before user subscribed
+		if utils.EpochToTime(r.Epoch).Before(r.Created) {
+			continue
+		}
+
 		n := &validatorGotSlashedNotification{
 			SubscriptionID: r.SubscriptionID,
 			ValidatorIndex: r.ValidatorIndex,
