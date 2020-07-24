@@ -40,8 +40,8 @@ func collectNotifications() error {
 func sendNotifications() {
 	for userEmail, userNotifications := range notificationsByEmail {
 		go func(userEmail string, userNotifications map[types.EventName][]types.Notification) {
-			sentSubIDs := []uint64{}
-			subject := "beaconcha.in: Notification"
+			sentSubsByEpoch := map[uint64][]uint64{}
+			subject := fmt.Sprintf("%s: Notification", utils.Config.Frontend.SiteDomain)
 			msg := ""
 			for event, ns := range userNotifications {
 				if len(msg) > 0 {
@@ -50,20 +50,27 @@ func sendNotifications() {
 				msg += fmt.Sprintf("%s\n====\n\n", event)
 				for _, n := range ns {
 					msg += fmt.Sprintf("%s\n", n.GetInfo())
-					sentSubIDs = append(sentSubIDs, n.GetSubscriptionID())
+					e := n.GetEpoch()
+					if _, exists := sentSubsByEpoch[e]; !exists {
+						sentSubsByEpoch[e] = []uint64{n.GetSubscriptionID()}
+					} else {
+						sentSubsByEpoch[e] = append(sentSubsByEpoch[e], n.GetSubscriptionID())
+					}
 				}
 			}
-			msg += fmt.Sprintf("Best regards\n\n%s", utils.Config.Frontend.SiteDomain)
-			err := mail.SendMail(userEmail, subject, msg)
+			msg += fmt.Sprintf("\nBest regards\n\n%s", utils.Config.Frontend.SiteDomain)
+
+			err := mail.SendMailRateLimited(userEmail, subject, msg)
 			if err != nil {
 				logger.Errorf("error sending notification-email: %v", err)
 				return
 			}
 
-			err = db.UpdateSubscriptionsLastSent(sentSubIDs, time.Now())
-			if err != nil {
-				logger.Errorf("error updating sent-time of sent notifications: %v", err)
-				return
+			for epoch, subIDs := range sentSubsByEpoch {
+				err = db.UpdateSubscriptionsLastSent(subIDs, time.Now(), epoch)
+				if err != nil {
+					logger.Errorf("error updating sent-time of sent notifications: %v", err)
+				}
 			}
 		}(userEmail, userNotifications)
 	}
@@ -82,6 +89,10 @@ func (n *validatorBalanceDecreasedNotification) GetSubscriptionID() uint64 {
 	return n.SubscriptionID
 }
 
+func (n *validatorBalanceDecreasedNotification) GetEpoch() uint64 {
+	return n.Epoch
+}
+
 func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
 	return types.ValidatorBalanceDecreasedEventName
 }
@@ -98,8 +109,6 @@ func collectValidatorBalanceDecreasedNotifications() error {
 		return nil
 	}
 	prevEpoch := latestEpoch - 1
-	sentTimeThreshold := time.Duration(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch) * time.Second
-	sentTimeThresholdTs := time.Now().Add(-sentTimeThreshold).Unix()
 
 	dbResult := []struct {
 		SubscriptionID uint64 `db:"id"`
@@ -117,16 +126,16 @@ func collectValidatorBalanceDecreasedNotifications() error {
 					vb.balance, 
 					vb2.balance AS prevbalance
 				FROM validator_balances vb
-					INNER JOIN validators v ON v.validatorindex = vb.validatorindex
-					INNER JOIN validator_balances vb2 ON vb.validatorindex = vb2.validatorindex AND vb2.epoch = $3
+				INNER JOIN validators v ON v.validatorindex = vb.validatorindex
+				INNER JOIN validator_balances vb2 ON vb.validatorindex = vb2.validatorindex AND vb2.epoch = $3
 				WHERE vb.epoch = $2 AND vb.balance < vb2.balance
 			)
 		SELECT us.id, u.email, dbv.validatorindex, dbv.balance, dbv.prevbalance
 		FROM users_subscriptions us
-			INNER JOIN users u ON u.id = us.user_id
-			INNER JOIN decreased_balance_validators dbv ON dbv.pubkey = us.event_filter
-		WHERE us.event_name = $1 AND (us.last_sent_ts IS NULL OR us.last_sent_ts < TO_TIMESTAMP($4))`,
-		types.ValidatorBalanceDecreasedEventName, latestEpoch, prevEpoch, sentTimeThresholdTs)
+		INNER JOIN users u ON u.id = us.user_id
+		INNER JOIN decreased_balance_validators dbv ON dbv.pubkey = us.event_filter
+		WHERE us.event_name = $1 AND us.created_epoch <= $2 AND (us.last_sent_epoch IS NULL OR us.last_sent_epoch < $2)`,
+		types.ValidatorBalanceDecreasedEventName, latestEpoch, prevEpoch)
 	if err != nil {
 		return err
 	}
@@ -164,6 +173,10 @@ func (n *validatorGotSlashedNotification) GetSubscriptionID() uint64 {
 	return n.SubscriptionID
 }
 
+func (n *validatorGotSlashedNotification) GetEpoch() uint64 {
+	return n.Epoch
+}
+
 func (n *validatorGotSlashedNotification) GetEventName() types.EventName {
 	return types.ValidatorGotSlashedEventName
 }
@@ -179,13 +192,12 @@ func collectValidatorGotSlashedNotifications() error {
 	}
 
 	dbResult := []struct {
-		SubscriptionID uint64    `db:"id"`
-		Email          string    `db:"email"`
-		ValidatorIndex uint64    `db:"validatorindex"`
-		Slasher        uint64    `db:"slasher"`
-		Epoch          uint64    `db:"epoch"`
-		Reason         string    `db:"reason"`
-		Created        time.Time `db:"created_ts"`
+		SubscriptionID uint64 `db:"id"`
+		Email          string `db:"email"`
+		ValidatorIndex uint64 `db:"validatorindex"`
+		Slasher        uint64 `db:"slasher"`
+		Epoch          uint64 `db:"epoch"`
+		Reason         string `db:"reason"`
 	}{}
 	err := db.DB.Select(&dbResult, `
 		WITH
@@ -215,23 +227,18 @@ func collectValidatorGotSlashedNotifications() error {
 				) a
 				ORDER BY slashedvalidator, slot
 			)
-		SELECT us.id, u.email, us.created_ts, v.validatorindex, s.slasher, s.epoch
+		SELECT us.id, u.email, v.validatorindex, s.slasher, s.epoch
 		FROM users_subscriptions us
 		INNER JOIN users u ON u.id = us.user_id
 		INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 		INNER JOIN slashings s ON s.slashedvalidator = v.validatorindex
-		WHERE us.event_name = $1 AND us.last_sent_ts IS NULL`,
+		WHERE us.event_name = $1 AND us.last_sent_epoch IS NULL AND us.created_epoch < s.epoch`,
 		types.ValidatorGotSlashedEventName)
 	if err != nil {
 		return err
 	}
 
 	for _, r := range dbResult {
-		// skip if slashing happened before user subscribed
-		if utils.EpochToTime(r.Epoch).Before(r.Created) {
-			continue
-		}
-
 		n := &validatorGotSlashedNotification{
 			SubscriptionID: r.SubscriptionID,
 			ValidatorIndex: r.ValidatorIndex,

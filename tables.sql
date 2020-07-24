@@ -299,12 +299,14 @@ create table users (
 
 drop table if exists users_subscriptions;
 create table users_subscriptions (
-    id           serial                      not null,
-    user_id      int                         not null,
-    event_name   character varying(100)      not null,
-    event_filter text                        not null default '',
-    last_sent_ts timestamp without time zone,
-    created_ts   timestamp without time zone not null,
+    id              serial                      not null,
+    user_id         int                         not null,
+    event_name      character varying(100)      not null,
+    event_filter    text                        not null default '',
+    last_sent_ts    timestamp without time zone,
+    last_sent_epoch int,
+    created_ts      timestamp without time zone not null,
+    created_epoch   int                         not null,
     primary key (user_id, event_name, event_filter),
     constraint fk_user_id foreign key(user_id) references users(id) on delete cascade
 );

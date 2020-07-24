@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"strings"
 	"time"
@@ -46,8 +47,10 @@ func UpdatePassword(userId uint64, hash []byte) error {
 
 // AddSubscription adds a new subscription to the database.
 func AddSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
-	now := time.Now().Unix()
-	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts) VALUES ($1, $2, $3, TO_TIMESTAMP($4))", userID, eventName, eventFilter, now)
+	now := time.Now()
+	nowTs := now.Unix()
+	nowEpoch := utils.TimeToEpoch(now)
+	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5)", userID, eventName, eventFilter, nowTs, nowEpoch)
 	return err
 }
 
@@ -177,8 +180,11 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 }
 
 // UpdateSubscriptionsLastSent upates `last_sent_ts` column of the `users_subscriptions` table.
-func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time) error {
-	_, err := FrontendDB.Exec("UPDATE users_subscriptions SET last_sent_ts = TO_TIMESTAMP($1) WHERE id = ANY($2)", sent.Unix(), pq.Array(subscriptionIDs))
+func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time, epoch uint64) error {
+	_, err := FrontendDB.Exec(`
+		UPDATE users_subscriptions
+		SET last_sent_ts = TO_TIMESTAMP($1), last_sent_epoch = $2
+		WHERE id = ANY($3)`, sent.Unix(), epoch, pq.Array(subscriptionIDs))
 	return err
 }
 

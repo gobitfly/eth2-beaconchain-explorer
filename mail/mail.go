@@ -15,8 +15,21 @@ import (
 
 // SendMail sends an email to the given address with the given message.
 // It will use smtp if configured otherwise it will use gunmail if configured.
-// It will return a ratelimit-error if the configured ratelimit is exceeded.
 func SendMail(to, subject, msg string) error {
+	var err error
+	if utils.Config.Frontend.Mail.SMTP.User != "" {
+		err = SendMailSMTP(to, subject, msg)
+	} else if utils.Config.Frontend.Mail.Mailgun.PrivateKey != "" {
+		err = SendMailMailgun(to, subject, msg)
+	} else {
+		err = fmt.Errorf("invalid config for mail-service")
+	}
+	return err
+}
+
+// SendMailRateLimited sends an email to a given address with the given message.
+// It will return a ratelimit-error if the configured ratelimit is exceeded.
+func SendMailRateLimited(to, subject, msg string) error {
 	if utils.Config.Frontend.MaxMailsPerEmailPerDay > 0 {
 		now := time.Now()
 		count, err := db.GetMailsSentCount(to, now)
@@ -29,15 +42,7 @@ func SendMail(to, subject, msg string) error {
 		}
 	}
 
-	var err error
-	if utils.Config.Frontend.Mail.SMTP.User != "" {
-		err = SendMailSMTP(to, subject, msg)
-	} else if utils.Config.Frontend.Mail.Mailgun.PrivateKey != "" {
-		err = SendMailMailgun(to, subject, msg)
-	} else {
-		err = fmt.Errorf("invalid config for mail-service")
-	}
-
+	err := SendMail(to, subject, msg)
 	if err != nil {
 		return err
 	}

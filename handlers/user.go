@@ -681,7 +681,11 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db.AddSubscription(user.UserID, eventName, filter)
+	err = db.AddSubscription(user.UserID, eventName, filter)
+	if err != nil {
+		logger.Errorf("error adding subscription: %v", err)
+	}
+
 	w.WriteHeader(200)
 }
 
@@ -708,6 +712,10 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db.DeleteSubscription(user.UserID, eventName, filter)
+	err = db.DeleteSubscription(user.UserID, eventName, filter)
+	if err != nil {
+		logger.Errorf("error deleting subscription: %v", err)
+	}
+
 	w.WriteHeader(200)
 }
