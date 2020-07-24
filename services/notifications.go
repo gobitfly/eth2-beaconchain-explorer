@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"time"
 )
@@ -87,7 +88,7 @@ func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
 func (n *validatorBalanceDecreasedNotification) GetInfo() string {
 	balance := float64(n.Balance) / 1e9
 	diff := float64(n.PrevBalance-n.Balance) / 1e9
-	return fmt.Sprintf(`The balance of validator %v decreased by %.9f ETH to %.9f ETH at epoch %v.`, n.ValidatorIndex, diff, balance, n.Epoch)
+	return fmt.Sprintf(`The balance of validator %[1]v decreased by %[2].9f ETH to %[3].9f ETH at epoch %[4]v. For more information visit: https://%[5]s/validator/%[1]v`, n.ValidatorIndex, diff, balance, n.Epoch, utils.Config.Frontend.SiteDomain)
 }
 
 func collectValidatorBalanceDecreasedNotifications() error {
@@ -165,7 +166,7 @@ func (n *validatorGotSlashedNotification) GetEventName() types.EventName {
 }
 
 func (n *validatorGotSlashedNotification) GetInfo() string {
-	return fmt.Sprintf(`Validator %v has been slashed at epoch %v by validator %v. Reason: %s.`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason)
+	return fmt.Sprintf(`Validator %[1]v has been slashed at epoch %[2]v by validator %[3]v for %[4]s. For more information visit: https://%[5]v/validator/%[1]v`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason, utils.Config.Frontend.SiteDomain)
 }
 
 func collectValidatorGotSlashedNotifications() error {
