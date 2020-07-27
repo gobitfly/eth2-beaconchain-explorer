@@ -59,13 +59,13 @@
 						<i class="fa fa-edit"></i>
 					</button>
 					{{ if len .Watchlist }}
-					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/unfollow" method="post">
+					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
 						<button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button" data-target="#edit-follow-modal" title="Stop receiving updates for this validator." >
 							<i class="fas fa-bookmark"></i>
 						</button>
 					</form>
 					{{else}}
-					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/follow" method="post">
+					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
 						<button class="btn btn-dark text-white btn-sm" type="submit" id="follow-button" data-target="#edit-follow-modal" title="Follow this validator and receive email notifications">
 							<i class="far fa-bookmark"></i>
 						</button>

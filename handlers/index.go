@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -38,18 +37,6 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
-
-	var depositThreshold = utils.Config.Chain.MinGenesisActiveValidatorCount * 32
-	// var GenesisTimestamp
-
-	var validDepositTotal uint64
-	db.DB.Get(&validDepositTotal, `
-		SELECT sum(eth1.amount) as total 
-		FROM 
-			eth1_deposits as eth1 
-		WHERE 
-			eth1.amount >= 32e9 and eth1.valid_signature = true;
-	`)
 
 	err := indexTemplate.ExecuteTemplate(w, "layout", data)
 

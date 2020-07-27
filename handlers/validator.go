@@ -10,7 +10,6 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -179,26 +178,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filter := db.WatchlistFilter{
-		UserId:     user.UserID,
-		Validators: &pq.ByteaArray{validatorPageData.PublicKey},
-		Tag:        types.ValidatorTagsWatchlist,
+		UserId:         user.UserID,
+		Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
+		Tag:            types.ValidatorTagsWatchlist,
+		JoinValidators: false,
 	}
 
 	watchlist, err := db.GetTaggedValidators(filter)
-	log.Println("Watchlist", watchlist)
-
-	// filter := db.GetSubscriptionsFilter{
-	// 	EventNames:   &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
-	// 	UserIDs:      &[]uint64{user.UserID},
-	// 	EventFilters: &[]string{pKey},
-	// }
-
-	// subs, err := db.GetSubscriptions(filter)
-	// if err != nil {
-	// 	logger.Errorf("error retrieving subscriptions for validator %v: %v", pKey, err)
-	// 	http.Error(w, "Internal server error", 503)
-	// 	return
-	// }
+	if err != nil {
+		logger.Errorf("error getting tagged validators from db: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
 	validatorPageData.Watchlist = watchlist
 

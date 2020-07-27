@@ -57,12 +57,13 @@ type IndexPageData struct {
 	ExitingValidators         uint64                 `json:"exiting_validators"`
 	StakedEther               string                 `json:"staked_ether"`
 	AverageBalance            string                 `json:"average_balance"`
-	DepositedTotal            uint64                 `json:"deposit_total`
-	DepositThreshold          uint64                 `json:"deposit_threshold"`
+	DepositedTotal            float64                `json:"deposit_total"`
+	DepositThreshold          float64                `json:"deposit_threshold"`
 	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
 	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
 	Subtitle                  template.HTML          `json:"-"`
+	Genesis                   bool                   `json:"genesis"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
@@ -628,6 +629,7 @@ type UserSettingsPageData struct {
 type UserNotificationsPageData struct {
 	Email string `json:"email"`
 	AuthData
+	CountWatchlist int `json:"countwatchlist"`
 	// Subscriptions []*Subscription
 }
 

@@ -93,6 +93,15 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 
 	userNotificationsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
+	var countWatchlist int
+	db.FrontendDB.Get(&countWatchlist, `
+	SELECT count(*) as count
+	FROM users_validators_tags
+	WHERE user_id = $1 and tag = $2
+	`, user.UserID, types.ValidatorTagsWatchlist)
+
+	userNotificationsData.CountWatchlist = countWatchlist
+
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
@@ -150,86 +159,6 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	user := getUser(w, r)
 
-	// var countSubscriptions uint64
-	// err = db.FrontendDB.Get(&countSubscriptions, "SELECT count(*) FROM users_subscriptions where user_id = $1", user.UserID)
-	// if err != nil {
-	// 	logger.Errorf("error getting subscription count for user %v", user.UserID)
-	// 	http.Error(w, "Internal server error", 503)
-	// }
-	// log.Printf("The number of subscriptions %v", countSubscriptions)
-
-	// filter := db.GetSubscriptionsFilter{
-	// 	// EventNames:   &[]types.EventName{types.ValidatorBalanceDecreasedEventName},
-	// 	UserIDs:       &[]uint64{user.UserID},
-	// 	Search:        search,
-	// 	Limit:         length,
-	// 	Offset:        start,
-	// 	JoinValidator: true,
-	// }
-
-	// subs, err := db.GetSubscriptions(filter)
-	// if err != nil {
-	// 	logger.Errorf("error retrieving subscriptions for user %v: %v", user.UserID, err)
-	// 	http.Error(w, "Internal server error", 503)
-	// 	return
-	// }
-
-	// type TableSubscriptions struct {
-	// 	Subscription types.Subscription
-	// 	EventNames   []string
-	// }
-
-	// subscriptionsMap := make(map[string]TableSubscriptions)
-	// count := 0
-
-	// for _, s := range subs {
-	// 	if s != nil {
-	// 		pKey := s.EventFilter
-	// 		subMap, found := subscriptionsMap[pKey]
-	// 		if !found {
-	// 			count += 1
-	// 			entry := TableSubscriptions{
-	// 				Subscription: *s,
-	// 			}
-	// 			entry.EventNames = []string{string(s.EventName)}
-	// 			subscriptionsMap[pKey] = entry
-	// 		} else {
-	// 			subMap.EventNames = append(subMap.EventNames, string(s.EventName))
-	// 			subscriptionsMap[pKey] = subMap
-	// 		}
-	// 	}
-	// }
-
-	// tableData := make([][]interface{}, 0, count)
-	// for k, v := range subscriptionsMap {
-	// 	if len(k) == 96 {
-	// 		key, err := hex.DecodeString(k)
-	// 		if err != nil {
-	// 			logger.Errorf("error converting string public key to byte %v: %v", user.UserID, err)
-	// 			http.Error(w, "Internal server error", 503)
-	// 		}
-	// 		tableData = append(tableData, []interface{}{
-	// 			utils.FormatPublicKey(key),
-	// 			// v.Subscription.LastSent,
-	// 			// utils.FormatBalance(v.Subscription),
-	// 			v.EventNames,
-	// 		})
-	// 	} else {
-	// 		log.Println("UNEXPECTED KEY LENGTH", k)
-	// 	}
-	// }
-
-	// filter := db.WatchlistFilter{
-	// 	UserId: user.UserID,
-	// 	Tag:    types.ValidatorTagsWatchlist,
-	// }
-
-	// watchlist, err := db.GetTaggedValidators(filter)
-	// if err != nil {
-	// 	logger.Errorf("error retrieving watchlist for user %v: %v", user.UserID, err)
-	// 	http.Error(w, "Internal server error", 503)
-	// 	return
-	// }
 	type watchlistSubscription struct {
 		Publickey []byte
 		Balance   uint64
@@ -276,6 +205,77 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		Draw:            draw,
 		RecordsTotal:    uint64(len(wl)),
 		RecordsFiltered: uint64(len(wl)),
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+}
+
+func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+
+	search := q.Get("search[value]")
+	search = strings.Replace(search, "0x", "", -1)
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	// start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	// if err != nil {
+	// 	logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	if length > 100 {
+		length = 100
+	}
+
+	user := getUser(w, r)
+
+	subs := []types.Subscription{}
+	err = db.FrontendDB.Select(&subs, `
+			SELECT *
+			FROM users_subscriptions
+			WHERE user_id = $1
+	`, user.UserID)
+	if err != nil {
+		logger.Errorf("error retrieving subscriptions for users %v: %v", user.UserID, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(subs))
+	for _, sub := range subs {
+		tableData = append(tableData, []interface{}{
+			sub.EventFilter,
+			sub.EventName,
+			utils.FormatTimestamp(sub.Created.Unix()),
+			utils.FormatTimestamp(sub.LastSent.Unix()),
+		})
+	}
+
+	// log.Println("COUNT", len(watchlist))
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    uint64(len(subs)),
+		RecordsFiltered: uint64(len(subs)),
 		Data:            tableData,
 	}
 
@@ -593,10 +593,9 @@ Best regards,
 	return nil
 }
 
-// ValidatorSubscribe subscribes a user to get notifications from a specific validator
-func UserValidatorFollow(w http.ResponseWriter, r *http.Request) {
+// UserValidatorWatchlistAdd subscribes a user to get notifications from a specific validator
+func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-
 	user := getUser(w, r)
 	vars := mux.Vars(r)
 
@@ -625,8 +624,8 @@ func UserValidatorFollow(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
 }
 
-// ValidatorUnsubscribe unsubscribes a user from a specific validator
-func UserValidatorUnfollow(w http.ResponseWriter, r *http.Request) {
+// UserValidatorWatchlistRemove unsubscribes a user from a specific validator
+func UserValidatorWatchlistRemove(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	user := getUser(w, r)
@@ -681,7 +680,12 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db.AddSubscription(user.UserID, eventName, filter)
+	err = db.AddSubscription(user.UserID, eventName, filter)
+	if err != nil {
+		logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(200)
 }
 
@@ -708,6 +712,11 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db.DeleteSubscription(user.UserID, eventName, filter)
+	err = db.DeleteSubscription(user.UserID, eventName, filter)
+	if err != nil {
+		logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(200)
 }

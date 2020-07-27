@@ -228,6 +228,22 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
 
+	var validDepositTotal uint64
+	db.DB.Get(&validDepositTotal, `
+		SELECT sum(eth1.amount) as total 
+		FROM 
+			eth1_deposits as eth1 
+		WHERE 
+			eth1.amount >= 32e9 and eth1.valid_signature = true;
+	`)
+
+	data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
+	data.DepositedTotal = float64(validDepositTotal) / 1e9
+
+	if data.DepositedTotal > data.DepositThreshold {
+		data.Genesis = true
+	}
+
 	return data, nil
 }
 

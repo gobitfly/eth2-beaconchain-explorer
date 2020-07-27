@@ -148,7 +148,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 
 	session.Save(r, w)
 
-	http.Redirect(w, r, "/register", http.StatusSeeOther)
+	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 }
 
 // Login handler renders a template that allows a user to login.
@@ -236,7 +236,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 	log.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"])
 	// Index(w, r)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 }
 
 // Logout handles ending the user session.
@@ -545,27 +545,45 @@ func ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 
+	var isConfirmed = false
+	err := db.FrontendDB.Get(&isConfirmed, `
+	SELECT email_confirmed 
+	FROM users 
+	WHERE email_confirmation_hash = $1
+	`, hash)
+	if err != nil {
+		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
+	if isConfirmed {
+		utils.SetFlash(w, r, authSessionName, "Error: Email has already been confirmed!")
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
+		return
+	}
+
 	res, err := db.FrontendDB.Exec("UPDATE users SET email_confirmed = 'TRUE' WHERE email_confirmation_hash = $1", hash)
 	if err != nil {
 		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
 	n, err := res.RowsAffected()
 	if err != nil {
 		utils.SetFlash(w, r, authSessionName, authInternalServerErrorFlashMsg)
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
 
 	if n == 0 {
 		utils.SetFlash(w, r, authSessionName, "Error: Invalid confirmation-link, please retry.")
-		http.Redirect(w, r, "/resend", http.StatusSeeOther)
+		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 	}
 
 	utils.SetFlash(w, r, authSessionName, "Your email has been confirmed! You can log in now.")
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 }
 
 func getUser(w http.ResponseWriter, r *http.Request) *types.User {

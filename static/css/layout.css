@@ -27,3 +27,14 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):hover {
   width: 1px;
   white-space: nowrap;
 }
+
+
+@media (max-width: 1139.98px) {
+  .info-banner-content.container {
+    padding-right: 0;
+    padding-left: 0;
+  }
+  .info-banner-container {
+    padding: 0 1rem;
+  }
+}

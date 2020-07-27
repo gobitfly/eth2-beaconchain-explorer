@@ -57,6 +57,8 @@ func GetTemplateFuncs() template.FuncMap {
 		"mod":                         func(i, j int) bool { return i%j == 0 },
 		"sub":                         func(i, j int) int { return i - j },
 		"add":                         func(i, j int) int { return i + j },
+		"div":                         func(i, j float64) float64 { return i / j },
+		"round":                       func(i float64, n int) float64 { return math.Round(i*math.Pow10(n)) / math.Pow10(n) },
 	}
 }
 

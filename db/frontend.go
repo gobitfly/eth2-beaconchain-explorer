@@ -76,9 +76,10 @@ func RemoveFromWatchlist(userId uint64, validator_publickey string) error {
 }
 
 type WatchlistFilter struct {
-	Tag        types.Tag
-	UserId     uint64
-	Validators *pq.ByteaArray
+	Tag            types.Tag
+	UserId         uint64
+	Validators     *pq.ByteaArray
+	JoinValidators bool
 }
 
 func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, error) {
@@ -94,10 +95,15 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 	args = append(args, filter.UserId)
 	qry := `
 		SELECT user_id, balance, pubkey
-		FROM users_validators_tags 
-		INNER JOIN validators 
-		ON users_validators_tags.validator_publickey = validators.pubkey
-		
+		FROM users_validators_tags`
+
+	if filter.JoinValidators {
+		qry += `
+			INNER JOIN validators 
+			ON users_validators_tags.validator_publickey = validators.pubkey`
+	}
+
+	qry += `
 		WHERE tag = $1 AND user_id = $2`
 	// select * from users_validators_tags inner join validators on users_validators_tags.validator_publickey = validators.pubkey
 

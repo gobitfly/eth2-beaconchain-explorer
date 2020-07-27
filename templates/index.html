@@ -3,9 +3,11 @@
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
 <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 
+
 <script src="https://cdn.jsdelivr.net/npm/vue"></script>
 <script src="/js/highcharts-vue.min.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
+<script src="/js/flipclock.js"></script>
 <script>
   var app = new Vue({
       el: '#app',
@@ -107,6 +109,7 @@
   })
 </script>
 {{end}} {{ define "css"}}
+<link rel="stylesheet" href="/css/flipclock.css">
 
 <style>
   .hero-container {
@@ -118,7 +121,7 @@
     align-items: center;
     justify-content: center;
     margin-top: 2rem;
-    margin-bottom: 3rem;
+    margin-bottom: 50px;
     flex-wrap: wrap;
   }
 
@@ -398,9 +401,37 @@
               <span class="fas fa-search"></span>
             </div>
         </div> -->
+    
   </div>
+</div>
+{{ if not .Genesis }}
+<div class="row my-3">
+  <div class="col-md-6">
+    <h2 class="h3">Medala Genesis</h2>
+    <p>The Medalla testnet is currently undergoing genesis. Please prepare your validators and send your deposits. To join the testnet fire up one of the beacon chain and validator clients. This testnet will support <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a> and <a href="https://github.com/ChainSafe/lodestar">Lodestar</a>. You are eligible to receive a <a href="/poap">POAP</a> token for every client that you run. </p>
   </div>
- 
+  <div class="col-md-6 my-3 d-flex flex-column justify-content-center">
+    <h6>Deposit Progress</h6>
+    <div class="progress w-100" data-toggle="tooltip" data-placement="top" title="A total of {{.DepositedTotal}} ETH have been deposited. {{round (div (.DepositedTotal) (.DepositThreshold)) 2}}%">
+      <div class="progress-bar bg-info" role="progressbar" style="width:{{div (.DepositedTotal) (.DepositThreshold)}}%" aria-valuenow="{{.DepositedTotal}}" aria-valuemin="0" aria-valuemax="{{.DepositThreshold}}"></div>
+    </div>
+    <span class="text-muted">The countdown will start once {{.DepositThreshold}} ETH have been deposited.</span>
+  </div>
+  <div class="col-md-6 my-3">
+    <h2 class="h3">When is genesis reached?</h2>
+    <p>
+      Genesis will occur once enough deposits have been made to the Goerli deposit contract <span class="text-monospace">0x07b39F4fDE4A38bACe212b546dAc87C58DfE3fDC</span>. Each deposit is registered by the beacon chain after a block delay of <i>1024</i> blocks. 
+    </p>
+  </div>
+  <div class="col-md-6 my-3 d-flex flex-column justify-content-center">
+    <h6>Countdown</h6>
+    <p class="align-self-center">Estimated: August 4th, 2020, 1pm UTC</p>
+    <!-- <span class="clock"></span> -->
+  </div>
+</div>
+
+
+ {{else}}
   <div class="card mt-3">
     <div class="card-header">
       <div class="row">
@@ -507,6 +538,7 @@
       </div>
     </div>
   </div>
+  {{end}}
   {{if gt .FinalityDelay 3}}
   <script>
     window.addEventListener('DOMContentLoaded', function() {

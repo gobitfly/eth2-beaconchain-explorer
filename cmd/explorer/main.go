@@ -2,9 +2,7 @@ package main
 
 import (
 	"eth2-exporter/db"
-	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
-	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -14,11 +12,10 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/phyber/negroni-gzip/gzip"
 	"github.com/urfave/negroni"
 	"github.com/zesik/proxyaddr"
-
-	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 func main() {
@@ -41,35 +38,33 @@ func main() {
 		log.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
 	}
 
-	if cfg.Indexer.Enabled {
-		var rpcClient rpc.Client
+	// if cfg.Indexer.Enabled {
+	// 	var rpcClient rpc.Client
 
-		if utils.Config.Indexer.Node.Type == "prysm" {
-			if utils.Config.Indexer.Node.PageSize == 0 {
-				log.Printf("setting default rpc page size to 500")
-				utils.Config.Indexer.Node.PageSize = 500
-			}
-			rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
-			if err != nil {
-				log.Fatal(err)
-			}
-		} else if utils.Config.Indexer.Node.Type == "lighthouse" {
-			rpcClient, err = rpc.NewLighthouseClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
-			if err != nil {
-				log.Fatal(err)
-			}
-		} else {
-			log.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
-		}
-
-		go exporter.Start(rpcClient)
-	}
+	// 	if utils.Config.Indexer.Node.Type == "prysm" {
+	// 		if utils.Config.Indexer.Node.PageSize == 0 {
+	// 			log.Printf("setting default rpc page size to 500")
+	// 			utils.Config.Indexer.Node.PageSize = 500
+	// 		}
+	// 		rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+	// 		if err != nil {
+	// 			log.Fatal(err)
+	// 		}
+	// 	} else if utils.Config.Indexer.Node.Type == "lighthouse" {
+	// 		rpcClient, err = rpc.NewLighthouseClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+	// 		if err != nil {
+	// 			log.Fatal(err)
+	// 		}
+	// 	} else {
+	// 		log.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
+	// 	}
+	// 	go exporter.Start(rpcClient)
+	// }
 
 	if cfg.Frontend.Enabled {
 		if utils.Config.Frontend.SiteDomain == "" {
 			utils.Config.Frontend.SiteDomain = "beaconcha.in"
 		}
-
 		db.MustInitFrontendDB(cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name, cfg.Frontend.SessionSecret)
 		defer db.FrontendDB.Close()
 
@@ -93,8 +88,8 @@ func main() {
 		router.HandleFunc("/epochs/data", handlers.EpochsData).Methods("GET")
 
 		router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")
-		router.HandleFunc("/validator/{pubkey}/follow", handlers.UserValidatorFollow).Methods("POST")
-		router.HandleFunc("/validator/{pubkey}/unfollow", handlers.UserValidatorUnfollow).Methods("POST")
+		router.HandleFunc("/validator/{pubkey}/add", handlers.UserValidatorWatchlistAdd).Methods("POST")
+		router.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST")
 		router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
 		router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
 		router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
@@ -146,6 +141,7 @@ func main() {
 		authRouter.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
 		authRouter.HandleFunc("/notifications", handlers.UserNotifications).Methods("GET")
 		authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
+		authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 		authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
 		authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
 
