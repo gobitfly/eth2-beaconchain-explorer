@@ -42,15 +42,15 @@ func SendMailRateLimited(to, subject, msg string) error {
 		}
 	}
 
-	err := SendMail(to, subject, msg)
-	if err != nil {
-		return err
-	}
-
-	err = db.CountSentMail(to)
+	err := db.CountSentMail(to)
 	if err != nil {
 		// only log if counting did not work
-		logrus.Errorf("error counting sent email: %v", err)
+		return fmt.Errorf("error counting sent email: %v", err)
+	}
+
+	err = SendMail(to, subject, msg)
+	if err != nil {
+		return err
 	}
 
 	return nil
