@@ -58,16 +58,19 @@ const (
 type Notification interface {
 	GetSubscriptionID() uint64
 	GetEventName() EventName
+	GetEpoch() uint64
 	GetInfo() string
 }
 
 type Subscription struct {
-	ID          uint64     `db:"id"`
-	UserID      uint64     `db:"user_id"`
-	EventName   EventName  `db:"event_name"`
-	EventFilter string     `db:"event_filter"`
-	LastSent    *time.Time `db:"last_sent_ts"`
-	Created     time.Time  `db:"created_ts"`
+	ID           uint64     `db:"id"`
+	UserID       uint64     `db:"user_id"`
+	EventName    EventName  `db:"event_name"`
+	EventFilter  string     `db:"event_filter"`
+	LastSent     *time.Time `db:"last_sent_ts"`
+	LastEpoch    *uint64    `db:"last_sent_epoch"`
+	CreatedTime  time.Time  `db:"created_ts"`
+	CreatedEpoch uint64     `db:"created_epoch"`
 }
 
 type TaggedValidators struct {
