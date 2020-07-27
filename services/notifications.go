@@ -9,35 +9,31 @@ import (
 	"time"
 )
 
-var notificationRateLimit = time.Second * 60 * 10
-
-var notificationsByEmail = map[string]map[types.EventName][]types.Notification{}
-
 func notificationsSender() {
 	for {
 		start := time.Now()
-		collectNotifications()
-		sendNotifications()
-		logger.WithField("emails", len(notificationsByEmail)).WithField("duration", time.Since(start)).Info("notifications completed")
+		notificationsByEMail := collectNotifications()
+		sendNotifications(notificationsByEMail)
+		logger.WithField("emails", len(notificationsByEMail)).WithField("duration", time.Since(start)).Info("notifications completed")
 		time.Sleep(time.Second * 60)
 	}
 }
 
-func collectNotifications() error {
-	notificationsByEmail = map[string]map[types.EventName][]types.Notification{}
+func collectNotifications() map[string]map[types.EventName][]types.Notification {
+	notificationsByEmail := map[string]map[types.EventName][]types.Notification{}
 	var err error
-	err = collectValidatorBalanceDecreasedNotifications()
+	err = collectValidatorBalanceDecreasedNotifications(notificationsByEmail)
 	if err != nil {
 		logger.Errorf("error collecting validator_balance_decreased notifications: %v", err)
 	}
-	err = collectValidatorGotSlashedNotifications()
+	err = collectValidatorGotSlashedNotifications(notificationsByEmail)
 	if err != nil {
 		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
-	return nil
+	return notificationsByEmail
 }
 
-func sendNotifications() {
+func sendNotifications(notificationsByEmail map[string]map[types.EventName][]types.Notification) {
 	for userEmail, userNotifications := range notificationsByEmail {
 		go func(userEmail string, userNotifications map[types.EventName][]types.Notification) {
 			sentSubsByEpoch := map[uint64][]uint64{}
@@ -103,20 +99,20 @@ func (n *validatorBalanceDecreasedNotification) GetInfo() string {
 	return fmt.Sprintf(`The balance of validator %[1]v decreased by %.9[2]f ETH to %.9[3]f ETH at epoch %[4]v. For more information visit: https://%[5]s/validator/%[1]v`, n.ValidatorIndex, diff, balance, n.Epoch, utils.Config.Frontend.SiteDomain)
 }
 
-func collectValidatorBalanceDecreasedNotifications() error {
+func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[string]map[types.EventName][]types.Notification) error {
 	latestEpoch := LatestEpoch()
 	if latestEpoch == 0 {
 		return nil
 	}
 	prevEpoch := latestEpoch - 1
 
-	dbResult := []struct {
+	var dbResult []struct {
 		SubscriptionID uint64 `db:"id"`
 		Email          string `db:"email"`
 		ValidatorIndex uint64 `db:"validatorindex"`
 		Balance        uint64 `db:"balance"`
 		PrevBalance    uint64 `db:"prevbalance"`
-	}{}
+	}
 	err := db.DB.Select(&dbResult, `
 		WITH
 			decreased_balance_validators AS (
@@ -185,20 +181,20 @@ func (n *validatorGotSlashedNotification) GetInfo() string {
 	return fmt.Sprintf(`Validator %[1]v has been slashed at epoch %[2]v by validator %[3]v for %[4]s. For more information visit: https://%[5]v/validator/%[1]v`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason, utils.Config.Frontend.SiteDomain)
 }
 
-func collectValidatorGotSlashedNotifications() error {
+func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map[types.EventName][]types.Notification) error {
 	latestEpoch := LatestEpoch()
 	if latestEpoch == 0 {
 		return nil
 	}
 
-	dbResult := []struct {
+	var dbResult []struct {
 		SubscriptionID uint64 `db:"id"`
 		Email          string `db:"email"`
 		ValidatorIndex uint64 `db:"validatorindex"`
 		Slasher        uint64 `db:"slasher"`
 		Epoch          uint64 `db:"epoch"`
 		Reason         string `db:"reason"`
-	}{}
+	}
 	err := db.DB.Select(&dbResult, `
 		WITH
 			slashings AS (
