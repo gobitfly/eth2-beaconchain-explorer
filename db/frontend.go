@@ -97,8 +97,14 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 	args = append(args, filter.Tag)
 	args = append(args, filter.UserId)
 	qry := `
-		SELECT user_id, balance, pubkey
-		FROM users_validators_tags`
+		SELECT user_id`
+
+	if filter.JoinValidators {
+		qry += ", balance, pubkey"
+	}
+
+	qry += `
+	FROM users_validators_tags`
 
 	if filter.JoinValidators {
 		qry += `

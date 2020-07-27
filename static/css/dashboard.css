@@ -307,8 +307,9 @@ ul.multiselect input:focus {
 }
 
 .dashboard-container .tt-suggestion {
-  padding: 5px 20px;
   line-height: 34px;
+  margin: 0;
+  padding: 0 1rem;
 }
 
 .dashboard-container .tt-suggestion.tt-cursor,
@@ -317,13 +318,9 @@ ul.multiselect input:focus {
   background-color: #007bff;
 }
 
-.dashboard-container .tt-suggestion p {
-  margin: 0;
-}
-
 .dashboard-container .tt-dataset h3 {
-  padding: 0px 20px;
-  font-size: 1.5em;
+  margin-bottom: 0;
+  padding: .5rem 1rem;
 }
 
 .dashboard-container .typeahead {
@@ -333,12 +330,12 @@ ul.multiselect input:focus {
   font-size: 1rem;
   font-weight: 400;
   line-height: 1.5;
+  width: 100%;
   padding: 0.375rem 0.75rem;
   background: #3e4461;
-  width: 300px;
-  transition: width 0.4s ease-in;
-  border :none;
-  color: var(--banner-text)!important;
+  transition: width, opacity 5s linear;
+  border: none;
+  color: var(--banner-text) !important;
   padding-right: 2rem;
 }
 .dashboard-container .search-container form > span {

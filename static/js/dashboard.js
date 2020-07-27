@@ -474,9 +474,12 @@ $(document).ready(function() {
     // }
 
     localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
-    var qryStr = '?validators=' + state.validators.join(',')
-    var newUrl = window.location.pathname + qryStr
-    window.history.pushState(null, 'Dashboard', newUrl)
+    if(state.validators.length) {
+      console.log('length', state.validators)
+      var qryStr = '?validators=' + state.validators.join(',')
+      var newUrl = window.location.pathname + qryStr
+      window.history.replaceState(null, 'Dashboard', newUrl)
+    }
     var t0 = Date.now()
     if (state.validators && state.validators.length) {
       // if(state.validators.length >= 9) {
@@ -484,6 +487,7 @@ $(document).ready(function() {
       // } else {
       //   appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
       // }
+      document.querySelector('#bookmark-button').style.visibility = "visible"
       document.querySelector('#copy-button').style.visibility = "visible"
       document.querySelector('#clear-search').style.visibility = "visible"
 

@@ -3,21 +3,37 @@
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 
 <script>
+
 	var events = {
 		//<span class="d-flex align-item-center"><input class="mr-2" checked data-target="validator_balance_decreased" type="checkbox"> <span style="height: 1rem;" class="mb-1">balance decreases</span></span>
 		validator_balance_decreased: 'balance decreases',
-		validator_proposal_missed: 'proposals missed',
-		validator_attestation_missed: 'attestations missed',
-		validator_slashed: 'validator slashed',
+		validator_missed_proposal: 'proposals missed',
+		validator_missed_attestation: 'attestations missed',
+		validator_got_slashed: 'validator slashed',
 	}
+	var evetnsArr = [
+		['validator_balance_decreased', 'balance decreases'],
+		// ['validator_missed_proposal', 'proposals missed'],
+		// ['validator_missed_attestation', 'attestations missed'],
+		['validator_got_slashed', 'validator slashed']
+	]
+
+	function createCheckbox(filter, event, checked, text) {
+		return '<span class="d-flex align-item-center"><div class="mr-2 spinner-border d-none spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div><input onchange="ToggleEvent(this)" data-filter="' + filter + '" data-event="' + event + '" class="mr-2" ' + checked + ' data-target="validator_balance_decreased" type="checkbox"> <span style="height: 1rem;" class="mb-1">' + text + '</span></span>'
+	}
+
 	var debounceTimeouts = {}
 	function ToggleEvent(box) {
-		console.log('toggle event called', box)
+		box.classList.add('d-none')
+		box.previousSibling.classList.remove('d-none')
+
+
 		if (debounceTimeouts[box.id]) {
 			clearTimeout(debounceTimeouts[box.id])
 			debounceTimeouts[box.id] = null
 		} else {
 			debounceTimeouts[box.id] = setTimeout(function () {
+
 				var filter = box.getAttribute('data-filter')
 				var event = box.getAttribute('data-event')
 				filter = encodeURI(filter)
@@ -26,18 +42,49 @@
 				debounceTimeouts[box.id] = null
 				if (box.checked) {
 					// subscribe
-					console.log('subscribing')
 					fetch('/user/notifications/subscribe?filter=' + filter + '&event=' + event, {
 						method: 'POST'
+					}).then(function (response) {
+						box.classList.remove('d-none')
+						box.previousSibling.classList.add('d-none')
+
+						if (response.status === 200) {
+							// $('#subscriptions').DataTable().ajax.reload()
+							$('#subscriptions').DataTable().ajax.reload()
+						} else {
+							box.checked = false
+							console.log('unexpected status', response.status)
+						}
+					}).catch(function (err) {
+						box.classList.remove('d-none')
+						box.previousSibling.classList.add('d-none')
+
+						console.log(err)
+						box.checked = false
 					})
 				} else {
 					// unsubscribe
-					console.log('unsubscribing')
 					fetch('/user/notifications/unsubscribe?filter=' + filter + '&event=' + event, {
 						method: 'POST'
+					}).then(function (response) {
+						box.classList.remove('d-none')
+						box.previousSibling.classList.add('d-none')
+
+						if (response.status === 200) {
+							$('#subscriptions').DataTable().ajax.reload()
+						} else {
+							box.checked = true
+							console.log('unexpected status', response.status)
+						}
+					}).catch(function (err) {
+						box.classList.remove('d-none')
+						box.previousSibling.classList.add('d-none')
+
+						console.log(err)
+						box.checked = true
 					})
 				}
-			}, 500)
+			}, 300)
 		}
 	}
 
@@ -80,21 +127,35 @@
 				{
 					targets: 2,
 					data: '2',
+					// width: '70%',
 					render: function (data, type, row, meta) {
 						// var subscriptions = data.split(',')
 						// console.log(data)
 						var checked = ''
-						console.log(data, type, row, meta)
 						if (row.length) {
 							var address = (/0x[0-9a-fA-F]{96}/).exec(row[0])
 							if (address.length) {
 								data.map(function (event) {
-									console.log(event)
 									if (event === 'validator_balance_decreased') {
 										checked = 'checked'
 									}
 								})
-								return '<span class="d-flex align-item-center"><input onchange="ToggleEvent(this)" data-filter="' + address + '" data-event="validator_balance_decreased" class="mr-2" ' + checked + ' data-target="validator_balance_decreased" type="checkbox"> <span style="height: 1rem;" class="mb-1">balance decreases</span></span>'
+								var checkboxes = evetnsArr.map(function(event) {
+									var type = event[0]
+									var text = event[1]
+									checked = ''
+									data.map(function(checkedEvent) {
+										if (checkedEvent === type) {
+											checked = 'checked'
+										}
+									})
+									return createCheckbox(address, type, checked, text)
+								})
+								return checkboxes.reduce(function(acc, curr){
+										return acc += '<span class="mx-1">'+curr+'</span>'
+								}, '')
+							} else {
+								console.error('address not found to create checkbox', row[0])
 							}
 						}
 						return data
@@ -111,23 +172,60 @@
 				formatTimestamps()
 			},
 		})
-		$('#subscriptions').DataTable({
+		$('#subscriptions').on('xhr.dt', function(e, settings, json, xhr) {
+			if (json.data && json.data.length) {
+				document.getElementById('subscription-placeholder').classList.add('d-none')
+				document.getElementById('subscriptions-container').classList.remove('d-none')
+			} else {
+				document.getElementById('subscription-placeholder').classList.remove('d-none')
+				document.getElementById('subscriptions-container').classList.add('d-none')
+			}
+		}).DataTable({
 			processing: true,
 			serverSide: true,
 			ordering: false,
 			searching: false,
-			ajax: '/user/subscriptions/data',
+			ajax: {
+				url: '/user/subscriptions/data',
+			},
 			pagingType: 'full',
 			language: {
 				searchPlaceholder: 'Search by subscription',
 				search: ''
 			},
-			columnDefs: [],
+			columnDefs: [{
+				targets: 1,
+				data: '1',
+				render: function (data, type, row, meta) {
+					console.log(data)
+					return events[data]
+				}
+			}],
+			drawCallback: function (settings) {
+				formatTimestamps()
+			},
 		})
 	})
 </script>
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+<style>
+	input[type="checkbox"] {
+		width: 1rem;
+		height: 1rem;
+	}
+	#notifications > tbody > tr > td:nth-child(3) {
+		display: flex;
+		flex-wrap: wrap;
+		flex-direction: row;
+		justify-content: flex-start;
+		align-items: center;
+	}
+	#notifications > tbody > tr > td:nth-child(3) > span {
+		flex: 1 1 160px;
+	}
+</style>
+
 {{end}} {{ define "content"}}
 <div class="my-3">
 	<div class="d-md-flex py-2 justify-content-md-between">
@@ -141,7 +239,22 @@
 	</div>
 </div>
 
-<h2 class="h4 mt-3">Validator Watchlist {{.CountWatchlist}}</h2>
+<!-- <div class="stats row justify-content-center">
+	<div class="card m-3">
+		<div class="card-body">Watchlist {{.CountWatchlist}}</div>
+	</div>
+	<div class="card m-3">
+		<div class="card-body">Subscriptions {{.CountSubscriptions}}</div>
+	</div>
+	<div class="card m-3">
+		<div class="card-body">asdf</div>
+	</div>
+	<div class="card m-3">
+		<div class="card-body">asdf</div>
+	</div>
+</div> -->
+
+<h2 class="h4 mt-3">Validator Watchlist</h2>
 <div class="card mb-3">
 	<div class="card-body px-0 py-2">
 		{{ if gt .CountWatchlist 0 }}
@@ -230,13 +343,12 @@
 <h2 class="h4 mt-3">Email Subscriptions</h2>
 <div class="card mb-3">
 	<div class="card-body px-0 py-2">
-		{{ if gt .CountWatchlist 0 }}
-		<div class="table-responsive pt-2">
+		<div class="table-responsive pt-2 d-none" id="subscriptions-container">
 			<table class="table" id="subscriptions">
 				<thead>
 					<tr>
-						<th>Event Filter</th>
-						<th>Event Name</th>
+						<th>Subject</th>
+						<th>Event</th>
 						<th>Created</th>
 						<th>Last Sent</th>
 						<!-- <th>Action</th> -->
@@ -245,11 +357,10 @@
 				<tbody> </tbody>
 			</table>
 		</div>
-		{{else}}
-		<div class="row px-4 py-3 justify-content-around align-items-center">
+		<div id="subscription-placeholder" class="row px-4 py-3 justify-content-around align-items-center">
 			<div style="flex: 1 1 15rem; max-width: 30rem" class="col-6-md mx-3">
 				<p>
-					You currently don't have any email notifications
+					You currently don't have any email notifications. You can toggle notifications from the table above.
 				</p>
 			</div>
 			<div style="flex: 2 1 15rem; max-width: 20rem;" class="col-6-md mx-3">
@@ -313,7 +424,6 @@
 				</svg>
 			</div>
 		</div>
-		{{end}}
 	</div>
 </div>
 {{end}}

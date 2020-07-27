@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"eth2-exporter/db"
@@ -94,12 +95,30 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	userNotificationsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
 	var countWatchlist int
-	db.FrontendDB.Get(&countWatchlist, `
+	err := db.FrontendDB.Get(&countWatchlist, `
 	SELECT count(*) as count
 	FROM users_validators_tags
 	WHERE user_id = $1 and tag = $2
 	`, user.UserID, types.ValidatorTagsWatchlist)
+	if err != nil {
+		logger.Errorf("error retrieving watchlist validator count %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
+	var countSubscriptions int
+	err = db.FrontendDB.Get(&countSubscriptions, `
+	SELECT count(*) as count
+	FROM users_subscriptions
+	WHERE user_id = $1
+	`, user.UserID)
+	if err != nil {
+		logger.Errorf("error retrieving subscription count %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	userNotificationsData.CountSubscriptions = countSubscriptions
 	userNotificationsData.CountWatchlist = countWatchlist
 
 	data := &types.PageData{
@@ -119,7 +138,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
-	err := notificationTemplate.ExecuteTemplate(w, "layout", data)
+	err = notificationTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -263,11 +282,27 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(subs))
 	for _, sub := range subs {
+		ls := template.HTML("N/A")
+		pubkey := template.HTML(sub.EventFilter)
+		if sub.LastSent != nil {
+			ls = utils.FormatTimestamp(sub.LastSent.Unix())
+		}
+		log.Println(sub.CreatedTime.Unix())
+
+		if len(sub.EventFilter) == 96 {
+			h, err := hex.DecodeString(sub.EventFilter)
+			if err != nil {
+				logger.Errorf("Could not decode Pubkey %v", err)
+			} else {
+				pubkey = utils.FormatPublicKey(h)
+			}
+		}
+
 		tableData = append(tableData, []interface{}{
-			sub.EventFilter,
+			pubkey,
 			sub.EventName,
-			utils.FormatTimestamp(sub.Created.Unix()),
-			utils.FormatTimestamp(sub.LastSent.Unix()),
+			utils.FormatTimestamp(sub.CreatedTime.Unix()),
+			ls,
 		})
 	}
 
@@ -662,8 +697,6 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 	event := q.Get("event")
 	filter := q.Get("filter")
 	filter = strings.Replace(filter, "0x", "", -1)
-
-	log.Println("USER NOTIFICATION CALLED with", event, filter)
 
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
