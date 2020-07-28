@@ -234,7 +234,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	// session.AddFlash("Successfully logged in")
 
 	session.Save(r, w)
-	log.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"])
+	logger.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"])
 	// Index(w, r)
 	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 }
