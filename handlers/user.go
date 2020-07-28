@@ -647,7 +647,14 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := db.AddToWatchlist(user.UserID, pubKey)
+	watchlistEntries := []db.WatchlistEntry{
+		db.WatchlistEntry{
+			UserId:              user.UserID,
+			Validator_publickey: pubKey,
+		},
+	}
+
+	err := db.AddToWatchlist(watchlistEntries)
 	if err != nil {
 		logger.Errorf("error adding validator to watchlist to db: %v", err)
 		utils.SetFlash(w, r, validatorEditFlash, "Error: Could not follow validator.")
@@ -657,6 +664,44 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 
 	// utils.SetFlash(w, r, validatorEditFlash, "Subscribed to this validator")
 	http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+}
+
+// UserValidatorWatchlistAdd subscribes a user to get notifications from a specific validator
+func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
+	vars := mux.Vars(r)
+
+	pubKey := strings.Replace(vars["pubkey"], "0x", "", -1)
+	if !user.Authenticated {
+		utils.SetFlash(w, r, validatorEditFlash, "Error: You need a user account to follow a validator <a href=\"/login\">Login</a> or <a href=\"/register\">Sign up</a>")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	if len(pubKey) != 96 {
+		utils.SetFlash(w, r, validatorEditFlash, "Error: Validator not found")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	watchlistEntries := []db.WatchlistEntry{
+		db.WatchlistEntry{
+			UserId:              user.UserID,
+			Validator_publickey: pubKey,
+		},
+	}
+
+	err := db.AddToWatchlist(watchlistEntries)
+	if err != nil {
+		logger.Errorf("error adding validator to watchlist to db: %v", err)
+		utils.SetFlash(w, r, validatorEditFlash, "Error: Could not follow validator.")
+		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		return
+	}
+
+	// utils.SetFlash(w, r, validatorEditFlash, "Subscribed to this validator")
+	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 
 // UserValidatorWatchlistRemove unsubscribes a user from a specific validator

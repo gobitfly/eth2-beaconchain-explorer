@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -60,12 +61,36 @@ func DeleteSubscription(userID uint64, eventName types.EventName, eventFilter st
 	return err
 }
 
-func AddToWatchlist(userId uint64, validator_publickey string) error {
-	key, err := hex.DecodeString(validator_publickey)
-	if err != nil {
-		return err
+type WatchlistEntry struct {
+	UserId              uint64
+	Validator_publickey string
+}
+
+func AddToWatchlist(watchlist []WatchlistEntry) error {
+	qry := ""
+	args := make([]interface{}, 0)
+	qry += "INSERT INTO users_validators_tags (user_id, validator_publickey, tag) VALUES "
+
+	for _, entry := range watchlist {
+		key, err := hex.DecodeString(entry.Validator_publickey)
+		if err != nil {
+			return err
+		}
+		// Values
+		qry += "("
+		args = append(args, entry.UserId)
+		qry += fmt.Sprintf("$%v,", len(args))
+		args = append(args, key)
+		qry += fmt.Sprintf("$%v,", len(args))
+		args = append(args, string(types.ValidatorTagsWatchlist))
+		qry += fmt.Sprintf("$%v", len(args))
+		qry += "),"
 	}
-	_, err = FrontendDB.Exec("INSERT INTO users_validators_tags (user_id, validator_publickey, tag) VALUES ($1, $2, $3)", userId, key, string(types.ValidatorTagsWatchlist))
+
+	qry = qry[:len(qry)-1] + ";"
+	log.Println("QUERY\n", qry)
+
+	_, err := FrontendDB.Exec(qry, args...)
 	return err
 }
 
