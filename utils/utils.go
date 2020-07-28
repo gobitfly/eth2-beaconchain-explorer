@@ -53,6 +53,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlashedValidator":      FormatSlashedValidator,
 		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
 		"formatTimestamp":             FormatTimestamp,
+		"formatTimestampTs":           FormatTimestampTs,
 		"formatValidatorName":         FormatValidatorName,
 		"epochOfSlot":                 EpochOfSlot,
 		"contains":                    strings.Contains,
