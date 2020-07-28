@@ -125,6 +125,17 @@
 			},
 			columnDefs: [
 				{
+					targets: 1,
+					data: '1',
+					render: function(data, type, row, meta) {
+						console.log(data)
+						if (data === '0.00 ETH') {
+							return 'pending'
+						}
+						return data
+					} 
+				},
+				{
 					targets: 2,
 					data: '2',
 					// width: '70%',

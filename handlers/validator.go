@@ -63,7 +63,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
 			deposits, err := db.GetValidatorDeposits(pubKey)
@@ -74,7 +73,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 				err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-
 				if err != nil {
 					logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 					http.Error(w, "Internal server error", 503)
@@ -103,6 +101,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.Status = "deposited_valid"
 			}
 
+			filter := db.WatchlistFilter{
+				UserId:         user.UserID,
+				Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
+				Tag:            types.ValidatorTagsWatchlist,
+				JoinValidators: false,
+			}
+			watchlist, err := db.GetTaggedValidators(filter)
+			if err != nil {
+				logger.Errorf("error getting tagged validators from db: %v", err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+
+			validatorPageData.Watchlist = watchlist
+
 			data.Data = validatorPageData
 			if utils.IsApiRequest(r) {
 				w.Header().Set("Content-Type", "application/json")
@@ -115,6 +128,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", 503)
 				return
 			}
+
 			return
 		}
 	} else {
@@ -176,7 +190,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	filter := db.WatchlistFilter{
 		UserId:         user.UserID,
 		Validators:     &pq.ByteaArray{validatorPageData.PublicKey},

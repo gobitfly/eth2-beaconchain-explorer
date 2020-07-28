@@ -6,7 +6,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -87,8 +86,7 @@ func AddToWatchlist(watchlist []WatchlistEntry) error {
 		qry += "),"
 	}
 
-	qry = qry[:len(qry)-1] + ";"
-	log.Println("QUERY\n", qry)
+	qry = qry[:len(qry)-1] + " ON CONFLICT DO NOTHING;"
 
 	_, err := FrontendDB.Exec(qry, args...)
 	return err

@@ -49,14 +49,44 @@ function appendBlocks(blocks) {
 }
 
 $(document).ready(function() {
+
+  //bookmark button adds all validators in the dashboard to the watchlist
+  $('#bookmark-button').on("click", function(event) {
+    console.log('click bookmark button')
+    var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
+    var spinnerSmall = $('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>')
+    var bookmarkIcon = $("<i class='far fa-bookmark' style='width:15px;'></i>")
+    var errorIcon = $('<i class="fas fa-exclamation"></i>')
+    $('#bookmark-button').empty().append(spinnerSmall)
+
+    fetch('/user/dashboard/save', {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(state.validators),
+    }).then(function(res) {
+      $('#bookmark-button').empty().append(tickIcon)
+      setTimeout(function() {
+        $('#bookmark-button').empty().append(bookmarkIcon)
+      }, 1000)
+    }).catch(function(err) {
+      $('#bookmark-button').empty().append(errorIcon)
+      setTimeout(function() {
+        $('#bookmark-button').empty().append(bookmarkIcon)
+      }, 1000)
+      console.log(err)
+    })
+  })
+
   var clipboard = new ClipboardJS('#copy-button');
 
   var copyButton = $('#copy-button')
   var clearSearch = $('#clear-search')
   //'<i class="fa fa-copy"></i>'
-  copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
+  var copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
   //'<i class="fas fa-check"></i>'
-  tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
+  var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
 
   clipboard.on('success', function (e) {
     copyButton.empty().append(tickIcon);
@@ -562,6 +592,7 @@ $(document).ready(function() {
 
     } else {
       document.querySelector('#copy-button').style.visibility = "hidden"
+      document.querySelector('#bookmark-button').style.visibility = "hidden"
       document.querySelector('#clear-search').style.visibility = "hidden"
       // window.location = "/dashboard"
     }

@@ -12,6 +12,7 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -188,7 +189,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	err = db.FrontendDB.Select(&wl, `
 	SELECT 
 			users_validators_tags.validator_publickey as publickey,
-			MAX(validators.balance) as balance,
+			COALESCE (MAX(validators.balance), 0) as balance,
 			ARRAY_REMOVE(ARRAY_AGG(users_subscriptions.event_name), NULL) as events
 		FROM users_validators_tags
 		LEFT JOIN users_subscriptions
@@ -203,7 +204,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		GROUP BY users_validators_tags.user_id, users_validators_tags.validator_publickey, users_subscriptions.event_name;
 	`, user.UserID)
 	if err != nil {
-		logger.Errorf("error retrieving subscriptions for users validators %v: %v", user.UserID, err)
+		logger.Errorf("error retrieving subscriptions for users: %v validators: %v", user.UserID, err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -670,38 +671,55 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(w, r)
-	vars := mux.Vars(r)
 
-	pubKey := strings.Replace(vars["pubkey"], "0x", "", -1)
-	if !user.Authenticated {
-		utils.SetFlash(w, r, validatorEditFlash, "Error: You need a user account to follow a validator <a href=\"/login\">Login</a> or <a href=\"/register\">Sign up</a>")
-		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-		return
-	}
-
-	if len(pubKey) != 96 {
-		utils.SetFlash(w, r, validatorEditFlash, "Error: Validator not found")
-		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
-		return
-	}
-
-	watchlistEntries := []db.WatchlistEntry{
-		db.WatchlistEntry{
-			UserId:              user.UserID,
-			Validator_publickey: pubKey,
-		},
-	}
-
-	err := db.AddToWatchlist(watchlistEntries)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		logger.Errorf("error adding validator to watchlist to db: %v", err)
-		utils.SetFlash(w, r, validatorEditFlash, "Error: Could not follow validator.")
-		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
+		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	// log.Println(string(body))
+	indices := make([]string, 0)
+	err = json.Unmarshal(body, &indices)
+	if err != nil {
+		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	indicesParsed := make([]int64, 0)
+	for _, i := range indices {
+		parsed, err := strconv.ParseInt(i, 10, 64)
+		if err != nil {
+			logger.Errorf("error could not parse validator indices: %v, %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		indicesParsed = append(indicesParsed, parsed)
+	}
 
-	// utils.SetFlash(w, r, validatorEditFlash, "Subscribed to this validator")
-	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+	publicKeys := make([]string, 0)
+	db.DB.Select(&publicKeys, `
+	SELECT Encode(pubkey::bytea, 'hex') as pubkey
+	FROM validators
+	WHERE validatorindex = ANY($1)
+	`, pq.Int64Array(indicesParsed))
+
+	watchListEntries := []db.WatchlistEntry{}
+
+	for _, key := range publicKeys {
+		watchListEntries = append(watchListEntries, db.WatchlistEntry{
+			UserId:              user.UserID,
+			Validator_publickey: key,
+		})
+	}
+
+	err = db.AddToWatchlist(watchListEntries)
+	if err != nil {
+		logger.Errorf("error could not add validators to watchlist: %v, %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(200)
 }
 
 // UserValidatorWatchlistRemove unsubscribes a user from a specific validator

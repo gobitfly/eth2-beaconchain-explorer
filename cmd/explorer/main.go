@@ -143,9 +143,11 @@ func main() {
 		authRouter.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
 		authRouter.HandleFunc("/notifications", handlers.UserNotifications).Methods("GET")
 		authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
-		authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 		authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
 		authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
+		authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
+
+		authRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
 
 		router.PathPrefix("/user").Handler(
 			negroni.New(

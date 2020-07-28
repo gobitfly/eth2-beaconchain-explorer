@@ -59,6 +59,7 @@ type IndexPageData struct {
 	AverageBalance            string                 `json:"average_balance"`
 	DepositedTotal            float64                `json:"deposit_total"`
 	DepositThreshold          float64                `json:"deposit_threshold"`
+	ValidatorsRemaining       float64                `json:"validators_remaining"`
 	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
 	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`

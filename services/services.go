@@ -230,7 +230,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	var validDepositTotal uint64
 	db.DB.Get(&validDepositTotal, `
-		SELECT sum(eth1.amount) as total 
+		SELECT count(*) as total 
 		FROM 
 			eth1_deposits as eth1 
 		WHERE 
@@ -238,7 +238,9 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	`)
 
 	data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
-	data.DepositedTotal = float64(validDepositTotal) / 1e9
+	data.DepositedTotal = float64(validDepositTotal) * 32
+	data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
+
 
 	if data.DepositedTotal > data.DepositThreshold {
 		data.Genesis = true
