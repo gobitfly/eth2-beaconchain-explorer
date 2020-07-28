@@ -67,6 +67,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/user",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "user",
 		Data:                  userSettingsData,
@@ -126,6 +127,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/user",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "user",
 		Data:                  userNotificationsData,
@@ -352,7 +354,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
-	var GenericUpdatePasswordError string = "Error: Something went wrong updating your password 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>"
+	var GenericUpdatePasswordError = "Error: Something went wrong updating your password 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>"
 
 	user, session, err := getUserSession(w, r)
 	if err != nil {
@@ -649,7 +651,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	watchlistEntries := []db.WatchlistEntry{
-		db.WatchlistEntry{
+		{
 			UserId:              user.UserID,
 			Validator_publickey: pubKey,
 		},

@@ -26,6 +26,7 @@ func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
 			Title:       fmt.Sprintf("%v - Validator Staking Leaderboard - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/validators/leaderboard",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "validators",

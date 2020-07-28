@@ -9,7 +9,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
-	"log"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -24,12 +24,12 @@ func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	flag.Parse()
 
-	log.Printf("config file path: %v", *configPath)
+	logrus.Printf("config file path: %v", *configPath)
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
 
 	if err != nil {
-		log.Fatalf("error reading config file: %v", err)
+		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
 
@@ -37,7 +37,7 @@ func main() {
 	defer db.DB.Close()
 
 	if utils.Config.Chain.SlotsPerEpoch == 0 || utils.Config.Chain.SecondsPerSlot == 0 || utils.Config.Chain.GenesisTimestamp == 0 {
-		log.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
+		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
 	}
 
 	if cfg.Indexer.Enabled {
@@ -45,20 +45,20 @@ func main() {
 
 		if utils.Config.Indexer.Node.Type == "prysm" {
 			if utils.Config.Indexer.Node.PageSize == 0 {
-				log.Printf("setting default rpc page size to 500")
+				logrus.Printf("setting default rpc page size to 500")
 				utils.Config.Indexer.Node.PageSize = 500
 			}
 			rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
 			if err != nil {
-				log.Fatal(err)
+				logrus.Fatal(err)
 			}
 		} else if utils.Config.Indexer.Node.Type == "lighthouse" {
 			rpcClient, err = rpc.NewLighthouseClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
 			if err != nil {
-				log.Fatal(err)
+				logrus.Fatal(err)
 			}
 		} else {
-			log.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
+			logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
 		}
 		go exporter.Start(rpcClient)
 	}
@@ -192,15 +192,15 @@ func main() {
 			Handler:      n,
 		}
 
-		log.Printf("http server listening on %v", srv.Addr)
+		logrus.Printf("http server listening on %v", srv.Addr)
 		go func() {
 			if err := srv.ListenAndServe(); err != nil {
-				log.Println(err)
+				logrus.Println(err)
 			}
 		}()
 	}
 
 	utils.WaitForCtrlC()
 
-	log.Println("exiting...")
+	logrus.Println("exiting...")
 }

@@ -10,7 +10,6 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
-	"log"
 	"time"
 
 	"html/template"
@@ -28,8 +27,8 @@ var resendConfirmationTemplate = template.Must(template.New("resetPassword").Fun
 var requestResetPaswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/requestResetPassword.html"))
 
 var authSessionName = "auth"
-var authResetEmailRateLimit = time.Second * 60 * 15
-var authConfirmEmailRateLimit = time.Second * 60 * 15
+var authResetEmailRateLimit = time.Second * 60 * 2
+var authConfirmEmailRateLimit = time.Second * 60 * 2
 var authInternalServerErrorFlashMsg = "Error: Something went wrong :( Please retry later"
 
 // Register handler renders a template that allows for the creation of a new user.
@@ -39,6 +38,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "register",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
@@ -158,6 +158,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/login",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "login",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
@@ -234,7 +235,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	// session.AddFlash("Successfully logged in")
 
 	session.Save(r, w)
-	log.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"])
+	logger.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"])
 	// Index(w, r)
 	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 }
@@ -316,6 +317,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/requestReset",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "requestReset",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email},
@@ -399,6 +401,7 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "register",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
@@ -474,6 +477,7 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/resendConfirmation",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "resendConfirmation",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},

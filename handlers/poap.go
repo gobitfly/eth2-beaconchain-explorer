@@ -31,6 +31,7 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 			Title:       fmt.Sprintf("%v - POAP - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/poap",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		ShowSyncingMessage: services.IsSyncing(),
 		Active:             "poap",
