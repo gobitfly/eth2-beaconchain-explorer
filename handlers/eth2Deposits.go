@@ -26,6 +26,7 @@ func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
 			Title:       fmt.Sprintf("%v - Eth1 Deposits - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/deposits/eth2",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "eth2Deposits",
 		ShowSyncingMessage:    services.IsSyncing(),

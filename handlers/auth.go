@@ -10,7 +10,6 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
-	"log"
 	"time"
 
 	"html/template"
@@ -39,6 +38,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "register",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
@@ -158,6 +158,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/login",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "login",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
@@ -316,6 +317,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/requestReset",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "requestReset",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email},
@@ -399,6 +401,7 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/register",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "register",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
@@ -474,6 +477,7 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/resendConfirmation",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "resendConfirmation",
 		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},

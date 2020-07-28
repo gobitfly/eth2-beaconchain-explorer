@@ -34,6 +34,7 @@ type Meta struct {
 	Tdata1      string
 	Tlabel2     string
 	Tdata2      string
+	GATag       string
 }
 
 //LatestState is a struct to hold data for the banner
