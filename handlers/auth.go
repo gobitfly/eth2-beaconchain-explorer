@@ -28,8 +28,8 @@ var resendConfirmationTemplate = template.Must(template.New("resetPassword").Fun
 var requestResetPaswordTemplate = template.Must(template.New("resetPassword").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/requestResetPassword.html"))
 
 var authSessionName = "auth"
-var authResetEmailRateLimit = time.Second * 60 * 15
-var authConfirmEmailRateLimit = time.Second * 60 * 15
+var authResetEmailRateLimit = time.Second * 60 * 2
+var authConfirmEmailRateLimit = time.Second * 60 * 2
 var authInternalServerErrorFlashMsg = "Error: Something went wrong :( Please retry later"
 
 // Register handler renders a template that allows for the creation of a new user.
