@@ -432,7 +432,7 @@
 	<script src="//instant.page/5.1.0" type="module" integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script>
     {{ if ne .GATag ""}}
 		<!-- Global site tag (gtag.js) - Google Analytics -->
-		<script async src="https://www.googletagmanager.com/gtag/js?id={{.GATag}}"></script>
+		<script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>
 		<script>
             window.dataLayer = window.dataLayer || [];
 
@@ -442,7 +442,7 @@
 
             gtag('js', new Date());
 
-            gtag('config', {{.GATag}});
+            gtag('config', {{.Meta.GATag}});
 		</script>
     {{end}}
 	</body>
