@@ -67,7 +67,7 @@
 			continue.</strong>
 	</noscript>
 	<!-- Banner -->
-	<div class="info-banner-container">
+	<div {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}} class="info-banner-container">
 		<div class="info-banner-content container">
 			<div id="banner-stats" class="info-banner-left">
 				<a style="white-space:nowrap;" class="mr-2" href="/">
@@ -135,7 +135,7 @@
 			</div>
 			<div class="info-banner-right">
 
-                {{if .User.Authenticated}}
+					{{if .User.Authenticated}}
 					<div class="dropdown">
 						<a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 							<i class="fas fa-user-circle m-0 p-0"></i>
@@ -149,7 +149,7 @@
 							<a data-no-instant class="dropdown-item" href="/logout">Logout</a>
 						</div>
 					</div>
-                {{else}}
+					{{else}}
 					<a href="/login" class="mr-3">
 						<span>Sign In</span>
 					</a>
@@ -161,7 +161,7 @@
 		</div>
 	</div>
 	<!-- Banner END -->
-	<nav id="nav" class="navbar navbar-expand-lg navbar-light">
+	<nav {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}} id="nav" class="navbar navbar-expand-lg navbar-light">
 		<div class="container">
 			<a class=navbar-brand href="/">
 				<i {{ if eq .Active "index"}}style="color: var(--font-color)" {{else}}style="opacity: .7"{{end}} class="fas fa-satellite-dish mr-1"></i>
