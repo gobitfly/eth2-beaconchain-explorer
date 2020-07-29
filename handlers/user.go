@@ -203,7 +203,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		ON
 			users_validators_tags.validator_publickey = validators.pubkey
 		WHERE users_validators_tags.user_id = $1
-		GROUP BY users_validators_tags.user_id, users_validators_tags.validator_publickey, users_subscriptions.event_name;
+		GROUP BY users_validators_tags.user_id, users_validators_tags.validator_publickey;
 	`, user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving subscriptions for users: %v validators: %v", user.UserID, err)
