@@ -73,7 +73,7 @@
 				<a style="white-space:nowrap;" class="mr-2" href="/">
 					<i class="fas fa-home"></i> <span>|</span>
 				</a>
-				<div id="banner-epoch" class="info-item d-flex mr-3">
+				<div id="banner-epoch" class="info-item d-flex mr-2">
 					<div class="info-item-header mr-1">
               <span class="item-icon">
                 <i class="fas fa-history"></i>
@@ -83,7 +83,7 @@
 					<div class="info-item-body">
 						<a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
 				</div>
-				<div id="banner-slot" class="info-item d-flex mr-3">
+				<div id="banner-slot" class="info-item d-flex mr-2">
 					<div class="info-item-header mr-1">
               <span class="item-icon">
                 <i class="fas fa-cubes"></i>
@@ -128,7 +128,7 @@
 							<input id="banner-search-input" class="typeahead" autocomplete="off" name="search" type="text" placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
 						</form>
 					</div>
-					<a class="search-button" type="button">
+					<a class="search-button">
 						<i id="banner-search" class="fas fa-search"></i>
 					</a>
 				</div>
@@ -137,7 +137,7 @@
 
                 {{if .User.Authenticated}}
 					<div class="dropdown">
-						<a class="btn btn-transparent btn-sm dropdown-toggle" type="button" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+						<a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 							<i class="fas fa-user-circle m-0 p-0"></i>
 						</a>
 						<div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
@@ -150,10 +150,10 @@
 						</div>
 					</div>
                 {{else}}
-					<a href="/login" class="mr-3" type="button">
+					<a href="/login" class="mr-3">
 						<span>Sign In</span>
 					</a>
-					<a href="/register" class="btn btn-primary btn-sm" type="button">
+					<a href="/register" class="btn btn-primary btn-sm">
 						<span class="text-white"><b>Sign Up</b></span>
 					</a>
                 {{end}}
