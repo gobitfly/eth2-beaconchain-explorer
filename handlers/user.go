@@ -591,7 +591,7 @@ func sendEmailUpdateConfirmation(userId uint64, newEmail string) error {
 	subject := fmt.Sprintf("%s: Verify your email-address", utils.Config.Frontend.SiteDomain)
 	msg := fmt.Sprintf(`To update your email on %[1]s please verify it by clicking this link:
 
-https://%[1]s/user/settings/email/%[2]s?email=%[3]s
+https://%[1]s/settings/email/%[2]s?email=%[3]s
 
 Best regards,
 

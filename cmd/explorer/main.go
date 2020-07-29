@@ -9,9 +9,10 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -135,12 +136,14 @@ func main() {
 		router.HandleFunc("/reset/{hash}", handlers.ResetPassword).Methods("GET")
 		router.HandleFunc("/reset", handlers.ResetPasswordPost).Methods("POST")
 
+		// confirming the email update should not require auth
+		router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
+
 		authRouter := mux.NewRouter().PathPrefix("/user").Subrouter()
 		authRouter.HandleFunc("/settings", handlers.UserSettings).Methods("GET")
 		authRouter.HandleFunc("/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
 		authRouter.HandleFunc("/settings/delete", handlers.UserDeletePost).Methods("POST")
 		authRouter.HandleFunc("/settings/email", handlers.UserUpdateEmailPost).Methods("POST")
-		authRouter.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
 		authRouter.HandleFunc("/notifications", handlers.UserNotifications).Methods("GET")
 		authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
 		authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
