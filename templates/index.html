@@ -3,6 +3,40 @@
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
 <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 
+<script>
+  var genesis = {{.NetworkStartTs}}
+  var now = Math.round((new Date()).getTime() / 1000)
+  var secondsLeft = genesis - now
+  var seconds = secondsLeft % 60
+  var min = ((secondsLeft - seconds) / 60) % 60
+  var hour = Math.round((secondsLeft - seconds - (min * 60)) / 3600)
+
+  if (-1 < hour && hour <= 48) {
+    $('#clock').html(hour+' hr '+min+' min '+ seconds +' sec')
+    $('#estimated').html("Countdown")
+    var countdownInterval = setInterval(function() {
+        if (hour === 0 && min === 0 && seconds === 0) {
+          clearInterval(countdownInterval)
+          window.location.href = "/"
+        }
+        
+        if (min === 0 && hour > 0) {
+          min = 60
+          hour -= 1
+        }
+    
+        if (seconds === 0 && min > 0) {
+          seconds = 60
+          min -= 1
+        }
+        seconds -= 1
+        $('#clock').html(hour+' hr '+min+' min '+ seconds +' sec')
+      }, 1000)
+  }
+  
+
+</script>
+
 
 <script src="https://cdn.jsdelivr.net/npm/vue"></script>
 <script src="/js/highcharts-vue.min.js"></script>
@@ -428,8 +462,12 @@
     </p>
   </div>
   <div class="col-md-5 my-3 d-flex flex-column justify-content-center">
-    <h6>Estimated</h6>
-    <p class="align-self-center"><strong><span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTimestamp}})</strong></p>
+    <h6 id="estimated">Estimated</h6>
+    <p class="align-self-center">
+      <strong id="clock">
+        <span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTimestamp}})
+      </strong>
+    </p>
   </div>
   <div class="col-md-5 my-3">
     <h2 class="h3">Explore & Manage</h2>
