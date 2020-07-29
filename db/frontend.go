@@ -92,12 +92,31 @@ func AddToWatchlist(watchlist []WatchlistEntry) error {
 	return err
 }
 
+// RemoveFromWatchlist removes a validator for a given user from the users_validators_tag table
+// It also deletes any subscriptions for that bookmarked validator
 func RemoveFromWatchlist(userId uint64, validator_publickey string) error {
 	key, err := hex.DecodeString(validator_publickey)
 	if err != nil {
 		return err
 	}
-	_, err = FrontendDB.Exec("DELETE FROM users_validators_tags WHERE user_id = $1 and validator_publickey = $2 and tag = $3", userId, key, types.ValidatorTagsWatchlist)
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %v", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_filter = $2", userId, validator_publickey)
+	if err != nil {
+		return fmt.Errorf("error deleting subscriptions for validator: %v", err)
+	}
+
+	_, err = tx.Exec("DELETE FROM users_validators_tags WHERE user_id = $1 and validator_publickey = $2 and tag = $3", userId, key, types.ValidatorTagsWatchlist)
+	if err != nil {
+		return fmt.Errorf("error deleting validator from watchlist: %v", err)
+	}
+
+	err = tx.Commit()
+
 	return err
 }
 
