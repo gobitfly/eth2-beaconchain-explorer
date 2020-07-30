@@ -30,8 +30,8 @@ var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTem
 
 func UserAuthMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	user := getUser(w, r)
-	if user.Authenticated == false {
-		log.Println("User not authorized")
+	if !user.Authenticated {
+		logger.Errorf("User not authorized")
 		utils.SetFlash(w, r, authSessionName, "Error: Please login first")
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
@@ -621,6 +621,25 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 		utils.SetFlash(w, r, validatorEditFlash, "Error: You need a user account to follow a validator <a href=\"/login\">Login</a> or <a href=\"/register\">Sign up</a>")
 		http.Redirect(w, r, "/validator/"+pubKey, http.StatusSeeOther)
 		return
+	}
+
+	balance := r.FormValue("balance_decreases")
+	if balance == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorBalanceDecreasedEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorBalanceDecreasedEventName, pubKey, err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+	slashed := r.FormValue("validator_slashed")
+	if slashed == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorGotSlashedEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if len(pubKey) != 96 {

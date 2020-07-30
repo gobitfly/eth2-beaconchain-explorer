@@ -52,11 +52,10 @@ $(document).ready(function() {
 
   //bookmark button adds all validators in the dashboard to the watchlist
   $('#bookmark-button').on("click", function(event) {
-    console.log('click bookmark button')
     var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
     var spinnerSmall = $('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>')
     var bookmarkIcon = $("<i class='far fa-bookmark' style='width:15px;'></i>")
-    var errorIcon = $('<i class="fas fa-exclamation"></i>')
+    var errorIcon = $("<i class='fas fa-exclamation' style='width:15px;'></i>")
     $('#bookmark-button').empty().append(spinnerSmall)
 
     fetch('/user/dashboard/save', {
@@ -66,15 +65,36 @@ $(document).ready(function() {
       },
       body: JSON.stringify(state.validators),
     }).then(function(res) {
-      $('#bookmark-button').empty().append(tickIcon)
-      setTimeout(function() {
-        $('#bookmark-button').empty().append(bookmarkIcon)
-      }, 1000)
+      console.log('response', res)
+      if (res.status === 200 && !res.redirected) {
+        // success
+        console.log("success")
+        $('#bookmark-button').empty().append(tickIcon)
+        setTimeout(function() {
+          $('#bookmark-button').empty().append(bookmarkIcon)
+        }, 1000)
+      } else if (res.redirected) {
+        console.log('redirected!')
+        $('#bookmark-button').attr("data-original-title", "Please login or sign up first.")
+        $('#bookmark-button').tooltip('show')
+        $('#bookmark-button').empty().append(errorIcon)
+        setTimeout(function() {
+          $('#bookmark-button').empty().append(bookmarkIcon)
+          $('#bookmark-button').tooltip('hide')
+          $('#bookmark-button').attr("data-original-title", "Save all to Watchlist")
+        }, 2000)
+      } else {
+        // could not bookmark validators
+        $('#bookmark-button').empty().append(errorIcon)
+        setTimeout(function() {
+          $('#bookmark-button').empty().append(bookmarkIcon)
+        }, 2000)
+      }
     }).catch(function(err) {
       $('#bookmark-button').empty().append(errorIcon)
       setTimeout(function() {
         $('#bookmark-button').empty().append(bookmarkIcon)
-      }, 1000)
+      }, 2000)
       console.log(err)
     })
   })

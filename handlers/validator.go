@@ -56,6 +56,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
+	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
+	if err != nil {
+		logger.Errorf("error retrieving flashes for validator %v: %v", vars["index"], err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 	// Request came with a hash
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
@@ -222,7 +229,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)

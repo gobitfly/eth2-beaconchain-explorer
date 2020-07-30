@@ -60,16 +60,16 @@
 					</button>
 					{{ if len .Watchlist }}
 					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
-						<button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button" data-target="#edit-follow-modal" title="Stop receiving updates for this validator." >
+						<button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button" title="Stop receiving updates for this validator." >
 							<i class="fas fa-bookmark"></i>
 						</button>
 					</form>
 					{{else}}
-					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
-						<button class="btn btn-dark text-white btn-sm" type="submit" id="follow-button" data-target="#edit-follow-modal" title="Follow this validator and receive email notifications">
+					<!-- <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post"> -->
+						<button class="btn btn-dark text-white btn-sm" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" title="Follow this validator and receive email notifications">
 							<i class="far fa-bookmark"></i>
 						</button>
-					</form>
+					<!-- </form> -->
 					{{end}}
 					
 				</h1>
@@ -120,6 +120,43 @@
 					<div class="modal-footer">
 						<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						<button type="submit" class="btn btn-primary">Save changes</button>
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+
+	<!-- Add Validator to Watchlist Modal -->
+	<div class="modal fade" id="bookmark-validator-modal" tabindex="-1" role="dialog" aria-labelledby="bookmark-validator-modal-label" aria-hidden="true">
+		<form action="{{printf "%#x" .PublicKey}}/add" method="post">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="bookmarkModalLabel">Add to Watchlist</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<p>Additionally to adding this validator to your watch list you can optionally subscribe to events and receive email notifications.</p>
+						<div class="form-group">
+							<div class="form-check">
+								<input class="form-check-input" id="balance_decreases" type="checkbox" name="balance_decreases">
+								<label class="form-check-label" for="balance_decreases">
+									balance decreases
+								</label>
+							</div>
+							 <div class="form-check">
+								 <input class="form-check-input" id="validator_slashed" type="checkbox" name="validator_slashed">
+								 <label class="form-check-label" for="validator_slashed">
+									 validator slashed
+								 </label>
+							 </div>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+						<button type="submit" class="btn btn-primary">Add To Watchlist</button>
 					</div>
 				</div>
 			</div>

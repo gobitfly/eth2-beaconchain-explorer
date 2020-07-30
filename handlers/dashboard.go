@@ -18,7 +18,7 @@ import (
 	"github.com/lib/pq"
 )
 
-var dashboardTemplate = template.Must(template.New("dashboard").ParseFiles("templates/layout.html", "templates/dashboard.html"))
+var dashboardTemplate = template.Must(template.New("dashboard").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/dashboard.html"))
 
 func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 	if str == "" {
