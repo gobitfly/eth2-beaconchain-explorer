@@ -452,7 +452,7 @@
       <span>
         Deposit Progress
       </span>
-        {{if gt .ValidatorsRemaining 0}}
+        {{if gt .ValidatorsRemaining 0.0}}
       <span class="text-muted">{{.ValidatorsRemaining | formatThousands}} validators left</span>
         {{end}}
     </h6>
