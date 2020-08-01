@@ -169,6 +169,9 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
+		if data.ValidatorsRemaining < 0 {
+			data.ValidatorsRemaining = 0
+		}
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 		data.NetworkStartTs = minGenesisTime.Unix()
