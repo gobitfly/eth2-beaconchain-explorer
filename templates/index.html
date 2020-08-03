@@ -13,7 +13,8 @@
 
   if (-1 < hour && hour <= 48) {
     $('#clock').html(hour+' hr '+min+' min '+ seconds +' sec')
-    $('#estimated').html("Countdown")
+    $('#estimated').html('Countdown')
+    $('#estimated+span').removeClass('d-none')
     var countdownInterval = setInterval(function() {
         if (hour === 0 && min === 0 && seconds === 0) {
           clearInterval(countdownInterval)
@@ -473,7 +474,12 @@
     </p>
   </div>
   <div class="col-md-5 my-3 d-flex flex-column justify-content-center">
-    <h6 id="estimated">Estimated</h6>
+    <h6 class="d-flex justify-content-between">
+      <span id="estimated">
+        Estimated
+      </span>
+      <small class="text-muted d-inline-block d-none" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></small>
+    </h6>
     <p class="align-self-center">
       <strong id="clock">
         <span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTimestamp}})
