@@ -180,6 +180,7 @@ type ValidatorPageData struct {
 	FlashMessage                     string
 	Watchlist                        []*TaggedValidators
 	SubscriptionFlash                []interface{}
+	User                             *User
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
