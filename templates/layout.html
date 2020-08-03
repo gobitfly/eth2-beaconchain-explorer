@@ -306,7 +306,7 @@
 						<a class="nav-link" href="/poap"><i class="fas fa-medal"></i> POAP</a>
 					</li>
 					<li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
-						<a class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
+						<a ga-outbound class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
 					</li>
 					<!-- <li class="nav-item dropdown">
 					  <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -434,6 +434,7 @@
 		<!-- Global site tag (gtag.js) - Google Analytics -->
 		<script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>
 		<script>
+            console.log('loaded google analytics')
             window.dataLayer = window.dataLayer || [];
 
             function gtag() {
@@ -443,6 +444,46 @@
             gtag('js', new Date());
 
             gtag('config', {{.Meta.GATag}});
+
+            function createFunctionWithTimeout(callback, opt_timeout) {
+              var called = false;
+              function fn() {
+                if (!called) {
+                  called = true;
+                  callback();
+                }
+              }
+              setTimeout(fn, opt_timeout || 1000);
+              return fn;
+            }
+
+            function handleOutboundLinkClicks(event) {
+              var link = event.currentTarget.href
+              event.preventDefault();
+              
+              var fallback = setTimeout(function() {
+                  window.location = link
+              }, 1000)
+
+              gtag('event', "click", {
+                  event_category: 'Outbound Link',
+                  event_label: link,
+                  event_callback: function() {
+                    clearTimeout(fallback)
+                    window.location = link
+                  }
+               });
+            }
+
+            // add event handler for outbound links tagged with ga-outbound
+            var outbounds = document.querySelectorAll('[ga-outbound]')
+            console.log('found x outbound links', outbounds)
+
+            for (var i = 0; i < outbounds.length; i++) {
+              var element = outbounds[i];
+              element.addEventListener('click', handleOutboundLinkClicks)
+            }
+
 		</script>
     {{end}}
 	</body>
