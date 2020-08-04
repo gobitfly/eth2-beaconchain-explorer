@@ -135,7 +135,7 @@
 			</div>
 			<div class="info-banner-right">
 
-					{{if .User.Authenticated}}
+                {{if .User.Authenticated}}
 					<div class="dropdown">
 						<a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 							<i class="fas fa-user-circle m-0 p-0"></i>
@@ -149,7 +149,7 @@
 							<a data-no-instant class="dropdown-item" href="/logout">Logout</a>
 						</div>
 					</div>
-					{{else}}
+                {{else}}
 					<a href="/login" class="mr-3">
 						<span>Sign In</span>
 					</a>
@@ -208,33 +208,33 @@
 						</div>
 					</li>
 					<style>
-						.nav-cube {
-							--mainColor: rgba(75, 75, 75, .7);
-							--strokeColor: rgba(55, 55, 55, 1);
-							--lightColor: rgba(0, 0, 0, .5);
-							--darkColor: rgba(100, 100, 100, .8);
-						}
+                        .nav-cube {
+                            --mainColor: rgba(75, 75, 75, .7);
+                            --strokeColor: rgba(55, 55, 55, 1);
+                            --lightColor: rgba(0, 0, 0, .5);
+                            --darkColor: rgba(100, 100, 100, .8);
+                        }
 
-						.active .nav-cube {
-							--mainColor: rgba(55, 55, 55, 1);
-							--strokeColor: rgba(35, 35, 35, 1);
-							--lightColor: rgba(0, 0, 0, 1);
-							--darkColor: rgba(80, 80, 80, 1);
-						}
+                        .active .nav-cube {
+                            --mainColor: rgba(55, 55, 55, 1);
+                            --strokeColor: rgba(35, 35, 35, 1);
+                            --lightColor: rgba(0, 0, 0, 1);
+                            --darkColor: rgba(80, 80, 80, 1);
+                        }
 
-						[data-theme='dark'] .nav-cube {
-							--mainColor: rgba(180, 180, 180, .7);
-							--strokeColor: rgba(200, 200, 200, 1);
-							--lightColor: rgba(255, 255, 255, .5);
-							--darkColor: rgba(150, 150, 150, .8);
-						}
+                        [data-theme='dark'] .nav-cube {
+                            --mainColor: rgba(180, 180, 180, .7);
+                            --strokeColor: rgba(200, 200, 200, 1);
+                            --lightColor: rgba(255, 255, 255, .5);
+                            --darkColor: rgba(150, 150, 150, .8);
+                        }
 
-						[data-theme='dark'] .active .nav-cube {
-							--mainColor: rgba(200, 200, 200, 1);
-							--strokeColor: rgba(220, 220, 220, 1);
-							--lightColor: rgba(255, 255, 255, 1);
-							--darkColor: rgba(170, 170, 170, 1);
-						}
+                        [data-theme='dark'] .active .nav-cube {
+                            --mainColor: rgba(200, 200, 200, 1);
+                            --strokeColor: rgba(220, 220, 220, 1);
+                            --lightColor: rgba(255, 255, 255, 1);
+                            --darkColor: rgba(170, 170, 170, 1);
+                        }
 					</style>
 					<li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
 						<a class="nav-link" href="/dashboard">
@@ -344,9 +344,7 @@
 
 	<main>
 		<div class="container mt-2">
-      <!-- {{ if not  (eq .Active "index")}}
-      <ins data-revive-zoneid="5683" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
-      {{end}} -->
+			<ins data-revive-zoneid="5683" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
             {{ template "content" .Data }}
 		</div>
 	</main>
@@ -450,33 +448,35 @@
             gtag('config', {{.Meta.GATag}});
 
             function createFunctionWithTimeout(callback, opt_timeout) {
-              var called = false;
-              function fn() {
-                if (!called) {
-                  called = true;
-                  callback();
+                var called = false;
+
+                function fn() {
+                    if (!called) {
+                        called = true;
+                        callback();
+                    }
                 }
-              }
-              setTimeout(fn, opt_timeout || 1000);
-              return fn;
+
+                setTimeout(fn, opt_timeout || 1000);
+                return fn;
             }
 
             function handleOutboundLinkClicks(event) {
-              var link = event.currentTarget.href
-              event.preventDefault();
-              
-              var fallback = setTimeout(function() {
-                  window.location = link
-              }, 1000)
+                var link = event.currentTarget.href
+                event.preventDefault();
 
-              gtag('event', "click", {
-                  event_category: 'Outbound Link',
-                  event_label: link,
-                  event_callback: function() {
-                    clearTimeout(fallback)
+                var fallback = setTimeout(function () {
                     window.location = link
-                  }
-               });
+                }, 1000)
+
+                gtag('event', "click", {
+                    event_category: 'Outbound Link',
+                    event_label: link,
+                    event_callback: function () {
+                        clearTimeout(fallback)
+                        window.location = link
+                    }
+                });
             }
 
             // add event handler for outbound links tagged with ga-outbound
@@ -484,8 +484,8 @@
             console.log('found x outbound links', outbounds)
 
             for (var i = 0; i < outbounds.length; i++) {
-              var element = outbounds[i];
-              element.addEventListener('click', handleOutboundLinkClicks)
+                var element = outbounds[i];
+                element.addEventListener('click', handleOutboundLinkClicks)
             }
 
 		</script>
