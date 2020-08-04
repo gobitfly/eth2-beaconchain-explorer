@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -290,7 +289,6 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 		if sub.LastSent != nil {
 			ls = utils.FormatTimestamp(sub.LastSent.Unix())
 		}
-		log.Println(sub.CreatedTime.Unix())
 
 		if len(sub.EventFilter) == 96 {
 			h, err := hex.DecodeString(sub.EventFilter)

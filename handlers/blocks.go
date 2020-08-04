@@ -176,7 +176,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
 			b.Exits,
 			b.Votes,
-			utils.FormatGraffiti(b.Graffiti),
+			utils.FormatGraffitiAsLink(b.Graffiti),
 		}
 	}
 
