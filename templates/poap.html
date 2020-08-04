@@ -4,7 +4,7 @@
 <script>
 var clients = {{.PoapClients}}
 var graffitiFlagData = {
-	address: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+	address: "",
 	client: "prysm",
 }
 var hexRE = /^[0-9A-F]{40}$/i
@@ -21,7 +21,7 @@ function setAddress(addr) {
 // 	renderFlag()
 // }
 
-setAddress('0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B')
+setAddress('')
 
 function renderFlag() {
 	var clientId = ''
@@ -34,6 +34,10 @@ function renderFlag() {
 		// 	return
 		// }
 		var addr = graffitiFlagData.address
+		if (addr.length === 0) {
+			log('Enter Address Above', ref)
+			continue;
+		}
 		if (addr.substring(0,2) === '0x') addr = addr.slice(2)
 		if (addr.length !== 40 || !hexRE.test(addr)) {
 			console.error('invalid address: '+graffitiFlagData.address, addr, addr.length, hexRE.test(addr))
@@ -47,6 +51,8 @@ function renderFlag() {
 		// console.log(flagHex, flagB64, b64ToHex(flagB64))
 		document.getElementById(ref).innerText = 'poap'+flagB64
 		document.getElementById('copy-'+ref).setAttribute('data-clipboard-text', 'poap'+flagB64)
+		document.getElementById(ref).classList.remove('text-muted')
+		document.getElementById("copy-"+ref).classList.remove('d-none')
 	}
 }
 
@@ -70,6 +76,10 @@ function b64ToHex(str) {
 
 function log(msg, ref) {
 	document.getElementById(ref).innerText = msg
+	if(msg === "Enter Address Above") {
+		document.getElementById(ref).classList.add('text-muted')
+		document.getElementById("copy-"+ref).classList.add('d-none')
+	}
 }
 
 $(document).ready(function() {
@@ -306,8 +316,8 @@ $(document).ready(function() {
 											<tr>
 												<td class="d-flex justify-content-between"><a  href="https://github.com/prysmaticlabs/prysm">Prysm</a> <a class="ml-2" href="https://discord.gg/wJW7Rjk"><i class="fab fa-discord"></i></a></td>
 												<td>
-													<span id="prysm-graffiti" class="text-monospace text-truncate">poapq1gBp9OYNRuL4RxDngXFsyWa7JsA</span>
-													<a id="copy-prysm-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+													<span id="prysm-graffiti" class="text-monospace text-truncate"></span>
+													<a id="copy-prysm-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>
@@ -315,8 +325,8 @@ $(document).ready(function() {
 											<tr>
 												<td class="d-flex justify-content-between"><a href="https://github.com/sigp/lighthouse">Lighthouse</a>  <a class="ml-2" href="https://discord.gg/8mFMS7G"><i class="fab fa-discord"></i></a></td>
 												<td>
-													<span id="lighthouse-graffiti" class="text-monospace text-truncate">poapq1gBp9OYNRuL4RxDngXFsyWa7JsA</span>
-													<a id="copy-lighthouse-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+													<span id="lighthouse-graffiti" class="text-monospace text-truncate"></span>
+													<a id="copy-lighthouse-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>
@@ -324,8 +334,8 @@ $(document).ready(function() {
 											<tr>
 												<td class="d-flex justify-content-between"><a href="https://github.com/PegaSysEng/teku">Teku</a>  <a class="ml-2" href="https://discord.gg/YgXN5ZK"><i class="fab fa-discord"></i></a></td>
 												<td>
-													<span id="teku-graffiti" class="text-monospace text-truncate">poapq1gBp9OYNRuL4RxDngXFsyWa7JsA</span>
-													<a id="copy-teku-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+													<span id="teku-graffiti" class="text-monospace text-truncate"></span>
+													<a id="copy-teku-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>
@@ -333,8 +343,8 @@ $(document).ready(function() {
 											<tr>
 												<td class="d-flex justify-content-between"><a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a>  <a class="ml-2" href="https://discord.gg/KTUdhYF"><i class="fab fa-discord"></i></a></td>
 												<td>
-													<span id="nimbus-graffiti" class="text-monospace text-truncate">poapq1gBp9OYNRuL4RxDngXFsyWa7JsA</span>
-													<a id="copy-nimbus-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+													<span id="nimbus-graffiti" class="text-monospace text-truncate"></span>
+													<a id="copy-nimbus-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>
@@ -342,8 +352,8 @@ $(document).ready(function() {
 											<tr>
 												<td class="d-flex justify-content-between"><a href="https://github.com/ChainSafe/lodestar">Lodestar</a>  <a class="ml-2" href="https://discord.gg/Gaakk42"><i class="fab fa-discord"></i></a></td>
 												<td>
-													<span id="lodestar-graffiti" class="text-monospace text-truncate">poapq1gBp9OYNRuL4RxDngXFsyWa7JsA</span>
-													<a id="copy-lodestar-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+													<span id="lodestar-graffiti" class="text-monospace text-truncate"></span>
+													<a id="copy-lodestar-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary ml-2 btn-icon-inside btn-sm text-white d-none">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>
