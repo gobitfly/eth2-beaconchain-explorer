@@ -20,8 +20,8 @@
           clearInterval(countdownInterval)
           window.location.href = "/"
         }
-
-        if (min === 0 && hour > 0) {
+        
+        if (seconds === 0 && min === 0 && hour > 0) {
           min = 60
           hour -= 1
         }
