@@ -344,7 +344,9 @@
 
 	<main>
 		<div class="container mt-2">
-			<ins data-revive-zoneid="5683" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
+            {{ if not  (eq .Active "index")}}
+				<ins data-revive-zoneid="5683" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
+            {{end}}
             {{ template "content" .Data }}
 		</div>
 	</main>
