@@ -56,6 +56,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
+	validatorPageData.User = user
+
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
 	if err != nil {
 		logger.Errorf("error retrieving flashes for validator %v: %v", vars["index"], err)

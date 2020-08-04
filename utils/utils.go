@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"math"
 	"math/rand"
@@ -29,6 +30,7 @@ var Config *types.Config
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
+		"includeHTML":                 IncludeHTML,
 		"formatHTML":                  FormatMessageToHtml,
 		"formatBalance":               FormatBalance,
 		"formatCurrentBalance":        FormatCurrentBalance,
@@ -68,6 +70,16 @@ func GetTemplateFuncs() template.FuncMap {
 			return p.Sprintf("%.0f\n", i)
 		},
 	}
+}
+
+// IncludeHTML adds html to the page
+func IncludeHTML(path string) template.HTML {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Println("includeHTML - error reading file: %v", err)
+		return ""
+	}
+	return template.HTML(string(b))
 }
 
 // FormatGraffitiString formats (and escapes) the graffiti

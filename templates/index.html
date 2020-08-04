@@ -13,7 +13,8 @@
 
   if (-1 < hour && hour <= 48) {
     $('#clock').html(hour+' hr '+min+' min '+ seconds +' sec')
-    $('#estimated').html("Countdown")
+    $('#estimated').html('Countdown')
+    $('#estimated+span').removeClass('d-none')
     var countdownInterval = setInterval(function() {
         if (hour === 0 && min === 0 && seconds === 0) {
           clearInterval(countdownInterval)
@@ -437,8 +438,15 @@
   </div>
 </div>
 <div class="ad row my-3 justify-content-center">
-  <div class="col-10">
-    <!-- <iframe style="width: 100%; height: auto;" src="/ad/data.html" frameborder="0"></iframe> -->
+  <div style="position:relative;" class="col-md-10">
+    <div style="opacity:.7;position:absolute; right: 1.3rem; font-size: .55rem; top: -0.3rem;" class="mr-lg-5 badge bg-dark rounded text-white">Sponsored</div>
+    <a ga-outbound class="no-highlight d-none d-md-block mx-lg-5 sp" href="https://stakewise.io">
+      {{includeHTML "static/partners/desktop-banner.svg"}}
+      <!-- <object data="partners/desktop-banner.svg" type="image/svg+xml"></object> -->
+    </a>
+    <a ga-outbound  class="no-highlight d-md-none d-block" href="https://stakewise.io">
+      {{includeHTML "static/partners/mobile-banner.svg"}}
+    </a>
   </div>
 </div>
 {{ if not .Genesis }}
@@ -454,6 +462,8 @@
       </span>
         {{if gt .ValidatorsRemaining 0.0}}
       <span class="text-muted">{{.ValidatorsRemaining | formatThousands}} validators left</span>
+      {{else}}
+      <span class="text-muted text-success">{{round (div (.DepositedTotal) (.DepositThreshold)) 2 | percent }}%</span>
         {{end}}
     </h6>
     <div class="progress w-100" data-toggle="tooltip" data-placement="top" title="A total of {{.DepositedTotal | formatThousands}} ETH ({{round (div (.DepositedTotal) (.DepositThreshold)) 2 | percent }}%) has been deposited.">
@@ -468,7 +478,12 @@
     </p>
   </div>
   <div class="col-md-5 my-3 d-flex flex-column justify-content-center">
-    <h6 id="estimated">Estimated</h6>
+    <h6 class="d-flex justify-content-between">
+      <span id="estimated">
+        Estimated
+      </span>
+      <small class="text-muted d-inline-block d-none" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></small>
+    </h6>
     <p class="align-self-center">
       <strong id="clock">
         <span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTimestamp}})

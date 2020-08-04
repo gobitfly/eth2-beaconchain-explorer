@@ -65,11 +65,17 @@
 						</button>
 					</form>
 					{{else}}
-					<!-- <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post"> -->
-						<button class="btn btn-dark text-white btn-sm" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" title="Follow this validator and receive email notifications">
-							<i class="far fa-bookmark"></i>
-						</button>
-					<!-- </form> -->
+						{{ if .User.Authenticated }}
+							<button class="btn btn-dark text-white btn-sm" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" title="Follow this validator and receive email notifications">
+								<i class="far fa-bookmark"></i>
+							</button>
+						{{ else }}
+						<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
+							<button class="btn btn-dark text-white btn-sm" id="follow-button" title="Follow this validator and receive email notifications">
+								<i class="far fa-bookmark"></i>
+							</button>
+						</form>
+						{{end}}
 					{{end}}
 					
 				</h1>
