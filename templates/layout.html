@@ -343,17 +343,19 @@
     {{ template "css" }}
 
 	<main>
-		<div class="container mt-2">
-            {{ if not  (eq .Active "index")}}
-				<ins data-revive-zoneid="5683" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
-            {{end}}
-            {{ template "content" .Data }}
-		</div>
+			{{ if .HeaderAd }}
+			<div class="container">
+				<div class="d-flex justify-content-between pt-4 pb-3">
+					<ins data-revive-zoneid="5683" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
+				</div>
+			</div>
+			{{end}}
+		{{ template "content" .Data }}
 	</main>
 
 	<div class="text-center" style="margin-top: 3rem; margin-bottom: 4.2rem;">
 		<hr>
-		<footer class="container">© bitfly gmbh 2020 | <a href="/imprint">Imprint</a> | <a href="https://twitter.com/etherchain_org">
+		<footer class="container">© bitfly gmbh 2020 | <a href="/advertisewithus"><i class="fas fa-ad mr-1"></i>Advertise</a> | <a href="/imprint">Imprint</a> | <a href="https://twitter.com/etherchain_org">
 				<i class="fab fa-twitter mr-1"></i>Twitter</a> | <a href="https://www.reddit.com/u/etherchain/">
 				<i class="fab fa-reddit mr-1"></i>Reddit</a> | <a
 					href="https://github.com/gobitfly/eth2-beaconchain-explorer">

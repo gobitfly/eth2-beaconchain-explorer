@@ -63,6 +63,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData.ExitingCount = validatorsPageData.ExitingOnlineCount + validatorsPageData.ExitingOfflineCount
 
 	data := &types.PageData{
+		HeaderAd: true,
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - Validators - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",

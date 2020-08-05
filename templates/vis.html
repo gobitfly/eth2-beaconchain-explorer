@@ -388,24 +388,26 @@
 </style>
 
 {{end}} {{ define "content"}}
-<div class="my-3">
-  <div class="d-md-flex py-2 justify-content-md-between">
-    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-project-diagram"></i> Eth2 Blockchain Visualization</h1>
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Visualization</li>
-      </ol>
-    </nav>
+<div class="container mt-2">
+  <div class="my-3">
+    <div class="d-md-flex py-2 justify-content-md-between">
+      <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-project-diagram"></i> Eth2 Blockchain Visualization</h1>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+          <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Visualization</li>
+        </ol>
+      </nav>
+    </div>
   </div>
-</div>
-<small>By <a href="https://www.beaconcha.in">beaconcha.in</a></small>
-<div class="row">
-  <div class="col-md-12 text-center">
-    <svg id="vis" width="800" height="1650">
-      <g transform="translate(80, 40)" id="root"></g>
-      <g transform="translate(60, 40)" id="axis"></g>
-    </svg>
+  <small>By <a href="https://www.beaconcha.in">beaconcha.in</a></small>
+  <div class="row">
+    <div class="col-md-12 text-center">
+      <svg id="vis" width="800" height="1650">
+        <g transform="translate(80, 40)" id="root"></g>
+        <g transform="translate(60, 40)" id="axis"></g>
+      </svg>
+    </div>
   </div>
 </div>
 {{end}}

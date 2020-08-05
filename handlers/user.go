@@ -63,6 +63,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
 	data := &types.PageData{
+		HeaderAd: true,
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/user",
@@ -123,6 +124,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	userNotificationsData.CountWatchlist = countWatchlist
 
 	data := &types.PageData{
+		HeaderAd: true,
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/user",

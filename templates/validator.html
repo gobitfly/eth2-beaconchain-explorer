@@ -32,6 +32,7 @@
 {{end}}
 
 {{ define "content"}}
+<div class="container mt-2">
     {{if ne .FlashMessage ""}}
 		<div class="alert {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
 			<div class="p-2">{{.FlashMessage | formatHTML}}</div>
@@ -560,4 +561,5 @@
 			</div>
 		</div>
 	</div>
+</div>
 {{end}}
