@@ -174,7 +174,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $2 
 		LIMIT 1`, services.LatestEpoch(), index)
 	if err != nil {
-		logger.Errorf("error retrieving validator page data: %v", err)
+		//logger.Errorf("error retrieving validator page data: %v", err)
 
 		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 

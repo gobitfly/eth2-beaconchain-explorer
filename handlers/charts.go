@@ -77,10 +77,14 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "charts",
 		Data:                  nil,
+		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
+		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
 	chartsPageData := services.LatestChartsPageData()

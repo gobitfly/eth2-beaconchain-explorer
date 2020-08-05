@@ -68,6 +68,6 @@ type Config struct {
 				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
 			} `yaml:"mailgun"`
 		} `yaml:"mail"`
-		GATag string `yaml:"gatag"`
+		GATag string `yaml:"gatag"  envconfig:"GATAG"`
 	} `yaml:"frontend"`
 }
