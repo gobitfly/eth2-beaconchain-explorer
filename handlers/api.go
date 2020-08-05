@@ -19,8 +19,8 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	epochTime := utils.EpochToTime(lastEpoch)
-	if epochTime.Before(time.Now().Add(time.Minute * -10)) {
-		http.Error(w, "Internal server error: last epoch in db is more than 10 minutes old", 503)
+	if epochTime.Before(time.Now().Add(time.Minute * -13)) {
+		http.Error(w, "Internal server error: last epoch in db is more than 13 minutes old", 503)
 		return
 	}
 
