@@ -41,6 +41,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("Content-Type", "text/html")
 		data := &types.PageData{
+			HeaderAd: true,
 			Meta: &types.Meta{
 				Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 				GATag:       utils.Config.Frontend.GATag,
@@ -48,6 +49,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 			ShowSyncingMessage:    services.IsSyncing(),
 			Active:                "search",
 			Data:                  nil,
+			User:                  getUser(w, r),
 			Version:               version.Version,
 			ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 			ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,

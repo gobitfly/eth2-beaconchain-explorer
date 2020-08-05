@@ -12,6 +12,7 @@ import (
 // PageData is a struct to hold web page data
 type PageData struct {
 	Active                string
+	HeaderAd              bool
 	Meta                  *Meta
 	ShowSyncingMessage    bool
 	User                  *User
@@ -636,6 +637,10 @@ type UserNotificationsPageData struct {
 	CountWatchlist     int `json:"countwatchlist"`
 	CountSubscriptions int `json:"countsubscriptions"`
 	// Subscriptions []*Subscription
+}
+
+type AdvertiseWithUsPageData struct {
+	FlashMessage string
 }
 
 type RateLimitError struct {
