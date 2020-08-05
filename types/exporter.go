@@ -47,16 +47,16 @@ type BeaconCommitteItem struct {
 
 // Validator is a struct to hold validator data
 type Validator struct {
-	Index                      uint64
-	PublicKey                  []byte
-	Balance                    uint64
-	EffectiveBalance           uint64
-	Slashed                    bool
-	ActivationEligibilityEpoch uint64
-	ActivationEpoch            uint64
-	ExitEpoch                  uint64
-	WithdrawableEpoch          uint64
-	WithdrawalCredentials      []byte
+	Index                      uint64 `db:"validatorindex"`
+	PublicKey                  []byte `db:"pubkey"`
+	Balance                    uint64 `db:"balance"`
+	EffectiveBalance           uint64 `db:"effectivebalance"`
+	Slashed                    bool   `db:"slashed"`
+	ActivationEligibilityEpoch uint64 `db:"activationeligibilityepoch"`
+	ActivationEpoch            uint64 `db:"activationepoch"`
+	ExitEpoch                  uint64 `db:"exitepoch"`
+	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
+	WithdrawalCredentials      []byte `db:"withdrawalcredentials"`
 }
 
 // ValidatorQueue is a struct to hold validator queue data

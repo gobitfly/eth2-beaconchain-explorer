@@ -53,11 +53,10 @@ func chartsPageDataUpdater() {
 			time.Sleep(sleepDuration)
 			continue
 		}
-		logger.WithField("epoch", latestEpoch).Info("updating chartPageData")
 		now := time.Now()
 		data, err := getChartsPageData()
 		if err != nil {
-			logger.Errorf("error updating chartPageData: %v", err)
+			logger.WithField("epoch", latestEpoch).Errorf("error updating chartPageData: %v", err)
 			time.Sleep(sleepDuration)
 			continue
 		}

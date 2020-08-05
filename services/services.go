@@ -21,6 +21,9 @@ var indexPageData atomic.Value
 var chartsPageData atomic.Value
 var ready = sync.WaitGroup{}
 
+var eth1BlockDepositReached atomic.Value
+var depositThresholdReached atomic.Value
+
 var logger = logrus.New().WithField("module", "services")
 
 // Init will initialize the services
@@ -33,6 +36,11 @@ func Init() {
 	ready.Wait()
 
 	go chartsPageDataUpdater()
+
+	if utils.Config.Frontend.Notifications.Enabled {
+		logger.Infof("starting notifications-sender")
+		go notificationsSender()
+	}
 }
 
 func epochUpdater() {
@@ -138,6 +146,49 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	startSlotTime := utils.SlotToTime(0)
 	if startSlotTime.After(time.Now()) {
 		cutoffSlot = 20
+
+		data.Genesis = false
+		type Deposit struct {
+			Total   uint64    `db:"total"`
+			BlockTs time.Time `db:"block_ts"`
+		}
+
+		deposit := Deposit{}
+
+		err = db.DB.Get(&deposit, `
+			SELECT COUNT(*) as total, MAX(block_ts) as block_ts
+			FROM 
+				eth1_deposits as eth1 
+			WHERE 
+				eth1.amount >= 32e9 and eth1.valid_signature = true;
+		`)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
+		}
+
+		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
+		data.DepositedTotal = float64(deposit.Total) * 32
+		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
+
+		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+		data.NetworkStartTs = minGenesisTime.Unix()
+
+		// enough deposits
+		if data.DepositedTotal > data.DepositThreshold {
+			if depositThresholdReached.Load() == nil {
+				eth1BlockDepositReached.Store(deposit.BlockTs)
+				depositThresholdReached.Store(true)
+			}
+			eth1Block := eth1BlockDepositReached.Load().(time.Time)
+			genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay))
+
+			if eth1Block.Add(genesisDelay).After(minGenesisTime) {
+				// Network starts after min genesis time
+				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
+			}
+		}
+	} else {
+		data.Genesis = true
 	}
 
 	var blocks []*types.IndexPageDataBlocks

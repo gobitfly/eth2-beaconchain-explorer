@@ -234,8 +234,8 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
 			removed,
 			valid_signature
 		)
-		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, $7, $8, $9, $10, $11, $12, $13) 
-		ON CONFLICT (tx_hash) DO UPDATE SET 
+		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, $7, $8, $9, $10, $11, $12, $13)
+		ON CONFLICT (tx_hash) DO UPDATE SET
 			tx_input               = EXCLUDED.tx_input,
 			tx_index               = EXCLUDED.tx_index,
 			block_number           = EXCLUDED.block_number,
@@ -321,6 +321,8 @@ func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
 	cfg := params.BeaconConfig()
 	if utils.Config.Chain.Network == "altona" {
 		cfg = params.AltonaConfig()
+	} else if utils.Config.Chain.Network == "medalla" {
+		cfg = params.MedallaConfig()
 	}
 	domain, err := helpers.ComputeDomain(
 		cfg.DomainDeposit,

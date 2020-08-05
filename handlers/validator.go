@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/lib/pq"
 
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
@@ -24,6 +25,7 @@ import (
 
 var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator.html"))
 var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validatornotfound.html"))
+var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
@@ -32,16 +34,19 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	var index uint64
 	var err error
+	user := getUser(w, r)
 
 	validatorPageData := types.ValidatorPageData{}
 
 	data := &types.PageData{
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "validators",
 		Data:                  nil,
+		User:                  user,
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -51,6 +56,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
+	validatorPageData.User = user
+
+	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
+	if err != nil {
+		logger.Errorf("error retrieving flashes for validator %v: %v", vars["index"], err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	// Request came with a hash
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
 		if err != nil {
@@ -58,7 +73,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
 			deposits, err := db.GetValidatorDeposits(pubKey)
@@ -69,7 +83,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 				err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-
 				if err != nil {
 					logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 					http.Error(w, "Internal server error", 503)
@@ -98,6 +111,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.Status = "deposited_valid"
 			}
 
+			filter := db.WatchlistFilter{
+				UserId:         user.UserID,
+				Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
+				Tag:            types.ValidatorTagsWatchlist,
+				JoinValidators: false,
+			}
+			watchlist, err := db.GetTaggedValidators(filter)
+			if err != nil {
+				logger.Errorf("error getting tagged validators from db: %v", err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+
+			validatorPageData.Watchlist = watchlist
+
 			data.Data = validatorPageData
 			if utils.IsApiRequest(r) {
 				w.Header().Set("Content-Type", "application/json")
@@ -110,9 +138,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", 503)
 				return
 			}
+
 			return
 		}
 	} else {
+		// Request came with a validator index number
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
 		if err != nil {
 			logger.Errorf("error parsing validator index: %v", err)
@@ -143,7 +173,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		WHERE validators.validatorindex = $2 
 		LIMIT 1`, services.LatestEpoch(), index)
 	if err != nil {
-		logger.Printf("Error retrieving validator page data: %v", err)
+		logger.Errorf("error retrieving validator page data: %v", err)
 
 		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -159,7 +189,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.Index = index
 	validatorPageData.PublicKey, err = db.GetValidatorPublicKey(index)
 	if err != nil {
-		logger.Printf("Error retrieving validator public key %v: %v", index, err)
+		logger.Errorf("error retrieving validator public key %v: %v", index, err)
 
 		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -170,6 +200,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	filter := db.WatchlistFilter{
+		UserId:         user.UserID,
+		Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
+		Tag:            types.ValidatorTagsWatchlist,
+		JoinValidators: false,
+	}
+
+	watchlist, err := db.GetTaggedValidators(filter)
+	if err != nil {
+		logger.Errorf("error getting tagged validators from db: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	validatorPageData.Watchlist = watchlist
 
 	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
 	if err != nil {
@@ -186,7 +231,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, "edit_validator_flash")
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
 	validatorPageData.ExitTs = utils.EpochToTime(validatorPageData.ExitEpoch)
@@ -697,7 +741,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	pubkeyDecoded, err := hex.DecodeString(pubkey)
 	if err != nil {
 		logger.Errorf("error parsing submitted pubkey %v: %v", pubkey, err)
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
@@ -714,7 +758,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal([]byte(signature), signatureWrapper)
 	if err != nil {
 		logger.Errorf("error decoding submitted signature %v: %v", signature, err)
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
@@ -725,20 +769,20 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	signatureParsed, err := hex.DecodeString(strings.Replace(signatureWrapper.Sig, "0x", "", -1))
 	if err != nil {
 		logger.Errorf("error parsing submitted signature %v: %v", signatureWrapper.Sig, err)
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
 
 	if len(signatureParsed) != 65 {
 		logger.Errorf("signature must be 65 bytes long")
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
 	if signatureParsed[64] != 27 && signatureParsed[64] != 28 {
 		logger.Errorf("invalid Ethereum signature (V is not 27 or 28)")
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
@@ -748,7 +792,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	recoveredPubkey, err := crypto.SigToPub(msgHash.Bytes(), signatureParsed)
 	if err != nil {
 		logger.Errorf("error recovering pubkey: %v", err)
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
@@ -758,7 +802,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	deposits, err := db.GetValidatorDeposits(pubkeyDecoded)
 	if err != nil {
 		logger.Errorf("error getting validator-deposits from db for signature verification: %v", err)
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 	}
 	for _, deposit := range deposits.Eth1Deposits {
@@ -774,29 +818,29 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 
 			if err != nil {
 				logger.Errorf("error saving validator name: %v", err)
-				utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
 			}
 
 			rowsAffected, _ := res.RowsAffected()
-			utils.SetFlash(w, r, "edit_validator_flash", fmt.Sprintf("Your custom name has been saved for %v validator(s).", rowsAffected))
+			utils.SetFlash(w, r, validatorEditFlash, fmt.Sprintf("Your custom name has been saved for %v validator(s).", rowsAffected))
 			http.Redirect(w, r, "/validator/"+pubkey, 301)
 		} else {
 			_, err := db.DB.Exec("UPDATE validators SET name = $1 WHERE pubkey = $2", name, pubkeyDecoded)
 			if err != nil {
 				logger.Errorf("error saving validator name: %v", err)
-				utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
 			}
 
-			utils.SetFlash(w, r, "edit_validator_flash", "Your custom name has been saved.")
+			utils.SetFlash(w, r, validatorEditFlash, "Your custom name has been saved.")
 			http.Redirect(w, r, "/validator/"+pubkey, 301)
 		}
 
 	} else {
-		utils.SetFlash(w, r, "edit_validator_flash", "Error: the provided signature is invalid")
+		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 	}
 

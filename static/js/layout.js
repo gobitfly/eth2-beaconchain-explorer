@@ -109,7 +109,7 @@ $(document).ready(function() {
       source: bhValidators,
       display: 'pubkey',
       templates: {
-        header: '<h3>Validators</h3>',
+        header: '<h3 class="h5">Validators</h3>',
         suggestion: function(data) {
           return `<div class="text-monospace text-truncate">${data.index}: ${data.pubkey}</div>`
         }
@@ -121,7 +121,7 @@ $(document).ready(function() {
       source: bhBlocks,
       display: 'blockroot',
       templates: {
-        header: '<h3>Blocks</h3>',
+        header: '<h3 class="h5">Blocks</h3>',
         suggestion: function(data) {
           return `<div class="text-monospace text-truncate">${data.slot}: ${data.blockroot}</div>`
         }
@@ -133,7 +133,7 @@ $(document).ready(function() {
       source: bhEpochs,
       display: 'epoch',
       templates: {
-        header: '<h3>Epochs</h3>',
+        header: '<h3 class="h5">Epochs</h3>',
         suggestion: function(data) {
           return `<div>${data.epoch}</div>`
         }
@@ -145,7 +145,7 @@ $(document).ready(function() {
       source: bhEth1Accounts,
       display: 'address',
       templates: {
-        header: '<h3>ETH1 Addresses</h3>',
+        header: '<h3 class="h5">ETH1 Addresses</h3>',
         suggestion: function(data) {
           return `<div class="text-monospace text-truncate">0x${data.address}</div>`
         }
@@ -157,7 +157,7 @@ $(document).ready(function() {
       source: bhGraffiti,
       display: 'graffiti',
       templates: {
-        header: '<h3>Blocks by Graffiti</h3>',
+        header: '<h3 class="h5">Blocks by Graffiti</h3>',
         suggestion: function(data) {
           return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.graffiti}</div><div style="max-width:fit-content;white-space:nowrap;">${data.count}</div></div>`
         }

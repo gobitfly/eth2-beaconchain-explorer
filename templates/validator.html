@@ -34,7 +34,7 @@
 {{ define "content"}}
     {{if ne .FlashMessage ""}}
 		<div class="alert {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
-			<div class="p-2">{{.FlashMessage}}</div>
+			<div class="p-2">{{.FlashMessage | formatHTML}}</div>
 			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 			</button>
@@ -49,15 +49,35 @@
 					<button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" data-placement="right" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
 						<i class="fa fa-copy"></i>
 					</button>
-					<button class="btn btn-dark text-white btn-sm" type="button" id="add-to-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Add validator to dashboard">
+					<!-- <button class="btn btn-dark text-white btn-sm" type="button" id="add-to-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Add validator to dashboard">
 						<i class="fa fa-plus"></i>
 					</button>
 					<button class="btn btn-dark text-white btn-sm" type="button" id="remove-from-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Remove validator from dashboard">
 						<i class="fa fa-minus"></i>
-					</button>
+					</button> -->
 					<button class="btn btn-dark text-white btn-sm" type="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" title="Edit validator name">
 						<i class="fa fa-edit"></i>
 					</button>
+					{{ if len .Watchlist }}
+					<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
+						<button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button" title="Stop receiving updates for this validator." >
+							<i class="fas fa-bookmark"></i>
+						</button>
+					</form>
+					{{else}}
+						{{ if .User.Authenticated }}
+							<button class="btn btn-dark text-white btn-sm" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" title="Follow this validator and receive email notifications">
+								<i class="far fa-bookmark"></i>
+							</button>
+						{{ else }}
+						<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
+							<button class="btn btn-dark text-white btn-sm" id="follow-button" title="Follow this validator and receive email notifications">
+								<i class="far fa-bookmark"></i>
+							</button>
+						</form>
+						{{end}}
+					{{end}}
+					
 				</h1>
 			</div>
 			<nav aria-label="breadcrumb">
@@ -84,7 +104,7 @@
 					</div>
 					<div class="modal-body">
 						<p>In order to save any validator details you will need to provide a signed message of the eth1 account that sent the first valid deposit ({{formatEth1Address .Eth1DepositAddress}}) for verification. Currently we support signatures generated with <a target="_blank" href="https://www.mycrypto.com/sign-and-verify-message/sign">MyCrypto</a> and <a target="_blank" href="https://www.myetherwallet.com/interface/sign-message">MyEtherWallet</a>.</p>
-						<p>The signature text MUST CONTAIN the the string <b>beaconcha.in</b>.</p>
+						<p>The signature text MUST CONTAIN the string <b>beaconcha.in</b>.</p>
 						<input type="hidden" value="0x{{printf "%x" .PublicKey}}" name="pubkey">
 						<div class="form-group">
 							<label for="input-name">Custom name or twitter handle</label>
@@ -106,6 +126,43 @@
 					<div class="modal-footer">
 						<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 						<button type="submit" class="btn btn-primary">Save changes</button>
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+
+	<!-- Add Validator to Watchlist Modal -->
+	<div class="modal fade" id="bookmark-validator-modal" tabindex="-1" role="dialog" aria-labelledby="bookmark-validator-modal-label" aria-hidden="true">
+		<form action="{{printf "%#x" .PublicKey}}/add" method="post">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="bookmarkModalLabel">Add to Watchlist</h5>
+						<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<p>Additionally to adding this validator to your watch list you can optionally subscribe to events and receive email notifications.</p>
+						<div class="form-group">
+							<div class="form-check">
+								<input class="form-check-input" id="balance_decreases" type="checkbox" name="balance_decreases">
+								<label class="form-check-label" for="balance_decreases">
+									balance decreases
+								</label>
+							</div>
+							 <div class="form-check">
+								 <input class="form-check-input" id="validator_slashed" type="checkbox" name="validator_slashed">
+								 <label class="form-check-label" for="validator_slashed">
+									 validator slashed
+								 </label>
+							 </div>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+						<button type="submit" class="btn btn-primary">Add To Watchlist</button>
 					</div>
 				</div>
 			</div>

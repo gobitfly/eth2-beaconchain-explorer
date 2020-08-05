@@ -14,6 +14,7 @@ type PageData struct {
 	Active                string
 	Meta                  *Meta
 	ShowSyncingMessage    bool
+	User                  *User
 	Data                  interface{}
 	Version               string
 	ChainSlotsPerEpoch    uint64
@@ -33,6 +34,7 @@ type Meta struct {
 	Tdata1      string
 	Tlabel2     string
 	Tdata2      string
+	GATag       string
 }
 
 //LatestState is a struct to hold data for the banner
@@ -56,10 +58,15 @@ type IndexPageData struct {
 	ExitingValidators         uint64                 `json:"exiting_validators"`
 	StakedEther               string                 `json:"staked_ether"`
 	AverageBalance            string                 `json:"average_balance"`
+	DepositedTotal            float64                `json:"deposit_total"`
+	DepositThreshold          float64                `json:"deposit_threshold"`
+	ValidatorsRemaining       float64                `json:"validators_remaining"`
+	NetworkStartTs            int64                  `json:"network_start_ts"`
 	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
 	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
 	Subtitle                  template.HTML          `json:"-"`
+	Genesis                   bool                   `json:"genesis"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
@@ -171,6 +178,9 @@ type ValidatorPageData struct {
 	Deposits                         *ValidatorDeposits
 	Eth1DepositAddress               []byte
 	FlashMessage                     string
+	Watchlist                        []*TaggedValidators
+	SubscriptionFlash                []interface{}
+	User                             *User
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -603,4 +613,35 @@ type MyCryptoSignature struct {
 	Msg     string `json:"msg"`
 	Sig     string `json:"sig"`
 	Version string `json:"version"`
+}
+
+type User struct {
+	UserID        uint64 `json:"user_id"`
+	Authenticated bool   `json:"authenticated"`
+}
+
+type AuthData struct {
+	Flashes []interface{}
+	Email   string
+}
+
+type UserSettingsPageData struct {
+	Email string `json:"email"`
+	AuthData
+}
+
+type UserNotificationsPageData struct {
+	Email string `json:"email"`
+	AuthData
+	CountWatchlist     int `json:"countwatchlist"`
+	CountSubscriptions int `json:"countsubscriptions"`
+	// Subscriptions []*Subscription
+}
+
+type RateLimitError struct {
+	TimeLeft time.Duration
+}
+
+func (e *RateLimitError) Error() string {
+	return fmt.Sprintf("rate limit has been exceeded, %v left", e.TimeLeft)
 }

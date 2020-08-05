@@ -10,6 +10,11 @@ import (
 	eth1common "github.com/ethereum/go-ethereum/common"
 )
 
+func FormatMessageToHtml(message string) template.HTML {
+	message = fmt.Sprint(strings.Replace(message, "Error: ", "", 1))
+	return template.HTML(message)
+}
+
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatus(status uint64) template.HTML {
 	if status == 0 {
@@ -116,6 +121,11 @@ func FormatGraffiti(graffiti []byte) template.HTML {
 	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, str))
 }
 
+func FormatGraffitiAsLink(graffiti []byte) template.HTML {
+	str := strings.Map(fixUtf, template.HTMLEscapeString(string(graffiti)))
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/blocks?q=%s\">%s</a></span>", graffiti, str, str))
+}
+
 // FormatHash will return a hash formated as html
 func FormatHash(hash []byte) template.HTML {
 	// if len(hash) > 6 {
@@ -152,6 +162,11 @@ func FormatPublicKey(validator []byte) template.HTML {
 // FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTimestamp(ts int64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))
+}
+
+// FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
+func FormatTimestampTs(ts time.Time) template.HTML {
+	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-timestamp=\"%d\"></span>", ts, ts.Unix()))
 }
 
 // FormatValidatorStatus will return the validator-status formated as html

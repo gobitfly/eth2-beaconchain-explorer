@@ -5,8 +5,10 @@ import (
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,6 +17,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"gopkg.in/yaml.v2"
 
 	"github.com/kelseyhightower/envconfig"
@@ -26,6 +30,8 @@ var Config *types.Config
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
+		"includeHTML":                 IncludeHTML,
+		"formatHTML":                  FormatMessageToHtml,
 		"formatBalance":               FormatBalance,
 		"formatCurrentBalance":        FormatCurrentBalance,
 		"formatEffectiveBalance":      FormatEffectiveBalance,
@@ -49,13 +55,31 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlashedValidator":      FormatSlashedValidator,
 		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
 		"formatTimestamp":             FormatTimestamp,
+		"formatTimestampTs":           FormatTimestampTs,
 		"formatValidatorName":         FormatValidatorName,
 		"epochOfSlot":                 EpochOfSlot,
 		"contains":                    strings.Contains,
 		"mod":                         func(i, j int) bool { return i%j == 0 },
 		"sub":                         func(i, j int) int { return i - j },
 		"add":                         func(i, j int) int { return i + j },
+		"div":                         func(i, j float64) float64 { return i / j },
+		"round":                       func(i float64, n int) float64 { return math.Round(i*math.Pow10(n)) / math.Pow10(n) },
+		"percent":                     func(i float64) float64 { return i * 100 },
+		"formatThousands": func(i float64) string {
+			p := message.NewPrinter(language.English)
+			return p.Sprintf("%.0f\n", i)
+		},
 	}
+}
+
+// IncludeHTML adds html to the page
+func IncludeHTML(path string) template.HTML {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Println("includeHTML - error reading file: %v", err)
+		return ""
+	}
+	return template.HTML(string(b))
 }
 
 // FormatGraffitiString formats (and escapes) the graffiti
@@ -155,13 +179,34 @@ func IsApiRequest(r *http.Request) bool {
 var eth1AddressRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{40}$")
 var zeroHashRE = regexp.MustCompile("^0?x?0+$")
 
-// IsValidEth1Address verifies whether a string can represents a valid eth1-address.
+// IsValidEth1Address verifies whether a string represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
+}
+
+// https://github.com/badoux/checkmail/blob/f9f80cb795fa/checkmail.go#L37
+var emailRE = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+// IsValidEmail verifies wheter a string represents a valid email-address.
+func IsValidEmail(s string) bool {
+	return emailRE.MatchString(s)
 }
 
 // RoundDecimals rounds (nearest) a number to the specified number of digits after comma
 func RoundDecimals(f float64, n int) float64 {
 	d := math.Pow10(n)
 	return math.Round(f*d) / d
+}
+
+const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+
+var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+// RandomString returns a random hex-string
+func RandomString(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
 }

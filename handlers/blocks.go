@@ -26,10 +26,12 @@ func Blocks(w http.ResponseWriter, r *http.Request) {
 			Title:       fmt.Sprintf("%v - Blocks - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        "/blocks",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "blocks",
 		Data:                  nil,
+		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -174,7 +176,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
 			b.Exits,
 			b.Votes,
-			utils.FormatGraffiti(b.Graffiti),
+			utils.FormatGraffitiAsLink(b.Graffiti),
 		}
 	}
 

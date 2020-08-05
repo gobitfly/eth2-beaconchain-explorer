@@ -49,14 +49,64 @@ function appendBlocks(blocks) {
 }
 
 $(document).ready(function() {
+
+  //bookmark button adds all validators in the dashboard to the watchlist
+  $('#bookmark-button').on("click", function(event) {
+    var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
+    var spinnerSmall = $('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>')
+    var bookmarkIcon = $("<i class='far fa-bookmark' style='width:15px;'></i>")
+    var errorIcon = $("<i class='fas fa-exclamation' style='width:15px;'></i>")
+    $('#bookmark-button').empty().append(spinnerSmall)
+
+    fetch('/user/dashboard/save', {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(state.validators),
+    }).then(function(res) {
+      console.log('response', res)
+      if (res.status === 200 && !res.redirected) {
+        // success
+        console.log("success")
+        $('#bookmark-button').empty().append(tickIcon)
+        setTimeout(function() {
+          $('#bookmark-button').empty().append(bookmarkIcon)
+        }, 1000)
+      } else if (res.redirected) {
+        console.log('redirected!')
+        $('#bookmark-button').attr("data-original-title", "Please login or sign up first.")
+        $('#bookmark-button').tooltip('show')
+        $('#bookmark-button').empty().append(errorIcon)
+        setTimeout(function() {
+          $('#bookmark-button').empty().append(bookmarkIcon)
+          $('#bookmark-button').tooltip('hide')
+          $('#bookmark-button').attr("data-original-title", "Save all to Watchlist")
+        }, 2000)
+      } else {
+        // could not bookmark validators
+        $('#bookmark-button').empty().append(errorIcon)
+        setTimeout(function() {
+          $('#bookmark-button').empty().append(bookmarkIcon)
+        }, 2000)
+      }
+    }).catch(function(err) {
+      $('#bookmark-button').empty().append(errorIcon)
+      setTimeout(function() {
+        $('#bookmark-button').empty().append(bookmarkIcon)
+      }, 2000)
+      console.log(err)
+    })
+  })
+
   var clipboard = new ClipboardJS('#copy-button');
 
   var copyButton = $('#copy-button')
   var clearSearch = $('#clear-search')
   //'<i class="fa fa-copy"></i>'
-  copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
+  var copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
   //'<i class="fas fa-check"></i>'
-  tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
+  var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
 
   clipboard.on('success', function (e) {
     copyButton.empty().append(tickIcon);
@@ -474,9 +524,12 @@ $(document).ready(function() {
     // }
 
     localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
-    var qryStr = '?validators=' + state.validators.join(',')
-    var newUrl = window.location.pathname + qryStr
-    window.history.pushState(null, 'Dashboard', newUrl)
+    if(state.validators.length) {
+      console.log('length', state.validators)
+      var qryStr = '?validators=' + state.validators.join(',')
+      var newUrl = window.location.pathname + qryStr
+      window.history.replaceState(null, 'Dashboard', newUrl)
+    }
     var t0 = Date.now()
     if (state.validators && state.validators.length) {
       // if(state.validators.length >= 9) {
@@ -484,6 +537,7 @@ $(document).ready(function() {
       // } else {
       //   appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
       // }
+      document.querySelector('#bookmark-button').style.visibility = "visible"
       document.querySelector('#copy-button').style.visibility = "visible"
       document.querySelector('#clear-search').style.visibility = "visible"
 
@@ -558,6 +612,7 @@ $(document).ready(function() {
 
     } else {
       document.querySelector('#copy-button').style.visibility = "hidden"
+      document.querySelector('#bookmark-button').style.visibility = "hidden"
       document.querySelector('#clear-search').style.visibility = "hidden"
       // window.location = "/dashboard"
     }

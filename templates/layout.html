@@ -1,400 +1,498 @@
 {{define "layout"}}
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1.0">
-        
-        <meta name="keywords"
-              content="ethereum 2.0 block explorer, eth2 block explorer, beacon chain explorer, ethereum blockchain explorer"/>
-        <meta name="description" content={{.Meta.Description}}>
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1.0">
 
-        <meta property="og:title" content="{{.Meta.Title}}"/>
-        <meta property="og:type" content="website"/>
-        <meta property="og:image" content="https://beaconcha.in/img/logo.png"/>
-        <meta property="og:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal."/>
-        <meta property="og:description" content="{{.Meta.Description}}"/>
-        <meta property="og:url" content="https://beaconcha.in{{.Meta.Path}}"/>
-        <meta property="og:site_name" content="beaconcha.in"/>
+		<meta name="keywords"
+			  content="ethereum 2.0 block explorer, eth2 block explorer, beacon chain explorer, ethereum blockchain explorer"/>
+		<meta name="description" content={{.Meta.Description}}>
 
-        <meta name="twitter:card" content="summary"/>
-        <meta name="twitter:site" content="@etherchain_org"/>
-        <meta name="twitter:title" content="{{.Meta.Title}}"/>
-        <meta property="twitter:description" content="{{.Meta.Description}}"/>
-        <meta property="twitter:image" content="https://beaconcha.in/img/logo.png"/>
-        <meta property="twitter:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal."/>
+		<meta property="og:title" content="{{.Meta.Title}}"/>
+		<meta property="og:type" content="website"/>
+		<meta property="og:image" content="https://beaconcha.in/img/logo.png"/>
+		<meta property="og:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal."/>
+		<meta property="og:description" content="{{.Meta.Description}}"/>
+		<meta property="og:url" content="https://beaconcha.in{{.Meta.Path}}"/>
+		<meta property="og:site_name" content="beaconcha.in"/>
 
-        <link rel="canonical" href="https://beaconcha.in{{.Meta.Path}}"/>
+		<meta name="twitter:card" content="summary"/>
+		<meta name="twitter:site" content="@etherchain_org"/>
+		<meta name="twitter:title" content="{{.Meta.Title}}"/>
+		<meta property="twitter:description" content="{{.Meta.Description}}"/>
+		<meta property="twitter:image" content="https://beaconcha.in/img/logo.png"/>
+		<meta property="twitter:image:alt" content="The beaconcha.in logo is a satelite dish expanding its signal."/>
 
-        <title>{{.Meta.Title}}</title>
-        <link rel="shortcut icon" type="image/png" href="/favicon.ico"/>
+		<link rel="canonical" href="https://beaconcha.in{{.Meta.Path}}"/>
 
-        <link rel="stylesheet" href="/css/fontawesome.min.css">
+		<title>{{.Meta.Title}}</title>
+		<link rel="shortcut icon" type="image/png" href="/favicon.ico"/>
 
-        <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
-        <link id="app-style" rel="stylesheet" href="/css/layout.css">
-        <link rel="stylesheet" href="/css/layout/toggle.css">
-        <link rel="stylesheet" href="/css/layout/banner.css">
-        <script>
+		<link rel="stylesheet" href="/css/fontawesome.min.css">
+
+		<link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
+		<link id="app-style" rel="stylesheet" href="/css/layout.css">
+		<link rel="stylesheet" href="/css/layout/toggle.css">
+		<link rel="stylesheet" href="/css/layout/banner.css">
+		<script>
             var mql = window.matchMedia('(prefers-color-scheme: light)');
             var lightScheme = mql.matches;
             var currentTheme = localStorage.getItem('theme');
             var d1 = document.getElementById('app-style')
-            
+
             if (currentTheme !== 'light' && currentTheme !== 'dark') {
                 currentTheme = lightScheme ? 'light' : 'dark'
             }
 
             document.documentElement.setAttribute('data-theme', currentTheme);
             localStorage.setItem('theme', currentTheme);
-            
-            if(currentTheme === 'dark') {
-                d1.insertAdjacentHTML('beforebegin', '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-'+currentTheme+'.min.css" onload="document.documentElement.style.display = ``">');
-                window.addEventListener('load', function() {
+
+            if (currentTheme === 'dark') {
+                d1.insertAdjacentHTML('beforebegin', '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-' + currentTheme + '.min.css" onload="document.documentElement.style.display = ``">');
+                window.addEventListener('load', function () {
                     document.getElementById('app-style-initial').remove()
                 })
             } else {
                 document.getElementById('app-style-initial').id = 'app-theme'
             }
-        </script>
-</head>
-<header>
-</header>
-<body ontouchstart="">
-    <noscript>
-        <strong>We're sorry but beaconcha.in doesn't work properly without JavaScript enabled. Please enable it to
-            continue.</strong>
-    </noscript>
-    <!-- Banner -->
-    <div class="info-banner-container">
-      <div class="info-banner-content container d-flex align-items-center">
-        <div id="banner" class="info-banner-stats">
-          <a style="color: inherit; white-space:nowrap;" class="mr-2" href="/">
-            <i class="fas fa-home"></i> <span>|</span>
-          </a>
-          <div id="banner-epoch" class="info-item d-flex mr-3">
-            <div class="info-item-header mr-1">
+		</script>
+
+	</head>
+	<header>
+	</header>
+	<body ontouchstart="">
+	<noscript>
+		<strong>We're sorry but beaconcha.in doesn't work properly without JavaScript enabled. Please enable it to
+			continue.</strong>
+	</noscript>
+	<!-- Banner -->
+	<div {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}} class="info-banner-container">
+		<div class="info-banner-content container">
+			<div id="banner-stats" class="info-banner-left">
+				<a style="white-space:nowrap;" class="mr-2" href="/">
+					<i class="fas fa-home"></i> <span>|</span>
+				</a>
+				<div id="banner-epoch" class="info-item d-flex mr-2">
+					<div class="info-item-header mr-1">
               <span class="item-icon">
                 <i class="fas fa-history"></i>
-              </span> 
-              <span class="item-text">Epoch:</span>
-            </div>
-            <div class="info-item-body">
-              <a id="banner-epoch-data" style="color:inherit;" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
-          </div>
-          <div id="banner-slot" class="info-item d-flex mr-3">
-            <div class="info-item-header mr-1">
+              </span>
+						<span class="item-text">Epoch:</span>
+					</div>
+					<div class="info-item-body">
+						<a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
+				</div>
+				<div id="banner-slot" class="info-item d-flex mr-2">
+					<div class="info-item-header mr-1">
               <span class="item-icon">
                 <i class="fas fa-cubes"></i>
               </span>
-              <span class="item-text">Slot:</span>
-            </div>
-            <div class="info-item-body"><a id="banner-slot-data" style="color:inherit;" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
-          </div>
-          {{if not .ShowSyncingMessage}}
-          {{if gt .FinalizationDelay 3}}
-          <div id="banner-fin" class="info-item d-flex mr-3">
-            <div class="info-item-header mr-1 text-warning">
+						<span class="item-text">Slot:</span>
+					</div>
+					<div class="info-item-body"><a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
+				</div>
+                {{if not .ShowSyncingMessage}}
+                    {{if gt .FinalizationDelay 3}}
+						<div id="banner-fin" class="info-item d-flex mr-3">
+							<div class="info-item-header mr-1 text-warning">
               <span class="item-icon">
                 <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
               </span>
-              <span class="item-text">
+								<span class="item-text">
                 Finality
               </span>
-            </div>
-            <div class="info-item-body text-warning">
-              <span id="banner-fin-data">{{.FinalizationDelay}}</span>
-              <i class="fas fa-exclamation-triangle item-text" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
-            </div>
-          </div>
-          {{end}}
-          {{end}}
-          {{if .ShowSyncingMessage}}
-          <div id="banner-status" class="info-item d-flex mr-3">
-            <div class="info-item-body">
-              <i class="fas fa-sync" data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network"></i>
-            </div>
-          </div>
-          {{end}}
-        </div>
-        <div class="d-flex flex-fill"></div>
-        <div class="search-container">
-          <form class="form-inline" action="/search" method="POST">
-            <i id="banner-search" class="fas fa-search"></i>
-            <input id="banner-search-input" class="typeahead" autocomplete="off" name="search" type="text" placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
-          </form>
-        </div>
-      </div>
-    </div>
-    <!-- Banner END -->
-        <nav id="nav" class="navbar navbar-expand-lg navbar-light">
-            <div  class="container">
-                    <a class=navbar-brand href="/">
-                        <i {{ if eq .Active "index"}}style="color: var(--font-color)"{{else}}style="opacity: .7"{{end}} class="fas fa-satellite-dish mr-1"></i>
-                        <span class="brand-text">beaconcha.in</span>
-                    </a>
-                    
-                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
-                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                    </button>
-                    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                        <ul class="navbar-nav ml-auto">
-                            <li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
-                                <a class="nav-link" href="/epochs"><i class="fas fa-history"></i> Epochs</a>
-                                {{ if eq .Active "epochs"}} 
-                                {{end}}
-                            </li>
-                            <li class="nav-item {{ if eq .Active "blocks"}}active{{end}}">
-                                <a class="nav-link" href="/blocks"><i class="fas fa-cubes"></i> Blocks</a>
-                                {{ if eq .Active "blocks"}} 
-                                {{end}}
-                            </li>
-                            <li class="nav-item {{ if eq .Active "validators"}}active{{end}} dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <i class="fas fa-thumbs-up"></i> Validators
-                                </a>
-                                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="/validators"><i class="fas fa-table mr-1"></i> Overview</a>
-                                    <a class="dropdown-item" href="/validators/leaderboard"><i class="fas fa-medal mr-1"></i> Leaderboard</a>
-                                    <a class="dropdown-item" href="/validators/slashings"><i class="fas fa-user-slash mr-1"></i> Slashings</a>
-                                    <a class="dropdown-item" href="/validators/eth1deposits"><i class="fas fa-file-signature mr-1"></i> Eth1 Deposits</a>
-                                    <a class="dropdown-item" href="/validators/eth2deposits"><i class="fas fa-clipboard-check mr-1"></i> Eth2 Deposits</a>
-                                </div>
-                            </li>
-                            <li class="nav-item {{ if eq .Active "stats"}}active{{end}} dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    <i class="fas fa-cubes"></i> Stats
-                                </a>
-                                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="/charts"><i class="fas fa-chart-bar mr-1"></i> Charts</a>
-                                    <a class="dropdown-item" href="/calculator"><i class="fas fa-calculator mr-1"></i> Calculator</a>
-                                    <a class="dropdown-item" href="/vis"><i class="fas fa-project-diagram mr-1"></i> Block Viz</a>
-                                </div>
-                            </li>
-                            <style>
-                                .nav-cube {
-                                    --mainColor: rgba(75,75,75,.7);
-                                    --strokeColor: rgba(55,55,55, 1);
-                                    --lightColor: rgba(0,0,0,.5);
-                                    --darkColor: rgba(100,100,100,.8);
-                                }
-                                .active .nav-cube {
-                                    --mainColor: rgba(55,55,55,1);
-                                    --strokeColor: rgba(35,35,35, 1);
-                                    --lightColor: rgba(0,0,0,1);
-                                    --darkColor: rgba(80,80,80,1);
-                                }
-                                [data-theme='dark'] .nav-cube {
-                                    --mainColor: rgba(180,180,180,.7);
-                                    --strokeColor: rgba(200,200,200, 1);
-                                    --lightColor: rgba(255,255,255,.5);
-                                    --darkColor: rgba(150,150,150,.8);
-                                }
-    
-                                [data-theme='dark'] .active .nav-cube {
-                                    --mainColor: rgba(200,200,200,1);
-                                    --strokeColor: rgba(220,220,220, 1);
-                                    --lightColor: rgba(255,255,255,1);
-                                    --darkColor: rgba(170,170,170,1);
-                                }
-                            </style>
-                            <li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
-                                <a class="nav-link" href="/dashboard"><svg style="width:21px; height:23px;" xmlns="http://www.w3.org/2000/svg" class="nav-cube" viewBox="80 20 150 100">
-                                    <defs>
-                                      <g id="cube" class="cube-unit" >
-                                        <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                        <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                        <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                      </g>
-                                      <g id="cube" class="cube-unit">
-                                        <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                        <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                        <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                      </g>
-                        
-                                      <g style="transform: scale(0.6)" id="cube-small" class="cube-unit" >
-                                        <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                        <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                        <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                      </g>
-                                      <g id="cube" class="cube-unit">
-                                        <rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
-                                        <rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
-                                        <rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
-                                      </g>
-                                    </defs>
-                                      <g class="move">        
-                                      <use href="#cube-small" x="129" y="56"/>
-                                      </g>
-                        
-                                      <g style="opacity: .2;">
-                                        <use href="#cube" x="121" y="48"/>
-                                        <use href="#cube" x="121" y="24"/>
-                                        <use href="#cube" x="121" y="0"/>
-                                        <use href="#cube" x="100" y="60"/>
-                                        <use href="#cube" x="100" y="36"/>
-                                        <use href="#cube" x="100" y="12"/>
-                                        <use href="#cube" x="142" y="60"/>
-                                        <use href="#cube" x="142" y="36"/>
-                                        <use href="#cube" x="142" y="12"/>
-                                        <use href="#cube" x="163" y="72"/>
-                                        <use href="#cube" x="163" y="48"/>
-                                        <use href="#cube" x="163" y="24"/>
-                                        <use href="#cube" x="79" y="72"/>
-                                        <use href="#cube" x="79" y="48"/>
-                                        <use href="#cube" x="79" y="24"/>
-                                        <use href="#cube" x="121" y="72"/> 
-                                        <use href="#cube" x="121" y="48"/> 
-                                        <use href="#cube" x="121" y="24"/>
-                                        <use href="#cube" x="100" y="84"/>
-                                        <use href="#cube" x="100" y="60"/>
-                                        <use href="#cube" x="100" y="36"/>
-                                        <use href="#cube" x="142" y="84"/>
-                                        <use href="#cube" x="142" y="60"/>
-                                        <use href="#cube" x="142" y="36"/>
-                                        <use href="#cube" x="121" y="96"/>
-                                        <use href="#cube" x="121" y="72"/>
-                                        <use href="#cube-small" x="129" y="56"/>
-                                      </g>
-                                    </svg> Dashboard</a>
-                                {{ if eq .Active "dashboard"}} 
-                                {{end}}
-                            </li>
-                            <li class="nav-item {{ if eq .Active "graffitiwall"}}active{{end}}">
-                                <a class="nav-link" href="/graffitiwall"><i class="fas fa-paint-brush"></i> Wall</a>
-                            </li>
-                            <li class="nav-item {{ if eq .Active "poap"}}active{{end}}">
-                                <a class="nav-link" href="/poap"><i class="fas fa-medal"></i> POAP</a>
-                            </li>
-                            <li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
-                                <a class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
-                            </li>
-                        </ul>
-                        <!-- <div>
-                            <span class="fas fa-search search-icon"></span>
-                            <i class="fab fa-github"></i>
-                        </div> -->
-                        <!-- <div class="search-container">
-                            <form  class="form-inline ml-auto" action="/search" method="POST">
-                                <span>
-                                    <input class="form-control typeahead" name="search" type="text"
-                                    placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
-                                    <span class="fas fa-search"></span>
-                                </span>
-                            </form>
-                        </div> -->
-                    </div>
-                </div>
-            </div>
-            </nav>
-            {{ template "css" }}
-    
-        <main>
-            <div class="container mt-1">
-                {{ template "content" .Data }}
-            </div>
-        </main>
-    
-        <div class="text-center" style="margin-top: 3rem; margin-bottom: 4.2rem;">
-            <hr>
-            <footer class="container">© bitfly gmbh 2020 | <a href="/imprint">Imprint</a> | <a href="https://twitter.com/etherchain_org">
-                    <i class="fab fa-twitter mr-1"></i>Twitter</a> | <a href="https://www.reddit.com/u/etherchain/">
-                    <i class="fab fa-reddit mr-1"></i>Reddit</a> | <a
-                        href="https://github.com/gobitfly/eth2-beaconchain-explorer">
-                    <i class="fab fa-github mr-1"></i>Github</a> | <a
-                        href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a>
-                | {{.Version}} | 
-                <div class="theme-switch-wrapper">
-                    <label class="theme-switch" for="toggleSwitch">
-                        <input type="checkbox" id="toggleSwitch" />
-                        <div class="slider round"></div>
-                        <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
-                            <path
-                            fill="#FFF"
-                            d="M7.41171457,11.9411805 C7.41235047,11.8273018 7.371175,11.728217 7.28817876,11.6445798 C7.21032953,11.5673743 7.11382258,11.5287724 6.99994588,11.5294069 C6.88606754,11.5287714 6.78698296,11.5673743 6.70334602,11.6445798 C6.62614078,11.7282186 6.58753899,11.8273035 6.58817343,11.9411805 L6.58817343,13.5882301 C6.587538,13.7021088 6.62614078,13.7986078 6.70334602,13.8764638 C6.78698461,13.9594603 6.88606919,14.0006366 6.99994588,14 C7.11382422,14.0006359 7.21032294,13.9594603 7.28817876,13.8764638 C7.371175,13.7986144 7.41235113,13.7021072 7.41171457,13.5882301 L7.41171457,11.9411805 L7.41171457,11.9411805 Z M10.7797495,10.2117784 C10.7031882,10.1307122 10.606678,10.089536 10.4915166,10.0882417 C10.3808549,10.0876063 10.2849936,10.1262092 10.2032837,10.2034146 C10.1222178,10.2857671 10.0810417,10.3816254 10.0797553,10.4916483 C10.0797553,10.6080997 10.1177148,10.7065389 10.19492,10.788249 L11.3562185,11.9579178 C11.4385708,12.0389839 11.5350711,12.0801602 11.6444514,12.0814465 C11.7609024,12.0814465 11.8599837,12.0402703 11.9410512,11.9579178 C12.0221172,11.8807124 12.0632933,11.7848458 12.064587,11.6696841 C12.065223,11.5590238 12.0240475,11.4625182 11.9410512,11.3814504 L10.7797528,10.2117817 L10.7797495,10.2117784 Z M3.78821142,10.7638068 C3.86927733,10.6866014 3.91045345,10.5907348 3.91174722,10.4755731 C3.91238313,10.3642688 3.87120766,10.2684072 3.78821142,10.1873394 C3.71165018,10.1056309 3.61513993,10.0644547 3.49997854,10.0638028 C3.38931688,10.0631674 3.29345557,10.1017703 3.21174567,10.1789757 L2.04208019,11.3402775 C1.96101428,11.42263 1.91983815,11.5184883 1.91855181,11.6285112 C1.91855181,11.7443202 1.95651126,11.8434017 2.03435884,11.9244695 C2.1160671,12.006178 2.21256911,12.0473543 2.32259172,12.0480057 C2.43840039,12.0486416 2.53748168,12.007466 2.61854923,11.9244695 L3.78821471,10.7638101 L3.78821142,10.7638068 Z M2.05881746,6.58820191 L0.411772455,6.58820191 C0.297894116,6.58756648 0.198809536,6.62616938 0.11517259,6.70337483 C0.0379673559,6.78701366 -0.000634437862,6.88609852 7.72715225e-14,6.99997553 C-0.000635426089,7.11385419 0.0379673559,7.21035318 0.11517259,7.28820922 C0.198811183,7.3712057 0.297895763,7.41238194 0.411772455,7.41174538 L2.05881746,7.41174538 C2.1726958,7.41238128 2.26919452,7.3712057 2.34705033,7.28820922 C2.43004658,7.21035977 2.4712227,7.11385254 2.47058615,6.99997553 C2.47122205,6.88609687 2.43004658,6.78701201 2.34705033,6.70337483 C2.26920111,6.62616938 2.17269415,6.58756747 2.05881746,6.58820191 L2.05881746,6.58820191 Z M2.65201719,2.02604698 C2.57352561,1.94884153 2.477661,1.91023963 2.36378431,1.91087407 C2.24926363,1.91023864 2.15082139,1.94884153 2.06718445,2.02604698 C1.98997921,2.10968581 1.95137742,2.20812832 1.95201186,2.32264769 C1.95137643,2.43652635 1.98997921,2.53238299 2.06718445,2.61088138 L3.22848294,3.77990781 C3.31147918,3.86290429 3.41056376,3.90408053 3.52444046,3.90344397 C3.63896114,3.90407987 3.73481751,3.86290429 3.81267333,3.77990781 C3.89566958,3.70205836 3.9368457,3.60619348 3.93620914,3.49167412 C3.93684504,3.37779546 3.89566958,3.2787106 3.81267333,3.19507342 L2.65201719,2.02604698 L2.65201719,2.02604698 Z M9.61852344,4.37309274 C8.8985836,3.65315087 8.02551798,3.29414345 7.00005129,3.29414345 C5.9745846,3.29414345 5.09886725,3.65315087 4.37317922,4.37309274 C3.65323938,5.09881576 3.29423298,5.97446971 3.29423298,6.99997224 C3.29423298,8.02547476 3.65323938,8.89852637 4.37317922,9.61845178 C5.09890019,10.3435324 5.97455166,10.7057681 7.00005129,10.7057681 C8.02555093,10.7057681 8.89860007,10.3435489 9.61852344,9.61845178 C10.3436021,8.8985099 10.7058367,8.02544182 10.7058367,6.99997224 C10.7058367,5.97450265 10.3436185,5.09878282 9.61852344,4.37309274 L9.61852344,4.37309274 Z M7.41181998,0.411773617 C7.41245588,0.297894957 7.37128041,0.198810097 7.28828417,0.115172916 C7.21043494,0.0379674631 7.11392799,-0.000634439654 7.00005129,0 C6.88617296,-0.000635427883 6.78708838,0.0379674631 6.70345143,0.115172916 C6.6262462,0.198811744 6.5876444,0.297896604 6.58827884,0.411773617 L6.58827884,2.05882327 C6.58764341,2.17270193 6.6262462,2.26920092 6.70345143,2.34705696 C6.78709002,2.43005344 6.8861746,2.47122968 7.00005129,2.47059312 C7.11392963,2.47122902 7.21042835,2.43005344 7.28828417,2.34705696 C7.37128041,2.26920751 7.41245654,2.17270029 7.41181998,2.05882327 L7.41181998,0.411773617 L7.41181998,0.411773617 Z M11.6773297,1.93528664 C11.5634514,1.93465121 11.4643668,1.9732541 11.3813722,2.05045955 L10.2117067,3.21176132 C10.1345015,3.29540015 10.0958997,3.39384266 10.0965341,3.50836203 C10.0958987,3.62224069 10.1345015,3.71809733 10.2117067,3.79659572 C10.2953453,3.8789482 10.3937875,3.92012444 10.5083066,3.92012444 C10.6221849,3.92012444 10.7180413,3.8789482 10.7965394,3.79659572 L11.9655626,2.63529395 C12.0485588,2.5574445 12.0897349,2.46093727 12.0890984,2.34706026 C12.0897343,2.2331816 12.0485588,2.13409674 11.9655626,2.05045955 C11.8877133,1.9732541 11.7918487,1.9346522 11.6773297,1.93528664 L11.6773297,1.93528664 Z M13.8764642,6.70333859 C13.798615,6.62613314 13.702108,6.58753124 13.5882313,6.58816568 L11.9411863,6.58816568 C11.827308,6.58753025 11.7282234,6.62613314 11.6445864,6.70333859 C11.5673812,6.78697742 11.5287794,6.88606228 11.5294139,6.9999393 C11.5287784,7.11381796 11.5673812,7.21031695 11.6445864,7.28817298 C11.728225,7.37116946 11.8273096,7.41234571 11.9411863,7.41170915 L13.5882313,7.41170915 C13.7021096,7.41234505 13.7986084,7.37116946 13.8764642,7.28817298 C13.9594604,7.21032354 14.0006366,7.11381631 14,6.9999393 C14.0006359,6.88606063 13.9594604,6.78697577 13.8764642,6.70333859 Z"
-                            />
-                        </svg>
-                        <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="10" height="11" viewBox="0 0 10 11">
-                            <path
-                            fill="#FFF"
-                            fill-rule="evenodd"
-                            d="M10,0.816452081 C7.14055555,1.08494197 4.91953976,3.07942693 4.91953976,5.5 C4.91953976,7.92057307 7.14055555,9.91505803 10,10.1835479 C8.99974691,10.7012666 7.82117277,11 6.55938635,11 C2.9367373,11 0,8.53756612 0,5.5 C0,2.46243388 2.9367373,0 6.55938635,0 C7.82117277,0 8.99974691,0.298733377 10,0.816452081 Z"
-                            />
-                        </svg>
-                    </label>
-                    <script>
-                            if(document.documentElement.getAttribute('data-theme') === 'light') {
-                                document.getElementById("toggleSwitch").checked = true
-                            }
-                        </script>
-                </div>
-            </footer>
-        </div>
-    
-        <!-- <div class="fab-message">
-                <div class="fab-message-button">
-                  <a href="#" class="at-button" onclick="toggleFAB();return false;">
-                        <i class="svg-question-mark fas fa-exclamation-circle fa-3x"></i>
-                        <svg class="svg-cross" xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24"><path fill="#FFF" d="M24 2.5L21.5 0 12 9.5 2.5 0 0 2.5 9.5 12 0 21.5 2.5 24l9.5-9.5 9.5 9.5 2.5-2.5-9.5-9.5"/></svg> 
-                  </a>
-                </div>
-                <div class="fab-message-content">
-                     {{if .ShowSyncingMessage}}
-                        <h3 class="text-warning">Syncing in Progress</h3>
-                            <p>
-                                We are currently re-indexing our database. Displayed data might be inaccurate and outdated.
-                            </p>
+							</div>
+							<div class="info-item-body text-warning">
+								<span id="banner-fin-data">{{.FinalizationDelay}}</span>
+								<i class="fas fa-exclamation-triangle item-text" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
+							</div>
+						</div>
                     {{end}}
-                </div>
-              </div> -->
+                {{end}}
+                {{if .ShowSyncingMessage}}
+					<div id="banner-status" class="info-item d-flex mr-3">
+						<div class="info-item-body">
+							<i class="fas fa-sync" data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network"></i>
+						</div>
+					</div>
+                {{end}}
+			</div>
+			<!-- Fill content so that the other elements -->
+			<!-- <div class="d-flex flex-fill"></div> -->
+
+			<div class="info-banner-center">
+				<div class="info-banner-search">
+					<div class="search-container">
+						<form class="form-inline" action="/search" method="POST">
+							<input id="banner-search-input" class="typeahead" autocomplete="off" name="search" type="text" placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
+						</form>
+					</div>
+					<a class="search-button">
+						<i id="banner-search" class="fas fa-search"></i>
+					</a>
+				</div>
+			</div>
+			<div class="info-banner-right">
+
+                {{if .User.Authenticated}}
+					<div class="dropdown">
+						<a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+							<i class="fas fa-user-circle m-0 p-0"></i>
+						</a>
+						<div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
+							<!-- <h6 class="dropdown-header">Welcome: {{.User.UserID}}</h6>
+                <div class="dropdown-divider"></div> -->
+							<!-- <a class="dropdown-item" href="/user/validators">Validators</a> -->
+							<a class="dropdown-item" href="/user/notifications">Notifications</a>
+							<a class="dropdown-item" href="/user/settings">Settings</a>
+							<a data-no-instant class="dropdown-item" href="/logout">Logout</a>
+						</div>
+					</div>
+                {{else}}
+					<a href="/login" class="mr-3">
+						<span>Sign In</span>
+					</a>
+					<a href="/register" class="btn btn-primary btn-sm">
+						<span class="text-white"><b>Sign Up</b></span>
+					</a>
+                {{end}}
+			</div>
+		</div>
+	</div>
+	<!-- Banner END -->
+	<nav {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}} id="nav" class="navbar navbar-expand-lg navbar-light">
+		<div class="container">
+			<a class=navbar-brand href="/">
+				<i {{ if eq .Active "index"}}style="color: var(--font-color)" {{else}}style="opacity: .7"{{end}} class="fas fa-satellite-dish mr-1"></i>
+				<span class="brand-text">beaconcha.in</span>
+			</a>
+
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+					aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div class="collapse navbar-collapse" id="navbarSupportedContent">
+				<ul class="navbar-nav ml-auto">
+					<li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
+						<a class="nav-link" href="/epochs"><i class="fas fa-history"></i> Epochs</a>
+                        {{ if eq .Active "epochs"}}
+                        {{end}}
+					</li>
+					<li class="nav-item {{ if eq .Active "blocks"}}active{{end}}">
+						<a class="nav-link" href="/blocks"><i class="fas fa-cubes"></i> Blocks</a>
+                        {{ if eq .Active "blocks"}}
+                        {{end}}
+					</li>
+					<li class="nav-item {{ if eq .Active "validators"}}active{{end}} dropdown">
+						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+							<i class="fas fa-thumbs-up"></i> Validators
+						</a>
+						<div class="dropdown-menu" aria-labelledby="navbarDropdown">
+							<a class="dropdown-item" href="/validators"><i class="fas fa-table mr-1"></i> Overview</a>
+							<a class="dropdown-item" href="/validators/leaderboard"><i class="fas fa-medal mr-1"></i> Leaderboard</a>
+							<a class="dropdown-item" href="/validators/slashings"><i class="fas fa-user-slash mr-1"></i> Slashings</a>
+							<a class="dropdown-item" href="/validators/eth1deposits"><i class="fas fa-file-signature mr-1"></i> Eth1 Deposits</a>
+							<a class="dropdown-item" href="/validators/eth2deposits"><i class="fas fa-clipboard-check mr-1"></i> Eth2 Deposits</a>
+						</div>
+					</li>
+					<li class="nav-item {{ if eq .Active "stats"}}active{{end}} dropdown">
+						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+							<i class="fas fa-cubes"></i> Stats
+						</a>
+						<div class="dropdown-menu" aria-labelledby="navbarDropdown">
+							<a class="dropdown-item" href="/charts"><i class="fas fa-chart-bar mr-1"></i> Charts</a>
+							<a class="dropdown-item" href="/calculator"><i class="fas fa-calculator mr-1"></i> Calculator</a>
+							<a class="dropdown-item" href="/vis"><i class="fas fa-project-diagram mr-1"></i> Block Viz</a>
+							<a ga-outbound class="dropdown-item" href="https://eth2.ethernodes.org/"><i class="fas fa-network-wired mr-1"></i> Nodes</a>
+						</div>
+					</li>
+					<style>
+                        .nav-cube {
+                            --mainColor: rgba(75, 75, 75, .7);
+                            --strokeColor: rgba(55, 55, 55, 1);
+                            --lightColor: rgba(0, 0, 0, .5);
+                            --darkColor: rgba(100, 100, 100, .8);
+                        }
+
+                        .active .nav-cube {
+                            --mainColor: rgba(55, 55, 55, 1);
+                            --strokeColor: rgba(35, 35, 35, 1);
+                            --lightColor: rgba(0, 0, 0, 1);
+                            --darkColor: rgba(80, 80, 80, 1);
+                        }
+
+                        [data-theme='dark'] .nav-cube {
+                            --mainColor: rgba(180, 180, 180, .7);
+                            --strokeColor: rgba(200, 200, 200, 1);
+                            --lightColor: rgba(255, 255, 255, .5);
+                            --darkColor: rgba(150, 150, 150, .8);
+                        }
+
+                        [data-theme='dark'] .active .nav-cube {
+                            --mainColor: rgba(200, 200, 200, 1);
+                            --strokeColor: rgba(220, 220, 220, 1);
+                            --lightColor: rgba(255, 255, 255, 1);
+                            --darkColor: rgba(170, 170, 170, 1);
+                        }
+					</style>
+					<li class="nav-item {{ if eq .Active "dashboard"}}active{{end}}">
+						<a class="nav-link" href="/dashboard">
+							<svg style="width:21px; height:23px;" xmlns="http://www.w3.org/2000/svg" class="nav-cube" viewBox="80 20 150 100">
+								<defs>
+									<g id="cube" class="cube-unit">
+										<rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
+										<rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
+										<rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
+									</g>
+									<g id="cube" class="cube-unit">
+										<rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
+										<rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
+										<rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
+									</g>
+
+									<g style="transform: scale(0.6)" id="cube-small" class="cube-unit">
+										<rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
+										<rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
+										<rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
+									</g>
+									<g id="cube" class="cube-unit">
+										<rect width="21" height="24" fill="var(--lightColor)" stroke="var(--strokeColor)" transform="skewY(30)"/>
+										<rect width="21" height="24" fill="var(--darkColor)" stroke="var(--strokeColor)" transform="skewY(-30) translate(21 24.3)"/>
+										<rect width="21" height="21" fill="var(--mainColor)" stroke="var(--strokeColor)" transform="scale(1.41,.81) rotate(45) translate(0 -21)"/>
+									</g>
+								</defs>
+								<g class="move">
+									<use href="#cube-small" x="129" y="56"/>
+								</g>
+
+								<g style="opacity: .2;">
+									<use href="#cube" x="121" y="48"/>
+									<use href="#cube" x="121" y="24"/>
+									<use href="#cube" x="121" y="0"/>
+									<use href="#cube" x="100" y="60"/>
+									<use href="#cube" x="100" y="36"/>
+									<use href="#cube" x="100" y="12"/>
+									<use href="#cube" x="142" y="60"/>
+									<use href="#cube" x="142" y="36"/>
+									<use href="#cube" x="142" y="12"/>
+									<use href="#cube" x="163" y="72"/>
+									<use href="#cube" x="163" y="48"/>
+									<use href="#cube" x="163" y="24"/>
+									<use href="#cube" x="79" y="72"/>
+									<use href="#cube" x="79" y="48"/>
+									<use href="#cube" x="79" y="24"/>
+									<use href="#cube" x="121" y="72"/>
+									<use href="#cube" x="121" y="48"/>
+									<use href="#cube" x="121" y="24"/>
+									<use href="#cube" x="100" y="84"/>
+									<use href="#cube" x="100" y="60"/>
+									<use href="#cube" x="100" y="36"/>
+									<use href="#cube" x="142" y="84"/>
+									<use href="#cube" x="142" y="60"/>
+									<use href="#cube" x="142" y="36"/>
+									<use href="#cube" x="121" y="96"/>
+									<use href="#cube" x="121" y="72"/>
+									<use href="#cube-small" x="129" y="56"/>
+								</g>
+							</svg>
+							Dashboard</a>
+                        {{ if eq .Active "dashboard"}}
+                        {{end}}
+					</li>
+					<li class="nav-item {{ if eq .Active "graffitiwall"}}active{{end}}">
+						<a class="nav-link" href="/graffitiwall"><i class="fas fa-paint-brush"></i> Wall</a>
+					</li>
+					<li class="nav-item {{ if eq .Active "poap"}}active{{end}}">
+						<a class="nav-link" href="/poap"><i class="fas fa-medal"></i> POAP</a>
+					</li>
+					<li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
+						<a ga-outbound class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
+					</li>
+					<!-- <li class="nav-item dropdown">
+					  <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+						<i class="fab fa-ethereum"></i> Onyx
+					  </a>
+					  <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+						  <a class="dropdown-item" href="https://beaconcha.in">Medalla</a>
+						  <a class="dropdown-item" href="https://altona.beaconcha.in">Altona</a>
+						  <a class="dropdown-item" href="https://prysm-attack-0.beaconcha.in">Attacknet 0</a>
+						  <a class="dropdown-item" href="https://prysm-attack-1.beaconcha.in">Attacknet 1</a>
+						  <a class="dropdown-item" href="https://topaz.beaconcha.in">Topaz</a>
+						  <a class="dropdown-item" href="https://witti.beaconcha.in">Witti</a>
+					  </div>
+				  </li> -->
+				</ul>
+				<!-- <div>
+					<span class="fas fa-search search-icon"></span>
+					<i class="fab fa-github"></i>
+				</div> -->
+				<!-- <div class="search-container">
+					<form  class="form-inline ml-auto" action="/search" method="POST">
+						<span>
+							<input class="form-control typeahead" name="search" type="text"
+							placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
+							<span class="fas fa-search"></span>
+						</span>
+					</form>
+				</div> -->
+			</div>
+		</div>
+		</div>
+	</nav>
+    {{ template "css" }}
+
+	<main>
+		<div class="container mt-2">
+            {{ if not  (eq .Active "index")}}
+				<ins data-revive-zoneid="5683" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
+            {{end}}
+            {{ template "content" .Data }}
+		</div>
+	</main>
+
+	<div class="text-center" style="margin-top: 3rem; margin-bottom: 4.2rem;">
+		<hr>
+		<footer class="container">© bitfly gmbh 2020 | <a href="/imprint">Imprint</a> | <a href="https://twitter.com/etherchain_org">
+				<i class="fab fa-twitter mr-1"></i>Twitter</a> | <a href="https://www.reddit.com/u/etherchain/">
+				<i class="fab fa-reddit mr-1"></i>Reddit</a> | <a
+					href="https://github.com/gobitfly/eth2-beaconchain-explorer">
+				<i class="fab fa-github mr-1"></i>Github</a> | <a
+					href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a>
+			| {{.Version}} |
+			<div class="theme-switch-wrapper">
+				<label class="theme-switch" for="toggleSwitch">
+					<input type="checkbox" id="toggleSwitch"/>
+					<div class="slider round"></div>
+					<svg class="sun" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
+						<path
+								fill="#FFF"
+								d="M7.41171457,11.9411805 C7.41235047,11.8273018 7.371175,11.728217 7.28817876,11.6445798 C7.21032953,11.5673743 7.11382258,11.5287724 6.99994588,11.5294069 C6.88606754,11.5287714 6.78698296,11.5673743 6.70334602,11.6445798 C6.62614078,11.7282186 6.58753899,11.8273035 6.58817343,11.9411805 L6.58817343,13.5882301 C6.587538,13.7021088 6.62614078,13.7986078 6.70334602,13.8764638 C6.78698461,13.9594603 6.88606919,14.0006366 6.99994588,14 C7.11382422,14.0006359 7.21032294,13.9594603 7.28817876,13.8764638 C7.371175,13.7986144 7.41235113,13.7021072 7.41171457,13.5882301 L7.41171457,11.9411805 L7.41171457,11.9411805 Z M10.7797495,10.2117784 C10.7031882,10.1307122 10.606678,10.089536 10.4915166,10.0882417 C10.3808549,10.0876063 10.2849936,10.1262092 10.2032837,10.2034146 C10.1222178,10.2857671 10.0810417,10.3816254 10.0797553,10.4916483 C10.0797553,10.6080997 10.1177148,10.7065389 10.19492,10.788249 L11.3562185,11.9579178 C11.4385708,12.0389839 11.5350711,12.0801602 11.6444514,12.0814465 C11.7609024,12.0814465 11.8599837,12.0402703 11.9410512,11.9579178 C12.0221172,11.8807124 12.0632933,11.7848458 12.064587,11.6696841 C12.065223,11.5590238 12.0240475,11.4625182 11.9410512,11.3814504 L10.7797528,10.2117817 L10.7797495,10.2117784 Z M3.78821142,10.7638068 C3.86927733,10.6866014 3.91045345,10.5907348 3.91174722,10.4755731 C3.91238313,10.3642688 3.87120766,10.2684072 3.78821142,10.1873394 C3.71165018,10.1056309 3.61513993,10.0644547 3.49997854,10.0638028 C3.38931688,10.0631674 3.29345557,10.1017703 3.21174567,10.1789757 L2.04208019,11.3402775 C1.96101428,11.42263 1.91983815,11.5184883 1.91855181,11.6285112 C1.91855181,11.7443202 1.95651126,11.8434017 2.03435884,11.9244695 C2.1160671,12.006178 2.21256911,12.0473543 2.32259172,12.0480057 C2.43840039,12.0486416 2.53748168,12.007466 2.61854923,11.9244695 L3.78821471,10.7638101 L3.78821142,10.7638068 Z M2.05881746,6.58820191 L0.411772455,6.58820191 C0.297894116,6.58756648 0.198809536,6.62616938 0.11517259,6.70337483 C0.0379673559,6.78701366 -0.000634437862,6.88609852 7.72715225e-14,6.99997553 C-0.000635426089,7.11385419 0.0379673559,7.21035318 0.11517259,7.28820922 C0.198811183,7.3712057 0.297895763,7.41238194 0.411772455,7.41174538 L2.05881746,7.41174538 C2.1726958,7.41238128 2.26919452,7.3712057 2.34705033,7.28820922 C2.43004658,7.21035977 2.4712227,7.11385254 2.47058615,6.99997553 C2.47122205,6.88609687 2.43004658,6.78701201 2.34705033,6.70337483 C2.26920111,6.62616938 2.17269415,6.58756747 2.05881746,6.58820191 L2.05881746,6.58820191 Z M2.65201719,2.02604698 C2.57352561,1.94884153 2.477661,1.91023963 2.36378431,1.91087407 C2.24926363,1.91023864 2.15082139,1.94884153 2.06718445,2.02604698 C1.98997921,2.10968581 1.95137742,2.20812832 1.95201186,2.32264769 C1.95137643,2.43652635 1.98997921,2.53238299 2.06718445,2.61088138 L3.22848294,3.77990781 C3.31147918,3.86290429 3.41056376,3.90408053 3.52444046,3.90344397 C3.63896114,3.90407987 3.73481751,3.86290429 3.81267333,3.77990781 C3.89566958,3.70205836 3.9368457,3.60619348 3.93620914,3.49167412 C3.93684504,3.37779546 3.89566958,3.2787106 3.81267333,3.19507342 L2.65201719,2.02604698 L2.65201719,2.02604698 Z M9.61852344,4.37309274 C8.8985836,3.65315087 8.02551798,3.29414345 7.00005129,3.29414345 C5.9745846,3.29414345 5.09886725,3.65315087 4.37317922,4.37309274 C3.65323938,5.09881576 3.29423298,5.97446971 3.29423298,6.99997224 C3.29423298,8.02547476 3.65323938,8.89852637 4.37317922,9.61845178 C5.09890019,10.3435324 5.97455166,10.7057681 7.00005129,10.7057681 C8.02555093,10.7057681 8.89860007,10.3435489 9.61852344,9.61845178 C10.3436021,8.8985099 10.7058367,8.02544182 10.7058367,6.99997224 C10.7058367,5.97450265 10.3436185,5.09878282 9.61852344,4.37309274 L9.61852344,4.37309274 Z M7.41181998,0.411773617 C7.41245588,0.297894957 7.37128041,0.198810097 7.28828417,0.115172916 C7.21043494,0.0379674631 7.11392799,-0.000634439654 7.00005129,0 C6.88617296,-0.000635427883 6.78708838,0.0379674631 6.70345143,0.115172916 C6.6262462,0.198811744 6.5876444,0.297896604 6.58827884,0.411773617 L6.58827884,2.05882327 C6.58764341,2.17270193 6.6262462,2.26920092 6.70345143,2.34705696 C6.78709002,2.43005344 6.8861746,2.47122968 7.00005129,2.47059312 C7.11392963,2.47122902 7.21042835,2.43005344 7.28828417,2.34705696 C7.37128041,2.26920751 7.41245654,2.17270029 7.41181998,2.05882327 L7.41181998,0.411773617 L7.41181998,0.411773617 Z M11.6773297,1.93528664 C11.5634514,1.93465121 11.4643668,1.9732541 11.3813722,2.05045955 L10.2117067,3.21176132 C10.1345015,3.29540015 10.0958997,3.39384266 10.0965341,3.50836203 C10.0958987,3.62224069 10.1345015,3.71809733 10.2117067,3.79659572 C10.2953453,3.8789482 10.3937875,3.92012444 10.5083066,3.92012444 C10.6221849,3.92012444 10.7180413,3.8789482 10.7965394,3.79659572 L11.9655626,2.63529395 C12.0485588,2.5574445 12.0897349,2.46093727 12.0890984,2.34706026 C12.0897343,2.2331816 12.0485588,2.13409674 11.9655626,2.05045955 C11.8877133,1.9732541 11.7918487,1.9346522 11.6773297,1.93528664 L11.6773297,1.93528664 Z M13.8764642,6.70333859 C13.798615,6.62613314 13.702108,6.58753124 13.5882313,6.58816568 L11.9411863,6.58816568 C11.827308,6.58753025 11.7282234,6.62613314 11.6445864,6.70333859 C11.5673812,6.78697742 11.5287794,6.88606228 11.5294139,6.9999393 C11.5287784,7.11381796 11.5673812,7.21031695 11.6445864,7.28817298 C11.728225,7.37116946 11.8273096,7.41234571 11.9411863,7.41170915 L13.5882313,7.41170915 C13.7021096,7.41234505 13.7986084,7.37116946 13.8764642,7.28817298 C13.9594604,7.21032354 14.0006366,7.11381631 14,6.9999393 C14.0006359,6.88606063 13.9594604,6.78697577 13.8764642,6.70333859 Z"
+						/>
+					</svg>
+					<svg class="moon" xmlns="http://www.w3.org/2000/svg" width="10" height="11" viewBox="0 0 10 11">
+						<path
+								fill="#FFF"
+								fill-rule="evenodd"
+								d="M10,0.816452081 C7.14055555,1.08494197 4.91953976,3.07942693 4.91953976,5.5 C4.91953976,7.92057307 7.14055555,9.91505803 10,10.1835479 C8.99974691,10.7012666 7.82117277,11 6.55938635,11 C2.9367373,11 0,8.53756612 0,5.5 C0,2.46243388 2.9367373,0 6.55938635,0 C7.82117277,0 8.99974691,0.298733377 10,0.816452081 Z"
+						/>
+					</svg>
+				</label>
+				<script>
+                    if (document.documentElement.getAttribute('data-theme') === 'light') {
+                        document.getElementById("toggleSwitch").checked = true
+                    }
+				</script>
+			</div>
+		</footer>
+	</div>
 
 
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
-            integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
-            crossorigin="anonymous"></script>
-    
-            <script src="/theme/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
-    <script src="/js/typeahead.bundle.min.js"></script>
-    <script src="/js/layout.js"></script>
-    <script src="/js/banner.js"></script>
-    <script>
+	<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+			integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+			crossorigin="anonymous"></script>
+
+	<script src="/theme/js/bootstrap.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
+	<script src="/js/typeahead.bundle.min.js"></script>
+	<script src="/js/layout.js"></script>
+	<script src="/js/banner.js"></script>
+	<script>
         function slotToTime(slot) {
             var gts = {{.ChainGenesisTimestamp}}
             var sps = {{.ChainSecondsPerSlot}}
-            return (gts+slot*sps)*1000
+            return (gts + slot * sps) * 1000
         }
+
         function epochToTime(epoch) {
             var gts = {{.ChainGenesisTimestamp}}
             var sps = {{.ChainSecondsPerSlot}}
             var spe = {{.ChainSlotsPerEpoch}}
-            return (gts+epoch*sps*spe)*1000
+            return (gts + epoch * sps * spe) * 1000
         }
+
         function timeToEpoch(ts) {
             var gts = {{.ChainGenesisTimestamp}}
             var sps = {{.ChainSecondsPerSlot}}
             var spe = {{.ChainSlotsPerEpoch}}
-            var slot = Math.floor((ts/1000 - gts) / sps)
-            var epoch = Math.floor(slot/spe)
+            var slot = Math.floor((ts / 1000 - gts) / sps)
+            var epoch = Math.floor(slot / spe)
             if (epoch < 0) return 0
             return epoch
         }
+
         function timeToSlot(ts) {
             var gts = {{.ChainGenesisTimestamp}}
             var sps = {{.ChainSecondsPerSlot}}
             var spe = {{.ChainSlotsPerEpoch}}
-            var slot = Math.floor((ts/1000 - gts) / sps)
+            var slot = Math.floor((ts / 1000 - gts) / sps)
             if (slot < 0) return 0
             return slot
         }
-    </script>
+	</script>
 
-
-    
     {{ template "js" .Data }}
-    <script src="//instant.page/5.1.0" type="module" integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script>
-    </body>
-    </html>
+	<script src="//instant.page/5.1.0" type="module" integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script>
+    {{ if ne .Meta.GATag ""}}
+		<!-- Global site tag (gtag.js) - Google Analytics -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>
+		<script>
+            console.log('loaded google analytics')
+            window.dataLayer = window.dataLayer || [];
+
+            function gtag() {
+                dataLayer.push(arguments);
+            }
+
+            gtag('js', new Date());
+
+            gtag('config', {{.Meta.GATag}});
+
+            function createFunctionWithTimeout(callback, opt_timeout) {
+                var called = false;
+
+                function fn() {
+                    if (!called) {
+                        called = true;
+                        callback();
+                    }
+                }
+
+                setTimeout(fn, opt_timeout || 1000);
+                return fn;
+            }
+
+            function handleOutboundLinkClicks(event) {
+                var link = event.currentTarget.href
+                event.preventDefault();
+
+                var fallback = setTimeout(function () {
+                    window.location = link
+                }, 1000)
+
+                gtag('event', "click", {
+                    event_category: 'Outbound Link',
+                    event_label: link,
+                    event_callback: function () {
+                        clearTimeout(fallback)
+                        window.location = link
+                    }
+                });
+            }
+
+            // add event handler for outbound links tagged with ga-outbound
+            var outbounds = document.querySelectorAll('[ga-outbound]')
+            console.log('found x outbound links', outbounds)
+
+            for (var i = 0; i < outbounds.length; i++) {
+                var element = outbounds[i];
+                element.addEventListener('click', handleOutboundLinkClicks)
+            }
+
+		</script>
+    {{end}}
+	<script async src="//servedby.revive-adserver.net/asyncjs.php"></script>
+	</body>
+	</html>
 {{end}}

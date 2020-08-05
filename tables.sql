@@ -282,3 +282,48 @@ create table eth1_deposits
     primary key (tx_hash)
 );
 create index idx_eth1_deposits on eth1_deposits (publickey);
+
+drop table if exists users;
+create table users (
+    id                      serial                      not null unique,
+    password                character varying(256)      not null,
+    email                   character varying(100)      not null unique,
+    email_confirmed         bool                        not null default 'f',
+    email_confirmation_hash character varying(40)                unique,
+    email_confirmation_ts   timestamp without time zone,
+    password_reset_hash     character varying(40),
+    password_reset_ts       timestamp without time zone,
+    register_ts             timestamp without time zone,
+    primary key (id, email)
+);
+
+drop table if exists users_subscriptions;
+create table users_subscriptions (
+    id              serial                      not null,
+    user_id         int                         not null,
+    event_name      character varying(100)      not null,
+    event_filter    text                        not null default '',
+    last_sent_ts    timestamp without time zone,
+    last_sent_epoch int,
+    created_ts      timestamp without time zone not null,
+    created_epoch   int                         not null,
+    primary key (user_id, event_name, event_filter),
+    constraint fk_user_id foreign key(user_id) references users(id) on delete cascade
+);
+
+drop table if exists users_validators_tags;
+create table users_validators_tags (
+    user_id             int                    not null,
+    validator_publickey bytea                  not null,
+    tag                 character varying(100) not null,
+    primary key (user_id, validator_publickey, tag),
+    constraint fk_user_id foreign key(user_id) references users(id) on delete cascade
+);
+
+drop table if exists mails_sent;
+create table mails_sent (
+    email character varying(100)      not null,
+    ts    timestamp without time zone not null,
+    cnt   int                         not null,
+    primary key (email, ts)
+);

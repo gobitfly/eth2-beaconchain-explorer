@@ -22,10 +22,38 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-// DB is a pointer to the database
 var DBPGX *pgxpool.Conn
+
+// DB is a pointer to the explorer-database
 var DB *sqlx.DB
+
 var logger = logrus.New().WithField("module", "db")
+
+func mustInitDB(username, password, host, port, name string) *sqlx.DB {
+	dbConn, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", username, password, host, port, name))
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	// The golang sql driver does not properly implement PingContext
+	// therefore we use a timer to catch db connection timeouts
+	dbConnectionTimeout := time.NewTimer(15 * time.Second)
+	go func() {
+		<-dbConnectionTimeout.C
+		logger.Fatalf("timeout while connecting to the database")
+	}()
+	err = dbConn.Ping()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	dbConnectionTimeout.Stop()
+
+	return dbConn
+}
+
+func MustInitDB(username, password, host, port, name string) {
+	DB = mustInitDB(username, password, host, port, name)
+}
 
 func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsPageData, error) {
 	deposits := []*types.EthOneDepositsPageData{}
