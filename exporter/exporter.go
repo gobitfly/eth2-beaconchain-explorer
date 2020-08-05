@@ -25,7 +25,7 @@ var epochBlacklist = make(map[uint64]uint64)
 func Start(client rpc.Client) error {
 	go performanceDataUpdater()
 	go networkLivenessUpdater(client)
-	//go eth1DepositsExporter()
+	go eth1DepositsExporter()
 	go genesisDepositsExporter()
 
 	// wait until the beacon-node is available

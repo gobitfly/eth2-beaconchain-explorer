@@ -343,12 +343,14 @@
     {{ template "css" }}
 
 	<main>
-		<div class="container mt-2">
-            {{ if not  (eq .Active "index")}}
-				<ins data-revive-zoneid="5683" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
-            {{end}}
-            {{ template "content" .Data }}
-		</div>
+			{{ if .HeaderAd }}
+			<div class="container">
+				<div class="d-flex justify-content-between pt-4 pb-3">
+					<ins data-revive-zoneid="5683" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
+				</div>
+			</div>
+			{{end}}
+		{{ template "content" .Data }}
 	</main>
 
 	<div class="text-center" style="margin-top: 3rem; margin-bottom: 4.2rem;">

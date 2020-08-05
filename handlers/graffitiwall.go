@@ -31,6 +31,7 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &types.PageData{
+		HeaderAd: true,
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - Graffitiwall - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",

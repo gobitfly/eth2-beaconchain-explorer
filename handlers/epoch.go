@@ -27,6 +27,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	epochString := strings.Replace(vars["epoch"], "0x", "", -1)
 
 	data := &types.PageData{
+		HeaderAd: true,
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			GATag:       utils.Config.Frontend.GATag,

@@ -78,6 +78,9 @@ func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 								Company: %s
 								Ad: %s
 								Comments: %s`, name, email, url, company, ad, comments)
+	// escape html
+	msg = template.HTMLEscapeString(msg)
+
 	err = mail.SendMail("support@beaconcha.in", "New ad inquiry", msg)
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)

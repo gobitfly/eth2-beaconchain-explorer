@@ -25,6 +25,7 @@ func Vis(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := &types.PageData{
+		HeaderAd: true,
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("%v - Visualizations - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
@@ -143,6 +144,7 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 	logger.Printf("returning %v entries since %v", len(chartData), sinceSlot)
 
 	data := &types.PageData{
+		HeaderAd: true,
 		Meta: &types.Meta{
 			Title:       fmt.Sprintf("Blocks - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", time.Now().Year()),
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
