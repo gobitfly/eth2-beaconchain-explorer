@@ -49,7 +49,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Epoch %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, epochString, time.Now().Year())
 		data.Meta.Path = "/epoch/" + epochString
-		logger.Errorf("error retrieving block data: %v", err)
+		logger.Errorf("error parsing epoch index %v: %v", epochString, err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
@@ -81,7 +81,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 										FROM epochs 
 										WHERE epoch = $1`, epoch)
 	if err != nil {
-		logger.Errorf("error getting epoch data: %v", err)
+		//logger.Errorf("error getting epoch data: %v", err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {

@@ -59,7 +59,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
-		logger.Errorf("error retrieving block data: %v", err)
+		//logger.Errorf("error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
