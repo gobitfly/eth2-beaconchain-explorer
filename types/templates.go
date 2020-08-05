@@ -638,6 +638,10 @@ type UserNotificationsPageData struct {
 	// Subscriptions []*Subscription
 }
 
+type AdvertiseWithUsPageData struct {
+	FlashMessage string
+}
+
 type RateLimitError struct {
 	TimeLeft time.Duration
 }

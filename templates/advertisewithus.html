@@ -1,0 +1,74 @@
+{{ define "js"}}
+{{end}}
+
+{{ define "css"}}
+{{end}}
+
+{{ define "content"}}
+    {{if ne .FlashMessage ""}}
+		<div class="alert {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
+			<div class="p-2">{{.FlashMessage | formatHTML}}</div>
+			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+				<span aria-hidden="true">&times;</span>
+			</button>
+		</div>
+    {{end}}
+	<div class="my-3">
+		<div class="d-md-flex py-2 justify-content-md-between">
+			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-ad"></i> Advertise with us</h1>
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+					<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Advertise with us</li>
+				</ol>
+			</nav>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-12">
+			<p>
+				Advertise with us and reach thousands of blockchain enthusiasts & developers worldwide.
+			</p>
+			<h1 class="h4">Available ad formats</h1>
+			<h2 class="h5">Header text ad</h2>
+			<p>
+			</p>
+			<h2 class="h5">Frontpage banner ad</h2>
+			<p>
+
+			</p>
+
+			<h1 class="h4">Contact us to start advertising</h1>
+			<form action="/advertisewithus" method="post">
+				<div class="form-row">
+					<div class="form-group col-md-6">
+						<label for="inputName">Contact name (required)</label>
+						<input type="text" class="form-control" id="inputName" placeholder="Ex.: Will Smith" required name="name">
+					</div>
+					<div class="form-group col-md-6">
+						<label for="inputEmail">Email (required)</label>
+						<input type="email" class="form-control" id="inputEmail" placeholder="Ex.: office@company.com" required name="email">
+					</div>
+				</div>
+				<div class="form-group">
+					<label for="inputUrl">Official Website URL (required)</label>
+					<input type="text" class="form-control" id="inputUrl" placeholder="Ex.: https://www.stakewise.io" required name="url">
+				</div>
+				<div class="form-group">
+					<label for="inputCompanyName">Company / Project name (required)</label>
+					<input type="text" class="form-control" id="inputCompanyName" placeholder="Ex.: Chainlab" required name="company">
+				</div>
+				<div class="form-group">
+					<label for="inputAddress2">Describe the advert you would like displayed (required)</label>
+					<input type="text" class="form-control" id="inputAdText" required name="ad">
+				</div>
+				<div class="form-group">
+					<label for="inputQuestions">Comments & Questions</label>
+					<textarea  class="form-control" id="inputQuestions" name="comments"></textarea>
+				</div>
+				<button type="submit" class="btn btn-primary">Send Message</button>
+			</form>
+
+		</div>
+	</div>
+{{end}}
