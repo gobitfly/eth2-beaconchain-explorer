@@ -138,6 +138,7 @@ func main() {
 
 		router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 		router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
+		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
 
 		// confirming the email update should not require auth
 		router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
