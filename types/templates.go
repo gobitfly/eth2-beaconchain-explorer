@@ -635,10 +635,12 @@ type UserSettingsPageData struct {
 }
 
 type UserNotificationsPageData struct {
-	Email string `json:"email"`
+	Email              string   `json:"email"`
+	CountWatchlist     int      `json:"countwatchlist"`
+	CountSubscriptions int      `json:"countsubscriptions"`
+	WatchlistIndices   []uint64 `json:"watchlistIndices"`
+	DashboardLink      string   `json:"dashboardLink"`
 	AuthData
-	CountWatchlist     int `json:"countwatchlist"`
-	CountSubscriptions int `json:"countsubscriptions"`
 	// Subscriptions []*Subscription
 }
 
