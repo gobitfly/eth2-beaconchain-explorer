@@ -143,45 +143,47 @@ type ValidatorsPageDataValidators struct {
 
 // ValidatorPageData is a struct to hold data for the validators page
 type ValidatorPageData struct {
-	Epoch                            uint64 `db:"epoch"`
-	ValidatorIndex                   uint64 `db:"validatorindex"`
-	PublicKey                        []byte
-	WithdrawableEpoch                uint64 `db:"withdrawableepoch"`
-	CurrentBalance                   uint64 `db:"balance"`
-	EffectiveBalance                 uint64 `db:"effectivebalance"`
-	Slashed                          bool   `db:"slashed"`
-	SlashedBy                        uint64
-	SlashedAt                        uint64
-	SlashedFor                       string
-	ActivationEligibilityEpoch       uint64  `db:"activationeligibilityepoch"`
-	ActivationEpoch                  uint64  `db:"activationepoch"`
-	ExitEpoch                        uint64  `db:"exitepoch"`
-	Index                            uint64  `db:"index"`
-	LastAttestationSlot              *uint64 `db:"lastattestationslot"`
-	Name                             string  `db:"name"`
-	WithdrawableTs                   time.Time
-	ActivationEligibilityTs          time.Time
-	ActivationTs                     time.Time
-	ExitTs                           time.Time
-	Status                           string
-	ProposedBlocksCount              uint64
-	AttestationsCount                uint64
-	StatusProposedCount              uint64
-	StatusMissedCount                uint64
-	DepositsCount                    uint64
-	SlashingsCount                   uint64
-	Income1d                         int64
-	Income7d                         int64
-	Income31d                        int64
-	Proposals                        [][]uint64
-	BalanceHistoryChartData          [][]float64
-	EffectiveBalanceHistoryChartData [][]float64
-	Deposits                         *ValidatorDeposits
-	Eth1DepositAddress               []byte
-	FlashMessage                     string
-	Watchlist                        []*TaggedValidators
-	SubscriptionFlash                []interface{}
-	User                             *User
+	Epoch                               uint64 `db:"epoch"`
+	ValidatorIndex                      uint64 `db:"validatorindex"`
+	PublicKey                           []byte
+	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
+	CurrentBalance                      uint64 `db:"balance"`
+	EffectiveBalance                    uint64 `db:"effectivebalance"`
+	Slashed                             bool   `db:"slashed"`
+	SlashedBy                           uint64
+	SlashedAt                           uint64
+	SlashedFor                          string
+	ActivationEligibilityEpoch          uint64  `db:"activationeligibilityepoch"`
+	ActivationEpoch                     uint64  `db:"activationepoch"`
+	ExitEpoch                           uint64  `db:"exitepoch"`
+	Index                               uint64  `db:"index"`
+	LastAttestationSlot                 *uint64 `db:"lastattestationslot"`
+	Name                                string  `db:"name"`
+	WithdrawableTs                      time.Time
+	ActivationEligibilityTs             time.Time
+	ActivationTs                        time.Time
+	ExitTs                              time.Time
+	Status                              string
+	ProposedBlocksCount                 uint64
+	AttestationsCount                   uint64
+	StatusProposedCount                 uint64
+	StatusMissedCount                   uint64
+	DepositsCount                       uint64
+	SlashingsCount                      uint64
+	Income1d                            int64
+	Income7d                            int64
+	Income31d                           int64
+	Proposals                           [][]uint64
+	BalanceHistoryChartData             [][]float64
+	EffectiveBalanceHistoryChartData    [][]float64
+	Deposits                            *ValidatorDeposits
+	Eth1DepositAddress                  []byte
+	FlashMessage                        string
+	Watchlist                           []*TaggedValidators
+	SubscriptionFlash                   []interface{}
+	User                                *User
+	AverageAttestationInclusionDistance float64
+	AttestationInclusionEffectiveness   float64
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -222,11 +224,12 @@ type ValidatorPerformance struct {
 
 // ValidatorAttestation is a struct for the validators attestations data
 type ValidatorAttestation struct {
-	Epoch          uint64 `db:"epoch"`
-	AttesterSlot   uint64 `db:"attesterslot"`
-	CommitteeIndex uint64 `db:"committeeindex"`
-	Status         uint64 `db:"status"`
-	InclusionSlot  uint64 `db:"inclusionslot"`
+	Epoch                 uint64 `db:"epoch"`
+	AttesterSlot          uint64 `db:"attesterslot"`
+	CommitteeIndex        uint64 `db:"committeeindex"`
+	Status                uint64 `db:"status"`
+	InclusionSlot         uint64 `db:"inclusionslot"`
+	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
 }
 
 // VisPageData is a struct to hold the visualizations page data
