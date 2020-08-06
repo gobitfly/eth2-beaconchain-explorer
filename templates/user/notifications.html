@@ -265,8 +265,12 @@
 			<div class="card-body">asdf</div>
 		</div>
 	</div> -->
-
-	<h2 class="h4 mt-3">Validator Watchlist</h2>
+	<div class="d-flex mt-3 justify-content-between">
+		<h2 class="h4">Validator Watchlist </h2>
+		<a href="{{.DashboardLink}}" class="btn btn-sm btn-outline-primary h2">
+			<span>View in Dashboard</span>
+		</a>
+	</div>
 	<div class="card mb-3">
 		<div class="card-body px-0 py-2">
 			{{ if gt .CountWatchlist 0 }}
