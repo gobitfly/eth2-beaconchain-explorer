@@ -374,7 +374,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, "SELECT COALESCE(AVG(inclusionslot - attesterslot), 0) from attestation_assignments where epoch > $1 and validatorindex = $2 and inclusionslot > 0", data.CurrentEpoch-100, index)
+	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, "SELECT COALESCE(AVG(1 + inclusionslot - COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0)), 0) FROM attestation_assignments WHERE epoch > $1 AND validatorindex = $2 AND inclusionslot > 0", data.CurrentEpoch-100, index)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -582,7 +582,8 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 			attestation_assignments.attesterslot, 
 			attestation_assignments.committeeindex, 
 			attestation_assignments.status,
-		    attestation_assignments.inclusionslot     
+		    attestation_assignments.inclusionslot,
+    		COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0) AS earliestinclusionslot     
 		FROM attestation_assignments 
 		WHERE validatorindex = $1
 		ORDER BY epoch desc, attesterslot DESC
@@ -607,7 +608,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 			utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
 			b.CommitteeIndex,
 			utils.FormatAttestationInclusionSlot(b.InclusionSlot),
-			utils.FormatInclusionDelay(b.InclusionSlot, b.InclusionSlot-b.AttesterSlot),
+			utils.FormatInclusionDelay(b.InclusionSlot, b.InclusionSlot-b.EarliestInclusionSlot),
 		}
 	}
 
