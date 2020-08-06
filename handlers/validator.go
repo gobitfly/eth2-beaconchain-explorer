@@ -374,6 +374,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, "SELECT COALESCE(AVG(inclusionslot - attesterslot), 0) from attestation_assignments where epoch > $1 and validatorindex = $2 and inclusionslot > 0", data.CurrentEpoch-100, index)
+	if err != nil {
+		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if validatorPageData.AverageAttestationInclusionDistance > 0 {
+		validatorPageData.AttestationInclusionEffectiveness = 1.0 / validatorPageData.AverageAttestationInclusionDistance * 100
+	}
+
 	data.Data = validatorPageData
 
 	if utils.IsApiRequest(r) {
@@ -596,6 +607,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 			utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
 			b.CommitteeIndex,
 			utils.FormatAttestationInclusionSlot(b.InclusionSlot),
+			utils.FormatInclusionDelay(b.InclusionSlot, b.InclusionSlot-b.AttesterSlot),
 		}
 	}
 

@@ -60,6 +60,19 @@ func FormatAttestationInclusionSlot(blockSlot uint64) template.HTML {
 	}
 }
 
+// FormatAttestationInclusionSlot will return the block-slot formated as html
+func FormatInclusionDelay(inclusionSlot, delay uint64) template.HTML {
+	if inclusionSlot == 0 {
+		return template.HTML("-")
+	} else if delay > 32 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%[1]d</span>", delay))
+	} else if delay > 3 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-warning\">%[1]d</span>", delay))
+	} else {
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%[1]d</span>", delay))
+	}
+}
+
 // FormatSlotToTimestamp will return the momentjs time elapsed since blockSlot
 func FormatSlotToTimestamp(blockSlot uint64) template.HTML {
 	time := SlotToTime(blockSlot)
@@ -267,4 +280,18 @@ func FormatYesNo(yes bool) template.HTML {
 func FormatValidatorName(name string) template.HTML {
 	str := strings.Map(fixUtf, template.HTMLEscapeString(name))
 	return template.HTML(fmt.Sprintf("<b><abbr title=\"This name has been set by the owner of this validator\">%s</abbr></b>", str))
+}
+
+func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
+
+	tooltipText := "The attestation inclusion effectiveness should be 90% or higher to minimize reward penalties."
+	if eff == 0 {
+		return ""
+	} else if eff > 90 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Good <i class=\"fas fa-smile\"></i>", tooltipText, eff))
+	} else if eff > 80 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-warning\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Fair <i class=\"fas fa-meh\"></i>", tooltipText, eff))
+	} else {
+		return template.HTML(fmt.Sprintf("<span class=\"text-danger\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Bad <i class=\"fas fa-frown\"></i>", tooltipText, eff))
+	}
 }
