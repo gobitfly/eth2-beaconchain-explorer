@@ -51,6 +51,15 @@ func FormatBlockSlot(blockSlot uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", blockSlot))
 }
 
+// FormatAttestationInclusionSlot will return the block-slot formated as html
+func FormatAttestationInclusionSlot(blockSlot uint64) template.HTML {
+	if blockSlot == 0 {
+		return template.HTML("-")
+	} else {
+		return FormatBlockSlot(blockSlot)
+	}
+}
+
 // FormatSlotToTimestamp will return the momentjs time elapsed since blockSlot
 func FormatSlotToTimestamp(blockSlot uint64) template.HTML {
 	time := SlotToTime(blockSlot)

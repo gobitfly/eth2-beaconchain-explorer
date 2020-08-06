@@ -570,7 +570,8 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 			attestation_assignments.epoch, 
 			attestation_assignments.attesterslot, 
 			attestation_assignments.committeeindex, 
-			attestation_assignments.status 
+			attestation_assignments.status,
+		    attestation_assignments.inclusionslot     
 		FROM attestation_assignments 
 		WHERE validatorindex = $1
 		ORDER BY epoch desc, attesterslot DESC
@@ -594,6 +595,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 			utils.FormatAttestationStatus(b.Status),
 			utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
 			b.CommitteeIndex,
+			utils.FormatAttestationInclusionSlot(b.InclusionSlot),
 		}
 	}
 

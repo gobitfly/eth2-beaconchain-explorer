@@ -226,6 +226,7 @@ type ValidatorAttestation struct {
 	AttesterSlot   uint64 `db:"attesterslot"`
 	CommitteeIndex uint64 `db:"committeeindex"`
 	Status         uint64 `db:"status"`
+	InclusionSlot  uint64 `db:"inclusionslot"`
 }
 
 // VisPageData is a struct to hold the visualizations page data
