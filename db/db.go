@@ -1008,7 +1008,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				attestingValidators := make([]string, 0, 10000)
 
 				for _, validator := range a.Attesters {
-					attestationAssignmentsArgs = append(attestationAssignmentsArgs, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1})
+					attestationAssignmentsArgs = append(attestationAssignmentsArgs, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot})
 					attestingValidators = append(attestingValidators, strconv.FormatUint(validator, 10))
 				}
 
@@ -1022,15 +1022,15 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 					}
 
 					valueStrings := make([]string, 0, batchSize)
-					valueArgs := make([]interface{}, 0, batchSize*5)
+					valueArgs := make([]interface{}, 0, batchSize*6)
 					for i, v := range attestationAssignmentsArgs[start:end] {
-						valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*5+1, i*5+2, i*5+3, i*5+4, i*5+5))
+						valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)", i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6))
 						valueArgs = append(valueArgs, v...)
 					}
 					stmt := fmt.Sprintf(`
-						INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
+						INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status, inclusionslot)
 						VALUES %s
-						ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status`, strings.Join(valueStrings, ","))
+						ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status, inclusionslot = excluded.inclusionslot`, strings.Join(valueStrings, ","))
 					_, err := tx.Exec(stmt, valueArgs...)
 					if err != nil {
 						return fmt.Errorf("error executing stmtAttestationAssignments for block %v: %v", b.Slot, err)
