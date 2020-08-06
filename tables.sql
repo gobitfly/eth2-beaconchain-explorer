@@ -73,6 +73,7 @@ create table attestation_assignments
     attesterslot   int not null,
     committeeindex int not null,
     status         int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
+    inclusionslot  int not null default 0, /* Slot this attestation was included for the first time */
     primary key (epoch, validatorindex, attesterslot, committeeindex)
 );
 create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
