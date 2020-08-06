@@ -1030,7 +1030,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 					stmt := fmt.Sprintf(`
 						INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status, inclusionslot)
 						VALUES %s
-						ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status, inclusionslot = excluded.inclusionslot`, strings.Join(valueStrings, ","))
+						ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status, inclusionslot = LEAST((CASE WHEN attestation_assignments.inclusionslot = 0 THEN null ELSE attestation_assignments.inclusionslot END), excluded.inclusionslot)`, strings.Join(valueStrings, ","))
 					_, err := tx.Exec(stmt, valueArgs...)
 					if err != nil {
 						return fmt.Errorf("error executing stmtAttestationAssignments for block %v: %v", b.Slot, err)
