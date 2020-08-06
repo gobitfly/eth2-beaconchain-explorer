@@ -224,11 +224,12 @@ type ValidatorPerformance struct {
 
 // ValidatorAttestation is a struct for the validators attestations data
 type ValidatorAttestation struct {
-	Epoch          uint64 `db:"epoch"`
-	AttesterSlot   uint64 `db:"attesterslot"`
-	CommitteeIndex uint64 `db:"committeeindex"`
-	Status         uint64 `db:"status"`
-	InclusionSlot  uint64 `db:"inclusionslot"`
+	Epoch                 uint64 `db:"epoch"`
+	AttesterSlot          uint64 `db:"attesterslot"`
+	CommitteeIndex        uint64 `db:"committeeindex"`
+	Status                uint64 `db:"status"`
+	InclusionSlot         uint64 `db:"inclusionslot"`
+	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
 }
 
 // VisPageData is a struct to hold the visualizations page data
