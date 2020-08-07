@@ -96,10 +96,13 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 
 	userNotificationsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
-	var countWatchlist int
-	err := db.FrontendDB.Get(&countWatchlist, `
-	SELECT count(*) as count
+	var watchlistIndices []uint64
+	err := db.FrontendDB.Select(&watchlistIndices, `
+	SELECT validators.validatorindex as index
 	FROM users_validators_tags
+	INNER JOIN validators
+	ON
+	  users_validators_tags.validator_publickey = validators.pubkey
 	WHERE user_id = $1 and tag = $2
 	`, user.UserID, types.ValidatorTagsWatchlist)
 	if err != nil {
@@ -121,7 +124,15 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userNotificationsData.CountSubscriptions = countSubscriptions
-	userNotificationsData.CountWatchlist = countWatchlist
+	userNotificationsData.WatchlistIndices = watchlistIndices
+	userNotificationsData.CountWatchlist = len(watchlistIndices)
+	link := "/dashboard?validators="
+	for _, i := range watchlistIndices {
+		link += strconv.FormatUint(i, 10) + ","
+	}
+
+	link = link[:len(link)-1]
+	userNotificationsData.DashboardLink = link
 
 	data := &types.PageData{
 		HeaderAd: true,
@@ -678,7 +689,7 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	// log.Println(string(body))
+
 	indices := make([]string, 0)
 	err = json.Unmarshal(body, &indices)
 	if err != nil {
