@@ -1103,3 +1103,28 @@ func GetTotalValidatorsCount() (uint64, error) {
 	err := DB.Get(&totalCount, "SELECT COUNT(*) FROM validators")
 	return totalCount, err
 }
+
+func GetValidatorNames() (map[uint64]string, error) {
+	rows, err := DB.Query("SELECT validatorindex, name FROM validators WHERE name IS NOT NULL")
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	validatorIndexToNameMap := make(map[uint64]string, 30000)
+
+	for rows.Next() {
+		var index uint64
+		var name string
+
+		err := rows.Scan(&index, &name)
+
+		if err != nil {
+			return nil, err
+		}
+		validatorIndexToNameMap[index] = name
+	}
+
+	return validatorIndexToNameMap, nil
+}

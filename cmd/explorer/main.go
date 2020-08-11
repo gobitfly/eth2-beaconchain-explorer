@@ -41,6 +41,34 @@ func main() {
 		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
 	}
 
+	if cfg.OneTimeExport.Enabled {
+		var rpcClient rpc.Client
+
+		if utils.Config.Indexer.Node.Type == "prysm" {
+			if utils.Config.Indexer.Node.PageSize == 0 {
+				logrus.Printf("setting default rpc page size to 500")
+				utils.Config.Indexer.Node.PageSize = 500
+			}
+			rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+		} else if utils.Config.Indexer.Node.Type == "lighthouse" {
+			rpcClient, err = rpc.NewLighthouseClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+		} else {
+			logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
+		}
+		err := exporter.ExportEpoch(cfg.OneTimeExport.Epoch, rpcClient)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		return
+	}
+
 	if cfg.Indexer.Enabled {
 		var rpcClient rpc.Client
 

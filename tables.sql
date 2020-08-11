@@ -22,6 +22,7 @@ create table validators
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
+create index idx_validators_name on validators (name);
 
 drop table if exists validator_set;
 create table validator_set
