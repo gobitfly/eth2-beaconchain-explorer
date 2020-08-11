@@ -297,17 +297,6 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			if data.Blocks[block.Slot] == nil {
 				data.Blocks[block.Slot] = make(map[string]*types.Block)
 			}
-
-			if block.Slot == 0 {
-				block.Proposer = 0
-			} else {
-				var found bool
-				block.Proposer, found = data.ValidatorAssignmentes.ProposerAssignments[block.Slot]
-
-				if !found {
-					return nil, fmt.Errorf("error: proposer for block %v not found", block.Slot)
-				}
-			}
 			data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 		}
 	}
@@ -346,10 +335,6 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 				// Block is in the past, set status to missed
 				data.Blocks[slot]["0x0"].Status = 2
 				data.Blocks[slot]["0x0"].BlockRoot = []byte{0x1}
-			}
-		} else {
-			for _, block := range data.Blocks[slot] {
-				block.Proposer = proposer
 			}
 		}
 	}
@@ -480,6 +465,7 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 			Attestations:      make([]*types.Attestation, len(block.Block.Block.Body.Attestations)),
 			Deposits:          make([]*types.Deposit, len(block.Block.Block.Body.Deposits)),
 			VoluntaryExits:    make([]*types.VoluntaryExit, len(block.Block.Block.Body.VoluntaryExits)),
+			Proposer:          block.Block.Block.ProposerIndex,
 		}
 
 		for i, proposerSlashing := range block.Block.Block.Body.ProposerSlashings {
