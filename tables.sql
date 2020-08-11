@@ -280,7 +280,7 @@ create table eth1_deposits
     merkletree_index       bytea                       not null,
     removed                bool                        not null,
     valid_signature        bool                        not null,
-    primary key (tx_hash)
+    primary key (tx_hash, merkletree_index)
 );
 create index idx_eth1_deposits on eth1_deposits (publickey);
 
