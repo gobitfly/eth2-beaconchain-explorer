@@ -147,7 +147,7 @@ create table blocks
     depositscount          int   not null,
     voluntaryexitscount    int   not null,
     proposer               int   not null,
-    status                 text  not null,
+    status                 text  not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
     primary key (slot, blockroot)
 );
 create index idx_blocks_proposer on blocks (proposer);
