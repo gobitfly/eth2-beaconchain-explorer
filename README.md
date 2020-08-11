@@ -15,7 +15,7 @@ The explorer is built using golang and utilizes a PostgreSQL database for storin
 Prysm [beaconcha.in](https://beaconcha.in)<br>
 Lighthouse [lighthouse.beaconcha.in](https://lighthouse.beaconcha.in)
 
-**Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger grantees about the updatability of the explorer.
+**Warning:** The explorer is still under heavy active development. More or less everything might change without prior notice and we cannot guarantee any backwards compatibility for now. Once the eth2 ecosystem matures we will be able to provide stronger guarantees about the updatability of the explorer.
 
 ![Site](https://github.com/gobitfly/eth2-beaconchain-explorer/raw/master/static/img/site.png 'Beacon Chain Web Interface Screenshot')
 
