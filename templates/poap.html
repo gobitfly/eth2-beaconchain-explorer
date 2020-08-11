@@ -90,7 +90,7 @@ $(document).ready(function() {
 		targets: 0,
 		data: '0',
 		render: function(data, type, row) {
-			return `<a href="https://etherchain.org/account/${data}">${data.substr(0,8)}…</a>`
+			return `<a style="display: block; max-width:130px;" class="text-truncate" href="https://etherchain.org/account/${data}">${data}</a>`
 		}
 	}, {
 		targets: 1,
