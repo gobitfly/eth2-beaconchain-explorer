@@ -9,11 +9,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"net/http"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
+	_ "eth2-exporter/docs"
 	"github.com/gorilla/mux"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/phyber/negroni-gzip/gzip"
@@ -169,6 +171,7 @@ func main() {
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
 
 		apiV1Router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
+		router.PathPrefix("/api/v1/docs/").Handler(httpSwagger.WrapHandler)
 		apiV1Router.HandleFunc("/epoch/{epoch}", handlers.ApiEpoch).Methods("GET")
 		apiV1Router.HandleFunc("/epoch/{epoch}/blocks", handlers.ApiEpochBlocks).Methods("GET")
 		apiV1Router.HandleFunc("/block/{slotOrHash}", handlers.ApiBlock).Methods("GET")
@@ -180,6 +183,7 @@ func main() {
 		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET")
 		apiV1Router.HandleFunc("/validator/{indexOrPubKey}", handlers.ApiValidator).Methods("GET")
 		apiV1Router.HandleFunc("/validator/{index}/balancehistory", handlers.ApiValidatorBalanceHistory).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{index}/performance", handlers.ApiValidatorPerformance).Methods("GET")
 		router.PathPrefix("/api/v1").Handler(apiV1Router)
 
 		// confirming the email update should not require auth

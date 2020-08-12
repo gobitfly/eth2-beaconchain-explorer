@@ -16,6 +16,20 @@ import (
 	"time"
 )
 
+// @title Beaconcha.in ETH2 API
+// @version 1.0
+// @description High performance API for querying information from the Ethereum 2.0 beacon chain
+// @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
+// @description 100 requests / 15 minutes / IP. All API results are cached for 1 minute.
+// @description If you required a higher usage plan please get in touch with us at support@beaconcha.in.
+
+// ApiHealthz godoc
+// @Summary Health of the explorer
+// @Tags Health
+// @Description Health endpoint for montitoring if the explorer is in sync
+// @Produce  text/plain
+// @Success 200 {object} string
+// @Router /api/healthz [get]
 func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 
@@ -35,6 +49,14 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK. Last epoch is from %v ago", time.Since(epochTime))
 }
 
+// ApiEpoch godoc
+// @Summary Get epoch by number
+// @Tags Epoch
+// @Description Returns information for a specified epoch by the epoch number or the latest epoch
+// @Produce  json
+// @Param  epoch path string true "Epoch number or the string latest"
+// @Success 200 {object} string
+// @Router /api/v1/epoch/{epoch} [get]
 func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -61,6 +83,14 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiEpochBlocks godoc
+// @Summary Get epoch blocks by epoch number
+// @Tags Epoch
+// @Description Returns all blocks for a specified epoch
+// @Produce  json
+// @Param  epoch path string true "Epoch number or the string latest"
+// @Success 200 {object} string
+// @Router /api/v1/epoch/{epoch}/blocks [get]
 func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -87,6 +117,14 @@ func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiBlock godoc
+// @Summary Get block
+// @Tags Block
+// @Description Returns a block by its slot or root hash
+// @Produce  json
+// @Param  slotOrHash path string true "Block slot or root hash or the string latest"
+// @Success 200 {object} string
+// @Router /api/v1/block/{slotOrHash} [get]
 func ApiBlock(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -114,6 +152,14 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiBlockAttestations godoc
+// @Summary Get the attestations included in a specific block
+// @Tags Block
+// @Description Returns the attestations included in a specific block
+// @Produce  json
+// @Param  slot path string true "Block slot"
+// @Success 200 {object} string
+// @Router /api/v1/block/{slot}/attestations [get]
 func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -136,6 +182,14 @@ func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiBlockDeposits godoc
+// @Summary Get the deposits included in a specific block
+// @Tags Block
+// @Description Returns the deposits included in a specific block
+// @Produce  json
+// @Param  slot path string true "Block slot"
+// @Success 200 {object} string
+// @Router /api/v1/block/{slot}/deposits [get]
 func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -158,6 +212,14 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiBlockAttesterSlashings godoc
+// @Summary Get the attester slashings included in a specific block
+// @Tags Block
+// @Description Returns the attester slashings included in a specific block
+// @Produce  json
+// @Param  slot path string true "Block slot"
+// @Success 200 {object} string
+// @Router /api/v1/block/{slot}/attesterslashings [get]
 func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -180,6 +242,14 @@ func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiBlockProposerSlashings godoc
+// @Summary Get the proposer slashings included in a specific block
+// @Tags Block
+// @Description Returns the proposer slashings included in a specific block
+// @Produce  json
+// @Param  slot path string true "Block slot"
+// @Success 200 {object} string
+// @Router /api/v1/block/{slot}/proposerslashings [get]
 func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -202,6 +272,14 @@ func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiBlockVoluntaryExits godoc
+// @Summary Get the voluntary exits included in a specific block
+// @Tags Block
+// @Description Returns the voluntary exits included in a specific block
+// @Produce  json
+// @Param  slot path string true "Block slot"
+// @Success 200 {object} string
+// @Router /api/v1/block/{slot}/voluntaryexits [get]
 func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -224,6 +302,13 @@ func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiEth1Deposit godoc
+// @Summary Get an eth1 deposit by its eth1 transaction hash
+// @Tags Eth1
+// @Produce  json
+// @Param  txhash path string true "Eth1 transaction hash"
+// @Success 200 {object} string
+// @Router /api/v1/eth1deposit/{txhash} [get]
 func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -246,6 +331,13 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiValidator godoc
+// @Summary Get a validator by its index or public key
+// @Tags Validator
+// @Produce  json
+// @Param  indexOrPubKey path string true "Validator index or public key"
+// @Success 200 {object} string
+// @Router /api/v1/validator/{indexOrPubKey} [get]
 func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -270,6 +362,13 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiValidator godoc
+// @Summary Get the balance history (last 100 epochs) of a validator
+// @Tags Validator
+// @Produce  json
+// @Param  index path int true "Validator index"
+// @Success 200 {object} string
+// @Router /api/v1/validator/{index}/balancehistory [get]
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -283,6 +382,35 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.DB.Query("SELECT * FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch DESC LIMIT 100", index)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
+// ApiValidator godoc
+// @Summary Get the current performance of a validator
+// @Tags Validator
+// @Produce  json
+// @Param  index path int true "Validator index"
+// @Success 200 {object} string
+// @Router /api/v1/validator/{index}/performance [get]
+func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	index, err := strconv.ParseInt(vars["index"], 10, 64)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "invalid block slot provided")
+		return
+	}
+
+	rows, err := db.DB.Query("SELECT * FROM validator_performance WHERE validatorindex = $1", index)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
