@@ -168,6 +168,20 @@ func main() {
 		router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
 
+		apiV1Router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
+		apiV1Router.HandleFunc("/epoch/{epoch}", handlers.ApiEpoch).Methods("GET")
+		apiV1Router.HandleFunc("/epoch/{epoch}/blocks", handlers.ApiEpochBlocks).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slotOrHash}", handlers.ApiBlock).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slot}/attestations", handlers.ApiBlockAttestations).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slot}/deposits", handlers.ApiBlockDeposits).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slot}/attesterslashings", handlers.ApiBlockAttesterSlashings).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slot}/proposerslashings", handlers.ApiBlockProposerSlashings).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slot}/voluntaryexits", handlers.ApiBlockVoluntaryExits).Methods("GET")
+		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{indexOrPubKey}", handlers.ApiValidator).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{index}/balancehistory", handlers.ApiValidatorBalanceHistory).Methods("GET")
+		router.PathPrefix("/api/v1").Handler(apiV1Router)
+
 		// confirming the email update should not require auth
 		router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
 
