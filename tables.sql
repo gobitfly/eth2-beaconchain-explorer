@@ -148,7 +148,7 @@ create table blocks
     depositscount          int   not null,
     voluntaryexitscount    int   not null,
     proposer               int   not null,
-    status                 text  not null,
+    status                 text  not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
     primary key (slot, blockroot)
 );
 create index idx_blocks_proposer on blocks (proposer);
@@ -281,7 +281,7 @@ create table eth1_deposits
     merkletree_index       bytea                       not null,
     removed                bool                        not null,
     valid_signature        bool                        not null,
-    primary key (tx_hash)
+    primary key (tx_hash, merkletree_index)
 );
 create index idx_eth1_deposits on eth1_deposits (publickey);
 
