@@ -109,7 +109,8 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 				ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($1)
 				OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($1)
 				OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($1)
-				OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($1)`, query+"%")
+				OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($1)
+				OR CAST(eth1.block_number AS text) LIKE LOWER($1)`, query+"%")
 	} else {
 		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits")
 	}
@@ -152,12 +153,10 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			v.pubkey = eth1.publickey
 		WHERE
 			ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($3)
-		OR
-			ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($3)
-		OR
-			ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($3)
-		OR
-			ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($3)
+			OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($3)
+			OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($3)
+			OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($3)
+			OR CAST(eth1.block_number AS text) LIKE LOWER($3)
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir), length, start, query+"%", latestEpoch, validatorOnlineThresholdSlot)
