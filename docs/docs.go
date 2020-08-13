@@ -313,7 +313,7 @@ var doc = `{
                 "tags": [
                     "Validator"
                 ],
-                "summary": "Get a validator by its index or public key",
+                "summary": "Get up to 100 validators by their index",
                 "parameters": [
                     {
                         "type": "string",
@@ -341,7 +341,7 @@ var doc = `{
                 "tags": [
                     "Validator"
                 ],
-                "summary": "Get the balance history (last 100 epochs) of a validator",
+                "summary": "Get the balance history (last 100 epochs) of up to 100 validators",
                 "parameters": [
                     {
                         "type": "string",
@@ -369,7 +369,7 @@ var doc = `{
                 "tags": [
                     "Validator"
                 ],
-                "summary": "Get the current performance of a validator",
+                "summary": "Get the current performance of up to 100 validators",
                 "parameters": [
                     {
                         "type": "string",
