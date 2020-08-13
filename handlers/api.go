@@ -440,6 +440,80 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiValidatorAttestations godoc
+// @Summary Get all attestations during the last 100 epochs for up to 100 validators
+// @Tags Validator
+// @Produce  json
+// @Param  index path string true "Up to 100 validator indices, comma separated"
+// @Success 200 {object} string
+// @Router /api/v1/validator/{index}/attestations [get]
+func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	queryStr := vars["index"]
+	query := []string{}
+	if strings.Contains(queryStr, ",") {
+		query = strings.Split(queryStr, ",")
+	} else {
+		query = append(query, queryStr)
+	}
+
+	if len(query) > 100 {
+		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+		return
+	}
+
+	currentEpoch := services.LatestEpoch()
+	rows, err := db.DB.Query("SELECT * FROM attestation_assignments WHERE validatorindex = ANY($1) AND epoch > $2 ORDER BY validatorindex, epoch desc LIMIT 100", pq.Array(query), currentEpoch-100)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
+// ApiValidatorProposals godoc
+// @Summary Get all proposed blocks during the last 100 epochs for up to 100 validators
+// @Tags Validator
+// @Produce  json
+// @Param  index path string true "Up to 100 validator indices, comma separated"
+// @Success 200 {object} string
+// @Router /api/v1/validator/{index}/proposals [get]
+func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	queryStr := vars["index"]
+	query := []string{}
+	if strings.Contains(queryStr, ",") {
+		query = strings.Split(queryStr, ",")
+	} else {
+		query = append(query, queryStr)
+	}
+
+	if len(query) > 100 {
+		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+		return
+	}
+
+	currentEpoch := services.LatestEpoch()
+	rows, err := db.DB.Query("SELECT * FROM blocks WHERE proposer = ANY($1) AND epoch > $2 ORDER BY proposer, epoch desc, slot desc LIMIT 100", pq.Array(query), currentEpoch-100)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 func returnQueryResults(rows *sql.Rows, j *json.Encoder, r *http.Request) {
 	data, err := utils.SqlRowsToJSON(rows)
 

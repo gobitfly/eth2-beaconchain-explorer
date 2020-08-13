@@ -333,6 +333,34 @@ var doc = `{
                 }
             }
         },
+        "/api/v1/validator/{index}/attestations": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Validator"
+                ],
+                "summary": "Get all attestations during the last 100 epochs for up to 100 validators",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/validator/{index}/balancehistory": {
             "get": {
                 "produces": [
@@ -370,6 +398,34 @@ var doc = `{
                     "Validator"
                 ],
                 "summary": "Get the current performance of up to 100 validators",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/validator/{index}/proposals": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Validator"
+                ],
+                "summary": "Get all proposed blocks during the last 100 epochs for up to 100 validators",
                 "parameters": [
                     {
                         "type": "string",
