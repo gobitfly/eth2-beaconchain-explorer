@@ -305,7 +305,7 @@ var doc = `{
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubKey}": {
+        "/api/v1/validator/{index}": {
             "get": {
                 "produces": [
                     "application/json"

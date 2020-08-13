@@ -338,7 +338,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param  index path string true "Up to 100 validator indices, comma separated"
 // @Success 200 {object} string
-// @Router /api/v1/validator/{indexOrPubKey} [get]
+// @Router /api/v1/validator/{index} [get]
 func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

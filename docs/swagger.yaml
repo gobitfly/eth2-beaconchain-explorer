@@ -192,6 +192,24 @@ paths:
       summary: Get an eth1 deposit by its eth1 transaction hash
       tags:
       - Eth1
+  /api/v1/validator/{index}:
+    get:
+      parameters:
+      - description: Up to 100 validator indices, comma separated
+        in: path
+        name: index
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get a validator by its index or public key
+      tags:
+      - Validator
   /api/v1/validator/{index}/balancehistory:
     get:
       parameters:
@@ -226,24 +244,6 @@ paths:
           schema:
             type: string
       summary: Get the current performance of a validator
-      tags:
-      - Validator
-  /api/v1/validator/{indexOrPubKey}:
-    get:
-      parameters:
-      - description: Up to 100 validator indices, comma separated
-        in: path
-        name: index
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      summary: Get a validator by its index or public key
       tags:
       - Validator
 swagger: "2.0"
