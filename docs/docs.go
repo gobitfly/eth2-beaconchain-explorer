@@ -317,8 +317,8 @@ var doc = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Validator index or public key",
-                        "name": "indexOrPubKey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -344,8 +344,8 @@ var doc = `{
                 "summary": "Get the balance history (last 100 epochs) of a validator",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Validator index",
+                        "type": "string",
+                        "description": "Up to 100 validator indices, comma separated",
                         "name": "index",
                         "in": "path",
                         "required": true
@@ -372,8 +372,8 @@ var doc = `{
                 "summary": "Get the current performance of a validator",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Validator index",
+                        "type": "string",
+                        "description": "Up to 100 validator indices, comma separated",
                         "name": "index",
                         "in": "path",
                         "required": true
@@ -408,7 +408,7 @@ var SwaggerInfo = swaggerInfo{
 	BasePath:    "",
 	Schemes:     []string{},
 	Title:       "Beaconcha.in ETH2 API",
-	Description: "High performance API for querying information from the Ethereum 2.0 beacon chain\nThe API is currently free to use. A fair use policy applies. Calls are rate limited to\n100 requests / 15 minutes / IP. All API results are cached for 1 minute.\nIf you required a higher usage plan please get in touch with us at support@beaconcha.in.",
+	Description: "High performance API for querying information from the Ethereum 2.0 beacon chain\nThe API is currently free to use. A fair use policy applies. Calls are rate limited to\n10 requests / 1 minute / IP. All API results are cached for 1 minute.\nIf you required a higher usage plan please get in touch with us at support@beaconcha.in.",
 }
 
 type s struct{}

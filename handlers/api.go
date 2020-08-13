@@ -10,6 +10,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/lib/pq"
 	"net/http"
 	"strconv"
 	"strings"
@@ -20,7 +21,7 @@ import (
 // @version 1.0
 // @description High performance API for querying information from the Ethereum 2.0 beacon chain
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
-// @description 100 requests / 15 minutes / IP. All API results are cached for 1 minute.
+// @description 10 requests / 1 minute / IP. All API results are cached for 1 minute.
 // @description If you required a higher usage plan please get in touch with us at support@beaconcha.in.
 
 // ApiHealthz godoc
@@ -335,7 +336,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 // @Summary Get a validator by its index or public key
 // @Tags Validator
 // @Produce  json
-// @Param  indexOrPubKey path string true "Validator index or public key"
+// @Param  index path string true "Up to 100 validator indices, comma separated"
 // @Success 200 {object} string
 // @Router /api/v1/validator/{indexOrPubKey} [get]
 func ApiValidator(w http.ResponseWriter, r *http.Request) {
@@ -344,15 +345,20 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	indexOrPubKey := strings.Replace(vars["indexOrPubKey"], "0x", "", -1)
-	index := int64(-1)
-	pubkey, err := hex.DecodeString(indexOrPubKey)
-	if err != nil || len(indexOrPubKey) != 96 {
-		pubkey = []byte{}
-		index, err = strconv.ParseInt(vars["indexOrPubKey"], 10, 64)
+	queryStr := vars["index"]
+	query := []string{}
+	if strings.Contains(queryStr, ",") {
+		query = strings.Split(queryStr, ",")
+	} else {
+		query = append(query, queryStr)
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM validators WHERE validatorindex = $1 OR pubkey = $2", index, pubkey)
+	if len(query) > 100 {
+		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+		return
+	}
+
+	rows, err := db.DB.Query("SELECT * FROM validators WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(query))
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -366,7 +372,7 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 // @Summary Get the balance history (last 100 epochs) of a validator
 // @Tags Validator
 // @Produce  json
-// @Param  index path int true "Validator index"
+// @Param  index path string true "Up to 100 validator indices, comma separated"
 // @Success 200 {object} string
 // @Router /api/v1/validator/{index}/balancehistory [get]
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
@@ -375,13 +381,20 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	index, err := strconv.ParseInt(vars["index"], 10, 64)
-	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "invalid block slot provided")
+	queryStr := vars["index"]
+	query := []string{}
+	if strings.Contains(queryStr, ",") {
+		query = strings.Split(queryStr, ",")
+	} else {
+		query = append(query, queryStr)
+	}
+
+	if len(query) > 100 {
+		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch DESC LIMIT 100", index)
+	rows, err := db.DB.Query("SELECT * FROM validator_balances WHERE validatorindex = ANY($1) ORDER BY validatorindex, epoch DESC LIMIT 100", pq.Array(query))
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -395,7 +408,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 // @Summary Get the current performance of a validator
 // @Tags Validator
 // @Produce  json
-// @Param  index path int true "Validator index"
+// @Param  index path string true "Up to 100 validator indices, comma separated"
 // @Success 200 {object} string
 // @Router /api/v1/validator/{index}/performance [get]
 func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
@@ -404,13 +417,20 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	index, err := strconv.ParseInt(vars["index"], 10, 64)
-	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "invalid block slot provided")
+	queryStr := vars["index"]
+	query := []string{}
+	if strings.Contains(queryStr, ",") {
+		query = strings.Split(queryStr, ",")
+	} else {
+		query = append(query, queryStr)
+	}
+
+	if len(query) > 100 {
+		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM validator_performance WHERE validatorindex = $1", index)
+	rows, err := db.DB.Query("SELECT * FROM validator_performance WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(query))
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
