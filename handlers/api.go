@@ -333,7 +333,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get a validator by its index or public key
+// @Summary Get up to 100 validators by their index
 // @Tags Validator
 // @Produce  json
 // @Param  index path string true "Up to 100 validator indices, comma separated"
@@ -369,7 +369,7 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get the balance history (last 100 epochs) of a validator
+// @Summary Get the balance history (last 100 epochs) of up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  index path string true "Up to 100 validator indices, comma separated"
@@ -405,7 +405,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get the current performance of a validator
+// @Summary Get the current performance of up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  index path string true "Up to 100 validator indices, comma separated"
