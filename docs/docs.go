@@ -305,6 +305,34 @@ var doc = `{
                 }
             }
         },
+        "/api/v1/validator/eth1/{address}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Validator"
+                ],
+                "summary": "Get all validators that belong to an eth1 address",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Eth1 address from which the validator deposits were sent",
+                        "name": "eth1address",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/validator/{index}": {
             "get": {
                 "produces": [
@@ -370,6 +398,34 @@ var doc = `{
                     "Validator"
                 ],
                 "summary": "Get the balance history (last 100 epochs) of up to 100 validators",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/validator/{index}/deposits": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Validator"
+                ],
+                "summary": "Get all eth1 deposits for up to 100 validators",
                 "parameters": [
                     {
                         "type": "string",

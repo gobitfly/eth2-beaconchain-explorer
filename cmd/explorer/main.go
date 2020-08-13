@@ -186,6 +186,8 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{index}/performance", handlers.ApiValidatorPerformance).Methods("GET")
 		apiV1Router.HandleFunc("/validator/{index}/attestations", handlers.ApiValidatorAttestations).Methods("GET")
 		apiV1Router.HandleFunc("/validator/{index}/proposals", handlers.ApiValidatorProposals).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{index}/deposits", handlers.ApiValidatorDeposits).Methods("GET")
+		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET")
 		router.PathPrefix("/api/v1").Handler(apiV1Router)
 
 		// confirming the email update should not require auth

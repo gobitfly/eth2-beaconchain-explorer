@@ -368,6 +368,36 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiValidatorByEth1Address godoc
+// @Summary Get all validators that belong to an eth1 address
+// @Tags Validator
+// @Produce  json
+// @Param  eth1address path string true "Eth1 address from which the validator deposits were sent"
+// @Success 200 {object} string
+// @Router /api/v1/validator/eth1/{address} [get]
+func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	eth1Address, err := hex.DecodeString(strings.Replace(vars["address"], "0x", "", -1))
+
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "invalid eth1 address provided")
+		return
+	}
+
+	rows, err := db.DB.Query("SELECT publickey, validatorindex, valid_signature FROM eth1_deposits LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey WHERE from_address = $1 ORDER BY validatorindex;", eth1Address)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 // ApiValidator godoc
 // @Summary Get the balance history (last 100 epochs) of up to 100 validators
 // @Tags Validator
@@ -431,6 +461,42 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.DB.Query("SELECT * FROM validator_performance WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(query))
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
+// ApiValidatorDeposits godoc
+// @Summary Get all eth1 deposits for up to 100 validators
+// @Tags Validator
+// @Produce  json
+// @Param  index path string true "Up to 100 validator indices, comma separated"
+// @Success 200 {object} string
+// @Router /api/v1/validator/{index}/deposits [get]
+func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	queryStr := vars["index"]
+	query := []string{}
+	if strings.Contains(queryStr, ",") {
+		query = strings.Split(queryStr, ",")
+	} else {
+		query = append(query, queryStr)
+	}
+
+	if len(query) > 100 {
+		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+		return
+	}
+
+	rows, err := db.DB.Query("SELECT eth1_deposits.* FROM validators LEFT JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey WHERE validatorindex = ANY($1)", pq.Array(query))
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
