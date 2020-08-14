@@ -361,6 +361,25 @@ var doc = `{
                 }
             }
         },
+        "/api/v1/validator/leaderboard": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Validator"
+                ],
+                "summary": "Get the current top 100 performing validators (using the income over the last 7 days)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/validator/{index}": {
             "get": {
                 "produces": [

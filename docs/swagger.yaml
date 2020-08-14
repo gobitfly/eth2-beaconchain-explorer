@@ -336,4 +336,16 @@ paths:
       summary: Get all validators that belong to an eth1 address
       tags:
       - Validator
+  /api/v1/validator/leaderboard:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get the current top 100 performing validators (using the income over the last 7 days)
+      tags:
+      - Validator
 swagger: "2.0"
