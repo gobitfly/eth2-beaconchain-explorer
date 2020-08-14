@@ -587,7 +587,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 
 // ApiChart godoc
 // @Summary Returns charts from the page https://beaconcha.in/charts as PNG
-// @Tags Validator
+// @Tags Charts
 // @Produce  json
 // @Param  chart path string true "Chart name (see https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/services/charts_updater.go#L20 for all available names)"
 // @Success 200 {object} string

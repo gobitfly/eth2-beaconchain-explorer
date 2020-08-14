@@ -219,6 +219,34 @@ var doc = `{
                 }
             }
         },
+        "/api/v1/chart/{chart}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Charts"
+                ],
+                "summary": "Returns charts from the page https://beaconcha.in/charts as PNG",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chart name (see https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/services/charts_updater.go#L20 for all available names)",
+                        "name": "chart",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/epoch/{epoch}": {
             "get": {
                 "description": "Returns information for a specified epoch by the epoch number or the latest epoch",

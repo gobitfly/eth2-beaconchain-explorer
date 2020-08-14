@@ -136,6 +136,24 @@ paths:
       summary: Get block
       tags:
       - Block
+  /api/v1/chart/{chart}:
+    get:
+      parameters:
+      - description: Chart name (see https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/services/charts_updater.go#L20 for all available names)
+        in: path
+        name: chart
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Returns charts from the page https://beaconcha.in/charts as PNG
+      tags:
+      - Charts
   /api/v1/epoch/{epoch}:
     get:
       description: Returns information for a specified epoch by the epoch number or the latest epoch
