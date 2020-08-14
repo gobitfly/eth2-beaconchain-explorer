@@ -464,7 +464,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
-// ApiValidator godoc
+// ApiValidatorPerformance godoc
 // @Summary Get the current performance of up to 100 validators
 // @Tags Validator
 // @Produce  json
@@ -493,6 +493,33 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.DB.Query("SELECT * FROM validator_performance WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(query))
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
+// ApiValidatorLeaderboard godoc
+// @Summary Get the current top 100 performing validators (using the income over the last 7 days)
+// @Tags Validator
+// @Produce  json
+// @Success 200 {object} string
+// @Router /api/v1/validator/leaderboard [get]
+func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
+	db.CountApiHit(r)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+
+	rows, err := db.DB.Query(`
+			SELECT 
+				validator_performance.*
+			FROM validator_performance 
+			ORDER BY performance7d DESC LIMIT 100`)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return

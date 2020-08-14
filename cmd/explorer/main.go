@@ -181,6 +181,7 @@ func main() {
 		apiV1Router.HandleFunc("/block/{slot}/proposerslashings", handlers.ApiBlockProposerSlashings).Methods("GET")
 		apiV1Router.HandleFunc("/block/{slot}/voluntaryexits", handlers.ApiBlockVoluntaryExits).Methods("GET")
 		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET")
+		apiV1Router.HandleFunc("/validator/leaderboard", handlers.ApiValidatorLeaderboard).Methods("GET")
 		apiV1Router.HandleFunc("/validator/{index}", handlers.ApiValidator).Methods("GET")
 		apiV1Router.HandleFunc("/validator/{index}/balancehistory", handlers.ApiValidatorBalanceHistory).Methods("GET")
 		apiV1Router.HandleFunc("/validator/{index}/performance", handlers.ApiValidatorPerformance).Methods("GET")
