@@ -17,7 +17,7 @@ type chartHandler struct {
 	DataFunc func() (*types.GenericChartData, error)
 }
 
-var chartHandlers = map[string]chartHandler{
+var ChartHandlers = map[string]chartHandler{
 	"blocks":                         {1, blocksChartData},
 	"validators":                     {2, activeValidatorsChartData},
 	"staked_ether":                   {3, stakedEtherChartData},
@@ -75,11 +75,11 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(len(chartHandlers))
+	wg.Add(len(ChartHandlers))
 
-	chartHandlerResChan := make(chan *chartHandlerRes, len(chartHandlers))
+	chartHandlerResChan := make(chan *chartHandlerRes, len(ChartHandlers))
 
-	for i, ch := range chartHandlers {
+	for i, ch := range ChartHandlers {
 		go func(i string, ch chartHandler) {
 			defer wg.Done()
 			data, err := ch.DataFunc()

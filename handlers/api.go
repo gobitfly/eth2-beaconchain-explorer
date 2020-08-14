@@ -585,6 +585,35 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiChart godoc
+// @Summary Returns charts from the page https://beaconcha.in/charts as PNG
+// @Tags Validator
+// @Produce  json
+// @Param  chart path string true "Chart name (see https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/services/charts_updater.go#L20 for all available names)"
+// @Success 200 {object} string
+// @Router /api/v1/chart/{chart} [get]
+func ApiChart(w http.ResponseWriter, r *http.Request) {
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	chartName := vars["chart"]
+	w.Header().Set("Content-Type", "image/png")
+
+	var image []byte
+	err := db.DB.Get(&image, "SELECT image FROM chart_images WHERE name = $1", chartName)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "no data available for the requested chart")
+		return
+	}
+
+	_, err = w.Write(image)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "error writing chart data")
+		return
+	}
+}
+
 func returnQueryResults(rows *sql.Rows, j *json.Encoder, r *http.Request) {
 	data, err := utils.SqlRowsToJSON(rows)
 
