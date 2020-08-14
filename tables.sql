@@ -334,7 +334,7 @@ create table mails_sent
     primary key (email, ts)
 );
 
-drop table if exists mails_sent;
+drop table if exists chart_images;
 create table chart_images
 (
     name  varchar(100) not null primary key,
