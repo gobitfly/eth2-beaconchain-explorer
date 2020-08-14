@@ -598,7 +598,6 @@ func ApiChart(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	chartName := vars["chart"]
-	w.Header().Set("Content-Type", "image/png")
 
 	var image []byte
 	err := db.DB.Get(&image, "SELECT image FROM chart_images WHERE name = $1", chartName)
@@ -607,6 +606,7 @@ func ApiChart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "image/png")
 	_, err = w.Write(image)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "error writing chart data")
