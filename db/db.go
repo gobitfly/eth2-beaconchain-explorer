@@ -6,7 +6,9 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"github.com/gorilla/mux"
 	"math/big"
+	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
@@ -1127,4 +1129,22 @@ func GetValidatorNames() (map[uint64]string, error) {
 	}
 
 	return validatorIndexToNameMap, nil
+}
+
+func CountApiHit(r *http.Request) {
+	ts := time.Now().Truncate(time.Hour)
+	apiKey := r.URL.Query().Get("apikey")
+	if apiKey == "" {
+		apiKey = "NOKEY"
+	}
+	call, _ := mux.CurrentRoute(r).GetPathTemplate()
+
+	_, err := DB.Query(`
+		INSERT INTO api_statistics (ts, apikey, call, count) 
+		VALUES ($1, $2, $3, 1) 
+		ON CONFLICT (ts, apikey, call) DO UPDATE SET count = api_statistics.count + 1`, ts, apiKey, call)
+
+	if err != nil {
+		logger.Errorf("error updating api call statistics: %v", err)
+	}
 }

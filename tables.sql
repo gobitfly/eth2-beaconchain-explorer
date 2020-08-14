@@ -340,3 +340,13 @@ create table chart_images
     name  varchar(100) not null primary key,
     image bytea        not null
 );
+
+drop table if exists api_statistics;
+create table api_statistics
+(
+    ts     timestamp without time zone not null,
+    apikey varchar(64)                 not null,
+    call   varchar(64)                 not null,
+    count  int                         not null default 0,
+    primary key (ts, apikey, call)
+);
