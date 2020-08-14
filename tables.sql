@@ -333,3 +333,10 @@ create table mails_sent
     cnt   int                         not null,
     primary key (email, ts)
 );
+
+drop table if exists mails_sent;
+create table chart_images
+(
+    name  varchar(100) not null primary key,
+    image bytea        not null
+);
