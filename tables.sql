@@ -65,6 +65,7 @@ create table proposal_assignments
     status         int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
     primary key (epoch, validatorindex, proposerslot)
 );
+create index idx_proposal_assignments_epoch on proposal_assignments (epoch);
 
 drop table if exists attestation_assignments;
 create table attestation_assignments
@@ -78,6 +79,7 @@ create table attestation_assignments
     primary key (epoch, validatorindex, attesterslot, committeeindex)
 );
 create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
+create index idx_attestation_assignments_epoch on attestation_assignments (epoch);
 
 drop table if exists validator_balances;
 create table validator_balances

@@ -769,6 +769,11 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 }
 
 func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint64, tx *sql.Tx) error {
+	_, err := tx.Query("DELETE FROM proposal_assignments WHERE epoch = $1", epoch)
+	if err != nil {
+		return err
+	}
+
 	stmt, err := tx.Prepare(`
 		INSERT INTO proposal_assignments (epoch, validatorindex, proposerslot, status)
 		VALUES ($1, $2, $3, $4)
@@ -789,6 +794,10 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 }
 
 func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sql.Tx) error {
+	_, err := tx.Query("DELETE FROM attestation_assignments WHERE epoch = $1", epoch)
+	if err != nil {
+		return err
+	}
 
 	args := make([][]interface{}, 0, len(assignments))
 	for key, validator := range assignments {
