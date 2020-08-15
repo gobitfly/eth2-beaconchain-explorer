@@ -56,13 +56,13 @@ Lighthouse [lighthouse.beaconcha.in](https://lighthouse.beaconcha.in)
 
 We currently do not provide any pre-built binaries of the explorer. Docker images are available at https://hub.docker.com/repository/docker/gobitfly/eth2-beaconchain-explorer.
 
-- Download the latest version of the Prysm beacon chain client and start it with the `--archive` flag set
+- Download the latest version of the Prysm beacon chain client and start it
 - Wait till the client finishes the initial sync
 - Setup a PostgreSQL DB and import the `tables.sql` file from the root of this repository
 - Install go version 1.13 or higher
 - Clone the repository and run `make all` to build the indexer and front-end binaries
 - Copy the config-example.yml file an adapt it to your environment
-- Start the explorer binary and pass the path to the config file as argument
+- Start the explorer, adding the path to the config file: `./bin/explorer -config ./config.yml`
 - To build bootstrap run `npm run --prefix ./bootstrap dist-css` in project folder.
 
 ## Development
