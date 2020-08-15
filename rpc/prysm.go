@@ -235,6 +235,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 		pc.assignmentsCache.Add(epoch, assignments)
 	}
 
+	logger.Infof("cached assignements for epoch %v", epoch)
 	return assignments, nil
 }
 
