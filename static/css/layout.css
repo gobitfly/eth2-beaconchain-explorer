@@ -1,3 +1,10 @@
+
+/* Revive ad server responsive images */
+ins[data-revive-zoneid] > a > img {
+  max-width: 100%;
+  height: auto;
+}
+
 main > div > .my-3 {
   padding: 1rem 0;
 }
