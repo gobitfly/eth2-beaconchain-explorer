@@ -198,7 +198,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 
 	for _, epoch := range epochs {
-		epoch.Ts = utils.FormatTimestamp(utils.EpochToTime(epoch.Epoch).Unix())
+		epoch.Ts = utils.EpochToTime(epoch.Epoch)
 		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
 		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther)
 		epoch.EligibleEtherFormatted = utils.FormatBalance(epoch.EligibleEther)

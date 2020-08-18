@@ -73,7 +73,7 @@ type IndexPageData struct {
 
 type IndexPageDataEpochs struct {
 	Epoch                            uint64        `json:"epoch"`
-	Ts                               template.HTML `json:"ts"`
+	Ts                               time.Time     `json:"ts"`
 	Finalized                        bool          `json:"finalized"`
 	FinalizedFormatted               template.HTML `json:"finalized_formatted"`
 	EligibleEther                    uint64        `json:"eligibleether"`

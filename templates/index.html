@@ -554,7 +554,7 @@
 								<tbody>
 								<tr v-for="epoch in page.epochs">
 									<td><a v-bind:href="'/epoch/' + epoch.epoch">${ epoch.epoch }</a></td>
-									<td v-html="epoch.ts"></td>
+									<td>${ epoch.ts | fromNow }</td>
 									<td v-html="epoch.finalized_formatted"></td>
 									<td v-html="epoch.eligibleether_formatted"></td>
 									<td v-html="epoch.globalparticipationrate_formatted"></td>
