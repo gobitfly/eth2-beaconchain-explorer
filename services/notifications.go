@@ -104,7 +104,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[stri
 	if latestEpoch == 0 {
 		return nil
 	}
-	prevEpoch := latestEpoch - 1
+	prevEpoch := latestEpoch - 3
 
 	var dbResult []struct {
 		SubscriptionID uint64 `db:"id"`

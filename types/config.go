@@ -33,6 +33,10 @@ type Config struct {
 		Eth1DepositContractAddress    string `yaml:"eth1DepositContractAddress" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_ADDRESS"`
 		Eth1DepositContractFirstBlock uint64 `yaml:"eth1DepositContractFirstBlock" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_FIRST_BLOCK"`
 	} `yaml:"indexer"`
+	OneTimeExport struct {
+		Enabled bool   `yaml:"enabled"`
+		Epoch   uint64 `yaml:"epoch"`
+	} `yaml:"onetimeexport"`
 	Frontend struct {
 		Enabled      bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
 		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`

@@ -22,6 +22,7 @@ create table validators
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
+create index idx_validators_name on validators (name);
 
 drop table if exists validator_set;
 create table validator_set
@@ -64,6 +65,7 @@ create table proposal_assignments
     status         int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
     primary key (epoch, validatorindex, proposerslot)
 );
+create index idx_proposal_assignments_epoch on proposal_assignments (epoch);
 
 drop table if exists attestation_assignments;
 create table attestation_assignments
@@ -77,6 +79,7 @@ create table attestation_assignments
     primary key (epoch, validatorindex, attesterslot, committeeindex)
 );
 create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
+create index idx_attestation_assignments_epoch on attestation_assignments (epoch);
 
 drop table if exists validator_balances;
 create table validator_balances
@@ -147,7 +150,7 @@ create table blocks
     depositscount          int   not null,
     voluntaryexitscount    int   not null,
     proposer               int   not null,
-    status                 text  not null,
+    status                 text  not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
     primary key (slot, blockroot)
 );
 create index idx_blocks_proposer on blocks (proposer);
@@ -280,7 +283,7 @@ create table eth1_deposits
     merkletree_index       bytea                       not null,
     removed                bool                        not null,
     valid_signature        bool                        not null,
-    primary key (tx_hash)
+    primary key (tx_hash, merkletree_index)
 );
 create index idx_eth1_deposits on eth1_deposits (publickey);
 
@@ -331,4 +334,21 @@ create table mails_sent
     ts    timestamp without time zone not null,
     cnt   int                         not null,
     primary key (email, ts)
+);
+
+drop table if exists chart_images;
+create table chart_images
+(
+    name  varchar(100) not null primary key,
+    image bytea        not null
+);
+
+drop table if exists api_statistics;
+create table api_statistics
+(
+    ts     timestamp without time zone not null,
+    apikey varchar(64)                 not null,
+    call   varchar(64)                 not null,
+    count  int                         not null default 0,
+    primary key (ts, apikey, call)
 );

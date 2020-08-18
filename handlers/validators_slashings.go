@@ -119,6 +119,14 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 		OFFSET $2`, length, start)
 
 	tableData := make([][]interface{}, 0, len(slashings))
+
+	validatorNames, err := db.GetValidatorNames()
+
+	if err != nil {
+		logger.Errorf("error retrieving validator names from the database: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 	for _, row := range slashings {
 		entry := []interface{}{}
 
@@ -132,14 +140,14 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 			for _, v := range inter {
 				slashedValidators = append(slashedValidators, uint64(v.(int64)))
 			}
-			entry = append(entry, utils.FormatSlashedValidators(slashedValidators))
+			entry = append(entry, utils.FormatSlashedValidatorsWithName(slashedValidators, validatorNames))
 		}
 
 		if row.Type == "Proposer Violation" {
-			entry = append(entry, utils.FormatSlashedValidator(*row.SlashedValidator))
+			entry = append(entry, utils.FormatSlashedValidatorWithName(*row.SlashedValidator, validatorNames[*row.SlashedValidator]))
 		}
 
-		entry = append(entry, utils.FormatValidator(row.Proposer))
+		entry = append(entry, utils.FormatValidatorWithName(row.Proposer, validatorNames[row.Proposer]))
 		entry = append(entry, utils.FormatTimestamp(utils.SlotToTime(row.Slot).Unix()))
 		entry = append(entry, row.Type)
 		entry = append(entry, utils.FormatBlockSlot(row.Slot))
