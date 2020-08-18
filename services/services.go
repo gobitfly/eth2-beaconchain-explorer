@@ -191,6 +191,21 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.Genesis = true
 	}
 
+	var epochs []*types.IndexPageDataEpochs
+	err = db.DB.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 10`)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
+	}
+
+	for _, epoch := range epochs {
+		epoch.Ts = utils.FormatTimestamp(utils.EpochToTime(epoch.Epoch).Unix())
+		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
+		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther)
+		epoch.EligibleEtherFormatted = utils.FormatBalance(epoch.EligibleEther)
+		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate)
+	}
+	data.Epochs = epochs
+
 	var blocks []*types.IndexPageDataBlocks
 	err = db.DB.Select(&blocks, `
 		SELECT

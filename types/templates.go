@@ -64,10 +64,24 @@ type IndexPageData struct {
 	ValidatorsRemaining       float64                `json:"validators_remaining"`
 	NetworkStartTs            int64                  `json:"network_start_ts"`
 	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
+	Epochs                    []*IndexPageDataEpochs `json:"epochs"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
 	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
 	Subtitle                  template.HTML          `json:"-"`
 	Genesis                   bool                   `json:"genesis"`
+}
+
+type IndexPageDataEpochs struct {
+	Epoch                            uint64        `json:"epoch"`
+	Ts                               template.HTML `json:"ts"`
+	Finalized                        bool          `json:"finalized"`
+	FinalizedFormatted               template.HTML `json:"finalized_formatted"`
+	EligibleEther                    uint64        `json:"eligibleether"`
+	EligibleEtherFormatted           template.HTML `json:"eligibleether_formatted"`
+	GlobalParticipationRate          float64       `json:"globalparticipationrate"`
+	GlobalParticipationRateFormatted template.HTML `json:"globalparticipationrate_formatted"`
+	VotedEther                       uint64        `json:"votedether"`
+	VotedEtherFormatted              template.HTML `json:"votedether_formatted"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
