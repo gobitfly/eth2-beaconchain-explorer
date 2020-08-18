@@ -16,4 +16,5 @@ explorer:
 	cp -r templates/ bin/
 	cp -r static/ bin/static
 	go build --ldflags=${LDFLAGS} -o bin/explorer cmd/explorer/main.go
+	go build --ldflags=${LDFLAGS} -o bin/chartshotter cmd/chartshotter/main.go
 
