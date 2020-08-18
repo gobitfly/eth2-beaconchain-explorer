@@ -77,8 +77,9 @@
 					<div class="info-item-header mr-1">
               <span class="item-icon">
                 <i class="fas fa-history"></i>
-              </span>
-						<span class="item-text">Epoch:</span>
+							</span>
+						
+						<span class="item-text">Ep<span class="d-none d-md-inline">och</span>:</span>
 					</div>
 					<div class="info-item-body">
 						<a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
@@ -88,7 +89,7 @@
               <span class="item-icon">
                 <i class="fas fa-cubes"></i>
               </span>
-						<span class="item-text">Slot:</span>
+						<span class="item-text">Sl<span class="d-none d-md-inline">ot</span>:</span>
 					</div>
 					<div class="info-item-body"><a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
 				</div>
@@ -99,7 +100,7 @@
               <span class="item-icon">
                 <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
               </span>
-								<span class="item-text">
+								<span class="item-text d-none d-md-block">
                 Finality
               </span>
 							</div>
@@ -149,11 +150,22 @@
 							<a data-no-instant class="dropdown-item" href="/logout">Logout</a>
 						</div>
 					</div>
-                {{else}}
-					<a href="/login" class="mr-3">
+								{{else}}
+				<div class="d-md-none">
+				  <div class="dropdown" class="d-md-none">
+						<a class="btn btn-transparent btn-sm dropdown-toggle" id="loginDropdown" data-toggle="dropdown" aira-haspopup="true" aria-expanded="false">
+							<i style="margin: 0; padding: 0;" class="fas fa-sign-in-alt"></i>
+						</a>
+						<div class="dropdown-menu dropdown-meu-right" aria-labelledby="loginDropdown">
+							<a class="dropdown-item" href="/login">Sign In</a>
+							<a class="dropdown-item" href="/register">Sign Up</a>
+						</div>
+					</div>
+				</div>
+					<a href="/login" class="mr-3 d-none d-md-flex">
 						<span>Sign In</span>
 					</a>
-					<a href="/register" class="btn btn-primary btn-sm">
+					<a href="/register" class="btn btn-primary btn-sm d-none d-md-flex">
 						<span class="text-white"><b>Sign Up</b></span>
 					</a>
                 {{end}}
