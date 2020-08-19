@@ -177,6 +177,21 @@
 				return 0
 			}
 		},
+		validatorsMissing: function() {
+			var eligible = 0
+			var voted = 0
+			if(this.page && this.page.epochs && this.page.epochs.length && this.page.epochs[0].globalparticipationrate !== 0) {
+				eligible =  this.page.epochs[0].eligibleether
+				voted =  this.page.epochs[0].votedether
+			} else if (this.page && this.page.epochs && this.page.epochs.length > 1) {
+				eligible = this.page.epochs[1].eligibleether
+				voted =  this.page.epochs[1].votedether
+			} else {
+				return 0
+			}
+			var missingEther = (eligible * 0.66) - voted
+			return Math.round(missingEther / 32e9)
+		}
 	},
 	filters: {
 		fromNow(date) {
@@ -366,9 +381,12 @@
 
 <div class="container mt-2">
 	<div id="app" v-cloak>
-		<div v-if="participation < 0.66" class="page-info my-2 rounded p-1">
-			<h5><i class="fas fa-hands-helping"></i> Get the network back on track by turning on your validator</h5>			
-			<div class="progress w-100" data-toggle="tooltip" :title="'For the network to reach finality we need '+ ((0.66 - participation) * 100).toFixed(2) + '% more validators attesting and proposing'" data-placement="top">
+		<div v-if="participation < 0.66" class="page-info my-2 p-1">
+			<div class="d-flex justify-content-between">
+				<h5><i class="fas fa-hands-helping"></i> Get the network back on track by turning on your validator</h5>
+				<span class="d-none d-lg-block">${validatorsMissing} validators missing</span>
+			</div>			
+			<div class="progress w-100" :title="'For the network to reach finality we need '+ ((0.66 - participation) * 100).toFixed(2) + '% more validators attesting and proposing'" data-placement="top">
 				<div class="progress-bar bg-danger participation-info" role="progressbar" :style="'width:'+participation * 100+'%;'" aria-valuenow="5" aria-valuemin="0" aria-valuemax="100">${(participation * 100).toFixed(2)}%</div>
 			</div>
 			<span class="text-muted">The Beacon Chain requires <strong>66% Network Participation</strong> for it to reach finality.</span>
