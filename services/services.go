@@ -21,6 +21,8 @@ var indexPageData atomic.Value
 var chartsPageData atomic.Value
 var ready = sync.WaitGroup{}
 
+var latestStats atomic.Value
+
 var eth1BlockDepositReached atomic.Value
 var depositThresholdReached atomic.Value
 
@@ -36,6 +38,7 @@ func Init() {
 	ready.Wait()
 
 	go chartsPageDataUpdater()
+	go statsUpdater()
 
 	if utils.Config.Frontend.Notifications.Enabled {
 		logger.Infof("starting notifications-sender")
@@ -341,6 +344,10 @@ func LatestState() *types.LatestState {
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
 	return data
+}
+
+func GetLatestStats() *types.Stats {
+	return latestStats.Load().(*types.Stats)
 }
 
 // IsSyncing returns true if the chain is still syncing

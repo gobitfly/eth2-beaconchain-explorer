@@ -57,8 +57,8 @@ func MustInitDB(username, password, host, port, name string) {
 	DB = mustInitDB(username, password, host, port, name)
 }
 
-func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsPageData, error) {
-	deposits := []*types.EthOneDepositsPageData{}
+func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsData, error) {
+	deposits := []*types.EthOneDepositsData{}
 
 	err := DB.Select(&deposits, `
 	SELECT 
@@ -85,8 +85,8 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 	return deposits, nil
 }
 
-func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsPageData, uint64, error) {
-	deposits := []*types.EthOneDepositsPageData{}
+func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
+	deposits := []*types.EthOneDepositsData{}
 
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
@@ -222,8 +222,8 @@ func GetEth1DepositsCount() (uint64, error) {
 	return deposits, nil
 }
 
-func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositsPageData, error) {
-	deposits := []*types.EthTwoDepositsPageData{}
+func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositData, error) {
+	deposits := []*types.EthTwoDepositData{}
 	// ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"

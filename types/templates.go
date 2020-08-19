@@ -48,6 +48,17 @@ type LatestState struct {
 	IsSyncing             bool   `json:"syncing"`
 }
 
+type Stats struct {
+	TopDepositors        *[]StatsTopDepositors
+	InvalidDepositCount  *uint64 `db:"count"`
+	UniqueValidatorCount *uint64 `db:"count"`
+}
+
+type StatsTopDepositors struct {
+	Address      string `db:"from_address"`
+	DepositCount uint64 `db:"count"`
+}
+
 // IndexPageData is a struct to hold info for the main web page
 type IndexPageData struct {
 	ShowSyncingMessage        bool
@@ -215,6 +226,11 @@ type DailyProposalCount struct {
 type ValidatorBalanceHistory struct {
 	Epoch   uint64 `db:"epoch"`
 	Balance uint64 `db:"balance"`
+}
+
+type ValidatorBalanceHistoryChartData struct {
+	Epoch   uint64
+	Balance uint64
 }
 
 // ValidatorBalance is a struct for the validator balance data
@@ -597,8 +613,17 @@ type ValidatorSlashing struct {
 	Type                   string        `db:"type" json:"type"`
 }
 
-// EpochsPageData is a struct to hold epoch data for the epochs page
+type StakingCalculatorPageData struct {
+	BestValidatorBalanceHistory *[]ValidatorBalanceHistory
+	WatchlistBalanceHistory     [][]interface{}
+}
+
 type EthOneDepositsPageData struct {
+	*Stats
+}
+
+// EpochsPageData is a struct to hold epoch data for the epochs page
+type EthOneDepositsData struct {
 	TxHash                []byte    `db:"tx_hash"`
 	TxInput               []byte    `db:"tx_input"`
 	TxIndex               uint64    `db:"tx_index"`
@@ -614,7 +639,7 @@ type EthOneDepositsPageData struct {
 	ValidSignature        bool      `db:"valid_signature"`
 }
 
-type EthTwoDepositsPageData struct {
+type EthTwoDepositData struct {
 	BlockSlot             uint64 `db:"block_slot"`
 	BlockIndex            uint64 `db:"block_index"`
 	Proof                 []byte `db:"proof"`

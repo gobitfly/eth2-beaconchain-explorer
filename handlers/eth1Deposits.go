@@ -21,6 +21,10 @@ var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(util
 func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
+	pageData := &types.EthOneDepositsPageData{}
+
+	pageData.Stats = services.GetLatestStats()
+
 	data := &types.PageData{
 		HeaderAd: true,
 		Meta: &types.Meta{
@@ -30,7 +34,7 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "eth1Deposits",
-		Data:                  nil,
+		Data:                  pageData,
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
