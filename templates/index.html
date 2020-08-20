@@ -381,6 +381,7 @@
 
 <div class="container mt-2">
 	<div id="app" v-cloak>
+		{{if .ShowSyncingMessage}}
 		<div v-if="participation < 0.66" class="page-info my-2 p-1">
 			<div class="d-flex justify-content-between">
 				<h5><i class="fas fa-hands-helping"></i> Get the network back on track by turning on your validator</h5>
@@ -391,6 +392,7 @@
 			</div>
 			<span class="text-muted">The Beacon Chain requires <strong>66% Network Participation</strong> for it to reach finality.</span>
 		</div>
+		{{end}}
 		<div class="hero-container">
 			<div class="hero-image">
 				<svg id="b1dfe96f-fe37-4185-8264-ce8c2a4cb4b9" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1073 741.95">
