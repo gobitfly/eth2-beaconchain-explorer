@@ -97,7 +97,7 @@ $(document).ready(function() {
 		data: '1',
 		render: function(data, type, row) {
 			if (data == 0) return 0
-			return `<a href="/blocks?q=${addrClientToFlag(row[0].slice(2),0).substr(0,31)}">${data}</a>`
+			return `<a href="/blocks?q=${encodeURIComponent(addrClientToFlag(row[0].slice(2),0).substr(0,31))}">${data}</a>`
 		}
 	}]
 	for (var i=0; i<clients.length; i++) {
@@ -106,7 +106,7 @@ $(document).ready(function() {
 			data: (i*2+3)+'',
 			render: function(i){return function(data, type, row) {
 				if (data == 0) return 0
-				return `<a href="/blocks?q=${addrClientToFlag(row[0].slice(2),i)}">${data}</a>`
+				return `<a href="/blocks?q=${encodeURIComponent(addrClientToFlag(row[0].slice(2),i))}">${data}</a>`
 			}}(i)
 		})
 	}
