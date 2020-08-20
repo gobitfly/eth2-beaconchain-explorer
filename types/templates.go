@@ -50,6 +50,7 @@ type LatestState struct {
 
 // IndexPageData is a struct to hold info for the main web page
 type IndexPageData struct {
+	ShowSyncingMessage        bool
 	CurrentEpoch              uint64                 `json:"current_epoch"`
 	CurrentFinalizedEpoch     uint64                 `json:"current_finalized_epoch"`
 	CurrentSlot               uint64                 `json:"current_slot"`

@@ -71,7 +71,7 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 			count(*) as blockcount,
 			count(distinct proposer) as validatorcount
 		from blocks
-		where slot < 100000 and graffiti like 'poap%'
+		where slot < 300000 and graffiti like 'poap%'
 		group by graffiti`)
 	if err != nil {
 		logger.Errorf("error retrieving poap data: %v", err)

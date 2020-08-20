@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"html/template"
+	"net/url"
 	"strings"
 	"time"
 
@@ -145,7 +146,8 @@ func FormatGraffiti(graffiti []byte) template.HTML {
 
 func FormatGraffitiAsLink(graffiti []byte) template.HTML {
 	str := strings.Map(fixUtf, template.HTMLEscapeString(string(graffiti)))
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/blocks?q=%s\">%s</a></span>", graffiti, str, str))
+	u := url.QueryEscape(str)
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/blocks?q=%s\">%s</a></span>", graffiti, u, str))
 }
 
 // FormatHash will return a hash formated as html
@@ -226,7 +228,7 @@ func FormatValidator(validator uint64) template.HTML {
 
 func FormatValidatorWithName(validator uint64, name string) template.HTML {
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v (<span class=\"text-truncate\">"+html.EscapeString(name)+"</span>)</a>", validator, validator))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validator))
 	} else {
 		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
 	}
