@@ -290,7 +290,46 @@
 					</div>
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Income:</div>
-						<div class="col-md-10">1 day: {{.Income1d | formatIncome}} | 7 days: {{.Income7d | formatIncome}} | 31 days: {{.Income31d | formatIncome}}</div>
+						<div class="col-md-10">
+							<div class="row">
+								<div class="col-3 col-lg-1">
+									<span>1 day:</span> 
+								</div>
+								<div class="col-9 col-lg-11">
+									<span>
+										{{.Income1d | formatIncome}} 
+									</span>
+								</div>
+							</div>
+							<div class="row">
+								<div class="col-3 col-lg-1">
+									<span class="mr-2">7 day:</span> 
+								</div>
+								<div class="col-9 col-lg-11">
+									<span>{{.Income7d | formatIncome}} </span>
+								</div>
+							</div>
+							<div class="row">
+								<div class="col-3 col-lg-1">
+									<span class="mr-2">31 day:</span> 
+								</div>
+								<div class="col-9 col-lg-11">
+									<span>
+										{{.Income31d | formatIncome}}
+									</span>
+								</div>
+							</div>
+							<div class="row">
+								<div class="col-3 col-lg-1">
+									<span class="mr-2">APR:</span> 
+								</div>
+								<div class="col-9 col-lg-11">
+									<span>
+										{{.Apr | formatPercentage}} % estimated
+									</span>
+								</div>
+							</div>
+						</div>
 					</div>
                 {{end}}
 				<div class="row border-bottom p-3 mx-0">
@@ -335,14 +374,14 @@
 						</div>
                     {{end}}
 					<div class="row border-bottom p-3 mx-0">
-						<div class="col-md-12">
+						<div class="col-lg-6">
 							<div id="balancechart" height="200px"></div>
+						</div>
+						<div class="col-lg-6">
+							<div id="proposedChart" height="200px"></div>
 						</div>
 					</div>
 					<div class="row p-3 mx-0">
-						<div class="col-md-12">
-							<div id="proposedChart" height="200px"></div>
-						</div>
 					</div>
                 {{end}}
 			</div>
