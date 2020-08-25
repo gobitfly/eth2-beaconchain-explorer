@@ -25,7 +25,7 @@ type LighthouseClient struct {
 // NewLighthouseClient is used to create a new Lighthouse client
 func NewLighthouseClient(endpoint string) (*LighthouseClient, error) {
 	client := &LighthouseClient{
-		endpoint:            endpoint,
+		endpoint:            "http://" + endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
 	}
 	client.assignmentsCache, _ = lru.New(128)
