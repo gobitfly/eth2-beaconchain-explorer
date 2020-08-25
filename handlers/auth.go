@@ -60,7 +60,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 // RegisterPost handles the register-formular to register a new user.
 func RegisterPost(w http.ResponseWriter, r *http.Request) {
-	logger = logger.WithField("route", r.URL.String())
+	logger := logger.WithField("route", r.URL.String())
 	session, err := utils.SessionStore.Get(r, authSessionName)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
@@ -341,7 +341,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 // ResetPasswordPost resets the password to the value provided in the form, given that the user is authenticated.
 func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
-	logger = logger.WithField("route", r.URL.String())
+	logger := logger.WithField("route", r.URL.String())
 
 	user, session, err := getUserSession(w, r)
 	if err != nil {
@@ -424,7 +424,7 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 
 // RequestResetPasswordPost sends a password-reset-link to the provided (via form) email.
 func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
-	logger = logger.WithField("route", r.URL.String())
+	logger := logger.WithField("route", r.URL.String())
 
 	err := r.ParseForm()
 	if err != nil {
