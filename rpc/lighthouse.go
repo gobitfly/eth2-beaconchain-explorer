@@ -364,6 +364,72 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		block.Deposits[i] = d
 	}
 
+	for i, voluntaryExit := range parsedResponse.BeaconBlock.Message.Body.VoluntaryExits {
+		block.VoluntaryExits[i] = &types.VoluntaryExit{
+			Epoch:          voluntaryExit.Message.Epoch,
+			ValidatorIndex: voluntaryExit.Message.ValidatorIndex,
+			Signature:      utils.MustParseHex(voluntaryExit.Signature),
+		}
+	}
+
+	for i, proposerSlashing := range parsedResponse.BeaconBlock.Message.Body.ProposerSlashings {
+		block.ProposerSlashings[i] = &types.ProposerSlashing{
+			ProposerIndex: proposerSlashing.SignedHeader1.Message.ProposerIndex,
+			Header1: &types.Block{
+				Slot:       proposerSlashing.SignedHeader1.Message.Slot,
+				ParentRoot: utils.MustParseHex(proposerSlashing.SignedHeader1.Message.ParentRoot),
+				StateRoot:  utils.MustParseHex(proposerSlashing.SignedHeader1.Message.StateRoot),
+				Signature:  utils.MustParseHex(proposerSlashing.SignedHeader1.Signature),
+				BodyRoot:   utils.MustParseHex(proposerSlashing.SignedHeader1.Message.BodyRoot),
+			},
+			Header2: &types.Block{
+				Slot:       proposerSlashing.SignedHeader2.Message.Slot,
+				ParentRoot: utils.MustParseHex(proposerSlashing.SignedHeader2.Message.ParentRoot),
+				StateRoot:  utils.MustParseHex(proposerSlashing.SignedHeader2.Message.StateRoot),
+				Signature:  utils.MustParseHex(proposerSlashing.SignedHeader2.Signature),
+				BodyRoot:   utils.MustParseHex(proposerSlashing.SignedHeader2.Message.BodyRoot),
+			},
+		}
+	}
+
+	for i, attesterSlashing := range parsedResponse.BeaconBlock.Message.Body.AttesterSlashings {
+		block.AttesterSlashings[i] = &types.AttesterSlashing{
+			Attestation1: &types.IndexedAttestation{
+				Data: &types.AttestationData{
+					Slot:            attesterSlashing.Attestation1.Data.Slot,
+					CommitteeIndex:  attesterSlashing.Attestation1.Data.Index,
+					BeaconBlockRoot: utils.MustParseHex(attesterSlashing.Attestation1.Data.BeaconBlockRoot),
+					Source: &types.Checkpoint{
+						Epoch: attesterSlashing.Attestation1.Data.Source.Epoch,
+						Root:  utils.MustParseHex(attesterSlashing.Attestation1.Data.Source.Root),
+					},
+					Target: &types.Checkpoint{
+						Epoch: attesterSlashing.Attestation1.Data.Target.Epoch,
+						Root:  utils.MustParseHex(attesterSlashing.Attestation1.Data.Target.Root),
+					},
+				},
+				Signature:        utils.MustParseHex(attesterSlashing.Attestation1.Signature),
+				AttestingIndices: attesterSlashing.Attestation1.AttestingIndices,
+			},
+			Attestation2: &types.IndexedAttestation{
+				Data: &types.AttestationData{
+					Slot:            attesterSlashing.Attestation2.Data.Slot,
+					CommitteeIndex:  attesterSlashing.Attestation2.Data.Index,
+					BeaconBlockRoot: utils.MustParseHex(attesterSlashing.Attestation2.Data.BeaconBlockRoot),
+					Source: &types.Checkpoint{
+						Epoch: attesterSlashing.Attestation2.Data.Source.Epoch,
+						Root:  utils.MustParseHex(attesterSlashing.Attestation2.Data.Source.Root),
+					},
+					Target: &types.Checkpoint{
+						Epoch: attesterSlashing.Attestation2.Data.Target.Epoch,
+						Root:  utils.MustParseHex(attesterSlashing.Attestation2.Data.Target.Root),
+					},
+				},
+				Signature:        utils.MustParseHex(attesterSlashing.Attestation2.Signature),
+				AttestingIndices: attesterSlashing.Attestation2.AttestingIndices,
+			},
+		}
+	}
 	return []*types.Block{block}, nil
 }
 
@@ -462,8 +528,43 @@ type lighthouseBlockResponse struct {
 					} `json:"data"`
 					Signature string `json:"signature"`
 				} `json:"attestations"`
-				AttesterSlashings []interface{} `json:"attester_slashings"`
-				Deposits          []struct {
+				AttesterSlashings []struct {
+					Attestation1 struct {
+						AttestingIndices []uint64 `json:"attesting_indices"`
+						Data             struct {
+							BeaconBlockRoot string `json:"beacon_block_root"`
+							Index           uint64 `json:"index"`
+							Slot            uint64 `json:"slot"`
+							Source          struct {
+								Epoch uint64 `json:"epoch"`
+								Root  string `json:"root"`
+							} `json:"source"`
+							Target struct {
+								Epoch uint64 `json:"epoch"`
+								Root  string `json:"root"`
+							} `json:"target"`
+						} `json:"data"`
+						Signature string `json:"signature"`
+					} `json:"attestation_1"`
+					Attestation2 struct {
+						AttestingIndices []uint64 `json:"attesting_indices"`
+						Data             struct {
+							BeaconBlockRoot string `json:"beacon_block_root"`
+							Index           uint64 `json:"index"`
+							Slot            uint64 `json:"slot"`
+							Source          struct {
+								Epoch uint64 `json:"epoch"`
+								Root  string `json:"root"`
+							} `json:"source"`
+							Target struct {
+								Epoch uint64 `json:"epoch"`
+								Root  string `json:"root"`
+							} `json:"target"`
+						} `json:"data"`
+						Signature string `json:"signature"`
+					} `json:"attestation_2"`
+				} `json:"attester_slashings"`
+				Deposits []struct {
 					Data struct {
 						Amount                int    `json:"amount"`
 						Pubkey                string `json:"pubkey"`
@@ -477,10 +578,37 @@ type lighthouseBlockResponse struct {
 					DepositCount uint64 `json:"deposit_count"`
 					DepositRoot  string `json:"deposit_root"`
 				} `json:"eth1_data"`
-				Graffiti          string        `json:"graffiti"`
-				ProposerSlashings []interface{} `json:"proposer_slashings"`
-				RandaoReveal      string        `json:"randao_reveal"`
-				VoluntaryExits    []interface{} `json:"voluntary_exits"`
+				Graffiti          string `json:"graffiti"`
+				ProposerSlashings []struct {
+					SignedHeader1 struct {
+						Message struct {
+							BodyRoot      string `json:"body_root"`
+							ParentRoot    string `json:"parent_root"`
+							ProposerIndex uint64 `json:"proposer_index"`
+							Slot          uint64 `json:"slot"`
+							StateRoot     string `json:"state_root"`
+						} `json:"message"`
+						Signature string `json:"signature"`
+					} `json:"signed_header_1"`
+					SignedHeader2 struct {
+						Message struct {
+							BodyRoot      string `json:"body_root"`
+							ParentRoot    string `json:"parent_root"`
+							ProposerIndex uint64 `json:"proposer_index"`
+							Slot          uint64 `json:"slot"`
+							StateRoot     string `json:"state_root"`
+						} `json:"message"`
+						Signature string `json:"signature"`
+					} `json:"signed_header_2"`
+				} `json:"proposer_slashings"`
+				RandaoReveal   string `json:"randao_reveal"`
+				VoluntaryExits []struct {
+					Message struct {
+						Epoch          uint64 `json:"epoch"`
+						ValidatorIndex uint64 `json:"validator_index"`
+					} `json:"message"`
+					Signature string `json:"signature"`
+				} `json:"voluntary_exits"`
 			} `json:"body"`
 			ParentRoot string `json:"parent_root"`
 			Slot       uint64 `json:"slot"`
