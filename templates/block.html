@@ -329,138 +329,142 @@
 					</div>
 				{{end}}
 				{{if gt .AttesterSlashingsCount 0}}
-					{{range $i, $attestationSlashing := .AttesterSlashings}}
 					<div class="tab-pane fade" id="pills-attester-slashings" role="tabpanel" aria-labelledby="pills-attester-slashings-tab">
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Slashed Validator(s):</div>
-							<div class="col-md-10">
-								{{range $validator := $attestationSlashing.SlashedValidators}}
-									{{formatSlashedValidatorInt64 $validator}}
-								{{end}}
+						{{range $i, $attestationSlashing := .AttesterSlashings}}
+							<div style="border:10px solid red; margin: 5px;"> <!-- #TODO:stefan please make this pretty -->
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Slashed Validator(s):</div>
+									<div class="col-md-10">
+										{{range $validator := $attestationSlashing.SlashedValidators}}
+											{{formatSlashedValidatorInt64 $validator}}
+										{{end}}
+									</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-12 text-center">Attestation 1</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Slot:</div>
+									<div class="col-md-10"><a href="/block/{{$attestationSlashing.Attestation1Slot}}">{{$attestationSlashing.Attestation1Slot}}</a></div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Committee Index:</div>
+									<div class="col-md-10">{{$attestationSlashing.Attestation1Index}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Beacon BlockRoot:</div>
+									<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation1BeaconBlockRoot}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Signature:</div>
+									<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation1Signature}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Source Epoch:</div>
+									<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation1SourceEpoch}}">{{$attestationSlashing.Attestation1SourceEpoch}}</a></div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Target Epoch:</div>
+									<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation1TargetEpoch}}">{{$attestationSlashing.Attestation1TargetEpoch}}</a></div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Attesting Validators:</div>
+									<div class="col-md-10">
+										{{range $validator := $attestationSlashing.Attestation1Indices}}
+											{{formatValidatorInt64 $validator}}
+										{{end}}
+									</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-12 text-center">Attestation 2</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Slot:</div>
+									<div class="col-md-10"><a href="/block/{{$attestationSlashing.Attestation2Slot}}">{{$attestationSlashing.Attestation2Slot}}</a></div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Committee Index:</div>
+									<div class="col-md-10">{{$attestationSlashing.Attestation2Index}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Beacon BlockRoot:</div>
+									<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation2BeaconBlockRoot}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Signature:</div>
+									<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation2Signature}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Source Epoch:</div>
+									<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation2SourceEpoch}}">{{$attestationSlashing.Attestation2SourceEpoch}}</a></div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Target Epoch:</div>
+									<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation2TargetEpoch}}">{{$attestationSlashing.Attestation2TargetEpoch}}</a></div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Attesting Validators:</div>
+									<div class="col-md-10">
+										{{range $validator := $attestationSlashing.Attestation2Indices}}
+											{{formatValidatorInt64 $validator}}
+										{{end}}
+									</div>
+								</div>
 							</div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-12 text-center">Attestation 1</div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Slot:</div>
-							<div class="col-md-10"><a href="/block/{{$attestationSlashing.Attestation1Slot}}">{{$attestationSlashing.Attestation1Slot}}</a></div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Committee Index:</div>
-							<div class="col-md-10">{{$attestationSlashing.Attestation1Index}}</div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Beacon BlockRoot:</div>
-							<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation1BeaconBlockRoot}}</div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Signature:</div>
-							<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation1Signature}}</div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Source Epoch:</div>
-							<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation1SourceEpoch}}">{{$attestationSlashing.Attestation1SourceEpoch}}</a></div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Target Epoch:</div>
-							<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation1TargetEpoch}}">{{$attestationSlashing.Attestation1TargetEpoch}}</a></div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Attesting Validators:</div>
-							<div class="col-md-10">
-								{{range $validator := $attestationSlashing.Attestation1Indices}}
-									{{formatValidatorInt64 $validator}}
-								{{end}}
-							</div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-12 text-center">Attestation 2</div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Slot:</div>
-							<div class="col-md-10"><a href="/block/{{$attestationSlashing.Attestation2Slot}}">{{$attestationSlashing.Attestation2Slot}}</a></div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Committee Index:</div>
-							<div class="col-md-10">{{$attestationSlashing.Attestation2Index}}</div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Beacon BlockRoot:</div>
-							<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation2BeaconBlockRoot}}</div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Signature:</div>
-							<div class="col-md-10">0x{{printf "%x" $attestationSlashing.Attestation2Signature}}</div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Source Epoch:</div>
-							<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation2SourceEpoch}}">{{$attestationSlashing.Attestation2SourceEpoch}}</a></div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Target Epoch:</div>
-							<div class="col-md-10"><a href="/epoch/{{$attestationSlashing.Attestation2TargetEpoch}}">{{$attestationSlashing.Attestation2TargetEpoch}}</a></div>
-						</div>
-						<div class="row border-bottom p-1 mx-0">
-							<div class="col-md-2">Attesting Validators:</div>
-							<div class="col-md-10">
-								{{range $validator := $attestationSlashing.Attestation2Indices}}
-									{{formatValidatorInt64 $validator}}
-								{{end}}
-							</div>
-						</div>
+						{{end}}
 					</div>
-					{{end}}
 				{{end}}
 				{{if gt .ProposerSlashingsCount 0}}
 					<div class="tab-pane fade" id="pills-proposer-slashings" role="tabpanel" aria-labelledby="pills-proposer-slashings-tab">
 						{{range $i, $proposerSlashing := .ProposerSlashings}}
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-12 text-center"><b>Slashing {{$i}}</b></div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Slashed Validator:</div>
-								<div class="col-md-10">{{formatSlashedValidator $proposerSlashing.ProposerIndex}}</div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Header 1 Slot:</div>
-								<div class="col-md-10">{{$proposerSlashing.Header1Slot}}</div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Header 1 Parent Root:</div>
-								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header1ParentRoot}}</div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Header 1 State Root:</div>
-								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header1StateRoot}}</div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Header 1 Body Root:</div>
-								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header1BodyRoot}}</div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Header 1 Signature:</div>
-								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header1Signature}}</div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Header 2 Slot:</div>
-								<div class="col-md-10">{{$proposerSlashing.Header2Slot}}</div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Header 2 Parent Root:</div>
-								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header2ParentRoot}}</div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Header 2 State Root:</div>
-								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header2StateRoot}}</div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Header 2 Body Root:</div>
-								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header2BodyRoot}}</div>
-							</div>
-							<div class="row border-bottom p-1 mx-0">
-								<div class="col-md-2">Header 2 Signature:</div>
-								<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header2Signature}}</div>
+							<div style="border:10px solid red; margin: 5px;"> <!-- #TODO:stefan please make this pretty -->
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-12 text-center"><b>Slashing {{$i}}</b></div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Slashed Validator:</div>
+									<div class="col-md-10">{{formatSlashedValidator $proposerSlashing.ProposerIndex}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Header 1 Slot:</div>
+									<div class="col-md-10">{{$proposerSlashing.Header1Slot}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Header 1 Parent Root:</div>
+									<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header1ParentRoot}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Header 1 State Root:</div>
+									<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header1StateRoot}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Header 1 Body Root:</div>
+									<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header1BodyRoot}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Header 1 Signature:</div>
+									<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header1Signature}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Header 2 Slot:</div>
+									<div class="col-md-10">{{$proposerSlashing.Header2Slot}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Header 2 Parent Root:</div>
+									<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header2ParentRoot}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Header 2 State Root:</div>
+									<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header2StateRoot}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Header 2 Body Root:</div>
+									<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header2BodyRoot}}</div>
+								</div>
+								<div class="row border-bottom p-1 mx-0">
+									<div class="col-md-2">Header 2 Signature:</div>
+									<div class="col-md-10 text-monospace text-break">0x{{printf "%x" $proposerSlashing.Header2Signature}}</div>
+								</div>
 							</div>
 						{{end}}
 					</div>
