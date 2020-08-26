@@ -377,7 +377,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// return
 	}
 
-	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, "SELECT COALESCE(AVG(1 + inclusionslot - COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0)), 0) FROM attestation_assignments WHERE epoch > $1 AND validatorindex = $2 AND inclusionslot > 0", data.CurrentEpoch-100, index)
+	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, `
+	SELECT 
+		COALESCE(AVG(1 + inclusionslot - COALESCE((SELECT MIN(slot) 
+	FROM 
+		blocks 
+	WHERE 
+		slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0)), 0) 
+	FROM 
+		attestation_assignments 
+	WHERE epoch > $1 AND validatorindex = $2 AND inclusionslot > 0
+	`, int64(data.CurrentEpoch)-100, index)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
 		http.Error(w, "Internal server error", 503)
