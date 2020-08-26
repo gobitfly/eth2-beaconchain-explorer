@@ -260,6 +260,17 @@ $(document).ready(function() {
       wildcard: '%QUERY'
     }
   })
+  var bhName = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function(obj) {
+      return obj.name
+    },
+    remote: {
+      url: '/search/indexed_validators_by_name/%QUERY',
+      wildcard: '%QUERY'
+    }
+  })
   var bhGraffiti = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -314,6 +325,19 @@ $(document).ready(function() {
         suggestion: function(data) {
           var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
           return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.graffiti}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+        }
+      }
+    },
+    {
+      limit: 5,
+      name: 'name',
+      source: bhName,
+      display: 'name',
+      templates: {
+        header: '<h3>Validators by Name</h3>',
+        suggestion: function(data) {
+          var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
+          return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.name}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         }
       }
     }

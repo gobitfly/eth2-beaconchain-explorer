@@ -350,12 +350,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			index)
 		if err != nil {
 			logger.Errorf("error retrieving validator slashing info: %v", err)
-			http.Error(w, "Internal server error", 503)
-			return
+			// #TODO:patrick commenting this is only a hotfix, make it work properly
+			// http.Error(w, "Internal server error", 503)
+			// return
+		} else {
+			validatorPageData.SlashedBy = slashingInfo.Slasher
+			validatorPageData.SlashedAt = slashingInfo.Slot
+			validatorPageData.SlashedFor = slashingInfo.Reason
 		}
-		validatorPageData.SlashedBy = slashingInfo.Slasher
-		validatorPageData.SlashedAt = slashingInfo.Slot
-		validatorPageData.SlashedFor = slashingInfo.Reason
 	}
 
 	err = db.DB.Get(&validatorPageData.SlashingsCount, `
@@ -370,8 +372,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			)`, index)
 	if err != nil {
 		logger.Errorf("error retrieving slashings-count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+		// #TODO:patrick commenting this is only a hotfix, make it work properly
+		// http.Error(w, "Internal server error", 503)
+		// return
 	}
 
 	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, "SELECT COALESCE(AVG(1 + inclusionslot - COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0)), 0) FROM attestation_assignments WHERE epoch > $1 AND validatorindex = $2 AND inclusionslot > 0", data.CurrentEpoch-100, index)
@@ -575,40 +578,44 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var blocks []*types.ValidatorAttestation
-	err = db.DB.Select(&blocks, `
-		SELECT 
-			attestation_assignments.epoch, 
-			attestation_assignments.attesterslot, 
-			attestation_assignments.committeeindex, 
-			attestation_assignments.status,
-		    attestation_assignments.inclusionslot,
-    		COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0) AS earliestinclusionslot     
-		FROM attestation_assignments 
-		WHERE validatorindex = $1
-		ORDER BY epoch desc, attesterslot DESC
-		LIMIT $2 OFFSET $3`, index, length, start)
+	tableData := [][]interface{}{}
 
-	if err != nil {
-		logger.Errorf("error retrieving validator attestations data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
+	if totalCount > 0 {
+		var blocks []*types.ValidatorAttestation
+		err = db.DB.Select(&blocks, `
+			SELECT 
+				attestation_assignments.epoch, 
+				attestation_assignments.attesterslot, 
+				attestation_assignments.committeeindex, 
+				attestation_assignments.status, 
+				attestation_assignments.inclusionslot, 
+				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0) AS earliestinclusionslot 
+			FROM attestation_assignments 
+			WHERE validatorindex = $1 
+			ORDER BY attesterslot DESC, epoch DESC
+			LIMIT $2 OFFSET $3`, index, length, start)
 
-	tableData := make([][]interface{}, len(blocks))
-	for i, b := range blocks {
-
-		if utils.SlotToTime(b.AttesterSlot).Before(time.Now().Add(time.Minute*-1)) && b.Status == 0 {
-			b.Status = 2
+		if err != nil {
+			logger.Errorf("error retrieving validator attestations data: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
 		}
-		tableData[i] = []interface{}{
-			utils.FormatEpoch(b.Epoch),
-			utils.FormatBlockSlot(b.AttesterSlot),
-			utils.FormatAttestationStatus(b.Status),
-			utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
-			b.CommitteeIndex,
-			utils.FormatAttestationInclusionSlot(b.InclusionSlot),
-			utils.FormatInclusionDelay(b.InclusionSlot, b.InclusionSlot-b.EarliestInclusionSlot),
+
+		tableData = make([][]interface{}, len(blocks))
+
+		for i, b := range blocks {
+			if utils.SlotToTime(b.AttesterSlot).Before(time.Now().Add(time.Minute*-1)) && b.Status == 0 {
+				b.Status = 2
+			}
+			tableData[i] = []interface{}{
+				utils.FormatEpoch(b.Epoch),
+				utils.FormatBlockSlot(b.AttesterSlot),
+				utils.FormatAttestationStatus(b.Status),
+				utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
+				b.CommitteeIndex,
+				utils.FormatAttestationInclusionSlot(b.InclusionSlot),
+				utils.FormatInclusionDelay(b.InclusionSlot, b.InclusionSlot-b.EarliestInclusionSlot),
+			}
 		}
 	}
 
