@@ -9,6 +9,8 @@ import (
 	"time"
 
 	eth1common "github.com/ethereum/go-ethereum/common"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 func FormatMessageToHtml(message string) template.HTML {
@@ -36,7 +38,19 @@ func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint6
 
 // FormatBalance will return a string for a balance
 func FormatBalance(balance uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.2f ETH", float64(balance)/float64(1e9)))
+	p := message.NewPrinter(language.English)
+	rb := []rune(p.Sprintf("%.2f", float64(balance)/float64(1e9)))
+	// remove trailing zeros
+	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+		for rb[len(rb)-1] == '0' {
+			rb = rb[:len(rb)-1]
+		}
+		if rb[len(rb)-1] == '.' {
+			rb = rb[:len(rb)-1]
+
+		}
+	}
+	return template.HTML(string(rb) + " ETH")
 }
 
 // FormatBlockRoot will return the block-root formated as html
@@ -134,7 +148,13 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
 func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
 	rr := fmt.Sprintf("%.0f%%", r*100)
-	tpl := `<div>%.2[1]f <small class="text-muted ml-3">(%[2]v)</small></div><div class="progress" style="height:5px;"><div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div></div>`
+	tpl := `
+	<div style="position:relative;width:inherit;height:inherit;">
+	  %[1]g <small class="text-muted ml-3">(%[2]v)</small>
+	  <div class="progress" style="position:absolute;bottom:-6px;width:100%%;height:4px;">
+		<div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
+	  </div>
+	</div>`
 	return template.HTML(fmt.Sprintf(tpl, float64(e)/1e9, rr))
 }
 
