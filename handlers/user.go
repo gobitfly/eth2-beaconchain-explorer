@@ -338,7 +338,7 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserDeletePost(w http.ResponseWriter, r *http.Request) {
-	logger = logger.WithField("route", r.URL.String())
+	logger := logger.WithField("route", r.URL.String())
 	user, session, err := getUserSession(w, r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
