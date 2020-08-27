@@ -1,5 +1,6 @@
 {{ define "js"}}
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+<script type="text/javascript" src="/js/datatable_input.js"></script>
 <script>
   $(document).ready(function () {
     $('#deposits').DataTable({
@@ -9,10 +10,14 @@
       order: [[0, 'desc']],
       searching: true,
       ajax: '/validators/eth2deposits/data',
-      pagingType: 'full',
+      pagingType: 'input',
       language: {
         searchPlaceholder: 'Slot / Validator Key / Withdrawal Credentials',
-        search: ''
+        search: '',
+        paginate: {
+					previous: "<",
+					next: ">",
+				}
       },
     })
   })

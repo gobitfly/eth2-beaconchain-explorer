@@ -1,14 +1,23 @@
 {{ define "js"}}
 	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.js"></script>
+	<script type="text/javascript" src="/js/datatable_input.js"></script>
 	<script>
         $('#slashings').DataTable({
-						processing: true,
-						serverSide: true,
-						ordering: false,
-						searching: false,
-            paging: true,
-						pagingType: 'full',
-            ajax: '/validators/slashings/data',
+			processing: true,
+			serverSide: true,
+			ordering: false,
+			searching: false,
+			paging: true,
+			pagingType: 'input',
+			ajax: '/validators/slashings/data',
+			language: {
+				// searchPlaceholder: 'Search by Epoch Number',
+				// search: '',
+				paginate: {
+					previous: "<",
+					next: ">",
+				}
+			},
             preDrawCallback: function() {
                 // this does not always work.. not sure how to solve the staying tooltip
                 try {
@@ -54,7 +63,7 @@
 						<th>Slashed by</th>
 						<th>Age</th>
 						<th>Reason</th>
-						<th>Block</th>
+						<th>Slot</th>
 						<th>Epoch</th>
 					</tr>
 					</thead>

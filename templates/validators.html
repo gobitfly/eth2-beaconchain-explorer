@@ -1,5 +1,6 @@
 {{ define "js"}}
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.js"></script>
+<script type="text/javascript" src="/js/datatable_input.js"></script>
 <script>
   var validatorsDataTable;
   var stateFilterDropDownHtml = `<div><label>
@@ -71,10 +72,15 @@
       pageLength: 25,
       processing: true,
       serverSide: true,
-      
       searching: true,
       ajax: '/validators/data?filterByState='+state,
-      pagingType: 'full',
+      pagingType: 'input',
+      language: {
+        paginate: {
+					previous: "<",
+					next: ">",
+				}
+      },
       dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" + 
            "<'row'<'col-sm-12'tr>>" + 
            "<'row'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
