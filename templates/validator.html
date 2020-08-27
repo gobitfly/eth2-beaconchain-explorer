@@ -1,4 +1,11 @@
 {{ define "js"}}
+	<script>
+		window.addEventListener('popstate', function(event) {
+			event.preventDefault();
+			history.back();
+		})
+	</script>
+</script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 	<script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}})</script>
