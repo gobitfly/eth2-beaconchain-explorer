@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
 	"html"
 	"html/template"
@@ -160,14 +161,17 @@ func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
 
 // FormatGraffiti will return the graffiti formated as html
 func FormatGraffiti(graffiti []byte) template.HTML {
-	str := strings.Map(fixUtf, template.HTMLEscapeString(string(graffiti)))
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, str))
+	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	h := template.HTMLEscapeString(s)
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, h))
 }
 
+// FormatGraffitiAsLink will return the graffiti formated as html-link
 func FormatGraffitiAsLink(graffiti []byte) template.HTML {
-	str := strings.Map(fixUtf, template.HTMLEscapeString(string(graffiti)))
-	u := url.QueryEscape(str)
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/blocks?q=%s\">%s</a></span>", graffiti, u, str))
+	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	h := template.HTMLEscapeString(s)
+	u := url.QueryEscape(s)
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/blocks?q=%s\">%s</a></span>", graffiti, u, h))
 }
 
 // FormatHash will return a hash formated as html

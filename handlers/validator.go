@@ -357,14 +357,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			index)
 		if err != nil {
 			logger.Errorf("error retrieving validator slashing info: %v", err)
-			// #TODO:patrick commenting this is only a hotfix, make it work properly
-			// http.Error(w, "Internal server error", 503)
-			// return
-		} else {
-			validatorPageData.SlashedBy = slashingInfo.Slasher
-			validatorPageData.SlashedAt = slashingInfo.Slot
-			validatorPageData.SlashedFor = slashingInfo.Reason
+			http.Error(w, "Internal server error", 503)
+			return
 		}
+		validatorPageData.SlashedBy = slashingInfo.Slasher
+		validatorPageData.SlashedAt = slashingInfo.Slot
+		validatorPageData.SlashedFor = slashingInfo.Reason
 	}
 
 	err = db.DB.Get(&validatorPageData.SlashingsCount, `
@@ -379,9 +377,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			)`, index)
 	if err != nil {
 		logger.Errorf("error retrieving slashings-count: %v", err)
-		// #TODO:patrick commenting this is only a hotfix, make it work properly
-		// http.Error(w, "Internal server error", 503)
-		// return
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 
 	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, `
