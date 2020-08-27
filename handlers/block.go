@@ -262,7 +262,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			attestation1_source_root,
 			attestation1_target_epoch,
 			attestation1_target_root,
-		    attestation2_indices,
+			attestation2_indices,
 			attestation2_signature,
 			attestation2_slot,
 			attestation2_index,
@@ -271,7 +271,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			attestation2_source_root,
 			attestation2_target_epoch,
 			attestation2_target_root
-			FROM blocks_attesterslashings
+		FROM blocks_attesterslashings
 		WHERE block_slot = $1`, blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block attester slashings data: %v", err)

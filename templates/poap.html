@@ -1,6 +1,7 @@
 {{ define "js"}}
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
+<script type="text/javascript" src="/js/datatable_input.js"></script>
 <script>
 var clients = {{.PoapClients}}
 var graffitiFlagData = {
@@ -117,10 +118,14 @@ $(document).ready(function() {
 		searching: true,
 		columnDefs: columnDefs,
 		// ajax: '/poap/data',
-		pagingType: 'full',
+		pagingType: 'input',
 		language: {
 			searchPlaceholder: 'Search by ETH1 Address',
-			search: ''
+			search: '',
+			paginate: {
+					previous: "<",
+					next: ">",
+			}
 		},
 	})
 
