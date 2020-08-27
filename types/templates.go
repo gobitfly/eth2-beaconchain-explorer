@@ -188,6 +188,7 @@ type ValidatorPageData struct {
 	Income1d                            int64
 	Income7d                            int64
 	Income31d                           int64
+	Apr                                 float64
 	Proposals                           [][]uint64
 	BalanceHistoryChartData             [][]float64
 	EffectiveBalanceHistoryChartData    [][]float64
