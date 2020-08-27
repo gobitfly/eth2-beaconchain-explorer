@@ -206,6 +206,17 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 	data.Epochs = epochs
 
+	var scheduledCount uint8
+	err = db.DB.Select(&scheduledCount, `
+		SELECT 
+			COUNT(*) 
+		FROM 
+			blocks 
+		WHERE 
+			blocks.epoch = (SELECT MAX(blocks.epoch) FROM blocks LIMIT 1) AND blocks.status = '0';
+	`)
+	data.ScheduledCount = scheduledCount
+
 	var blocks []*types.IndexPageDataBlocks
 	err = db.DB.Select(&blocks, `
 		SELECT

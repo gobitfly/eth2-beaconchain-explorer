@@ -54,6 +54,7 @@ type IndexPageData struct {
 	CurrentEpoch              uint64                 `json:"current_epoch"`
 	CurrentFinalizedEpoch     uint64                 `json:"current_finalized_epoch"`
 	CurrentSlot               uint64                 `json:"current_slot"`
+	ScheduledCount            uint8                  `json:"scheduled_count"`
 	FinalityDelay             uint64                 `json:"finality_delay"`
 	ActiveValidators          uint64                 `json:"active_validators"`
 	EnteringValidators        uint64                 `json:"entering_validators"`

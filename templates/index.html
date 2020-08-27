@@ -191,6 +191,9 @@
 			}
 			var missingEther = (eligible * 0.66) - voted
 			return Math.round(missingEther / 32e9)
+		},
+		scheduledCount: function() {
+			return {{.ScheduledCount}}
 		}
 	},
 	filters: {
@@ -605,19 +608,24 @@
 			</div>
 		</div>
 		{{else}}
-		<div class="card mt-3 index-stats">
+		<div style="position:relative" class="card mt-3 index-stats">
+			{{ if not .ShowSyncingMessage }}
+			<div v-if="scheduledCount > 0" style="height: 5px; position:absolute;top:0;" class="progress w-100" data-toggle="tooltip" data-placement="bottom" :title="'This epoch has ' + scheduledCount + ' blocks remaining'">
+				<div class="progress-bar bg-primary" role="progressbar" style="width:${scheduledCount / 32}%" :aria-valuenow="scheduledCount" aria-valuemin="0" aria-valuemax="32"><span>${Math.round((scheduledCount / 32) * 10000) / 100}%</span></div>
+			</div>
+			{{end}}
 			<div class="card-header">
 				<div class="row">
 					<div class="col-md-4 responsive-border-right responsive-border-right-l">
 						<div class="d-flex justify-content-between">
 							<div class="p-2">
 								<div class="text-secondary mb-0">Epoch</div>
-								<h5 class="font-weight-normal mb-0"><span data-toggle="tooltip" data-placement="top" title="The most recent epoch">${ page.current_epoch }</span> / <span data-toggle="tooltip" data-placement="top" title="The most recent finalized epoch">${ page.current_finalized_epoch }</span></h5>
+								<h5 class="font-weight-normal mb-0"><span data-toggle="tooltip" data-placement="top" title="The most recent epoch">${ page.current_epoch.toLocaleString('en-GB') }</span> / <span data-toggle="tooltip" data-placement="top" title="The most recent finalized epoch">${ page.current_finalized_epoch.toLocaleString('en-GB') }</span></h5>
 							</div>
 							<div class="text-right p-2">
 								<div class="text-secondary mb-0">Current Slot</div>
 								<h5 class="font-weight-normal mb-0">
-									<span data-toggle="tooltip" data-placement="top" title="The most recent slot">${ page.current_slot }</span>
+									<span data-toggle="tooltip" data-placement="top" title="The most recent slot">${ page.current_slot.toLocaleString('en-GB') }</span>
 								</h5>
 							</div>
 						</div>
@@ -627,14 +635,14 @@
 							<div class="p-2">
 								<div class="text-secondary mb-0">Active Validators</div>
 								<h5 class="font-weight-normal mb-0">
-									<span data-toggle="tooltip" data-placement="top" title="The number of currently active validators">${ page.active_validators }</span>
+									<span data-toggle="tooltip" data-placement="top" title="The number of currently active validators">${ page.active_validators.toLocaleString('en-GB') }</span>
 								</h5>
 							</div>
 							<div class="text-right p-2">
 								<div class="text-secondary mb-0">Pending Validators</div>
 								<h5 class="font-weight-normal mb-0">
-									<span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to enter the active validator set">${ page.entering_validators }</span>
-									/ <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to exit the active validator set">${ page.exiting_validators }</span>
+									<span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to enter the active validator set">${ page.entering_validators.toLocaleString('en-GB') }</span>
+									/ <span data-toggle="tooltip" data-placement="top" title="The number of validators currently waiting to exit the active validator set">${ page.exiting_validators.toLocaleString('en-GB') }</span>
 								</h5>
 							</div>
 						</div>
@@ -644,13 +652,13 @@
 							<div class="p-2">
 								<div class="text-secondary mb-0">Staked Ether</div>
 								<h5 class="font-weight-normal mb-0">
-									<span data-toggle="tooltip" data-placement="top" title="Amount of Ether currently staked">${ page.staked_ether }</span>
+									<span data-toggle="tooltip" data-placement="top" title="Amount of Ether currently staked">${ page.staked_ether.toLocaleString('en-GB') }</span>
 								</h5>
 							</div>
 							<div class="text-right p-2">
 								<div class="text-secondary mb-0">Average Balance</div>
 								<h5 class="font-weight-normal mb-0">
-									<span data-toggle="tooltip" data-placement="top" title="Average staked balance of all validators">${ page.average_balance }</span>
+									<span data-toggle="tooltip" data-placement="top" title="Average staked balance of all validators">${ page.average_balance.toLocaleString('en-GB') }</span>
 								</h5>
 							</div>
 						</div>
