@@ -11,6 +11,13 @@ import (
 
 func notificationsSender() {
 	for {
+		// check if the explorer is not too far behind, if we set this value to close (10m) it could potentially never send any notifications
+		// if IsSyncing() {
+		if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(LatestEpoch())) {
+			logger.Info("skipping notifications because the explorer is syncing")
+			time.Sleep(time.Second * 60)
+			continue
+		}
 		start := time.Now()
 		notificationsByEMail := collectNotifications()
 		sendNotifications(notificationsByEMail)
@@ -53,6 +60,9 @@ func sendNotifications(notificationsByEmail map[string]map[types.EventName][]typ
 						sentSubsByEpoch[e] = append(sentSubsByEpoch[e], n.GetSubscriptionID())
 					}
 				}
+				if event == "validator_balance_decreased" {
+					msg += "\nYou will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.\n"
+				}
 			}
 			msg += fmt.Sprintf("\nBest regards\n\n%s", utils.Config.Frontend.SiteDomain)
 
@@ -75,9 +85,10 @@ func sendNotifications(notificationsByEmail map[string]map[types.EventName][]typ
 type validatorBalanceDecreasedNotification struct {
 	ValidatorIndex     uint64
 	ValidatorPublicKey string
-	Epoch              uint64
-	PrevBalance        uint64
-	Balance            uint64
+	StartEpoch         uint64
+	EndEpoch           uint64
+	StartBalance       uint64
+	EndBalance         uint64
 	SubscriptionID     uint64
 }
 
@@ -86,7 +97,7 @@ func (n *validatorBalanceDecreasedNotification) GetSubscriptionID() uint64 {
 }
 
 func (n *validatorBalanceDecreasedNotification) GetEpoch() uint64 {
-	return n.Epoch
+	return n.StartEpoch
 }
 
 func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
@@ -94,44 +105,53 @@ func (n *validatorBalanceDecreasedNotification) GetEventName() types.EventName {
 }
 
 func (n *validatorBalanceDecreasedNotification) GetInfo() string {
-	balance := float64(n.Balance) / 1e9
-	diff := float64(n.PrevBalance-n.Balance) / 1e9
-	return fmt.Sprintf(`The balance of validator %[1]v decreased by %.9[2]f ETH to %.9[3]f ETH at epoch %[4]v. For more information visit: https://%[5]s/validator/%[1]v`, n.ValidatorIndex, diff, balance, n.Epoch, utils.Config.Frontend.SiteDomain)
+	balance := float64(n.EndBalance) / 1e9
+	diff := float64(n.StartBalance-n.EndBalance) / 1e9
+	return fmt.Sprintf(`The balance of validator %[1]v decreased for 3 consecutive epochs by %.9[2]f ETH to %.9[3]f ETH from epoch %[4]v to epoch %[5]v. For more information visit: https://%[6]s/validator/%[1]v.`, n.ValidatorIndex, diff, balance, n.StartEpoch, n.EndEpoch, utils.Config.Frontend.SiteDomain)
 }
 
+// collectValidatorBalanceDecreasedNotifications finds all validators whose balance decreased for 3 consecutive epochs
+// and creates notifications for all subscriptions which have not been notified about the validator since the last time its balance increased.
+// It looks 10 epochs back for when the balance increased the last time, this means if the explorer is not running for 10 epochs it is possible
+// that no new notification is sent even if there was a balance-increase.
 func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[string]map[types.EventName][]types.Notification) error {
 	latestEpoch := LatestEpoch()
-	if latestEpoch == 0 {
+	if latestEpoch < 3 {
 		return nil
 	}
-	prevEpoch := latestEpoch - 3
 
 	var dbResult []struct {
 		SubscriptionID uint64 `db:"id"`
 		Email          string `db:"email"`
 		ValidatorIndex uint64 `db:"validatorindex"`
-		Balance        uint64 `db:"balance"`
-		PrevBalance    uint64 `db:"prevbalance"`
+		StartBalance   uint64 `db:"startbalance"`
+		EndBalance     uint64 `db:"endbalance"`
 	}
+
 	err := db.DB.Select(&dbResult, `
-		WITH
-			decreased_balance_validators AS (
-				SELECT 
-					vb.validatorindex, 
-					ENCODE(v.pubkey, 'hex') AS pubkey,
-					vb.balance, 
-					vb2.balance AS prevbalance
-				FROM validator_balances vb
-				INNER JOIN validators v ON v.validatorindex = vb.validatorindex
-				INNER JOIN validator_balances vb2 ON vb.validatorindex = vb2.validatorindex AND vb2.epoch = $3
-				WHERE vb.epoch = $2 AND vb.balance < vb2.balance
-			)
-		SELECT us.id, u.email, dbv.validatorindex, dbv.balance, dbv.prevbalance
-		FROM users_subscriptions us
-		INNER JOIN users u ON u.id = us.user_id
-		INNER JOIN decreased_balance_validators dbv ON dbv.pubkey = us.event_filter
-		WHERE us.event_name = $1 AND us.created_epoch <= $2 AND (us.last_sent_epoch IS NULL OR us.last_sent_epoch < $2)`,
-		types.ValidatorBalanceDecreasedEventName, latestEpoch, prevEpoch)
+		SELECT id, email, validatorindex, startbalance, endbalance FROM (
+			SELECT 
+				us.id, 
+				u.email, 
+				v.validatorindex, 
+				vb0.balance AS endbalance, 
+				vb3.balance AS startbalance, 
+				us.last_sent_epoch,
+				(SELECT MAX(epoch) FROM (
+					SELECT epoch, balance-LAG(balance) OVER (ORDER BY epoch) AS diff
+					FROM validator_balances 
+					WHERE validatorindex = v.validatorindex AND epoch > us.last_sent_epoch AND epoch > $2 - 10
+				) b WHERE diff > 0) AS lastbalanceincreaseepoch
+			FROM users_subscriptions us
+			INNER JOIN users u ON u.id = us.user_id
+			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
+			INNER JOIN validator_balances vb0 ON v.validatorindex = vb0.validatorindex AND vb0.epoch = $2
+			INNER JOIN validator_balances vb1 ON v.validatorindex = vb1.validatorindex AND vb1.epoch = $2 - 1 AND vb1.balance > vb0.balance
+			INNER JOIN validator_balances vb2 ON v.validatorindex = vb2.validatorindex AND vb2.epoch = $2 - 2 AND vb2.balance > vb1.balance
+			INNER JOIN validator_balances vb3 ON v.validatorindex = vb3.validatorindex AND vb3.epoch = $2 - 3 AND vb3.balance > vb2.balance
+			WHERE us.event_name = $1 AND us.created_epoch <= $2
+		) a WHERE lastbalanceincreaseepoch IS NOT NULL OR last_sent_epoch IS NULL`,
+		types.ValidatorBalanceDecreasedEventName, latestEpoch)
 	if err != nil {
 		return err
 	}
@@ -140,9 +160,10 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[stri
 		n := &validatorBalanceDecreasedNotification{
 			SubscriptionID: r.SubscriptionID,
 			ValidatorIndex: r.ValidatorIndex,
-			Balance:        r.Balance,
-			PrevBalance:    r.PrevBalance,
-			Epoch:          latestEpoch,
+			StartEpoch:     latestEpoch - 3,
+			EndEpoch:       latestEpoch,
+			StartBalance:   r.StartBalance,
+			EndBalance:     r.EndBalance,
 		}
 
 		if _, exists := notificationsByEmail[r.Email]; !exists {
@@ -195,6 +216,7 @@ func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map
 		Epoch          uint64 `db:"epoch"`
 		Reason         string `db:"reason"`
 	}
+
 	err := db.DB.Select(&dbResult, `
 		WITH
 			slashings AS (
