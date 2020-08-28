@@ -193,7 +193,10 @@
 			return Math.round(missingEther / 32e9)
 		},
 		scheduledCount: function() {
-			return {{.ScheduledCount}}
+			return this.page.scheduled_count
+		},
+		epochCompletePercent: function() {
+			return ((32 - this.page.scheduled_count) / 32) * 100
 		}
 	},
 	filters: {
@@ -233,7 +236,7 @@
 		align-items: center;
 		justify-content: center;
 		flex-wrap: wrap;
-		margin-bottom: 80px;
+		/* margin-bottom: 80px; */
 	}
 
 	.hero-image {
@@ -318,6 +321,9 @@
 			border-radius: 50%;
 			animation: none;
 			opacity: .3
+		}
+		.hero-container {
+			margin-bottom: 50px;
 		}
 	}
 
@@ -502,7 +508,7 @@
 				</h6>
 			</div>
 		</div>
-		<div class="ad d-flex my-3 justify-content-center pt-2">
+		<div class="ad d-flex justify-content-center my-3 pb-1">
 			<ins class="d-none d-md-block" data-revive-zoneid="5681" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
 			<ins class="d-md-none" data-revive-zoneid="5682" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
 		</div>
@@ -610,8 +616,8 @@
 		{{else}}
 		<div style="position:relative" class="card mt-3 index-stats">
 			{{ if not .ShowSyncingMessage }}
-			<div v-if="scheduledCount > 0" style="height: 5px; position:absolute;top:0;" class="progress w-100" data-toggle="tooltip" data-placement="bottom" :title="'This epoch has ' + scheduledCount + ' blocks remaining'">
-				<div class="progress-bar bg-primary" role="progressbar" style="width:${scheduledCount / 32}%" :aria-valuenow="scheduledCount" aria-valuemin="0" aria-valuemax="32"><span>${Math.round((scheduledCount / 32) * 10000) / 100}%</span></div>
+			<div style="position:absolute;top:-.5rem;font-size:.8rem;height:.8rem;" class="progress w-100" data-placement="bottom" :title="'This epoch is '+ epochCompletePercent +'% complete'">
+				<div class="progress-bar bg-secondary" role="progressbar" :style="'width:' + epochCompletePercent + '%'" :aria-valuenow="scheduledCount" aria-valuemin="0" aria-valuemax="32"><span v-if="scheduledCount > 0">${scheduledCount} / 32 slots left in epoch ${ page.current_epoch }</span><span v-else>${page.current_epoch} epoch complete</span></div>
 			</div>
 			{{end}}
 			<div class="card-header">
