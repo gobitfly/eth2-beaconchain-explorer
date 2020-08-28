@@ -22,22 +22,6 @@
 					next: ">",
 				}
 			},
-			columnDefs: [
-			{
-				targets: 4,
-				data: '4',
-				render: function(data, type, row) {
-					return '<span class="text-truncate" style="display:block;max-width: 180px;">'+data+ '</span>'
-				}
-			},
-			{
-				targets: 11,
-				data: '11',
-				render: function(data, type, row) {
-					return '<span class="text-truncate" style="display:block;max-width: 100px;">'+data+ '</span>'
-				}
-			}
-			],
 			preDrawCallback: function () {
 				// this does not always work.. not sure how to solve the staying tooltip
 				try {
@@ -87,7 +71,6 @@
 							<th>Status</th>
 							<th>Time</th>
 							<th>Proposer</th>
-							<th>Root Hash</th>
 							<th data-toggle="tooltip" data-placement="top" title="Attestations included in slot">Att</th>
 							<th data-toggle="tooltip" data-placement="top" title="Deposits included in block">Dep</th>
 							<th data-toggle="tooltip" data-placement="top" title="Slashings Proposer/Attester">S- <span>P</span>/<span>A</span></th>

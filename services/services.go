@@ -215,7 +215,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
 	}
 	data.ScheduledCount = scheduledCount
-	log.Println("scheduled count", data.ScheduledCount, "for epoch", data.CurrentEpoch)
 
 	var blocks []*types.IndexPageDataBlocks
 	err = db.DB.Select(&blocks, `
