@@ -6,7 +6,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
