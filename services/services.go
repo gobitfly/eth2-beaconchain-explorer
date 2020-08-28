@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -207,15 +208,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.Epochs = epochs
 
 	var scheduledCount uint8
-	err = db.DB.Select(&scheduledCount, `
-		SELECT 
-			COUNT(*) 
-		FROM 
-			blocks 
-		WHERE 
-			blocks.epoch = (SELECT MAX(blocks.epoch) FROM blocks LIMIT 1) AND blocks.status = '0';
+	err = db.DB.Get(&scheduledCount, `
+		select count(*) from blocks where status = '0' and epoch = (select max(epoch) from blocks limit 1);
 	`)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
+	}
 	data.ScheduledCount = scheduledCount
+	log.Println("scheduled count", data.ScheduledCount, "for epoch", data.CurrentEpoch)
 
 	var blocks []*types.IndexPageDataBlocks
 	err = db.DB.Select(&blocks, `
