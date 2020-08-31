@@ -639,6 +639,17 @@ type EthOneDepositsData struct {
 	ValidSignature        bool      `db:"valid_signature"`
 }
 
+type EthOneDepositLeaderboardData struct {
+	FromAddress  []byte `db:"from_address"`
+	Amount       uint64 `db:"amount"`
+	ValidCount   uint64 `db:"validcount"`
+	InvalidCount uint64 `db:"invalidcount"`
+	TotalCount   uint64 `db:"totalcount"`
+	PendingCount uint64 `db:"pendingcount"`
+	SlashedCount uint64 `db:"slashedcount"`
+	ActiveCount  uint64 `db:"activecount"`
+}
+
 type EthTwoDepositData struct {
 	BlockSlot             uint64 `db:"block_slot"`
 	BlockIndex            uint64 `db:"block_index"`

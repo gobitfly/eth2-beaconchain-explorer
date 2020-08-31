@@ -9,13 +9,15 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"net/http"
 	"time"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 
 	"github.com/sirupsen/logrus"
 
 	_ "eth2-exporter/docs"
+
 	"github.com/gorilla/mux"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/phyber/negroni-gzip/gzip"
@@ -136,6 +138,8 @@ func main() {
 		router.HandleFunc("/validators/leaderboard/data", handlers.ValidatorsLeaderboardData).Methods("GET")
 		router.HandleFunc("/validators/eth1deposits", handlers.Eth1Deposits).Methods("GET")
 		router.HandleFunc("/validators/eth1deposits/data", handlers.Eth1DepositsData).Methods("GET")
+		router.HandleFunc("/validators/eth1leaderboard", handlers.Eth1DepositsLeaderboard).Methods("GET")
+		router.HandleFunc("/validators/eth1leaderboard/data", handlers.Eth1DepositsLeaderboardData).Methods("GET")
 		router.HandleFunc("/validators/eth2deposits", handlers.Eth2Deposits).Methods("GET")
 		router.HandleFunc("/validators/eth2deposits/data", handlers.Eth2DepositsData).Methods("GET")
 

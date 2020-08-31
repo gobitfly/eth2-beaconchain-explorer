@@ -6,7 +6,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/gorilla/mux"
 	"math/big"
 	"net/http"
 	"regexp"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 
 	"github.com/jmoiron/sqlx"
 
@@ -142,11 +143,11 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			(
 				SELECT pubkey,
 				CASE 
-					WHEN exitepoch <= $4 then 'exited'
-					WHEN activationepoch > $4 then 'pending'
-					WHEN slashed and activationepoch < $4 and (lastattestationslot < $5 OR lastattestationslot is null) then 'slashing_offline'
+					WHEN exitepoch <= $3 then 'exited'
+					WHEN activationepoch > $3 then 'pending'
+					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
 					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $4 and (lastattestationslot < $5 OR lastattestationslot is null) then 'active_offline' 
+					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline'
 					ELSE 'active_online'
 				END AS state
 				FROM validators
@@ -154,14 +155,14 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ON
 			v.pubkey = eth1.publickey
 		WHERE
-			ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($3)
-			OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($3)
-			OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($3)
-			OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($3)
-			OR CAST(eth1.block_number AS text) LIKE LOWER($3)
+			ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($5)
+			OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($5)
+			OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($5)
+			OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($5)
+			OR CAST(eth1.block_number AS text) LIKE LOWER($5)
 		ORDER BY %s %s
 		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, query+"%", latestEpoch, validatorOnlineThresholdSlot)
+		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot, query+"%")
 	} else {
 		err = DB.Select(&deposits, fmt.Sprintf(`
 		SELECT 
@@ -188,7 +189,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 					WHEN activationepoch > $3 then 'pending'
 					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
 					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline' 
+					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline'
 					ELSE 'active_online'
 				END AS state
 				FROM validators
@@ -208,7 +209,6 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 
 func GetEth1DepositsCount() (uint64, error) {
 	deposits := uint64(0)
-
 	err := DB.Get(&deposits, `
 	SELECT 
 		Count(*)
@@ -218,8 +218,92 @@ func GetEth1DepositsCount() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-
 	return deposits, nil
+}
+
+func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, orderDir string, latestEpoch uint64) ([]*types.EthOneDepositLeaderboardData, uint64, error) {
+	deposits := []*types.EthOneDepositLeaderboardData{}
+
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	columns := []string{
+		"from_address",
+		"amount",
+		"validcount",
+		"invalidcount",
+		"slashedcount",
+		"totalcount",
+		"activecount",
+		"pendingcount",
+	}
+	hasColumn := false
+	for _, column := range columns {
+		if orderBy == column {
+			hasColumn = true
+		}
+	}
+	if !hasColumn {
+		orderBy = "amount"
+	}
+
+	var err error
+	var totalCount uint64
+	if query != "" {
+		err = DB.Get(&totalCount, `
+		SELECT
+			COUNT(from_address)
+			FROM
+				(
+					SELECT
+						from_address
+					FROM
+						eth1_deposits as eth1
+					WHERE
+						ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($1)
+						GROUP BY from_address
+				) as count
+		`, query+"%")
+	} else {
+		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM (SELECT from_address FROM eth1_deposits GROUP BY from_address) as count")
+	}
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = DB.Select(&deposits, fmt.Sprintf(`
+		SELECT 
+			from_address,
+			SUM(amount) as amount,
+			COUNT(CASE WHEN valid_signature = 't' THEN 1 END) as validcount,
+			COUNT(CASE WHEN valid_signature = 'f' THEN 1 END) as invalidcount,
+			COUNT(CASE WHEN v.slashed = 't' THEN 1 END) as slashedcount,
+			COUNT(pubkey) as totalcount,
+			COUNT(CASE WHEN v.slashed = 'f' and v.exitepoch > $3 and activationepoch < $3 THEN 1 END) as activecount,
+			COUNT(CASE WHEN activationepoch > $3 THEN 1 END) as pendingcount
+		FROM
+			eth1_deposits as eth1
+		LEFT JOIN
+			(
+				SELECT 
+					pubkey,
+					slashed,
+					exitepoch,
+					activationepoch
+				FROM validators
+			) as v
+		ON
+			v.pubkey = eth1.publickey
+		WHERE
+			ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($4)
+		GROUP BY eth1.from_address
+		ORDER BY %s %s
+		LIMIT $1
+		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, query+"%")
+	if err != nil {
+		return nil, 0, err
+	}
+	return deposits, totalCount, nil
 }
 
 func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositData, error) {
