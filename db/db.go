@@ -236,6 +236,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 		"totalcount",
 		"activecount",
 		"pendingcount",
+		"voluntary_exit_count",
 	}
 	hasColumn := false
 	for _, column := range columns {
@@ -280,7 +281,8 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 			COUNT(CASE WHEN v.slashed = 't' THEN 1 END) as slashedcount,
 			COUNT(pubkey) as totalcount,
 			COUNT(CASE WHEN v.slashed = 'f' and v.exitepoch > $3 and activationepoch < $3 THEN 1 END) as activecount,
-			COUNT(CASE WHEN activationepoch > $3 THEN 1 END) as pendingcount
+			COUNT(CASE WHEN activationepoch > $3 THEN 1 END) as pendingcount,
+			COUNT(CASE WHEN v.slashed = 'f' and v.exitepoch < $3 THEN 1 END) as voluntary_exit_count
 		FROM
 			eth1_deposits as eth1
 		LEFT JOIN
@@ -289,7 +291,8 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 					pubkey,
 					slashed,
 					exitepoch,
-					activationepoch
+					activationepoch,
+					name
 				FROM validators
 			) as v
 		ON

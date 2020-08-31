@@ -88,9 +88,11 @@
 					series[0] = something.series[3]
 					series[1] = something.series[4]
 					series[2] = something.series[5]
+					series[3] = something.series[6]
 					series[0].name = 'Pending'
 					series[1].name = 'Active'
 					series[2].name = 'Slashed'
+					series[3].name = 'Voluntary Exits'
 
 					// replace keys with eth1 address
 					for (let i = 0; i < series.length; i++) {
@@ -211,12 +213,14 @@
 				<thead>
 					<tr>
 						<th>Eth1 Address</th>
+						<!-- <th>Name</th> -->
 						<th>Total Deposited</th>
 						<th data-toggle="tooltip" title="Valid deposits">Valid</th>
 						<th data-toggle="tooltip" title="Invalid deposits">Invalid</th>
 						<th data-toggle="tooltip" title="Number of pending validators">Pen</th>
 						<th data-toggle="tooltip" title="Number of attesting validators">Att</th>
 						<th data-toggle="tooltip" title="Number of slashed validators">Sla</th>
+						<th data-toggle="tooltip" title="Number of voluntary exited validators">Ex</th>
 						<th data-toggle="tooltip" title="Total number of validators">Tot</th>
 					</tr>
 				</thead>

@@ -218,7 +218,8 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 		"4": "pendingcount",
 		"5": "activecount",
 		"6": "slashedcount",
-		"7": "totalcount",
+		"7": "voluntary_exit_count",
+		"8": "totalcount",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -246,6 +247,7 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			d.PendingCount,
 			d.ActiveCount,
 			d.SlashedCount,
+			d.VoluntaryExitCount,
 			d.TotalCount,
 			// utils.FormatPublicKey(d.PublicKey),
 			// utils.FormatDepositAmount(d.Amount),
