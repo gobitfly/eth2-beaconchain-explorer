@@ -166,6 +166,8 @@ func main() {
 		router.HandleFunc("/reset/{hash}", handlers.ResetPassword).Methods("GET")
 		router.HandleFunc("/reset", handlers.ResetPasswordPost).Methods("POST")
 
+		router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
+		router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("Post")
 		router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 		router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
