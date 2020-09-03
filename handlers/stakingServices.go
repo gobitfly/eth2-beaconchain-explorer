@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"eth2-exporter/mail"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -43,4 +44,46 @@ func StakingServices(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+}
+
+func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		logger.Errorf("error parsing form: %v", err)
+		utils.SetFlash(w, r, "ad_flash", "Error: invalid form submitted")
+		http.Redirect(w, r, "/advertisewithus", http.StatusSeeOther)
+		return
+	}
+
+	name := r.FormValue("name")
+	url := r.FormValue("url")
+	custodial := r.FormValue("custodial")
+	stake := r.FormValue("stake")
+	fee := r.FormValue("fee")
+	open := r.FormValue("open")
+	links := r.FormValue("links")
+	comments := r.FormValue("comments")
+
+	msg := fmt.Sprintf(`Add new Staking Service:
+								Name: %s
+								Url: %s
+								Custodial: %s
+								Stake: %s
+								Fee: %s
+								Open Source: %s
+								Social Links: %s
+								Comments: %s`, name, url, custodial, stake, fee, open, links, comments)
+	// escape html
+	msg = template.HTMLEscapeString(msg)
+
+	err = mail.SendMail("support@beaconcha.in", "New ad inquiry", msg)
+	if err != nil {
+		logger.Errorf("error sending ad form: %v", err)
+		utils.SetFlash(w, r, "ad_flash", "Error: unable to submit ad request")
+		http.Redirect(w, r, "/advertisewithus", http.StatusSeeOther)
+		return
+	}
+
+	utils.SetFlash(w, r, "ad_flash", "Thank you for your inquiry, we will get back to you as soon as possible.")
+	http.Redirect(w, r, "/advertisewithus", http.StatusSeeOther)
 }

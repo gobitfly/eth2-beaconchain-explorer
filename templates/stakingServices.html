@@ -8,6 +8,44 @@
                 max-width: 300px;
             }
         }
+				@media (max-width: 960px) {
+					table { 
+	 				 	width: 100%; 
+					}
+					table, thead, tbody, th, td, tr {
+						display: block
+					}
+					thead tr { 
+						position: absolute;
+						top: -9999px;
+						left: -9999px;
+					}
+					tr { 
+						border: 1px solid var(--border-color);
+						margin: 1rem 0;
+					}
+					td { 
+						/* Behave  like a "row" */
+						border: none;
+						border-bottom: 1px solid var(--border-color-transparent); 
+						position: relative;
+						padding-left: 40% !important; 
+					}
+					td:before { 
+						/* Now like a table header */
+						position: absolute;
+						/* Top/left values mimic padding */
+						left: 1rem;
+						width: 35%; 
+						padding-right: 1rem; 
+						white-space: nowrap;
+						/* Label the data */
+						content: attr(data-column);
+
+						color: var(--body-color);
+						font-weight: bold;
+					}
+				}
 	</style>
 {{end}}
 
@@ -32,62 +70,126 @@
 				<div class="col-md-12">
 					<h1 class="h2 font-weight-bold text-primary text-center">Staking Services</h1>
 					<div class="table-responsive">
+						<style>
+							#stakingServices {
+								
+							}
+						</style>
 						<table class="table" id="stakingServices">
-							<tr>
-								<th>Service</th>
-								<th>Website</th>
-								<th>Type</th>
-								<th>Min. Stake</th>
-								<th>Fee</th>
-								<th>Open Source</th>
-								<th>Support</th>
-							</tr>
-							<tr>
-								<td>Stakewise Pool</td>
-								<td><a href="https://stakewise.io/app/pools">stakewise.io/app/pools</a></td>
-								<td>Custodial</td>
-								<td>Any amount</td>
-								<td>?</td>
-								<td>No</td>
-								<td><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-							</tr>
-							<tr>
-								<td>Stakewise Solo</td>
-								<td><a href="https://stakewise.io/app/solo">stakewise.io/app/solo</a></td>
-								<td>Custodial</td>
-								<td>32 ETH</td>
-								<td>?</td>
-								<td>No</td>
-								<td><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-							</tr>
-							<tr>
-								<td>Blox</td>
-								<td><a href="https://www.bloxstaking.com/">bloxstaking.com</a></td>
-								<td>Non-Custodial</td>
-								<td>32 ETH</td>
-								<td>?</td>
-								<td>Yes</td>
-								<td><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-discord ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-							</tr>
-							<tr>
-								<td>Attestant</td>
-								<td><a href="https://www.attestant.io/service/">attestant.io/service</a></td>
-								<td>Custodial</td>
-								<td>32 ETH</td>
-								<td>?</td>
-								<td>No</td>
-								<td><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-							</tr>
-							<tr>
-								<td>Stake Fish</td>
-								<td><a href="https://stake.fish/">stake.fish</a></td>
-								<td>Non-Custodial</td>
-								<td>32 ETH</td>
-								<td>?</td>
-								<td>No</td>
-								<td><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-							</tr>
+							<thead>
+								<tr>
+									<th>Service</th>
+									<th>Website</th>
+									<th>Type</th>
+									<th>Min. Stake</th>
+									<th>Fee</th>
+									<th>Open Source</th>
+									<th>Social</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td data-column="Service">Stakewise Pool</td>
+									<td data-column="Website"><a href="https://stakewise.io/app/pools">stakewise.io/app/pools</a></td>
+									<td data-column="Type">Custodial</td>
+									<td data-column="Min. Stake">Any amount</td>
+									<td data-column="Fee">?</td>
+									<td data-column="Open Source">No</td>
+									<td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+								</tr>
+								<tr>
+									<td data-column="Service">Stakewise Solo</td>
+									<td data-column="Website"><a href="https://stakewise.io/app/solo">stakewise.io/app/solo</a></td>
+									<td data-column="Type">Custodial</td>
+									<td data-column="Min. Stake">32 ETH</td>
+									<td data-column="Fee">?</td>
+									<td data-column="Open Source">No</td>
+									<td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+								</tr>
+								<tr>
+									<td data-column="Service">Blox</td>
+									<td data-column="Website"><a href="https://www.bloxstaking.com/">bloxstaking.com</a></td>
+									<td data-column="Type">Non-Custodial</td>
+									<td data-column="Min. Stake">32 ETH</td>
+									<td data-column="Fee">?</td>
+									<td data-column="Open Source">Yes</td>
+									<td data-column="Social"><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-discord ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+								</tr>
+								<tr>
+									<td data-column="Service">Attestant</td>
+									<td data-column="Website"><a href="https://www.attestant.io/service/">attestant.io/service</a></td>
+									<td data-column="Type">Custodial</td>
+									<td data-column="Min. Stake">32 ETH</td>
+									<td data-column="Fee">?</td>
+									<td data-column="Open Source">No</td>
+									<td data-column="Social"><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+								</tr>
+								<tr>
+									<td data-column="Service">Stake Fish</td>
+									<td data-column="Website"><a href="https://stake.fish/">stake.fish</a></td>
+									<td data-column="Type">Non-Custodial</td>
+									<td data-column="Min. Stake">32 ETH</td>
+									<td data-column="Fee">?</td>
+									<td data-column="Open Source">No</td>
+									<td data-column="Social"><i class="fab fa-twitter ml-1 mr-1"></i><i class="fab fa-telegram ml-1 mr-1"></i><i class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+								</tr>
+							</tbody>
 						</table>
+					</div>
+				</div>
+			</div>
+		</section>
+		<section class="my-5">
+			<div class="row">
+				<div class="col-md-12">
+					<div class="row justify-content-center">
+						<div class="col-md-12 col-lg-10 text-center">
+							<h1 class="h4 ">Reqeust to add your Staking Service</h1>
+							<p class="text-muted col-md-8 px-0 mx-auto">If you have a staking service and want it to be listed above please fill out the form below or create a <a class="" href="https://github.com/gobitfly/eth2-beaconchain-explorer">pull request <i class="fab fa-github"></i></a></p>
+							<form id="contact" action="/stakingServices" method="post">
+								<div class="text-left">
+									<div class="form-row">
+										<div class="form-group col-md-6">
+											<label for="name">Service Name (required)</label>
+											<input type="text" class="form-control" id="name" placeholder="Ex. Stakewise Pool" required name="name">
+										</div>
+										<div class="form-group col-md-6">
+											<label for="url">Website URL (required)</label>
+											<input type="text" class="form-control" id="url" placeholder="Ex.: https://www.stakewise.io" required name="url">
+										</div>
+									</div>
+									<div class="form-row">
+										<div class="form-group col-md-6">
+											<label for="custodial">Type (required)</label>
+											<input type="text" class="form-control" id="custodial" placeholder="Ex.:  Custodial / Non-Custodial" required name="custodial">
+										</div>
+										<div class="form-group col-md-6">
+											<label for="stake">Min Stake (required)</label>
+											<input type="text" class="form-control" id="stake" placeholder="Ex.: 32 ETH" required name="stake">
+										</div>
+									</div>
+									<div class="form-row">
+										<div class="form-group col-md-6">
+											<label for="fee">Fee (required)</label>
+											<input type="text" class="form-control" id="fee" required name="fee" placeholder="Ex. 5%">
+										</div>
+										<div class="form-group col-md-6">
+											<label for="open">Open Source (required)</label>
+											<input type="text" class="form-control" id="open" required name="open" placeholder="Ex. Yes, https://github.com/repo">
+										</div>
+									</div>
+									<div class="form-group">
+										<label for="links">Social Links (required)</label>
+										<input type="text" class="form-control" id="links" required name="links" placeholder="Ex. https://discord.com/xyz, https://twitter.com/stakewise...">
+									</div>
+									<div class="form-group">
+										<label for="inputQuestions">Comments & Questions</label>
+										<textarea  class="form-control" id="inputQuestions" name="comments"></textarea>
+									</div>
+								</div>
+								<button type="submit" class="btn btn-primary text-center">Send Request</button>
+							</form>
+						</div>
 					</div>
 				</div>
 			</div>
