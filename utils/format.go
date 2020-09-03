@@ -1,13 +1,17 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
 	"html"
 	"html/template"
+	"net/url"
 	"strings"
 	"time"
 
 	eth1common "github.com/ethereum/go-ethereum/common"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 func FormatMessageToHtml(message string) template.HTML {
@@ -35,7 +39,19 @@ func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint6
 
 // FormatBalance will return a string for a balance
 func FormatBalance(balance uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.2f ETH", float64(balance)/float64(1e9)))
+	p := message.NewPrinter(language.English)
+	rb := []rune(p.Sprintf("%.2f", float64(balance)/float64(1e9)))
+	// remove trailing zeros
+	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+		for rb[len(rb)-1] == '0' {
+			rb = rb[:len(rb)-1]
+		}
+		if rb[len(rb)-1] == '.' {
+			rb = rb[:len(rb)-1]
+
+		}
+	}
+	return template.HTML(string(rb) + " ETH")
 }
 
 // FormatBlockRoot will return the block-root formated as html
@@ -133,19 +149,29 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
 func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
 	rr := fmt.Sprintf("%.0f%%", r*100)
-	tpl := `<div>%.2[1]f <small class="text-muted ml-3">(%[2]v)</small></div><div class="progress" style="height:5px;"><div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div></div>`
+	tpl := `
+	<div style="position:relative;width:inherit;height:inherit;">
+	  %[1]g <small class="text-muted ml-3">(%[2]v)</small>
+	  <div class="progress" style="position:absolute;bottom:-6px;width:100%%;height:4px;">
+		<div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
+	  </div>
+	</div>`
 	return template.HTML(fmt.Sprintf(tpl, float64(e)/1e9, rr))
 }
 
 // FormatGraffiti will return the graffiti formated as html
 func FormatGraffiti(graffiti []byte) template.HTML {
-	str := strings.Map(fixUtf, template.HTMLEscapeString(string(graffiti)))
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, str))
+	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	h := template.HTMLEscapeString(s)
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, h))
 }
 
+// FormatGraffitiAsLink will return the graffiti formated as html-link
 func FormatGraffitiAsLink(graffiti []byte) template.HTML {
-	str := strings.Map(fixUtf, template.HTMLEscapeString(string(graffiti)))
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/blocks?q=%s\">%s</a></span>", graffiti, str, str))
+	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
+	h := template.HTMLEscapeString(s)
+	u := url.QueryEscape(s)
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\"><a href=\"/blocks?q=%s\">%s</a></span>", graffiti, u, h))
 }
 
 // FormatHash will return a hash formated as html
@@ -226,7 +252,7 @@ func FormatValidator(validator uint64) template.HTML {
 
 func FormatValidatorWithName(validator uint64, name string) template.HTML {
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v (<span class=\"text-truncate\">"+html.EscapeString(name)+"</span>)</a>", validator, validator))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validator))
 	} else {
 		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
 	}
@@ -245,6 +271,15 @@ func FormatSlashedValidatorInt64(validator int64) template.HTML {
 // FormatSlashedValidator will return html formatted text for a slashed validator
 func FormatSlashedValidator(validator uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+}
+
+// FormatSlashedValidator will return html formatted text for a slashed validator
+func FormatSlashedValidatorWithName(validator uint64, name string) template.HTML {
+	if name != "" {
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v (<span class=\"text-truncate\">"+html.EscapeString(name)+"</span>)</a>", validator, validator))
+	} else {
+		return FormatSlashedValidator(validator)
+	}
 }
 
 // FormatSlashedValidatorsInt64 will return html formatted text for slashed validators
@@ -269,6 +304,20 @@ func FormatSlashedValidators(validators []uint64) template.HTML {
 	return template.HTML(strings.Join(vals, ","))
 }
 
+// FormatSlashedValidators will return html formatted text for slashed validators
+func FormatSlashedValidatorsWithName(validators []uint64, nameMap map[uint64]string) template.HTML {
+	vals := make([]string, 0, len(validators))
+	for _, v := range validators {
+		name := nameMap[v]
+		if name != "" {
+			vals = append(vals, string(FormatSlashedValidatorWithName(v, name)))
+		} else {
+			vals = append(vals, string(FormatSlashedValidator(v)))
+		}
+	}
+	return template.HTML(strings.Join(vals, ","))
+}
+
 // FormatYesNo will return yes or no formated as html
 func FormatYesNo(yes bool) template.HTML {
 	if yes {
@@ -284,12 +333,12 @@ func FormatValidatorName(name string) template.HTML {
 
 func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 
-	tooltipText := "The attestation inclusion effectiveness should be 90% or higher to minimize reward penalties."
+	tooltipText := "The attestation inclusion effectiveness should be 80% or higher to minimize reward penalties."
 	if eff == 0 {
 		return ""
-	} else if eff > 90 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Good <i class=\"fas fa-smile\"></i>", tooltipText, eff))
 	} else if eff > 80 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Good <i class=\"fas fa-smile\"></i>", tooltipText, eff))
+	} else if eff > 60 {
 		return template.HTML(fmt.Sprintf("<span class=\"text-warning\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Fair <i class=\"fas fa-meh\"></i>", tooltipText, eff))
 	} else {
 		return template.HTML(fmt.Sprintf("<span class=\"text-danger\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Bad <i class=\"fas fa-frown\"></i>", tooltipText, eff))

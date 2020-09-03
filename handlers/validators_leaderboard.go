@@ -102,34 +102,67 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var totalCount uint64
-
-	err = db.DB.Get(&totalCount, "SELECT COUNT(*) FROM validator_performance")
-	if err != nil {
-		logger.Errorf("error retrieving proposed blocks count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
 	var performanceData []*types.ValidatorPerformance
-	err = db.DB.Select(&performanceData, `
-		SELECT * FROM (
-			SELECT 
-				ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
-				validator_performance.*,
-				validators.pubkey, 
-				COALESCE(validators.name, '') AS name
-			FROM validator_performance 
-				LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
-			ORDER BY `+orderBy+` `+orderDir+`
-		) AS a
-		WHERE (encode(a.pubkey::bytea, 'hex') LIKE $3
-			OR CAST(a.validatorindex AS text) LIKE $3)
-		LIMIT $1 OFFSET $2`, length, start, "%"+search+"%")
 
-	if err != nil {
-		logger.Errorf("error retrieving validator attestations data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+	if search == "" {
+		err = db.DB.Get(&totalCount, `SELECT COUNT(*) FROM validator_performance`)
+		if err != nil {
+			logger.Errorf("error retrieving proposed blocks count: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+
+		err = db.DB.Select(&performanceData, `
+			SELECT * FROM (
+				SELECT 
+					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
+					validator_performance.*,
+					validators.pubkey, 
+					COALESCE(validators.name, '') AS name
+				FROM validator_performance 
+					LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+				ORDER BY `+orderBy+` `+orderDir+`
+			) AS a
+			LIMIT $1 OFFSET $2`, length, start)
+		if err != nil {
+			logger.Errorf("error retrieving validator attestations data: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	} else {
+		err = db.DB.Get(&totalCount, `
+			SELECT COUNT(*)
+			FROM validator_performance
+				LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+			WHERE (encode(validators.pubkey::bytea, 'hex') LIKE $1
+				OR CAST(validators.validatorindex AS text) LIKE $1)
+				OR LOWER(validators.name) LIKE LOWER($1)`, "%"+search+"%")
+		if err != nil {
+			logger.Errorf("error retrieving proposed blocks count with search: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+
+		err = db.DB.Select(&performanceData, `
+			SELECT * FROM (
+				SELECT 
+					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
+					validator_performance.*,
+					validators.pubkey, 
+					COALESCE(validators.name, '') AS name
+				FROM validator_performance 
+					LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+				ORDER BY `+orderBy+` `+orderDir+`
+			) AS a
+			WHERE (encode(a.pubkey::bytea, 'hex') LIKE $3
+				OR CAST(a.validatorindex AS text) LIKE $3)
+				OR LOWER(a.name) LIKE LOWER($3)
+			LIMIT $1 OFFSET $2`, length, start, "%"+search+"%")
+		if err != nil {
+			logger.Errorf("error retrieving validator attestations data with search: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 	}
 
 	tableData := make([][]interface{}, len(performanceData))

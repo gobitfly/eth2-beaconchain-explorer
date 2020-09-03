@@ -1,26 +1,32 @@
 {{ define "js"}}
 
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+<script type="text/javascript" src="/js/datatable_input.js"></script>
 <script>
-	$(document).ready(function() {
+	$(document).ready(function () {
 		$('#epochs').DataTable({
 			processing: true,
 			serverSide: true,
 			ordering: false,
 			searching: true,
 			ajax: '/epochs/data',
-			pagingType: 'full',
+			pagingType: 'input',
+			pageLength: 10,
 			language: {
 				searchPlaceholder: 'Search by Epoch Number',
-				search: ''
+				search: '',
+				paginate: {
+					previous: "<",
+					next: ">",
+				}
 			},
-			preDrawCallback: function() {
+			preDrawCallback: function () {
 				// this does not always work.. not sure how to solve the staying tooltip
 				try {
 					$('#epochs').find('[data-toggle="tooltip"]').tooltip('dispose')
-				} catch (e) {}
+				} catch (e) { }
 			},
-			drawCallback: function(settings) {
+			drawCallback: function (settings) {
 				formatTimestamps()
 			},
 		})
@@ -31,7 +37,6 @@
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
 {{end}} {{ define "content"}}
 <div class="container mt-2">
-<div class="my-3">
 	<div class="d-md-flex py-2 justify-content-md-between">
 		<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-history mr-2"></i>Epochs</h1>
 		<nav aria-label="breadcrumb">
@@ -41,27 +46,27 @@
 			</ol>
 		</nav>
 	</div>
-</div>
-<div class="card">
-	<div class="card-body px-0 py-2">
-		<div class="table-responsive p-0">
-			<table class="table" id="epochs">
-				<thead>
-					<tr>
-						<th>Epoch</th>
-						<th>Time</th>
-						<th>Attestations</th>
-						<th>Deposits</th>
-						<th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-						<th>Finalized</th>
-						<th>Eligible</th>
-						<th>Voted</th>
-					</tr>
-				</thead>
-				<tbody> </tbody>
-			</table>
+	<div class="card">
+		<div class="card-body px-0 py-3">
+			<div class="table-responsive px-0 py-1">
+				<table class="table" id="epochs">
+					<thead>
+						<tr>
+							<th>Epoch</th>
+							<th>Time</th>
+							<th>Attestations</th>
+							<th>Deposits</th>
+							<th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+							<th>Finalized</th>
+							<th>Eligible</th>
+							<th>Voted</th>
+						</tr>
+					</thead>
+					<tbody> </tbody>
+				</table>
+			</div>
 		</div>
 	</div>
 </div>
-</div>
+
 {{end}}

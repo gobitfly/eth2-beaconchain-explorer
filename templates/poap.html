@@ -1,6 +1,7 @@
 {{ define "js"}}
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
+<script type="text/javascript" src="/js/datatable_input.js"></script>
 <script>
 var clients = {{.PoapClients}}
 var graffitiFlagData = {
@@ -90,14 +91,14 @@ $(document).ready(function() {
 		targets: 0,
 		data: '0',
 		render: function(data, type, row) {
-			return `<a href="https://etherchain.org/account/${data}">${data.substr(0,8)}…</a>`
+			return `<a style="display: block; max-width:130px;" class="text-truncate" href="https://etherchain.org/account/${data}">${data}</a>`
 		}
 	}, {
 		targets: 1,
 		data: '1',
 		render: function(data, type, row) {
 			if (data == 0) return 0
-			return `<a href="/blocks?q=${addrClientToFlag(row[0].slice(2),0).substr(0,31)}">${data}</a>`
+			return `<a href="/blocks?q=${encodeURIComponent(addrClientToFlag(row[0].slice(2),0).substr(0,31))}">${data}</a>`
 		}
 	}]
 	for (var i=0; i<clients.length; i++) {
@@ -106,7 +107,7 @@ $(document).ready(function() {
 			data: (i*2+3)+'',
 			render: function(i){return function(data, type, row) {
 				if (data == 0) return 0
-				return `<a href="/blocks?q=${addrClientToFlag(row[0].slice(2),i)}">${data}</a>`
+				return `<a href="/blocks?q=${encodeURIComponent(addrClientToFlag(row[0].slice(2),i))}">${data}</a>`
 			}}(i)
 		})
 	}
@@ -117,10 +118,14 @@ $(document).ready(function() {
 		searching: true,
 		columnDefs: columnDefs,
 		// ajax: '/poap/data',
-		pagingType: 'full',
+		pagingType: 'input',
 		language: {
 			searchPlaceholder: 'Search by ETH1 Address',
-			search: ''
+			search: '',
+			paginate: {
+					previous: "<",
+					next: ">",
+			}
 		},
 	})
 

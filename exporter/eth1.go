@@ -234,7 +234,7 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
 			valid_signature
 		)
 		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, $7, $8, $9, $10, $11, $12, $13)
-		ON CONFLICT (tx_hash) DO UPDATE SET
+		ON CONFLICT (tx_hash, merkletree_index) DO UPDATE SET
 			tx_input               = EXCLUDED.tx_input,
 			tx_index               = EXCLUDED.tx_index,
 			block_number           = EXCLUDED.block_number,

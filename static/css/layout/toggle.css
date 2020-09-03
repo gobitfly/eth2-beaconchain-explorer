@@ -1,6 +1,8 @@
 .theme-switch-wrapper {
   position: relative;
-  display: contents;
+  display: inline-flex;
+  width: 38.4px;
+  height: 19.2px;
 }
 
 .theme-switch {

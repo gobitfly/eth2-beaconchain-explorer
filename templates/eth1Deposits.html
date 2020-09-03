@@ -1,5 +1,6 @@
 {{ define "js"}}
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+<script type="text/javascript" src="/js/datatable_input.js"></script>
 <script>
 	$(document).ready(function() {
     var usp = new URLSearchParams(window.location.search)
@@ -12,7 +13,7 @@
 			order: [[4, 'desc']],
 			searching: true,
 			ajax: '/validators/eth1deposits/data',
-			pagingType: 'full',
+			pagingType: 'input',
 			preDrawCallback: function() {
 				// this does not always work.. not sure how to solve the staying tooltip
 				try {
@@ -24,7 +25,11 @@
 			},
 			language: {
 				searchPlaceholder: 'Address / Validator Key / Tx Hash',
-				search: ''
+				search: '',
+				paginate: {
+					previous: "<",
+					next: ">",
+				}
 			}
 		})
 		if(q) {
