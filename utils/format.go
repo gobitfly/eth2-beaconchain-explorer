@@ -258,6 +258,15 @@ func FormatValidatorWithName(validator uint64, name string) template.HTML {
 	}
 }
 
+func FormatEth1AddressWithName(address []byte, name string) template.HTML {
+	eth1Addr := eth1common.BytesToAddress(address)
+	if name != "" {
+		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s</a>", eth1Addr, name))
+	} else {
+		return FormatEth1Address(address)
+	}
+}
+
 // FormatValidatorInt64 will return html formatted text for a validator (for an int64 validator-id)
 func FormatValidatorInt64(validator int64) template.HTML {
 	return FormatValidator(uint64(validator))
