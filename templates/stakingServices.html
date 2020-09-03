@@ -50,6 +50,14 @@
 {{end}}
 
 {{ define "content"}}
+{{if ne .FlashMessage ""}}
+<div class="alert container mt-2 {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
+	<div class="p-2">{{.FlashMessage | formatHTML}}</div>
+	<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+		<span aria-hidden="true">&times;</span>
+	</button>
+</div>
+{{end}}
 	<section style="background: var(--bg-color-light)">
 		<div class="container">
 			<div style="padding-top: 4rem;" class="row justify-content-between align-items-center">

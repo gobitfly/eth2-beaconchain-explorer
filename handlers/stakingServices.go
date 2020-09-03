@@ -38,6 +38,15 @@ func StakingServices(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
+	pageData := &types.StakeWithUsPageData{}
+	pageData.FlashMessage, err = utils.GetFlash(w, r, "stake_flash")
+	if err != nil {
+		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	data.Data = pageData
+
 	err = stakingServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -50,7 +59,7 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		logger.Errorf("error parsing form: %v", err)
-		utils.SetFlash(w, r, "ad_flash", "Error: invalid form submitted")
+		utils.SetFlash(w, r, "stake_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/stakingServices", http.StatusSeeOther)
 		return
 	}
@@ -79,11 +88,11 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 	err = mail.SendMail("support@beaconcha.in", "New ad inquiry", msg)
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
-		utils.SetFlash(w, r, "ad_flash", "Error: unable to submit ad request")
+		utils.SetFlash(w, r, "stake_flash", "Error: unable to submit ad request")
 		http.Redirect(w, r, "/stakingServices", http.StatusSeeOther)
 		return
 	}
 
-	utils.SetFlash(w, r, "ad_flash", "Thank you for your inquiry, we will get back to you as soon as possible.")
+	utils.SetFlash(w, r, "stake_flash", "Thank you for your inquiry, we will get back to you as soon as possible.")
 	http.Redirect(w, r, "/stakingServices", http.StatusSeeOther)
 }

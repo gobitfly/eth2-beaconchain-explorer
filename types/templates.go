@@ -646,6 +646,10 @@ type AdvertiseWithUsPageData struct {
 	FlashMessage string
 }
 
+type StakeWithUsPageData struct {
+	FlashMessage string
+}
+
 type RateLimitError struct {
 	TimeLeft time.Duration
 }
