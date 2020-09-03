@@ -51,7 +51,7 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error parsing form: %v", err)
 		utils.SetFlash(w, r, "ad_flash", "Error: invalid form submitted")
-		http.Redirect(w, r, "/advertisewithus", http.StatusSeeOther)
+		http.Redirect(w, r, "/stakingServices", http.StatusSeeOther)
 		return
 	}
 
@@ -80,10 +80,10 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
 		utils.SetFlash(w, r, "ad_flash", "Error: unable to submit ad request")
-		http.Redirect(w, r, "/advertisewithus", http.StatusSeeOther)
+		http.Redirect(w, r, "/stakingServices", http.StatusSeeOther)
 		return
 	}
 
 	utils.SetFlash(w, r, "ad_flash", "Thank you for your inquiry, we will get back to you as soon as possible.")
-	http.Redirect(w, r, "/advertisewithus", http.StatusSeeOther)
+	http.Redirect(w, r, "/stakingServices", http.StatusSeeOther)
 }
