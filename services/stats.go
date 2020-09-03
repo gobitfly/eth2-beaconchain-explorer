@@ -7,7 +7,7 @@ import (
 )
 
 func statsUpdater() {
-	sleepDuration := time.Duration(1 * time.Minute)
+	sleepDuration := time.Duration(6 * time.Minute)
 	var prevEpoch uint64
 
 	for {
@@ -58,7 +58,7 @@ func eth1TopDepositers() (*[]types.StatsTopDepositors, error) {
 
 	err := db.DB.Select(&topDepositors, `
 	SELECT 
-		from_address, 
+		ENCODE(from_address::bytea, 'hex') as from_address, 
 		count(from_address) as count 
 	FROM eth1_deposits
 	where valid_signature = true 
