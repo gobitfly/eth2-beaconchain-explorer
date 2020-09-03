@@ -124,6 +124,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 		) AS a
 		WHERE (encode(a.pubkey::bytea, 'hex') LIKE $3
 			OR CAST(a.validatorindex AS text) LIKE $3)
+			OR LOWER(a.name) LIKE LOWER($3)
 		LIMIT $1 OFFSET $2`, length, start, "%"+search+"%")
 
 	if err != nil {
