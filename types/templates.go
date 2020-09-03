@@ -50,9 +50,11 @@ type LatestState struct {
 
 // IndexPageData is a struct to hold info for the main web page
 type IndexPageData struct {
+	ShowSyncingMessage        bool
 	CurrentEpoch              uint64                 `json:"current_epoch"`
 	CurrentFinalizedEpoch     uint64                 `json:"current_finalized_epoch"`
 	CurrentSlot               uint64                 `json:"current_slot"`
+	ScheduledCount            uint8                  `json:"scheduled_count"`
 	FinalityDelay             uint64                 `json:"finality_delay"`
 	ActiveValidators          uint64                 `json:"active_validators"`
 	EnteringValidators        uint64                 `json:"entering_validators"`
@@ -64,10 +66,24 @@ type IndexPageData struct {
 	ValidatorsRemaining       float64                `json:"validators_remaining"`
 	NetworkStartTs            int64                  `json:"network_start_ts"`
 	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
+	Epochs                    []*IndexPageDataEpochs `json:"epochs"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
 	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
 	Subtitle                  template.HTML          `json:"-"`
 	Genesis                   bool                   `json:"genesis"`
+}
+
+type IndexPageDataEpochs struct {
+	Epoch                            uint64        `json:"epoch"`
+	Ts                               time.Time     `json:"ts"`
+	Finalized                        bool          `json:"finalized"`
+	FinalizedFormatted               template.HTML `json:"finalized_formatted"`
+	EligibleEther                    uint64        `json:"eligibleether"`
+	EligibleEtherFormatted           template.HTML `json:"eligibleether_formatted"`
+	GlobalParticipationRate          float64       `json:"globalparticipationrate"`
+	GlobalParticipationRateFormatted template.HTML `json:"globalparticipationrate_formatted"`
+	VotedEther                       uint64        `json:"votedether"`
+	VotedEtherFormatted              template.HTML `json:"votedether_formatted"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
@@ -173,6 +189,7 @@ type ValidatorPageData struct {
 	Income1d                            int64
 	Income7d                            int64
 	Income31d                           int64
+	Apr                                 float64
 	Proposals                           [][]uint64
 	BalanceHistoryChartData             [][]float64
 	EffectiveBalanceHistoryChartData    [][]float64
@@ -224,11 +241,12 @@ type ValidatorPerformance struct {
 
 // ValidatorAttestation is a struct for the validators attestations data
 type ValidatorAttestation struct {
-	Epoch          uint64 `db:"epoch"`
-	AttesterSlot   uint64 `db:"attesterslot"`
-	CommitteeIndex uint64 `db:"committeeindex"`
-	Status         uint64 `db:"status"`
-	InclusionSlot  uint64 `db:"inclusionslot"`
+	Epoch                 uint64 `db:"epoch"`
+	AttesterSlot          uint64 `db:"attesterslot"`
+	CommitteeIndex        uint64 `db:"committeeindex"`
+	Status                uint64 `db:"status"`
+	InclusionSlot         uint64 `db:"inclusionslot"`
+	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
 }
 
 // VisPageData is a struct to hold the visualizations page data
@@ -635,10 +653,12 @@ type UserSettingsPageData struct {
 }
 
 type UserNotificationsPageData struct {
-	Email string `json:"email"`
+	Email              string   `json:"email"`
+	CountWatchlist     int      `json:"countwatchlist"`
+	CountSubscriptions int      `json:"countsubscriptions"`
+	WatchlistIndices   []uint64 `json:"watchlistIndices"`
+	DashboardLink      string   `json:"dashboardLink"`
 	AuthData
-	CountWatchlist     int `json:"countwatchlist"`
-	CountSubscriptions int `json:"countsubscriptions"`
 	// Subscriptions []*Subscription
 }
 

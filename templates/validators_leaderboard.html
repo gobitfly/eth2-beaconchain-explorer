@@ -1,5 +1,6 @@
 {{ define "js"}}
 	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.js"></script>
+	<script type="text/javascript" src="/js/datatable_input.js"></script>
 	<script>
         $('#leaderboard').DataTable({
             processing: true,
@@ -7,7 +8,15 @@
             ordering: true,
             searching: true,
             ajax: '/validators/leaderboard/data',
-            pagingType: 'full',
+            pagingType: 'input',
+			language: {
+				searchPlaceholder: 'Search by Public Key',
+				search: '',
+				paginate: {
+					previous: "<",
+					next: ">",
+				}
+			},
             columnDefs: [
                 {
                     targets: 0,

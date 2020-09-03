@@ -6,7 +6,9 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"github.com/gorilla/mux"
 	"math/big"
+	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
@@ -109,7 +111,8 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 				ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($1)
 				OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($1)
 				OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($1)
-				OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($1)`, query+"%")
+				OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($1)
+				OR CAST(eth1.block_number AS text) LIKE LOWER($1)`, query+"%")
 	} else {
 		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits")
 	}
@@ -152,12 +155,10 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			v.pubkey = eth1.publickey
 		WHERE
 			ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($3)
-		OR
-			ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($3)
-		OR
-			ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($3)
-		OR
-			ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($3)
+			OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($3)
+			OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($3)
+			OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($3)
+			OR CAST(eth1.block_number AS text) LIKE LOWER($3)
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir), length, start, query+"%", latestEpoch, validatorOnlineThresholdSlot)
@@ -788,7 +789,6 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 }
 
 func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sql.Tx) error {
-
 	args := make([][]interface{}, 0, len(assignments))
 	for key, validator := range assignments {
 		keySplit := strings.Split(key, "-")
@@ -1103,4 +1103,46 @@ func GetTotalValidatorsCount() (uint64, error) {
 	var totalCount uint64
 	err := DB.Get(&totalCount, "SELECT COUNT(*) FROM validators")
 	return totalCount, err
+}
+
+func GetValidatorNames() (map[uint64]string, error) {
+	rows, err := DB.Query("SELECT validatorindex, name FROM validators WHERE name IS NOT NULL")
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	validatorIndexToNameMap := make(map[uint64]string, 30000)
+
+	for rows.Next() {
+		var index uint64
+		var name string
+
+		err := rows.Scan(&index, &name)
+
+		if err != nil {
+			return nil, err
+		}
+		validatorIndexToNameMap[index] = name
+	}
+
+	return validatorIndexToNameMap, nil
+}
+
+func CountApiHit(r *http.Request) {
+	apiKey := r.URL.Query().Get("apikey")
+	if apiKey == "" {
+		apiKey = "NOKEY"
+	}
+	call, _ := mux.CurrentRoute(r).GetPathTemplate()
+
+	_, err := DB.Query(`
+		INSERT INTO api_statistics (ts, apikey, call, count) 
+		VALUES (date_trunc('hour', now()), $1, $2, 1) 
+		ON CONFLICT (ts, apikey, call) DO UPDATE SET count = api_statistics.count + 1`, apiKey, call)
+
+	if err != nil {
+		logger.Errorf("error updating api call statistics: %v", err)
+	}
 }

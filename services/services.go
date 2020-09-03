@@ -191,6 +191,30 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.Genesis = true
 	}
 
+	var epochs []*types.IndexPageDataEpochs
+	err = db.DB.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving index epoch data: %v", err)
+	}
+
+	for _, epoch := range epochs {
+		epoch.Ts = utils.EpochToTime(epoch.Epoch)
+		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
+		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther)
+		epoch.EligibleEtherFormatted = utils.FormatBalance(epoch.EligibleEther)
+		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate)
+	}
+	data.Epochs = epochs
+
+	var scheduledCount uint8
+	err = db.DB.Get(&scheduledCount, `
+		select count(*) from blocks where status = '0' and epoch = (select max(epoch) from blocks limit 1);
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
+	}
+	data.ScheduledCount = scheduledCount
+
 	var blocks []*types.IndexPageDataBlocks
 	err = db.DB.Select(&blocks, `
 		SELECT
@@ -209,7 +233,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		WHERE blocks.slot < $1
-		ORDER BY blocks.slot DESC LIMIT 20`, cutoffSlot)
+		ORDER BY blocks.slot DESC LIMIT 15`, cutoffSlot)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving index block data: %v", err)
 	}

@@ -39,6 +39,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
+	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
+
 	err := indexTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {

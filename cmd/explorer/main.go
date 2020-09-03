@@ -9,11 +9,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"net/http"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
+	_ "eth2-exporter/docs"
 	"github.com/gorilla/mux"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/phyber/negroni-gzip/gzip"
@@ -39,6 +41,34 @@ func main() {
 
 	if utils.Config.Chain.SlotsPerEpoch == 0 || utils.Config.Chain.SecondsPerSlot == 0 || utils.Config.Chain.GenesisTimestamp == 0 {
 		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
+	}
+
+	if cfg.OneTimeExport.Enabled {
+		var rpcClient rpc.Client
+
+		if utils.Config.Indexer.Node.Type == "prysm" {
+			if utils.Config.Indexer.Node.PageSize == 0 {
+				logrus.Printf("setting default rpc page size to 500")
+				utils.Config.Indexer.Node.PageSize = 500
+			}
+			rpcClient, err = rpc.NewPrysmClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+		} else if utils.Config.Indexer.Node.Type == "lighthouse" {
+			rpcClient, err = rpc.NewLighthouseClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			if err != nil {
+				logrus.Fatal(err)
+			}
+		} else {
+			logrus.Fatalf("invalid note type %v specified. supported node types are prysm and lighthouse", utils.Config.Indexer.Node.Type)
+		}
+		err := exporter.ExportEpoch(cfg.OneTimeExport.Epoch, rpcClient)
+
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		return
 	}
 
 	if cfg.Indexer.Enabled {
@@ -141,6 +171,28 @@ func main() {
 		router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 		router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
+
+		apiV1Router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
+		router.PathPrefix("/api/v1/docs/").Handler(httpSwagger.WrapHandler)
+		apiV1Router.HandleFunc("/epoch/{epoch}", handlers.ApiEpoch).Methods("GET")
+		apiV1Router.HandleFunc("/epoch/{epoch}/blocks", handlers.ApiEpochBlocks).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slotOrHash}", handlers.ApiBlock).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slot}/attestations", handlers.ApiBlockAttestations).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slot}/deposits", handlers.ApiBlockDeposits).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slot}/attesterslashings", handlers.ApiBlockAttesterSlashings).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slot}/proposerslashings", handlers.ApiBlockProposerSlashings).Methods("GET")
+		apiV1Router.HandleFunc("/block/{slot}/voluntaryexits", handlers.ApiBlockVoluntaryExits).Methods("GET")
+		apiV1Router.HandleFunc("/eth1deposit/{txhash}", handlers.ApiEth1Deposit).Methods("GET")
+		apiV1Router.HandleFunc("/validator/leaderboard", handlers.ApiValidatorLeaderboard).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{index}", handlers.ApiValidator).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{index}/balancehistory", handlers.ApiValidatorBalanceHistory).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{index}/performance", handlers.ApiValidatorPerformance).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{index}/attestations", handlers.ApiValidatorAttestations).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{index}/proposals", handlers.ApiValidatorProposals).Methods("GET")
+		apiV1Router.HandleFunc("/validator/{index}/deposits", handlers.ApiValidatorDeposits).Methods("GET")
+		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET")
+		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET")
+		router.PathPrefix("/api/v1").Handler(apiV1Router)
 
 		// confirming the email update should not require auth
 		router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")

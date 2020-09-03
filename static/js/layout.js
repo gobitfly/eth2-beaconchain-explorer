@@ -207,7 +207,10 @@ $(document).ready(function() {
     } else if (sug.address !== undefined) {
       window.location = '/validators/eth1deposits?q=' + sug.address
     } else if (sug.graffiti !== undefined) {
-      window.location = '/blocks?q=' + encodeURIComponent(sug.graffiti)
+      // sug.graffiti is html-escaped to prevent xss, we need to unescape it
+      var el = document.createElement('textarea')
+      el.innerHTML = sug.graffiti
+      window.location = '/blocks?q=' + encodeURIComponent(el.value)
     } else {
       console.log('invalid typeahead-selection', sug)
     }

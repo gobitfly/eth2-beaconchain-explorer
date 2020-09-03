@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/types"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
+	"math/big"
 	"math/rand"
 	"net/http"
 	"os"
@@ -211,4 +213,107 @@ func RandomString(length int) string {
 		b[i] = charset[seededRand.Intn(len(charset))]
 	}
 	return string(b)
+}
+
+func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
+	columnTypes, err := rows.ColumnTypes()
+
+	if err != nil {
+		return nil, err
+	}
+
+	count := len(columnTypes)
+	finalRows := []interface{}{}
+
+	for rows.Next() {
+
+		scanArgs := make([]interface{}, count)
+
+		for i, v := range columnTypes {
+			//log.Printf("name: %v, type: %v", v.Name(), v.DatabaseTypeName())
+			switch v.DatabaseTypeName() {
+			case "VARCHAR", "TEXT", "UUID":
+				scanArgs[i] = new(sql.NullString)
+				break
+			case "BOOL":
+				scanArgs[i] = new(sql.NullBool)
+				break
+			case "INT4", "INT8":
+				scanArgs[i] = new(sql.NullInt64)
+				break
+			case "FLOAT8":
+				scanArgs[i] = new(sql.NullFloat64)
+				break
+			case "TIMESTAMP":
+				scanArgs[i] = new(sql.NullTime)
+				break
+			default:
+				scanArgs[i] = new(sql.NullString)
+			}
+		}
+
+		err := rows.Scan(scanArgs...)
+
+		if err != nil {
+			return nil, err
+		}
+
+		masterData := map[string]interface{}{}
+
+		for i, v := range columnTypes {
+
+			//log.Println(v.Name(), v.DatabaseTypeName())
+			if z, ok := (scanArgs[i]).(*sql.NullBool); ok {
+				masterData[v.Name()] = z.Bool
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullString); ok {
+				if v.DatabaseTypeName() == "BYTEA" {
+					if len(z.String) > 0 {
+						masterData[v.Name()] = "0x" + hex.EncodeToString([]byte(z.String))
+					} else {
+						masterData[v.Name()] = nil
+					}
+				} else if v.DatabaseTypeName() == "NUMERIC" {
+					nbr, _ := new(big.Int).SetString(z.String, 10)
+					masterData[v.Name()] = nbr
+				} else {
+					masterData[v.Name()] = z.String
+				}
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullInt64); ok {
+				masterData[v.Name()] = z.Int64
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullFloat64); ok {
+				masterData[v.Name()] = z.Float64
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullFloat64); ok {
+				masterData[v.Name()] = z.Float64
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullInt32); ok {
+				masterData[v.Name()] = z.Int32
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullTime); ok {
+				masterData[v.Name()] = z.Time.Unix()
+				continue
+			}
+
+			masterData[v.Name()] = scanArgs[i]
+		}
+
+		finalRows = append(finalRows, masterData)
+	}
+
+	return finalRows, nil
 }
