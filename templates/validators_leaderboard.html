@@ -2,45 +2,61 @@
 	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.js"></script>
 	<script type="text/javascript" src="/js/datatable_input.js"></script>
 	<script>
-        $('#leaderboard').DataTable({
-            processing: true,
-            serverSide: true,
-            ordering: true,
-            searching: true,
-            ajax: '/validators/leaderboard/data',
-            pagingType: 'input',
-			language: {
-				searchPlaceholder: 'Search by Public Key',
-				search: '',
-				paginate: {
-					previous: "<",
-					next: ">",
+		$(document).ready(function () {
+			var tblOpts = {
+				processing: true,
+				serverSide: true,
+				ordering: true,
+				searching: true,
+				ajax: '/validators/leaderboard/data',
+				pagingType: 'input',
+				language: {
+					searchPlaceholder: 'Search by Public Key / Index / Name',
+					search: '',
+					paginate: {
+						previous: "<",
+						next: ">",
+					}
+				},
+				columnDefs: [
+					{
+						targets: 0,
+						data: '0',
+						"orderable": false
+					}, {
+						targets: 1,
+						data: '1',
+						"orderable": false
+					}, {
+						targets: 2,
+						data: '2',
+						"orderable": false
+					}, {
+						targets: 3,
+						data: '3',
+						render: function (data, type, row, meta) {
+							return (data / 10e8).toFixed(4) + ' ETH'
+						},
+						"orderable": false
+					}
+				],
+				order: [[5, "desc"]]
+			}
+			var usp = new URLSearchParams(window.location.search)
+			var q = usp.get('q')
+			if (q) {
+				tblOpts.search = {"search": q}
+			}
+			var tbl = $('#leaderboard').DataTable(tblOpts)
+			$("#leaderboard_filter > label > input").on('input', function (ev) {
+				if (ev && ev.target && ev.target.value) {
+					var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+					window.history.replaceState(null, 'Validators Leaderboard', newUrl)
+				} else {
+					window.history.replaceState(null, 'Validators Leaderboard', window.location.pathname)
 				}
-			},
-            columnDefs: [
-                {
-                    targets: 0,
-                    data: '0',
-                    "orderable": false
-                }, {
-                    targets: 1,
-                    data: '1',
-                    "orderable": false
-                }, {
-                    targets: 2,
-                    data: '2',
-                    "orderable": false
-                }, {
-                    targets: 3,
-                    data: '3',
-                    render: function (data, type, row, meta) {
-                        return (data / 10e8).toFixed(4) + ' ETH'
-                    },
-                    "orderable": false
-                }
-            ],
-            order: [[5, "desc"]]
-        })
+			})
+		})
 	</script>
 {{end}}
 

@@ -4,9 +4,7 @@
 
 <script>
 	$(document).ready(function () {
-		var usp = new URLSearchParams(window.location.search)
-		var q = usp.get('q')
-		var tbl = $('#blocks').DataTable({
+		var tblOpts = {
 			processing: true,
 			serverSide: true,
 			ordering: false,
@@ -15,7 +13,7 @@
 			pageLength: 10,
 			pagingType: 'input',
 			language: {
-				searchPlaceholder: 'Block Number / Graffiti',
+				searchPlaceholder: 'Block Number / Graffiti / Proposer Name',
 				search: '',
 				paginate: {
 					previous: "<",
@@ -32,11 +30,13 @@
 				formatTimestamps()
 				$('#blocks').find('[data-toggle="tooltip"]').tooltip()
 			},
-		})
-		if (q) {
-			tbl.search(q);
-			tbl.draw();
 		}
+		var usp = new URLSearchParams(window.location.search)
+		var q = usp.get('q')
+		if (q) {
+			tblOpts.search = {"search": q}
+		}
+		var tbl = $('#blocks').DataTable(tblOpts)
 		$("#blocks_filter > label > input").on('input', function (ev) {
 			if (ev && ev.target && ev.target.value) {
 				var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
