@@ -16,7 +16,6 @@ var advertisewithusTemplate = template.Must(template.New("advertisewithus").Func
 
 func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 	var err error
-	advertisewithusTemplate = template.Must(template.New("advertisewithus").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/advertisewithus.html"))
 
 	w.Header().Set("Content-Type", "text/html")
 	data := &types.PageData{
