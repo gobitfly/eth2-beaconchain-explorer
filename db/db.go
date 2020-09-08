@@ -517,21 +517,25 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte)
 
 // SaveValidatorQueue will save the validator queue into the database
 func SaveValidatorQueue(validators *types.ValidatorQueue) error {
+	t0 := time.Now()
 	tx, err := DB.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
 	}
 	defer tx.Rollback()
 
+	t1 := time.Now()
 	_, err = tx.Exec("TRUNCATE validatorqueue_activation")
 	if err != nil {
-		return fmt.Errorf("error truncating validatorqueue_activation table: %v", err)
+		return fmt.Errorf("error truncating validatorqueue_activation table: %w", err)
 	}
+	t2 := time.Now()
 	_, err = tx.Exec("TRUNCATE validatorqueue_exit")
 	if err != nil {
-		return fmt.Errorf("error truncating validatorqueue_exit table: %v", err)
+		return fmt.Errorf("error truncating validatorqueue_exit table: %w", err)
 	}
 
+	t3 := time.Now()
 	stmtValidatorQueueActivation, err := tx.Prepare(`
 		INSERT INTO validatorqueue_activation (index, publickey)
 		VALUES ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
@@ -540,6 +544,7 @@ func SaveValidatorQueue(validators *types.ValidatorQueue) error {
 	}
 	defer stmtValidatorQueueActivation.Close()
 
+	t4 := time.Now()
 	stmtValidatorQueueExit, err := tx.Prepare(`
 		INSERT INTO validatorqueue_exit (index, publickey)
 		VALUES ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
@@ -548,23 +553,30 @@ func SaveValidatorQueue(validators *types.ValidatorQueue) error {
 	}
 	defer stmtValidatorQueueExit.Close()
 
+	t5 := time.Now()
 	for i, publickey := range validators.ActivationPublicKeys {
 		_, err := stmtValidatorQueueActivation.Exec(validators.ActivationValidatorIndices[i], publickey)
 		if err != nil {
-			return fmt.Errorf("error executing stmtValidatorQueueActivation: %v", err)
-		}
-	}
-	for i, publickey := range validators.ExitPublicKeys {
-		_, err := stmtValidatorQueueExit.Exec(validators.ExitValidatorIndices[i], publickey)
-		if err != nil {
-			return fmt.Errorf("error executing stmtValidatorQueueExit: %v", err)
+			return fmt.Errorf("error executing stmtValidatorQueueActivation: %w", err)
 		}
 	}
 
+	t6 := time.Now()
+	for i, publickey := range validators.ExitPublicKeys {
+		_, err := stmtValidatorQueueExit.Exec(validators.ExitValidatorIndices[i], publickey)
+		if err != nil {
+			return fmt.Errorf("error executing stmtValidatorQueueExit: %w", err)
+		}
+	}
+
+	t7 := time.Now()
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("error committing db transaction: %v", err)
+		return fmt.Errorf("error committing db transaction: %w", err)
 	}
+
+	t8 := time.Now()
+	logger.WithField("t1", t1.Sub(t0)).WithField("t2", t2.Sub(t1)).WithField("t3", t3.Sub(t2)).WithField("t4", t4.Sub(t3)).WithField("t5", t5.Sub(t4)).WithField("t6", t6.Sub(t5)).WithField("t7", t7.Sub(t6)).WithField("t8", t8.Sub(t7)).WithField("total", t8.Sub(t0)).Infof("BENCH SaveValidatorQueue")
 	return nil
 }
 

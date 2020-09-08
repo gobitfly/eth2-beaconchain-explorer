@@ -405,12 +405,17 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 }
 
 func exportValidatorQueue(client rpc.Client) error {
+	t0 := time.Now()
 	queue, err := client.GetValidatorQueue()
 	if err != nil {
 		return fmt.Errorf("error retrieving validator queue data: %v", err)
 	}
+	t1 := time.Now()
 
-	return db.SaveValidatorQueue(queue)
+	err = db.SaveValidatorQueue(queue)
+	t2 := time.Now()
+	logger.WithField("t1", t1.Sub(t0)).WithField("t2", t2.Sub(t1)).WithField("total", t2.Sub(t0)).Infof("BENCH exportValidatorQueue")
+	return err
 }
 
 func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
