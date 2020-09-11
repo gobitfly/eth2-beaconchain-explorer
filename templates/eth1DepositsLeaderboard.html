@@ -6,6 +6,7 @@
 <script src="https://code.highcharts.com/modules/data.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
 <script>
+	var debounce = null
 	var scatterOptions = {
 		title: { 
 				text: "Validators by Eth1 Address"
@@ -17,6 +18,7 @@
 		plotOptions: {
 			column: {
 				stacking: 'normal',
+				borderColor: 'var(--border-color-transparent)'
 				// dataLabels: {
 				// 	enabled: true
 				// }
@@ -25,65 +27,72 @@
 		tooltip: {
 			shared: true,
 			split: false,
+			pointFormatter: function() {
+				var rows = document.querySelectorAll('#deposits tbody tr')
+				for (let i = 0; i < rows.length; i++) {
+					var r = rows[i];
+					r.classList.remove('row-highlight')
+				}
+				var row = document.querySelector('#deposits tbody tr:nth-child(' + (this.category + 1) +')')
+				row.classList.add('row-highlight')
+				if (debounce) {
+					clearTimeout(debounce)
+				}
+				debounce = setTimeout(function() {
+					var rows = document.querySelectorAll('#deposits tbody tr')
+					for (let i = 0; i < rows.length; i++) {
+						var r = rows[i];
+						r.classList.remove('row-highlight')
+					}
+				}, 1500)
+				return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${this.y}</b><br/>`
+			}
+
 		},
 		xAxis:{
 			title: {
-				text: 'Total Deposits'
+				text: 'Eth1 Address',
+				style: {
+					color: 'var(--font-color)'
+				}
 			},
 			// categories: ['pending', 'active']
 		},
 		yAxis: {
 			min: 0,
 			title: { 
-				text: 'Active Validators', 
+				text: 'Validators', 
 			},
 			stackLabels: {
 				enabled: true,
 				style: {
-					fontWeight: 'bold',
-					color: (
-						Highcharts.defaultOptions.title.style &&
-						Highcharts.defaultOptions.title.style.color
-					) || 'gray'
+					// fontWeight: 'bold',
+					color: 'var(--font-color)',
+					textOutline: "none"
 				}
 			},
 			offset: 30
 		},
+		colors: ['rgb(31, 119, 180)', 'rgb(255, 127, 14)', 'rgb(44, 160, 44)'],
 		legend: { enabled: true },
 		navigator: { enabled: false },
 		rangeSelector: { enabled: false },
 		scrollbar: { enabled: false },
-		// series: [{
 			data: {
-				// rowsURL: '/validators/eth1leaderboard/data?draw=1&start=0&length=20',
-				// rowsURL: 'https://demo-live-data.highcharts.com/time-rows.json',
 				table: 'deposits',
 				startRow: 1,
-				// endRow: 5,
 				startColumn: 0,
-				// endColumn: 5,
 				firstRowAsNames: false,
-				// switchRowsAndColumns: true,
-				// beforeParse: function(rows) {
-				// 	console.log(rows)
-				// 	// return rows.data.map(function(row) {
-				// 	// 	return [row[2], row[5]]
-				// 	// })
-				// },
 				parsed: function(data) {
 					var newData = []
 					newData[0] = data[0].map(function(x) {
-						console.log('replacing', x)
 						return x.replace(/\<[^\>]+\>/g, '')
 					})
-					console.log(newData[0], 'repplaced')
 					newData[1] = data[4]
-					console.log('parsed', newData)
 					data = newData
 					return newData
 				},
 				complete: function(something) {
-					console.log('complete', something)
 					var series = []
 					series[0] = something.series[3]
 					series[1] = something.series[4]
@@ -102,36 +111,10 @@
 							return el
 						})
 					}
-					console.log('modified', series)
 					something.series = series
 					return series
-					// xAxis.categories = 
-					
-					// var series = []
-					// something.series[0].data.map(function(d) {
-					// 	series.push({data: d})
-					// })
-					// something.series = series
-
-					// var series = something.series[2]
-					// // var trendline = {
-					// // 	name: 'optimal',
-					// // 	type: 'spline',
-					// // 	data: [[series.data[0][0], series.data[0][0]], [series.data[series.data.length - 1][0], series.data[series.data.length - 1][0]]]
-					// // }
-					// series.name = "Active Validators"
-					// series.cluster = {
-					// 	enabled: true
-					// }
-					// something.series = [series]
-					// delete something.series[0]
-					// something.series[1].visible = false
-					// something.series[3].visible = false
-					// something.series[4].visible = false
-
 				}
 			}
-		// }]
 	}
 </script>
 <script>
@@ -184,6 +167,11 @@
 
 {{end}} {{ define "css"}}
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
+<style>
+	.row-highlight{
+		background: var(--highlight) !important;
+	}
+</style>
 
 
 {{end}} {{ define "content"}}

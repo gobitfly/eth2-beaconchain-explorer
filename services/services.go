@@ -1,6 +1,7 @@
 package services
 
 import (
+	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -256,15 +257,18 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		block.Ts = utils.SlotToTime(block.Slot)
 	}
 
-	err = db.DB.Get(&data.EnteringValidators, "SELECT COUNT(*) FROM validatorqueue_activation")
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving entering validator count: %v", err)
+	queueCount := struct {
+		EnteringValidators uint64 `db:"entering_validators_count"`
+		ExitingValidators  uint64 `db:"exiting_validators_count"`
+	}{}
+
+	err = db.DB.Get(&queueCount, "SELECT entering_validators_count, exiting_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("error retrieving validator queue count: %v", err)
 	}
 
-	err = db.DB.Get(&data.ExitingValidators, "SELECT COUNT(*) FROM validatorqueue_exit")
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving exiting validator count: %v", err)
-	}
+	data.EnteringValidators = queueCount.EnteringValidators
+	data.ExitingValidators = queueCount.ExitingValidators
 
 	var averageBalance float64
 	err = db.DB.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validator_balances WHERE epoch = $1", epoch)
