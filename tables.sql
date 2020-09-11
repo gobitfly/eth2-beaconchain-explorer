@@ -92,6 +92,14 @@ create table validator_balances
 );
 create index idx_validator_balances_epoch on validator_balances (epoch);
 
+drop table if exists queue;
+create table queue
+(
+    ts                        timestamp without time zone,
+    entering_validators_count int not null,
+    exiting_validators_count  int not null,
+    primary key (ts)
+);
 
 drop table if exists validatorqueue_activation;
 create table validatorqueue_activation
