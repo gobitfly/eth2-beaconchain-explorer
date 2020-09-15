@@ -160,7 +160,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		deposit := Deposit{}
 
 		err = db.DB.Get(&deposit, `
-			SELECT COUNT(*) as total, MAX(block_ts) as block_ts
+			SELECT COUNT(*) as total, COALESCE(MAX(block_ts),NOW()) as block_ts
 			FROM 
 				eth1_deposits as eth1 
 			WHERE 
