@@ -351,7 +351,11 @@ func LatestState() *types.LatestState {
 }
 
 func GetLatestStats() *types.Stats {
-	return latestStats.Load().(*types.Stats)
+	stats := latestStats.Load()
+	if stats == nil {
+		return nil
+	}
+	return stats.(*types.Stats)
 }
 
 // IsSyncing returns true if the chain is still syncing
