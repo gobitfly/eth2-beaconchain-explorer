@@ -517,55 +517,16 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte)
 
 // SaveValidatorQueue will save the validator queue into the database
 func SaveValidatorQueue(validators *types.ValidatorQueue) error {
-	tx, err := DB.Begin()
-	if err != nil {
-		return fmt.Errorf("error starting db transactions: %v", err)
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec("TRUNCATE validatorqueue_activation")
-	if err != nil {
-		return fmt.Errorf("error truncating validatorqueue_activation table: %v", err)
-	}
-	_, err = tx.Exec("TRUNCATE validatorqueue_exit")
-	if err != nil {
-		return fmt.Errorf("error truncating validatorqueue_exit table: %v", err)
-	}
-
-	stmtValidatorQueueActivation, err := tx.Prepare(`
-		INSERT INTO validatorqueue_activation (index, publickey)
-		VALUES ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmtValidatorQueueActivation.Close()
-
-	stmtValidatorQueueExit, err := tx.Prepare(`
-		INSERT INTO validatorqueue_exit (index, publickey)
-		VALUES ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmtValidatorQueueExit.Close()
-
-	for i, publickey := range validators.ActivationPublicKeys {
-		_, err := stmtValidatorQueueActivation.Exec(validators.ActivationValidatorIndices[i], publickey)
-		if err != nil {
-			return fmt.Errorf("error executing stmtValidatorQueueActivation: %v", err)
-		}
-	}
-	for i, publickey := range validators.ExitPublicKeys {
-		_, err := stmtValidatorQueueExit.Exec(validators.ExitValidatorIndices[i], publickey)
-		if err != nil {
-			return fmt.Errorf("error executing stmtValidatorQueueExit: %v", err)
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("error committing db transaction: %v", err)
-	}
-	return nil
+	enteringValidatorsCount := len(validators.ActivationPublicKeys)
+	exitingValidatorsCount := len(validators.ExitPublicKeys)
+	_, err := DB.Exec(`
+		INSERT INTO queue (ts, entering_validators_count, exiting_validators_count)
+		VALUES (date_trunc('hour', now()), $1, $2)
+		ON CONFLICT (ts) DO UPDATE SET
+			entering_validators_count = excluded.entering_validators_count, 
+			exiting_validators_count = excluded.exiting_validators_count`,
+		enteringValidatorsCount, exitingValidatorsCount)
+	return err
 }
 
 // SaveEpoch will stave the epoch data into the database
