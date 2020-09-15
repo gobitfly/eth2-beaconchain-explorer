@@ -368,6 +368,8 @@ func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
 		cfg = params.AltonaConfig()
 	} else if utils.Config.Chain.Network == "medalla" {
 		cfg = params.MedallaConfig()
+	} else if utils.Config.Chain.Network == "spadina" {
+		cfg = params.SpadinaConfig()
 	}
 	domain, err := ComputeDomain(
 		cfg.DomainDeposit,
