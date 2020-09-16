@@ -137,6 +137,9 @@ func indexPageDataUpdater() {
 func getIndexPageData() (*types.IndexPageData, error) {
 	data := &types.IndexPageData{}
 
+	data.NetworkName = utils.Config.Chain.Network
+	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
+
 	var epoch uint64
 	err := db.DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 	if err != nil {

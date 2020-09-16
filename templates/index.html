@@ -517,10 +517,9 @@
 		{{ if not .Genesis }}
 		<div class="row my-3 justify-content-center">
 			<div class="col-md-5">
-				<h2 class="h3">Medalla Genesis</h2>
-				<p>The Medalla testnet is currently undergoing genesis. Please prepare your validators and send your deposits. To join the testnet fire up one of the beacon chain and validator clients. This testnet will support <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a
-						href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a> and <a href="https://github.com/ChainSafe/lodestar">Lodestar</a>. You are eligible to receive a <a
-						href="/poap">POAP</a> token for every client that you run. </p>
+				<h2 class="h3">Spadina Genesis</h2>
+				<p>The Spadina testnet is currently undergoing genesis. Please prepare your validators and send your deposits. To join the testnet fire up one of the beacon chain and validator clients. This testnet will support <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a
+						href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a> and <a href="https://github.com/ChainSafe/lodestar">Lodestar</a>.
 			</div>
 			<div class="col-md-5 my-3 d-flex flex-column justify-content-center">
 				<h6 class="d-flex justify-content-between">
@@ -541,7 +540,7 @@
 			<div class="col-md-5 my-3">
 				<h2 class="h3">When is genesis reached?</h2>
 				<p style="text-overflow: ellipsis; overflow: hidden;">
-					Genesis will occur once enough deposits have been made to the Goerli deposit contract <a href="/validators/eth1deposits" class="text-truncate text-monospace">0x07b39F4fDE4A38bACe212b546dAc87C58DfE3fDC</a>. Each deposit is registered by the beacon chain after a block delay of <i>1024</i>
+					Genesis will occur once enough deposits have been made to the Goerli deposit contract <a href="/validators/eth1deposits" class="text-truncate text-monospace">{{.DepositContract}}</a>. Each deposit is registered by the beacon chain after a block delay of <i>1024</i>
 					Ethereum 1.0 blocks.
 				</p>
 			</div>
