@@ -353,7 +353,21 @@ func LatestState() *types.LatestState {
 func GetLatestStats() *types.Stats {
 	stats := latestStats.Load()
 	if stats == nil {
-		return nil
+		// create an empty stats object if no stats exist (genesis)
+		return &types.Stats{
+			TopDepositors: &[]types.StatsTopDepositors{
+				{
+					Address:      "000",
+					DepositCount: 0,
+				},
+				{
+					Address:      "000",
+					DepositCount: 0,
+				},
+			},
+			InvalidDepositCount:  new(uint64),
+			UniqueValidatorCount: new(uint64),
+		}
 	}
 	return stats.(*types.Stats)
 }
