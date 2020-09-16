@@ -117,7 +117,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	} else {
 		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits")
 	}
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
 
@@ -200,7 +200,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot)
 	}
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
 
@@ -268,7 +268,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 	} else {
 		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM (SELECT from_address FROM eth1_deposits GROUP BY from_address) as count")
 	}
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
 
@@ -303,7 +303,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, query+"%")
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
 	return deposits, totalCount, nil
