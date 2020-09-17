@@ -315,16 +315,30 @@
 							Dashboard</a>
                         {{ if eq .Active "dashboard"}}
                         {{end}}
+						
+						<li class="nav-item dropdown">
+						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+							<i class="fas fa-thumbs-up"></i> More
+						</a>
+						<div class="dropdown-menu" aria-labelledby="navbarDropdown">
+							<a class="dropdown-item" href="/graffitiwall"><i class="fas fa-paint-brush"></i> Wall</a>
+							<a class="dropdown-item" href="/poap"><i class="fas fa-medal"></i> POAP</a>
+						</div>
 					</li>
-					<li class="nav-item {{ if eq .Active "graffitiwall"}}active{{end}}">
-						<a class="nav-link" href="/graffitiwall"><i class="fas fa-paint-brush"></i> Wall</a>
+					
+					<li class="nav-item dropdown">
+						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+							<i class="fas fa-thumbs-up"></i> Docs
+						</a>
+						<div class="dropdown-menu" aria-labelledby="navbarDropdown">
+							<a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
+							<a class="dropdown-item" href="/api/v1/docs/"><i class="fas fa-laptop-code mr-1"></i>API</a>
+
+						</div>
 					</li>
-					<li class="nav-item {{ if eq .Active "poap"}}active{{end}}">
-						<a class="nav-link" href="/poap"><i class="fas fa-medal"></i> POAP</a>
+					
 					</li>
-					<li class="nav-item {{ if eq .Active "docs"}}active{{end}}">
-						<a ga-outbound class="nav-link" href="https://kb.beaconcha.in"><i class="fas fa-external-link-alt"></i> Docs</a>
-					</li>
+					
 					<!-- <li class="nav-item dropdown">
 					  <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 						<i class="fab fa-ethereum"></i> Onyx
