@@ -39,7 +39,7 @@ func Graffitiwall(w http.ResponseWriter, r *http.Request) {
 			GATag:       utils.Config.Frontend.GATag,
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "graffitiwall",
+		Active:                "more",
 		Data:                  graffitiwallData,
 		User:                  getUser(w, r),
 		Version:               version.Version,
