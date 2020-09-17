@@ -314,9 +314,10 @@
 							</svg>
 							Dashboard</a>
                         {{ if eq .Active "dashboard"}}
-                        {{end}}
+						{{end}}
+						
 					</li>	
-						<li class="nav-item dropdown">
+						<li class="nav-item dropdown {{ if eq .Active "more"}}active{{end}}">
 						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 							<i class="fas fa-info"></i> More
 						</a>
@@ -326,7 +327,7 @@
 						</div>
 					</li>
 					
-					<li class="nav-item dropdown">
+					<li class="nav-item dropdown" {{ if eq .Active "docs"}}active{{end}}>
 						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 							<i class="fas fa-book"></i> Docs
 						</a>
