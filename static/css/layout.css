@@ -5,16 +5,46 @@ ins[data-revive-zoneid] > a > img {
   height: auto;
 }
 
-main > div > .my-3 {
-  padding: 1rem 0;
-}
-
 .page-item {
   margin: 0 .2rem;
 }
 
 .page-item > a {
   border-radius: .225rem;
+}
+
+@media (min-width: 1140px) and (max-width: 1440px) { 
+
+  .navbar .nav-item img {
+    display: none;
+  }
+
+}
+
+@media (max-width: 1140px) {
+  
+  .navbar > .nav-item > .nav-link > a > .nav-icon {
+
+  }
+  .nav-icon {
+    width: 38px;
+    overflow: hidden;
+    text-align: center;
+  }
+  .nav-text {
+    flex: 1
+  }
+
+  .navbar .nav-link, .navbar .dropdown-item {
+    display: flex;
+  }
+  .dropdown-toggle::after { 
+    align-self: center;
+    display: inline-flex;
+    justify-self: flex-end;
+    margin-left: auto;
+    margin-right: 1rem;
+  }
 }
 
 .paginate_input {
