@@ -124,8 +124,12 @@
 					</div>
 					{{ if (or (eq .Status 1) (eq .Status 3)) }}
 					<div class="row border-bottom p-3 mx-0">
-						<div class="col-md-2">Block Root:</div>
+						<div class="col-md-2">Checkpoint:</div>
 						<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}}:{{.Epoch}} <onclick="myfunction()"><i class="fas fa-copy"></i></onclick="myfunction()"></div>
+					</div>
+					<div class="row border-bottom p-3 mx-0">
+						<div class="col-md-2">Block Root:</div>
+						<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}}</div>
 					</div>
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Parent Root:</div>
