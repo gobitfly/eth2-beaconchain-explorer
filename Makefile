@@ -4,6 +4,8 @@ GITDATE=`TZ=UTC git show -s --date=iso-strict-local --format=%cd HEAD`
 BUILDDATE=`date -u +"%Y-%m-%dT%H:%M:%S%:z"`
 PACKAGE=eth2-exporter
 LDFLAGS="-X ${PACKAGE}/version.Version=${VERSION} -X ${PACKAGE}/version.BuildDate=${BUILDDATE} -X ${PACKAGE}/version.GitCommit=${GITCOMMIT} -X ${PACKAGE}/version.GitDate=${GITDATE}"
+ETH2APIREMOTE=https://github.com/ethereum/eth2.0-APIs.git
+ETH2APITMPDIR=/tmp/eth2api
 
 all: explorer
 
@@ -18,3 +20,20 @@ explorer:
 	go build --ldflags=${LDFLAGS} -o bin/explorer cmd/explorer/main.go
 	go build --ldflags=${LDFLAGS} -o bin/chartshotter cmd/chartshotter/main.go
 
+eth2api:
+	rm -rf $(ETH2APITMPDIR)
+	git clone $(ETH2APIREMOTE) $(ETH2APITMPDIR)
+	docker run --rm \
+		-v $(ETH2APITMPDIR):/v \
+		guybrush/swagger-cli swagger-cli bundle -r /v/beacon-node-oapi.yaml > $(ETH2APITMPDIR)/bundle.yaml
+	rm -rf eth2api
+	docker run --rm \
+		-v $(CURDIR):/v \
+		-v $(ETH2APITMPDIR):/v2 \
+		openapitools/openapi-generator-cli generate \
+		-i /v2/bundle.yaml \
+		-g go \
+		--additional-properties=packageName=eth2api,isGoSubmodule=true \
+		-o /v/eth2api
+	rm -rf eth2api/go.{mod,sum}
+	go build eth2api/*.go
