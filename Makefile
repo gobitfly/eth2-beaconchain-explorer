@@ -15,6 +15,6 @@ explorer:
 	mkdir -p bin/templates/
 	cp -r templates/ bin/
 	cp -r static/ bin/static
-	go build --ldflags=${LDFLAGS} -o bin/explorer cmd/explorer/main.go
-	go build --ldflags=${LDFLAGS} -o bin/chartshotter cmd/chartshotter/main.go
+	go build --ldflags=${LDFLAGS} --tags=blst_enabled -o bin/explorer cmd/explorer/main.go
+	go build --ldflags=${LDFLAGS} --tags=blst_enabled -o bin/chartshotter cmd/chartshotter/main.go
 
