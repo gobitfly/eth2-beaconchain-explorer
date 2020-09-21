@@ -34,7 +34,7 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 			GATag:       utils.Config.Frontend.GATag,
 		},
 		ShowSyncingMessage: services.IsSyncing(),
-		Active:             "poap",
+		Active:             "more",
 		Data: struct {
 			PoapClients []string
 		}{

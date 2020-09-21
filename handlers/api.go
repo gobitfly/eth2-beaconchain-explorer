@@ -9,12 +9,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/lib/pq"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/lib/pq"
 )
 
 // @title Beaconcha.in ETH2 API
