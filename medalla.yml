@@ -1,0 +1,50 @@
+# Database credentials
+database:
+  user: beaconchain
+  name: medalla
+  host: localhost
+  port: 5432
+  password: 
+# Chain network configuration (example will work for the prysm testnet)
+chain:
+  network: medalla
+  slotsPerEpoch: 32
+  secondsPerSlot: 12
+  genesisTimestamp: 1596546000 # medalla
+# Note: It is possible to run either the frontend or the indexer or both at the same time
+# Frontend config
+frontend:
+  enabled: true # Enable or disable to web frontend
+  imprint: 'templates/imprint.example.html' # Path to the imprint page content
+  siteDomain: patrick-vm-medalla
+  siteName: 'Ethereum 2.0 Beacon Chain (Phase 0) Block Chain Explorer' # Name of the site, displayed in the title tag
+  siteSubtitle: "Showing the Official Multiclient Eth2 Testnet Medalla. Become a validator and help secure eth2."
+  server:
+    host: '0.0.0.0' # Address to listen on
+    port: '3333' # Port to listen on
+  database:
+    user: beaconchain
+    name: medalla
+    host: localhost
+    port: 5432
+    password: 
+  sessionSecret: xxx
+  notifications:
+      enabled: false
+  # mail:
+  #   mailgun:
+  #     sender: no-reply@beaconcha.in
+  #     domain: mg.beaconcha.in
+  #     privateKey: 
+# Indexer config
+indexer:
+  enabled: false # Enable or disable the indexing service
+  fullIndexOnStartup: false # Perform a one time full db index on startup
+  indexMissingEpochsOnStartup: true # Check for missing epochs and export them after startup
+  node:
+    host: 'medalla' # Address of the prysm backend archive node
+    port: '4000' # gRPC port of the prysm backend archive node
+    type: 'prysm'
+  eth1Endpoint: 'https://goerli.infura.io/v3/730f61d0cad749e6905d44aca4e3f44c'
+  eth1DepositContractAddress: '0x07b39F4fDE4A38bACe212b546dAc87C58DfE3fDC'
+  eth1DepositContractFirstBlock: 3085928

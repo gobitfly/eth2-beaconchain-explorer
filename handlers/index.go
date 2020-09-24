@@ -12,7 +12,24 @@ import (
 	"time"
 )
 
-var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/index.html"))
+var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFiles(
+	"templates/layout.html",
+	"templates/index/index.html",
+	"templates/index/depositProgress.html",
+	"templates/index/genesis.html",
+	"templates/index/hero.html",
+	"templates/index/networkStats.html",
+	"templates/index/participationWarning.html",
+	"templates/index/postGenesis.html",
+	"templates/index/preGenesis.html",
+	"templates/index/recentBlocks.html",
+	"templates/index/recentEpochs.html",
+	"templates/index/genesisCountdown.html",
+	"templates/components/banner.html",
+	"templates/svg/bricks.html",
+	"templates/svg/professor.html",
+	"templates/svg/timeline.html",
+))
 
 // Index will return the main "index" page using a go template
 func Index(w http.ResponseWriter, r *http.Request) {

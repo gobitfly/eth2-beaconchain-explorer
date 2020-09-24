@@ -1,0 +1,60 @@
+# Database credentials
+database:
+  user: beaconchain
+  name: spadina
+  host: localhost
+  port: 5432
+  password: xxx
+# Chain network configuration (example will work for the prysm testnet)
+chain:
+  network: spadina
+  slotsPerEpoch: 32
+  secondsPerSlot: 12
+  genesisTimestamp: 1601380800 # medalla
+  minGenesisActiveValidatorCount: 1024
+# Note: It is possible to run either the frontend or the indexer or both at the same time
+# Frontend config
+frontend:
+  enabled: true # Enable or disable to web frontend
+  imprint: 'imprint.html' # Path to the imprint page content
+  siteDomain: "beaconcha.in"
+  siteName: 'Ethereum 2.0 Beacon Chain (Phase 0) Block Chain Explorer' # Name of the site, displayed in the title tag
+  siteSubtitle: "Showing the Eth2 Testnet <a href='https://github.com/goerli/medalla/pull/46' target='_blank' rel='noopener noreferrer'>Spadina</a>. <a href='https://spadina.launchpad.ethereum.org/' target='_blank' rel='noopener noreferrer'>Become a validator</a> and help secure eth2."
+  server:
+    host: '0.0.0.0' # Address to listen on
+    port: '8080' # Port to listen on
+  database:
+    user: beaconchain
+    name: spadina
+    host: localhost
+    port: 5432
+    password: xxx
+  sessionSecret: "xxx"
+  maxMailsPerEmailPerDay: 10
+  notifications:
+    enabled: false
+  mail:
+    mailgun:
+      sender: no-reply@beaconcha.in
+      domain: mg.beaconcha.in
+      privateKey: 
+  gatag: 'UA-139026501-2'
+#onetimeexport:
+#  enabled: true
+#  epoch: 3537
+# Indexer config
+indexer:
+  enabled: false # Enable or disable the indexing service
+#  epochOnly: true
+#  startEpoch: 3537
+  fullIndexOnStartup: false # Perform a one time full db index on startup
+#  indexMissingEpochsOnStartup: true # Check for missing epochs and export them after startup
+  node:
+    host: 'localhost' # Address of the prysm backend archive node
+    port: '4000' # gRPC port of the prysm backend archive node
+    type: 'prysm'
+    pageSize: 2000
+  eth1Endpoint: 'https://goerli.infura.io/v3/730f61d0cad749e6905d44aca4e3f44c'
+#  eth1Endpoint: 'http://beaconchain-goerli:18349'
+  eth1DepositContractAddress: '0x48B597F4b53C21B48AD95c7256B49D1779Bd5890'
+  eth1DepositContractFirstBlock: 3384340

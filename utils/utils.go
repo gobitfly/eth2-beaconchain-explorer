@@ -76,6 +76,8 @@ func GetTemplateFuncs() template.FuncMap {
 	}
 }
 
+var LayoutPaths []string = []string{"templates/layout/layout.html", "templates/layout/nav.html"}
+
 // IncludeHTML adds html to the page
 func IncludeHTML(path string) template.HTML {
 	b, err := ioutil.ReadFile(path)
