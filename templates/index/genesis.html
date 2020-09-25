@@ -478,9 +478,9 @@
 document.addEventListener('DOMContentLoaded', function() {
 
 /// Chat Dimensions
-var margin = {top: 20, right: 30, bottom: 0, left: 200}
+var margin = {top: 20, right: 30, bottom: 0, left: 20}
 var width = document.getElementById('checklist').clientWidth - 60
-var height = 200 + margin.top + margin.bottom + data.length * 103
+var height = 100 + margin.top + margin.bottom + data.length * 50
 
 
 
@@ -517,6 +517,11 @@ var svg = d3.select("#checklist").append("svg")
 
 // Define X axis
 var x = d3.scaleLinear()
+    .domain([0, 32])
+    .range([margin.left, width - margin.right])
+    .interpolate(d3.interpolateRound)
+
+var participationX = d3.scaleLinear()
     .domain([0, 100])
     .range([margin.left, width - margin.right])
     .interpolate(d3.interpolateRound)
@@ -525,7 +530,7 @@ var x = d3.scaleLinear()
 var y = d3.scaleBand()
     .domain(data.map(d => d.epoch))
     .range([margin.top, height - margin.bottom])
-    .padding(0.5)
+    .padding(0.1)
     // .round(true)
 
 var gx = svg.append("g")
@@ -537,14 +542,14 @@ var gx = svg.append("g")
            .call(g => g.select(".domain").remove())
 
 var gy = svg.append("g")
-          .attr("transform", `translate(20, 0)`)
+          .attr("transform", `translate(${margin.left}, 0)`)
           .call(d3.axisLeft(y))
           .call(g => g.selectAll('line').remove())
           .call(g => g.select(".domain").remove())
           // .call(g => g.selectAll("text").remove())
           
 var yAxis = (g, x) => g
-          .attr("transform", `translate(20, 0)`)
+          .attr("transform", `translate(${margin.left}, 0)`)
           .call(d3.axisLeft(x))
           .call(g => g.selectAll('line').remove())
           .call(g => g.select(".domain").remove())
@@ -570,20 +575,20 @@ var bars = svg.append("g")
     // .call(reveal)
     .attr("id", ({ epoch, participation }) => epoch)
     .attr("fill", ({participation}) => color(participation))
-    .attr("y", ({epoch}) => y(epoch))
-    .attr("x", x(0))
-    .attr("width", ({participation}) => x(participation) - x(0))
-    .attr("height", y.bandwidth())
+    .attr("y", ({epoch}) => y(epoch) + (y.bandwidth() / 2) + 10 )
+    .attr("x", x(1))
+    .attr("width", ({participation}) => participationX(participation) - participationX(0))
+    .attr("height", "10")
 
 var barLabels = svg.append('g')
     .attr('text-anchor', "end")
-    .attr("transform", `translate(-6, ${y.bandwidth() / 2})`)
+    .attr("transform", `translate(20, 5)`)
     .selectAll('text')
     .data(data, d => d)
     .join('text')
     .attr('fill', d => `${d3.lab(color(d.participation)).l < 60 ? "white" : "black"}`)
-    .attr('y', d => y(d.epoch))
-    .attr('x', d => x(d.participation))
+    .attr('y', d => y(d.epoch) + (y.bandwidth() / 2) + 10)
+    .attr('x', d => participationX(d.participation))
     .attr('dy', '0.35em')
     .text((d) => d.participation + '%')
    
@@ -592,40 +597,43 @@ var heatmaps = svg.append("g").attr("text-anchor", "middle")
     .selectAll("g")
     .data(data)
     .join('g')
-    .attr("transform", ({ epoch }) => `translate(40, ${y(epoch)})`)
+    .attr("transform", ({ epoch }) => `translate(0, ${y(epoch)})`)
 
-var finalizedStatus = svg.append("g")
-    .selectAll("text")
-    .data(data)
-    .join('text')
-    .attr("x", "88")
-    .attr("y", ({epoch}) => y(epoch) - 5)
-    .text(({finalized, justified}) => {
-      if (finalized) {
-        return "Finalized"
-      } else if (justified) {
-        return "Justified"
-      } else {
-        return ""
-      }
-    })
 
-heatmaps.append('rect')
-  .attr('width', "144")
-  .attr('height', "60")
-  .attr("rx", "1")
-  .attr("ry", "1")
-  .attr("fill", "green")
+// var finalizedStatus = svg.append("g")
+//     .selectAll("text")
+//     .data(data)
+//     .join('text')
+//     .attr("x", "88")
+//     .attr("y", ({epoch}) => y(epoch) - 5)
+//     .text(({finalized, justified}) => {
+//       if (finalized) {
+//         return "Finalized"
+//       } else if (justified) {
+//         return "Justified"
+//       } else {
+//         return ""
+//       }
+//     })
+
+// heatmaps.append('rect')
+//   .attr('width', "144")
+//   .attr('height', "60")
+//   .attr("rx", "1")
+//   .attr("ry", "1")
+//   .attr("fill", "green")
  
 var slots = heatmaps.selectAll('g rect')
       .data(d => d.slots)
       .join('rect')
 
 slots
-  .attr('x', (d, i) => (((i % 8) * 18)))
-  .attr('y', (d, i) => {
-    return (((i - (i % 8)) / 8) * 18)
-  })
+  .attr('x', (d, i) => x(i + 1))
+  .attr('y', (d, i) => (y.bandwidth() / 2) - 7.5)
+  // .attr('x', (d, i) => (((i % 8) * 18)))
+  // .attr('y', (d, i) => {
+  //   return (((i - (i % 8)) / 8) * 18)
+  // })
   .attr("title", (s, i) => {
     if(s.active) {
       return `current slot`
