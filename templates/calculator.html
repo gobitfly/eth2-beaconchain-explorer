@@ -286,7 +286,17 @@ class Calculator {
 			fetch("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
 			.then(res => res.json())
 			.then(data => {
-					if (data && data.value && data.value > this.config.totalEthSupply) {
+				console.log('success', data)
+					if (data && data.result) {
+						try {
+							data.result = parseFloat(data.result)
+							console.log('parsed', data.result)
+						} catch (e) {
+							console.err('could not pare eth supply', e)
+						}
+					}
+					if (data && data.result && data.result > this.config.totalEthSupply) {
+						console.log('updating totalsuplly')
 						this.config.totalEthSupply = data.result / 1e9
 					}
 					var ethSupply = this.config.totalEthSupply / 1e9
