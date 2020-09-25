@@ -42,6 +42,135 @@
             status: 'proposed',
           },  {
             delay: 6,
+            status: 'orphaned',
+          }, 
+          {
+            delay: 8,
+            status: 'proposed',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+            active: true
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+          {
+            delay: 6,
+            status: 'scheduled',
+          },
+        ]
+    var exampleSlots2 = [
+          {
+            delay: 2,
+            status: 'scheduled',
+          }, {
+            delay: 1,
+            status: 'scheduled',
+          },  {
+            delay: 6,
             status: 'scheduled',
           }, 
           {
@@ -78,7 +207,7 @@
           },
           {
             delay: 6,
-            status: 'missed',
+            status: 'scheduled',
           },
           {
             delay: 6,
@@ -86,7 +215,7 @@
           },
           {
             delay: 6,
-            status: 'proposed',
+            status: 'scheduled',
           },
           {
             delay: 6,
@@ -163,7 +292,7 @@
         ]
     var data =  [{
         epoch: 0,
-        finalized: true,
+        finalized: false,
         justified: false,
         participation: 80,
         slots: exampleSlots
@@ -171,30 +300,30 @@
       ,{
         epoch: 1,
         finalized: false,
-        justified: true,
+        justified: false,
         participation: 67,
-        slots: exampleSlots
+        slots: exampleSlots2
       },
       {
         epoch: 2,
         finalized: false,
         justified: false,
         participation: 40,
-        slots: exampleSlots
+        slots: exampleSlots2
       },
       {
         epoch: 3,
         finalized: false,
         justified: false,
         participation: 0,
-        slots: exampleSlots
+        slots: exampleSlots2
       },
       {
         epoch: 4,
         finalized: false,
         justified: false,
         participation: 0,
-        slots: exampleSlots
+        slots: exampleSlots2
       },
       // {
 			// 	epoch: 5,
@@ -377,6 +506,10 @@ var color = d3.scaleSequential()
     .domain([0, d3.max(data, d => d.participation)])
     .interpolator(d3.interpolateDiscrete(roma))
 
+var colorProposed = d3.scaleSequential()
+                    .domain([0, 12])
+                    .interpolator(d3.interpolateRgb("rgba(100, 200, 100, 1)", "rgba(100, 200, 100, 0.3)"))
+
 // Chart Svg
 var svg = d3.select("#checklist").append("svg")
 .attr("viewBox", [0, 0, width, height])
@@ -398,6 +531,9 @@ var y = d3.scaleBand()
 var gx = svg.append("g")
            .attr("transform", `translate(0,${margin.top})`)
            .call(d3.axisTop(x))
+          //  .text("participation")
+          //  .attr('x', margin.left + (width - margin.left - margin.right) / 2)
+          //  .attr('y', 50) // Relative to the x axis.
            .call(g => g.select(".domain").remove())
 
 var gy = svg.append("g")
@@ -416,6 +552,11 @@ var yAxis = (g, x) => g
 
 // var bar = svg.append("g")
 //           .attr("text-anchor", "end")
+
+  //   <g text-anchor="end" transform="translate(-6,${y.bandwidth() / 2})">
+  //    ${data.map(d => svg`<text fill="${d3.lab(color(d.participation)).l < 60 ? "white" : "black"}" y="${y(d.epoch)}" x="${x(d.participation)}" dy="0.35em">${d.participation}</text>`)}
+  //  </g>
+
           
   
 var bars = svg.append("g")
@@ -433,6 +574,19 @@ var bars = svg.append("g")
     .attr("x", x(0))
     .attr("width", ({participation}) => x(participation) - x(0))
     .attr("height", y.bandwidth())
+
+var barLabels = svg.append('g')
+    .attr('text-anchor', "end")
+    .attr("transform", `translate(-6, ${y.bandwidth() / 2})`)
+    .selectAll('text')
+    .data(data, d => d)
+    .join('text')
+    .attr('fill', d => `${d3.lab(color(d.participation)).l < 60 ? "white" : "black"}`)
+    .attr('y', d => y(d.epoch))
+    .attr('x', d => x(d.participation))
+    .attr('dy', '0.35em')
+    .text((d) => d.participation + '%')
+   
 
 var heatmaps = svg.append("g").attr("text-anchor", "middle")
     .selectAll("g")
@@ -452,7 +606,7 @@ var finalizedStatus = svg.append("g")
       } else if (justified) {
         return "Justified"
       } else {
-        return "Pending"
+        return ""
       }
     })
 
@@ -472,6 +626,22 @@ slots
   .attr('y', (d, i) => {
     return (((i - (i % 8)) / 8) * 18)
   })
+  .attr("title", (s, i) => {
+    if(s.active) {
+      return `current slot`
+    }
+    if (s.status === "proposed") {
+      return `slot: ${i} proposed in ${s.delay}s`
+    }
+    if(s.status !== "scheduled") {
+      return `slot: ${i} status: ${s.status}`
+    } else {
+      return `slot: ${i}`
+    }
+    })
+  .attr("data-toggle", (s, i) => s.status !== "scheduled" || s.active  ? "tooltip" : "")
+  .attr('stroke-width', '1')
+  .attr('stroke', (d) => d.active ? 'var(--font-color)' : 'transparent')
   // .attr("stroke", "black")
   // .attr("stroke-width", ".5")
   .attr('width', "15")
@@ -482,13 +652,14 @@ slots
     if(d.status === "missed") {
       return "rgba(200,100,100,0.8)"
     } else if (d.status === "proposed") {
-      return "rgba(100, 200, 100, 0.8)"
+      return colorProposed(d.delay)
+    } else if (d.status === "orphaned") {
+      return "rgba(100,100, 200, 0.8)"
     } else {
       return "rgba(100,100,100, 0.5)"
     }
   })
 
-var heatMap = svg.append("g")
 
     var chart = Object.assign(svg.node(), {
       update(newData) {
@@ -538,9 +709,7 @@ var heatMap = svg.append("g")
     //   chart.update(data3)
     // }, 4000)
 
-  //   <g text-anchor="end" transform="translate(-6,${y.bandwidth() / 2})">
-  //    ${data.map(d => svg`<text fill="${d3.lab(color(d.participation)).l < 60 ? "white" : "black"}" y="${y(d.epoch)}" x="${x(d.participation)}" dy="0.35em">${d.participation}</text>`)}
-  //  </g>
+
 
   })
 
