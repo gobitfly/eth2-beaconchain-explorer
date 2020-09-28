@@ -303,3 +303,18 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
 .cls-52 {
   fill: #498cba;
 }
+
+.active-slot {
+  animation: blinking 1s alternate infinite;
+}
+
+@keyframes blinking {
+  0% {
+    opacity: 0.2
+  }
+  100% {
+    opacity: 1
+  }
+}
+
+

@@ -5,8 +5,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.0.0/vue.global.prod.js" integrity="sha512-ux4lUj6iuKm7H6rDY2b37bDTiqwpKIHgELi8MDwRaFDDUM/Ft/WLbCa7HKpy/h67PgjlEqj2k1QOj04BnNzjCQ==" crossorigin="anonymous"></script>
 <script src="/js/highcharts-vue.min.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
+{{ if .GenesisPeriod }}
 <script src="https://d3js.org/d3.v6.min.js"></script>
-<!-- <script src="/js/d3Support.js"></script> -->
+{{ end }}
 <script>
 	var app = Vue.createApp({
 		delimiters: ['${', '}'], // Standard vuejs template syntax conflicts with golang template syntax
@@ -202,6 +203,9 @@
 {{end}} 
 
 {{ define "css"}}
+{{ if .GenesisPeriod }}
+	<link rel="stylesheet" href="/css/checklist.css" >
+{{end}}
 <style>
 	.hero-container {
 		position: relative;
@@ -367,7 +371,7 @@
 		{{ template "banner"}}
 		{{ if and (not .Genesis) (not .GenesisPeriod) }}
 			{{ template "preGenesis" .}}
-		{{ else if and .GenesisPeriod}}
+		{{ else if .GenesisPeriod}}
 			{{template "genesis" .}}
 		{{else}}
 			{{ template "postGenesis" .}}

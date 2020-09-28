@@ -113,6 +113,7 @@ func main() {
 		router := mux.NewRouter()
 		router.HandleFunc("/", handlers.Index).Methods("GET")
 		router.HandleFunc("/latestState", handlers.LatestState).Methods("GET")
+		router.HandleFunc("/launchMetrics", handlers.LaunchMetricsData).Methods("GET")
 		router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
 		router.HandleFunc("/block/{slotOrHash}", handlers.Block).Methods("GET")
 		router.HandleFunc("/blocks", handlers.Blocks).Methods("GET")
