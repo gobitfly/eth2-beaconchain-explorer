@@ -1,14 +1,12 @@
 /*
 
-package eth2api implements the eth2 api v1
+package eth2api implements the eth2 api v1. it takes what lighthouse gives
+us right now so it wont work with other clients right now most likely.
 
 - https://github.com/ethereum/eth2.0-apis
 - LH implementing the v1 api https://github.com/sigp/lighthouse/pull/1569
 - validator-statuses by proto https://hackmd.io/ofFJ5gOmQpu1jjHilHbdQQ
 - validator-statuses by LH https://hackmd.io/bQxMDRt1RbS1TLno8K4NPg
-
-tried to autogen this from swagger but failed, so here we go. it takes
-what LH gives us right now so it wont work with others most likely.
 
 */
 
@@ -221,6 +219,10 @@ type Checkpoint struct {
 }
 
 type LighthouseValidatorStatus map[string]int
+
+var lighthouseValidatorStatusMap = map[string]string{
+	"Active": "active",
+}
 
 type ValidatorStatus string
 
