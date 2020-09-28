@@ -2,14 +2,16 @@
 <script src="https://code.highcharts.com/stock/highstock.js"></script>
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
 <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.0.0/vue.global.prod.js" integrity="sha512-ux4lUj6iuKm7H6rDY2b37bDTiqwpKIHgELi8MDwRaFDDUM/Ft/WLbCa7HKpy/h67PgjlEqj2k1QOj04BnNzjCQ==" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue"></script>
 <script src="/js/highcharts-vue.min.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
 {{ if .GenesisPeriod }}
 <script src="https://d3js.org/d3.v6.min.js"></script>
 {{ end }}
 <script>
-	var app = Vue.createApp({
+	document.addEventListener('DOMContentLoaded', function(event) {
+		var app = new Vue({
+		el: '#app',
 		delimiters: ['${', '}'], // Standard vuejs template syntax conflicts with golang template syntax
 		components: {
 			highcharts: HighchartsVue.Chart
@@ -198,7 +200,10 @@
 		}
 	}
 })
-	app.mount('#app')
+
+// app.mount('#app')
+	})
+	
 </script>
 {{end}} 
 
@@ -374,7 +379,7 @@
 		{{ else if .GenesisPeriod}}
 			{{template "genesis" .}}
 		{{else}}
-			{{ template "postGenesis" .}}
+			{{template "postGenesis" .}}
 		{{end}}
 	</div>
 </div>
