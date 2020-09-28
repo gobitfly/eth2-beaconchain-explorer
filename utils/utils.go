@@ -76,6 +76,8 @@ func GetTemplateFuncs() template.FuncMap {
 	}
 }
 
+var LayoutPaths []string = []string{"templates/layout/layout.html", "templates/layout/nav.html"}
+
 // IncludeHTML adds html to the page
 func IncludeHTML(path string) template.HTML {
 	b, err := ioutil.ReadFile(path)
@@ -111,7 +113,7 @@ func SlotToTime(slot uint64) time.Time {
 // TimeToSlot will return time to slot in seconds
 func TimeToSlot(timestamp uint64) uint64 {
 	if Config.Chain.GenesisTimestamp > timestamp {
-		return 0
+		return 1
 	}
 	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.SecondsPerSlot
 }

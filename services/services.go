@@ -151,10 +151,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	// If we are before the genesis block show the first 20 slots by default
 	startSlotTime := utils.SlotToTime(0)
-	if startSlotTime.After(time.Now()) {
-		cutoffSlot = 20
+	genesisTransition := utils.SlotToTime(15)
+	now := time.Now()
 
-		data.Genesis = false
+	// run deposit query until the Genesis period is over
+	if now.Before(genesisTransition) {
+		if cutoffSlot < 15 {
+			cutoffSlot = 15
+		}
 		type Deposit struct {
 			Total   uint64    `db:"total"`
 			BlockTs time.Time `db:"block_ts"`
@@ -194,8 +198,18 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
 			}
 		}
-	} else {
+	}
+	// has genesis occured
+	if now.After(startSlotTime) {
 		data.Genesis = true
+	} else {
+		data.Genesis = false
+	}
+	// show the transition view one hour before the first slot and until epoch 30 is reached
+	if now.Add(time.Hour*19).After(startSlotTime) && now.Before(genesisTransition) {
+		data.GenesisPeriod = true
+	} else {
+		data.GenesisPeriod = false
 	}
 
 	var epochs []*types.IndexPageDataEpochs
@@ -252,8 +266,15 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		block.BlockRootFormatted = fmt.Sprintf("%x", block.BlockRoot)
 	}
 
-	if len(blocks) > 0 {
-		data.CurrentSlot = blocks[0].Slot
+	// if len(blocks) > 0 {
+	// 	data.CurrentSlot = blocks[0].Slot
+	// }
+	if data.GenesisPeriod {
+		for _, blk := range blocks {
+			if blk.Status != 0 {
+				data.CurrentSlot = blk.Slot + 1
+			}
+		}
 	}
 
 	for _, block := range data.Blocks {

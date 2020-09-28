@@ -16,7 +16,6 @@ var stakingServicesTemplate = template.Must(template.New("stakingServices").Func
 
 func StakingServices(w http.ResponseWriter, r *http.Request) {
 	var err error
-	stakingServicesTemplate = template.Must(template.New("stakingServices").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/stakingServices.html"))
 
 	w.Header().Set("Content-Type", "text/html")
 	data := &types.PageData{

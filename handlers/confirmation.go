@@ -16,7 +16,6 @@ var confirmationTemplate = template.Must(template.New("confirmation").Funcs(util
 // Blocks will return information about blocks using a go template
 func Confirmation(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	confirmationTemplate = template.Must(template.New("confirmation").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/confirmation.html"))
 
 	type confirmationPageData struct {
 		Flashes []interface{}

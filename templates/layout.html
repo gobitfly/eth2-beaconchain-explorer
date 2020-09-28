@@ -168,7 +168,7 @@
 			</div>
 		</div>
 	</div>
-	<!-- Banner END -->
+		<!-- Banner END -->
 	<nav {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}} id="nav" class="navbar navbar-expand-lg navbar-light">
 		<div class="container">
 			<a class=navbar-brand href="/">
@@ -451,7 +451,7 @@
 		</div>
 		</div>
 	</nav>
-    {{ template "css" }}
+    {{ template "css" .Data }}
 
 	<main>
         {{ if .HeaderAd }}
@@ -594,7 +594,6 @@
 		<!-- Global site tag (gtag.js) - Google Analytics -->
 		<script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>
 		<script>
-            console.log('loaded google analytics')
             window.dataLayer = window.dataLayer || [];
 
             function gtag() {
@@ -639,7 +638,6 @@
 
             // add event handler for outbound links tagged with ga-outbound
             var outbounds = document.querySelectorAll('[ga-outbound]')
-            console.log('found x outbound links', outbounds)
 
             for (var i = 0; i < outbounds.length; i++) {
                 var element = outbounds[i];

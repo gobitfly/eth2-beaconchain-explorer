@@ -84,6 +84,7 @@ type IndexPageData struct {
 	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
 	Subtitle                  template.HTML          `json:"-"`
 	Genesis                   bool                   `json:"genesis"`
+	GenesisPeriod             bool                   `json:"genesis_period"`
 }
 
 type IndexPageDataEpochs struct {
