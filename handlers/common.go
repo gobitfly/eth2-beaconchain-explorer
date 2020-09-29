@@ -19,11 +19,13 @@ var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
 
 func GetValidatorOnlineThresholdSlot() uint64 {
 	latestProposedSlot := services.LatestProposedSlot()
+	threshold := utils.Config.Chain.SlotsPerEpoch * 2
+
 	var validatorOnlineThresholdSlot uint64
-	if latestProposedSlot < 1 {
+	if latestProposedSlot < 1 || latestProposedSlot < threshold {
 		validatorOnlineThresholdSlot = 0
 	} else {
-		validatorOnlineThresholdSlot = latestProposedSlot - utils.Config.Chain.SlotsPerEpoch*2
+		validatorOnlineThresholdSlot = latestProposedSlot - threshold
 	}
 
 	return validatorOnlineThresholdSlot

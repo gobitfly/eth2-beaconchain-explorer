@@ -226,7 +226,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lastestEpoch := services.LatestEpoch()
+	latestEpoch := services.LatestEpoch()
 	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 
 	qry := fmt.Sprintf(`
@@ -273,7 +273,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		LIMIT $4 OFFSET $5`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, qry, lastestEpoch, validatorOnlineThresholdSlot, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
+	err = db.DB.Select(&validators, qry, latestEpoch, validatorOnlineThresholdSlot, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
 		http.Error(w, "Internal server error", 503)
