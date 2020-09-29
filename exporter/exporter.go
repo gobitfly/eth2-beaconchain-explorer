@@ -192,7 +192,7 @@ func Start(client rpc.Client) error {
 
 		if head.HeadEpoch > 10 && head.HeadEpoch-head.FinalizedEpoch > 10 {
 			logger.Infof("no finality since %v epochs, limiting lookback to the last 10 epochs", head.HeadEpoch-head.FinalizedEpoch)
-			startEpoch = head.HeadEpoch - 20
+			startEpoch = head.HeadEpoch - 10
 		}
 
 		dbBlocks, err := db.GetLastPendingAndProposedBlocks(startEpoch, head.HeadEpoch)
