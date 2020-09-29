@@ -25,15 +25,6 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var blks []sqlBlocks = []sqlBlocks{}
-	// sqlBlocks := []struct {
-	// 	Slot                    uint64
-	// 	Epoch                   uint64
-	// 	Status                  string
-	// 	Globalparticipationrate float64
-	// 	Finalized               bool
-	// 	Justified               bool
-	// 	Previousjustified       bool
-	// }{}
 
 	err := db.DB.Select(&blks, `
 		select
@@ -170,13 +161,17 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 				epochMap[b.Epoch].PreviousJustified = b.Previousjustified
 			}
 		} else {
+			status := b.Status
+			if b.Epoch == 0 {
+				status = "genesis"
+			}
 			r := epochType{
 				Epoch:             b.Epoch,
 				Finalized:         b.Finalized,
 				Justified:         b.Justified,
 				PreviousJustified: b.Previousjustified,
 				Particicpation:    b.Globalparticipationrate,
-				Slots:             []blockType{{b.Status, active}},
+				Slots:             []blockType{{status, active}},
 			}
 			epochMap[b.Epoch] = &r
 			res.Epochs = append(res.Epochs, &r)
