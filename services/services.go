@@ -272,9 +272,11 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if data.GenesisPeriod {
 		for _, blk := range blocks {
 			if blk.Status != 0 {
-				data.CurrentSlot = blk.Slot + 1
+				data.CurrentSlot = blk.Slot
 			}
 		}
+	} else if len(blocks) > 0 {
+		data.CurrentSlot = blocks[0].Slot
 	}
 
 	for _, block := range data.Blocks {
