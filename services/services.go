@@ -206,7 +206,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.Genesis = false
 	}
 	// show the transition view one hour before the first slot and until epoch 30 is reached
-	if now.Add(time.Hour*19).After(startSlotTime) && now.Before(genesisTransition) {
+	if now.Add(time.Hour*2).After(startSlotTime) && now.Before(genesisTransition) {
 		data.GenesisPeriod = true
 	} else {
 		data.GenesisPeriod = false
