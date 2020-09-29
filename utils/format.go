@@ -97,6 +97,7 @@ func FormatSlotToTimestamp(blockSlot uint64) template.HTML {
 
 // FormatBlockStatus will return an html status for a block.
 func FormatBlockStatus(status uint64) template.HTML {
+	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
 	if status == 0 {
 		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
 	} else if status == 1 {

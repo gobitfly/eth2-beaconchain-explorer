@@ -113,7 +113,7 @@ func SlotToTime(slot uint64) time.Time {
 // TimeToSlot will return time to slot in seconds
 func TimeToSlot(timestamp uint64) uint64 {
 	if Config.Chain.GenesisTimestamp > timestamp {
-		return 1
+		return 0
 	}
 	return (timestamp - Config.Chain.GenesisTimestamp) / Config.Chain.SecondsPerSlot
 }
