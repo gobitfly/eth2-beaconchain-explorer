@@ -75,11 +75,6 @@ func (c *Client) get(endpoint string, result interface{}, queryParams ...interfa
 		Data: result,
 	}
 	if err := json.Unmarshal(body, r); err != nil {
-		if len(body) < 1024 {
-			fmt.Printf("error unmarshaling: %v: %s\n", err, body)
-		} else {
-			fmt.Printf("error unmarshaling: %v: %s\n", err, body[:1024])
-		}
 		return err
 	}
 	return nil
@@ -91,10 +86,14 @@ func (c *Client) GetGenesis() (*Genesis, error) {
 	return res, err
 }
 
+type Root struct {
+	Root string `json:"root"`
+}
+
 func (c *Client) GetRoot(stateID string) (string, error) {
-	res := ""
+	res := Root{}
 	err := c.get(fmt.Sprintf("/eth/v1/beacon/states/%v/root", stateID), &res)
-	return res, err
+	return res.Root, err
 }
 
 func (c *Client) GetFork(stateID string) (*Fork, error) {
@@ -103,8 +102,8 @@ func (c *Client) GetFork(stateID string) (*Fork, error) {
 	return &res, err
 }
 
-func (c *Client) GetFinalityCheckpoints(stateID string) (*[]Checkpoint, error) {
-	res := []Checkpoint{}
+func (c *Client) GetFinalityCheckpoints(stateID string) (*FinalityCheckpoints, error) {
+	res := FinalityCheckpoints{}
 	err := c.get(fmt.Sprintf("/eth/v1/beacon/states/%v/finality_checkpoints", stateID), &res)
 	return &res, err
 }
@@ -209,7 +208,7 @@ type Genesis struct {
 type Fork struct {
 	PreviousVersion string `json:"previous_version"`
 	CurrentVersion  string `json:"current_version"`
-	Epoch           string `json:"epoch"`
+	Epoch           uint64 `json:"epoch"`
 }
 
 type FinalityCheckpoints struct {
@@ -219,7 +218,7 @@ type FinalityCheckpoints struct {
 }
 
 type Checkpoint struct {
-	Epoch string `json:"epoch"`
+	Epoch uint64 `json:"epoch"`
 	Root  string `json:"root"`
 }
 
@@ -289,10 +288,22 @@ type Validator struct {
 	} `json:"validator"`
 }
 
+type ValidatorIndices []uint64
+func (vs *ValidatorIndices) UnmarshalJSON(data []byte) error {
+	var err error
+	var vsString []string
+	if err = json.Unmarshal(data)
+	strconv.ParseUint(data, 10, 64)
+}
+
 type Committee struct {
-	Index      string   `json:"index"`
-	Slot       string   `json:"slot"`
+	Index      uint64   `json:"index,string"`
+	Slot       uint64   `json:"slot"`
 	Validators []string `json:"validators"`
+}
+
+func (c *Committee) UnmarshalJSON(data []byte) error {
+	return nil
 }
 
 type Header struct {
@@ -322,8 +333,8 @@ type BlockHeader struct {
 
 type SignedBlock struct {
 	Message struct {
-		Slot          string `json:"slot"`
-		ProposerIndex string `json:"proposer_index"`
+		Slot          uint64 `json:"slot"`
+		ProposerIndex uint64 `json:"proposer_index,string"`
 		ParentRoot    string `json:"parent_root"`
 		StateRoot     string `json:"state_root"`
 		Body          struct {
@@ -385,15 +396,15 @@ type IndexedAttestation struct {
 }
 
 type AttestationData struct {
-	Slot            string `json:"slot"`
-	Index           string `json:"index"`
+	Slot            uint64 `json:"slot"`
+	Index           uint64 `json:"index,string"`
 	BeaconBlockRoot string `json:"beacon_block_root"`
 	Source          struct {
-		Epoch string `json:"epoch"`
+		Epoch uint64 `json:"epoch"`
 		Root  string `json:"root"`
 	} `json:"source"`
 	Target struct {
-		Epoch string `json:"epoch"`
+		Epoch uint64 `json:"epoch"`
 		Root  string `json:"root"`
 	} `json:"target"`
 }
