@@ -185,18 +185,34 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(blocks))
 	for i, b := range blocks {
-		tableData[i] = []interface{}{
-			utils.FormatEpoch(b.Epoch),
-			utils.FormatBlockSlot(b.Slot),
-			utils.FormatBlockStatus(b.Status),
-			utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
-			utils.FormatValidatorWithName(b.Proposer, b.ProposerName),
-			b.Attestations,
-			b.Deposits,
-			fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
-			b.Exits,
-			b.Votes,
-			utils.FormatGraffitiAsLink(b.Graffiti),
+		if b.Slot == 0 {
+			tableData[i] = []interface{}{
+				utils.FormatEpoch(b.Epoch),
+				utils.FormatBlockSlot(b.Slot),
+				template.HTML("<span class=\"badge text-dark\" style=\"background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;\">Genesis</span>"),
+				utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
+				template.HTML("N/A"),
+				b.Attestations,
+				b.Deposits,
+				fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
+				b.Exits,
+				b.Votes,
+				utils.FormatGraffitiAsLink(b.Graffiti),
+			}
+		} else {
+			tableData[i] = []interface{}{
+				utils.FormatEpoch(b.Epoch),
+				utils.FormatBlockSlot(b.Slot),
+				utils.FormatBlockStatus(b.Status),
+				utils.FormatTimestamp(utils.SlotToTime(b.Slot).Unix()),
+				utils.FormatValidatorWithName(b.Proposer, b.ProposerName),
+				b.Attestations,
+				b.Deposits,
+				fmt.Sprintf("%v / %v", b.Proposerslashings, b.Attesterslashings),
+				b.Exits,
+				b.Votes,
+				utils.FormatGraffitiAsLink(b.Graffiti),
+			}
 		}
 	}
 
