@@ -1005,6 +1005,7 @@ github.com/prysmaticlabs/go-ssz v0.0.0-20200101200214-e24db4d9e963/go.mod h1:Vec
 github.com/prysmaticlabs/go-ssz v0.0.0-20200612203617-6d5c9aa213ae h1:7qd0Af1ozWKBU3c93YW2RH+/09hJns9+ftqWUZyts9c=
 github.com/prysmaticlabs/go-ssz v0.0.0-20200612203617-6d5c9aa213ae/go.mod h1:VecIJZrewdAuhVckySLFt2wAAHRME934bSDurP8ftkc=
 github.com/prysmaticlabs/prombbolt v0.0.0-20200324184628-09789ef63796/go.mod h1:5JkKm84FcLZQPNuHwjX8Mtd5emni/PH5CylWCNqnKos=
+github.com/prysmaticlabs/prysm v0.3.10 h1:BxCWTHJ3C81N7MTt888k3Of+9WyBrNhBom/BikxEmBo=
 github.com/prysmaticlabs/prysm v1.0.0-alpha.25.0.20200915042146-36c921c601d6 h1:A0qHh9RAQfGVswn/MOHyFKuZqhtB/+D3WYcjINmV0F4=
 github.com/prysmaticlabs/prysm v1.0.0-alpha.25.0.20200915042146-36c921c601d6/go.mod h1:/o5WnzgAM+ViBamSTgq1FC9v/OoU5ExQo5w3rshRuVk=
 github.com/rcrowley/go-metrics v0.0.0-20190826022208-cac0b30c2563/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=

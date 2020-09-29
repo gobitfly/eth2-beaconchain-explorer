@@ -75,6 +75,11 @@ func (c *Client) get(endpoint string, result interface{}, queryParams ...interfa
 		Data: result,
 	}
 	if err := json.Unmarshal(body, r); err != nil {
+		if len(body) < 1024 {
+			fmt.Printf("error unmarshaling: %v: %s\n", err, body)
+		} else {
+			fmt.Printf("error unmarshaling: %v: %s\n", err, body[:1024])
+		}
 		return err
 	}
 	return nil
@@ -218,11 +223,25 @@ type Checkpoint struct {
 	Root  string `json:"root"`
 }
 
-type LighthouseValidatorStatus map[string]int
-
+// see:
+// - validator-statuses by proto https://hackmd.io/ofFJ5gOmQpu1jjHilHbdQQ
+// - validator-statuses by LH https://hackmd.io/bQxMDRt1RbS1TLno8K4NPg
 var lighthouseValidatorStatusMap = map[string]string{
-	"Active": "active",
+	// "Unknown":                   "unknown",
+	"WaitingForEligibility":       "pending_initialized",
+	"WaitingForFinality":          "pending_initialized",
+	"WaitingInQueue":              "pending_queued",
+	"StandbyForActive":            "active_ongoing",
+	"Active":                      "active_ongoing",
+	"ActiveAwaitingVoluntaryExit": "active_exiting",
+	"ActiveAwaitingSlashedExit":   "active_slashed",
+	"ExitedVoluntarily":           "exited_unslashed",
+	"ExitedSlashed":               "exited_slashed",
+	"Withdrawable":                "withdrawal_possible",
+	"Withdrawn":                   "withdrawal_done",
 }
+
+type LighthouseValidatorStatus map[string]int
 
 type ValidatorStatus string
 
@@ -230,7 +249,11 @@ func (vs *ValidatorStatus) UnmarshalJSON(data []byte) error {
 	var err error
 	var a string
 	if err = json.Unmarshal(data, &a); err == nil {
-		*vs = ValidatorStatus(a)
+		s, exists := lighthouseValidatorStatusMap[a]
+		if !exists {
+			return fmt.Errorf("unknown state: %v", a)
+		}
+		*vs = ValidatorStatus(s)
 		return nil
 	}
 	var b LighthouseValidatorStatus
@@ -239,7 +262,11 @@ func (vs *ValidatorStatus) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("invalid LighthouseValidatorStatus")
 		}
 		for k := range b {
-			*vs = ValidatorStatus(k)
+			s, exists := lighthouseValidatorStatusMap[k]
+			if !exists {
+				return fmt.Errorf("unknown state: %v", a)
+			}
+			*vs = ValidatorStatus(s)
 			return nil
 		}
 	}
@@ -398,7 +425,7 @@ type AttesterDuty struct {
 	CommitteeLength         uint64 `json:"committee_length,string"`
 	CommitteesAtSlot        uint64 `json:"committees_at_slot,string"`
 	ValidatorCommitteeIndex uint64 `json:"validator_committee_index,string"`
-	Slot                    uint64 `json:"slot,string"`
+	Slot                    uint64 `json:"slot"`
 }
 
 type ProposerDuty struct {
