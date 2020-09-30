@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -666,7 +665,14 @@ func networkLivenessUpdater(client rpc.Client) {
 func genesisDepositsExporter() {
 	for {
 		// check if the beaconchain has started
-		latestEpoch := services.LatestEpoch()
+		var latestEpoch uint64
+		err = db.DB.Get(&latestEpoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
+		if err != nil {
+			logger.Errorf("error retrieving latest epoch from the database: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
 		if latestEpoch == 0 {
 			time.Sleep(time.Second * 60)
 			continue
