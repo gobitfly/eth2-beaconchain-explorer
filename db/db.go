@@ -437,7 +437,7 @@ func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.Mini
 	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND blockroot != '\x01' ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving last blocks from DB: %v", err)
+		return nil, fmt.Errorf("error retrieving last blocks (%v-%v) from DB: %v", startEpoch, endEpoch, err)
 	}
 
 	return blocks, nil

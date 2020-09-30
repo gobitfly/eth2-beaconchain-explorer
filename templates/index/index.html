@@ -13,7 +13,6 @@
 <script src="https://d3js.org/d3.v6.min.js"></script>
 {{ end }}
 <script>
-	document.addEventListener('DOMContentLoaded', function(event) {
 		var app = new Vue({
 		el: '#app',
 		delimiters: ['${', '}'], // Standard vuejs template syntax conflicts with golang template syntax
@@ -204,9 +203,6 @@
 		}
 	}
 })
-
-// app.mount('#app')
-	})
 	
 </script>
 {{end}} 

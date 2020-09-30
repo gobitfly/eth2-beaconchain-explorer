@@ -268,6 +268,8 @@
           }
         } else if (d.status === "orphaned") {
           return "rgba(100,100, 200, 0.8)"
+        } else if (d.status === "genesis") {
+          return "rgba(119, 110, 255, 0.8)"
         } else {
           return "rgba(100,100,100, 0.5)"
         }
@@ -311,8 +313,6 @@
             return ''
           }
       })
-          
- 
         heatmaps = heatmaps
           .data(epochs, d => d.epoch)
           .join('g')
@@ -337,6 +337,8 @@
                     }
                   } else if (d.status === "orphaned") {
                     return "rgba(100,100, 200, 0.8)"
+                  } else if (d.status === "genesis") {
+                    return "rgba(196, 174, 77, 0.8)"
                   } else {
                     return "rgba(100,100,100, 0.5)"
                   }
@@ -352,7 +354,6 @@
               return ""
             }
           })
-          // .attr("data-toggle", (s, i) => s.status !== "scheduled" || s.active ? "tooltip" : "")
           .attr("data-original-title", (s, i) => {
             if (s.active) {
               return `current slot`
@@ -376,7 +377,6 @@
         data = data.Epochs
         participationInputs = ["02", "04", "06", "10"]
         firstProposed = ["01", "03", null, null]
-        // paticipationLabels = ['[for="02"]','[for="04"]','[for="06"]','[for="10"]']
         finalized = [null, null, '07', '11']
         justified = [null, null, '08', '12']
 
@@ -434,36 +434,36 @@
     fetchMetrics()
     setInterval(fetchMetrics, 6000)
 
-    // setTimeout(function() {
-    //   console.log('first update')
-    //   epochs[0].slots[1].status = 'proposed'
-    //   epochs[0].justified = true
-    //   epochs[0].slots[1].active = false
-    //   epochs[0].slots[2].active = true
+  //   setTimeout(function() {
+  //     console.log('first update')
+  //     epochs[0].slots[1].status = 'proposed'
+  //     epochs[0].justified = true
+  //     epochs[0].slots[1].active = false
+  //     epochs[0].slots[2].active = true
 
-    //   epochs[0].participation = 66
-    //   chart.update(epochs)
-    // }, 2000)
+  //     epochs[0].participation = 66
+  //     chart.update(epochs)
+  //   }, 2000)
     
-    // setTimeout(function() {
-    //   console.log('second update')
-    //   epochs[0].finalized = true
-    //   epochs[0].slots[2].status = 'missed'
-    //   epochs[0].slots[2].active = false
-    //   epochs[0].slots[3].active = true
+  //   setTimeout(function() {
+  //     console.log('second update')
+  //     epochs[0].finalized = true
+  //     epochs[0].slots[2].status = 'missed'
+  //     epochs[0].slots[2].active = false
+  //     epochs[0].slots[3].active = true
 
-    //   epochs[0].participation = 67
-    //   chart.update(epochs)
-    // }, 4000)
-    // setTimeout(function() {
-    //   console.log('second update')
-    //   epochs[0].slots[3].status = 'orphaned'
-    //   epochs[0].slots[3].active = false
-    //   epochs[0].slots[4].active = true
+  //     epochs[0].participation = 67
+  //     chart.update(epochs)
+  //   }, 4000)
+  //   setTimeout(function() {
+  //     console.log('second update')
+  //     epochs[0].slots[3].status = 'orphaned'
+  //     epochs[0].slots[3].active = false
+  //     epochs[0].slots[4].active = true
 
-    //   epochs[0].participation = 80
-    //   chart.update(epochs)
-    // }, 6000)
+  //     epochs[0].participation = 80
+  //     chart.update(epochs)
+  //   }, 6000)
 
   })
 
