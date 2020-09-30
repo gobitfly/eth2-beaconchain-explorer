@@ -280,7 +280,6 @@
       update(newData) {
         var t = svg.transition().duration(550)
 
-        // var height = 100 + margin.top + margin.bottom + epochs.length * 50
 
         // svg = svg.attr('viewBox', `0 0 ${ width } ${ height }`)
         // y = y.domain(newData.map(d => d.epoch)).range([margin.top, height - margin.bottom])
@@ -314,7 +313,6 @@
             return ''
           }
       })
-
         heatmaps = heatmaps
           .data(epochs, d => d.epoch)
           .join('g')
