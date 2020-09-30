@@ -97,7 +97,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	userNotificationsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
 	var watchlistIndices []uint64
-	err := db.FrontendDB.Select(&watchlistIndices, `
+	err := db.DB.Select(&watchlistIndices, `
 	SELECT validators.validatorindex as index
 	FROM users_validators_tags
 	INNER JOIN validators
@@ -112,7 +112,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var countSubscriptions int
-	err = db.FrontendDB.Get(&countSubscriptions, `
+	err = db.DB.Get(&countSubscriptions, `
 	SELECT count(*) as count
 	FROM users_subscriptions
 	WHERE user_id = $1
@@ -200,7 +200,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wl := []watchlistSubscription{}
-	err = db.FrontendDB.Select(&wl, `
+	err = db.DB.Select(&wl, `
 	SELECT 
 			users_validators_tags.validator_publickey as publickey,
 			COALESCE (MAX(validators.balance), 0) as balance,
@@ -284,7 +284,7 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	subs := []types.Subscription{}
-	err = db.FrontendDB.Select(&subs, `
+	err = db.DB.Select(&subs, `
 			SELECT *
 			FROM users_subscriptions
 			WHERE user_id = $1
