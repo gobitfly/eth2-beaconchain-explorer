@@ -376,6 +376,13 @@ func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
 		cfg.GenesisForkVersion,
 		cfg.ZeroHash[:],
 	)
+	if utils.Config.Chain.Network == "zinken" {
+		domain, err = ComputeDomain(
+			cfg.DomainDeposit,
+			[]byte{0x00, 0x00, 0x00, 0x03},
+			cfg.ZeroHash[:],
+		)
+	}
 	if err != nil {
 		return fmt.Errorf("could not get domain: %w", err)
 	}
