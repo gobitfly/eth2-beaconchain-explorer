@@ -5,6 +5,10 @@
 <script src="https://cdn.jsdelivr.net/npm/vue"></script>
 <script src="/js/highcharts-vue.min.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
+<!-- <script type="text/javascript" src="js/slick.min.js"></script> -->
+<!-- <script type="text/javascript" src="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script> -->
+
+
 {{ if .GenesisPeriod }}
 <script src="https://d3js.org/d3.v6.min.js"></script>
 {{ end }}
@@ -208,6 +212,10 @@
 {{end}} 
 
 {{ define "css"}}
+
+<!-- <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css"/>
+<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css"/> -->
+
 {{ if .GenesisPeriod }}
 	<link rel="stylesheet" href="/css/checklist.css" >
 {{end}}
