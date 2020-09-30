@@ -1009,6 +1009,7 @@ github.com/prysmaticlabs/go-ssz v0.0.0-20200101200214-e24db4d9e963/go.mod h1:Vec
 github.com/prysmaticlabs/go-ssz v0.0.0-20200612203617-6d5c9aa213ae h1:7qd0Af1ozWKBU3c93YW2RH+/09hJns9+ftqWUZyts9c=
 github.com/prysmaticlabs/go-ssz v0.0.0-20200612203617-6d5c9aa213ae/go.mod h1:VecIJZrewdAuhVckySLFt2wAAHRME934bSDurP8ftkc=
 github.com/prysmaticlabs/prombbolt v0.0.0-20200324184628-09789ef63796/go.mod h1:5JkKm84FcLZQPNuHwjX8Mtd5emni/PH5CylWCNqnKos=
+github.com/prysmaticlabs/prysm v0.3.10 h1:BxCWTHJ3C81N7MTt888k3Of+9WyBrNhBom/BikxEmBo=
 github.com/prysmaticlabs/prysm v1.0.0-alpha.25.0.20200917185001-3db678499074 h1:Y3YROGHwK+uyBa9+D67O0N/1QfE2TQ27Zk434z05dHQ=
 github.com/prysmaticlabs/prysm v1.0.0-alpha.25.0.20200917185001-3db678499074/go.mod h1:ZDK4pA85sSjRfeNpQwGzBT18jlOQZz46Z3egjgH3KeM=
 github.com/prysmaticlabs/prysm v1.0.0-alpha.25.0.20200921085005-bdf8bf7be273 h1:AxQLXd0XONm41lEXaW3WSJx64JJHc7Rm/fdil1kBYEU=
