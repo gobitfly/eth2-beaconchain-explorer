@@ -18,17 +18,16 @@
   <script>
     window.addEventListener('load', function() {
       function refreshAd() {
-        var adSlots = ['#desktop-banner', '#mobile-banner'];
-   
-         for (var i = adSlots.length - 1; i >= 0; i--) {
-             $(adSlots).find('ins').removeAttr('data-revive-loaded');
-
-         }
-         console.log('refreshing ads')
-         console.log(reviveAsync)
-         reviveAsync["727bec5e09208690b050ccfc6a45d384"].refresh();
+        if(document.hasFocus()) {
+          $("#desktop-banner").find('ins').removeAttr('data-revive-loaded');
+          $("#desktop-banner").find('ins').removeAttr('data-revive-seq');
+          $("#mobile-banner").find('ins').removeAttr('data-revive-loaded');
+          $("#mobile-banner").find('ins').removeAttr('data-revive-seq');
+          reviveAsync["727bec5e09208690b050ccfc6a45d384"].refresh();
+        }
       }
-      // setInterval(refreshAd, 6000)
+
+      window.requestInterval(refreshAd, 6000)
     })
   </script>
 </div>
