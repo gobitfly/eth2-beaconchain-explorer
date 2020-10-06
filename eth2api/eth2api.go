@@ -13,14 +13,17 @@ us right now so it wont work with other clients right now most likely.
 package eth2api
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/go-querystring/query"
+	"github.com/pkg/errors"
 )
 
 type Client struct {
@@ -42,7 +45,7 @@ func NewClient(baseURL string) (*Client, error) {
 type Response struct {
 	Data    interface{} `json:"data,omitempty"`
 	Code    int         `json:"code,omitempty"`
-	Message string      `json:"string,omitempty"`
+	Message string      `json:"message,omitempty"`
 }
 
 func (c *Client) get(endpoint string, result interface{}, queryParams ...interface{}) error {
@@ -66,17 +69,32 @@ func (c *Client) get(endpoint string, result interface{}, queryParams ...interfa
 	if err != nil {
 		return err
 	}
+
 	defer res.Body.Close()
+
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}
+
 	r := &Response{
 		Data: result,
 	}
+
 	if err := json.Unmarshal(body, r); err != nil {
+		fmt.Printf("%v: %s\n", url, body)
 		return err
 	}
+
+	if res.StatusCode == http.StatusNotFound {
+		result = nil
+		return nil
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("error getting %v: code: %v, message: %v", url, res.StatusCode, r.Message)
+	}
+
 	return nil
 }
 
@@ -86,14 +104,10 @@ func (c *Client) GetGenesis() (*Genesis, error) {
 	return res, err
 }
 
-type Root struct {
-	Root string `json:"root"`
-}
-
-func (c *Client) GetRoot(stateID string) (string, error) {
+func (c *Client) GetRoot(stateID string) (*Root, error) {
 	res := Root{}
 	err := c.get(fmt.Sprintf("/eth/v1/beacon/states/%v/root", stateID), &res)
-	return res.Root, err
+	return &res, err
 }
 
 func (c *Client) GetFork(stateID string) (*Fork, error) {
@@ -113,10 +127,10 @@ type GetValidatorsParams struct {
 	States  []string `url:"status"`
 }
 
-func (c *Client) GetValidators(stateID string, params ...interface{}) (*[]Validator, error) {
-	res := []Validator{}
+func (c *Client) GetValidators(stateID string, params ...interface{}) ([]*Validator, error) {
+	res := []*Validator{}
 	err := c.get(fmt.Sprintf("/eth/v1/beacon/states/%v/validators", stateID), &res, params...)
-	return &res, err
+	return res, err
 }
 
 func (c *Client) GetValidator(stateID string, validatorID string) (*Validator, error) {
@@ -130,10 +144,10 @@ type GetCommitteesParams struct {
 	Slot  string `url:"slot"`
 }
 
-func (c *Client) GetCommittees(stateID string, epoch uint64, params ...interface{}) (*[]Committee, error) {
-	res := []Committee{}
+func (c *Client) GetCommittees(stateID string, epoch uint64, params ...interface{}) ([]*Committee, error) {
+	res := []*Committee{}
 	err := c.get(fmt.Sprintf("/eth/v1/beacon/states/%v/committees/%v", stateID, epoch), &res, params...)
-	return &res, err
+	return res, err
 }
 
 type GetHeadersParams struct {
@@ -141,10 +155,10 @@ type GetHeadersParams struct {
 	ParentRoot string `url:"parent_root"`
 }
 
-func (c *Client) GetHeaders(params ...interface{}) (*[]Header, error) {
-	res := []Header{}
+func (c *Client) GetHeaders(params ...interface{}) ([]*Header, error) {
+	res := []*Header{}
 	err := c.get("/eth/v1/beacon/headers", &res, params...)
-	return &res, err
+	return res, err
 }
 
 func (c *Client) GetHeader(blockID string) (*Header, error) {
@@ -159,56 +173,108 @@ func (c *Client) GetBlock(blockID string) (*SignedBlock, error) {
 	return &res, err
 }
 
-func (c *Client) GetBlockRoot(blockID string) (string, error) {
-	res := ""
+func (c *Client) GetBlockRoot(blockID string) (*Root, error) {
+	res := Root{}
 	err := c.get(fmt.Sprintf("/eth/v1/beacon/blocks/%v/root", blockID), &res)
+	return &res, err
+}
+
+func (c *Client) GetPoolAttesterSlashings() ([]*AttesterSlashing, error) {
+	res := []*AttesterSlashing{}
+	err := c.get("/eth/v1/beacon/pool/attester_slashings", &res)
 	return res, err
 }
 
-func (c *Client) GetPoolAttesterSlashings() (*[]AttesterSlashing, error) {
-	res := []AttesterSlashing{}
-	err := c.get("/eth/v1/beacon/pool/attester_slashings", &res)
-	return &res, err
-}
-
-func (c *Client) GetPoolProposerSlashings() (*[]ProposerSlashing, error) {
-	res := []ProposerSlashing{}
+func (c *Client) GetPoolProposerSlashings() ([]*ProposerSlashing, error) {
+	res := []*ProposerSlashing{}
 	err := c.get("/eth/v1/beacon/pool/proposer_slashings", &res)
-	return &res, err
+	return res, err
 }
 
-func (c *Client) GetPoolVoluntaryExits() (*[]VoluntaryExit, error) {
-	res := []VoluntaryExit{}
+func (c *Client) GetPoolVoluntaryExits() ([]*VoluntaryExit, error) {
+	res := []*VoluntaryExit{}
 	err := c.get("/eth/v1/beacon/pool/voluntary_exits", &res)
-	return &res, err
+	return res, err
 }
 
 type GetAttesterDutiesParams struct {
 	Indices []string `url:"index"`
 }
 
-func (c *Client) GetAttesterDuties(epoch uint64, params ...interface{}) (*[]AttesterDuty, error) {
-	res := []AttesterDuty{}
+func (c *Client) GetAttesterDuties(epoch uint64, params ...interface{}) ([]*AttesterDuty, error) {
+	res := []*AttesterDuty{}
 	err := c.get(fmt.Sprintf("/eth/v1/validator/duties/attester/%v", epoch), &res)
-	return &res, err
+	return res, err
 }
 
-func (c *Client) GetProposerDuties(epoch uint64) (*[]ProposerDuty, error) {
-	res := []ProposerDuty{}
+func (c *Client) GetProposerDuties(epoch uint64) ([]*ProposerDuty, error) {
+	res := []*ProposerDuty{}
 	err := c.get(fmt.Sprintf("/eth/v1/validator/duties/proposer/%v", epoch), &res)
-	return &res, err
+	return res, err
 }
 
 type Genesis struct {
+	GenesisTime           time.Time
+	GenesisValidatorsRoot []byte
+	GenesisForkVersion    []byte
+}
+
+type genesisJSON struct {
 	GenesisTime           string `json:"genesis_time"`
 	GenesisValidatorsRoot string `json:"genesis_validators_root"`
 	GenesisForkVersion    string `json:"genesis_fork_version"`
 }
 
+func (v *Genesis) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&genesisJSON{
+		GenesisTime:           fmt.Sprintf("%d", v.GenesisTime.Unix()),
+		GenesisValidatorsRoot: fmt.Sprintf("%#x", v.GenesisValidatorsRoot),
+		GenesisForkVersion:    fmt.Sprintf("%#x", v.GenesisForkVersion),
+	})
+}
+
+func (v *Genesis) UnmarshalJSON(data []byte) error {
+	var err error
+	var genesisJSON genesisJSON
+	if err = json.Unmarshal(data, &genesisJSON); err != nil {
+		return err
+	}
+	genesisTime, err := strconv.ParseInt(genesisJSON.GenesisTime, 10, 64)
+	if err != nil {
+		return errors.Wrap(err, "invalid value for genesis time")
+	}
+	v.GenesisTime = time.Unix(genesisTime, 0)
+	if genesisJSON.GenesisValidatorsRoot == "" {
+		return errors.New("genesis validators root missing")
+	}
+	if v.GenesisValidatorsRoot, err = hex.DecodeString(strings.TrimPrefix(genesisJSON.GenesisValidatorsRoot, "0x")); err != nil {
+		return errors.Wrap(err, "invalid value for genesis validators root")
+	}
+	// if len(v.GenesisValidatorsRoot) != rootLength {
+	// 	return fmt.Errorf("incorrect length %d for genesis validators root", len(g.GenesisValidatorsRoot))
+	// }
+
+	if genesisJSON.GenesisForkVersion == "" {
+		return errors.New("genesis fork version missing")
+	}
+	if v.GenesisForkVersion, err = hex.DecodeString(strings.TrimPrefix(genesisJSON.GenesisForkVersion, "0x")); err != nil {
+		return errors.Wrap(err, "invalid value for genesis fork version")
+	}
+	// if len(v.GenesisForkVersion) != forkLength {
+	// 	return fmt.Errorf("incorrect length %d for genesis fork version", len(g.GenesisForkVersion))
+	// }
+
+	return nil
+}
+
+type Root struct {
+	Root jsonHexToBytes `json:"root"`
+}
+
 type Fork struct {
-	PreviousVersion string `json:"previous_version"`
-	CurrentVersion  string `json:"current_version"`
-	Epoch           uint64 `json:"epoch"`
+	PreviousVersion jsonHexToBytes `json:"previous_version"`
+	CurrentVersion  jsonHexToBytes `json:"current_version"`
+	Epoch           uint64         `json:"epoch"`
 }
 
 type FinalityCheckpoints struct {
@@ -218,13 +284,14 @@ type FinalityCheckpoints struct {
 }
 
 type Checkpoint struct {
-	Epoch uint64 `json:"epoch"`
-	Root  string `json:"root"`
+	Epoch uint64         `json:"epoch"`
+	Root  jsonHexToBytes `json:"root"`
 }
 
 // see:
 // - validator-statuses by proto https://hackmd.io/ofFJ5gOmQpu1jjHilHbdQQ
 // - validator-statuses by LH https://hackmd.io/bQxMDRt1RbS1TLno8K4NPg
+// - PR to use statuses by LH https://github.com/ethereum/eth2.0-APIs/pull/94
 var lighthouseValidatorStatusMap = map[string]string{
 	// "Unknown":                   "unknown",
 	"WaitingForEligibility":       "pending_initialized",
@@ -273,78 +340,60 @@ func (vs *ValidatorStatus) UnmarshalJSON(data []byte) error {
 }
 
 type Validator struct {
-	Index     string          `json:"index"`
+	Index     uint64          `json:"index,string"`
 	Balance   uint64          `json:"balance,string"`
 	Status    ValidatorStatus `json:"status"`
 	Validator struct {
-		Pubkey                     string `json:"pubkey"`
-		WithdrawalCredentials      string `json:"withdrawal_credentials"`
-		EffectiveBalance           uint64 `json:"effective_balance"`
-		Slashed                    bool   `json:"slashed"`
-		ActivationEligibilityEpoch uint64 `json:"activation_eligibility_epoch"`
-		ActivationEpoch            uint64 `json:"activation_epoch"`
-		ExitEpoch                  uint64 `json:"exit_epoch"`
-		WithdrawableEpoch          uint64 `json:"withdrawable_epoch"`
+		Pubkey                     jsonHexToBytes `json:"pubkey"`
+		WithdrawalCredentials      jsonHexToBytes `json:"withdrawal_credentials"`
+		EffectiveBalance           uint64         `json:"effective_balance"`
+		Slashed                    bool           `json:"slashed"`
+		ActivationEligibilityEpoch uint64         `json:"activation_eligibility_epoch"`
+		ActivationEpoch            uint64         `json:"activation_epoch"`
+		ExitEpoch                  uint64         `json:"exit_epoch"`
+		WithdrawableEpoch          uint64         `json:"withdrawable_epoch"`
 	} `json:"validator"`
 }
 
-type ValidatorIndices []uint64
-func (vs *ValidatorIndices) UnmarshalJSON(data []byte) error {
-	var err error
-	var vsString []string
-	if err = json.Unmarshal(data)
-	strconv.ParseUint(data, 10, 64)
-}
-
 type Committee struct {
-	Index      uint64   `json:"index,string"`
-	Slot       uint64   `json:"slot"`
-	Validators []string `json:"validators"`
-}
-
-func (c *Committee) UnmarshalJSON(data []byte) error {
-	return nil
+	Index      uint64                       `json:"index,string"`
+	Slot       uint64                       `json:"slot"`
+	Validators jsonStringArrayToUint64Array `json:"validators"`
 }
 
 type Header struct {
-	Root      string            `json:"root"`
+	Root      jsonHexToBytes    `json:"root"`
 	Canonical bool              `json:"canonical"`
 	Header    SignedBlockHeader `json:"header"`
 }
 
 type SignedBlockHeader struct {
-	Message struct {
-		Slot          string `json:"slot"`
-		ProposerIndex string `json:"proposer_index"`
-		ParentRoot    string `json:"parent_root"`
-		StateRoot     string `json:"state_root"`
-		BodyRoot      string `json:"body_root"`
-	} `json:"message"`
-	Signature string `json:"signature"`
+	Message   BlockHeader    `json:"message"`
+	Signature jsonHexToBytes `json:"signature"`
 }
 
 type BlockHeader struct {
-	Slot          string `json:"slot"`
-	ProposerIndex string `json:"proposer_index"`
-	ParentRoot    string `json:"parent_root"`
-	StateRoot     string `json:"state_root"`
-	BodyRoot      string `json:"body_root"`
+	Slot          uint64         `json:"slot"`
+	ProposerIndex uint64         `json:"proposer_index,string"`
+	ParentRoot    jsonHexToBytes `json:"parent_root"`
+	StateRoot     jsonHexToBytes `json:"state_root"`
+	BodyRoot      jsonHexToBytes `json:"body_root"`
 }
 
 type SignedBlock struct {
 	Message struct {
-		Slot          uint64 `json:"slot"`
-		ProposerIndex uint64 `json:"proposer_index,string"`
-		ParentRoot    string `json:"parent_root"`
-		StateRoot     string `json:"state_root"`
+		Slot          uint64         `json:"slot"`
+		ProposerIndex uint64         `json:"proposer_index,string"`
+		ParentRoot    jsonHexToBytes `json:"parent_root"`
+		StateRoot     jsonHexToBytes `json:"state_root"`
 		Body          struct {
-			RandaoReveal string `json:"randao_reveal"`
+			RandaoReveal jsonHexToBytes `json:"randao_reveal"`
 			Eth1Data     struct {
-				DepositRoot  string `json:"deposit_root"`
-				DepositCount string `json:"deposit_count"`
-				BlockHash    string `json:"block_hash"`
+				DepositRoot  jsonHexToBytes `json:"deposit_root"`
+				DepositCount uint64         `json:"deposit_count,string"`
+				BlockHash    jsonHexToBytes `json:"block_hash"`
 			} `json:"eth1_data"`
-			Graffiti          string                `json:"graffiti"`
+			Graffiti          jsonHexToBytes        `json:"graffiti"`
 			ProposerSlashings []ProposerSlashing    `json:"proposer_slashings"`
 			AttesterSlashings []AttesterSlashing    `json:"attester_slashings"`
 			Attestations      []Attestation         `json:"attestations"`
@@ -352,30 +401,12 @@ type SignedBlock struct {
 			VoluntaryExits    []SignedVoluntaryExit `json:"voluntary_exits"`
 		} `json:"body"`
 	} `json:"message"`
-	Signature string `json:"signature"`
+	Signature jsonHexToBytes `json:"signature"`
 }
 
 type ProposerSlashing struct {
-	SignedHeader1 struct {
-		Message struct {
-			Slot          string `json:"slot"`
-			ProposerIndex string `json:"proposer_index"`
-			ParentRoot    string `json:"parent_root"`
-			StateRoot     string `json:"state_root"`
-			BodyRoot      string `json:"body_root"`
-		} `json:"message"`
-		Signature string `json:"signature"`
-	} `json:"signed_header_1"`
-	SignedHeader2 struct {
-		Message struct {
-			Slot          string `json:"slot"`
-			ProposerIndex string `json:"proposer_index"`
-			ParentRoot    string `json:"parent_root"`
-			StateRoot     string `json:"state_root"`
-			BodyRoot      string `json:"body_root"`
-		} `json:"message"`
-		Signature string `json:"signature"`
-	} `json:"signed_header_2"`
+	SignedHeader1 SignedBlockHeader `json:"signed_header_1"`
+	SignedHeader2 SignedBlockHeader `json:"signed_header_2"`
 }
 
 type AttesterSlashing struct {
@@ -384,63 +415,146 @@ type AttesterSlashing struct {
 }
 
 type Attestation struct {
-	AggregationBits string          `json:"aggregation_bits"`
-	Signature       string          `json:"signature"`
+	AggregationBits jsonHexToBytes  `json:"aggregation_bits"`
+	Signature       jsonHexToBytes  `json:"signature"`
 	Data            AttestationData `json:"data"`
 }
 
 type IndexedAttestation struct {
-	AttestingIndices []string        `json:"attesting_indices"`
-	Signature        string          `json:"signature"`
-	Data             AttestationData `json:"data"`
+	AttestingIndices jsonStringArrayToUint64Array `json:"attesting_indices"`
+	Signature        jsonHexToBytes               `json:"signature"`
+	Data             AttestationData              `json:"data"`
 }
 
 type AttestationData struct {
-	Slot            uint64 `json:"slot"`
-	Index           uint64 `json:"index,string"`
-	BeaconBlockRoot string `json:"beacon_block_root"`
+	Slot            uint64         `json:"slot"`
+	Index           uint64         `json:"index,string"`
+	BeaconBlockRoot jsonHexToBytes `json:"beacon_block_root"`
 	Source          struct {
-		Epoch uint64 `json:"epoch"`
-		Root  string `json:"root"`
+		Epoch uint64         `json:"epoch"`
+		Root  jsonHexToBytes `json:"root"`
 	} `json:"source"`
 	Target struct {
-		Epoch uint64 `json:"epoch"`
-		Root  string `json:"root"`
+		Epoch uint64         `json:"epoch"`
+		Root  jsonHexToBytes `json:"root"`
 	} `json:"target"`
 }
 
 type Deposit struct {
-	Proof []string `json:"proof"`
+	Proof jsonHexArrayToBytesArray `json:"proof"`
 	Data  struct {
-		Pubkey                string `json:"pubkey"`
-		WithdrawalCredentials string `json:"withdrawal_credentials"`
-		Amount                string `json:"amount"`
-		Signature             string `json:"signature"`
+		Pubkey                jsonHexToBytes `json:"pubkey"`
+		WithdrawalCredentials jsonHexToBytes `json:"withdrawal_credentials"`
+		Amount                uint64         `json:"amount,string"`
+		Signature             jsonHexToBytes `json:"signature"`
 	} `json:"data"`
 }
 
 type SignedVoluntaryExit struct {
-	Message   VoluntaryExit `json:"message"`
-	Signature string        `json:"signature"`
+	Message   VoluntaryExit  `json:"message"`
+	Signature jsonHexToBytes `json:"signature"`
 }
 
 type VoluntaryExit struct {
-	Epoch          string `json:"epoch"`
+	Epoch          uint64 `json:"epoch,string"`
 	ValidatorIndex uint64 `json:"validator_index,string"`
 }
 
 type AttesterDuty struct {
-	Pubkey                  string `json:"pubkey"`
-	ValidatorIndex          uint64 `json:"validator_index,string"`
-	CommitteeIndex          uint64 `json:"committee_index,string"`
-	CommitteeLength         uint64 `json:"committee_length,string"`
-	CommitteesAtSlot        uint64 `json:"committees_at_slot,string"`
-	ValidatorCommitteeIndex uint64 `json:"validator_committee_index,string"`
-	Slot                    uint64 `json:"slot"`
+	Pubkey                  jsonHexToBytes `json:"pubkey"`
+	ValidatorIndex          uint64         `json:"validator_index,string"`
+	CommitteeIndex          uint64         `json:"committee_index,string"`
+	CommitteeLength         uint64         `json:"committee_length,string"`
+	CommitteesAtSlot        uint64         `json:"committees_at_slot,string"`
+	ValidatorCommitteeIndex uint64         `json:"validator_committee_index,string"`
+	Slot                    uint64         `json:"slot"`
 }
 
 type ProposerDuty struct {
-	Pubkey         string `json:"pubkey"`
-	ValidatorIndex uint64 `json:"validator_index,string"`
-	Slot           string `json:"slot"`
+	Pubkey         jsonHexToBytes `json:"pubkey"`
+	ValidatorIndex uint64         `json:"validator_index,string"`
+	Slot           uint64         `json:"slot"`
+}
+
+type jsonStringToUint64 uint64
+
+func (v *jsonStringToUint64) UnmarshalJSON(data []byte) error {
+	var err error
+	var valString string
+	if err = json.Unmarshal(data, &valString); err != nil {
+		return err
+	}
+	valUint64, err := strconv.ParseUint(valString, 10, 64)
+	if err != nil {
+		return err
+	}
+	*v = jsonStringToUint64(valUint64)
+	return nil
+}
+
+type jsonStringArrayToUint64Array []uint64
+
+func (v *jsonStringArrayToUint64Array) UnmarshalJSON(data []byte) error {
+	var err error
+	var arrString []string
+	if err = json.Unmarshal(data, &arrString); err != nil {
+		return err
+	}
+	arrUint64 := make([]uint64, len(arrString))
+	for i, v := range arrString {
+		valUint64, err := strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			return err
+		}
+		arrUint64[i] = valUint64
+	}
+
+	*v = arrUint64
+	return nil
+}
+
+func (v *jsonStringToUint64) MarshalJSON() ([]byte, error) {
+	return json.Marshal(fmt.Sprintf("%d", *v))
+}
+
+type jsonHexToBytes []byte
+
+func (v *jsonHexToBytes) UnmarshalJSON(data []byte) error {
+	var err error
+	var valStr string
+	if err = json.Unmarshal(data, &valStr); err != nil {
+		return err
+	}
+	valBytes, err := hex.DecodeString(strings.Replace(valStr, "0x", "", -1))
+	if err != nil {
+		return err
+	}
+	*v = valBytes
+	return nil
+}
+
+func (v *jsonHexToBytes) MarshalJSON() ([]byte, error) {
+	return json.Marshal(fmt.Sprintf("%#x", *v))
+}
+
+type jsonHexArrayToBytesArray [][]byte
+
+func (v *jsonHexArrayToBytesArray) UnmarshalJSON(data []byte) error {
+	var err error
+	var arrString []string
+	if err = json.Unmarshal(data, &arrString); err != nil {
+		return err
+	}
+
+	arrBytes := make([][]byte, len(arrString))
+	for i, v := range arrString {
+		valBytes, err := hex.DecodeString(strings.Replace(v, "0x", "", -1))
+		if err != nil {
+			return err
+		}
+		arrBytes[i] = valBytes
+	}
+
+	*v = arrBytes
+	return nil
 }
