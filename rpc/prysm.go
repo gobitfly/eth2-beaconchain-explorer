@@ -44,7 +44,7 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 		conn:                conn,
 		assignmentsCacheMux: &sync.Mutex{},
 	}
-	client.assignmentsCache, _ = lru.New(128)
+	client.assignmentsCache, _ = lru.New(10)
 
 	return client, nil
 }
