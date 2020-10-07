@@ -1,22 +1,34 @@
 {{ define "banner" }}
 <div class=" my-3 pb-1 ad d-flex justify-content-center">
   <div class="position-relative" style="width:fit-content">
-    <span class="position-absolute rounded bg-dark px-1 text-light" style="font-size: .6rem; right: 0; top: -.5rem;">Ad</span>
-    <div v-if="document.body.clientWidth < 1140" class="d-lg-none">
-      <iframe  id='a9ff2630' name='a9ff2630' src='https://servedby.revive-adserver.net/afr.php?refresh=6&amp;zoneid=6339&amp;cb=1' frameborder='0' scrolling='no' width='320' height='40' allow='autoplay'>
-        <a href='https://servedby.revive-adserver.net/ck.php?n=adb5d720&amp;cb=1' target='_blank'>
-          <img src='https://servedby.revive-adserver.net/avw.php?zoneid=6339&amp;cb=1&amp;n=adb5d720' border='0' alt='' />
-        </a>
-      </iframe>
+    <div id="mobile-banner" class="d-md-none">
+      <!-- Revive Adserver Hosted edition - Ad Management Asynchronous JS Tag - Generated with Revive Adserver v5.0.5 -->
+      <span class="position-absolute rounded bg-dark px-1 text-light" style="font-size: .6rem; right: 0; top: -.5rem;">Ad</span>
+      <ins id="mobile-banner" data-revive-zoneid="6339" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
+      <script async src="//servedby.revive-adserver.net/asyncjs.php"></script>
     </div>  
-    <div v-else class="d-none d-lg-block">
-
-      <iframe id='a8ef3134' name='a8ef3134' src='https://servedby.revive-adserver.net/afr.php?refresh=6&amp;zoneid=6333&amp;cb=1' frameborder='0' scrolling='no' width='970' height='62' allow='autoplay'>
-        <a href='https://servedby.revive-adserver.net/ck.php?n=a9c385ab&amp;cb=1' target='_blank'>
-          <img src='https://servedby.revive-adserver.net/avw.php?zoneid=6333&amp;cb=1&amp;n=a9c385ab' border='0' alt='' />
-        </a>
-      </iframe>
+    <div id="desktop-banner" class="d-none d-md-block">
+      <!-- Revive Adserver Hosted edition - Ad Management Asynchronous JS Tag - Generated with Revive Adserver v5.0.5 -->
+      <span class="position-absolute rounded bg-dark px-1 text-light" style="font-size: .6rem; right: 0; top: -.5rem;">Ad</span>
+      <ins id="desktop-banner" data-revive-zoneid="6333" data-revive-id="727bec5e09208690b050ccfc6a45d384"></ins>
+      <script async src="//servedby.revive-adserver.net/asyncjs.php"></script>
     </div>
   </div>
+
+  <script>
+    window.addEventListener('load', function() {
+      function refreshAd() {
+        if(document.hasFocus()) {
+          $("#desktop-banner").find('ins').removeAttr('data-revive-loaded');
+          $("#desktop-banner").find('ins').removeAttr('data-revive-seq');
+          $("#mobile-banner").find('ins').removeAttr('data-revive-loaded');
+          $("#mobile-banner").find('ins').removeAttr('data-revive-seq');
+          reviveAsync["727bec5e09208690b050ccfc6a45d384"].refresh();
+        }
+      }
+
+      window.requestInterval(refreshAd, 6000)
+    })
+  </script>
 </div>
 {{end}}
