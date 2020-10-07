@@ -61,7 +61,6 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/epoch/{epoch} [get]
 func ApiEpoch(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -102,7 +101,6 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/epoch/{epoch}/blocks [get]
 func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -138,7 +136,6 @@ func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/block/{slotOrHash} [get]
 func ApiBlock(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -175,7 +172,6 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/block/{slot}/attestations [get]
 func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -214,7 +210,6 @@ func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/block/{slot}/deposits [get]
 func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -246,7 +241,6 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/block/{slot}/attesterslashings [get]
 func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -278,7 +272,6 @@ func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/block/{slot}/proposerslashings [get]
 func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -310,7 +303,6 @@ func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/block/{slot}/voluntaryexits [get]
 func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -341,7 +333,6 @@ func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/eth1deposit/{txhash} [get]
 func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -372,7 +363,6 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/validator/{index} [get]
 func ApiValidator(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -410,7 +400,6 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/validator/eth1/{address} [get]
 func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -442,7 +431,6 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/validator/{index}/balancehistory [get]
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -480,7 +468,6 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/validator/{index}/performance [get]
 func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -517,7 +504,6 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/validator/leaderboard [get]
 func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -545,7 +531,6 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/validator/{index}/deposits [get]
 func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -583,7 +568,6 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/validator/{index}/attestations [get]
 func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -622,7 +606,6 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/validator/{index}/proposals [get]
 func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -661,7 +644,6 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} string
 // @Router /api/v1/chart/{chart} [get]
 func ApiChart(w http.ResponseWriter, r *http.Request) {
-	db.CountApiHit(r)
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
