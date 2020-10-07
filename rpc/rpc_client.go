@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"eth2-exporter/types"
+
 	"github.com/sirupsen/logrus"
 )
 

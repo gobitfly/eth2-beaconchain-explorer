@@ -48,6 +48,16 @@ type Response struct {
 	Message string      `json:"message,omitempty"`
 }
 
+type APIError struct {
+	Code     int
+	Message  string
+	Endpoint string
+}
+
+func (e *APIError) Error() string {
+	return fmt.Sprintf("error using endpoint: %s, code: %d, message: %s", e.Endpoint, e.Code, e.Message)
+}
+
 func (c *Client) get(endpoint string, result interface{}, queryParams ...interface{}) error {
 	url := c.baseURL + endpoint
 	if len(queryParams) > 0 {
@@ -82,17 +92,19 @@ func (c *Client) get(endpoint string, result interface{}, queryParams ...interfa
 	}
 
 	if err := json.Unmarshal(body, r); err != nil {
-		fmt.Printf("%v: %s\n", url, body)
+		// fmt.Printf("%v: %s\n", url, body)
 		return err
 	}
 
 	if res.StatusCode == http.StatusNotFound {
 		result = nil
 		return nil
+		// return &APIError{res.StatusCode, res.Message, endpoint}
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("error getting %v: code: %v, message: %v", url, res.StatusCode, r.Message)
+		// return fmt.Errorf("error getting %v: code: %v, message: %v", url, res.StatusCode, r.Message)
+		return &APIError{res.StatusCode, r.Message, endpoint}
 	}
 
 	return nil

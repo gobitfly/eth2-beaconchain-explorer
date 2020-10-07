@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"errors"
 	"eth2-exporter/eth2api"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -10,14 +11,17 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prysmaticlabs/go-bitfield"
+	"github.com/sirupsen/logrus"
 )
 
 type Eth2ApiV1Client struct {
-	client              *eth2api.Client
-	assignmentsCache    *lru.Cache
-	assignmentsCacheMux *sync.Mutex
-	validatorsCache     *lru.Cache
-	validatorsCacheMux  *sync.Mutex
+	client                      *eth2api.Client
+	proposerAssignmentsCache    *lru.Cache
+	proposerAssignmentsCacheMux *sync.Mutex
+	attesterAssignmentsCache    *lru.Cache
+	attesterAssignmentsCacheMux *sync.Mutex
+	validatorsCache             *lru.Cache
+	validatorsCacheMux          *sync.Mutex
 }
 
 func NewEth2ApiV1Client(endpoint string) (*Eth2ApiV1Client, error) {
@@ -27,12 +31,14 @@ func NewEth2ApiV1Client(endpoint string) (*Eth2ApiV1Client, error) {
 	}
 
 	client := &Eth2ApiV1Client{
-		client:              c,
-		assignmentsCacheMux: &sync.Mutex{},
-		validatorsCacheMux:  &sync.Mutex{},
+		client:                      c,
+		proposerAssignmentsCacheMux: &sync.Mutex{},
+		attesterAssignmentsCacheMux: &sync.Mutex{},
+		validatorsCacheMux:          &sync.Mutex{},
 	}
 
-	client.assignmentsCache, _ = lru.New(10)
+	client.proposerAssignmentsCache, _ = lru.New(10)
+	client.attesterAssignmentsCache, _ = lru.New(10)
 	client.validatorsCache, _ = lru.New(10)
 
 	return client, nil
@@ -79,6 +85,7 @@ func (c *Eth2ApiV1Client) GetChainHead() (*types.ChainHead, error) {
 func (c *Eth2ApiV1Client) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	var err error
 
+	t0 := time.Now()
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
@@ -88,18 +95,17 @@ func (c *Eth2ApiV1Client) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving assignments for epoch %v: %w", epoch, err)
 	}
-	logger.Printf("retrieved validator assignment data for epoch %v", epoch)
+
+	t1 := time.Now()
 
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]map[string]*types.Block)
 
 	for slot := epoch * utils.Config.Chain.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.SlotsPerEpoch-1; slot++ {
 		blocks, err := c.GetBlocksBySlot(slot)
-
 		if err != nil {
 			return nil, err
 		}
-
 		for _, block := range blocks {
 			if data.Blocks[block.Slot] == nil {
 				data.Blocks[block.Slot] = make(map[string]*types.Block)
@@ -107,7 +113,6 @@ func (c *Eth2ApiV1Client) GetEpochData(epoch uint64) (*types.EpochData, error) {
 			data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 		}
 	}
-	logger.Printf("retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
 
 	// Fill up missed and scheduled blocks
 	for slot, proposer := range data.ValidatorAssignmentes.ProposerAssignments {
@@ -146,6 +151,8 @@ func (c *Eth2ApiV1Client) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 	}
 
+	t2 := time.Now()
+
 	// Retrieve the validator set for the epoch
 
 	validators, err := c.client.GetValidators(slotStr)
@@ -153,7 +160,6 @@ func (c *Eth2ApiV1Client) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		return nil, err
 	}
 
-	logger.Infof("got %v validators", len(validators))
 	data.Validators = make([]*types.Validator, len(validators))
 
 	for i, validator := range validators {
@@ -171,7 +177,18 @@ func (c *Eth2ApiV1Client) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 	}
 
-	return nil, nil
+	t3 := time.Now()
+
+	logger.WithFields(logrus.Fields{
+		"validators":     len(data.Validators),
+		"blocks":         len(data.Blocks),
+		"dur":            time.Since(t0),
+		"durValidators":  t3.Sub(t2),
+		"durBlocks":      t2.Sub(t1),
+		"durAssignments": t1.Sub(t0),
+	}).Info("GetEpochData")
+
+	return data, nil
 }
 
 func (c *Eth2ApiV1Client) GetValidators(epoch uint64) ([]*eth2api.Validator, error) {
@@ -207,84 +224,98 @@ func (c *Eth2ApiV1Client) GetAttestationPool() ([]*types.Attestation, error) {
 }
 
 func (c *Eth2ApiV1Client) GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
-	c.assignmentsCacheMux.Lock()
-	defer c.assignmentsCacheMux.Unlock()
+	c.proposerAssignmentsCacheMux.Lock()
+	defer c.proposerAssignmentsCacheMux.Unlock()
 
-	cachedValue, found := c.assignmentsCache.Get(epoch)
-	if found {
-		return cachedValue.(*types.EpochAssignments), nil
-	}
-
-	logger.Infof("caching assignements for epoch %v", epoch)
-	start := time.Now()
+	c.attesterAssignmentsCacheMux.Lock()
+	defer c.attesterAssignmentsCacheMux.Unlock()
 
 	assignments := &types.EpochAssignments{
 		ProposerAssignments: make(map[uint64]uint64),
 		AttestorAssignments: make(map[string]uint64),
 	}
 
-	var err error
-
-	proposerDuties, err := c.client.GetProposerDuties(epoch)
-	if err != nil {
-		// return nil, err
-	}
-
-	slotStr := fmt.Sprintf("%d", epoch*utils.Config.Chain.SlotsPerEpoch)
-
-	committees, err := c.client.GetCommittees(slotStr, epoch)
-	if err != nil {
-		return nil, err
-		// return assignments, nil
-	}
-
-	for _, proposerDuty := range proposerDuties {
-		assignments.ProposerAssignments[proposerDuty.Slot] = proposerDuty.ValidatorIndex
-	}
-
-	for _, committee := range committees {
-		for i, v := range committee.Validators {
-			assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(uint64(committee.Slot), uint64(committee.Index), uint64(i))] = uint64(v)
+	cachedProposerAssignments, found := c.proposerAssignmentsCache.Get(epoch)
+	if found {
+		assignments.ProposerAssignments = cachedProposerAssignments.(map[uint64]uint64)
+	} else {
+		start := time.Now()
+		proposerDuties, err := c.client.GetProposerDuties(epoch)
+		if err != nil {
+			var apiErr *eth2api.APIError
+			if errors.As(err, &apiErr) && err.(*eth2api.APIError).Code == 400 {
+				// logger.Info(err.(*eth2api.APIError).Message)
+				proposerDuties = []*eth2api.ProposerDuty{}
+			} else {
+				return nil, err
+			}
 		}
+		for _, proposerDuty := range proposerDuties {
+			assignments.ProposerAssignments[proposerDuty.Slot] = proposerDuty.ValidatorIndex
+		}
+		if len(assignments.ProposerAssignments) > 0 {
+			c.proposerAssignmentsCache.Add(epoch, assignments.ProposerAssignments)
+		}
+		logger.WithFields(logrus.Fields{
+			"dur":                 time.Since(start),
+			"epoch":               epoch,
+			"proposerAssignments": len(assignments.ProposerAssignments),
+		}).Info("cached proposerAssignments")
 	}
 
-	// if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 {
-	c.assignmentsCache.Add(epoch, assignments)
-	// }
+	cachedAttesterAssignments, found := c.attesterAssignmentsCache.Get(epoch)
+	if found {
+		assignments.AttestorAssignments = cachedAttesterAssignments.(map[string]uint64)
+	} else {
+		start := time.Now()
+		slotStr := fmt.Sprintf("%d", epoch*utils.Config.Chain.SlotsPerEpoch)
+		committees, err := c.client.GetCommittees(slotStr, epoch)
+		if err != nil {
+			return nil, err
+		}
+		for _, committee := range committees {
+			for i, v := range committee.Validators {
+				assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(uint64(committee.Slot), uint64(committee.Index), uint64(i))] = uint64(v)
+			}
+		}
+		if len(assignments.AttestorAssignments) > 0 {
+			c.attesterAssignmentsCache.Add(epoch, assignments.AttestorAssignments)
+		}
+		logger.WithFields(logrus.Fields{
+			"dur":                 time.Since(start),
+			"epoch":               epoch,
+			"attesterAssignments": len(assignments.AttestorAssignments),
+		}).Info("cached attesterAssignments")
+	}
 
-	logger.Infof("cached assignements for epoch %v took %v", epoch, time.Since(start))
 	return assignments, nil
 }
 
 func (c *Eth2ApiV1Client) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
-	logger.Infof("getting block for slot %v", slot)
+	t0 := time.Now()
 	slotStr := fmt.Sprintf("%v", slot)
 
 	b1, err := c.client.GetBlock(slotStr)
 	if err != nil {
 		return nil, err
 	}
+	t1 := time.Now()
 
-	if b1 == nil {
-		logger.Infof("getting block for slot %v -- block not found", slot)
+	if b1 == nil || slot != b1.Message.Slot {
 		return []*types.Block{}, nil
 	}
-
-	logger.Infof("getting block for slot %v -- got block", slot)
 
 	b1Root, err := c.client.GetBlockRoot(slotStr)
 	if err != nil {
 		return nil, err
 	}
-
-	logger.Infof("getting block for slot %v -- got blockroot", slot)
+	t2 := time.Now()
 
 	b1Header, err := c.client.GetHeader(slotStr)
 	if err != nil {
 		return nil, err
 	}
-
-	logger.Infof("getting block for slot %v -- got header", slot)
+	t3 := time.Now()
 
 	b2 := types.Block{
 		Status:            1,
@@ -305,7 +336,6 @@ func (c *Eth2ApiV1Client) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 		VoluntaryExits:    make([]*types.VoluntaryExit, len(b1.Message.Body.VoluntaryExits)),
 	}
 
-	logger.Infof("getting block for slot %v -- ProposerSlashings", slot)
 	for i, v := range b1.Message.Body.ProposerSlashings {
 		b2.ProposerSlashings[i] = &types.ProposerSlashing{
 			ProposerIndex: v.SignedHeader1.Message.ProposerIndex,
@@ -326,7 +356,6 @@ func (c *Eth2ApiV1Client) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 		}
 	}
 
-	logger.Infof("getting block for slot %v -- AttesterSlashings", slot)
 	for i, v := range b1.Message.Body.AttesterSlashings {
 		b2.AttesterSlashings[i] = &types.AttesterSlashing{
 			Attestation1: &types.IndexedAttestation{
@@ -344,7 +373,7 @@ func (c *Eth2ApiV1Client) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 					},
 				},
 				Signature:        v.Attestation1.Signature,
-				AttestingIndices: []uint64(v.Attestation1.AttestingIndices),
+				AttestingIndices: v.Attestation1.AttestingIndices,
 			},
 			Attestation2: &types.IndexedAttestation{
 				Data: &types.AttestationData{
@@ -366,7 +395,6 @@ func (c *Eth2ApiV1Client) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 		}
 	}
 
-	logger.Infof("getting block for slot %v -- Attestations", slot)
 	for i, attestation := range b1.Message.Body.Attestations {
 		a := &types.Attestation{
 			AggregationBits: attestation.AggregationBits,
@@ -389,7 +417,7 @@ func (c *Eth2ApiV1Client) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 		aggregationBits := bitfield.Bitlist(a.AggregationBits)
 		assignments, err := c.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
 		if err != nil {
-			return []*types.Block{}, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
+			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
 		}
 
 		a.Attesters = make([]uint64, 0)
@@ -410,7 +438,6 @@ func (c *Eth2ApiV1Client) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 		b2.Attestations[i] = a
 	}
 
-	logger.Infof("getting block for slot %v -- Deposits", slot)
 	for i, deposit := range b1.Message.Body.Deposits {
 		b2.Deposits[i] = &types.Deposit{
 			Proof:                 deposit.Proof,
@@ -421,7 +448,6 @@ func (c *Eth2ApiV1Client) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 		}
 	}
 
-	logger.Infof("getting block for slot %v -- VoluntaryExits", slot)
 	for i, voluntaryExit := range b1.Message.Body.VoluntaryExits {
 		b2.VoluntaryExits[i] = &types.VoluntaryExit{
 			Epoch:          voluntaryExit.Message.Epoch,
@@ -429,6 +455,20 @@ func (c *Eth2ApiV1Client) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 			Signature:      voluntaryExit.Signature,
 		}
 	}
+
+	logger.WithFields(logrus.Fields{
+		"slot":            slot,
+		"epoch":           slot / utils.Config.Chain.SlotsPerEpoch,
+		"proposer":        b1.Message.ProposerIndex,
+		"blockroot":       fmt.Sprintf("%x", b1Root.Root),
+		"attestations":    len(b2.Attestations),
+		"deposits":        len(b2.Deposits),
+		"voluntaryExits":  len(b2.VoluntaryExits),
+		"durGetHeader":    t3.Sub(t2),
+		"durGetBlockRoot": t2.Sub(t1),
+		"durGetBlock":     t1.Sub(t0),
+		"dur":             time.Since(t0),
+	}).Info("GetBlocksBySlot")
 
 	return []*types.Block{&b2}, nil
 }
