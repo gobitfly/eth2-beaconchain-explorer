@@ -568,6 +568,12 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving validator balances to db: %v", err)
 	}
 
+	logger.Infof("exporting status stats data")
+	err = saveEpochsStatusStats(data.Epoch, data.Validators, tx)
+	if err != nil {
+		return fmt.Errorf("error saving status stats to db: %v", err)
+	}
+
 	logger.Infof("exporting epoch statistics data")
 	proposerSlashingsCount := 0
 	attesterSlashingsCount := 0
@@ -660,6 +666,59 @@ func SaveEpoch(data *types.EpochData) error {
 	return nil
 }
 
+func saveEpochsStatusStats(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
+	type statusStats struct {
+		ValidatorsCount       uint64
+		TotalBalance          uint64
+		TotalEffectiveBalance uint64
+	}
+	statusStatsMap := map[string]*statusStats{}
+
+	for _, v := range validators {
+		s, exists := statusStatsMap[v.Status]
+		if !exists {
+			statusStatsMap[v.Status] = &statusStats{
+				ValidatorsCount:       1,
+				TotalBalance:          v.Balance,
+				TotalEffectiveBalance: v.EffectiveBalance,
+			}
+		} else {
+			s.ValidatorsCount++
+			s.TotalBalance += v.Balance
+			s.TotalEffectiveBalance += v.EffectiveBalance
+		}
+	}
+
+	stmt, err := tx.Prepare(`
+		INSERT INTO epochs_status_stats (
+			epoch,
+			status,
+			validators_count,
+			total_balance,
+			total_effective_balance
+		)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (epoch, status) DO UPDATE SET
+			epoch                   = excluded.epoch,
+			status                  = excluded.status,
+			validators_count        = excluded.validators_count,
+			total_balance           = excluded.total_balance,
+			total_effective_balance = excluded.total_effective_balance`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for status, stats := range statusStatsMap {
+		_, err = stmt.Exec(epoch, status, stats.ValidatorsCount, stats.TotalBalance, stats.TotalEffectiveBalance)
+		if err != nil {
+			return fmt.Errorf("error executing epochs_status_stats statement: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 
 	stmtGraffitiwall, err := tx.Prepare(`
@@ -735,7 +794,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 		}
 
 		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*10)
+		valueArgs := make([]interface{}, 0, batchSize*11)
 		for i, v := range validators[start:end] {
 
 			if v.WithdrawableEpoch == 18446744073709551615 {
@@ -768,7 +827,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 				}
 			}
 
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*10+1, i*10+2, i*10+3, i*10+4, i*10+5, i*10+6, i*10+7, i*10+8, i*10+9, i*10+10))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*11+1, i*11+2, i*11+3, i*11+4, i*11+5, i*11+6, i*11+7, i*11+8, i*11+9, i*11+10, i*11+11))
 			valueArgs = append(valueArgs, v.Index)
 			valueArgs = append(valueArgs, v.PublicKey)
 			valueArgs = append(valueArgs, v.WithdrawableEpoch)
@@ -779,6 +838,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			valueArgs = append(valueArgs, v.ActivationEligibilityEpoch)
 			valueArgs = append(valueArgs, v.ActivationEpoch)
 			valueArgs = append(valueArgs, v.ExitEpoch)
+			valueArgs = append(valueArgs, v.Status)
 		}
 		stmt := fmt.Sprintf(`
 		INSERT INTO validators (
@@ -791,7 +851,8 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			slashed,
 			activationeligibilityepoch,
 			activationepoch,
-			exitepoch
+			exitepoch,
+			status
 		) 
 		VALUES %s
 		ON CONFLICT (validatorindex) DO UPDATE SET 
@@ -803,7 +864,8 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			slashed                    = EXCLUDED.slashed,
 			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
 			activationepoch            = EXCLUDED.activationepoch,
-			exitepoch                  = EXCLUDED.exitepoch`, strings.Join(valueStrings, ","))
+			exitepoch                  = EXCLUDED.exitepoch,
+			status                     = EXCLUDED.status`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err

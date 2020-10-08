@@ -366,6 +366,50 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 				logger.WithField("pubkey", fmt.Sprintf("%x", validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
 				continue
 			}
+			// see https://hackmd.io/bQxMDRt1RbS1TLno8K4NPg
+			// see https://github.com/ethereum/eth2.0-APIs/pull/94
+			farFutureEpoch := uint64(18446744073709551615) // ^uint64(0)
+			var status string
+			if validator.Validator.WithdrawableEpoch <= epoch {
+				if validator.Validator.Slashed {
+					status = "withdrawable_slashed"
+				} else {
+					status = "withdrawable_voluntarily"
+				}
+			} else if validator.Validator.ExitEpoch <= epoch {
+				if validator.Validator.Slashed {
+					status = "exited_slashed"
+				} else {
+					status = "exited_voluntarily"
+				}
+			} else if validator.Validator.ActivationEpoch <= epoch {
+				if validator.Validator.ExitEpoch < farFutureEpoch {
+					if validator.Validator.Slashed {
+						status = "active_awaiting_slashed_exit"
+					} else {
+						status = "active_awaiting_voluntary_exit"
+					}
+				} else {
+					status = "active"
+				}
+			} else {
+				if validator.Validator.ExitEpoch < farFutureEpoch {
+					status = "standby_for_active"
+				} else if validator.Validator.ActivationEligibilityEpoch < farFutureEpoch {
+					// with this prysm-api we do not know what the finalizedEpoch is for this epoch
+					// just set to waiting_in_queue for now
+
+					// if finalizedEpoch < validator.Validator.ActivationEligibilityEpoch {
+					// 	status = "waiting_for_finality"
+					// } else {
+					// 	status = "waiting_in_queue"
+					// }
+
+					status = "waiting_in_queue"
+				} else {
+					status = "waiting_for_eligibility"
+				}
+			}
 			data.Validators = append(data.Validators, &types.Validator{
 				Index:                      validator.Index,
 				PublicKey:                  validator.Validator.PublicKey,
@@ -377,6 +421,7 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 				ActivationEpoch:            validator.Validator.ActivationEpoch,
 				ExitEpoch:                  validator.Validator.ExitEpoch,
 				WithdrawableEpoch:          validator.Validator.WithdrawableEpoch,
+				Status:                     status,
 			})
 		}
 

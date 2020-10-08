@@ -57,6 +57,7 @@ type Validator struct {
 	ExitEpoch                  uint64 `db:"exitepoch"`
 	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
 	WithdrawalCredentials      []byte `db:"withdrawalcredentials"`
+	Status                     string `db:"status"`
 }
 
 // ValidatorQueue is a struct to hold validator queue data

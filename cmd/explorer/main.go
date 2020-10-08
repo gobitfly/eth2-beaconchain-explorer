@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"flag"
 	"net/http"
 	"time"
@@ -29,7 +30,9 @@ func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	flag.Parse()
 
-	logrus.Printf("config file path: %v", *configPath)
+	logrus.Infof("version: %v-%v, golang: %v, buildDate: %v", version.Version, version.GitCommit, version.GoVersion, version.BuildDate)
+
+	logrus.Infof("config file path: %v", *configPath)
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
 
