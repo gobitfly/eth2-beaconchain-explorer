@@ -111,31 +111,42 @@
 					</div>
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Status:</div>
-						<div class="col-md-10">{{formatBlockStatus .Status}}</div>
+						<div class="col-md-10">
+							{{ if ne .Slot 0 }}
+								{{formatBlockStatus .Status}}
+							{{ else }}
+								<span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
+							{{ end }}
+						</div>
 					</div>
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Time:</div>
 						<div class="col-md-10"><span aria-ethereum-date="{{.Ts.Unix}}">{{.Ts}}</span> (<span aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW"></span>)
 						</div>
 					</div>
+					{{ if ne .Slot 0 }}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Proposer:</div>
 						<div class="col-md-10">{{formatValidatorWithName .Proposer .ProposerName}}</div>
 					</div>
+					{{ end }}
 					{{ if (or (eq .Status 1) (eq .Status 3)) }}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Block Root:</div>
 						<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}}</div>
 					</div>
+					{{ if ne .Slot 0 }}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Parent Root:</div>
 						<div class="col-md-10 text-monospace text-break"><a href="/block/{{printf "%x" .ParentRoot}}">0x{{printf "%x" .ParentRoot}}</a>
 						</div>
 					</div>
+					{{ end }}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">State Root:</div>
 						<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .StateRoot}}</div>
 					</div>
+					{{ if ne .Slot 0 }}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Signature:</div>
 						<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .Signature}}</div>
@@ -187,10 +198,6 @@
 						<div class="col-md-10"><b>{{.AttestationsCount}}</b></div>
 					</div>
 					<div class="row border-bottom p-3 mx-0">
-						<div class="col-md-2">Deposits:</div>
-						<div class="col-md-10"><b>{{.DepositsCount}}</b></div>
-					</div>
-					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Voluntary Exits:</div>
 						<div class="col-md-10"><b>{{.VoluntaryExitscount}}</b></div>
 					</div>
@@ -200,7 +207,12 @@
 							<b>{{.ProposerSlashingsCount}}</b> proposer slashings
 						</div>
 					</div>
-					{{end}}
+					{{ end }}
+					<div class="row border-bottom p-3 mx-0">
+						<div class="col-md-2">Deposits:</div>
+						<div class="col-md-10"><b>{{.DepositsCount}}</b></div>
+					</div>
+					{{ end }}
 				</div>
 			</div>
 		</div>
