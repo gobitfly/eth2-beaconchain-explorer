@@ -184,14 +184,7 @@ func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var root []byte
-	err = db.DB.Get(&root, "SELECT blockroot FROM blocks WHERE slot = $1 AND status = '1'", slot)
-	if err != nil {
-		sendErrorResponse(j, r.URL.String(), fmt.Sprintf("no block available at slot %v", slot))
-		return
-	}
-
-	rows, err := db.DB.Query("SELECT * FROM blocks_attestations WHERE beaconblockroot = $1 ORDER BY block_index DESC", root)
+	rows, err := db.DB.Query("SELECT * FROM blocks_attestations WHERE block_slot = $1 ORDER BY block_index", slot)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
