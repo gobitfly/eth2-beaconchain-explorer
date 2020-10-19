@@ -7,14 +7,11 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
-	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/gorilla/mux"
 
 	"github.com/jmoiron/sqlx"
 
@@ -1176,21 +1173,4 @@ func GetValidatorNames() (map[uint64]string, error) {
 	}
 
 	return validatorIndexToNameMap, nil
-}
-
-func CountApiHit(r *http.Request) {
-	apiKey := r.URL.Query().Get("apikey")
-	if apiKey == "" {
-		apiKey = "NOKEY"
-	}
-	call, _ := mux.CurrentRoute(r).GetPathTemplate()
-
-	_, err := DB.Query(`
-		INSERT INTO api_statistics (ts, apikey, call, count) 
-		VALUES (date_trunc('hour', now()), $1, $2, 1) 
-		ON CONFLICT (ts, apikey, call) DO UPDATE SET count = api_statistics.count + 1`, apiKey, call)
-
-	if err != nil {
-		logger.Errorf("error updating api call statistics: %v", err)
-	}
 }
