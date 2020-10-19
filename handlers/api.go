@@ -416,6 +416,53 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiValidatorByEth1DepositPubkey godoc
+// @Summary Get up 100 validtors based on the pubkey in their Eth1 deposit
+// @Tags Validator
+// @Produce  json
+// @Param  pubkey path string true "pubkey sent to the deposit contract on Eth1"
+// @Success 200 {object} string
+// @Router /api/v1/validator/eth1/depositpubkey/{pubkey} [get]
+func ApiValidatorByEth1DepositPubkey(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	queryStr := strings.Replace(vars["pubkey"], "0x", "", -1)
+	query := []string{}
+	if strings.Contains(queryStr, ",") {
+		query = strings.Split(queryStr, ",")
+	} else {
+		query = append(query, queryStr)
+	}
+
+	if len(query) > 100 {
+		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+		return
+	}
+
+	queryBytes := [][]byte{}
+	for _, pubkeyStr := range query {
+		pubkey, err := hex.DecodeString(pubkeyStr)
+		queryBytes = append(queryBytes, pubkey)
+		if err != nil {
+			sendErrorResponse(j, r.URL.String(), "pubkey(s) incorrectly formatted")
+			return
+		}
+	}
+
+	rows, err := db.DB.Query("SELECT publickey, validatorindex, valid_signature, from_address FROM eth1_deposits LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey WHERE publickey = ANY($1) ORDER BY validatorindex;", pq.Array(query))
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 // ApiValidator godoc
 // @Summary Get the balance history (last 100 epochs) of up to 100 validators
 // @Tags Validator
@@ -444,6 +491,53 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.DB.Query("SELECT * FROM validator_balances WHERE validatorindex = ANY($1) ORDER BY validatorindex, epoch DESC LIMIT 100", pq.Array(query))
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
+// ApiValidatorByPubkey godoc
+// @Summary Get up to 100 validators by their pubkey
+// @Tags Validator
+// @Produce  json
+// @Param  index path string true "Up to 100 validator pubkeys, comma separated"
+// @Success 200 {object} string
+// @Router /api/v1/validator/{pubkey} [get]
+func ApiValidatorByPubkey(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	queryStr := strings.Replace(vars["pubkey"], "0x", "", -1)
+	query := []string{}
+	if strings.Contains(queryStr, ",") {
+		query = strings.Split(queryStr, ",")
+	} else {
+		query = append(query, queryStr)
+	}
+
+	if len(query) > 100 {
+		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+		return
+	}
+
+	queryBytes := [][]byte{}
+	for _, pubkeyStr := range query {
+		pubkey, err := hex.DecodeString(pubkeyStr)
+		queryBytes = append(queryBytes, pubkey)
+		if err != nil {
+			sendErrorResponse(j, r.URL.String(), "pubkey(s) incorrectly formatted")
+			return
+		}
+	}
+
+	rows, err := db.DB.Query("SELECT * FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", pq.Array(query))
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
