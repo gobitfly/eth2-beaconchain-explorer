@@ -35,6 +35,7 @@ import (
 func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	lastEpoch, err := db.GetLatestEpoch()
 
@@ -63,6 +64,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -103,6 +105,7 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -138,6 +141,7 @@ func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
 func ApiBlock(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -174,6 +178,7 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -205,6 +210,7 @@ func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -236,6 +242,7 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -267,6 +274,7 @@ func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -298,6 +306,7 @@ func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -328,6 +337,7 @@ func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -358,6 +368,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 func ApiValidator(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -395,6 +406,7 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -426,6 +438,7 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -463,6 +476,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -499,6 +513,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 
@@ -526,6 +541,7 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -563,6 +579,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -601,6 +618,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
