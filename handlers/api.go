@@ -515,7 +515,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT eth1_deposits.* FROM validators LEFT JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey WHERE validatorindex = ANY($1) or pubkey = ANY($2)", pq.Array(queryIndices), queryPubkeys)
+	rows, err := db.DB.Query("SELECT eth1_deposits.* FROM eth1_deposits LEFT JOIN validators ON validators.pubkey = eth1_deposits.publickey WHERE validators.validatorindex = ANY($1) or eth1_deposits.publickey = ANY($2)", pq.Array(queryIndices), queryPubkeys)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
