@@ -201,7 +201,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/deposits", handlers.ApiValidatorDeposits).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
-		apiV1Router.Use(mux.CORSMethodMiddleware(apiV1Router))
+		apiV1Router.Use(utils.CORSMiddleware)
 		router.PathPrefix("/api/v1").Handler(apiV1Router)
 
 		// confirming the email update should not require auth
