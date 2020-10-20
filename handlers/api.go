@@ -35,6 +35,7 @@ import (
 func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	lastEpoch, err := db.GetLatestEpoch()
 
@@ -63,6 +64,7 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -103,6 +105,7 @@ func ApiEpoch(w http.ResponseWriter, r *http.Request) {
 func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -138,6 +141,7 @@ func ApiEpochBlocks(w http.ResponseWriter, r *http.Request) {
 func ApiBlock(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -174,6 +178,7 @@ func ApiBlock(w http.ResponseWriter, r *http.Request) {
 func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -205,6 +210,7 @@ func ApiBlockAttestations(w http.ResponseWriter, r *http.Request) {
 func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -236,6 +242,7 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -267,6 +274,7 @@ func ApiBlockAttesterSlashings(w http.ResponseWriter, r *http.Request) {
 func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -298,6 +306,7 @@ func ApiBlockProposerSlashings(w http.ResponseWriter, r *http.Request) {
 func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -328,6 +337,7 @@ func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -352,30 +362,24 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 // @Summary Get up to 100 validators by their index
 // @Tags Validator
 // @Produce  json
-// @Param  index path string true "Up to 100 validator indices, comma separated"
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} string
-// @Router /api/v1/validator/{index} [get]
+// @Router /api/v1/validator/{indexOrPubkey} [get]
 func ApiValidator(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	queryStr := vars["index"]
-	query := []string{}
-	if strings.Contains(queryStr, ",") {
-		query = strings.Split(queryStr, ",")
-	} else {
-		query = append(query, queryStr)
-	}
-
-	if len(query) > 100 {
-		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM validators WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(query))
+	rows, err := db.DB.Query("SELECT * FROM validators WHERE validatorindex = ANY($1) OR pubkey = ANY($2) ORDER BY validatorindex", pq.Array(queryIndices), queryPubkeys)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -395,6 +399,7 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
@@ -420,30 +425,24 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 // @Summary Get the balance history (last 100 epochs) of up to 100 validators
 // @Tags Validator
 // @Produce  json
-// @Param  index path string true "Up to 100 validator indices, comma separated"
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} string
-// @Router /api/v1/validator/{index}/balancehistory [get]
+// @Router /api/v1/validator/{indexOrPubkey}/balancehistory [get]
 func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	queryStr := vars["index"]
-	query := []string{}
-	if strings.Contains(queryStr, ",") {
-		query = strings.Split(queryStr, ",")
-	} else {
-		query = append(query, queryStr)
-	}
-
-	if len(query) > 100 {
-		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM validator_balances WHERE validatorindex = ANY($1) ORDER BY validatorindex, epoch DESC LIMIT 100", pq.Array(query))
+	rows, err := db.DB.Query("SELECT validator_balances.* FROM validator_balances LEFT JOIN validators ON validators.validatorindex = validator_balances.validatorindex WHERE validator_balances.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validatorindex, epoch DESC LIMIT 100", pq.Array(queryIndices), queryPubkeys)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -457,30 +456,24 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 // @Summary Get the current performance of up to 100 validators
 // @Tags Validator
 // @Produce  json
-// @Param  index path string true "Up to 100 validator indices, comma separated"
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} string
-// @Router /api/v1/validator/{index}/performance [get]
+// @Router /api/v1/validator/{indexOrPubkey}/performance [get]
 func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	queryStr := vars["index"]
-	query := []string{}
-	if strings.Contains(queryStr, ",") {
-		query = strings.Split(queryStr, ",")
-	} else {
-		query = append(query, queryStr)
-	}
-
-	if len(query) > 100 {
-		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT * FROM validator_performance WHERE validatorindex = ANY($1) ORDER BY validatorindex", pq.Array(query))
+	rows, err := db.DB.Query("SELECT validator_performance.* FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validatorindex", pq.Array(queryIndices), queryPubkeys)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -499,6 +492,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 
@@ -520,30 +514,24 @@ func ApiValidatorLeaderboard(w http.ResponseWriter, r *http.Request) {
 // @Summary Get all eth1 deposits for up to 100 validators
 // @Tags Validator
 // @Produce  json
-// @Param  index path string true "Up to 100 validator indices, comma separated"
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} string
-// @Router /api/v1/validator/{index}/deposits [get]
+// @Router /api/v1/validator/{indexOrPubkey}/deposits [get]
 func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	queryStr := vars["index"]
-	query := []string{}
-	if strings.Contains(queryStr, ",") {
-		query = strings.Split(queryStr, ",")
-	} else {
-		query = append(query, queryStr)
-	}
-
-	if len(query) > 100 {
-		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT eth1_deposits.* FROM validators LEFT JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey WHERE validatorindex = ANY($1)", pq.Array(query))
+	rows, err := db.DB.Query("SELECT eth1_deposits.* FROM validators LEFT JOIN eth1_deposits ON validators.pubkey = eth1_deposits.publickey WHERE validatorindex = ANY($1) or pubkey = ANY($2)", pq.Array(queryIndices), queryPubkeys)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -557,31 +545,24 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 // @Summary Get all attestations during the last 100 epochs for up to 100 validators
 // @Tags Validator
 // @Produce  json
-// @Param  index path string true "Up to 100 validator indices, comma separated"
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} string
-// @Router /api/v1/validator/{index}/attestations [get]
+// @Router /api/v1/validator/{indexOrPubkey}/attestations [get]
 func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	queryStr := vars["index"]
-	query := []string{}
-	if strings.Contains(queryStr, ",") {
-		query = strings.Split(queryStr, ",")
-	} else {
-		query = append(query, queryStr)
-	}
-
-	if len(query) > 100 {
-		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	currentEpoch := services.LatestEpoch()
-	rows, err := db.DB.Query("SELECT * FROM attestation_assignments WHERE validatorindex = ANY($1) AND epoch > $2 ORDER BY validatorindex, epoch desc LIMIT 100", pq.Array(query), currentEpoch-100)
+	rows, err := db.DB.Query("SELECT attestation_assignments.* FROM attestation_assignments LEFT JOIN validators ON validators.validatorindex = attestation_assignments.validatorindex WHERE (attestation_assignments.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) AND epoch > $3 ORDER BY validatorindex, epoch desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-100)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -595,31 +576,24 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 // @Summary Get all proposed blocks during the last 100 epochs for up to 100 validators
 // @Tags Validator
 // @Produce  json
-// @Param  index path string true "Up to 100 validator indices, comma separated"
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} string
-// @Router /api/v1/validator/{index}/proposals [get]
+// @Router /api/v1/validator/{indexOrPubkey}/proposals [get]
 func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	queryStr := vars["index"]
-	query := []string{}
-	if strings.Contains(queryStr, ",") {
-		query = strings.Split(queryStr, ",")
-	} else {
-		query = append(query, queryStr)
-	}
-
-	if len(query) > 100 {
-		sendErrorResponse(j, r.URL.String(), "only a maximum of 100 query parameters are allowed")
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
 	}
 
-	currentEpoch := services.LatestEpoch()
-	rows, err := db.DB.Query("SELECT * FROM blocks WHERE proposer = ANY($1) AND epoch > $2 ORDER BY proposer, epoch desc, slot desc LIMIT 100", pq.Array(query), currentEpoch-100)
+	rows, err := db.DB.Query("SELECT blocks.* FROM blocks LEFT JOIN validators on validators.validatorindex = blocks.proposer WHERE (proposer = ANY($1) OR validators.pubkey = ANY($2)) AND epoch > $3 ORDER BY proposer, epoch desc, slot desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-100)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -651,6 +625,7 @@ func ApiChart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	_, err = w.Write(image)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "error writing chart data")
@@ -694,4 +669,27 @@ func sendOKResponse(j *json.Encoder, route string, data []interface{}) {
 		logger.Errorf("error serializing json data for API %v route: %v", route, err)
 	}
 	return
+}
+
+func parseApiValidatorParam(origParam string) (indices []uint64, pubkeys pq.ByteaArray, err error) {
+	params := strings.Split(origParam, ",")
+	if len(params) > 100 {
+		return nil, nil, fmt.Errorf("only a maximum of 100 query parameters are allowed")
+	}
+	for _, param := range params {
+		if strings.Contains(param, "0x") || len(param) == 96 {
+			pubkey, err := hex.DecodeString(strings.Replace(param, "0x", "", -1))
+			if err != nil {
+				return nil, nil, fmt.Errorf("invalid validator-parameter")
+			}
+			pubkeys = append(pubkeys, pubkey)
+		} else {
+			index, err := strconv.ParseUint(param, 10, 64)
+			if err != nil {
+				return nil, nil, fmt.Errorf("invalid validator-parameter")
+			}
+			indices = append(indices, index)
+		}
+	}
+	return indices, pubkeys, nil
 }
