@@ -19,6 +19,7 @@ var doc = `{
         "description": "{{.Description}}",
         "title": "{{.Title}}",
         "contact": {},
+        "license": {},
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -379,7 +380,7 @@ var doc = `{
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}": {
+        "/api/v1/validator/{index}": {
             "get": {
                 "produces": [
                     "application/json"
@@ -391,8 +392,8 @@ var doc = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -407,7 +408,7 @@ var doc = `{
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}/attestations": {
+        "/api/v1/validator/{index}/attestations": {
             "get": {
                 "produces": [
                     "application/json"
@@ -419,8 +420,8 @@ var doc = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -435,7 +436,7 @@ var doc = `{
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}/balancehistory": {
+        "/api/v1/validator/{index}/balancehistory": {
             "get": {
                 "produces": [
                     "application/json"
@@ -447,8 +448,8 @@ var doc = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -463,7 +464,7 @@ var doc = `{
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}/deposits": {
+        "/api/v1/validator/{index}/deposits": {
             "get": {
                 "produces": [
                     "application/json"
@@ -475,8 +476,8 @@ var doc = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -491,7 +492,7 @@ var doc = `{
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}/performance": {
+        "/api/v1/validator/{index}/performance": {
             "get": {
                 "produces": [
                     "application/json"
@@ -503,8 +504,8 @@ var doc = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -519,7 +520,7 @@ var doc = `{
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}/proposals": {
+        "/api/v1/validator/{index}/proposals": {
             "get": {
                 "produces": [
                     "application/json"
@@ -531,8 +532,8 @@ var doc = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }

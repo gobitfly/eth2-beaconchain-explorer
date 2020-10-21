@@ -5,6 +5,7 @@ info:
     The API is currently free to use. A fair use policy applies. Calls are rate limited to
     10 requests / 1 minute / IP. All API results are cached for 1 minute.
     If you required a higher usage plan please get in touch with us at support@beaconcha.in.
+  license: {}
   title: Beaconcha.in ETH2 API
   version: "1.0"
 paths:
@@ -209,12 +210,12 @@ paths:
       summary: Get an eth1 deposit by its eth1 transaction hash
       tags:
       - Eth1
-  /api/v1/validator/{indexOrPubkey}:
+  /api/v1/validator/{index}:
     get:
       parameters:
-      - description: Up to 100 validator indicesOrPubkeys, comma separated
+      - description: Up to 100 validator indices, comma separated
         in: path
-        name: indexOrPubkey
+        name: index
         required: true
         type: string
       produces:
@@ -227,12 +228,12 @@ paths:
       summary: Get up to 100 validators by their index
       tags:
       - Validator
-  /api/v1/validator/{indexOrPubkey}/attestations:
+  /api/v1/validator/{index}/attestations:
     get:
       parameters:
-      - description: Up to 100 validator indicesOrPubkeys, comma separated
+      - description: Up to 100 validator indices, comma separated
         in: path
-        name: indexOrPubkey
+        name: index
         required: true
         type: string
       produces:
@@ -245,12 +246,12 @@ paths:
       summary: Get all attestations during the last 100 epochs for up to 100 validators
       tags:
       - Validator
-  /api/v1/validator/{indexOrPubkey}/balancehistory:
+  /api/v1/validator/{index}/balancehistory:
     get:
       parameters:
-      - description: Up to 100 validator indicesOrPubkeys, comma separated
+      - description: Up to 100 validator indices, comma separated
         in: path
-        name: indexOrPubkey
+        name: index
         required: true
         type: string
       produces:
@@ -263,12 +264,12 @@ paths:
       summary: Get the balance history (last 100 epochs) of up to 100 validators
       tags:
       - Validator
-  /api/v1/validator/{indexOrPubkey}/deposits:
+  /api/v1/validator/{index}/deposits:
     get:
       parameters:
-      - description: Up to 100 validator indicesOrPubkeys, comma separated
+      - description: Up to 100 validator indices, comma separated
         in: path
-        name: indexOrPubkey
+        name: index
         required: true
         type: string
       produces:
@@ -281,12 +282,12 @@ paths:
       summary: Get all eth1 deposits for up to 100 validators
       tags:
       - Validator
-  /api/v1/validator/{indexOrPubkey}/performance:
+  /api/v1/validator/{index}/performance:
     get:
       parameters:
-      - description: Up to 100 validator indicesOrPubkeys, comma separated
+      - description: Up to 100 validator indices, comma separated
         in: path
-        name: indexOrPubkey
+        name: index
         required: true
         type: string
       produces:
@@ -299,12 +300,12 @@ paths:
       summary: Get the current performance of up to 100 validators
       tags:
       - Validator
-  /api/v1/validator/{indexOrPubkey}/proposals:
+  /api/v1/validator/{index}/proposals:
     get:
       parameters:
-      - description: Up to 100 validator indicesOrPubkeys, comma separated
+      - description: Up to 100 validator indices, comma separated
         in: path
-        name: indexOrPubkey
+        name: index
         required: true
         type: string
       produces:

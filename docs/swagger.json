@@ -4,6 +4,7 @@
         "description": "High performance API for querying information from the Ethereum 2.0 beacon chain\nThe API is currently free to use. A fair use policy applies. Calls are rate limited to\n10 requests / 1 minute / IP. All API results are cached for 1 minute.\nIf you required a higher usage plan please get in touch with us at support@beaconcha.in.",
         "title": "Beaconcha.in ETH2 API",
         "contact": {},
+        "license": {},
         "version": "1.0"
     },
     "paths": {
@@ -362,7 +363,7 @@
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}": {
+        "/api/v1/validator/{index}": {
             "get": {
                 "produces": [
                     "application/json"
@@ -374,8 +375,8 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -390,7 +391,7 @@
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}/attestations": {
+        "/api/v1/validator/{index}/attestations": {
             "get": {
                 "produces": [
                     "application/json"
@@ -402,8 +403,8 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -418,7 +419,7 @@
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}/balancehistory": {
+        "/api/v1/validator/{index}/balancehistory": {
             "get": {
                 "produces": [
                     "application/json"
@@ -430,8 +431,8 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -446,7 +447,7 @@
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}/deposits": {
+        "/api/v1/validator/{index}/deposits": {
             "get": {
                 "produces": [
                     "application/json"
@@ -458,8 +459,8 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -474,7 +475,7 @@
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}/performance": {
+        "/api/v1/validator/{index}/performance": {
             "get": {
                 "produces": [
                     "application/json"
@@ -486,8 +487,8 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
@@ -502,7 +503,7 @@
                 }
             }
         },
-        "/api/v1/validator/{indexOrPubkey}/proposals": {
+        "/api/v1/validator/{index}/proposals": {
             "get": {
                 "produces": [
                     "application/json"
@@ -514,8 +515,8 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
+                        "description": "Up to 100 validator indices, comma separated",
+                        "name": "index",
                         "in": "path",
                         "required": true
                     }
