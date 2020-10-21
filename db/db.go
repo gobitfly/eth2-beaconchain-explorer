@@ -22,13 +22,41 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-// DB is a pointer to the database
 var DBPGX *pgxpool.Conn
+
+// DB is a pointer to the explorer-database
 var DB *sqlx.DB
+
 var logger = logrus.New().WithField("module", "db")
 
-func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsPageData, error) {
-	deposits := []*types.EthOneDepositsPageData{}
+func mustInitDB(username, password, host, port, name string) *sqlx.DB {
+	dbConn, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", username, password, host, port, name))
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	// The golang sql driver does not properly implement PingContext
+	// therefore we use a timer to catch db connection timeouts
+	dbConnectionTimeout := time.NewTimer(15 * time.Second)
+	go func() {
+		<-dbConnectionTimeout.C
+		logger.Fatalf("timeout while connecting to the database")
+	}()
+	err = dbConn.Ping()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	dbConnectionTimeout.Stop()
+
+	return dbConn
+}
+
+func MustInitDB(username, password, host, port, name string) {
+	DB = mustInitDB(username, password, host, port, name)
+}
+
+func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepositsData, error) {
+	deposits := []*types.EthOneDepositsData{}
 
 	err := DB.Select(&deposits, `
 	SELECT 
@@ -55,8 +83,8 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 	return deposits, nil
 }
 
-func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsPageData, uint64, error) {
-	deposits := []*types.EthOneDepositsPageData{}
+func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
+	deposits := []*types.EthOneDepositsData{}
 
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
@@ -81,11 +109,12 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 				ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($1)
 				OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($1)
 				OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($1)
-				OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($1)`, query+"%")
+				OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($1)
+				OR CAST(eth1.block_number AS text) LIKE LOWER($1)`, query+"%")
 	} else {
 		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits")
 	}
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
 
@@ -111,11 +140,11 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 			(
 				SELECT pubkey,
 				CASE 
-					WHEN exitepoch <= $4 then 'exited'
-					WHEN activationepoch > $4 then 'pending'
-					WHEN slashed and activationepoch < $4 and (lastattestationslot < $5 OR lastattestationslot is null) then 'slashing_offline'
+					WHEN exitepoch <= $3 then 'exited'
+					WHEN activationepoch > $3 then 'pending'
+					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
 					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $4 and (lastattestationslot < $5 OR lastattestationslot is null) then 'active_offline' 
+					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline'
 					ELSE 'active_online'
 				END AS state
 				FROM validators
@@ -123,16 +152,14 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ON
 			v.pubkey = eth1.publickey
 		WHERE
-			ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($3)
-		OR
-			ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($3)
-		OR
-			ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($3)
-		OR
-			ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($3)
+			ENCODE(eth1.publickey::bytea, 'hex') LIKE LOWER($5)
+			OR ENCODE(eth1.withdrawal_credentials::bytea, 'hex') LIKE LOWER($5)
+			OR ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($5)
+			OR ENCODE(tx_hash::bytea, 'hex') LIKE LOWER($5)
+			OR CAST(eth1.block_number AS text) LIKE LOWER($5)
 		ORDER BY %s %s
 		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, query+"%", latestEpoch, validatorOnlineThresholdSlot)
+		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot, query+"%")
 	} else {
 		err = DB.Select(&deposits, fmt.Sprintf(`
 		SELECT 
@@ -159,7 +186,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 					WHEN activationepoch > $3 then 'pending'
 					WHEN slashed and activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'slashing_offline'
 					WHEN slashed then 'slashing_online'
-					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline' 
+					WHEN activationepoch < $3 and (lastattestationslot < $4 OR lastattestationslot is null) then 'active_offline'
 					ELSE 'active_online'
 				END AS state
 				FROM validators
@@ -170,7 +197,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot)
 	}
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, 0, err
 	}
 
@@ -179,7 +206,6 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 
 func GetEth1DepositsCount() (uint64, error) {
 	deposits := uint64(0)
-
 	err := DB.Get(&deposits, `
 	SELECT 
 		Count(*)
@@ -189,17 +215,104 @@ func GetEth1DepositsCount() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-
 	return deposits, nil
 }
 
-func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositsPageData, error) {
-	deposits := []*types.EthTwoDepositsPageData{}
+func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, orderDir string, latestEpoch uint64) ([]*types.EthOneDepositLeaderboardData, uint64, error) {
+	deposits := []*types.EthOneDepositLeaderboardData{}
+
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+	columns := []string{
+		"from_address",
+		"amount",
+		"validcount",
+		"invalidcount",
+		"slashedcount",
+		"totalcount",
+		"activecount",
+		"pendingcount",
+		"voluntary_exit_count",
+	}
+	hasColumn := false
+	for _, column := range columns {
+		if orderBy == column {
+			hasColumn = true
+		}
+	}
+	if !hasColumn {
+		orderBy = "amount"
+	}
+
+	var err error
+	var totalCount uint64
+	if query != "" {
+		err = DB.Get(&totalCount, `
+		SELECT
+			COUNT(from_address)
+			FROM
+				(
+					SELECT
+						from_address
+					FROM
+						eth1_deposits as eth1
+					WHERE
+						ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($1)
+						GROUP BY from_address
+				) as count
+		`, query+"%")
+	} else {
+		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM (SELECT from_address FROM eth1_deposits GROUP BY from_address) as count")
+	}
+	if err != nil && err != sql.ErrNoRows {
+		return nil, 0, err
+	}
+
+	err = DB.Select(&deposits, fmt.Sprintf(`
+		SELECT 
+			from_address,
+			SUM(amount) as amount,
+			COUNT(CASE WHEN valid_signature = 't' THEN 1 END) as validcount,
+			COUNT(CASE WHEN valid_signature = 'f' THEN 1 END) as invalidcount,
+			COUNT(CASE WHEN v.slashed = 't' THEN 1 END) as slashedcount,
+			COUNT(pubkey) as totalcount,
+			COUNT(CASE WHEN v.slashed = 'f' and v.exitepoch > $3 and activationepoch < $3 THEN 1 END) as activecount,
+			COUNT(CASE WHEN activationepoch > $3 THEN 1 END) as pendingcount,
+			COUNT(CASE WHEN v.slashed = 'f' and v.exitepoch < $3 THEN 1 END) as voluntary_exit_count
+		FROM
+			eth1_deposits as eth1
+		LEFT JOIN
+			(
+				SELECT 
+					pubkey,
+					slashed,
+					exitepoch,
+					activationepoch,
+					name
+				FROM validators
+			) as v
+		ON
+			v.pubkey = eth1.publickey
+		WHERE
+			ENCODE(eth1.from_address::bytea, 'hex') LIKE LOWER($4)
+		GROUP BY eth1.from_address
+		ORDER BY %s %s
+		LIMIT $1
+		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, query+"%")
+	if err != nil && err != sql.ErrNoRows {
+		return nil, 0, err
+	}
+	return deposits, totalCount, nil
+}
+
+func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositData, error) {
+	deposits := []*types.EthTwoDepositData{}
 	// ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
-	columns := []string{"block_slot", "block_index", "proof", "publickey", "withdrawalcredentials", "amount", "signature"}
+	columns := []string{"block_slot", "publickey", "amount", "withdrawalcredentials", "signature"}
 	hasColumn := false
 	for _, column := range columns {
 		if orderBy == column {
@@ -212,39 +325,36 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 
 	if query != "" {
 		err := DB.Select(&deposits, fmt.Sprintf(`
-		SELECT 
-			block_slot,
-			block_index,
-			proof,
-			publickey,
-			withdrawalcredentials,
-			amount,
-			signature
-		FROM
-			blocks_deposits
-		WHERE
-		ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR CAST(block_slot as varchar) LIKE $3
-		ORDER BY %s %s
-		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, query+"%")
+			SELECT 
+				blocks_deposits.block_slot,
+				blocks_deposits.block_index,
+				blocks_deposits.proof,
+				blocks_deposits.publickey,
+				blocks_deposits.withdrawalcredentials,
+				blocks_deposits.amount,
+				blocks_deposits.signature
+			FROM blocks_deposits
+			WHERE ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR CAST(block_slot as varchar) LIKE $3
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start, query+"%")
 		if err != nil {
 			return nil, err
 		}
 	} else {
 		err := DB.Select(&deposits, fmt.Sprintf(`
-		SELECT 
-			block_slot,
-			block_index,
-			proof,
-			publickey,
-			withdrawalcredentials,
-			amount,
-			signature
-		FROM
-			blocks_deposits
-		ORDER BY %s %s
-		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start)
+			SELECT 
+				blocks_deposits.block_slot,
+				blocks_deposits.block_index,
+				blocks_deposits.proof,
+				blocks_deposits.publickey,
+				blocks_deposits.withdrawalcredentials,
+				blocks_deposits.amount,
+				blocks_deposits.signature
+			FROM blocks_deposits
+			ORDER BY %s %s
+			LIMIT $1
+			OFFSET $2`, orderBy, orderDir), length, start)
 		if err != nil {
 			return nil, err
 		}
@@ -324,7 +434,7 @@ func GetLastPendingAndProposedBlocks(startEpoch, endEpoch uint64) ([]*types.Mini
 	err := DB.Select(&blocks, "SELECT epoch, slot, blockroot FROM blocks WHERE epoch >= $1 AND epoch <= $2 AND blockroot != '\x01' ORDER BY slot DESC", startEpoch, endEpoch)
 
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving last blocks from DB: %v", err)
+		return nil, fmt.Errorf("error retrieving last blocks (%v-%v) from DB: %v", startEpoch, endEpoch, err)
 	}
 
 	return blocks, nil
@@ -364,7 +474,7 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	deposits := &types.ValidatorDeposits{}
 	err := DB.Select(&deposits.Eth1Deposits, `
 		SELECT tx_hash, tx_input, tx_index, block_number, EXTRACT(epoch FROM block_ts)::INT as block_ts, from_address, publickey, withdrawal_credentials, amount, signature, merkletree_index, valid_signature
-		FROM eth1_deposits WHERE publickey = $1`, publicKey)
+		FROM eth1_deposits WHERE publickey = $1 ORDER BY block_number ASC`, publicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -404,55 +514,16 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte)
 
 // SaveValidatorQueue will save the validator queue into the database
 func SaveValidatorQueue(validators *types.ValidatorQueue) error {
-	tx, err := DB.Begin()
-	if err != nil {
-		return fmt.Errorf("error starting db transactions: %v", err)
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec("TRUNCATE validatorqueue_activation")
-	if err != nil {
-		return fmt.Errorf("error truncating validatorqueue_activation table: %v", err)
-	}
-	_, err = tx.Exec("TRUNCATE validatorqueue_exit")
-	if err != nil {
-		return fmt.Errorf("error truncating validatorqueue_exit table: %v", err)
-	}
-
-	stmtValidatorQueueActivation, err := tx.Prepare(`
-		INSERT INTO validatorqueue_activation (index, publickey)
-		VALUES ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmtValidatorQueueActivation.Close()
-
-	stmtValidatorQueueExit, err := tx.Prepare(`
-		INSERT INTO validatorqueue_exit (index, publickey)
-		VALUES ($1, $2) ON CONFLICT (index, publickey) DO NOTHING`)
-	if err != nil {
-		return err
-	}
-	defer stmtValidatorQueueExit.Close()
-
-	for i, publickey := range validators.ActivationPublicKeys {
-		_, err := stmtValidatorQueueActivation.Exec(validators.ActivationValidatorIndices[i], publickey)
-		if err != nil {
-			return fmt.Errorf("error executing stmtValidatorQueueActivation: %v", err)
-		}
-	}
-	for i, publickey := range validators.ExitPublicKeys {
-		_, err := stmtValidatorQueueExit.Exec(validators.ExitValidatorIndices[i], publickey)
-		if err != nil {
-			return fmt.Errorf("error executing stmtValidatorQueueExit: %v", err)
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("error committing db transaction: %v", err)
-	}
-	return nil
+	enteringValidatorsCount := len(validators.ActivationPublicKeys)
+	exitingValidatorsCount := len(validators.ExitPublicKeys)
+	_, err := DB.Exec(`
+		INSERT INTO queue (ts, entering_validators_count, exiting_validators_count)
+		VALUES (date_trunc('hour', now()), $1, $2)
+		ON CONFLICT (ts) DO UPDATE SET
+			entering_validators_count = excluded.entering_validators_count, 
+			exiting_validators_count = excluded.exiting_validators_count`,
+		enteringValidatorsCount, exitingValidatorsCount)
+	return err
 }
 
 // SaveEpoch will stave the epoch data into the database
@@ -763,7 +834,6 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 }
 
 func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sql.Tx) error {
-
 	args := make([][]interface{}, 0, len(assignments))
 	for key, validator := range assignments {
 		keySplit := strings.Split(key, "-")
@@ -983,7 +1053,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				attestingValidators := make([]string, 0, 10000)
 
 				for _, validator := range a.Attesters {
-					attestationAssignmentsArgs = append(attestationAssignmentsArgs, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1})
+					attestationAssignmentsArgs = append(attestationAssignmentsArgs, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot})
 					attestingValidators = append(attestingValidators, strconv.FormatUint(validator, 10))
 				}
 
@@ -997,15 +1067,15 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 					}
 
 					valueStrings := make([]string, 0, batchSize)
-					valueArgs := make([]interface{}, 0, batchSize*5)
+					valueArgs := make([]interface{}, 0, batchSize*6)
 					for i, v := range attestationAssignmentsArgs[start:end] {
-						valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*5+1, i*5+2, i*5+3, i*5+4, i*5+5))
+						valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)", i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6))
 						valueArgs = append(valueArgs, v...)
 					}
 					stmt := fmt.Sprintf(`
-						INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
+						INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status, inclusionslot)
 						VALUES %s
-						ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status`, strings.Join(valueStrings, ","))
+						ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status, inclusionslot = LEAST((CASE WHEN attestation_assignments.inclusionslot = 0 THEN null ELSE attestation_assignments.inclusionslot END), excluded.inclusionslot)`, strings.Join(valueStrings, ","))
 					_, err := tx.Exec(stmt, valueArgs...)
 					if err != nil {
 						return fmt.Errorf("error executing stmtAttestationAssignments for block %v: %v", b.Slot, err)
@@ -1078,4 +1148,29 @@ func GetTotalValidatorsCount() (uint64, error) {
 	var totalCount uint64
 	err := DB.Get(&totalCount, "SELECT COUNT(*) FROM validators")
 	return totalCount, err
+}
+
+func GetValidatorNames() (map[uint64]string, error) {
+	rows, err := DB.Query("SELECT validatorindex, name FROM validators WHERE name IS NOT NULL")
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	validatorIndexToNameMap := make(map[uint64]string, 30000)
+
+	for rows.Next() {
+		var index uint64
+		var name string
+
+		err := rows.Scan(&index, &name)
+
+		if err != nil {
+			return nil, err
+		}
+		validatorIndexToNameMap[index] = name
+	}
+
+	return validatorIndexToNameMap, nil
 }

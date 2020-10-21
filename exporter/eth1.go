@@ -9,7 +9,7 @@ import (
 	"math/big"
 	"time"
 
-	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
@@ -17,7 +17,6 @@ import (
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
 	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
 	"github.com/prysmaticlabs/go-ssz"
-	"github.com/prysmaticlabs/prysm/beacon-chain/core/helpers"
 	contracts "github.com/prysmaticlabs/prysm/contracts/deposit-contract"
 	pb "github.com/prysmaticlabs/prysm/proto/beacon/p2p/v1"
 	"github.com/prysmaticlabs/prysm/shared/bls"
@@ -234,8 +233,8 @@ func saveEth1Deposits(depositsToSave []*types.Eth1Deposit) error {
 			removed,
 			valid_signature
 		)
-		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, $7, $8, $9, $10, $11, $12, $13) 
-		ON CONFLICT (tx_hash) DO UPDATE SET 
+		VALUES ($1, $2, $3, $4, TO_TIMESTAMP($5), $6, $7, $8, $9, $10, $11, $12, $13)
+		ON CONFLICT (tx_hash, merkletree_index) DO UPDATE SET
 			tx_input               = EXCLUDED.tx_input,
 			tx_index               = EXCLUDED.tx_index,
 			block_number           = EXCLUDED.block_number,
@@ -317,8 +316,73 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 	return headers, txs, nil
 }
 
+// From: "github.com/prysmaticlabs/prysm/beacon-chain/core/helpers"
+// Avoid including dependency directly as it triggers a
+// Cloudflare roughtime call that blocks startup for
+// several seconds
+// ForkVersionByteLength length of fork version byte array.
+const ForkVersionByteLength = 4
+
+// DomainByteLength length of domain byte array.
+const DomainByteLength = 4
+
+func ComputeDomain(domainType [DomainByteLength]byte, forkVersion []byte, genesisValidatorsRoot []byte) ([]byte, error) {
+	if forkVersion == nil {
+		forkVersion = params.BeaconConfig().GenesisForkVersion
+	}
+	if genesisValidatorsRoot == nil {
+		genesisValidatorsRoot = params.BeaconConfig().ZeroHash[:]
+	}
+	forkBytes := [ForkVersionByteLength]byte{}
+	copy(forkBytes[:], forkVersion)
+
+	forkDataRoot, err := computeForkDataRoot(forkBytes[:], genesisValidatorsRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	return domain(domainType, forkDataRoot[:]), nil
+}
+
+func domain(domainType [DomainByteLength]byte, forkDataRoot []byte) []byte {
+	b := []byte{}
+	b = append(b, domainType[:4]...)
+	b = append(b, forkDataRoot[:28]...)
+	return b
+}
+
+func computeForkDataRoot(version []byte, root []byte) ([32]byte, error) {
+	r, err := ssz.HashTreeRoot(&pb.ForkData{
+		CurrentVersion:        version,
+		GenesisValidatorsRoot: root,
+	})
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return r, nil
+}
+
 func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
-	domain, err := helpers.ComputeDomain(params.BeaconConfig().DomainDeposit, nil, nil)
+	cfg := params.BeaconConfig()
+	if utils.Config.Chain.Network == "altona" {
+		cfg = params.AltonaConfig()
+	} else if utils.Config.Chain.Network == "medalla" {
+		cfg = params.MedallaConfig()
+	} else if utils.Config.Chain.Network == "spadina" {
+		cfg = params.SpadinaConfig()
+	}
+	domain, err := ComputeDomain(
+		cfg.DomainDeposit,
+		cfg.GenesisForkVersion,
+		cfg.ZeroHash[:],
+	)
+	if utils.Config.Chain.Network == "zinken" {
+		domain, err = ComputeDomain(
+			cfg.DomainDeposit,
+			[]byte{0x00, 0x00, 0x00, 0x03},
+			cfg.ZeroHash[:],
+		)
+	}
 	if err != nil {
 		return fmt.Errorf("could not get domain: %w", err)
 	}
@@ -343,7 +407,7 @@ func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
 		return fmt.Errorf("could not get ctr root: %w", err)
 	}
 	if !blsSig.Verify(blsPubkey, ctrRoot[:]) {
-		return fmt.Errorf("invalid sig")
+		return fmt.Errorf("invalid signature")
 	}
 	return nil
 }

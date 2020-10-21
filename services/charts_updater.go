@@ -17,7 +17,7 @@ type chartHandler struct {
 	DataFunc func() (*types.GenericChartData, error)
 }
 
-var chartHandlers = map[string]chartHandler{
+var ChartHandlers = map[string]chartHandler{
 	"blocks":                         {1, blocksChartData},
 	"validators":                     {2, activeValidatorsChartData},
 	"staked_ether":                   {3, stakedEtherChartData},
@@ -30,6 +30,8 @@ var chartHandlers = map[string]chartHandler{
 	"balance_distribution":           {10, balanceDistributionChartData},
 	"effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
 	"performance_distribution_365d":  {12, performanceDistribution365dChartData},
+	"deposits":                       {13, depositsChartData},
+	"graffiti_wordcloud":             {14, graffitiCloudChartData},
 }
 
 // LatestChartsPageData returns the latest chart page data
@@ -51,11 +53,10 @@ func chartsPageDataUpdater() {
 			time.Sleep(sleepDuration)
 			continue
 		}
-		logger.WithField("epoch", latestEpoch).Info("updating chartPageData")
 		now := time.Now()
 		data, err := getChartsPageData()
 		if err != nil {
-			logger.Errorf("error updating chartPageData: %v", err)
+			logger.WithField("epoch", latestEpoch).Errorf("error updating chartPageData: %v", err)
 			time.Sleep(sleepDuration)
 			continue
 		}
@@ -74,11 +75,11 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(len(chartHandlers))
+	wg.Add(len(ChartHandlers))
 
-	chartHandlerResChan := make(chan *chartHandlerRes, len(chartHandlers))
+	chartHandlerResChan := make(chan *chartHandlerRes, len(ChartHandlers))
 
-	for i, ch := range chartHandlers {
+	for i, ch := range ChartHandlers {
 		go func(i string, ch chartHandler) {
 			defer wg.Done()
 			data, err := ch.DataFunc()
@@ -246,7 +247,7 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		Title:        "Staked Ether",
-		Subtitle:     "History of daily staked Ether, which is the sum of all effctive balances.",
+		Subtitle:     "History of daily staked Ether, which is the sum of all Effective Balances.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Ether",
 		StackingMode: "false",
@@ -279,13 +280,13 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
 
 		if len(dailyAverageBalance) == 0 || dailyAverageBalance[len(dailyAverageBalance)-1][0] != day {
-			dailyAverageBalance = append(dailyAverageBalance, []float64{day, float64(row.AverageValidatorBalance) / 1000000000})
+			dailyAverageBalance = append(dailyAverageBalance, []float64{day, utils.RoundDecimals(float64(row.AverageValidatorBalance)/1e9, 4)})
 		}
 	}
 
 	chartData := &types.GenericChartData{
 		Title:        "Validator Balance",
-		Subtitle:     "Average Daily Validator Balance",
+		Subtitle:     "Average Daily Validator Balance.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Ether",
 		StackingMode: "false",
@@ -361,7 +362,7 @@ func participationRateChartData() (*types.GenericChartData, error) {
 	for _, row := range rows {
 		seriesData = append(seriesData, []float64{
 			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
-			row.Globalparticipationrate * 100,
+			utils.RoundDecimals(row.Globalparticipationrate*100, 2),
 		})
 	}
 
@@ -432,30 +433,38 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 
 	seriesData := [][]float64{}
 
-	var prevRewards int64
-	var prevDay float64
+	var rewards int64
+	var day float64
+	validatorsCount := uint64(0)
+	prevDayRewards := int64(0)
+	prevDay := float64(utils.EpochToTime(0).Truncate(time.Hour*24).Unix() * 1000)
 	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-
-		if prevDay != day && prevRewards != 0 && row.Rewards != 0 {
+		validatorsCount = row.Validatorscount
+		rewards = row.Rewards
+		day = float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+		if day != prevDay {
+			// data for previous day
 			seriesData = append(seriesData, []float64{
-				day,
-				float64(row.Rewards-prevRewards) / float64(row.Validatorscount) / 1e9,
+				prevDay,
+				utils.RoundDecimals(float64(rewards-prevDayRewards)/float64(validatorsCount)/1e9, 4),
 			})
-		}
-		if prevDay != day {
+			prevDayRewards = row.Rewards
 			prevDay = day
-			prevRewards = row.Rewards
 		}
 	}
+	// data for current day
+	seriesData = append(seriesData, []float64{
+		day,
+		utils.RoundDecimals(float64(rewards-prevDayRewards)/float64(validatorsCount)/1e9, 4),
+	})
 
 	chartData := &types.GenericChartData{
-		Title:        "Average Daily Validator Income",
-		Subtitle:     "",
+		Title:        "Validator Income",
+		Subtitle:     "Average Daily Validator Income.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Average Daily Validator Income [ETH/day]",
 		StackingMode: "false",
-		Type:         "line",
+		Type:         "column",
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Average Daily Validator Income",
@@ -514,23 +523,30 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 
 	seriesData := [][]float64{}
 
-	var prevDay float64
+	var rewards float64
+	var day float64
+	prevDay := float64(utils.EpochToTime(0).Truncate(time.Hour*24).Unix() * 1000)
 	for _, row := range rows {
-		day := float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
-		if prevDay != day && row.Rewards != 0 {
+		rewards = utils.RoundDecimals(float64(row.Rewards)/1e9, 4)
+		day = float64(utils.EpochToTime(row.Epoch).Truncate(time.Hour*24).Unix() * 1000)
+		if day != prevDay {
+			// data for previous day
 			seriesData = append(seriesData, []float64{
-				day,
-				float64(row.Rewards) / 1e9,
+				prevDay,
+				rewards,
 			})
-		}
-		if prevDay != day {
 			prevDay = day
 		}
 	}
+	// data for current day
+	seriesData = append(seriesData, []float64{
+		day,
+		rewards,
+	})
 
 	chartData := &types.GenericChartData{
 		Title:        "Staking Rewards",
-		Subtitle:     "",
+		Subtitle:     "Total Accumulated Staking Rewards",
 		XAxisTitle:   "",
 		YAxisTitle:   "Staking Rewards [ETH]",
 		StackingMode: "false",
@@ -688,7 +704,7 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 		}
 		seriesData = append(seriesData, []float64{
 			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
-			100 * float64(row.Eligibleether) / float64(row.Totalvalidatorbalance),
+			utils.RoundDecimals(100*float64(row.Eligibleether)/float64(row.Totalvalidatorbalance), 2),
 		})
 	}
 
@@ -770,6 +786,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart:        true,
+		ShowGapHider:         true,
 		Title:                "Balance Distribution",
 		Subtitle:             fmt.Sprintf("Histogram of Balances at epoch %d.", currentEpoch),
 		XAxisTitle:           "Balance",
@@ -848,6 +865,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart:        true,
+		ShowGapHider:         true,
 		Title:                "Effective Balance Distribution",
 		Subtitle:             fmt.Sprintf("Histogram of Effective Balances at epoch %d.", currentEpoch),
 		XAxisTitle:           "Effective Balance",
@@ -905,6 +923,7 @@ func performanceDistribution1dChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
+		ShowGapHider:  true,
 		Title:         "Income Distribution (1 day)",
 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last day at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Income",
@@ -966,6 +985,7 @@ func performanceDistribution7dChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
+		ShowGapHider:  true,
 		Title:         "Income Distribution (7 days)",
 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 7 days at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Income",
@@ -1027,6 +1047,7 @@ func performanceDistribution31dChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
+		ShowGapHider:  true,
 		Title:         "Income Distribution (31 days)",
 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 31 days at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Income",
@@ -1091,6 +1112,7 @@ func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart: true,
+		ShowGapHider:  true,
 		Title:         "Income Distribution (365 days)",
 		Subtitle:      fmt.Sprintf("Histogram of income-performances of the last 365 days at epoch %d.", LatestEpoch()),
 		XAxisTitle:    "Income",
@@ -1106,6 +1128,150 @@ func performanceDistribution365dChartData() (*types.GenericChartData, error) {
 			{
 				Name: "# of Validators",
 				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func depositsChartData() (*types.GenericChartData, error) {
+	var err error
+
+	eth1Rows := []struct {
+		Timestamp int64
+		Amount    uint64
+		Valid     bool
+	}{}
+
+	err = db.DB.Select(&eth1Rows, `
+		select
+			extract(epoch from block_ts)::int as timestamp,
+			amount,
+			valid_signature as valid
+		from eth1_deposits
+		order by timestamp`)
+	if err != nil {
+		return nil, fmt.Errorf("error getting eth1-deposits: %w", err)
+	}
+
+	eth2Rows := []struct {
+		Slot   uint64
+		Amount uint64
+	}{}
+
+	err = db.DB.Select(&eth2Rows, `
+		select block_slot as slot, amount 
+		from blocks_deposits
+		order by slot`)
+	if err != nil {
+		return nil, fmt.Errorf("error getting eth2-deposits: %w", err)
+	}
+
+	dailySuccessfulEth1Deposits := [][]float64{}
+	dailyFailedEth1Deposits := [][]float64{}
+	dailyEth2Deposits := [][]float64{}
+
+	for _, row := range eth1Rows {
+		day := float64(time.Unix(row.Timestamp, 0).Truncate(time.Hour*24).Unix() * 1000)
+
+		if row.Valid {
+			if len(dailySuccessfulEth1Deposits) == 0 || dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][0] != day {
+				dailySuccessfulEth1Deposits = append(dailySuccessfulEth1Deposits, []float64{day, float64(row.Amount / 1e9)})
+			} else {
+				dailySuccessfulEth1Deposits[len(dailySuccessfulEth1Deposits)-1][1] += float64(row.Amount / 1e9)
+			}
+		} else {
+			if len(dailyFailedEth1Deposits) == 0 || dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][0] != day {
+				dailyFailedEth1Deposits = append(dailyFailedEth1Deposits, []float64{day, float64(row.Amount / 1e9)})
+			} else {
+				dailyFailedEth1Deposits[len(dailyFailedEth1Deposits)-1][1] += float64(row.Amount / 1e9)
+			}
+		}
+	}
+
+	for _, row := range eth2Rows {
+		day := float64(utils.SlotToTime(row.Slot).Truncate(time.Hour*24).Unix() * 1000)
+
+		if len(dailyEth2Deposits) == 0 || dailyEth2Deposits[len(dailyEth2Deposits)-1][0] != day {
+			dailyEth2Deposits = append(dailyEth2Deposits, []float64{day, float64(row.Amount / 1e9)})
+		} else {
+			dailyEth2Deposits[len(dailyEth2Deposits)-1][1] += float64(row.Amount / 1e9)
+		}
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Deposits",
+		Subtitle:     "Daily Amount of deposited ETH.",
+		XAxisTitle:   "Income",
+		YAxisTitle:   "Deposited ETH",
+		StackingMode: "normal",
+		Type:         "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name:  "ETH2",
+				Data:  dailyEth2Deposits,
+				Stack: "eth2",
+			},
+			{
+				Name:  "ETH1 (success)",
+				Data:  dailySuccessfulEth1Deposits,
+				Stack: "eth1",
+			},
+			{
+				Name:  "ETH1 (failed)",
+				Data:  dailyFailedEth1Deposits,
+				Stack: "eth1",
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func graffitiCloudChartData() (*types.GenericChartData, error) {
+	rows := []struct {
+		Name       string `json:"name"`
+		Weight     uint64 `json:"weight"`
+		Validators uint64 `json:"validators"`
+	}{}
+
+	// \x are missed blocks
+	// \x0000000000000000000000000000000000000000000000000000000000000000 are empty graffities
+	err := db.DB.Select(&rows, `
+		with 
+			graffities as (
+				select count(*), graffiti
+				from blocks 
+				where graffiti <> '\x' and graffiti <> '\x0000000000000000000000000000000000000000000000000000000000000000'
+				group by graffiti order by count desc limit 25
+			)
+		select count(distinct blocks.proposer) as validators, graffities.graffiti as name, graffities.count as weight
+		from blocks 
+			inner join graffities on blocks.graffiti = graffities.graffiti 
+		group by graffities.graffiti, graffities.count
+		order by weight desc`)
+	if err != nil {
+		return nil, fmt.Errorf("error getting graffiti-occurences: %w", err)
+	}
+
+	for i := range rows {
+		rows[i].Name = utils.FormatGraffitiString(rows[i].Name)
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart:                true,
+		Type:                         "wordcloud",
+		Title:                        "Graffiti Word Cloud",
+		Subtitle:                     "Word Cloud of the 25 most occuring graffities.",
+		TooltipFormatter:             `function(){ return '<b>'+this.point.name+'</b><br\>Occurences: '+this.point.weight+'<br\>Validators: '+this.point.validators }`,
+		PlotOptionsSeriesEventsClick: `function(event){ window.location.href = '/blocks?q='+encodeURIComponent(event.point.name) }`,
+		PlotOptionsSeriesCursor:      "pointer",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Occurences",
+				Data: rows,
+				Type: "wordcloud",
 			},
 		},
 	}

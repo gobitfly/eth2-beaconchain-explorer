@@ -11,7 +11,7 @@ function hideTooltip(selector, message) {
   setTimeout(function () {
     $(selector).tooltip('hide')
       .attr('data-original-title', message)
-  }, 1000);
+  }, 1000)
 }
 
 function createBlock(x, y) {
@@ -24,8 +24,6 @@ function createBlock(x, y) {
 }
 
 function appendBlocks(blocks) {
-
-
   $(".blue-cube g.move").each(function() {
     $(this).empty()
   })
@@ -47,80 +45,68 @@ function appendBlocks(blocks) {
     use.setAttributeNS(null, "x", 129)
     use.setAttributeNS(null, "y", 56)
     cube.appendChild(use)
-  }    
+  }
 }
 
 $(document).ready(function() {
-/* 
-  [121, 48],
-  [121, 24],
-  [121, 0],
-  [100, 60],
-  [100, 36],
-  [100, 12],
-  [142, 60],
-  [142, 36],
-  [142, 12],
-  [163, 72],
-  [163, 48],
-  [163, 24],
-  [79, 72],
-  [79, 48],
-  [79, 24],
-  [121, 72],
-  [121, 48],
-  [121, 24],
-  [100, 84],
-  [100, 60],
-  [100, 36],
-  [142, 84],
-  [142, 60],
-  [142, 36],
-  [121, 96],
-  [121, 72],
-  [129, 56]
-*/
- var xBlocks = [
-  [121, 48],
-  [121, 24],
-  [121, 0],
-  [100, 60],
-  [100, 36],
-  [100, 12],
-  [142, 60],
-  [142, 36],
-  [142, 12],
-  [163, 72],
-  [163, 48],
-  [163, 24],
-  [79, 72],
-  [79, 48],
-  [79, 24],
-  [121, 72],
-  [121, 48],
-  [121, 24],
-  [100, 84],
-  [100, 60],
-  [100, 36],
-  [142, 84],
-  [142, 60],
-  [142, 36],
-  [121, 96],
-  [121, 72],
-  // [129, 56]
- ]
 
+  //bookmark button adds all validators in the dashboard to the watchlist
+  $('#bookmark-button').on("click", function(event) {
+    var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
+    var spinnerSmall = $('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>')
+    var bookmarkIcon = $("<i class='far fa-bookmark' style='width:15px;'></i>")
+    var errorIcon = $("<i class='fas fa-exclamation' style='width:15px;'></i>")
+    $('#bookmark-button').empty().append(spinnerSmall)
 
+    fetch('/user/dashboard/save', {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(state.validators),
+    }).then(function(res) {
+      console.log('response', res)
+      if (res.status === 200 && !res.redirected) {
+        // success
+        console.log("success")
+        $('#bookmark-button').empty().append(tickIcon)
+        setTimeout(function() {
+          $('#bookmark-button').empty().append(bookmarkIcon)
+        }, 1000)
+      } else if (res.redirected) {
+        console.log('redirected!')
+        $('#bookmark-button').attr("data-original-title", "Please login or sign up first.")
+        $('#bookmark-button').tooltip('show')
+        $('#bookmark-button').empty().append(errorIcon)
+        setTimeout(function() {
+          $('#bookmark-button').empty().append(bookmarkIcon)
+          $('#bookmark-button').tooltip('hide')
+          $('#bookmark-button').attr("data-original-title", "Save all to Watchlist")
+        }, 2000)
+      } else {
+        // could not bookmark validators
+        $('#bookmark-button').empty().append(errorIcon)
+        setTimeout(function() {
+          $('#bookmark-button').empty().append(bookmarkIcon)
+        }, 2000)
+      }
+    }).catch(function(err) {
+      $('#bookmark-button').empty().append(errorIcon)
+      setTimeout(function() {
+        $('#bookmark-button').empty().append(bookmarkIcon)
+      }, 2000)
+      console.log(err)
+    })
+  })
 
   var clipboard = new ClipboardJS('#copy-button');
 
   var copyButton = $('#copy-button')
   var clearSearch = $('#clear-search')
   //'<i class="fa fa-copy"></i>'
-  copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
+  var copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
   //'<i class="fas fa-check"></i>'
-  tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
-
+  var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
 
   clipboard.on('success', function (e) {
     copyButton.empty().append(tickIcon);
@@ -252,7 +238,6 @@ $(document).ready(function() {
     ]
   })
 
-
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -260,7 +245,40 @@ $(document).ready(function() {
       return obj.index
     },
     remote: {
-      url: '/search/validators/%QUERY',
+      url: '/search/indexed_validators/%QUERY',
+      wildcard: '%QUERY'
+    }
+  })
+  var bhEth1Addresses = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function(obj) {
+      return obj.eth1_address
+    },
+    remote: {
+      url: '/search/indexed_validators_by_eth1_addresses/%QUERY',
+      wildcard: '%QUERY'
+    }
+  })
+  var bhName = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function(obj) {
+      return obj.name
+    },
+    remote: {
+      url: '/search/indexed_validators_by_name/%QUERY',
+      wildcard: '%QUERY'
+    }
+  })
+  var bhGraffiti = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function(obj) {
+      return obj.graffiti
+    },
+    remote: {
+      url: '/search/indexed_validators_by_graffiti/%QUERY',
       wildcard: '%QUERY'
     }
   })
@@ -278,8 +296,48 @@ $(document).ready(function() {
       source: bhValidators,
       display: 'index',
       templates: {
+        header: '<h3>Validators</h3>',
         suggestion: function(data) {
-          return `<div>${data.index}: ${data.pubkey.substring(0, 16)}…</div>`
+          return `<div class="text-monospace text-truncate">${data.index}: ${data.pubkey}</div>`
+        }
+      }
+    },
+    {
+      limit: 5,
+      name: 'addresses',
+      source: bhEth1Addresses,
+      display: 'address',
+      templates: {
+        header: '<h3>Validators by ETH1 Addresses</h3>',
+        suggestion: function(data) {
+          var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
+          return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+        }
+      }
+    },
+    {
+      limit: 5,
+      name: 'graffiti',
+      source: bhGraffiti,
+      display: 'graffiti',
+      templates: {
+        header: '<h3>Validators by Graffiti</h3>',
+        suggestion: function(data) {
+          var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
+          return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.graffiti}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+        }
+      }
+    },
+    {
+      limit: 5,
+      name: 'name',
+      source: bhName,
+      display: 'name',
+      templates: {
+        header: '<h3>Validators by Name</h3>',
+        suggestion: function(data) {
+          var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
+          return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.name}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         }
       }
     }
@@ -293,7 +351,11 @@ $(document).ready(function() {
     $('.tt-suggestion').first().addClass('tt-cursor')
   })
   $('.typeahead-dashboard').on('typeahead:select', function(ev, sug) {
-    addValidator(sug.index)
+    if (sug.validator_indices) {
+      addValidators(sug.validator_indices)
+    } else {
+      addValidator(sug.index)
+    }
     $('.typeahead-dashboard').typeahead('val', '')
   })
   $('#pending').on('click', 'button', function() {
@@ -383,13 +445,43 @@ $(document).ready(function() {
     state.validators = validatorsStr.split(',')
     state.validators = state.validators.filter((v, i) => state.validators.indexOf(v) === i)
     state.validators.sort(sortValidators)
+    if (state.validators.length > 100) {
+      state.validators = state.validators.slice(0,100)
+      console.log("100 validators limit reached")
+      alert('You can not add more than 100 validators to your dashboard')
+    }
+  }
+
+  function addValidators(indices) {
+    var limitReached = false
+    indicesLoop:
+    for (var j = 0; j < indices.length; j++) {
+      if (state.validators.length >= 100) {
+        limitReached = true
+        break indicesLoop
+      }
+      var index = indices[j]+"" // make sure index is string
+      for (var i = 0; i < state.validators.length; i++) {
+        if (state.validators[i] === index)
+          continue indicesLoop
+      }
+      state.validators.push(index)
+    }
+    state.validators.sort(sortValidators)
+    renderSelectedValidators()
+    updateState()
+    if (limitReached) {
+      console.log("100 validators limit reached")
+      alert('You can not add more than 100 validators to your dashboard')
+    }
   }
 
   function addValidator(index) {
-    if (state.validators.length >= 100) {
+    if (state.validators.length > 100) {
       alert('Too much validators, you can not add more than 100 validators to your dashboard!')
       return
     }
+    index = index+"" // make sure index is string
     for (var i = 0; i < state.validators.length; i++) {
       if (state.validators[i] === index) return
     }
@@ -456,16 +548,20 @@ $(document).ready(function() {
     // }
 
     localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
-    var qryStr = '?validators=' + state.validators.join(',')
-    var newUrl = window.location.pathname + qryStr
-    window.history.pushState(null, 'Dashboard', newUrl)
+    if(state.validators.length) {
+      console.log('length', state.validators)
+      var qryStr = '?validators=' + state.validators.join(',')
+      var newUrl = window.location.pathname + qryStr
+      window.history.replaceState(null, 'Dashboard', newUrl)
+    }
     var t0 = Date.now()
-    if(state.validators && state.validators.length) {
+    if (state.validators && state.validators.length) {
       // if(state.validators.length >= 9) {
       //   appendBlocks(xBlocks)
       // } else {
       //   appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
       // }
+      document.querySelector('#bookmark-button').style.visibility = "visible"
       document.querySelector('#copy-button').style.visibility = "visible"
       document.querySelector('#clear-search').style.visibility = "visible"
 
@@ -485,17 +581,11 @@ $(document).ready(function() {
           addChange("#earnings-week-header", lastWeek)
           addChange("#earnings-month-header", lastMonth)
           addChange("#earnings-total-header", total)
-  
-  
-  
+
           document.querySelector('#earnings-day').innerText = lastDay || '0.000'
           document.querySelector('#earnings-week').innerText = lastWeek || '0.000'
           document.querySelector('#earnings-month').innerText = lastMonth || '0.000'
           document.querySelector('#earnings-total').innerText = total || '0.000'
-  //         document.querySelector('#stats-earnings .stats-box-body').innerText = `total: ${(result.total/1e9).toFixed(4)} ETH
-  // 1 day: ${(result.lastDay/1e9).toFixed(4)} ETH
-  // 7 days: ${(result.lastWeek/1e9).toFixed(4)} ETH
-  // 31 days: ${(result.lastMonth/1e9).toFixed(4)} ETH`
         }
       })
       $.ajax({
@@ -518,7 +608,8 @@ $(document).ready(function() {
           state.validatorsCount.slashing_offline = 0
           state.validatorsCount.exiting_online = 0
           state.validatorsCount.exiting_offline = 0
-          state.validatorsCount.exited  = 0
+          state.validatorsCount.exited = 0
+          state.validatorsCount.slashed = 0
   
           for (var i=0; i<result.data.length; i++) {
             var v = result.data[i]
@@ -530,28 +621,22 @@ $(document).ready(function() {
             if (el) el.dataset.state = vState
           }
           validatorsDataTable.clear()
-          // console.log('search',validatorsDataTable.columns().search())
+
           validatorsDataTable.rows.add(result.data).draw()
   
           validatorsDataTable.column(6).visible(false)
-  
+
           requestAnimationFrame(()=>{validatorsDataTable.columns.adjust().responsive.recalc()})
-  
-          // document.getElementById('stats').style.display = 'flex'
-          // document.querySelector('#stats-validators-status').innerText = `showing ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online} active, `
-  //         `pending:  ${state.validatorsCount.pending}
-  // active:   ${state.validatorsCount.active_online} / ${state.validatorsCount.active_offline}
-  // slashing: ${state.validatorsCount.slashing_online} / ${state.validatorsCount.slashing_offline}
-  // exiting:  ${state.validatorsCount.exiting_online} / ${state.validatorsCount.exiting_offline}
-  // exited:   ${state.validatorsCount.exited}`
-  
+
           document.getElementById('validators-table-holder').style.display = 'block'
+
           renderDashboardInfo()
         }
       })
 
     } else {
       document.querySelector('#copy-button').style.visibility = "hidden"
+      document.querySelector('#bookmark-button').style.visibility = "hidden"
       document.querySelector('#clear-search').style.visibility = "hidden"
       // window.location = "/dashboard"
     }
@@ -590,7 +675,7 @@ $(document).ready(function() {
     //   return
     // }
     document.getElementById('chart-holder').style.display = 'flex'
-    if(state.validators && state.validators.length) {
+    if (state.validators && state.validators.length) {
       var qryStr = '?validators=' + state.validators.join(',')
       $.ajax({
         url: '/dashboard/data/balance' + qryStr,

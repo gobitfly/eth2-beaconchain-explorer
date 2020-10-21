@@ -1,14 +1,23 @@
 {{ define "js"}}
 	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.js"></script>
+	<script type="text/javascript" src="/js/datatable_input.js"></script>
 	<script>
         $('#slashings').DataTable({
-						processing: true,
-						serverSide: true,
-						ordering: false,
-						searching: false,
-            paging: true,
-						pagingType: 'full',
-            ajax: '/validators/slashings/data',
+			processing: true,
+			serverSide: true,
+			ordering: false,
+			searching: false,
+			paging: true,
+			pagingType: 'input',
+			ajax: '/validators/slashings/data',
+			language: {
+				// searchPlaceholder: 'Search by Epoch Number',
+				// search: '',
+				paginate: {
+					previous: "<",
+					next: ">",
+				}
+			},
             preDrawCallback: function() {
                 // this does not always work.. not sure how to solve the staying tooltip
                 try {
@@ -24,10 +33,14 @@
 
 {{ define "css"}}
 	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.css"/>
-
+	<style>
+		/* #TODO:stefan maybe make this prettier somehow? */
+		#slashings td:first-child { white-space: break-spaces; }
+	</style>
 {{end}}
 
 {{ define "content"}}
+<div class="container mt-2">
 	<div class="my-3">
 		<div class="d-md-flex py-2 justify-content-md-between">
 			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-user-slash"></i> Slashed Validators</h1>
@@ -46,11 +59,11 @@
 				<table class="table" id="slashings" width="100%">
 					<thead>
 					<tr>
-						<th>Validator</th>
+						<th>Slashed Validators</th>
 						<th>Slashed by</th>
 						<th>Age</th>
 						<th>Reason</th>
-						<th>Block</th>
+						<th>Slot</th>
 						<th>Epoch</th>
 					</tr>
 					</thead>
@@ -59,4 +72,5 @@
 			</div>
 		</div>
 	</div>
+</div>
 {{end}}

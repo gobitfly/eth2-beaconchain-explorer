@@ -1,11 +1,16 @@
 package utils
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
+	"math"
+	"math/big"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,13 +19,12 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"gopkg.in/yaml.v2"
 
 	"github.com/kelseyhightower/envconfig"
 )
-
-// PageSize is the number of records used when fetching RPC data
-const PageSize = 400
 
 // Config is the globally accessible configuration
 var Config *types.Config
@@ -28,33 +32,60 @@ var Config *types.Config
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"formatBalance":               FormatBalance,
-		"formatCurrentBalance":        FormatCurrentBalance,
-		"formatEffectiveBalance":      FormatEffectiveBalance,
-		"formatBlockStatus":           FormatBlockStatus,
-		"formatBlockSlot":             FormatBlockSlot,
-		"formatSlotToTimestamp":       FormatSlotToTimestamp,
-		"formatDepositAmount":         FormatDepositAmount,
-		"formatEpoch":                 FormatEpoch,
-		"formatEth1Block":             FormatEth1Block,
-		"formatEth1Address":           FormatEth1Address,
-		"formatEth1TxHash":            FormatEth1TxHash,
-		"formatGraffiti":              FormatGraffiti,
-		"formatHash":                  FormatHash,
-		"formatIncome":                FormatIncome,
-		"formatValidator":             FormatValidator,
-		"formatValidatorInt64":        FormatValidatorInt64,
-		"formatValidatorStatus":       FormatValidatorStatus,
-		"formatPercentage":            FormatPercentage,
-		"formatPublicKey":             FormatPublicKey,
-		"formatSlashedValidator":      FormatSlashedValidator,
-		"formatSlashedValidatorInt64": FormatSlashedValidatorInt64,
-		"formatTimestamp":             FormatTimestamp,
-		"epochOfSlot":                 EpochOfSlot,
-		"mod":                         func(i, j int) bool { return i%j == 0 },
-		"sub":                         func(i, j int) int { return i - j },
-		"add":                         func(i, j int) int { return i + j },
+		"includeHTML":                             IncludeHTML,
+		"formatHTML":                              FormatMessageToHtml,
+		"formatBalance":                           FormatBalance,
+		"formatCurrentBalance":                    FormatCurrentBalance,
+		"formatEffectiveBalance":                  FormatEffectiveBalance,
+		"formatBlockStatus":                       FormatBlockStatus,
+		"formatBlockSlot":                         FormatBlockSlot,
+		"formatSlotToTimestamp":                   FormatSlotToTimestamp,
+		"formatDepositAmount":                     FormatDepositAmount,
+		"formatEpoch":                             FormatEpoch,
+		"formatEth1Block":                         FormatEth1Block,
+		"formatEth1Address":                       FormatEth1Address,
+		"formatEth1TxHash":                        FormatEth1TxHash,
+		"formatGraffiti":                          FormatGraffiti,
+		"formatHash":                              FormatHash,
+		"formatIncome":                            FormatIncome,
+		"formatValidator":                         FormatValidator,
+		"formatValidatorWithName":                 FormatValidatorWithName,
+		"formatValidatorInt64":                    FormatValidatorInt64,
+		"formatValidatorStatus":                   FormatValidatorStatus,
+		"formatPercentage":                        FormatPercentage,
+		"formatPublicKey":                         FormatPublicKey,
+		"formatSlashedValidator":                  FormatSlashedValidator,
+		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
+		"formatTimestamp":                         FormatTimestamp,
+		"formatTimestampTs":                       FormatTimestampTs,
+		"formatValidatorName":                     FormatValidatorName,
+		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
+		"epochOfSlot":                             EpochOfSlot,
+		"contains":                                strings.Contains,
+		"mod":                                     func(i, j int) bool { return i%j == 0 },
+		"sub":                                     func(i, j int) int { return i - j },
+		"add":                                     func(i, j int) int { return i + j },
+		"div":                                     func(i, j float64) float64 { return i / j },
+		"gtf":                                     func(i, j float64) bool { return i > j },
+		"round":                                   func(i float64, n int) float64 { return math.Round(i*math.Pow10(n)) / math.Pow10(n) },
+		"percent":                                 func(i float64) float64 { return i * 100 },
+		"formatThousands": func(i float64) string {
+			p := message.NewPrinter(language.English)
+			return p.Sprintf("%.0f\n", i)
+		},
 	}
+}
+
+var LayoutPaths []string = []string{"templates/layout/layout.html", "templates/layout/nav.html"}
+
+// IncludeHTML adds html to the page
+func IncludeHTML(path string) template.HTML {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Println("includeHTML - error reading file: %v", err)
+		return ""
+	}
+	return template.HTML(string(b))
 }
 
 // FormatGraffitiString formats (and escapes) the graffiti
@@ -146,6 +177,20 @@ func MustParseHex(hexString string) []byte {
 	return data
 }
 
+func CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Headers:", "*")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "*")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+		return
+	})
+}
+
 func IsApiRequest(r *http.Request) bool {
 	query, ok := r.URL.Query()["format"]
 	return ok && len(query) > 0 && query[0] == "json"
@@ -154,7 +199,137 @@ func IsApiRequest(r *http.Request) bool {
 var eth1AddressRE = regexp.MustCompile("^0?x?[0-9a-fA-F]{40}$")
 var zeroHashRE = regexp.MustCompile("^0?x?0+$")
 
-// IsValidEth1Address verifies whether a string can represents a valid eth1-address.
+// IsValidEth1Address verifies whether a string represents a valid eth1-address.
 func IsValidEth1Address(s string) bool {
 	return !zeroHashRE.MatchString(s) && eth1AddressRE.MatchString(s)
+}
+
+// https://github.com/badoux/checkmail/blob/f9f80cb795fa/checkmail.go#L37
+var emailRE = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
+// IsValidEmail verifies wheter a string represents a valid email-address.
+func IsValidEmail(s string) bool {
+	return emailRE.MatchString(s)
+}
+
+// RoundDecimals rounds (nearest) a number to the specified number of digits after comma
+func RoundDecimals(f float64, n int) float64 {
+	d := math.Pow10(n)
+	return math.Round(f*d) / d
+}
+
+const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+
+var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+// RandomString returns a random hex-string
+func RandomString(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
+	columnTypes, err := rows.ColumnTypes()
+
+	if err != nil {
+		return nil, err
+	}
+
+	count := len(columnTypes)
+	finalRows := []interface{}{}
+
+	for rows.Next() {
+
+		scanArgs := make([]interface{}, count)
+
+		for i, v := range columnTypes {
+			//log.Printf("name: %v, type: %v", v.Name(), v.DatabaseTypeName())
+			switch v.DatabaseTypeName() {
+			case "VARCHAR", "TEXT", "UUID":
+				scanArgs[i] = new(sql.NullString)
+				break
+			case "BOOL":
+				scanArgs[i] = new(sql.NullBool)
+				break
+			case "INT4", "INT8":
+				scanArgs[i] = new(sql.NullInt64)
+				break
+			case "FLOAT8":
+				scanArgs[i] = new(sql.NullFloat64)
+				break
+			case "TIMESTAMP":
+				scanArgs[i] = new(sql.NullTime)
+				break
+			default:
+				scanArgs[i] = new(sql.NullString)
+			}
+		}
+
+		err := rows.Scan(scanArgs...)
+
+		if err != nil {
+			return nil, err
+		}
+
+		masterData := map[string]interface{}{}
+
+		for i, v := range columnTypes {
+
+			//log.Println(v.Name(), v.DatabaseTypeName())
+			if z, ok := (scanArgs[i]).(*sql.NullBool); ok {
+				masterData[v.Name()] = z.Bool
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullString); ok {
+				if v.DatabaseTypeName() == "BYTEA" {
+					if len(z.String) > 0 {
+						masterData[v.Name()] = "0x" + hex.EncodeToString([]byte(z.String))
+					} else {
+						masterData[v.Name()] = nil
+					}
+				} else if v.DatabaseTypeName() == "NUMERIC" {
+					nbr, _ := new(big.Int).SetString(z.String, 10)
+					masterData[v.Name()] = nbr
+				} else {
+					masterData[v.Name()] = z.String
+				}
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullInt64); ok {
+				masterData[v.Name()] = z.Int64
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullFloat64); ok {
+				masterData[v.Name()] = z.Float64
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullFloat64); ok {
+				masterData[v.Name()] = z.Float64
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullInt32); ok {
+				masterData[v.Name()] = z.Int32
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullTime); ok {
+				masterData[v.Name()] = z.Time.Unix()
+				continue
+			}
+
+			masterData[v.Name()] = scanArgs[i]
+		}
+
+		finalRows = append(finalRows, masterData)
+	}
+
+	return finalRows, nil
 }

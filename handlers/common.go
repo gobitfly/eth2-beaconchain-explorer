@@ -1,24 +1,31 @@
 package handlers
 
 import (
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"net/http"
+	"regexp"
 	"sync"
 	"time"
 
 	"github.com/lib/pq"
 )
 
+var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
+
 func GetValidatorOnlineThresholdSlot() uint64 {
 	latestProposedSlot := services.LatestProposedSlot()
+	threshold := utils.Config.Chain.SlotsPerEpoch * 2
+
 	var validatorOnlineThresholdSlot uint64
-	if latestProposedSlot < 1 {
+	if latestProposedSlot < 1 || latestProposedSlot < threshold {
 		validatorOnlineThresholdSlot = 0
 	} else {
-		validatorOnlineThresholdSlot = latestProposedSlot - utils.Config.Chain.SlotsPerEpoch*2
+		validatorOnlineThresholdSlot = latestProposedSlot - threshold
 	}
 
 	return validatorOnlineThresholdSlot
@@ -129,4 +136,17 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}
 
 	return earnings, nil
+}
+
+// LatestState will return common information that about the current state of the eth2 chain
+func LatestState(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewEncoder(w).Encode(services.LatestState())
+
+	if err != nil {
+		logger.Errorf("error sending latest index page data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 }

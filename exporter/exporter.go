@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -188,6 +187,11 @@ func Start(client rpc.Client) error {
 		startEpoch := uint64(0)
 		if head.FinalizedEpoch > 1 {
 			startEpoch = head.FinalizedEpoch - 1
+		}
+
+		if head.HeadEpoch > 10 && head.HeadEpoch-head.FinalizedEpoch > 10 {
+			logger.Infof("no finality since %v epochs, limiting lookback to the last 10 epochs", head.HeadEpoch-head.FinalizedEpoch)
+			startEpoch = head.HeadEpoch - 10
 		}
 
 		dbBlocks, err := db.GetLastPendingAndProposedBlocks(startEpoch, head.HeadEpoch)
@@ -661,7 +665,14 @@ func networkLivenessUpdater(client rpc.Client) {
 func genesisDepositsExporter() {
 	for {
 		// check if the beaconchain has started
-		latestEpoch := services.LatestEpoch()
+		var latestEpoch uint64
+		err := db.DB.Get(&latestEpoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
+		if err != nil {
+			logger.Errorf("error retrieving latest epoch from the database: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
 		if latestEpoch == 0 {
 			time.Sleep(time.Second * 60)
 			continue
@@ -669,7 +680,7 @@ func genesisDepositsExporter() {
 
 		// check if genesis-deposits have already been exported
 		var genesisDepositsCount uint64
-		err := db.DB.Get(&genesisDepositsCount, "SELECT COUNT(*) FROM blocks_deposits WHERE block_slot=0")
+		err = db.DB.Get(&genesisDepositsCount, "SELECT COUNT(*) FROM blocks_deposits WHERE block_slot=0")
 		if err != nil {
 			logger.Errorf("error retrieving genesis-deposits-count when exporting genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)

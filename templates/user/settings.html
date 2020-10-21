@@ -1,0 +1,157 @@
+{{ define "js"}}
+<script>
+    // form validations
+    function checkPasswordsMatch(input) {
+    var pass = document.getElementById('password')
+    var pwConfirm = document.getElementById('pw-confirm')
+      if (pass.value !== input.value) {
+        input.setCustomValidity('Passwords do not match');
+      } else {
+        input.setCustomValidity('');
+      }
+    }
+    // false is edit true is save
+    var buttonState = false;
+    function toggleButton(button) {
+        buttonState = !buttonState
+        var emailInput = document.getElementById('email')
+        
+        if (buttonState) {
+            button.textContent = "Save"
+            button.classList.remove('btn-outline-primary')
+            button.classList.add('btn-primary')
+            emailInput.removeAttribute('disabled')
+            button.blur()
+        } else {
+            document.getElementById('email-form').submit()
+        }
+    }
+</script>
+{{end}}
+
+{{ define "css" }}
+{{end}}
+
+{{ define "content"}}
+<div class="container mt-2">
+
+    <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+            <h1 class="h4 mb-1 mb-md-0"><i class="mr-2 fas fa-user-circle"></i>Account Settings</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                    <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Settings</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+    <div class="row ">
+        <div class="col-xl-7 col-lg-7 col-md-10 col-sm-12 m-auto">
+            {{if .Flashes}}
+                {{range $i, $flash := .Flashes}}
+                <div class="alert {{if contains $flash "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
+                        <div class="p-2">{{$flash | formatHTML}}</div>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {{end}}
+            {{end}}
+            <div class="user__settings-container">
+                <!-- Current User Stats -->
+                <div class="card my-3">
+                    <div class="card-header">
+                        <h3 class="h5">Update Email</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="email-form" action="settings/email" method="POST">
+                            <div class="form-group">
+                                <label for="email">Email address</label>
+                                <div class="input-group">
+                                <input value="{{.Email}}" disabled inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email">
+                                <div class="input-group-append">
+                                    <button id="email-edit-button" onclick="toggleButton(this)" type="button" class="btn btn-outline-primary">Edit</button>
+                                </div>
+                            </div>
+                        </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Update Password -->
+                <div class="card my-3">
+                    <div class="card-header">
+                        <h3 class="h5">Update Password</h3>
+                    </div>
+                    <div class="card-body">
+                        <form action="settings/password" method="post">
+                            <input value="{{.Email}}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" name="email">
+                            <div class="form-group">
+                                <label for="old-password">Old Password</label>
+                                <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="current-password" id="old-password" name="old-password">
+                            </div>
+                            <div class="form-group">
+                                <label for="password">New Password</label>
+                                <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="password" name="password">
+                            </div>
+                            <div class="form-group">
+                                <label for="pw-confirm">Confirm New Password</label>
+                                <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm" name="pw-confirm">
+                            </div>
+                            <button type="submit" class="btn btn-outline-primary float-right">Save Changes</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Delete Account -->
+                <div class="card my-3"> 
+                    <div class="card-header">
+                        <h3 class="h5">Delete Account <i class="fas fa-exclamation-triangle text-warning"></i></h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <span>
+                                Warning, you will not be able to recover your account!
+                            </span>
+                            <!-- Button trigger modal -->
+                            <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#deleteAccountModal">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+        </div>
+    </div>
+
+
+    
+    <!-- Modal -->
+    <div class="modal fade" id="deleteAccountModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="deleteAccountLabel" aria-hidden="true">
+        <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="deleteAccountLabel">Please Confirm Account Deletion</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            </div>
+            <div class="modal-body">
+                <i class="text-warning fas fa-exclamation-triangle"></i> Warning, you will not be able to recover your account!
+            </div>
+            <div class="modal-footer">
+                <form id="delete-form" action="settings/delete" method="POST">
+                    <button id="delete-button" type="submit" class="btn btn-outline-danger btn-sm" data-dismiss="modal">Delete</button>
+                </form>
+            </div>
+            <script>
+                document.getElementById('delete-button').addEventListener('click', function(event) {
+                    event.preventDefault()
+                    document.getElementById('delete-form').submit()
+                })
+            </script>
+        </div>
+        </div>
+    </div>
+</div>
+{{end}}

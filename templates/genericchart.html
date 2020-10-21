@@ -1,96 +1,130 @@
 {{ define "js"}}
 <script src="https://code.highcharts.com/stock/highstock.js"></script>
 <script src="https://code.highcharts.com/modules/exporting.js"></script>
-<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+<script src="https://code.highcharts.com/modules/wordcloud.js"></script>
 <script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
 
 <script>
 {{if .IsNormalChart}}
 Highcharts.chart('chart',{
-  chart: { type: {{.Type}} },
-  rangeSelector: {  enabled: false },
-  title: { text: {{.Title}} },
-  subtitle: { text: {{.Subtitle}} },
-  plotOptions: { column: { stacking: {{.StackingMode}} } },
-  xAxis: { 
-    labels: {
-      {{ if .XAxisLabelsFormatter }}formatter: {{.XAxisLabelsFormatter}},{{end}}
-    }
-  },
-  yAxis: [{ 
-    type: 'logarithmic',
-    title: { text: {{.YAxisTitle}} },
-    opposite: false
-  }],
-  legend: {enabled:true},
-  series: {{.Series}},
-  navigator: {
-    xAxis: {
-      labels: {
-        {{ if .XAxisLabelsFormatter }}formatter: {{.XAxisLabelsFormatter}},{{end}}
-      }
-    }
-  }
+	chart: { type: {{.Type}} },
+	rangeSelector: {  enabled: false },
+	title: { text: {{.Title}} },
+	subtitle: { text: {{.Subtitle}} },
+	plotOptions: {
+		column: { stacking: {{.StackingMode}} },
+		wordcloud: {
+			rotation: {
+				from: -10, to: 10, orientations: 5,
+			},
+			minFontSize: 8,
+			maxFontSize: 25,
+		},
+		series: {
+			{{ if .PlotOptionsSeriesCursor }}cursor: {{.PlotOptionsSeriesCursor}},{{end}}
+			events: {
+				{{ if .PlotOptionsSeriesEventsClick }}click: {{.PlotOptionsSeriesEventsClick}},{{end}}
+			}
+		}
+	},
+	xAxis: { 
+		labels: {
+			{{ if .XAxisLabelsFormatter }}formatter: {{.XAxisLabelsFormatter}},{{end}}
+		}
+	},
+	yAxis: [{ 
+		type: 'logarithmic',
+		title: { text: {{.YAxisTitle}} },
+		opposite: false
+	}],
+	legend: {enabled:true},
+	series: {{.Series}},
+	navigator: {
+		{{ if eq .Type "wordcloud" }}enabled: false,{{end}}
+		xAxis: {
+			labels: {
+				{{ if .XAxisLabelsFormatter }}formatter: {{.XAxisLabelsFormatter}},{{end}}
+			}
+		}
+	},
+	tooltip: {
+		{{ if .TooltipFormatter }}formatter: {{.TooltipFormatter}},{{end}}
+	}
 })
 {{else}}
 Highcharts.stockChart('chart', {
-  chart: { type: {{.Type}} },
-  rangeSelector: {  enabled: true },
-  title: { text: {{.Title}} },
-  subtitle: { text: {{.Subtitle}} },
-  plotOptions: { 
-    column: { 
-      stacking: {{.StackingMode}},
-      dataGrouping: {
-        {{ if .ColumnDataGroupingApproximation }}approximation: {{.ColumnDataGroupingApproximation}},{{end}}
-      },
-    } 
-  },
-  xAxis: {
-    type: 'datetime',
-    labels: {
-      formatter: function(){
-          var epoch = timeToEpoch(this.value)
-          var orig = this.axis.defaultLabelFormatter.call(this)
-          return `${orig}<br/>Epoch ${epoch}`
-      }
-    }
-  },
-  yAxis: [{
-    title: {
-      text: {{.YAxisTitle}}
-    },
-    opposite: false
-  }],
-  tooltip: {
-    formatter: function(tooltip) {
-      var orig = tooltip.defaultFormatter.call(this, tooltip)
-      var epoch = timeToEpoch(this.x)
-      orig[0] = orig[0]+'<span style="font-size:10px">Epoch '+epoch+'</span>'
-      return orig
-    }
-  },
-  legend: {enabled:true},
-  series: {{.Series}},
+	chart: { type: {{.Type}} },
+	rangeSelector: {  enabled: true },
+	title: { text: {{.Title}} },
+	subtitle: { text: {{.Subtitle}} },
+	plotOptions: { 
+		column: { 
+			stacking: {{.StackingMode}},
+			dataGrouping: {
+				{{ if .ColumnDataGroupingApproximation }}approximation: {{.ColumnDataGroupingApproximation}},{{end}}
+			}
+		},
+		wordcloud: {
+			rotation: {
+				from: -10, to: 10, orientations: 5,
+			},
+			minFontSize: 8,
+			maxFontSize: 25,
+		},
+		series: {
+			{{ if .PlotOptionsSeriesCursor }}cursor: {{.PlotOptionsSeriesCursor}},{{end}}
+			events: {
+				{{ if .PlotOptionsSeriesEventsClick }}click: {{.PlotOptionsSeriesEventsClick}},{{end}}
+			}
+		}
+	},
+	xAxis: {
+		type: 'datetime',
+		labels: {
+			formatter: function(){
+				var epoch = timeToEpoch(this.value)
+				var orig = this.axis.defaultLabelFormatter.call(this)
+				return `${orig}<br/>Epoch ${epoch}`
+			}
+		}
+	},
+	yAxis: [{
+		title: {
+			text: {{.YAxisTitle}}
+		},
+		opposite: false
+	}],
+	tooltip: {
+		formatter: function(tooltip) {
+			var orig = tooltip.defaultFormatter.call(this, tooltip)
+			var epoch = timeToEpoch(this.x)
+			orig[0] = orig[0]+'<span style="font-size:10px">Epoch '+epoch+'</span>'
+			return orig
+		}
+	},
+	legend: {enabled:true},
+	series: {{.Series}},
 });
 {{end}}
 </script>
 {{end}} {{ define "css"}} {{end}} {{ define "content"}}
+<div class="container mt-2">
 <div class="my-3">
-  <div class="d-md-flex py-2 justify-content-md-between">
-    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-chart-line mr-2"></i>Ethereum 2.0 Beacon Chain Chart</h1>
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-        <li class="breadcrumb-item"><a href="/charts" title="Charts">Charts</a></li>
-        <li class="breadcrumb-item active" aria-current="page">{{ .Title }}</li>
-      </ol>
-    </nav>
-  </div>
+	<div class="d-md-flex py-2 justify-content-md-between">
+		<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-chart-line mr-2"></i>Ethereum 2.0 Beacon Chain Chart</h1>
+		<nav aria-label="breadcrumb">
+			<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+				<li class="breadcrumb-item"><a href="/charts" title="Charts">Charts</a></li>
+				<li class="breadcrumb-item active" aria-current="page">{{ .Title }}</li>
+			</ol>
+		</nav>
+	</div>
 </div>
 <div class="card">
-  <div class="card-body">
-    <div id="chart" height="600"></div>
-  </div>
+	<div class="card-body">
+		<div id="chart" height="600"></div>
+	</div>
+</div>
 </div>
 {{end}}

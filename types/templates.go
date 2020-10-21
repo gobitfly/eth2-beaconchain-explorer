@@ -12,8 +12,10 @@ import (
 // PageData is a struct to hold web page data
 type PageData struct {
 	Active                string
+	HeaderAd              bool
 	Meta                  *Meta
 	ShowSyncingMessage    bool
+	User                  *User
 	Data                  interface{}
 	Version               string
 	ChainSlotsPerEpoch    uint64
@@ -21,6 +23,7 @@ type PageData struct {
 	ChainGenesisTimestamp uint64
 	CurrentEpoch          uint64
 	CurrentSlot           uint64
+	FinalizationDelay     uint64
 }
 
 // Meta is a struct to hold metadata about the page
@@ -32,23 +35,69 @@ type Meta struct {
 	Tdata1      string
 	Tlabel2     string
 	Tdata2      string
+	GATag       string
+}
+
+//LatestState is a struct to hold data for the banner
+type LatestState struct {
+	LastProposedSlot      uint64 `json:"lastProposedSlot"`
+	CurrentSlot           uint64 `json:"currentSlot"`
+	CurrentEpoch          uint64 `json:"currentEpoch"`
+	CurrentFinalizedEpoch uint64 `json:"currentFinalizedEpoch"`
+	FinalityDelay         uint64 `json:"finalityDelay"`
+	IsSyncing             bool   `json:"syncing"`
+}
+
+type Stats struct {
+	TopDepositors        *[]StatsTopDepositors
+	InvalidDepositCount  *uint64 `db:"count"`
+	UniqueValidatorCount *uint64 `db:"count"`
+}
+
+type StatsTopDepositors struct {
+	Address      string `db:"from_address"`
+	DepositCount uint64 `db:"count"`
 }
 
 // IndexPageData is a struct to hold info for the main web page
 type IndexPageData struct {
+	NetworkName               string `json:"-"`
+	DepositContract           string `json:"-"`
+	ShowSyncingMessage        bool
 	CurrentEpoch              uint64                 `json:"current_epoch"`
 	CurrentFinalizedEpoch     uint64                 `json:"current_finalized_epoch"`
 	CurrentSlot               uint64                 `json:"current_slot"`
+	ScheduledCount            uint8                  `json:"scheduled_count"`
 	FinalityDelay             uint64                 `json:"finality_delay"`
 	ActiveValidators          uint64                 `json:"active_validators"`
 	EnteringValidators        uint64                 `json:"entering_validators"`
 	ExitingValidators         uint64                 `json:"exiting_validators"`
 	StakedEther               string                 `json:"staked_ether"`
 	AverageBalance            string                 `json:"average_balance"`
+	DepositedTotal            float64                `json:"deposit_total"`
+	DepositThreshold          float64                `json:"deposit_threshold"`
+	ValidatorsRemaining       float64                `json:"validators_remaining"`
+	NetworkStartTs            int64                  `json:"network_start_ts"`
 	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
+	Epochs                    []*IndexPageDataEpochs `json:"epochs"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
 	ActiveValidatorsChartData [][]float64            `json:"active_validators_chart_data"`
 	Subtitle                  template.HTML          `json:"-"`
+	Genesis                   bool                   `json:"genesis"`
+	GenesisPeriod             bool                   `json:"genesis_period"`
+}
+
+type IndexPageDataEpochs struct {
+	Epoch                            uint64        `json:"epoch"`
+	Ts                               time.Time     `json:"ts"`
+	Finalized                        bool          `json:"finalized"`
+	FinalizedFormatted               template.HTML `json:"finalized_formatted"`
+	EligibleEther                    uint64        `json:"eligibleether"`
+	EligibleEtherFormatted           template.HTML `json:"eligibleether_formatted"`
+	GlobalParticipationRate          float64       `json:"globalparticipationrate"`
+	GlobalParticipationRateFormatted template.HTML `json:"globalparticipationrate_formatted"`
+	VotedEther                       uint64        `json:"votedether"`
+	VotedEtherFormatted              template.HTML `json:"votedether_formatted"`
 }
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
@@ -70,6 +119,7 @@ type IndexPageDataBlocks struct {
 	StatusFormatted    template.HTML `json:"status_formatted"`
 	Votes              uint64        `db:"votes" json:"votes"`
 	Graffiti           []byte        `db:"graffiti"`
+	ProposerName       string        `db:"name"`
 }
 
 // IndexPageEpochHistory is a struct to hold the epoch history for the main web page
@@ -112,6 +162,7 @@ type ValidatorsPageDataValidators struct {
 	ActivationEpoch            uint64 `db:"activationepoch"`
 	ExitEpoch                  uint64 `db:"exitepoch"`
 	LastAttestationSlot        *int64 `db:"lastattestationslot"`
+	Name                       string `db:"name"`
 	State                      string `db:"state"`
 	MissedProposals            uint64 `db:"missedproposals"`
 	ExecutedProposals          uint64 `db:"executedproposals"`
@@ -122,39 +173,48 @@ type ValidatorsPageDataValidators struct {
 
 // ValidatorPageData is a struct to hold data for the validators page
 type ValidatorPageData struct {
-	Epoch                            uint64 `db:"epoch"`
-	ValidatorIndex                   uint64 `db:"validatorindex"`
-	PublicKey                        []byte
-	WithdrawableEpoch                uint64 `db:"withdrawableepoch"`
-	CurrentBalance                   uint64 `db:"balance"`
-	EffectiveBalance                 uint64 `db:"effectivebalance"`
-	Slashed                          bool   `db:"slashed"`
-	SlashedBy                        uint64
-	SlashedAt                        uint64
-	SlashedFor                       string
-	ActivationEligibilityEpoch       uint64  `db:"activationeligibilityepoch"`
-	ActivationEpoch                  uint64  `db:"activationepoch"`
-	ExitEpoch                        uint64  `db:"exitepoch"`
-	Index                            uint64  `db:"index"`
-	LastAttestationSlot              *uint64 `db:"lastattestationslot"`
-	WithdrawableTs                   time.Time
-	ActivationEligibilityTs          time.Time
-	ActivationTs                     time.Time
-	ExitTs                           time.Time
-	Status                           string
-	ProposedBlocksCount              uint64
-	AttestationsCount                uint64
-	StatusProposedCount              uint64
-	StatusMissedCount                uint64
-	DepositsCount                    uint64
-	SlashingsCount                   uint64
-	Income1d                         int64
-	Income7d                         int64
-	Income31d                        int64
-	Proposals                        [][]uint64
-	BalanceHistoryChartData          [][]float64
-	EffectiveBalanceHistoryChartData [][]float64
-	Deposits                         *ValidatorDeposits
+	Epoch                               uint64 `db:"epoch"`
+	ValidatorIndex                      uint64 `db:"validatorindex"`
+	PublicKey                           []byte
+	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
+	CurrentBalance                      uint64 `db:"balance"`
+	EffectiveBalance                    uint64 `db:"effectivebalance"`
+	Slashed                             bool   `db:"slashed"`
+	SlashedBy                           uint64
+	SlashedAt                           uint64
+	SlashedFor                          string
+	ActivationEligibilityEpoch          uint64  `db:"activationeligibilityepoch"`
+	ActivationEpoch                     uint64  `db:"activationepoch"`
+	ExitEpoch                           uint64  `db:"exitepoch"`
+	Index                               uint64  `db:"index"`
+	LastAttestationSlot                 *uint64 `db:"lastattestationslot"`
+	Name                                string  `db:"name"`
+	WithdrawableTs                      time.Time
+	ActivationEligibilityTs             time.Time
+	ActivationTs                        time.Time
+	ExitTs                              time.Time
+	Status                              string
+	ProposedBlocksCount                 uint64
+	AttestationsCount                   uint64
+	StatusProposedCount                 uint64
+	StatusMissedCount                   uint64
+	DepositsCount                       uint64
+	SlashingsCount                      uint64
+	Income1d                            int64
+	Income7d                            int64
+	Income31d                           int64
+	Apr                                 float64
+	Proposals                           [][]uint64
+	BalanceHistoryChartData             [][]float64
+	EffectiveBalanceHistoryChartData    [][]float64
+	Deposits                            *ValidatorDeposits
+	Eth1DepositAddress                  []byte
+	FlashMessage                        string
+	Watchlist                           []*TaggedValidators
+	SubscriptionFlash                   []interface{}
+	User                                *User
+	AverageAttestationInclusionDistance float64
+	AttestationInclusionEffectiveness   float64
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -171,6 +231,11 @@ type ValidatorBalanceHistory struct {
 	Balance uint64 `db:"balance"`
 }
 
+type ValidatorBalanceHistoryChartData struct {
+	Epoch   uint64
+	Balance uint64
+}
+
 // ValidatorBalance is a struct for the validator balance data
 type ValidatorBalance struct {
 	Epoch            uint64 `db:"epoch"`
@@ -185,6 +250,7 @@ type ValidatorPerformance struct {
 	Rank            uint64 `db:"rank"`
 	Index           uint64 `db:"validatorindex"`
 	PublicKey       []byte `db:"pubkey"`
+	Name            string `db:"name"`
 	Balance         uint64 `db:"balance"`
 	Performance1d   int64  `db:"performance1d"`
 	Performance7d   int64  `db:"performance7d"`
@@ -194,10 +260,12 @@ type ValidatorPerformance struct {
 
 // ValidatorAttestation is a struct for the validators attestations data
 type ValidatorAttestation struct {
-	Epoch          uint64 `db:"epoch"`
-	AttesterSlot   uint64 `db:"attesterslot"`
-	CommitteeIndex uint64 `db:"committeeindex"`
-	Status         uint64 `db:"status"`
+	Epoch                 uint64 `db:"epoch"`
+	AttesterSlot          uint64 `db:"attesterslot"`
+	CommitteeIndex        uint64 `db:"committeeindex"`
+	Status                uint64 `db:"status"`
+	InclusionSlot         uint64 `db:"inclusionslot"`
+	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
 }
 
 // VisPageData is a struct to hold the visualizations page data
@@ -258,6 +326,7 @@ type BlockPageData struct {
 	Signature              []byte `db:"signature"`
 	RandaoReveal           []byte `db:"randaoreveal"`
 	Graffiti               []byte `db:"graffiti"`
+	ProposerName           string `db:"name"`
 	Eth1dataDepositroot    []byte `db:"eth1data_depositroot"`
 	Eth1dataDepositcount   uint64 `db:"eth1data_depositcount"`
 	Eth1dataBlockhash      []byte `db:"eth1data_blockhash"`
@@ -418,9 +487,13 @@ type EpochPageData struct {
 
 	Blocks []*IndexPageDataBlocks
 
-	Ts            time.Time
-	NextEpoch     uint64
-	PreviousEpoch uint64
+	Ts             time.Time
+	NextEpoch      uint64
+	PreviousEpoch  uint64
+	ProposedCount  uint64
+	MissedCount    uint64
+	ScheduledCount uint64
+	OrphanedCount  uint64
 }
 
 // EpochPageMinMaxSlot is a struct for the min/max epoch data
@@ -442,11 +515,11 @@ type SearchAheadBlocksResult []struct {
 
 // SearchAheadGraffitiResult is a struct to hold the search ahead blocks results with a given graffiti
 type SearchAheadGraffitiResult []struct {
-	Slot     string `db:"slot" json:"slot,omitempty"`
 	Graffiti string `db:"graffiti" json:"graffiti,omitempty"`
-	Root     string `db:"blockroot" json:"blockroot,omitempty"`
+	Count    string `db:"count" json:"count,omitempty"`
 }
 
+// SearchAheadEth1Result is a struct to hold the search ahead eth1 results
 type SearchAheadEth1Result []struct {
 	Publickey   string `db:"publickey" json:"publickey,omitempty"`
 	Eth1Address string `db:"from_address" json:"address,omitempty"`
@@ -461,7 +534,11 @@ type SearchAheadValidatorsResult []struct {
 // GenericChartData is a struct to hold chart data
 type GenericChartData struct {
 	IsNormalChart                   bool
+	ShowGapHider                    bool
 	XAxisLabelsFormatter            template.JS
+	TooltipFormatter                template.JS
+	PlotOptionsSeriesEventsClick    template.JS
+	PlotOptionsSeriesCursor         string
 	Title                           string                    `json:"title"`
 	Subtitle                        string                    `json:"subtitle"`
 	XAxisTitle                      string                    `json:"x_axis_title"`
@@ -474,8 +551,10 @@ type GenericChartData struct {
 
 // GenericChartDataSeries is a struct to hold chart series data
 type GenericChartDataSeries struct {
-	Name string      `json:"name"`
-	Data [][]float64 `json:"data"`
+	Name  string      `json:"name"`
+	Data  interface{} `json:"data"`
+	Stack string      `json:"stack,omitempty"`
+	Type  string      `json:"type,omitempty"`
 }
 
 // ChartsPageData is an array to hold charts for the charts-page
@@ -537,8 +616,17 @@ type ValidatorSlashing struct {
 	Type                   string        `db:"type" json:"type"`
 }
 
-// EpochsPageData is a struct to hold epoch data for the epochs page
+type StakingCalculatorPageData struct {
+	BestValidatorBalanceHistory *[]ValidatorBalanceHistory
+	WatchlistBalanceHistory     [][]interface{}
+}
+
 type EthOneDepositsPageData struct {
+	*Stats
+}
+
+// EpochsPageData is a struct to hold epoch data for the epochs page
+type EthOneDepositsData struct {
 	TxHash                []byte    `db:"tx_hash"`
 	TxInput               []byte    `db:"tx_input"`
 	TxIndex               uint64    `db:"tx_index"`
@@ -554,11 +642,24 @@ type EthOneDepositsPageData struct {
 	ValidSignature        bool      `db:"valid_signature"`
 }
 
-type EthTwoDepositsPageData struct {
+type EthOneDepositLeaderboardData struct {
+	FromAddress        []byte `db:"from_address"`
+	Amount             uint64 `db:"amount"`
+	ValidCount         uint64 `db:"validcount"`
+	InvalidCount       uint64 `db:"invalidcount"`
+	TotalCount         uint64 `db:"totalcount"`
+	PendingCount       uint64 `db:"pendingcount"`
+	SlashedCount       uint64 `db:"slashedcount"`
+	ActiveCount        uint64 `db:"activecount"`
+	VoluntaryExitCount uint64 `db:"voluntary_exit_count"`
+}
+
+type EthTwoDepositData struct {
 	BlockSlot             uint64 `db:"block_slot"`
 	BlockIndex            uint64 `db:"block_index"`
 	Proof                 []byte `db:"proof"`
 	Publickey             []byte `db:"publickey"`
+	ValidatorIndex        uint64 `db:"validatorindex"`
 	Withdrawalcredentials []byte `db:"withdrawalcredentials"`
 	Amount                uint64 `db:"amount"`
 	Signature             []byte `db:"signature"`
@@ -567,4 +668,52 @@ type EthTwoDepositsPageData struct {
 type ValidatorDeposits struct {
 	Eth1Deposits []Eth1Deposit
 	Eth2Deposits []Eth2Deposit
+}
+
+type MyCryptoSignature struct {
+	Address string `json:"address"`
+	Msg     string `json:"msg"`
+	Sig     string `json:"sig"`
+	Version string `json:"version"`
+}
+
+type User struct {
+	UserID        uint64 `json:"user_id"`
+	Authenticated bool   `json:"authenticated"`
+}
+
+type AuthData struct {
+	Flashes []interface{}
+	Email   string
+}
+
+type UserSettingsPageData struct {
+	Email string `json:"email"`
+	AuthData
+}
+
+type UserNotificationsPageData struct {
+	Email              string   `json:"email"`
+	CountWatchlist     int      `json:"countwatchlist"`
+	CountSubscriptions int      `json:"countsubscriptions"`
+	WatchlistIndices   []uint64 `json:"watchlistIndices"`
+	DashboardLink      string   `json:"dashboardLink"`
+	AuthData
+	// Subscriptions []*Subscription
+}
+
+type AdvertiseWithUsPageData struct {
+	FlashMessage string
+}
+
+type StakeWithUsPageData struct {
+	FlashMessage string
+}
+
+type RateLimitError struct {
+	TimeLeft time.Duration
+}
+
+func (e *RateLimitError) Error() string {
+	return fmt.Sprintf("rate limit has been exceeded, %v left", e.TimeLeft)
 }

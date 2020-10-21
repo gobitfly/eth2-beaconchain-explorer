@@ -22,22 +22,27 @@ var epochNotFoundTemplate = template.Must(template.New("epochnotfound").ParseFil
 
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 	epochString := strings.Replace(vars["epoch"], "0x", "", -1)
 
 	data := &types.PageData{
+		HeaderAd: true,
 		Meta: &types.Meta{
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
+			GATag:       utils.Config.Frontend.GATag,
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "epochs",
 		Data:                  nil,
+		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
+		FinalizationDelay:     services.FinalizationDelay(),
 	}
 
 	epoch, err := strconv.ParseUint(epochString, 10, 64)
@@ -45,7 +50,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Epoch %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, epochString, time.Now().Year())
 		data.Meta.Path = "/epoch/" + epochString
-		logger.Errorf("error retrieving block data: %v", err)
+		logger.Errorf("error parsing epoch index %v: %v", epochString, err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
@@ -77,7 +82,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 										FROM epochs 
 										WHERE epoch = $1`, epoch)
 	if err != nil {
-		logger.Errorf("error getting epoch data: %v", err)
+		//logger.Errorf("error getting epoch data: %v", err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
@@ -97,7 +102,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 											    blocks.voluntaryexitscount, 
 											    blocks.proposerslashingscount, 
 											    blocks.attesterslashingscount,
-       											blocks.status
+       										blocks.status
 										FROM blocks 
 										WHERE epoch = $1
 										ORDER BY blocks.slot DESC`, epoch)
@@ -116,6 +121,17 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	for _, block := range epochPageData.Blocks {
 		block.Ts = utils.SlotToTime(block.Slot)
+
+		switch block.Status {
+		case 0:
+			epochPageData.ScheduledCount += 1
+		case 1:
+			epochPageData.ProposedCount += 1
+		case 2:
+			epochPageData.MissedCount += 1
+		case 3:
+			epochPageData.OrphanedCount += 1
+		}
 	}
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
@@ -137,7 +153,6 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(data.Data)
 	} else {
-		w.Header().Set("Content-Type", "text/html")
 		err = epochTemplate.ExecuteTemplate(w, "layout", data)
 	}
 
