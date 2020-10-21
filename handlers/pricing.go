@@ -13,10 +13,10 @@ import (
 )
 
 var apiPricingTemplate = template.Must(template.New("pricing").Funcs(utils.GetTemplateFuncs()).ParseFiles(
-	"templates/layout.html", 
+	"templates/layout.html",
 	"templates/pricing.html",
 	"templates/svg/pricing.html",
-	))
+))
 
 func ApiPricing(w http.ResponseWriter, r *http.Request) {
 	var err error
@@ -77,12 +77,12 @@ func ApiPricingPost(w http.ResponseWriter, r *http.Request) {
 	comments := r.FormValue("comments")
 
 	msg := fmt.Sprintf(`New API usage inquiry:
-								Name: %s
-								Email: %s
-								Url: %s
-								Company: %s
-								Interested in plan: %s
-								Comments: %s`, name, email, url, company, plan, comments)
+	Name: %s
+	Email: %s
+	Url: %s
+	Company: %s
+	Interested in plan: %s
+	Comments: %s`, name, email, url, company, plan, comments)
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 
