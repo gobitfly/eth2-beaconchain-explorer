@@ -18,26 +18,12 @@ create table validators
     activationepoch            bigint not null,
     exitepoch                  bigint not null,
     lastattestationslot        bigint,
+    status                     varchar(40),
     name                       varchar(40),
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
 create index idx_validators_name on validators (name);
-
-drop table if exists validator_set;
-create table validator_set
-(
-    epoch                      int    not null,
-    validatorindex             int    not null,
-    withdrawableepoch          bigint not null,
-    withdrawalcredentials      bytea  not null,
-    effectivebalance           bigint not null,
-    slashed                    bool   not null,
-    activationeligibilityepoch bigint not null,
-    activationepoch            bigint not null,
-    exitepoch                  bigint not null,
-    primary key (validatorindex, epoch)
-);
 
 drop table if exists validator_performance;
 create table validator_performance
@@ -135,6 +121,16 @@ create table epochs
     globalparticipationrate float,
     votedether              bigint,
     primary key (epoch)
+);
+
+drop table if exists epochs_status_stats;
+create table epochs_status_stats (
+    epoch                   int         not null,
+    status                  varchar(40) not null,
+    validators_count        int         not null,
+    total_balance           bigint      not null,
+    total_effective_balance bigint      not null,
+    primary key (epoch, status)
 );
 
 drop table if exists blocks;
