@@ -34,8 +34,9 @@ type Config struct {
 		Eth1DepositContractFirstBlock uint64 `yaml:"eth1DepositContractFirstBlock" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_FIRST_BLOCK"`
 	} `yaml:"indexer"`
 	OneTimeExport struct {
-		Enabled bool   `yaml:"enabled"`
-		Epoch   uint64 `yaml:"epoch"`
+		Enabled    bool   `yaml:"enabled"`
+		StartEpoch uint64 `yaml:"startEpoch"`
+		EndEpoch   uint64 `yaml:"endEpoch"`
 	} `yaml:"onetimeexport"`
 	Frontend struct {
 		Enabled      bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
