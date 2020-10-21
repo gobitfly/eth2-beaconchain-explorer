@@ -31,6 +31,7 @@
 				epoch: 1,
 				participation: 0.3,
 			}],
+			windowWidth: window.innerWidth,
 			updateIn: -1,
 			page: {{.}},
 	chartOptions: {
@@ -158,6 +159,7 @@
 				return 0
 			}
 		},
+		
 		validatorsMissing: function() {
 			var eligible = 0
 			var voted = 0
@@ -202,6 +204,14 @@
 				this.updateIn--;
 			}
 		}
+	},
+	mounted() {
+		this.$nextTick(() => {
+			window.addEventListener('resize', () => {
+				console.log('resize event', this.windowWidth)
+				this.windowWidth = window.innerWidth
+			})
+		})
 	}
 })
 	
