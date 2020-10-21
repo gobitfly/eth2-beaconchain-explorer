@@ -706,6 +706,11 @@ type AdvertiseWithUsPageData struct {
 	FlashMessage string
 }
 
+type ApiPricing struct {
+	FlashMessage string
+	User         *User
+}
+
 type StakeWithUsPageData struct {
 	FlashMessage string
 }

@@ -180,6 +180,8 @@ func main() {
 		router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 		router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
+		router.HandleFunc("/api/pricing", handlers.ApiPricing).Methods("GET")
+		router.HandleFunc("/api/pricing", handlers.ApiPricingPost).Methods("POST")
 
 		apiV1Router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 		router.PathPrefix("/api/v1/docs/").Handler(httpSwagger.WrapHandler)
