@@ -27,8 +27,12 @@ type PrysmClient struct {
 
 // NewPrysmClient is used for a new Prysm client connection
 func NewPrysmClient(endpoint string) (*PrysmClient, error) {
-	dialOpt := grpc.WithInsecure()
-	conn, err := grpc.Dial(endpoint, dialOpt)
+	dialOpts := []grpc.DialOption{
+		grpc.WithInsecure(),
+		// Maximum receive value 128 MB
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(128 * 1024 * 1024)),
+	}
+	conn, err := grpc.Dial(endpoint, dialOpts...)
 
 	if err != nil {
 		return nil, err
