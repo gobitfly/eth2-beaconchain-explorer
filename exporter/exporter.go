@@ -305,6 +305,9 @@ func Start(client rpc.Client) error {
 		startEpoch = uint64(0)
 		if head.FinalizedEpoch > 10 {
 			startEpoch = head.FinalizedEpoch - 10
+			if head.HeadEpoch-startEpoch > 10 {
+				startEpoch = head.HeadEpoch - 10
+			}
 		}
 		logger.Infof("updating status of epochs %v-%v", startEpoch, head.HeadEpoch)
 		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
