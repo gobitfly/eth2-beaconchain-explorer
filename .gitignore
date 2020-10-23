@@ -10,3 +10,4 @@ config.yml
 config-lighthouse.yml
 .*swp
 bootstrap/node_modules
+run-local
