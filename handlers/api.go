@@ -1104,6 +1104,17 @@ func parseUintWithDefault(input string, defaultValue uint64) uint64 {
 	return result
 }
 
+// ClientStats godoc
+// @Summary Get your client submitted stats
+// @Tags User
+// @Produce json
+// @Param offset path string false "Data offset, default 0"
+// @Param limit path string false "Data limit, default 180 (~3h). "
+// @Success 200 {object} types.ApiResponse{data=[]types.StatsDataStruct}
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/stats/{offset}/{limit} [get]
 func ClientStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	j := json.NewEncoder(w)
@@ -1116,6 +1127,9 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 	limit := parseUintWithDefault(vars["limit"], 180)
 	if limit > maxStats {
 		limit = maxStats
+	}
+	if offset > maxStats {
+		offset = maxStats
 	}
 
 	validator, err := db.GetStatsValidator(claims.UserID, limit, offset)
@@ -1146,13 +1160,6 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type dataStruct struct {
-		Validator []interface{} `json:"validator"`
-		Slasher   []interface{} `json:"slasher"`
-		Node      []interface{} `json:"node"`
-		System    []interface{} `json:"system"`
-	}
-
 	dataValidator, err := utils.SqlRowsToJSON(validator)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not parse db results for validator stats")
@@ -1176,7 +1183,7 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := &dataStruct{
+	data := &types.StatsDataStruct{
 		Validator: dataValidator,
 		Slasher:   dataSlasher,
 		Node:      dataNode,
@@ -1186,6 +1193,17 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
+// ClientStatsPost godoc
+// @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
+// @Tags User
+// @Produce json
+// @Param apiKey path string true "User API key, can be found on https://beaconcha.in/user/settings"
+// @Param machine path string false "Name your device if you have multiple devices you wan't to monitor"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/stats/{apiKey}/{machine} [get]
 func ClientStatsPost(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")

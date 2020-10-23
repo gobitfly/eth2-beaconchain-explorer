@@ -332,7 +332,7 @@ var doc = `{
                 }
             }
         },
-        "/api/v1/user/dashboard/save": {
+        "/api/v1/mobile/notify/register": {
             "post": {
                 "security": [
                     {
@@ -354,6 +354,173 @@ var doc = `{
                         "required": true,
                         "schema": {
                             "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stats/{apiKey}/{machine}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User API key, can be found on https://beaconcha.in/user/settings",
+                        "name": "apiKey",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Name your device if you have multiple devices you wan't to monitor",
+                        "name": "machine",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/clients": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "associates an ethereum or ethereum 2 client with an user",
+                "parameters": [
+                    {
+                        "description": "Valid client names are: lighthouse, prysm, nimbus, teku, geth, openeth, nethermind, besu",
+                        "name": "clientName",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "description": "Client version (github release api: release id) or 0 for unknown or no change.",
+                        "name": "clientVersion",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Receive client update notifications",
+                        "name": "notify",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "deletes an ethereum or ethereum 2 client from a user",
+                "parameters": [
+                    {
+                        "description": "Valid client names are: lighthouse, prysm, nimbus, teku, geth, openethereum, nethermind, besu",
+                        "name": "clientName",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
                         }
                     }
                 ],
@@ -463,6 +630,71 @@ var doc = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/types.MobileSettingsData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/types.ApiResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/user/stats/{offset}/{limit}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get your client submitted stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Data offset, default 0",
+                        "name": "offset",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Data limit, default 180 (~3h). ",
+                        "name": "limit",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/types.ApiResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/types.StatsDataStruct"
+                                            }
                                         }
                                     }
                                 }
@@ -779,6 +1011,34 @@ var doc = `{
                 }
             }
         },
+        "/api/v1/validator/{indexOrPubkey}/attestationefficiency": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Validator"
+                ],
+                "summary": "Get the current performance of up to 100 validators",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
+                        "name": "index",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/validator/{indexOrPubkey}/attestations": {
             "get": {
                 "produces": [
@@ -787,7 +1047,7 @@ var doc = `{
                 "tags": [
                     "Validator"
                 ],
-                "summary": "Get all attestations during the last 100 epochs for up to 100 validators",
+                "summary": "Get all attestations during the last 10 epochs for up to 100 validators",
                 "parameters": [
                     {
                         "type": "string",
@@ -948,6 +1208,35 @@ var doc = `{
             "properties": {
                 "notify_token": {
                     "type": "string"
+                }
+            }
+        },
+        "types.StatsDataStruct": {
+            "type": "object",
+            "properties": {
+                "node": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "slasher": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "system": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "validator": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
                 }
             }
         },

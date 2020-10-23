@@ -18,6 +18,25 @@ definitions:
       notify_token:
         type: string
     type: object
+  types.StatsDataStruct:
+    properties:
+      node:
+        items:
+          type: object
+        type: array
+      slasher:
+        items:
+          type: object
+        type: array
+      system:
+        items:
+          type: object
+        type: array
+      validator:
+        items:
+          type: object
+        type: array
+    type: object
   utils.OAuthErrorResponse:
     properties:
       error:
@@ -247,7 +266,7 @@ paths:
       summary: Get an eth1 deposit by its eth1 transaction hash
       tags:
       - Eth1
-  /api/v1/user/dashboard/save:
+  /api/v1/mobile/notify/register:
     post:
       parameters:
       - description: Your device`s firebase notification token
@@ -274,6 +293,111 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Register or update your mobile notification token
+      tags:
+      - User
+  /api/v1/stats/{apiKey}/{machine}:
+    get:
+      parameters:
+      - description: User API key, can be found on https://beaconcha.in/user/settings
+        in: path
+        name: apiKey
+        required: true
+        type: string
+      - description: Name your device if you have multiple devices you wan't to monitor
+        in: path
+        name: machine
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
+      tags:
+      - User
+  /api/v1/user/clients:
+    delete:
+      parameters:
+      - description: 'Valid client names are: lighthouse, prysm, nimbus, teku, geth, openethereum, nethermind, besu'
+        in: body
+        name: clientName
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: deletes an ethereum or ethereum 2 client from a user
+      tags:
+      - User
+    post:
+      parameters:
+      - description: 'Valid client names are: lighthouse, prysm, nimbus, teku, geth, openeth, nethermind, besu'
+        in: body
+        name: clientName
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      - description: 'Client version (github release api: release id) or 0 for unknown or no change.'
+        in: body
+        name: clientVersion
+        required: true
+        schema:
+          type: string
+      - description: Receive client update notifications
+        in: body
+        name: notify
+        required: true
+        schema:
+          type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: associates an ethereum or ethereum 2 client with an user
       tags:
       - User
   /api/v1/user/mobile/settings:
@@ -334,6 +458,44 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Changing your devices mobile settings
+      tags:
+      - User
+  /api/v1/user/stats/{offset}/{limit}:
+    get:
+      parameters:
+      - description: Data offset, default 0
+        in: path
+        name: offset
+        type: string
+      - description: 'Data limit, default 180 (~3h). '
+        in: path
+        name: limit
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/types.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/types.StatsDataStruct'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get your client submitted stats
       tags:
       - User
   /api/v1/user/token:
@@ -489,6 +651,24 @@ paths:
       summary: Get up to 100 validators by their index
       tags:
       - Validator
+  /api/v1/validator/{indexOrPubkey}/attestationefficiency:
+    get:
+      parameters:
+      - description: Up to 100 validator indicesOrPubkeys, comma separated
+        in: path
+        name: index
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get the current performance of up to 100 validators
+      tags:
+      - Validator
   /api/v1/validator/{indexOrPubkey}/attestations:
     get:
       parameters:
@@ -504,7 +684,7 @@ paths:
           description: OK
           schema:
             type: string
-      summary: Get all attestations during the last 100 epochs for up to 100 validators
+      summary: Get all attestations during the last 10 epochs for up to 100 validators
       tags:
       - Validator
   /api/v1/validator/{indexOrPubkey}/balancehistory:

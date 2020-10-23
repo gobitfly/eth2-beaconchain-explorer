@@ -60,3 +60,10 @@ type StatsMeta struct {
 	Process   string `mapstructure:"process"`
 	Machine   string
 }
+
+type StatsDataStruct struct {
+	Validator []interface{} `json:"validator"`
+	Slasher   []interface{} `json:"slasher"`
+	Node      []interface{} `json:"node"`
+	System    []interface{} `json:"system"`
+}
