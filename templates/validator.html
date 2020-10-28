@@ -18,7 +18,7 @@
 		<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 		<script src="/js/highcharts-global-options.js"></script>
 		<script>
-            createBalanceChart({{.BteaalanceHistoryChartData}}, {{.EffectiveBalanceHistoryChartData}})
+            createBalanceChart({{.BalanceHistoryChartData}}, {{.EffectiveBalanceHistoryChartData}})
             {{if .ProposedBlocksCount}}
             createProposedBlockChart({{.Proposals}})
             {{end}}
