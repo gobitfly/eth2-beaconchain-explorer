@@ -18,7 +18,7 @@
 		<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
 		<script src="/js/highcharts-global-options.js"></script>
 		<script>
-            createBalanceChart({{.BalanceHistoryChartData}}, {{.EffectiveBalanceHistoryChartData}})
+            createBalanceChart({{.BteaalanceHistoryChartData}}, {{.EffectiveBalanceHistoryChartData}})
             {{if .ProposedBlocksCount}}
             createProposedBlockChart({{.Proposals}})
             {{end}}
@@ -424,8 +424,8 @@
 							<th>Status</th>
 							<th>Time</th>
 							<th>Committee Index</th>
-							<th>Inclusion Slot</th>
-							<th data-toggle="tooltip" title="Eth 2 uses the metric inclusion distance when calculating attestation rewards for validators. The inclusion distance of a slot is the difference between the slot in which an attestation is made and the lowest slot number of the block in which the attestation is included. Attestations should be included as soon as possible. A large inclusion distance will reduce the income of a validator significantly.">Inclusion Distance</th>
+							<th>Inclusion Slot</th> 
+							<th data-toggle="tooltip" title="The optimal inclusion distance shows the difference between the inclusion slot and the earliest slot it could have been included. The best case for the optimal inclusion distance is 0.">Optimal Inclusion Distance</th>
 						</tr>
 						</thead>
 						<tbody></tbody>
