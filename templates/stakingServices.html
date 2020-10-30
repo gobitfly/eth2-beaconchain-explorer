@@ -298,21 +298,31 @@
 									<div class="form-row">
 										<div class="form-group col-md-6">
 											<label for="name">Service Name (required)</label>
-											<input type="text" class="form-control" id="name" placeholder="Ex. Stakewise Pool" required name="name">
+											<input type="text" class="form-control" id="name" placeholder="Ex. Example Pool" required name="name">
 										</div>
 										<div class="form-group col-md-6">
 											<label for="url">Website URL (required)</label>
-											<input type="text" class="form-control" id="url" placeholder="Ex.: https://www.stakewise.io" required name="url">
+											<input type="text" class="form-control" id="url" placeholder="Ex.: https://www.example.com" required name="url">
 										</div>
 									</div>
 									<div class="form-row">
 										<div class="form-group col-md-6">
-											<label for="custodial">Type (required)</label>
-											<input type="text" class="form-control" id="custodial" placeholder="Ex.:  Custodial / Non-Custodial" required name="custodial">
+											<label for="Validator key owner">Validator key owner (required)</label>
+											<input type="text" class="form-control" id="Validator key owner" placeholder="Ex.:  User / Service / User & Service" required name="Validator key owner">
 										</div>
 										<div class="form-group col-md-6">
-											<label for="stake">Min Stake (required)</label>
-											<input type="text" class="form-control" id="stake" placeholder="Ex.: 32 ETH" required name="stake">
+											<label for="stake">Withdrawal key owner (required)</label>
+											<input type="text" class="form-control" id="Withdrawal key owner" placeholder="Ex.:  User / Service / User & Service" required name="Withdrawal key owner">
+										</div>
+									</div>
+									<div class="form-row">
+										<div class="form-group col-md-6">
+											<label for="Pool token">Pool token (required)</label>
+											<input type="text" class="form-control" id="Pool token" placeholder="Ex.:  Yes / No" required name="Pool token">
+										</div>
+										<div class="form-group col-md-6">
+											<label for="3rdPartySoftware">Install 3rd Party Software (required)</label>
+											<input type="text" class="form-control" id="3rdPartySoftware" placeholder="Ex.: Yes / No (User needs to run software)" required name="3rdPartySoftware">
 										</div>
 									</div>
 									<div class="form-row">
@@ -320,15 +330,24 @@
 											<label for="fee">Fee (required)</label>
 											<input type="text" class="form-control" id="fee" required name="fee" placeholder="Ex. 5%">
 										</div>
+
+										<div class="form-group col-md-6">
+											<label for="stake">Min Stake (required)</label>
+											<input type="text" class="form-control" id="stake" placeholder="Ex.: 32 ETH" required name="stake">
+										</div>
+									</div>
+									<div class="form-row">
+										
 										<div class="form-group col-md-6">
 											<label for="open">Open Source (required)</label>
 											<input type="text" class="form-control" id="open" required name="open" placeholder="Ex. Yes, https://github.com/repo">
 										</div>
+										<div class="form-group">
+											<label for="links">Social Links (required)</label>
+											<input type="text" class="form-control" id="links" required name="links" placeholder="Ex. https://discord.com/xyz, https://twitter.com/example...">
+										</div>
 									</div>
-									<div class="form-group">
-										<label for="links">Social Links (required)</label>
-										<input type="text" class="form-control" id="links" required name="links" placeholder="Ex. https://discord.com/xyz, https://twitter.com/stakewise...">
-									</div>
+									
 									<div class="form-group">
 										<label for="inputQuestions">Comments & Questions</label>
 										<textarea  class="form-control" id="inputQuestions" name="comments"></textarea>
