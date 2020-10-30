@@ -11,4 +11,5 @@ config-lighthouse.yml
 .*swp
 bootstrap/node_modules
 /Users/butta/eth2-beaconchain-explorer/run-local/
+/run-local/
 *.stat
