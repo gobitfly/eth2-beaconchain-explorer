@@ -1,0 +1,13 @@
+docker-volumes
+
+# <!-- cd eth2-beaconchain-explorer
+# cd run-local
+# docker-compose up -d
+# docker-compose exec explorer bash
+# make
+
+# cd eth2-beaconchain-explorer
+# cd run-local
+# docker-compose up -d
+# docker-compose exec explorer bash
+# /app/bin/explorer -config /app/run-local/config.yml  -->

@@ -23,6 +23,8 @@ type PrysmClient struct {
 	conn                *grpc.ClientConn
 	assignmentsCache    *lru.Cache
 	assignmentsCacheMux *sync.Mutex
+	validatorsCache     *lru.Cache
+	validatorsCacheMux  *sync.Mutex
 }
 
 // NewPrysmClient is used for a new Prysm client connection
@@ -47,8 +49,10 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 		nodeClient:          nodeClient,
 		conn:                conn,
 		assignmentsCacheMux: &sync.Mutex{},
+		validatorsCacheMux:  &sync.Mutex{},
 	}
 	client.assignmentsCache, _ = lru.New(10)
+	client.validatorsCache, _ = lru.New(10)
 
 	return client, nil
 }
@@ -175,33 +179,6 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 		AttestorAssignments: make(map[string]uint64),
 	}
 
-	// Retrieve the currently active validator set in order to map public keys to indexes
-	validators := make(map[string]uint64)
-	validatorsResponse := &ethpb.Validators{}
-	validatorsRequest := &ethpb.ListValidatorsRequest{PageSize: utils.Config.Indexer.Node.PageSize, PageToken: validatorsResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}}
-	if epoch == 0 {
-		validatorsRequest.QueryFilter = &ethpb.ListValidatorsRequest_Genesis{Genesis: true}
-	}
-	for {
-		validatorsRequest.PageToken = validatorsResponse.NextPageToken
-		validatorsResponse, err = pc.client.ListValidators(context.Background(), validatorsRequest)
-		if err != nil {
-			return nil, fmt.Errorf("error retrieving validator indices for epoch assignments: %v", err)
-		}
-		if validatorsResponse.TotalSize == 0 {
-			break
-		}
-
-		for _, validator := range validatorsResponse.ValidatorList {
-			logger.Debugf("%x - %v", validator.Validator.PublicKey, validator.Index)
-			validators[fmt.Sprintf("%x", validator.Validator.PublicKey)] = validator.Index
-		}
-
-		if validatorsResponse.NextPageToken == "" {
-			break
-		}
-	}
-
 	// Retrieve the validator assignments for the epoch
 	validatorAssignmentes := make([]*ethpb.ValidatorAssignments_CommitteeAssignment, 0)
 	validatorAssignmentResponse := &ethpb.ValidatorAssignments{}
@@ -229,7 +206,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	// Attestation assignments are cached by the slot & committee key
 	for _, assignment := range validatorAssignmentes {
 		for _, slot := range assignment.ProposerSlots {
-			assignments.ProposerAssignments[slot] = validators[fmt.Sprintf("%x", assignment.PublicKey)]
+			assignments.ProposerAssignments[slot] = assignment.ValidatorIndex
 		}
 
 		for memberIndex, validatorIndex := range assignment.BeaconCommittees {
@@ -346,49 +323,55 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 	}
 
-	// Retrieve the validator set for the epoch
-	data.Validators = make([]*types.Validator, 0)
-	validatorResponse := &ethpb.Validators{}
-	validatorRequest := &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.Config.Indexer.Node.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}}
-	if epoch == 0 {
-		validatorRequest.QueryFilter = &ethpb.ListValidatorsRequest_Genesis{Genesis: true}
-	}
-	for {
-		validatorRequest.PageToken = validatorResponse.NextPageToken
-		validatorResponse, err = pc.client.ListValidators(context.Background(), validatorRequest)
-		if err != nil {
-			logger.Errorf("error retrieving validator response: %v", err)
-			break
+	cachedValue, found := pc.validatorsCache.Get(epoch)
+	if found {
+		data.Validators = cachedValue.([]*types.Validator)
+	} else {
+		// Retrieve the validator set for the epoch
+		data.Validators = make([]*types.Validator, 0)
+		validatorResponse := &ethpb.Validators{}
+		validatorRequest := &ethpb.ListValidatorsRequest{PageToken: validatorResponse.NextPageToken, PageSize: utils.Config.Indexer.Node.PageSize, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}}
+		if epoch == 0 {
+			validatorRequest.QueryFilter = &ethpb.ListValidatorsRequest_Genesis{Genesis: true}
 		}
-		if validatorResponse.TotalSize == 0 {
-			break
-		}
-
-		for _, validator := range validatorResponse.ValidatorList {
-			balance, exists := validatorBalancesByPubkey[fmt.Sprintf("%x", validator.Validator.PublicKey)]
-			if !exists {
-				logger.WithField("pubkey", fmt.Sprintf("%x", validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
-				continue
+		for {
+			validatorRequest.PageToken = validatorResponse.NextPageToken
+			validatorResponse, err = pc.client.ListValidators(context.Background(), validatorRequest)
+			if err != nil {
+				logger.Errorf("error retrieving validator response: %v", err)
+				break
 			}
-			data.Validators = append(data.Validators, &types.Validator{
-				Index:                      validator.Index,
-				PublicKey:                  validator.Validator.PublicKey,
-				WithdrawalCredentials:      validator.Validator.WithdrawalCredentials,
-				Balance:                    balance,
-				EffectiveBalance:           validator.Validator.EffectiveBalance,
-				Slashed:                    validator.Validator.Slashed,
-				ActivationEligibilityEpoch: validator.Validator.ActivationEligibilityEpoch,
-				ActivationEpoch:            validator.Validator.ActivationEpoch,
-				ExitEpoch:                  validator.Validator.ExitEpoch,
-				WithdrawableEpoch:          validator.Validator.WithdrawableEpoch,
-			})
-		}
+			if validatorResponse.TotalSize == 0 {
+				break
+			}
 
-		if validatorResponse.NextPageToken == "" {
-			break
+			for _, validator := range validatorResponse.ValidatorList {
+				balance, exists := validatorBalancesByPubkey[fmt.Sprintf("%x", validator.Validator.PublicKey)]
+				if !exists {
+					logger.WithField("pubkey", fmt.Sprintf("%x", validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
+					continue
+				}
+				data.Validators = append(data.Validators, &types.Validator{
+					Index:                      validator.Index,
+					PublicKey:                  validator.Validator.PublicKey,
+					WithdrawalCredentials:      validator.Validator.WithdrawalCredentials,
+					Balance:                    balance,
+					EffectiveBalance:           validator.Validator.EffectiveBalance,
+					Slashed:                    validator.Validator.Slashed,
+					ActivationEligibilityEpoch: validator.Validator.ActivationEligibilityEpoch,
+					ActivationEpoch:            validator.Validator.ActivationEpoch,
+					ExitEpoch:                  validator.Validator.ExitEpoch,
+					WithdrawableEpoch:          validator.Validator.WithdrawableEpoch,
+				})
+			}
+
+			if validatorResponse.NextPageToken == "" {
+				break
+			}
 		}
+		pc.validatorsCache.Add(epoch, data.Validators)
+		logger.Printf("retrieved data for %v validators for epoch %v", len(data.Validators), epoch)
 	}
-	logger.Printf("retrieved data for %v validators for epoch %v", len(data.Validators), epoch)
 
 	// Retrieve the beacon committees for the epoch
 	data.BeaconCommittees = make(map[uint64][]*types.BeaconCommitteItem)

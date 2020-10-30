@@ -1,0 +1,51 @@
+# Database credentials
+database:
+  user: beaconchain
+  name: beaconchain
+  host: db
+  port: 5432
+  password: xxx
+
+# Chain network configuration (example will work for the prysm testnet)
+chain:
+  slotsPerEpoch: 32
+  secondsPerSlot: 12
+  genesisTimestamp: 1573489682
+
+# Note: It is possible to run either the frontend or the indexer or both at the same time
+# Frontend config
+frontend:
+  enabled: true # Enable or disable to web frontend
+  imprint: 'imprint.html' # Path to the imprint page content
+  siteDomain: "zinken.beaconcha.in"
+  siteName: 'Ethereum 2.0 Beacon Chain (Phase 0) Block Chain Explorer' # Name of the site, displayed in the title tag
+  siteSubtitle: "Showing the Eth2 Testnet <a href='https://github.com/goerli/medalla/pull/53' target='_blank' rel='noopener noreferrer'>Zinken</a>. <a href='https://zinken.launchpad.ethereum.org/' target='_blank' rel='noopener noreferrer'>Become a validator</a> and help secure eth2."
+  server:
+    host: '0.0.0.0' # Address to listen on
+    port: '3333' # Port to listen on
+  database:
+    user: beaconchain
+    name: beaconchain
+    host: db
+    port: 5432
+    password: xxx
+  sessionSecret: "asdf"
+  maxMailsPerEmailPerDay: 10
+  notifications:
+    enabled: false
+  gatag: ''
+
+# Indexer config
+indexer:
+  enabled: false # Enable or disable the indexing service
+  fullIndexOnStartup: false # Perform a one time full db index on startup
+  indexMissingEpochsOnStartup: false # Check for missing epochs and export them after startup
+  node:
+    host: 'prysm-node' # Address of the prysm backend archive node
+    port: '4000' # gRPC port of the prysm backend archive node
+    type: 'prysm'
+    pageSize: 2000
+  eth1Endpoint: 'https://goerli.infura.io/v3/730f61d0cad749e6905d44aca4e3f44c'
+  eth1DepositContractAddress: '0x99F0Ec06548b086E46Cb0019C78D0b9b9F36cD53'
+  eth1DepositContractFirstBlock: 3384340
+

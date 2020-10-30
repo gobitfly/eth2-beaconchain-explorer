@@ -1,0 +1,52 @@
+version: '3.0'
+services:
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_USER=beaconchain
+      - POSTGRES_PASSWORD=xxx
+      - POSTGRES_DB=beaconchain
+    volumes:
+      - ./docker-volumes/db:/var/lib/postgresql/data
+      # - ../tables.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U beaconchain']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  # prysm-node:
+  #   image: gcr.io/prysmaticlabs/prysm/beacon-chain:v1.0.0-alpha.29
+  #   container_name: "prysm-node"
+  #   command: >
+  #     --zinken
+  #     --verbosity=debug
+  #     --http-web3provider=https://goerli.infura.io/v3/730f61d0cad749e6905d44aca4e3f44c
+  #     --datadir=/data
+  #     --grpc-max-msg-size 6194304
+  #     --min-sync-peers=1
+  #     --slots-per-archive-point 32
+  #     --grpc-gateway-host=0.0.0.0
+  #     --rpc-host=0.0.0.0
+  #     --rpc-max-page-size 100000
+  #     --monitoring-port=9090
+  #     --monitoring-host=0.0.0.0
+  #     --bootstrap-node="enr:-Ku4QH63huZ12miIY0kLI9dunG5fwKpnn-zR3XyA_kH6rQpRD1VoyLyzIcFysCJ09JDprdX-EzXp-Nc8swYqBznkXggBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpDaNQiCAAAAA___________gmlkgnY0gmlwhBLf22SJc2VjcDI1NmsxoQILqxBY-_SF8o_5FjFD3yM92s50zT_ciFi8hStde5AEjIN1ZHCCH0A"
+  #     --bootstrap-node="enr:-KG4QDCt7b_zpzEoKEATUYgvdfBy28DCtGs54E4U_IIKd5e1Pj71nUAJKqdNjjqH5L8wNVsGNI67dzX5_ATfVMHQ7ygChGV0aDKQufleewAAAAP__________4JpZIJ2NIJpcIQ0ECjWiXNlY3AyNTZrMaEC64bJmIc-R6ynv5PqUqMBjblHILK46WWi4bbXO9DAGbeDdGNwgiMog3VkcIIjKA"
+  #     --bootstrap-node="enr:-Ku4QMGGAuQO8NPhYCz29wsahrFR-betfxKx6ltyzLUM70yJWoaRjJZ-n1Oiof2PiKnzjVG1n6RoyO4ZNJkQtqEkqNkBh2F0dG5ldHOIAAAAAAAAAACEZXRoMpDaNQiCAAAAA___________gmlkgnY0gmlwhDZUyU6Jc2VjcDI1NmsxoQNMOowBnXeUYjK71_Zz78j3y7EYKSXH9ZGhYB4wB6V8lIN1ZHCCIyg"
+  #     --bootstrap-node="enr:-KG4QHPtVnKHEOkEJT1f5C6Hs-C_c4SlipTfkPrDIikLTzhqA_3m6bTq-CirsljlVP4IJybXelHE7J3l9DojR14_ZHUGhGV0aDKQ2jUIggAAAAP__________4JpZIJ2NIJpcIQSv2qciXNlY3AyNTZrMaECi_CNPDkKPilhimY7aEY-mBtSzI8AKMDvvv_I2Un74_qDdGNwgiMog3VkcIIjKA"
+  #   volumes:
+  #     - ./docker-volumes/prysm-node:/data
+  #   restart: always
+  #   ports:
+  #     - "4000:4000"
+  #     - "13000:13000"
+  #     - "3500:3500"
+  #     - "9090:9090"
+  explorer:
+    image: golang:1.15
+    volumes:
+      - ./..:/app
+    working_dir: /app
+    command: sleep 36000000
+    ports:
+      - 3333:3333
