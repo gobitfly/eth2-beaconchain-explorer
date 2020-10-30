@@ -35,3 +35,9 @@ func UpdatePassword(userId uint64, hash []byte) error {
 	_, err := FrontendDB.Exec("UPDATE users SET password = $1 WHERE id = $2", hash, userId)
 	return err
 }
+
+// AddAuthorizeCode registers a code that can be used in exchange for an access token
+func AddAuthorizeCode(userId uint64, code string) error {
+	_, err := FrontendDB.Exec("INSERT INTO oauth_codes (user_id, code, created_ts) VALUES($1, $2, 'now')", userId, code)
+	return err
+}

@@ -692,6 +692,11 @@ type UserSettingsPageData struct {
 	AuthData
 }
 
+type UserAuthorizeConfirmPageData struct {
+	AppName string
+	AuthData
+}
+
 type UserNotificationsPageData struct {
 	Email              string   `json:"email"`
 	CountWatchlist     int      `json:"countwatchlist"`

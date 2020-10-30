@@ -310,6 +310,31 @@ create table users
     primary key (id, email)
 );
 
+drop table if exists oauth_codes;
+create table oauth_codes
+(
+    id              serial                      not null,
+    user_id         int                         not null,
+    code            character varying(64)       not null,
+    consumed        bool                        not null default 'f',
+    created_ts      timestamp without time zone not null,
+    primary key (user_id, code)
+);
+
+drop table if exists users_devices;
+create table users_devices
+(
+    id                    serial                      not null,
+    user_id               int                         not null,
+    refresh_token         character varying(64)       not null,
+    device_name           character varying(20)       not null,
+    notification_token    character varying(500),
+    notify_enabled        bool                        not null default 'f',
+    active                bool                        not null default 't',
+    created_ts            timestamp without time zone not null,
+    primary key (user_id, refresh_token)
+);
+
 drop table if exists users_subscriptions;
 create table users_subscriptions
 (

@@ -213,6 +213,8 @@ func main() {
 		router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
 
 		authRouter := mux.NewRouter().PathPrefix("/user").Subrouter()
+		authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirm).Methods("GET")
+		authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirmPost).Methods("POST")
 		authRouter.HandleFunc("/settings", handlers.UserSettings).Methods("GET")
 		authRouter.HandleFunc("/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
 		authRouter.HandleFunc("/settings/delete", handlers.UserDeletePost).Methods("POST")
