@@ -10,4 +10,4 @@ config.yml
 config-lighthouse.yml
 .*swp
 bootstrap/node_modules
-private/
+/Users/butta/eth2-beaconchain-explorer/run-local/
