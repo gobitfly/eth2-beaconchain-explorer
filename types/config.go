@@ -39,6 +39,7 @@ type Config struct {
 		EndEpoch   uint64 `yaml:"endEpoch"`
 	} `yaml:"onetimeexport"`
 	Frontend struct {
+		CsrfAuthKey  string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRFAUTHKEY`
 		Enabled      bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
 		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
 		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
@@ -18,6 +19,7 @@ import (
 
 	_ "eth2-exporter/docs"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/phyber/negroni-gzip/gzip"
@@ -112,6 +114,12 @@ func main() {
 
 		logrus.Infof("frontend services initiated")
 		utils.InitSessionStore(cfg.Frontend.SessionSecret)
+
+		csrfBytes, _ := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
+		csrfHandler := csrf.Protect(
+			csrfBytes,
+			csrf.FieldName("CsrfField"),
+		)
 
 		router := mux.NewRouter()
 		router.HandleFunc("/", handlers.Index).Methods("GET")
@@ -213,6 +221,8 @@ func main() {
 		router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
 
 		authRouter := mux.NewRouter().PathPrefix("/user").Subrouter()
+		authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirm).Methods("GET")
+		authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirmPost).Methods("POST")
 		authRouter.HandleFunc("/settings", handlers.UserSettings).Methods("GET")
 		authRouter.HandleFunc("/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
 		authRouter.HandleFunc("/settings/delete", handlers.UserDeletePost).Methods("POST")
@@ -228,7 +238,7 @@ func main() {
 		router.PathPrefix("/user").Handler(
 			negroni.New(
 				negroni.HandlerFunc(handlers.UserAuthMiddleware),
-				negroni.Wrap(authRouter),
+				negroni.Wrap(csrfHandler(authRouter)),
 			),
 		)
 
