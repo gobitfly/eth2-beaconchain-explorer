@@ -57,5 +57,17 @@ services:
         stdin_open: true
         tty: true
 
+    kong:
+        image: kong:2.2.0
+        container_name: kong 
+        restart: always
+        network_mode: host
+        environment: 
+            - KONG_DATABASE=postgres 
+            - KONG_PG_HOST=0.0.0.0
+        # command: kong migrations bootstrap
+        depends_on:
+            - prysm
+
 volumes: 
     db:

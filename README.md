@@ -76,7 +76,14 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 - Connect to `golang` instance by running `docker exec -ti golang bash` and run `make all`
 - Start the explorer binary and pass the path to the config file as argument 
 
-      ./bin/explorer --config your_config.yml   
+      ./bin/explorer --config your_config.yml  
+
+## For Kong
+- type in the database `create role kong login;` and `create database kong;` 
+-  uncomment `"# command: kong migrations bootstrap"` line in the `docker-compose.yml` file
+- run `docker-compose up` wait till you see `kong exit(0)` then stop containers by pressing `ctr+C`
+- comment this line "# command: kong migrations bootstrap"`
+- run `docker-compose up`
 
 ## Development
 
