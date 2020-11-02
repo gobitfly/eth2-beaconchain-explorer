@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
@@ -63,6 +64,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 
 	userSettingsData.Email = email
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
+	userSettingsData.CsrfField = csrf.TemplateField(r)
 
 	data := &types.PageData{
 		HeaderAd: true,
@@ -95,14 +97,28 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	authorizeData := &types.UserAuthorizeConfirmPageData{}
 
-	user, _, err := getUserSession(w, r)
+	user, session, err := getUserSession(w, r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	authorizeData.AppName = "Beaconcha.in´s Validator Monitor" // TODO: support custom appnames outside of Beaconcha.in´s Validator Monitor App
+
+	q := r.URL.Query()
+	redirectURI := q.Get("redirect_uri")
+
+	appData, err := db.GetAppDataFromRedirectUri(redirectURI)
+	logger.Infof("appData %v", appData)
+	if err != nil {
+		logger.Errorf("error app not found: %v %v", user.UserID, appData, err)
+		utils.SetFlash(w, r, authSessionName, "Error: App not found. Is your redirect_uri correct and registered?")
+		session.Save(r, w)
+	} else {
+		authorizeData.AppData = appData
+	}
+
+	authorizeData.CsrfField = csrf.TemplateField(r)
 	authorizeData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
 	data := &types.PageData{
@@ -138,6 +154,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	userNotificationsData.Flashes = utils.GetFlashes(w, r, authSessionName)
+	userNotificationsData.CsrfField = csrf.TemplateField(r)
 
 	var watchlistIndices []uint64
 	err := db.DB.Select(&watchlistIndices, `
@@ -388,8 +405,20 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	redirectURI := r.FormValue("redirect_uri")
+
 	if user.Authenticated == true {
-		callbackTemplate := "callback://beaconchainmobile?code=" // TODO: allow own callbacks for devs
+		appData, err := db.GetAppDataFromRedirectUri(redirectURI)
+		if err != nil {
+			logger.Errorf("error app no found: %v %v", user.UserID, err)
+			utils.SetFlash(w, r, authSessionName, "Error: App not found. Is your redirect_uri correct and registered?")
+			session.Save(r, w)
+			http.Redirect(w, r, "/user/authorize", http.StatusSeeOther)
+			return
+		}
+
+		callbackTemplate := appData.RedirectURI + "?code="
 
 		codeBytes, err1 := utils.GenerateRandomBytesSecure(32)
 		if err1 != nil {
@@ -398,13 +427,14 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 			utils.SetFlash(w, r, authSessionName, "Error: Could not create secure random bytes.")
 			session.Save(r, w)
 			http.Redirect(w, r, "/user/authorize", http.StatusSeeOther)
+			return
 		}
 
 		code := hex.EncodeToString(codeBytes) // return to user
 		codeHashedBytes := sha256.Sum256([]byte(code))
 		codeHashed := hex.EncodeToString(codeHashedBytes[:]) // save hashed code in db
 
-		err2 := db.AddAuthorizeCode(user.UserID, codeHashed)
+		err2 := db.AddAuthorizeCode(user.UserID, codeHashed, appData.ID)
 		if err2 != nil {
 			logger.Errorf("error adding authorization code for user: %v %v", user.UserID, err2)
 			utils.SetFlash(w, r, authSessionName, "Error: Couldn't link your account")

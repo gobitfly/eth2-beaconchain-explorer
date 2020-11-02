@@ -1,6 +1,9 @@
 package db
 
 import (
+	"errors"
+	"eth2-exporter/types"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -37,7 +40,18 @@ func UpdatePassword(userId uint64, hash []byte) error {
 }
 
 // AddAuthorizeCode registers a code that can be used in exchange for an access token
-func AddAuthorizeCode(userId uint64, code string) error {
-	_, err := FrontendDB.Exec("INSERT INTO oauth_codes (user_id, code, created_ts) VALUES($1, $2, 'now')", userId, code)
+func AddAuthorizeCode(userId uint64, code string, appId uint64) error {
+	_, err := FrontendDB.Exec("INSERT INTO oauth_codes (user_id, code, app_id, created_ts) VALUES($1, $2, $3, 'now')", userId, code, appId)
 	return err
+}
+
+// GetAppNameFromRedirectUri receives an oauth redirect_url and returns the registered app name, if exists
+func GetAppDataFromRedirectUri(callback string) (*types.OAuthAppData, error) {
+	data := []*types.OAuthAppData{}
+	FrontendDB.Select(&data, "SELECT id, app_name, redirect_uri, active, owner_id FROM oauth_apps WHERE active = true AND redirect_uri = $1", callback)
+	if len(data) > 0 {
+		return data[0], nil
+	}
+
+	return nil, errors.New("no rows found")
 }

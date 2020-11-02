@@ -310,6 +310,18 @@ create table users
     primary key (id, email)
 );
 
+drop table if exists oauth_apps;
+create table oauth_apps
+(
+    id                    serial                      not null,
+    owner_id              int                         not null,
+    redirect_uri          character varying(100)      not null unique,
+    app_name              character varying(35)       not null,
+    active                bool                        not null default 't',
+    created_ts            timestamp without time zone not null,
+    primary key (id, redirect_uri)
+);
+
 drop table if exists oauth_codes;
 create table oauth_codes
 (
@@ -317,6 +329,7 @@ create table oauth_codes
     user_id         int                         not null,
     code            character varying(64)       not null,
     consumed        bool                        not null default 'f',
+    app_id          int                         not null,
     created_ts      timestamp without time zone not null,
     primary key (user_id, code)
 );
@@ -331,6 +344,7 @@ create table users_devices
     notification_token    character varying(500),
     notify_enabled        bool                        not null default 'f',
     active                bool                        not null default 't',
+    app_id                int                         not null,
     created_ts            timestamp without time zone not null,
     primary key (user_id, refresh_token)
 );

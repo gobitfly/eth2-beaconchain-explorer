@@ -66,6 +66,7 @@
                     </div>
                     <div class="card-body">
                         <form id="email-form" action="settings/email" method="POST">
+                            {{ .CsrfField }}
                             <div class="form-group">
                                 <label for="email">Email address</label>
                                 <div class="input-group">
@@ -86,6 +87,7 @@
                     </div>
                     <div class="card-body">
                         <form action="settings/password" method="post">
+                            {{ .CsrfField }}
                             <input value="{{.Email}}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" name="email">
                             <div class="form-group">
                                 <label for="old-password">Old Password</label>
@@ -141,6 +143,7 @@
             </div>
             <div class="modal-footer">
                 <form id="delete-form" action="settings/delete" method="POST">
+                    {{ .CsrfField }}
                     <button id="delete-button" type="submit" class="btn btn-outline-danger btn-sm" data-dismiss="modal">Delete</button>
                 </form>
             </div>
