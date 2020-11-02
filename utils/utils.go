@@ -11,7 +11,6 @@ import (
 	"log"
 	"math"
 	"math/big"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -221,13 +220,11 @@ func RoundDecimals(f float64, n int) float64 {
 
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 
-var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
-
 // RandomString returns a random hex-string
 func RandomString(length int) string {
-	b := make([]byte, length)
+	b, _ := GenerateRandomBytesSecure(length)
 	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
+		b[i] = charset[int(b[i])%len(charset)]
 	}
 	return string(b)
 }
