@@ -215,6 +215,7 @@ type ValidatorPageData struct {
 	User                                *User
 	AverageAttestationInclusionDistance float64
 	AttestationInclusionEffectiveness   float64
+	CsrfField                           template.HTML
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -683,17 +684,23 @@ type User struct {
 }
 
 type AuthData struct {
-	Flashes []interface{}
-	Email   string
+	Flashes   []interface{}
+	Email     string
+	CsrfField template.HTML
+}
+
+type CsrfData struct {
+	CsrfField template.HTML
 }
 
 type UserSettingsPageData struct {
-	Email string `json:"email"`
+	Email     string `json:"email"`
+	CsrfField template.HTML
 	AuthData
 }
 
 type UserAuthorizeConfirmPageData struct {
-	AppName string
+	AppData *OAuthAppData
 	AuthData
 }
 
@@ -709,11 +716,13 @@ type UserNotificationsPageData struct {
 
 type AdvertiseWithUsPageData struct {
 	FlashMessage string
+	CsrfField    template.HTML
 }
 
 type ApiPricing struct {
 	FlashMessage string
 	User         *User
+	CsrfField    template.HTML
 }
 
 type StakeWithUsPageData struct {
