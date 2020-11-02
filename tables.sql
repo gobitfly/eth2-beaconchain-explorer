@@ -321,7 +321,7 @@ create table users_subscriptions
     last_sent_epoch int,
     created_ts      timestamp without time zone not null,
     created_epoch   int                         not null,
-    primary key (user_id, event_name, event_filter),
+    primary key (user_id, event_name, event_filter)
 );
 
 drop table if exists users_validators_tags;
@@ -330,7 +330,7 @@ create table users_validators_tags
     user_id             int                    not null,
     validator_publickey bytea                  not null,
     tag                 character varying(100) not null,
-    primary key (user_id, validator_publickey, tag),
+    primary key (user_id, validator_publickey, tag)
 );
 
 drop table if exists mails_sent;
