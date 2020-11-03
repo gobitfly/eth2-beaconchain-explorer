@@ -85,6 +85,7 @@ type IndexPageData struct {
 	Subtitle                  template.HTML          `json:"-"`
 	Genesis                   bool                   `json:"genesis"`
 	GenesisPeriod             bool                   `json:"genesis_period"`
+	Mainnet                   bool                   `json:"-"`
 }
 
 type IndexPageDataEpochs struct {
@@ -338,6 +339,7 @@ type BlockPageData struct {
 	VoluntaryExitscount    uint64 `db:"voluntaryexitscount"`
 	SlashingsCount         uint64
 	VotesCount             uint64
+	Mainnet                bool
 
 	Attestations      []*BlockPageAttestation // Attestations included in this block
 	Deposits          []*BlockPageDeposit

@@ -134,17 +134,29 @@ func FormatEpoch(epoch uint64) template.HTML {
 // FormatEth1Address will return the eth1-address formated as html
 func FormatEth1Address(addr []byte) template.HTML {
 	eth1Addr := eth1common.BytesToAddress(addr)
-	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>", addr, eth1Addr.Hex()[:8]))
+
+	if !Config.Chain.Mainnet {
+		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>", addr, eth1Addr.Hex()[:8]))
+	}
+
+	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…</a>", addr, eth1Addr.Hex()[:8]))
+
 }
 
 // FormatEth1Block will return the eth1-block formated as html
 func FormatEth1Block(block uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/block/%[1]d\">%[1]d</a>", block))
+	if !Config.Chain.Mainnet {
+		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/block/%[1]d\">%[1]d</a>", block))
+	}
+	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/block/%[1]d\">%[1]d</a>", block))
 }
 
 // FormatEth1TxHash will return the eth1-tx-hash formated as html
 func FormatEth1TxHash(hash []byte) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
+	if !Config.Chain.Mainnet {
+		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
+	}
+	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
@@ -263,7 +275,7 @@ func FormatValidatorWithName(validator uint64, name string) template.HTML {
 func FormatEth1AddressWithName(address []byte, name string) template.HTML {
 	eth1Addr := eth1common.BytesToAddress(address)
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s</a>", eth1Addr, name))
+		return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s</a>", eth1Addr, name))
 	} else {
 		return FormatEth1Address(address)
 	}

@@ -317,4 +317,19 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   }
 }
 
+.icon-inside {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+}
+.btn-icon-inside {
+  position: relative;
+  line-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: .531376rem;
+  width: 1.3rem;
+  height: 1.3rem;
+}
 
