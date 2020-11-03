@@ -695,6 +695,7 @@ type CsrfData struct {
 
 type UserSettingsPageData struct {
 	Email     string `json:"email"`
+	APIKey    string `json:"api_key"`
 	CsrfField template.HTML
 	AuthData
 }
