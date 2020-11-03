@@ -107,6 +107,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pHash, err := bcrypt.GenerateFromPassword([]byte(pwd), 10)
+
 	if err != nil {
 		logger.Errorf("error generating hash for password: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
@@ -116,11 +117,23 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	registerTs := time.Now().Unix()
+
+	apiKey, err := bcrypt.GenerateFromPassword([]byte(pwd+email+string(registerTs)), 10)
+
+	if err != nil {
+		logger.Errorf("error generating hash for api_key: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
+		return
+	}
+
 	_, err = tx.Exec(`
-		INSERT INTO users (password, email, register_ts)
-		VALUES ($1, $2, TO_TIMESTAMP($3))`,
-		string(pHash), email, registerTs,
+		INSERT INTO users (password, email, register_ts, api_key)
+		VALUES ($1, $2, TO_TIMESTAMP($3), $4)`,
+		string(pHash), email, registerTs, string(apiKey),
 	)
+
 	if err != nil {
 		logger.Errorf("error saving new user into db: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
