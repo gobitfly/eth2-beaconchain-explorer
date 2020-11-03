@@ -79,11 +79,11 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
       ./bin/explorer --config your_config.yml  
 
 ## For Kong
-- type in the database `create role kong login;` and `create database kong;` 
--  uncomment `"# command: kong migrations bootstrap"` line in the `docker-compose.yml` file
-- run `docker-compose up` wait till you see `kong exit(0)` then stop containers by pressing `ctr+C`
-- comment this line "# command: kong migrations bootstrap"`
-- run `docker-compose up`
+- Type in the database `create role kong login;` and `create database kong;` 
+- Uncomment `"# command: kong migrations bootstrap"` line in the `docker-compose.yml` file
+- Run `docker-compose up` wait till you see `kong exit(0)` then stop containers by pressing `ctr+C` and run `docker-compose down`
+- Comment this line "command: kong migrations bootstrap"`
+- Run `docker-compose up`
 
 ## Development
 
