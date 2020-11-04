@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -156,7 +157,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	now := time.Now()
 
 	// run deposit query until the Genesis period is over
-	if now.Before(genesisTransition) {
+	if now.Before(genesisTransition) || startSlotTime == time.Unix(0, 0) {
 		if cutoffSlot < 15 {
 			cutoffSlot = 15
 		}
@@ -184,6 +185,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 		data.NetworkStartTs = minGenesisTime.Unix()
+		log.Println("MIN GENESIS", data.NetworkStartTs)
 
 		// enough deposits
 		if data.DepositedTotal > data.DepositThreshold {
@@ -194,7 +196,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			eth1Block := eth1BlockDepositReached.Load().(time.Time)
 			genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay))
 
-			if eth1Block.Add(genesisDelay).After(minGenesisTime) {
+			if !(startSlotTime == time.Unix(0, 0)) && eth1Block.Add(genesisDelay).After(minGenesisTime) {
 				// Network starts after min genesis time
 				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
 			}
@@ -211,6 +213,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.GenesisPeriod = true
 	} else {
 		data.GenesisPeriod = false
+	}
+
+	if startSlotTime == time.Unix(0, 0) {
+		data.Genesis = false
 	}
 
 	var epochs []*types.IndexPageDataEpochs

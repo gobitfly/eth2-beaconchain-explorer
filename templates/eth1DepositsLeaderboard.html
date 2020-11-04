@@ -121,7 +121,7 @@
 	$(document).ready(function() {
     var usp = new URLSearchParams(window.location.search)
 		var q = usp.get('q')
-
+		{{if len .DepositContract}}
 		var tbl = $('#deposits').DataTable({
 			processing: true,
 			serverSide: true,
@@ -149,6 +149,7 @@
 				}
 			}
 		})
+		{{end}}
 		if(q) {
 			tbl.search(q);
 			tbl.draw();

@@ -5,7 +5,7 @@
 	$(document).ready(function() {
     var usp = new URLSearchParams(window.location.search)
 		var q = usp.get('q')
-
+		{{ if len .DepositContract }}
 		var tbl = $('#deposits').DataTable({
 			processing: true,
 			serverSide: true,
@@ -32,6 +32,7 @@
 				}
 			}
 		})
+		{{end}}
 		if(q) {
 			tbl.search(q);
 			tbl.draw();
@@ -133,7 +134,14 @@
 						<th>Valid Signature</th>
 					</tr>
 				</thead>
-				<tbody> </tbody>
+				<tbody> 
+					{{if len .DepositContract}}
+					{{else}}
+						<tr>
+							<td colspan="8">Waiting for Deposit Contract</td>
+						</tr>
+					{{end}}
+				</tbody>
 			</table>
 		</div>
 	</div>

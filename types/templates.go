@@ -626,6 +626,11 @@ type StakingCalculatorPageData struct {
 
 type EthOneDepositsPageData struct {
 	*Stats
+	DepositContract string
+}
+
+type EthOneDepositLeaderBoardPageData struct {
+	DepositContract string
 }
 
 // EpochsPageData is a struct to hold epoch data for the epochs page
