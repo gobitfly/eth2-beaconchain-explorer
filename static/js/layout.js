@@ -233,6 +233,33 @@ $('[aria-ethereum-date]').each(function(item) {
   }
 })
 
+$(document).ready(function() {
+  var clipboard = new ClipboardJS('#copy-deposit');
+  clipboard.on('success', function (e) {
+    console.log('success')
+    setTooltip('Address Copied!');
+    hideTooltip();
+  });
+
+  clipboard.on('error', function (e) {
+    setTooltip('Failed to copy!');
+    hideTooltip();
+  });
+})
+// clipboard
+function setTooltip(message) {
+$('#copy-deposit').tooltip('hide')
+.attr('data-original-title', message)
+.tooltip('show');
+}
+
+function hideTooltip() {
+setTimeout(function () {
+$('#copy-deposit').tooltip('hide')
+  .attr('data-original-title', 'Copy Address')
+}, 1000);
+}
+
 // var indicator = $('#nav .nav-indicator')
 // var items = document.querySelectorAll('#nav .nav-item')
 // var selectedLi = indicator.parent()[0]

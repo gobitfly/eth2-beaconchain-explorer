@@ -490,7 +490,7 @@
 						</a> 
 					</div>
 					{{else}}
-					<div style="background-color: var(--bg-color-light);" class="text-center p-2">
+					<div style="background-color: var(--bg-color-light);" class="contract text-center p-2">
 						Deposit Contract: <span class="text-primary text-monospace">0x(Pending)</span>  
 					</div>
 					{{end}}
@@ -623,7 +623,9 @@
 			});
 	</script>
 
-    {{ template "js" .Data }}
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
+{{ template "js" .Data }}
+		
 	<script src="//instant.page/5.1.0" type="module" integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script>
     {{ if ne .Meta.GATag ""}}
 		<!-- Global site tag (gtag.js) - Google Analytics -->
