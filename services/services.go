@@ -156,7 +156,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	now := time.Now()
 
 	// run deposit query until the Genesis period is over
-	if now.Before(genesisTransition) {
+	if now.Before(genesisTransition) || startSlotTime == time.Unix(0, 0) {
 		if cutoffSlot < 15 {
 			cutoffSlot = 15
 		}
@@ -194,7 +194,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			eth1Block := eth1BlockDepositReached.Load().(time.Time)
 			genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay))
 
-			if eth1Block.Add(genesisDelay).After(minGenesisTime) {
+			if !(startSlotTime == time.Unix(0, 0)) && eth1Block.Add(genesisDelay).After(minGenesisTime) {
 				// Network starts after min genesis time
 				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
 			}
@@ -211,6 +211,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.GenesisPeriod = true
 	} else {
 		data.GenesisPeriod = false
+	}
+
+	if startSlotTime == time.Unix(0, 0) {
+		data.Genesis = false
 	}
 
 	var epochs []*types.IndexPageDataEpochs

@@ -470,16 +470,34 @@
 		</div>
 		</div>
 	</nav>
+
 	{{ template "css" .Data }}
 
 	<main>
-        {{ if .HeaderAd }}
-			<div class="container">
-				<div class="d-flex justify-content-between pt-4 pb-3">
-					<ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+        <!-- {{ if .HeaderAd }}
+				<div class="container">
+					<div class="d-flex justify-content-between pt-4 pb-3">
+						<ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+					</div>
 				</div>
-			</div>
-        {{end}}
+				{{end}} -->
+				{{if len .DepositContract}}
+				<div style="overflow-wrap: break-word;" class="contract text-center mt-2 px-2">
+					Deposit Contract: <span class="text-primary text-monospace">{{.DepositContract}}</span> 
+					<a id="copy-deposit" data-toggle="tooltip" title="Copy Address" data-clipboard-text="{{.DepositContract}}" class="btn btn-primary mb-1 btn-icon-inside btn-sm text-white">
+						<span class="fa fa-copy icon-inside"></span>
+					</a> 
+					{{if .Mainnet}}
+					verify on: <a href="https://launchpad.ethereum.org/">launchpad</a>, <a href="https://etherchain.org/account/{{.DepositContract}}">etherchain</a>
+					{{else}}
+					verify on: <a href="https://medalla.launchpad.ethereum.org/">launchpad</a>, <a href="https://goerli.etherscan.org/address/{{.DepositContract}}">etherchain</a>
+					{{end}}
+				</div>
+				{{else}}
+				<div class="text-center mt-2 px-2">
+					Deposit Contract: <span class="text-primary text-monospace">0x(Pending)</span>  
+				</div>
+				{{end}}
         {{ template "content" .Data }}
 	</main>
 
