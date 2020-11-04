@@ -168,12 +168,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		deposit := Deposit{}
 
 		err = db.DB.Get(&deposit, `
-			SELECT COUNT(*) as total, COALESCE(MAX(block_ts),NOW()) as block_ts
-			FROM 
-				eth1_deposits as eth1 
-			WHERE 
-				eth1.amount >= 32e9 and eth1.valid_signature = true;
-		`)
+			SELECT COUNT(*), COALESCE(MAX(block_ts),NOW()) AS block_ts
+			FROM (
+				SELECT publickey, SUM(amount) AS amount, MAX(block_ts) as block_ts
+				FROM eth1_deposits
+				WHERE valid_signature = true
+				GROUP BY publickey
+				HAVING SUM(amount) >= 32e9
+			) a`)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
 		}
