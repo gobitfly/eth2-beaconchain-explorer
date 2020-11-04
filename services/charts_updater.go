@@ -49,7 +49,7 @@ func chartsPageDataUpdater() {
 
 	for {
 		latestEpoch := LatestEpoch()
-		if prevEpoch >= latestEpoch {
+		if prevEpoch >= latestEpoch && latestEpoch != 0 {
 			time.Sleep(sleepDuration)
 			continue
 		}
@@ -63,6 +63,9 @@ func chartsPageDataUpdater() {
 		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(now)).Info("chartPageData update completed")
 		chartsPageData.Store(&data)
 		prevEpoch = latestEpoch
+		if latestEpoch == 0 {
+			time.Sleep(time.Second * 60 * 10)
+		}
 	}
 }
 
@@ -83,9 +86,6 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 		go func(i string, ch chartHandler) {
 			defer wg.Done()
 			data, err := ch.DataFunc()
-			if err != nil {
-				logger.Errorf("error getting chart data for %v: %v", i, err)
-			}
 			chartHandlerResChan <- &chartHandlerRes{ch.Order, i, data, err}
 		}(i, ch)
 	}
@@ -99,7 +99,8 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 
 	for chart := range chartHandlerResChan {
 		if chart.Error != nil {
-			return nil, chart.Error
+			logger.Errorf("error getting chart data for %v: %v", chart.Path, chart.Error)
+			continue
 		}
 		pageCharts = append(pageCharts, &types.ChartsPageDataChart{
 			Order: chart.Order,
@@ -116,6 +117,10 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 }
 
 func blocksChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Epoch     uint64
 		Status    uint64
@@ -186,6 +191,10 @@ func blocksChartData() (*types.GenericChartData, error) {
 }
 
 func activeValidatorsChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Epoch           uint64
 		ValidatorsCount uint64
@@ -225,6 +234,10 @@ func activeValidatorsChartData() (*types.GenericChartData, error) {
 }
 
 func stakedEtherChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Epoch         uint64
 		EligibleEther uint64
@@ -264,6 +277,10 @@ func stakedEtherChartData() (*types.GenericChartData, error) {
 }
 
 func averageBalanceChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Epoch                   uint64
 		AverageValidatorBalance uint64
@@ -303,6 +320,10 @@ func averageBalanceChartData() (*types.GenericChartData, error) {
 }
 
 func networkLivenessChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Timestamp      uint64
 		HeadEpoch      uint64
@@ -347,6 +368,10 @@ func networkLivenessChartData() (*types.GenericChartData, error) {
 }
 
 func participationRateChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Epoch                   uint64
 		Globalparticipationrate float64
@@ -385,6 +410,10 @@ func participationRateChartData() (*types.GenericChartData, error) {
 }
 
 func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Epoch           uint64
 		Validatorscount uint64
@@ -477,6 +506,10 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 }
 
 func stakingRewardsChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Epoch   uint64
 		Rewards int64
@@ -563,6 +596,10 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 }
 
 func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Epoch                   uint64
 		Eligibleether           uint64
@@ -677,6 +714,10 @@ func estimatedValidatorIncomeChartData() (*types.GenericChartData, error) {
 }
 
 func stakeEffectivenessChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Epoch                 uint64
 		Totalvalidatorbalance uint64
@@ -727,6 +768,10 @@ func stakeEffectivenessChartData() (*types.GenericChartData, error) {
 }
 
 func balanceDistributionChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	tx, err := db.DB.Beginx()
 	if err != nil {
 		return nil, err
@@ -806,6 +851,10 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 }
 
 func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	tx, err := db.DB.Beginx()
 	if err != nil {
 		return nil, err
@@ -885,6 +934,10 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 }
 
 func performanceDistribution1dChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	var err error
 
 	rows := []struct {
@@ -947,6 +1000,10 @@ func performanceDistribution1dChartData() (*types.GenericChartData, error) {
 }
 
 func performanceDistribution7dChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	var err error
 
 	rows := []struct {
@@ -1009,6 +1066,10 @@ func performanceDistribution7dChartData() (*types.GenericChartData, error) {
 }
 
 func performanceDistribution31dChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	var err error
 
 	rows := []struct {
@@ -1071,6 +1132,10 @@ func performanceDistribution31dChartData() (*types.GenericChartData, error) {
 }
 
 func performanceDistribution365dChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	var err error
 
 	rows := []struct {
@@ -1230,6 +1295,10 @@ func depositsChartData() (*types.GenericChartData, error) {
 }
 
 func graffitiCloudChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
 	rows := []struct {
 		Name       string `json:"name"`
 		Weight     uint64 `json:"weight"`
