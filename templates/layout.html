@@ -484,15 +484,10 @@
 				{{if not (or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")))}}
 					{{if len .DepositContract}}
 					<div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="contract text-center p-2">
-						Deposit Contract: <a href="https://etherchain.org/account/{{.DepositContract}}" class="text-primary text-monospace">{{.DepositContract}}</a> 
-						<a id="copy-deposit" data-toggle="tooltip" title="Copy Address" data-clipboard-text="{{.DepositContract}}" class="btn btn-primary mb-1 btn-icon-inside btn-sm text-white">
+						Deposit Contract: {{if .Mainnet}}<a href="https://etherchain.org/account/{{.DepositContract}}" class="text-primary text-monospace">{{.DepositContract}}</a> {{else}} <span class="text-primary text-monospace">{{.DepositContract}}</span> {{end}}
+						<a style="color: #fff" id="copy-deposit" data-toggle="tooltip" title="Copy Address" data-clipboard-text="{{.DepositContract}}" class="btn btn-primary mb-1 btn-icon-inside">
 							<span class="fa fa-copy icon-inside"></span>
 						</a> 
-						{{if .Mainnet}}
-						(verify on <a href="https://launchpad.ethereum.org/">launchpad</a>)
-						{{else}}
-						(verify on <a href="https://medalla.launchpad.ethereum.org/">launchpad</a>)
-						{{end}}
 					</div>
 					{{else}}
 					<div style="background-color: var(--bg-color-light);" class="text-center p-2">

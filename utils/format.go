@@ -54,6 +54,23 @@ func FormatBalance(balance uint64) template.HTML {
 	return template.HTML(string(rb) + " ETH")
 }
 
+// FormatBalance will return a string for a balance
+func FormatBalanceShort(balance uint64) template.HTML {
+	p := message.NewPrinter(language.English)
+	rb := []rune(p.Sprintf("%.2f", float64(balance)/float64(1e9)))
+	// remove trailing zeros
+	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+		for rb[len(rb)-1] == '0' {
+			rb = rb[:len(rb)-1]
+		}
+		if rb[len(rb)-1] == '.' {
+			rb = rb[:len(rb)-1]
+
+		}
+	}
+	return template.HTML(string(rb))
+}
+
 // FormatBlockRoot will return the block-root formated as html
 func FormatBlockRoot(blockRoot []byte) template.HTML {
 	if len(blockRoot) < 32 {
