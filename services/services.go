@@ -227,7 +227,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		epoch.Ts = utils.EpochToTime(epoch.Epoch)
 		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
 		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther)
-		epoch.EligibleEtherFormatted = utils.FormatBalance(epoch.EligibleEther)
+		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther)
 		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate)
 	}
 	data.Epochs = epochs
