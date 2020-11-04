@@ -2,7 +2,6 @@
 <script>
 	document.addEventListener('DOMContentLoaded', function() {
 		var genesis = {{.NetworkStartTs}}
-		console.log("GENESIS", genesis)
 		var now = Math.round((new Date()).getTime() / 1000)
 		var secondsLeft = genesis - now
 		var seconds = secondsLeft % 60

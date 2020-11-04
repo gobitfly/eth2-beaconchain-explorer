@@ -54,6 +54,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage

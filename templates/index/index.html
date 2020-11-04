@@ -11,9 +11,6 @@
 <script>
 	  $(document).ready(function() {
 			var clipboard = new ClipboardJS('#copy-deposit');
-
-			console.log('document ready', clipboard)
-
 			clipboard.on('success', function (e) {
 				console.log('success')
 				setTooltip('Address Copied!');

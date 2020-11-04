@@ -46,6 +46,8 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err := eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)
@@ -168,6 +170,8 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	data.Data = types.EthOneDepositLeaderBoardPageData{

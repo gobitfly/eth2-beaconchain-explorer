@@ -24,6 +24,8 @@ type PageData struct {
 	CurrentEpoch          uint64
 	CurrentSlot           uint64
 	FinalizationDelay     uint64
+	Mainnet               bool
+	DepositContract       string
 }
 
 // Meta is a struct to hold metadata about the page

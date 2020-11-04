@@ -7,7 +7,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -185,7 +184,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 		data.NetworkStartTs = minGenesisTime.Unix()
-		log.Println("MIN GENESIS", data.NetworkStartTs)
 
 		// enough deposits
 		if data.DepositedTotal > data.DepositThreshold {
