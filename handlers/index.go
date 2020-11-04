@@ -16,6 +16,7 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 	"templates/layout.html",
 	"templates/index/index.html",
 	"templates/index/depositProgress.html",
+	"templates/index/depositChart.html",
 	"templates/index/genesis.html",
 	"templates/index/hero.html",
 	"templates/index/networkStats.html",

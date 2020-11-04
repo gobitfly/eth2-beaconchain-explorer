@@ -26,7 +26,10 @@
       <a href="/register">Sign up</a> and add alerts on the <a href="/user/notifications">accounts page</a>. Get notified if your validators go offline. For more information about the beacon chain view our <a href="https://kb.beaconcha.in/">knowledge base.</a>
     </p>
   </div>
-  <div style="max-height: 160px;" class="col-md-6 my-3 d-flex flex-column justify-content-center">
+  <div style="max-height: 300px;" class="col-md-6 my-3 d-flex flex-column justify-content-center">
+    {{ if .DepositChart }}
+      {{ template "depositChart" .DepositChart }}
+    {{ end }}
     <svg id="f52ea72b-4bf4-4ca0-b256-883445bd7321" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" style="width:auto; height: 100%;" viewBox="0 0 649.3779 727.77798">
       <path d="M648.20033,259.05824h-3.99878V149.51291A63.40187,63.40187,0,0,0,580.79976,86.111H348.713a63.40184,63.40184,0,0,0-63.402,63.4017V750.48713A63.40181,63.40181,0,0,0,348.71284,813.889H580.79945a63.40185,63.40185,0,0,0,63.402-63.40167V337.0345h3.99884Z"
         transform="translate(-285.31105 -86.11101)" fill="#e6e6e6" />
