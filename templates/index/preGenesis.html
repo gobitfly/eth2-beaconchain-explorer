@@ -2,8 +2,8 @@
 <div class="row my-3 justify-content-center">
   <div class="col-md-6">
     <h2 class="h3">Phase 0 Beacon Chain</h2>
-    <p>The Ethereum Beacon Chain is currently undergoing genesis. Please prepare your validators and send your deposits. To join the testnet fire up one of the beacon chain and validator clients. This testnet will support <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a
-        href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a> and <a href="https://github.com/ChainSafe/lodestar">Lodestar</a>. Check out our <a href="https://kb.beaconcha.in/depositing-to-ethereum-2.0">deposit guide</a> for more information on how to deposit.
+    <p>The Ethereum Beacon Chain is currently undergoing genesis. Please prepare your validators and send your deposits. To join Ethereum 2.0 fire up one of the beacon chain and validator clients. The Mainnet will support <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a
+        href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a>. Please visit the official <a href="https://launchpad.ethereum.org/"> Launchpad</a> for more information on how to deposit.
   </div>
   <div class="col-md-6 my-3">
     {{ template "depositProgress" . }}
@@ -11,7 +11,7 @@
   <div class="col-md-6 my-3">
     <h2 class="h3">When is genesis reached?</h2>
     <p style="text-overflow: ellipsis; overflow: hidden;">
-      Genesis will occur once enough deposits have been made to the deposit contract{{if len .DepositContract}} <a href="/validators/eth1deposits" class="text-truncate text-monospace">{{.DepositContract}}</a>{{end}}. Each deposit is registered by the beacon chain after a block delay of <i>1024</i>
+      Genesis will occur once enough deposits have been made to the deposit contract{{if len .DepositContract}} <a href="/validators/eth1deposits" class="text-truncate text-monospace">{{.DepositContract}}</a>{{end}}. Each deposit is registered by the beacon chain after a block delay of <i>2048</i>
       Ethereum 1.0 blocks.
     </p>
   </div>
