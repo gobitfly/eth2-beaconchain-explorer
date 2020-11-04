@@ -13,6 +13,10 @@ ins[data-revive-zoneid] > a > img {
   border-radius: .225rem;
 }
 
+.dropdown-menu .nav-icon i {
+  width: 1rem;
+}
+
 @media (min-width: 1140px) and (max-width: 1440px) { 
 
   .navbar .nav-item img {
@@ -20,6 +24,8 @@ ins[data-revive-zoneid] > a > img {
   }
 
 }
+
+
 
 @media (max-width: 1140px) {
   
