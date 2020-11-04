@@ -484,7 +484,7 @@
 				{{if not (or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")))}}
 					{{if len .DepositContract}}
 					<div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="contract text-center p-2">
-						Deposit Contract: <a href="https://etherchain.org/account/{{.DepositContract}}" class="text-primary text-monospace">{{.DepositContract}}</a> 
+						Deposit Contract: {{if .Mainnet}}<a href="https://etherchain.org/account/{{.DepositContract}}" class="text-primary text-monospace">{{.DepositContract}}</a> {{else}} <span class="text-primary text-monospace">{{.DepositContract}}</span> {{end}}
 						<a id="copy-deposit" data-toggle="tooltip" title="Copy Address" data-clipboard-text="{{.DepositContract}}" class="btn btn-primary mb-1 btn-icon-inside btn-sm text-white">
 							<span class="fa fa-copy icon-inside"></span>
 						</a> 
