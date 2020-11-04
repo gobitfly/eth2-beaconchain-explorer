@@ -164,7 +164,11 @@
 							<div class="row p-1">
 								<div class="col-md-2">Block Hash:</div>
 								<div class="col-md-10 text-monospace text-break">
-									<a href="https://goerli.etherscan.io/block/0x{{printf "%x" .Eth1dataBlockhash}}">0x{{printf "%x" .Eth1dataBlockhash}}</a>
+									{{if .Mainnet}}
+										<a href="https://etherchain.org/block/0x{{printf "%x" .Eth1dataBlockhash}}">0x{{printf "%x" .Eth1dataBlockhash}}</a>
+									{{else}}
+										<a href="https://goerli.etherscan.io/block/0x{{printf "%x" .Eth1dataBlockhash}}">0x{{printf "%x" .Eth1dataBlockhash}}</a>
+									{{end}}
 								</div>
 							</div>
 							<div class="row p-1">

@@ -1,24 +1,37 @@
 {{ define "preGenesis" }}
+
+{{if len .DepositContract}}
+<div style="overflow-wrap: break-word;" class="contract text-center">
+  Deposit Contract: <span class="text-primary text-monospace">{{.DepositContract}}</span> 
+  <a id="copy-deposit" data-toggle="tooltip" title="Copy Address" data-clipboard-text="{{.DepositContract}}" class="btn btn-primary mb-1 btn-icon-inside btn-sm text-white">
+    <span class="fa fa-copy icon-inside"></span>
+  </a> 
+  <br> 
+  
+  verify on: <a href="https://launchpad.ethereum.org/">launchpad</a>, <a href="https://etherchain.org/account/{{.DepositContract}}">etherchain</a>
+</div>
+
+{{end}}
 <div class="row my-3 justify-content-center">
-  <div class="col-md-5">
-    <h2 class="h3">Zinken Genesis</h2>
-    <p>The Zinken testnet is currently undergoing genesis. Please prepare your validators and send your deposits. To join the testnet fire up one of the beacon chain and validator clients. This testnet will support <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a
-        href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a> and <a href="https://github.com/ChainSafe/lodestar">Lodestar</a>.
+  <div class="col-md-6">
+    <h2 class="h3">Phase 0 Beacon Chain</h2>
+    <p>The Ethereum Beacon Chain is currently undergoing genesis. Please prepare your validators and send your deposits. To join the testnet fire up one of the beacon chain and validator clients. This testnet will support <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a
+        href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a> and <a href="https://github.com/ChainSafe/lodestar">Lodestar</a>. Check out our <a href="https://kb.beaconcha.in/depositing-to-ethereum-2.0">deposit guide</a> for more information on how to deposit.
   </div>
-  <div class="col-md-5 my-3">
+  <div class="col-md-6 my-3">
     {{ template "depositProgress" . }}
   </div>
-  <div class="col-md-5 my-3">
+  <div class="col-md-6 my-3">
     <h2 class="h3">When is genesis reached?</h2>
     <p style="text-overflow: ellipsis; overflow: hidden;">
-      Genesis will occur once enough deposits have been made to the Goerli deposit contract <a href="/validators/eth1deposits" class="text-truncate text-monospace">{{.DepositContract}}</a>. Each deposit is registered by the beacon chain after a block delay of <i>1024</i>
+      Genesis will occur once enough deposits have been made to the deposit contract{{if len .DepositContract}} <a href="/validators/eth1deposits" class="text-truncate text-monospace">{{.DepositContract}}</a>{{end}}. Each deposit is registered by the beacon chain after a block delay of <i>1024</i>
       Ethereum 1.0 blocks.
     </p>
   </div>
-  <div class="col-md-5 my-3">
+  <div class="col-md-6 my-3">
     {{ template "genesisCountdown" . }}
   </div>
-  <div class="col-md-5 my-3">
+  <div class="col-md-6 my-3">
     <h2 class="h3">Explore & Manage</h2>
     <p>
       Once the beacon chain has reached genesis you can explore <a href="/epochs">epochs</a>, <a href="/blocks">slots</a> and see <a href="/charts">statistics</a>.
@@ -26,7 +39,7 @@
       <a href="/register">Sign up</a> and add alerts on the <a href="/user/notifications">accounts page</a>. Get notified if your validators go offline. For more information about the beacon chain view our <a href="https://kb.beaconcha.in/">knowledge base.</a>
     </p>
   </div>
-  <div style="max-height: 160px;" class="col-md-5 my-3 d-flex flex-column justify-content-center">
+  <div style="max-height: 160px;" class="col-md-6 my-3 d-flex flex-column justify-content-center">
     <svg id="f52ea72b-4bf4-4ca0-b256-883445bd7321" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" style="width:auto; height: 100%;" viewBox="0 0 649.3779 727.77798">
       <path d="M648.20033,259.05824h-3.99878V149.51291A63.40187,63.40187,0,0,0,580.79976,86.111H348.713a63.40184,63.40184,0,0,0-63.402,63.4017V750.48713A63.40181,63.40181,0,0,0,348.71284,813.889H580.79945a63.40185,63.40185,0,0,0,63.402-63.40167V337.0345h3.99884Z"
         transform="translate(-285.31105 -86.11101)" fill="#e6e6e6" />

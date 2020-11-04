@@ -72,6 +72,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	blockPageData := types.BlockPageData{}
+	blockPageData.Mainnet = utils.Config.Chain.Mainnet
 	err = db.DB.Get(&blockPageData, `
 		SELECT
 			epoch,

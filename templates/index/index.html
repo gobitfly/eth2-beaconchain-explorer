@@ -6,6 +6,42 @@
 <script src="/js/highcharts-vue.min.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
 <script src="/js/requestInterval.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
+
+<script>
+	  $(document).ready(function() {
+			var clipboard = new ClipboardJS('#copy-deposit');
+
+			console.log('document ready', clipboard)
+
+			clipboard.on('success', function (e) {
+				console.log('success')
+				setTooltip('Address Copied!');
+				hideTooltip();
+			});
+
+			clipboard.on('error', function (e) {
+				setTooltip('Failed to copy!');
+				hideTooltip();
+			});
+		})
+  // clipboard
+function setTooltip(message) {
+  $('#copy-deposit').tooltip('hide')
+    .attr('data-original-title', message)
+    .tooltip('show');
+}
+
+function hideTooltip() {
+  setTimeout(function () {
+    $('#copy-deposit').tooltip('hide')
+      .attr('data-original-title', 'Copy Address')
+  }, 1000);
+}
+
+
+</script>
+
 <!-- <script type="text/javascript" src="js/slick.min.js"></script> -->
 <!-- <script type="text/javascript" src="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script> -->
 
@@ -178,7 +214,6 @@ var app = new Vue({
 	mounted() {
 		this.$nextTick(() => {
 			window.addEventListener('resize', () => {
-				console.log('resize event', this.windowWidth)
 				this.windowWidth = window.innerWidth
 			})
 		})
