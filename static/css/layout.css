@@ -28,6 +28,10 @@ ins[data-revive-zoneid] > a > img {
 
 
 @media (max-width: 1140px) {
+
+  main > .contract {
+    font-size: .93rem;
+  }
   
   .navbar > .nav-item > .nav-link > a > .nav-icon {
 
