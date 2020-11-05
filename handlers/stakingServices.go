@@ -71,6 +71,10 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 	open := r.FormValue("open")
 	links := r.FormValue("links")
 	comments := r.FormValue("comments")
+	thirdParty := r.FormValue("3rdPartySoftware")
+	pooltoken := r.FormValue("pooltoken")
+	validatorKeyOwner := r.FormValue("validator_keyowner")
+	withdrawalKeyOwner := r.FormValue("withdrawal_keyowner")
 
 	msg := fmt.Sprintf(`Add new Staking Service:
 								Name: %s
@@ -80,7 +84,11 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 								Fee: %s
 								Open Source: %s
 								Social Links: %s
-								Comments: %s`, name, url, custodial, stake, fee, open, links, comments)
+								thirdParty: %s
+								Pool Token: %s
+								Validator Key Owner: %s
+								Validator Key Owner: %s
+								Comments: %s`, name, url, custodial, stake, fee, open, links, thirdParty, pooltoken, validatorKeyOwner, withdrawalKeyOwner, comments)
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 
