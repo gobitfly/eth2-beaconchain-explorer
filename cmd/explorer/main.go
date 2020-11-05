@@ -120,6 +120,8 @@ func main() {
 		apiV1Router.Use(utils.CORSMiddleware)
 		router.PathPrefix("/api/v1").Handler(apiV1Router)
 
+		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
+
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {
 				utils.Config.Frontend.SiteDomain = "beaconcha.in"
@@ -205,11 +207,12 @@ func main() {
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("Post")
+
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
-			router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
-			router.HandleFunc("/api/pricing", handlers.ApiPricing).Methods("GET")
-			router.HandleFunc("/api/pricing", handlers.ApiPricingPost).Methods("POST")
+
+			router.HandleFunc("/pricing", handlers.Pricing).Methods("GET")
+			router.HandleFunc("/pricing", handlers.PricingPost).Methods("POST")
 
 			// confirming the email update should not require auth
 			router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
