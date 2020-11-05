@@ -10,8 +10,8 @@
 
 <script>
 var chartFns = []
-chartFns.push(function(){
 {{range $i, $e := .}}
+chartFns.push(function(){
     {{if .Data.IsNormalChart}}
         Highcharts.chart('chart-{{$i}}',{
             chart: { type: {{.Data.Type}} },
@@ -178,8 +178,9 @@ chartFns.push(function(){
             }
         })
     {{end}}
-{{end}}
 })
+{{end}}
+
 $(document).ready(function () {
 function allDone(){
     $('.hide-gaps').click(function(){

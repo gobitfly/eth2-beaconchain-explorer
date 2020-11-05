@@ -136,6 +136,7 @@ func indexPageDataUpdater() {
 
 func getIndexPageData() (*types.IndexPageData, error) {
 	data := &types.IndexPageData{}
+	data.Mainnet = utils.Config.Chain.Mainnet
 
 	data.NetworkName = utils.Config.Chain.Network
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
@@ -155,7 +156,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	now := time.Now()
 
 	// run deposit query until the Genesis period is over
-	if now.Before(genesisTransition) {
+	if now.Before(genesisTransition) || startSlotTime == time.Unix(0, 0) {
 		if cutoffSlot < 15 {
 			cutoffSlot = 15
 		}
@@ -167,12 +168,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		deposit := Deposit{}
 
 		err = db.DB.Get(&deposit, `
-			SELECT COUNT(*) as total, COALESCE(MAX(block_ts),NOW()) as block_ts
-			FROM 
-				eth1_deposits as eth1 
-			WHERE 
-				eth1.amount >= 32e9 and eth1.valid_signature = true;
-		`)
+			SELECT COUNT(*) as total, COALESCE(MAX(block_ts),NOW()) AS block_ts
+			FROM (
+				SELECT publickey, SUM(amount) AS amount, MAX(block_ts) as block_ts
+				FROM eth1_deposits
+				WHERE valid_signature = true
+				GROUP BY publickey
+				HAVING SUM(amount) >= 32e9
+			) a`)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
 		}
@@ -193,7 +196,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			eth1Block := eth1BlockDepositReached.Load().(time.Time)
 			genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay))
 
-			if eth1Block.Add(genesisDelay).After(minGenesisTime) {
+			if !(startSlotTime == time.Unix(0, 0)) && eth1Block.Add(genesisDelay).After(minGenesisTime) {
 				// Network starts after min genesis time
 				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
 			}
@@ -212,6 +215,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.GenesisPeriod = false
 	}
 
+	if startSlotTime == time.Unix(0, 0) {
+		data.Genesis = false
+	}
+
 	var epochs []*types.IndexPageDataEpochs
 	err = db.DB.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
 	if err != nil {
@@ -222,7 +229,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		epoch.Ts = utils.EpochToTime(epoch.Epoch)
 		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
 		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther)
-		epoch.EligibleEtherFormatted = utils.FormatBalance(epoch.EligibleEther)
+		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther)
 		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate)
 	}
 	data.Epochs = epochs
