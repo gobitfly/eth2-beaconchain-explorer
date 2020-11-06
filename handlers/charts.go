@@ -40,6 +40,8 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	chartsPageData := services.LatestChartsPageData()
@@ -85,6 +87,8 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	chartsPageData := services.LatestChartsPageData()

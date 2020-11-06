@@ -13,6 +13,10 @@ ins[data-revive-zoneid] > a > img {
   border-radius: .225rem;
 }
 
+.dropdown-menu .nav-icon i {
+  width: 1rem;
+}
+
 @media (min-width: 1140px) and (max-width: 1440px) { 
 
   .navbar .nav-item img {
@@ -21,7 +25,13 @@ ins[data-revive-zoneid] > a > img {
 
 }
 
+
+
 @media (max-width: 1140px) {
+
+  main > .contract {
+    font-size: .93rem;
+  }
   
   .navbar > .nav-item > .nav-link > a > .nav-icon {
 
@@ -317,4 +327,19 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   }
 }
 
+.icon-inside {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+}
+.btn-icon-inside {
+  position: relative;
+  line-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: .531376rem;
+  width: 1.3rem;
+  height: 1.3rem;
+}
 

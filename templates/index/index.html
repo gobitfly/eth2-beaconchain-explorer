@@ -6,6 +6,7 @@
 <script src="/js/highcharts-vue.min.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
 <script src="/js/requestInterval.js"></script>
+
 <!-- <script type="text/javascript" src="js/slick.min.js"></script> -->
 <!-- <script type="text/javascript" src="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script> -->
 
@@ -178,7 +179,6 @@ var app = new Vue({
 	mounted() {
 		this.$nextTick(() => {
 			window.addEventListener('resize', () => {
-				console.log('resize event', this.windowWidth)
 				this.windowWidth = window.innerWidth
 			})
 		})

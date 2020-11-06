@@ -121,7 +121,7 @@
 	$(document).ready(function() {
     var usp = new URLSearchParams(window.location.search)
 		var q = usp.get('q')
-
+		{{if len .DepositContract}}
 		var tbl = $('#deposits').DataTable({
 			processing: true,
 			serverSide: true,
@@ -149,6 +149,7 @@
 				}
 			}
 		})
+		{{end}}
 		if(q) {
 			tbl.search(q);
 			tbl.draw();
@@ -209,6 +210,9 @@
 			</table>
 		</div>
 	</div>
+</div>
+<div class="d-flex justify-content-between py-2">
+	<ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
 </div>
 </div>
 {{end}}

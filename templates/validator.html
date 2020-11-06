@@ -341,7 +341,7 @@
                 {{end}}
 				<div class="row border-bottom p-3 mx-0">
 					<div class="col-md-2">Status:</div>
-					<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}{{if $deposited}}(An ETH1 deposit has been made, it will take around 8 hours until your deposit is processed by the beacon chain. Check out the deposits tab for more details){{end}}</div>
+					<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}{{if $deposited}} - An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 8 hours</a> until your deposit is processed by the beacon chain. Check out the deposits tab for more details{{end}}</div>
 				</div>
                 {{ if gtf .AttestationInclusionEffectiveness 0 }}
 					<div class="row border-bottom p-3 mx-0">

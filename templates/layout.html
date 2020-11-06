@@ -74,7 +74,7 @@
 					<i class="fas fa-home"></i> <span>|</span>
 				</a>
 				<div id="banner-epoch" class="info-item d-flex mr-2">
-					<div class="info-item-header mr-1">
+					<div class="info-item-header mr-2">
               <span class="item-icon">
                 <i class="fas fa-history"></i>
 							</span>
@@ -85,7 +85,7 @@
 						<a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
 				</div>
 				<div id="banner-slot" class="info-item d-flex mr-2">
-					<div class="info-item-header mr-1">
+					<div class="info-item-header mr-2">
               <span class="item-icon">
                 <i class="fas fa-cubes"></i>
               </span>
@@ -96,11 +96,11 @@
                 {{if not .ShowSyncingMessage}}
                     {{if gt .FinalizationDelay 3}}
 						<div id="banner-fin" class="info-item d-flex mr-3">
-							<div class="info-item-header mr-1 text-warning">
+							<div class="info-item-header mr-2 text-warning">
               <span class="item-icon">
                 <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
               </span>
-								<span class="item-text d-none d-md-block">
+								<span class="item-text d-none d-xl-block">
                 Finality
               </span>
 							</div>
@@ -172,7 +172,7 @@
 	<nav {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}} id="nav" class="navbar navbar-expand-lg navbar-light">
 		<div class="container">
 			<a class=navbar-brand href="/">
-				<i {{ if eq .Active "index"}}style="color: var(--font-color)" {{else}}style="opacity: .7"{{end}} class="fas fa-satellite-dish mr-1"></i>
+				<i {{ if eq .Active "index"}}style="color: var(--font-color)" {{else}}style="opacity: .7"{{end}} class="fas fa-satellite-dish mr-2"></i>
 				<span class="brand-text">beaconcha.in</span>
 			</a>
 
@@ -208,24 +208,33 @@
 						</a>
 						<div class="dropdown-menu" aria-labelledby="navbarDropdown">
 							<a class="dropdown-item" href="/validators">
-								<span class="nav-icon"><i class="fas fa-table mr-1"></i></span> 
+								<span class="nav-icon"><i class="fas fa-table mr-2"></i></span> 
 								<span class="nav-text">Overview</span>
 							</a>
 							<a class="dropdown-item" href="/validators/leaderboard">
-								<span class="nav-icon"><i class="fas fa-medal mr-1"></i> </span>
+								<span class="nav-icon"><i class="fas fa-medal mr-2"></i></span>
 								<span class="nav-text">Leaderboard</span>
 							</a>
 							<a class="dropdown-item" href="/validators/slashings">
-								<span class="nav-icon"><i class="fas fa-user-slash mr-1"></i> </span>
+								<span class="nav-icon"><i class="fas fa-user-slash mr-2"></i></span>
 								<span class="nav-text">Slashings</span>
 							</a>
 							<hr>
+							<a class="dropdown-item" href="/validators/leaderboard">
+								<span class="nav-icon"><i class="fas fa-medal mr-2"></i></span>
+								<span class="nav-text">Validator Leaderboard</span>
+							</a>
+							<a class="dropdown-item" href="/validators/eth1leaderboard">
+								<span class="nav-icon"><i class="fas fa-file-import mr-2"></i></span>
+								<span class="nav-text">Deposit Leaderboard</span>
+							</a>
+							<hr>
 							<a class="dropdown-item" href="/validators/eth1deposits">
-								<span class="nav-icon"><i class="fas fa-file-signature mr-1"></i> </span>
+								<span class="nav-icon"><i class="fas fa-file-signature mr-2"></i></span>
 								<span class="nav-text">Eth1 Deposits</span>
 							</a>
 							<a class="dropdown-item" href="/validators/eth2deposits">
-								<span class="nav-icon"><i class="fas fa-clipboard-check mr-1"></i> </span>
+								<span class="nav-icon"><i class="fas fa-clipboard-check mr-2"></i></span>
 								<span class="nav-text">Eth2 Deposits</span>
 							</a>
 						</div>
@@ -239,20 +248,20 @@
 						</a>
 						<div class="dropdown-menu" aria-labelledby="navbarDropdown">
 							<a class="dropdown-item" href="/charts">
-								<span class="nav-icon"><i class="fas fa-chart-bar mr-1"></i></span>
+								<span class="nav-icon"><i class="fas fa-chart-bar mr-2"></i></span>
 								<span class="nav-text">Charts</span>
 							</a>
 							<a class="dropdown-item" href="/calculator">
-								<span class="nav-icon"><i class="fas fa-calculator mr-1"></i></span>
+								<span class="nav-icon"><i class="fas fa-calculator mr-2"></i></span>
 								<span class="nav-text">Calculator</span>
 							</a>
 							<hr>
 							<a class="dropdown-item" href="/vis">
-								<span class="nav-icon"><i class="fas fa-project-diagram mr-1"></i></span>
+								<span class="nav-icon"><i class="fas fa-project-diagram mr-2"></i></span>
 								<span class="nav-text">Block Viz</span>
 							</a>
 							<a ga-outbound class="dropdown-item" href="https://eth2.ethernodes.org/">
-								<span class="nav-icon"><i class="fas fa-network-wired mr-1"></i></span>
+								<span class="nav-icon"><i class="fas fa-network-wired mr-2"></i></span>
 								<span class="nav-text">Nodes</span>
 							</a>
 						</div>
@@ -355,38 +364,38 @@
 						<li class="nav-item dropdown {{ if eq .Active "more"}}active{{end}}">
 						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 							<span class="nav-icon">
-								<i class="fas fa-info mr-1"></i>
+								<i class="fas fa-info mr-2"></i>
 							</span>
 							<span class="nav-text">
 								More
 							</span>
 						</a>
-						<div class="dropdown-menu" aria-labelledby="navbarDropdown">
+						<div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
 							<a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
 								<span class="nav-icon">
-									<i class="fas fa-laptop-code mr-1"></i>
+									<i class="fas fa-laptop-code mr-2"></i>
 								</span>
 								<span class="nav-text">API Docs</span>
 							</a>
 							<a class="dropdown-item" href="/api/pricing">
 								<span class="nav-icon">
-									<i class="fas fa-laptop-code mr-1"></i>
+									<i class="fas fa-laptop-code mr-2"></i>
 								</span>
 								<span class="nav-text">API Pricing</span>
 							</a>
 							<a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
 								<span class="nav-icon">
-									<i class="fas fa-external-link-alt mr-1"></i> 
+									<i class="fas fa-external-link-alt mr-2"></i> 
 								</span>
 								<span class="nav-text">Knowledge Base</span>
 							</a>
 							<a class="dropdown-item" href="/stakingServices">
-								<span class="nav-icon"><i class="fas fa-drumstick-bite mr-1"></i></span>
+								<span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
 								<span class="nav-text">Staking Services</span>
 							</a>
 							<a class="dropdown-item" href="/graffitiwall">
 								<span class="nav-icon">
-									<i class="fas fa-paint-brush"></i> 
+									<i class="fas fa-paint-brush mr-1"></i> 
 								</span>
 								<span class="nav-text">
 									Wall
@@ -394,7 +403,7 @@
 							</a>
 							<a class="dropdown-item" href="/poap">
 								<span class="nav-icon">
-									<i class="fas fa-medal"></i> 
+									<i class="fas fa-medal mr-1"></i> 
 								</span>
 								<span class="nav-text">
 									POAP
@@ -405,7 +414,7 @@
 					<!-- <li class="nav-item dropdown " {{ if eq .Active "docs"}}active{{end}}>
 						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 							<span class="nav-icon">
-								<i class="fas fa-book mr-1"></i> 
+								<i class="fas fa-book mr-2"></i> 
 							</span>
 							<span class="nav-text">
 								Docs
@@ -414,13 +423,13 @@
 						<div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
 							<a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
 								<span class="nav-icon">
-									<i class="fas fa-external-link-alt mr-1"></i> 
+									<i class="fas fa-external-link-alt mr-2"></i> 
 								</span>
 								<span class="nav-text">Knowledge Base</span>
 							</a>
 							<a class="dropdown-item" href="/api/pricing">
 								<span class="nav-icon">
-									<i class="fas fa-laptop-code mr-1"></i>
+									<i class="fas fa-laptop-code mr-2"></i>
 								</span>
 								<span class="nav-text">
 									API
@@ -461,16 +470,31 @@
 		</div>
 		</div>
 	</nav>
+
 	{{ template "css" .Data }}
 
 	<main>
-        {{ if .HeaderAd }}
-			<div class="container">
-				<div class="d-flex justify-content-between pt-4 pb-3">
-					<ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+        <!-- {{ if .HeaderAd }}
+				<div class="container">
+					<div class="d-flex justify-content-between pt-4 pb-3">
+						<ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+					</div>
 				</div>
-			</div>
-        {{end}}
+				{{end}} -->
+				{{if not (or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")))}}
+					{{if len .DepositContract}}
+					<div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="contract text-center p-2">
+						Deposit Contract: {{if .Mainnet}}<a href="https://etherchain.org/account/{{.DepositContract}}" class="text-primary text-monospace">{{.DepositContract}}</a> {{else}} <span class="text-primary text-monospace">{{.DepositContract}}</span> {{end}}
+						<a style="color: #fff" id="copy-deposit" data-toggle="tooltip" title="Copy Address" data-clipboard-text="{{.DepositContract}}" class="btn btn-primary mb-1 btn-icon-inside">
+							<span class="fa fa-copy icon-inside"></span>
+						</a> 
+					</div>
+					{{else}}
+					<div style="background-color: var(--bg-color-light);" class="contract text-center p-2">
+						Deposit Contract: <span class="text-primary text-monospace">0x(Pending)</span>  
+					</div>
+					{{end}}
+				{{end}}
         {{ template "content" .Data }}
 	</main>
 
@@ -487,17 +511,17 @@
 				<div class="col-md-4 mb-2">
 					<h5>Resources</h5>
 					<div class="d-flex flex-column">
-						<a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-1"></i>Advertise</a>
-						<a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-1"></i>Swag Shop</a>
-						<a class="my-1" href="/api/pricing"><i class="fas fa-laptop-code mr-1"></i></i>API Pricing</a>
-						<a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-1"></i>Github</a>
+						<a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-2"></i>Advertise</a>
+						<a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag Shop</a>
+						<a class="my-1" href="/api/pricing"><i class="fas fa-laptop-code mr-2"></i></i>API Pricing</a>
+						<a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>Github</a>
 					</div>
 				</div>
 				<div class="col-md-4 mb-2">
 					<h5>Social Media</h5>
 					<div class="d-flex flex-column">
-						<a class="my-1" href="https://twitter.com/etherchain_org"><i class="fab fa-twitter mr-1"></i>Twitter</a>
-						<a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-1"></i>Reddit</a>
+						<a class="my-1" href="https://twitter.com/etherchain_org"><i class="fab fa-twitter mr-2"></i>Twitter</a>
+						<a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a>
 						<a class="my-1" href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a>
 					</div>
 				</div>
@@ -599,7 +623,9 @@
 			});
 	</script>
 
-    {{ template "js" .Data }}
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
+{{ template "js" .Data }}
+		
 	<script src="//instant.page/5.1.0" type="module" integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script>
     {{ if ne .Meta.GATag ""}}
 		<!-- Global site tag (gtag.js) - Google Analytics -->

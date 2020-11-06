@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -82,6 +83,8 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 	err = userTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -211,6 +214,8 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err = notificationTemplate.ExecuteTemplate(w, "layout", data)

@@ -25,6 +25,7 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	pageData := &types.EthOneDepositsPageData{}
 
 	pageData.Stats = services.GetLatestStats()
+	pageData.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 
 	data := &types.PageData{
 		HeaderAd: true,
@@ -45,6 +46,8 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err := eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)
@@ -167,6 +170,12 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
+	}
+
+	data.Data = types.EthOneDepositLeaderBoardPageData{
+		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err := eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)
