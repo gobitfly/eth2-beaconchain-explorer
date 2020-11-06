@@ -110,9 +110,9 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	redirectURI := q.Get("redirect_uri")
 
 	appData, err := db.GetAppDataFromRedirectUri(redirectURI)
-	logger.Infof("appData %v", appData)
+
 	if err != nil {
-		logger.Errorf("error app not found: %v %v", user.UserID, appData, err)
+		logger.Errorf("error app not found: %v %v %v", user.UserID, appData, err)
 		utils.SetFlash(w, r, authSessionName, "Error: App not found. Is your redirect_uri correct and registered?")
 		session.Save(r, w)
 	} else {

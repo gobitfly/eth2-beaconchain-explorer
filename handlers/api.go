@@ -663,8 +663,6 @@ func getTokenByCode(w http.ResponseWriter, r *http.Request) {
 	redirectURI := r.FormValue("redirect_uri")
 	deviceName := getDeviceNameFromUA(r.Header.Get("User-Agent"))
 
-	logger.Infof("Debug stuff: %v %v %v", code, redirectURI, deviceName)
-
 	// Check if redirect URI is correct
 	_, err := db.GetAppDataFromRedirectUri(redirectURI)
 	if err != nil {
@@ -848,7 +846,6 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 
 	notifyEnabled := FormValueOrJSON(r, "notify_enabled") == "true"
-	logger.Infof("notifyEnabled: %v", notifyEnabled)
 
 	claims := getAuthClaims(r)
 
