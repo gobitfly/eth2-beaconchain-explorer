@@ -19,6 +19,10 @@ frontend:
   imprint: "templates/imprint.example.html}**"  # Path to the imprint page content
   siteName: "Ethereum 2.0 Beacon Chain (Phase 0) Block Chain Explorer" # Name of the site, displayed in the title tag
   siteSubtitle: "Showing the <a href='https://prylabs.net'>💎 Prysm Eth2 Testnet</a>" # Subtitle shown on the main page
+  csrfAuthKey: '0123456789abcdef000000000000000000000000000000000000000000000000'
+  jwtSigningSecret: "0123456789abcdef000000000000000000000000000000000000000000000000"
+  jwtIssuer: "beaconcha.in"
+  jwtValidityInMinutes: 30
   server:
     host: "localhost" # Address to listen on
     port: "3333" # Port to listen on
