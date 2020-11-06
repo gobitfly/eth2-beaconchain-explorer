@@ -201,6 +201,16 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
 			}
 		}
+
+		latestChartsPageData := LatestChartsPageData()
+		if latestChartsPageData != nil {
+			for _, c := range *latestChartsPageData {
+				if c.Path == "deposits" {
+					data.DepositChart = c
+					break
+				}
+			}
+		}
 	}
 	// has genesis occured
 	if now.After(startSlotTime) {

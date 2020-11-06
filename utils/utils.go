@@ -67,8 +67,10 @@ func GetTemplateFuncs() template.FuncMap {
 		"add":                                     func(i, j int) int { return i + j },
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"gtf":                                     func(i, j float64) bool { return i > j },
-		"round":                                   func(i float64, n int) float64 { return math.Round(i*math.Pow10(n)) / math.Pow10(n) },
-		"percent":                                 func(i float64) float64 { return i * 100 },
+		"round": func(i float64, n int) float64 {
+			return math.Round(i*math.Pow10(n)) / math.Pow10(n)
+		},
+		"percent": func(i float64) float64 { return i * 100 },
 		"formatThousands": func(i float64) string {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
