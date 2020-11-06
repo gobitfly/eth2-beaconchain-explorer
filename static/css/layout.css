@@ -28,14 +28,6 @@ ins[data-revive-zoneid] > a > img {
 
 
 @media (max-width: 1140px) {
-
-  main > .contract {
-    font-size: .93rem;
-  }
-  
-  .navbar > .nav-item > .nav-link > a > .nav-icon {
-
-  }
   .nav-icon {
     width: 38px;
     overflow: hidden;
@@ -324,6 +316,24 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   }
   100% {
     opacity: 1
+  }
+}
+
+@media (max-width: 650px) {
+  .contract {
+    font-size: 75%;
+  }
+  .contract .contract-description {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .contract .fa-file-contract {
+    display: none;
+  }
+  .contract #copy-deposit {
+    display: none;
   }
 }
 
