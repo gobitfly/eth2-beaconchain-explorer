@@ -14,8 +14,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
+	"github.com/mssola/user_agent"
 )
 
 // @title Beaconcha.in ETH2 API
@@ -24,6 +26,13 @@ import (
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
 // @description 10 requests / 1 minute / IP. All API results are cached for 1 minute.
 // @description If you required a higher usage plan please checkout https://beaconcha.in/api/pricing.
+// @securitydefinitions.oauth2.accessCode OAuthAccessCode
+// @tokenurl https://beaconcha.in/user/token
+// @authorizationurl https://beaconcha.in/user/authorize
+
+// @securitydefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
 
 // ApiHealthz godoc
 // @Summary Health of the explorer
@@ -615,6 +624,289 @@ func ApiChart(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// APIGetToken godoc
+// @Summary Exchange your oauth code for an access token or refresh your access token
+// @Tags User
+// @Produce  json
+// @Param grant_type formData string true "grant_type use authorization_code for oauth code or refresh_token if you wish to refresh an token"
+// @Param code formData string false "Only required when using authorization_code grant type. Code received via oauth redirect_uri"
+// @Param redirect_uri formData string false "Only required when using authorization_code grant type. Must match the redirect_uri from your oauth flow."
+// @Param refresh_token formData string false "Only required when using refresh_token grant type. The refresh_token you received during authorization_code flow."
+// @Header 200 jwt Authorization "Authorization Only required when using refresh_token grant type. Use any access token that is linked with your refresh_token."
+// @Success 200 {object} utils.OAuthResponse
+// @Failure 400 {object} utils.OAuthErrorResponse
+// @Failure 500 {object} utils.OAuthErrorResponse
+// @Security OAuthAccessCode
+// @Router /api/v1/user/token [post]
+func APIGetToken(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	grantType := r.FormValue("grant_type")
+
+	switch grantType {
+	case "authorization_code":
+		getTokenByCode(w, r)
+	case "refresh_token":
+		getTokenByRefresh(w, r)
+	default:
+		j := json.NewEncoder(w)
+		w.WriteHeader(http.StatusBadRequest)
+		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.InvalidGrant, "grant type must be authroization_code or refresh_token")
+	}
+}
+
+func getTokenByCode(w http.ResponseWriter, r *http.Request) {
+	j := json.NewEncoder(w)
+
+	code := r.FormValue("code")
+	redirectURI := r.FormValue("redirect_uri")
+	deviceName := getDeviceNameFromUA(r.Header.Get("User-Agent"))
+
+	logger.Infof("Debug stuff: %v %v %v", code, redirectURI, deviceName)
+
+	// Check if redirect URI is correct
+	_, err := db.GetAppDataFromRedirectUri(redirectURI)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.InvalidRequest, "redirect_uri do not match")
+		return
+	}
+
+	// Hash code, we only store codes as sha256 hash in db
+	codeHashed := utils.HashAndEncode(code)
+
+	// Check if code entry exists and isn't expired (codes expire after 5 minutes)
+	codeAuthData, err := db.GetUserAuthDataByAuthorizationCode(codeHashed)
+	if err != nil {
+		logger.Errorf("Error hashed code can not be found in table: %v | Error: %v", codeHashed, err)
+		w.WriteHeader(http.StatusUnauthorized)
+		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.AccessDenied, "access_token or refresh_token invalid")
+		return
+	}
+
+	// Create refresh token
+	refreshTokenBytes, err := utils.GenerateRandomBytesSecure(32)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.ServerError, "can not generate refresh_token")
+		return
+	}
+
+	refreshToken := hex.EncodeToString(refreshTokenBytes)   // return to user
+	refreshTokenHashed := utils.HashAndEncode(refreshToken) // save hashed in db
+
+	// save refreshtoken hashed in db
+	deviceID, errDb := db.InsertUserDevice(codeAuthData.UserID, refreshTokenHashed, deviceName, codeAuthData.AppID)
+	if errDb != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.ServerError, "can not store auth info")
+		return
+	}
+
+	// Create access token
+	token, expiresIn, err := utils.CreateAccessToken(codeAuthData.UserID, codeAuthData.AppID, deviceID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.ServerError, "can not create access_token")
+		return
+	}
+
+	// finally creating the oauth message
+	utils.SendOAuthResponse(j, r.URL.String(), token, refreshToken, expiresIn)
+}
+
+func getTokenByRefresh(w http.ResponseWriter, r *http.Request) {
+	j := json.NewEncoder(w)
+
+	refreshToken := r.FormValue("refresh_token")
+	accessToken := r.Header.Get("Authorization")
+
+	// hash refreshtoken
+	refreshTokenHashed := utils.HashAndEncode(refreshToken)
+
+	// Extract userId from JWT. Note that this is just an unvalidated claim!
+	// Do not use userIDClaim as userID until confirmed by refreshToken validation
+	unsafeClaims, err := utils.UnsafeGetClaims(accessToken)
+	if err != nil {
+		logger.Errorf("Error access_token claim: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.InvalidRequest, "access_token validation failed")
+		return
+	}
+
+	// confirm all claims via db lookup and refreshtoken check
+	userID, err := db.GetByRefreshToken(unsafeClaims.UserID, unsafeClaims.AppID, unsafeClaims.DeviceID, refreshTokenHashed)
+	if err != nil {
+		logger.Errorf("Error refreshtoken check: %v | %v | %v", unsafeClaims.UserID, refreshTokenHashed, err)
+		w.WriteHeader(http.StatusUnauthorized)
+		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.UnauthorizedClient, "invalid token credentials")
+		return
+	}
+
+	// Create access token
+	token, expiresIn, err := utils.CreateAccessToken(userID, unsafeClaims.AppID, unsafeClaims.DeviceID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.ServerError, "can not create access_token")
+		return
+	}
+
+	// finally creating the oauth message
+	utils.SendOAuthResponse(j, r.URL.String(), token, "", expiresIn)
+}
+
+// Device name is limited to 20 chars
+func getDeviceNameFromUA(userAgent string) string {
+	ua := user_agent.New(userAgent)
+	platformLen := len(ua.Platform())
+	osLen := len(ua.OS())
+
+	if platformLen+osLen > 19 {
+		if osLen <= 20 && osLen > 0 {
+			return ua.OS()
+		} else if platformLen <= 20 && platformLen > 0 {
+			return ua.Platform()
+		} else {
+			return "Unknown"
+		}
+	} else if platformLen+osLen > 0 {
+		return ua.Platform() + " " + ua.OS()
+	} else {
+		return "Unknown"
+	}
+}
+
+// MobileNotificationUpdatePOST godoc
+// @Summary Register or update your mobile notification token
+// @Tags User
+// @Produce  json
+// @Param token body string true "Your device`s firebase notification token"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/dashboard/save [post]
+func MobileNotificationUpdatePOST(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	notifyToken := FormValueOrJSON(r, "token")
+
+	claims := getAuthClaims(r)
+
+	err2 := db.MobileNotificatonTokenUpdate(claims.UserID, claims.DeviceID, notifyToken)
+	if err2 != nil {
+		sendErrorResponse(j, r.URL.String(), "Can not save notify token")
+		return
+	}
+
+	OKResponse(w, r)
+}
+
+// MobileDeviceSettings godoc
+// @Summary Get your device settings, currently only whether to enable mobile notifcations or not
+// @Tags User
+// @Produce json
+// @Success 200 {object} types.ApiResponse{data=types.MobileSettingsData}
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/mobile/settings [get]
+func MobileDeviceSettings(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	claims := getAuthClaims(r)
+
+	rows, err := db.MobileDeviceSettingsSelect(claims.UserID, claims.DeviceID)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
+// MobileDeviceSettingsPOST godoc
+// @Summary Changing your devices mobile settings
+// @Tags User
+// @Produce json
+// @Param notify_enabled body bool true "Whether to enable mobile notifications for this device or not"
+// @Success 200 {object} types.ApiResponse{data=types.MobileSettingsData}
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/mobile/settings [post]
+func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	notifyEnabled := FormValueOrJSON(r, "notify_enabled") == "true"
+	logger.Infof("notifyEnabled: %v", notifyEnabled)
+
+	claims := getAuthClaims(r)
+
+	rows, err2 := db.MobileDeviceSettingsUpdate(claims.UserID, claims.DeviceID, notifyEnabled)
+	if err2 != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
+// MobileTagedValidators godoc
+// @Summary Get all your tagged validators
+// @Tags User
+// @Produce json
+// @Success 200 {object} types.ApiResponse{data=[]types.MinimalTaggedValidators}
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/validator/saved [get]
+func MobileTagedValidators(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	claims := getAuthClaims(r)
+
+	filter := db.WatchlistFilter{
+		UserId:         claims.UserID,
+		Validators:     nil,
+		Tag:            types.ValidatorTagsWatchlist,
+		JoinValidators: true,
+	}
+
+	validators, err2 := db.GetTaggedValidators(filter)
+	if err2 != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	data := make([]interface{}, len(validators))
+	for i, v := range validators {
+		temp := types.MinimalTaggedValidators{}
+		temp.PubKey = fmt.Sprintf("0x%v", hex.EncodeToString(v.PublicKey))
+		temp.Index = v.Index
+		data[i] = temp
+	}
+
+	sendOKResponse(j, r.URL.String(), data)
+}
+
+func getAuthClaims(r *http.Request) *utils.CustomClaims {
+	return context.Get(r, utils.ClaimsContextKey).(*utils.CustomClaims)
+}
+
 func returnQueryResults(rows *sql.Rows, j *json.Encoder, r *http.Request) {
 	data, err := utils.SqlRowsToJSON(rows)
 
@@ -625,6 +917,12 @@ func returnQueryResults(rows *sql.Rows, j *json.Encoder, r *http.Request) {
 
 	sendOKResponse(j, r.URL.String(), data)
 }
+
+// SendErrorResponse exposes sendErrorResponse
+func SendErrorResponse(j *json.Encoder, route, message string) {
+	sendErrorResponse(j, route, message)
+}
+
 func sendErrorResponse(j *json.Encoder, route, message string) {
 	response := &types.ApiResponse{}
 	response.Status = "ERROR: " + message
@@ -634,6 +932,11 @@ func sendErrorResponse(j *json.Encoder, route, message string) {
 		logger.Errorf("error serializing json error for API %v route: %v", route, err)
 	}
 	return
+}
+
+// SendOKResponse exposes sendOKResponse
+func SendOKResponse(j *json.Encoder, route string, data []interface{}) {
+	sendOKResponse(j, route, data)
 }
 
 func sendOKResponse(j *json.Encoder, route string, data []interface{}) {
