@@ -342,7 +342,7 @@ create table users_devices
     refresh_token         character varying(64)       not null,
     device_name           character varying(20)       not null,
     notification_token    character varying(500),
-    notify_enabled        bool                        not null default 'f',
+    notify_enabled        bool                        not null default 't',
     active                bool                        not null default 't',
     app_id                int                         not null,
     created_ts            timestamp without time zone not null,
