@@ -141,6 +141,9 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 	if err != nil {
 		return depositsToSave, fmt.Errorf("error getting logs from eth1-client: %w", err)
 	}
+	if len(depositLogs) == 0 {
+		return depositsToSave, nil
+	}
 
 	blocksToFetch := []uint64{}
 	txsToFetch := []string{}
