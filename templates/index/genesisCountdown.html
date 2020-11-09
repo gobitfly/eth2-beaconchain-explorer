@@ -39,7 +39,7 @@
       Estimated
 		</span>
 		{{if gt .NetworkStartTs 0}}
-		<small class="text-muted d-inline-block d-none" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></small>
+		<small data-toggle="tooltip" title="Earliest possible (Min) Genesis Time" class="text-muted d-inline-block d-none" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.MinGenesisTime}}"></small>
 		{{end}}
   </h6>
   <p class="align-self-center">
@@ -47,7 +47,7 @@
 		<strong>Waiting on min genesis time announcement</strong>
 		{{else}}
 			<strong id="clock">
-				<span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTimestamp}})
+				<span data-toggle="tooltip" title="Estimated Genesis Time according to the rate of deposits" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTimestamp}})
 			</strong>
 		{{end}}
   </p>

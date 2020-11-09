@@ -186,6 +186,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 		data.NetworkStartTs = minGenesisTime.Unix()
+		data.MinGenesisTime = minGenesisTime.Unix()
 
 		// enough deposits
 		if data.DepositedTotal > data.DepositThreshold {
@@ -212,6 +213,24 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			}
 		}
 	}
+	if data.DepositChart != nil && data.DepositChart.Data != nil && data.DepositChart.Data.Series != nil {
+		series := data.DepositChart.Data.Series
+		if len(series) > 2 {
+			points := series[1].Data.([][]float64)
+			periodDays := float64(len(points))
+			avgDepositPerDay := data.DepositedTotal / periodDays
+			daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
+			estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
+			if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
+				data.NetworkStartTs = estimatedTimeToThreshold.Unix()
+			}
+		}
+	}
+
+	// for _, el := range series[1].Data {
+	// 	el
+	// }
+
 	// has genesis occured
 	if now.After(startSlotTime) {
 		data.Genesis = true
