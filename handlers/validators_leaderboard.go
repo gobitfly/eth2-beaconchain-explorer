@@ -120,9 +120,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
 					validator_performance.*,
 					validators.pubkey, 
-					COALESCE(validators.name, '') AS name
+					COALESCE(validator_names.name, '') AS name
 				FROM validator_performance 
 					LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+					LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 				ORDER BY `+orderBy+` `+orderDir+`
 			) AS a
 			LIMIT $1 OFFSET $2`, length, start)
@@ -151,9 +152,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
 					validator_performance.*,
 					validators.pubkey, 
-					COALESCE(validators.name, '') AS name
+					COALESCE(validator_names.name, '') AS name
 				FROM validator_performance 
 					LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+					LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 				ORDER BY `+orderBy+` `+orderDir+`
 			) AS a
 			WHERE (encode(a.pubkey::bytea, 'hex') LIKE $3
