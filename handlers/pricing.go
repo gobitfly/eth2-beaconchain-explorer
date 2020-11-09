@@ -12,13 +12,13 @@ import (
 	"time"
 )
 
-var apiPricingTemplate = template.Must(template.New("pricing").Funcs(utils.GetTemplateFuncs()).ParseFiles(
+var pricingTemplate = template.Must(template.New("pricing").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
 	"templates/pricing.html",
 	"templates/svg/pricing.html",
 ))
 
-func ApiPricing(w http.ResponseWriter, r *http.Request) {
+func Pricing(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
@@ -54,7 +54,7 @@ func ApiPricing(w http.ResponseWriter, r *http.Request) {
 	}
 	data.Data = pageData
 
-	err = apiPricingTemplate.ExecuteTemplate(w, "layout", data)
+	err = pricingTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
@@ -62,12 +62,12 @@ func ApiPricing(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ApiPricingPost(w http.ResponseWriter, r *http.Request) {
+func PricingPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		logger.Errorf("error parsing form: %v", err)
 		utils.SetFlash(w, r, "pricing_flash", "Error: invalid form submitted")
-		http.Redirect(w, r, "/api/pricing", http.StatusSeeOther)
+		http.Redirect(w, r, "/pricing", http.StatusSeeOther)
 		return
 	}
 
@@ -92,10 +92,10 @@ func ApiPricingPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
 		utils.SetFlash(w, r, "pricing_flash", "Error: unable to submit api request")
-		http.Redirect(w, r, "/api/pricing", http.StatusSeeOther)
+		http.Redirect(w, r, "/pricing", http.StatusSeeOther)
 		return
 	}
 
 	utils.SetFlash(w, r, "pricing_flash", "Thank you for your inquiry, we will get back to you as soon as possible.")
-	http.Redirect(w, r, "/api/pricing", http.StatusSeeOther)
+	http.Redirect(w, r, "/pricing", http.StatusSeeOther)
 }

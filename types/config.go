@@ -33,13 +33,15 @@ type Config struct {
 		Eth1Endpoint                  string `yaml:"eth1Endpoint" envconfig:"INDEXER_ETH1_ENDPOINT"`
 		Eth1DepositContractAddress    string `yaml:"eth1DepositContractAddress" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_ADDRESS"`
 		Eth1DepositContractFirstBlock uint64 `yaml:"eth1DepositContractFirstBlock" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_FIRST_BLOCK"`
+		OneTimeExport                 struct {
+			Enabled    bool     `yaml:"enabled" envconfig:"INDEXER_ONETIMEEXPORT_ENABLED"`
+			StartEpoch uint64   `yaml:"startEpoch" envconfig:"INDEXER_ONETIMEEXPORT_START_EPOCH"`
+			EndEpoch   uint64   `yaml:"endEpoch" envconfig:"INDEXER_ONETIMEEXPORT_END_EPOCH"`
+			Epochs     []uint64 `yaml:"epochs" envconfig:"INDEXER_ONETIMEEXPORT_EPOCHS"`
+		} `yaml:"onetimeexport"`
 	} `yaml:"indexer"`
-	OneTimeExport struct {
-		Enabled    bool   `yaml:"enabled"`
-		StartEpoch uint64 `yaml:"startEpoch"`
-		EndEpoch   uint64 `yaml:"endEpoch"`
-	} `yaml:"onetimeexport"`
 	Frontend struct {
+		OnlyAPI      bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
 		CsrfAuthKey  string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRFAUTHKEY`
 		Enabled      bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
 		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
