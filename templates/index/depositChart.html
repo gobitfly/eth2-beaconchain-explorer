@@ -50,6 +50,16 @@
     </div>
     <script>
         {{if .DepositChart}}
+        console.log('series', {{.DepositChart.Data.Series}})
+    var series = {{.DepositChart.Data.Series}}
+    var filteredSeries = []
+    if (series && series.length) {
+      for (let i = 0; i < series.length; i++) {
+        if (series && series[i].data && series[i].data.length) {
+          filteredSeries.push(series[i])
+        }
+      }
+    }
     window.addEventListener('load', function() {
         Highcharts.stockChart('deposit-chart',{
             chart: {
@@ -95,7 +105,7 @@
                 title: { text: {{.DepositChart.Data.YAxisTitle}} },
                 opposite: false,
             }],
-            series: {{.DepositChart.Data.Series}},
+            series: filteredSeries,
             navigator: { enabled: false },
             scrollbar: { enabled: false },
             tooltip: {

@@ -130,6 +130,10 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(deposits))
 	for i, d := range deposits {
+		valid := "❌"
+		if d.ValidSignature {
+			valid = "✅"
+		}
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
 			utils.FormatPublicKey(d.PublicKey),
@@ -138,7 +142,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatTimestamp(d.BlockTs.Unix()),
 			utils.FormatEth1Block(d.BlockNumber),
 			utils.FormatValidatorStatus(d.State),
-			d.ValidSignature,
+			valid,
 		}
 	}
 
@@ -200,7 +204,6 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 // Eth1DepositsData will return eth1-deposits as json
 func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
