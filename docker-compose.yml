@@ -7,8 +7,9 @@ services:
         volumes:
             - ./private/eth1_node:/root
         network_mode: host
-        command: 
-            - --goerli
+        # uncomment the lines below for goerli testnet
+        # command: 
+        #     - --goerli
 
 
     postgres:
@@ -30,13 +31,14 @@ services:
         restart: always
         volumes:
             - ./private/eth2_data:/data
-            - ./private/eth1_node/.ethereum/goerli:$HOME/Goerli
+            #- ./private/eth1_node/.ethereum/goerli:$HOME/ipc # goerli testnet
+            - ./private/eth1_node/.ethereum/:$HOME/ipc # mainnet
         network_mode: host
         command: 
             - --datadir=/data
             - --rpc-host=0.0.0.0
             - --monitoring-host=0.0.0.0
-            - --http-web3provider=$HOME/Goerli/geth.ipc
+            - --http-web3provider=$HOME/ipc/geth.ipc
             - --accept-terms-of-use
         depends_on:
             - eth1
