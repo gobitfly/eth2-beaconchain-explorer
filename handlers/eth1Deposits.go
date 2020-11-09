@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1Deposits.html"))
+var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1Deposits.html", "templates/index/depositChart.html"))
 var eth1DepositsLeaderboardTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1DepositsLeaderboard.html"))
 
 // Eth1Deposits will return information about deposits using a go template
@@ -23,6 +23,16 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	pageData := &types.EthOneDepositsPageData{}
+
+	latestChartsPageData := services.LatestChartsPageData()
+	if latestChartsPageData != nil {
+		for _, c := range *latestChartsPageData {
+			if c.Path == "deposits" {
+				pageData.DepositChart = c
+				break
+			}
+		}
+	}
 
 	pageData.Stats = services.GetLatestStats()
 	pageData.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress

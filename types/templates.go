@@ -631,6 +631,7 @@ type StakingCalculatorPageData struct {
 type EthOneDepositsPageData struct {
 	*Stats
 	DepositContract string
+	DepositChart    *ChartsPageDataChart
 }
 
 type EthOneDepositLeaderBoardPageData struct {
