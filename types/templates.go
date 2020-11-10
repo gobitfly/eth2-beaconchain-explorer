@@ -695,6 +695,7 @@ type User struct {
 type AuthData struct {
 	Flashes   []interface{}
 	Email     string
+	State     string
 	CsrfField template.HTML
 }
 

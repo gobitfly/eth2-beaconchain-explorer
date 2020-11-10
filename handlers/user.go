@@ -108,6 +108,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	redirectURI := q.Get("redirect_uri")
+	state := q.Get("state")
 
 	appData, err := db.GetAppDataFromRedirectUri(redirectURI)
 
@@ -119,6 +120,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 		authorizeData.AppData = appData
 	}
 
+	authorizeData.State = state
 	authorizeData.CsrfField = csrf.TemplateField(r)
 	authorizeData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
@@ -405,11 +407,16 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 	logger := logger.WithField("route", r.URL.String())
 
 	redirectURI := r.FormValue("redirect_uri")
+	state := r.FormValue("state")
+	var stateAppend string = ""
+	if state != "" {
+		stateAppend = "&state=" + state
+	}
 
 	appData, err := db.GetAppDataFromRedirectUri(redirectURI)
 	if err != nil {
 		logger.Errorf("error app no found: %v %v", appData, err)
-		callback := redirectURI + "?error=invalid_request&error_description=missing_redirect_uri"
+		callback := redirectURI + "?error=invalid_request&error_description=missing_redirect_uri" + stateAppend
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	}
@@ -417,7 +424,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 	user, _, err := getUserSession(w, r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
-		callback := appData.RedirectURI + "?error=access_denied&error_description=no_session"
+		callback := appData.RedirectURI + "?error=access_denied&error_description=no_session" + stateAppend
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	}
@@ -426,7 +433,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 		codeBytes, err1 := utils.GenerateRandomBytesSecure(32)
 		if err1 != nil {
 			logger.Errorf("error creating secure random bytes for user: %v %v", user.UserID, err1)
-			callback := appData.RedirectURI + "?error=server_error&error_description=err_random_number"
+			callback := appData.RedirectURI + "?error=server_error&error_description=err_random_number" + stateAppend
 			http.Redirect(w, r, callback, http.StatusSeeOther)
 			return
 		}
@@ -437,19 +444,19 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 		err2 := db.AddAuthorizeCode(user.UserID, codeHashed, appData.ID)
 		if err2 != nil {
 			logger.Errorf("error adding authorization code for user: %v %v", user.UserID, err2)
-			callback := appData.RedirectURI + "?error=server_error&error_description=err_db_storefail"
+			callback := appData.RedirectURI + "?error=server_error&error_description=err_db_storefail" + stateAppend
 			http.Redirect(w, r, callback, http.StatusSeeOther)
 			return
 		}
 
 		callbackTemplate := appData.RedirectURI + "?code="
 
-		callback := callbackTemplate + code
+		callback := callbackTemplate + code + stateAppend
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	} else {
 		logger.Error("Not authorized")
-		callback := appData.RedirectURI + "?error=access_denied&error_description=no_authentication"
+		callback := appData.RedirectURI + "?error=access_denied&error_description=no_authentication" + stateAppend
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	}
