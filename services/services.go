@@ -51,7 +51,6 @@ func epochUpdater() {
 	firstRun := true
 
 	for true {
-
 		var latestFinalized uint64
 		err := db.DB.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
 		if err != nil {
@@ -303,9 +302,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		block.BlockRootFormatted = fmt.Sprintf("%x", block.BlockRoot)
 	}
 
-	// if len(blocks) > 0 {
-	// 	data.CurrentSlot = blocks[0].Slot
-	// }
 	if data.GenesisPeriod {
 		for _, blk := range blocks {
 			if blk.Status != 0 {
@@ -431,6 +427,11 @@ func GetLatestStats() *types.Stats {
 			InvalidDepositCount:  new(uint64),
 			UniqueValidatorCount: new(uint64),
 		}
+	} else if stats.(*types.Stats).TopDepositors != nil && len(*stats.(*types.Stats).TopDepositors) == 1 {
+		*stats.(*types.Stats).TopDepositors = append(*stats.(*types.Stats).TopDepositors, types.StatsTopDepositors{
+			Address:      "000",
+			DepositCount: 0,
+		})
 	}
 	return stats.(*types.Stats)
 }
