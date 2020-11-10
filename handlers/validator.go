@@ -55,6 +55,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	validatorPageData.User = user
@@ -301,6 +303,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.Income7d = earnings.LastWeek
 	validatorPageData.Income31d = earnings.LastMonth
 	validatorPageData.Apr = (((float64(earnings.LastWeek) / 1e9) / (depositSum / 1e9)) * 365) / 7
+	if validatorPageData.Apr < float64(-1) {
+		validatorPageData.Apr = float64(-1)
+	}
 
 	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
 	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, COALESCE(effectivebalance, 0) as balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)

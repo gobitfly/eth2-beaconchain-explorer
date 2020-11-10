@@ -79,3 +79,11 @@ type TaggedValidators struct {
 	Validator
 	Events []EventName `db:"events"`
 }
+
+type OAuthAppData struct {
+	ID          uint64 `db:"id"`
+	Owner       uint64 `db:"owner_id"`
+	AppName     string `db:"app_name"`
+	RedirectURI string `db:"redirect_uri"`
+	Active      bool   `db:"active"`
+}

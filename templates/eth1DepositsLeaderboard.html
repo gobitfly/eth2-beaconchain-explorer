@@ -92,26 +92,36 @@
 					data = newData
 					return newData
 				},
-				complete: function(something) {
+				complete: function(columns) {
 					var series = []
-					series[0] = something.series[3]
-					series[1] = something.series[4]
-					series[2] = something.series[5]
-					series[3] = something.series[6]
-					series[0].name = 'Pending'
-					series[1].name = 'Active'
-					series[2].name = 'Slashed'
-					series[3].name = 'Voluntary Exits'
+
+					series[0] = columns.series[1]
+					series[1] = columns.series[3]
+					series[2] = columns.series[4]
+					series[3] = columns.series[5]
+					series[4] = columns.series[6]
+
+					series[0].name = 'Deposited'
+					series[1].name = 'Pending'
+					series[2].name = 'Active'
+					series[3].name = 'Slashed'
+					series[4].name = 'Voluntary Exits'
+
+					if (series && series[0] && series[0].data && series[0].data.length) {
+						for (var i = 0; i < series[0].data.length; i++) {
+							series[0].data[i][1] = series[0].data[i][1] - columns.series[4].data[i][1] - columns.series[5].data[i][1] - columns.series[6].data[i][1] - columns.series[3].data[i][1]
+						}
+					}
 
 					// replace keys with eth1 address
-					for (let i = 0; i < series.length; i++) {
+					for (var i = 0; i < series.length; i++) {
 						var serie = series[i];
 						serie.data = serie.data.map(function(el) {
 							el[0] = el[0].replace(/\<[^\>]+\>/g, '')
 							return el
 						})
 					}
-					something.series = series
+					columns.series = series
 					return series
 				}
 			}
@@ -121,7 +131,7 @@
 	$(document).ready(function() {
     var usp = new URLSearchParams(window.location.search)
 		var q = usp.get('q')
-
+		{{if len .DepositContract}}
 		var tbl = $('#deposits').DataTable({
 			processing: true,
 			serverSide: true,
@@ -149,6 +159,7 @@
 				}
 			}
 		})
+		{{end}}
 		if(q) {
 			tbl.search(q);
 			tbl.draw();
@@ -209,6 +220,9 @@
 			</table>
 		</div>
 	</div>
+</div>
+<div class="d-flex justify-content-between py-2">
+	<ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
 </div>
 </div>
 {{end}}

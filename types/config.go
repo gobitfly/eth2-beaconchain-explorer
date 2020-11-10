@@ -16,6 +16,7 @@ type Config struct {
 		GenesisTimestamp               uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		MinGenesisActiveValidatorCount uint64 `yaml:"minGenesisActiveValidatorCount" envconfig:"CHAIN_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT"`
 		GenesisDelay                   uint64 `yaml:"genesisDelay" envconfig:"CHAIN_GENESIS_DELAY"`
+		Mainnet                        bool   `yaml:"mainnet" envconfig:"CHAIN_MAINNET"`
 	} `yaml:"chain"`
 	Indexer struct {
 		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
@@ -32,12 +33,16 @@ type Config struct {
 		Eth1Endpoint                  string `yaml:"eth1Endpoint" envconfig:"INDEXER_ETH1_ENDPOINT"`
 		Eth1DepositContractAddress    string `yaml:"eth1DepositContractAddress" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_ADDRESS"`
 		Eth1DepositContractFirstBlock uint64 `yaml:"eth1DepositContractFirstBlock" envconfig:"INDEXER_ETH1_DEPOSIT_CONTRACT_FIRST_BLOCK"`
+		OneTimeExport                 struct {
+			Enabled    bool     `yaml:"enabled" envconfig:"INDEXER_ONETIMEEXPORT_ENABLED"`
+			StartEpoch uint64   `yaml:"startEpoch" envconfig:"INDEXER_ONETIMEEXPORT_START_EPOCH"`
+			EndEpoch   uint64   `yaml:"endEpoch" envconfig:"INDEXER_ONETIMEEXPORT_END_EPOCH"`
+			Epochs     []uint64 `yaml:"epochs" envconfig:"INDEXER_ONETIMEEXPORT_EPOCHS"`
+		} `yaml:"onetimeexport"`
 	} `yaml:"indexer"`
-	OneTimeExport struct {
-		Enabled bool   `yaml:"enabled"`
-		Epoch   uint64 `yaml:"epoch"`
-	} `yaml:"onetimeexport"`
 	Frontend struct {
+		OnlyAPI      bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
+		CsrfAuthKey  string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRFAUTHKEY`
 		Enabled      bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
 		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
 		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`

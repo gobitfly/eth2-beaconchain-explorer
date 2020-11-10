@@ -55,6 +55,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	if err != nil {
@@ -72,6 +74,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	blockPageData := types.BlockPageData{}
+	blockPageData.Mainnet = utils.Config.Chain.Mainnet
 	err = db.DB.Get(&blockPageData, `
 		SELECT
 			epoch,

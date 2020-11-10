@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -19,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
@@ -26,6 +28,7 @@ import (
 
 var userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/settings.html"))
 var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notifications.html"))
+var authorizeTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/authorize.html"))
 
 func UserAuthMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	user := getUser(w, r)
@@ -61,6 +64,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 
 	userSettingsData.Email = email
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
+	userSettingsData.CsrfField = csrf.TemplateField(r)
 
 	data := &types.PageData{
 		HeaderAd: true,
@@ -79,8 +83,67 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 	err = userTemplate.ExecuteTemplate(w, "layout", data)
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// UserAuthorizeConfirm renders the user-authorize template
+func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	authorizeData := &types.UserAuthorizeConfirmPageData{}
+
+	user, session, err := getUserSession(w, r)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	q := r.URL.Query()
+	redirectURI := q.Get("redirect_uri")
+
+	appData, err := db.GetAppDataFromRedirectUri(redirectURI)
+	logger.Infof("appData %v", appData)
+	if err != nil {
+		logger.Errorf("error app not found: %v %v", user.UserID, appData, err)
+		utils.SetFlash(w, r, authSessionName, "Error: App not found. Is your redirect_uri correct and registered?")
+		session.Save(r, w)
+	} else {
+		authorizeData.AppData = appData
+	}
+
+	authorizeData.CsrfField = csrf.TemplateField(r)
+	authorizeData.Flashes = utils.GetFlashes(w, r, authSessionName)
+
+	data := &types.PageData{
+		HeaderAd: false,
+		Meta: &types.Meta{
+			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
+			Path:        "/user",
+			GATag:       utils.Config.Frontend.GATag,
+		},
+		Active:                "user",
+		Data:                  authorizeData,
+		User:                  user,
+		Version:               version.Version,
+		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
+		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
+		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
+		CurrentEpoch:          services.LatestEpoch(),
+		CurrentSlot:           services.LatestSlot(),
+		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
+	}
+	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -95,6 +158,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	userNotificationsData.Flashes = utils.GetFlashes(w, r, authSessionName)
+	userNotificationsData.CsrfField = csrf.TemplateField(r)
 
 	var watchlistIndices []uint64
 	err := db.DB.Select(&watchlistIndices, `
@@ -151,6 +215,8 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err = notificationTemplate.ExecuteTemplate(w, "layout", data)
@@ -335,6 +401,62 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
+	logger := logger.WithField("route", r.URL.String())
+	user, session, err := getUserSession(w, r)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	redirectURI := r.FormValue("redirect_uri")
+
+	if user.Authenticated == true {
+		appData, err := db.GetAppDataFromRedirectUri(redirectURI)
+		if err != nil {
+			logger.Errorf("error app no found: %v %v", user.UserID, err)
+			utils.SetFlash(w, r, authSessionName, "Error: App not found. Is your redirect_uri correct and registered?")
+			session.Save(r, w)
+			http.Redirect(w, r, "/user/authorize", http.StatusSeeOther)
+			return
+		}
+
+		callbackTemplate := appData.RedirectURI + "?code="
+
+		codeBytes, err1 := utils.GenerateRandomBytesSecure(32)
+		if err1 != nil {
+			logger.Errorf("error creating secure random bytes for user: %v %v", user.UserID, err1)
+			http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+			utils.SetFlash(w, r, authSessionName, "Error: Could not create secure random bytes.")
+			session.Save(r, w)
+			http.Redirect(w, r, "/user/authorize", http.StatusSeeOther)
+			return
+		}
+
+		code := hex.EncodeToString(codeBytes) // return to user
+		codeHashedBytes := sha256.Sum256([]byte(code))
+		codeHashed := hex.EncodeToString(codeHashedBytes[:]) // save hashed code in db
+
+		err2 := db.AddAuthorizeCode(user.UserID, codeHashed, appData.ID)
+		if err2 != nil {
+			logger.Errorf("error adding authorization code for user: %v %v", user.UserID, err2)
+			utils.SetFlash(w, r, authSessionName, "Error: Couldn't link your account")
+			session.Save(r, w)
+			http.Redirect(w, r, "/user/authorize", http.StatusSeeOther)
+			return
+		}
+
+		callback := callbackTemplate + codeHashed
+		http.Redirect(w, r, callback, http.StatusSeeOther)
+		return
+	} else {
+		logger.Error("Not authorized")
+		http.Redirect(w, r, "/user/authorize", http.StatusSeeOther)
+		return
+	}
 }
 
 func UserDeletePost(w http.ResponseWriter, r *http.Request) {

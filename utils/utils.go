@@ -1,6 +1,7 @@
 package utils
 
 import (
+	securerand "crypto/rand"
 	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/types"
@@ -10,7 +11,6 @@ import (
 	"log"
 	"math"
 	"math/big"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -67,8 +67,10 @@ func GetTemplateFuncs() template.FuncMap {
 		"add":                                     func(i, j int) int { return i + j },
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"gtf":                                     func(i, j float64) bool { return i > j },
-		"round":                                   func(i float64, n int) float64 { return math.Round(i*math.Pow10(n)) / math.Pow10(n) },
-		"percent":                                 func(i float64) float64 { return i * 100 },
+		"round": func(i float64, n int) float64 {
+			return math.Round(i*math.Pow10(n)) / math.Pow10(n)
+		},
+		"percent": func(i float64) float64 { return i * 100 },
 		"formatThousands": func(i float64) string {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
@@ -177,6 +179,20 @@ func MustParseHex(hexString string) []byte {
 	return data
 }
 
+func CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Headers:", "*")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "*")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+		return
+	})
+}
+
 func IsApiRequest(r *http.Request) bool {
 	query, ok := r.URL.Query()["format"]
 	return ok && len(query) > 0 && query[0] == "json"
@@ -206,15 +222,23 @@ func RoundDecimals(f float64, n int) float64 {
 
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 
-var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
-
 // RandomString returns a random hex-string
 func RandomString(length int) string {
-	b := make([]byte, length)
+	b, _ := GenerateRandomBytesSecure(length)
 	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
+		b[i] = charset[int(b[i])%len(charset)]
 	}
 	return string(b)
+}
+
+func GenerateRandomBytesSecure(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := securerand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
 
 func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
