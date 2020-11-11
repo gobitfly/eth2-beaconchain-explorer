@@ -149,12 +149,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(name) LIKE LOWER($1)
 			ORDER BY index LIMIT 10`, search+"%")
 	case "indexed_validators_by_eth1_addresses":
+		// find validators per eth1-address (limit result by 10 addresses and 100 validators per address)
 		result = &[]struct {
 			Eth1Address      string        `db:"from_address" json:"eth1_address"`
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 			Count            uint64        `db:"count" json:"-"`
 		}{}
-		// find validators per eth1-address (limit result by 10 addresses and 100 validators per address)
 		err = db.DB.Select(result, `
 			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
@@ -170,12 +170,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			GROUP BY from_address
 			ORDER BY count DESC`, search+"%")
 	case "indexed_validators_by_graffiti":
+		// find validators per graffiti (limit result by 10 graffities and 100 validators per graffiti)
 		res := []struct {
 			Graffiti         string        `db:"graffiti" json:"graffiti"`
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
 			Count            uint64        `db:"count" json:"-"`
 		}{}
-		// find validators per graffiti (limit result by 10 graffities and 100 validators per graffiti)
 		err = db.DB.Select(&res, `
 			SELECT graffiti, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
@@ -199,6 +199,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		result = &res
 	case "indexed_validators_by_name":
+		// find validators per name (limit result by 10 names and 100 validators per name)
 		res := []struct {
 			Name             string        `db:"name" json:"name"`
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
@@ -206,14 +207,17 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}{}
 		err = db.DB.Select(&res, `
 			SELECT name, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
-				SELECT validatorindex, name
-				FROM validators 
+				SELECT
+					validatorindex,
+					name,
+					DENSE_RANK() OVER(PARTITION BY name ORDER BY validatorindex) AS validatorrow,
+					DENSE_RANK() OVER(PARTITION BY name) AS namerow
+				FROM validators
 				WHERE LOWER(name) LIKE LOWER($1)
-				ORDER BY validatorindex LIMIT 100
-			) a 
+			) a
+			WHERE validatorrow <= 101 AND namerow <= 10
 			GROUP BY name
-			ORDER BY count DESC
-			LIMIT 10`, "%"+search+"%")
+			ORDER BY count DESC, name DESC`, "%"+search+"%")
 		if err == nil {
 			for i := range res {
 				res[i].Name = string(utils.FormatValidatorName(res[i].Name))

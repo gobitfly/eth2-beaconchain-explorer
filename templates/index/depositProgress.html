@@ -7,7 +7,7 @@
       {{if gt .ValidatorsRemaining 0.0}}
       <span class="text-muted">{{.ValidatorsRemaining | formatThousands}} validators left</span>
       {{else}}
-      <span class="text-muted">deposit threshold reached</span>
+      <span class="text-muted">Deposit threshold reached 🎉</span>
       <!-- <span class="text-muted text-success">{{round (percent ((div (.DepositedTotal) (.DepositThreshold)))) 2 }}%</span> -->
       {{end}}
     </h6>

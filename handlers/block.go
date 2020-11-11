@@ -62,7 +62,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
-		//logger.Errorf("error retrieving block data: %v", err)
+		logger.Errorf("error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
@@ -77,34 +77,34 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	blockPageData.Mainnet = utils.Config.Chain.Mainnet
 	err = db.DB.Get(&blockPageData, `
 		SELECT
-			epoch,
-			slot,
-			blockroot,
-			parentroot,
-			stateroot,
-			signature,
-			randaoreveal,
-			graffiti,
-			eth1data_depositroot,
-			eth1data_depositcount,
-			eth1data_blockhash,
-			proposerslashingscount,
-			attesterslashingscount,
-			attestationscount,
-			depositscount,
-			voluntaryexitscount,
-			proposer,
-			status,
+			blocks.epoch,
+			blocks.slot,
+			blocks.blockroot,
+			blocks.parentroot,
+			blocks.stateroot,
+			blocks.signature,
+			blocks.randaoreveal,
+			blocks.graffiti,
+			blocks.eth1data_depositroot,
+			blocks.eth1data_depositcount,
+			blocks.eth1data_blockhash,
+			blocks.proposerslashingscount,
+			blocks.attesterslashingscount,
+			blocks.attestationscount,
+			blocks.depositscount,
+			blocks.voluntaryexitscount,
+			blocks.proposer,
+			blocks.status,
 			COALESCE(validators.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-		WHERE slot = $1 OR blockroot = $2 ORDER BY status LIMIT 1`,
+		WHERE blocks.slot = $1 OR blocks.blockroot = $2 ORDER BY blocks.status LIMIT 1`,
 		blockSlot, blockRootHash)
 
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
-		//logger.Errorf("error retrieving block data: %v", err)
+		logger.Errorf("error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
