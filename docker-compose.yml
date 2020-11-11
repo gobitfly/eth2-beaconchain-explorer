@@ -19,7 +19,8 @@ services:
         environment:
             - POSTGRES_PASSWORD=pass
             - POSTGRES_USER=postgres
-            - POSTGRES_DB=db
+            # - POSTGRES_DB=db // goerli db
+            - POSTGRES_DB=maindb
             - PGDATA=/postgresql/data
         volumes:
             - db:/postgresql/data
