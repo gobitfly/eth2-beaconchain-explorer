@@ -35,6 +35,22 @@
         #slashings-table td:first-child {
             white-space: break-spaces;
         }
+
+		.validator-summary-div{
+			background-color: rgba(254,54,85,10);
+			//width: 61.8vw;
+			height: 50vh;
+		}
+		.validator-live-info-div{
+			background-color: rgba(24,154,85,10);
+			//width: 38.2vw;
+			height: 80vh;
+		}
+		.validator-charts-div{
+			background-color: rgba(24,14,185,10);
+			//width: 61.8vw;
+			height: 30vh;
+		}
 	</style>
 {{end}}
 
@@ -48,6 +64,19 @@
 				</button>
 			</div>
         {{end}}
+
+		<div class="row">
+			<div class="col-lg-8">
+				<div class="row">
+					<div class="col validator-summary-div"></div>
+				</div>
+				<div class="row">
+					<div class="col validator-charts-div"></div>
+				</div>
+			</div>
+
+			<div class="col validator-live-info-div"></div>
+		</div>
 
 		<div class="my-3 py-2">
 			<div class="d-md-flex justify-content-md-between">
