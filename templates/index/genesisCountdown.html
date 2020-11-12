@@ -63,7 +63,7 @@
 		<strong>Waiting on min genesis time announcement</strong>
 		{{else}}
 			<strong id="clock">
-				<span data-toggle="tooltip" title="Estimated Genesis Time according to the rate of deposits" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTimestamp}})
+			<span data-toggle="tooltip" title="Estimated Genesis Time according to the rate of deposits"><span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span>({{.NetworkStartTs | formatTsWithoutTooltip}})</span>
 			</strong>
 		{{end}}
   </p>
