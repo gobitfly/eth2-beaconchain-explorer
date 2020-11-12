@@ -24,6 +24,7 @@ var ChartHandlers = map[string]chartHandler{
 	"average_balance":                {4, averageBalanceChartData},
 	"network_liveness":               {5, networkLivenessChartData},
 	"participation_rate":             {6, participationRateChartData},
+	"inclusion_distance":             {6, inclusionDistanceChartData},
 	"validator_income":               {7, averageDailyValidatorIncomeChartData},
 	"staking_rewards":                {8, stakingRewardsChartData},
 	"stake_effectiveness":            {9, stakeEffectivenessChartData},
@@ -401,6 +402,61 @@ func participationRateChartData() (*types.GenericChartData, error) {
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Participation Rate",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func inclusionDistanceChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	latestEpoch := LatestEpoch()
+	epochOffset := uint64(0)
+	maxEpochs := 7 * 3600 * 24 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
+	if latestEpoch > maxEpochs {
+		epochOffset = latestEpoch - maxEpochs
+	}
+
+	rows := []struct {
+		Epoch             uint64
+		Inclusiondistance float64
+	}{}
+
+	err := db.DB.Select(&rows, `
+		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
+		from attestation_assignments a
+		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
+		where a.inclusionslot > 0 and a.epoch > $1
+		group by a.epoch
+		order by a.epoch asc`, epochOffset)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
+			utils.RoundDecimals(row.Inclusiondistance, 2),
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Average Inclusion Distance (last 7 days)",
+		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Average Inclusion Distance [slots]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Average Inclusion Distance",
 				Data: seriesData,
 			},
 		},
