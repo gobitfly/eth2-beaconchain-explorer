@@ -545,6 +545,7 @@ type GenericChartData struct {
 	XAxisLabelsFormatter            template.JS
 	TooltipFormatter                template.JS
 	PlotOptionsSeriesEventsClick    template.JS
+	PlotOptionsPie                  template.JS
 	PlotOptionsSeriesCursor         string
 	Title                           string                    `json:"title"`
 	Subtitle                        string                    `json:"subtitle"`
