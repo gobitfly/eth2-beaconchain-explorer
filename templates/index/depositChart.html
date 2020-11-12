@@ -1,6 +1,6 @@
 {{ define "depositChart" }}
   <div style="position:relative;" class="d-flex flex-column justify-content-center">
-    <div id="deposit-chart" class="h-100">
+    <div id="deposit-chart" class="h-100 text-center">
         <svg id="f52ea72b-4bf4-4ca0-b256-883445bd7321" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" style="max-height: 180px;" viewBox="0 0 649.3779 727.77798">
             <path d="M648.20033,259.05824h-3.99878V149.51291A63.40187,63.40187,0,0,0,580.79976,86.111H348.713a63.40184,63.40184,0,0,0-63.402,63.4017V750.48713A63.40181,63.40181,0,0,0,348.71284,813.889H580.79945a63.40185,63.40185,0,0,0,63.402-63.40167V337.0345h3.99884Z"
               transform="translate(-285.31105 -86.11101)" fill="#e6e6e6" />
@@ -50,6 +50,16 @@
     </div>
     <script>
         {{if .DepositChart}}
+        console.log('series', {{.DepositChart.Data.Series}})
+    var series = {{.DepositChart.Data.Series}}
+    var filteredSeries = []
+    if (series && series.length) {
+      for (let i = 0; i < series.length; i++) {
+        if (series && series[i].data && series[i].data.length) {
+          filteredSeries.push(series[i])
+        }
+      }
+    }
     window.addEventListener('load', function() {
         Highcharts.stockChart('deposit-chart',{
             chart: {
@@ -95,7 +105,7 @@
                 title: { text: {{.DepositChart.Data.YAxisTitle}} },
                 opposite: false,
             }],
-            series: {{.DepositChart.Data.Series}},
+            series: filteredSeries,
             navigator: { enabled: false },
             scrollbar: { enabled: false },
             tooltip: {

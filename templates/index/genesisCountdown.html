@@ -11,7 +11,9 @@
 		if (-1 < hour && hour <= 48) {
 			$('#clock').html(hour + ' hr ' + min + ' min ' + seconds + ' sec')
 			$('#estimated').html('Countdown')
-			$('#estimated+span').removeClass('d-none')
+			$('#minGenesis').addClass('d-none')
+			$('#networkStart').removeClass('d-none')
+			// $('#estimated+span').removeClass('d-none')
 			var countdownInterval = setInterval(function () {
 				if (hour === 0 && min === 0 && seconds === 0) {
 					clearInterval(countdownInterval)
@@ -28,7 +30,20 @@
 					min -= 1
 				}
 				seconds -= 1
-				$('#clock').html(hour + ' hr ' + min + ' min ' + seconds + ' sec')
+				var s = seconds
+				if (seconds < 10) {
+					s = '0'+ s 
+				}
+				var m = min
+				if (min < 10) {
+					m = '0' + m
+				}
+
+				var h = hour
+				if (h < 10) {
+					h = '0' + h
+				}
+				$('#clock').html(h + ' hr ' + m + ' min ' + s + ' sec')
 			}, 1000)
 		}
 	})
@@ -36,10 +51,11 @@
 <div class="d-flex flex-column justify-content-center">
   <h6 class="d-flex justify-content-between">
     <span id="estimated">
-      Estimated
+      Estimated between:
 		</span>
 		{{if gt .NetworkStartTs 0}}
-		<small class="text-muted d-inline-block d-none" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></small>
+			<small id="minGenesis" data-toggle="tooltip" title="Earliest possible (Min) Genesis Time" class="text-muted" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.MinGenesisTime}}"></small>
+			<small id="networkStart" data-toggle="tooltip" title="Genesis Time" class="text-muted d-none" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></small>
 		{{end}}
   </h6>
   <p class="align-self-center">
@@ -47,7 +63,7 @@
 		<strong>Waiting on min genesis time announcement</strong>
 		{{else}}
 			<strong id="clock">
-				<span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTimestamp}})
+				<span data-toggle="tooltip" title="Estimated Genesis Time according to the rate of deposits" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTimestamp}})
 			</strong>
 		{{end}}
   </p>

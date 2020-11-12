@@ -111,31 +111,42 @@
 					</div>
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the current state of the block">Status:</span></div>
-						<div class="col-md-10">{{formatBlockStatus .Status}}</div>
+						<div class="col-md-10">
+							{{ if ne .Slot 0 }}
+								{{formatBlockStatus .Status}}
+							{{ else }}
+								<span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
+							{{ end }}
+						</div>
 					</div>
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2">Time:</div>
 						<div class="col-md-10"><span aria-ethereum-date="{{.Ts.Unix}}">{{.Ts}}</span> (<span aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW"></span>)
 						</div>
 					</div>
+					{{ if ne .Slot 0 }}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A chosen validator by the beacon chain to propose the next block">Proposer:</span></div>
 						<div class="col-md-10">{{formatValidatorWithName .Proposer .ProposerName}}</div>
 					</div>
+					{{ end }}
 					{{ if (or (eq .Status 1) (eq .Status 3)) }}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash-tree-root of the BeaconBlock">Block Root:</span></div>
 						<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}}</div>
 					</div>
+					{{ if ne .Slot 0 }}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash pointing to the previous block">Parent Root:</span></div>
 						<div class="col-md-10 text-monospace text-break"><a href="/block/{{printf "%x" .ParentRoot}}">0x{{printf "%x" .ParentRoot}}</a>
 						</div>
 					</div>
+					{{ end }}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash-tree-root of the BeaconState">State Root:</span></div>
 						<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .StateRoot}}</div>
 					</div>
+					{{ if ne .Slot 0 }}
 					<div class="row border-bottom p-3 mx-0">
 						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The BLS signature obtained by using the BeaconState, BeaconBlock and private key">Signature:</span></div>
 						<div class="col-md-10 text-monospace text-break">0x{{printf "%x" .Signature}}</div>
@@ -187,11 +198,7 @@
 						<div class="col-md-10"><b>{{.AttestationsCount}}</b></div>
 					</div>
 					<div class="row border-bottom p-3 mx-0">
-						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator deposits which have been included in this block by the block proposer">Deposits:</span></div>
-						<div class="col-md-10"><b>{{.DepositsCount}}</b></div>
-					</div>
-					<div class="row border-bottom p-3 mx-0">
-						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voluntary Exits which have been included in this block by the block proposer">Voluntary Exits:</span></div>
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voluntary Exits which have been included in this block by the block proposer">Voluntary Exits:</span></div>
 						<div class="col-md-10"><b>{{.VoluntaryExitscount}}</b></div>
 					</div>
 					<div class="row p-3 mx-0">
@@ -200,7 +207,12 @@
 							<b>{{.ProposerSlashingsCount}}</b> proposer slashings
 						</div>
 					</div>
-					{{end}}
+					{{ end }}
+					<div class="row border-bottom p-3 mx-0">
+						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator deposits which have been included in this block by the block proposer">Deposits:</span></div>
+						<div class="col-md-10"><b>{{.DepositsCount}}</b></div>
+					</div>
+					{{ end }}
 				</div>
 			</div>
 		</div>
