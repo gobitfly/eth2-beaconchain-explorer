@@ -34,7 +34,8 @@ var eth1DepositContractFirstBlock uint64
 var eth1DepositContractAddress common.Address
 var eth1Client *ethclient.Client
 var eth1RPCClient *gethRPC.Client
-var infuraToMuchResultsError = regexp.MustCompile("query returned more than [0-9]+ results")
+var infuraToMuchResultsErrorRE = regexp.MustCompile("query returned more than [0-9]+ results")
+var gethRequestEntityTooLargeRE = regexp.MustCompile("413 Request Entity Too Large")
 
 // eth1DepositsExporter regularly fetches the depositcontract-logs of the
 // last 100 blocks and exports the deposits into the database.
@@ -97,7 +98,7 @@ func eth1DepositsExporter() {
 
 		depositsToSave, err := fetchEth1Deposits(fromBlock, toBlock)
 		if err != nil {
-			if infuraToMuchResultsError.MatchString(err.Error()) {
+			if infuraToMuchResultsErrorRE.MatchString(err.Error()) || gethRequestEntityTooLargeRE.MatchString(err.Error()) {
 				toBlock = fromBlock + 100
 				if toBlock > blockHeight {
 					toBlock = blockHeight
@@ -403,6 +404,13 @@ func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
 		domain, err = ComputeDomain(
 			cfg.DomainDeposit,
 			[]byte{0x00, 0x70, 0x1E, 0xD0},
+			cfg.ZeroHash[:],
+		)
+	}
+	if utils.Config.Chain.Network == "pyrmont" {
+		domain, err = ComputeDomain(
+			cfg.DomainDeposit,
+			[]byte{0x00, 0x00, 0x20, 0x09},
 			cfg.ZeroHash[:],
 		)
 	}
