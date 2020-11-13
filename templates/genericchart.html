@@ -8,7 +8,7 @@
 <script>
 {{if .IsNormalChart}}
 Highcharts.chart('chart',{
-	chart: { type: {{.Type}} },
+	chart: { type: {{.Type}}, height: 600 },
 	rangeSelector: {  enabled: false },
 	title: { text: {{.Title}} },
 	subtitle: { text: {{.Subtitle}} },
