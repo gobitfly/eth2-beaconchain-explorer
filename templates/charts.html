@@ -26,6 +26,7 @@ chartFns.push(function(){
             },
             plotOptions: { 
                 column: { stacking: {{.Data.StackingMode}} }, 
+                {{ if .Data.PlotOptionsPie }}pie: {{.Data.PlotOptionsPie}},{{ end }}
                 wordcloud: {
                     rotation: {
                         from: -10, to: 10, orientations: 5,
