@@ -50,7 +50,6 @@
     </div>
     <script>
         {{if .DepositChart}}
-        console.log('series', {{.DepositChart.Data.Series}})
     var series = {{.DepositChart.Data.Series}}
     var filteredSeries = []
     if (series && series.length) {
@@ -65,7 +64,6 @@
             chart: {
                type: {{.DepositChart.Data.Type}},
                height: 180,
-
             },
             rangeSelector: {  enabled: false },
             // title: { 

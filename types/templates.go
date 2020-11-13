@@ -90,6 +90,7 @@ type IndexPageData struct {
 	GenesisPeriod             bool                   `json:"genesis_period"`
 	Mainnet                   bool                   `json:"-"`
 	DepositChart              *ChartsPageDataChart
+	DepositDistribution       *ChartsPageDataChart
 }
 
 type IndexPageDataEpochs struct {

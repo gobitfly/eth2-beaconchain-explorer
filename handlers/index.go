@@ -26,6 +26,7 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 	"templates/index/recentBlocks.html",
 	"templates/index/recentEpochs.html",
 	"templates/index/genesisCountdown.html",
+	"templates/index/depositDistribution.html",
 	"templates/components/banner.html",
 	"templates/svg/bricks.html",
 	"templates/svg/professor.html",

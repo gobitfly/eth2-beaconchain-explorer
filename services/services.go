@@ -182,10 +182,18 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
+		genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+
+		minGenesisTime = minGenesisTime.Add(genesisDelay)
+
 		data.NetworkStartTs = minGenesisTime.Unix()
 		data.MinGenesisTime = minGenesisTime.Unix()
+
+		if minGenesisTime.Before(time.Now()) {
+			minGenesisTime = time.Now()
+		}
 
 		// enough deposits
 		if data.DepositedTotal > data.DepositThreshold {
@@ -194,7 +202,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				depositThresholdReached.Store(true)
 			}
 			eth1Block := eth1BlockDepositReached.Load().(time.Time)
-			genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay))
 
 			if !(startSlotTime == time.Unix(0, 0)) && eth1Block.Add(genesisDelay).After(minGenesisTime) {
 				// Network starts after min genesis time
@@ -206,9 +213,9 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		if latestChartsPageData != nil {
 			for _, c := range *latestChartsPageData {
 				if c.Path == "deposits" {
-
 					data.DepositChart = c
-					break
+				} else if c.Path == "deposits_distribution" {
+					data.DepositDistribution = c
 				}
 			}
 		}
@@ -222,14 +229,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
 			estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
 			if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
-				data.NetworkStartTs = estimatedTimeToThreshold.Unix()
+				data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
 			}
 		}
 	}
-
-	// for _, el := range series[1].Data {
-	// 	el
-	// }
 
 	// has genesis occured
 	if now.After(startSlotTime) {
