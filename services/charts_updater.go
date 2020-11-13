@@ -1459,9 +1459,17 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		Title:            "Deposits Distribution",
 		Subtitle:         "Deposits Distribution by ETH1-Addresses.",
 		TooltipFormatter: `function(){ return '<b>'+this.point.name+'</b><br\>Percentage: '+this.point.percentage.toFixed(2)+'%<br\>Validators: '+this.point.y }`,
-		PlotOptionsPie: `{ dataLabels: { enabled:true, formatter:function(){ 
-			var name = this.point.name.length > 8 ? this.point.name.substring(0,8) : this.point.name;
-			return '<b>'+name+'…</b>: '+this.point.y+' ('+this.point.percentage.toFixed(2)+'%)' } } }`,
+		PlotOptionsPie: `{
+			borderWidth: 1,
+			borderColor: null, 
+			dataLabels: { 
+				enabled:true, 
+				formatter: function() { 
+					var name = this.point.name.length > 8 ? this.point.name.substring(0,8) : this.point.name;
+					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'…</b><span style="stroke:none; fill: var(--font-color)">: '+this.point.y+' ('+this.point.percentage.toFixed(2)+'%)</span></span>' 
+				} 
+			} 
+		}`,
 		PlotOptionsSeriesCursor: "pointer",
 		PlotOptionsSeriesEventsClick: `function(event){ 
 			if (event.point.name == 'others') { window.location.href = '/validators/eth1deposits' }
