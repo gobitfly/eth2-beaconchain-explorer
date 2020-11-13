@@ -406,6 +406,13 @@ func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
 			cfg.ZeroHash[:],
 		)
 	}
+	if utils.Config.Chain.Network == "pyrmont" {
+		domain, err = ComputeDomain(
+			cfg.DomainDeposit,
+			[]byte{0x00, 0x00, 0x20, 0x09},
+			cfg.ZeroHash[:],
+		)
+	}
 	if err != nil {
 		return fmt.Errorf("could not get domain: %w", err)
 	}
