@@ -37,19 +37,21 @@
         }
 
 		.validator-summary-div{
-			background-color: rgba(254,54,85,10);
+			background-color: rgba(50,50,50,0.5);
 			//width: 61.8vw;
 			height: 50vh;
 		}
 		.validator-live-info-div{
-			background-color: rgba(24,154,85,10);
+			background-color: rgba(250,250,250,0.5);
 			//width: 38.2vw;
 			height: 80vh;
 		}
 		.validator-charts-div{
-			background-color: rgba(24,14,185,10);
+			background-color: rgba(250,250,250,0.5);
 			//width: 61.8vw;
 			height: 30vh;
+			border-right-color: rgba(50,50,50,0.5);
+			border-right-style: solid;
 		}
 	</style>
 {{end}}
@@ -64,19 +66,6 @@
 				</button>
 			</div>
         {{end}}
-
-		<div class="row">
-			<div class="col-lg-8">
-				<div class="row">
-					<div class="col validator-summary-div"></div>
-				</div>
-				<div class="row">
-					<div class="col validator-charts-div"></div>
-				</div>
-			</div>
-
-			<div class="col validator-live-info-div"></div>
-		</div>
 
 		<div class="my-3 py-2">
 			<div class="d-md-flex justify-content-md-between">
@@ -126,6 +115,117 @@
 				</nav>
 			</div>
 			<div class="text-monospace text-secondary text-truncate text-sm mb-0" id="copy-input">0x{{printf "%x" .PublicKey}}</div>
+		</div>
+
+		<div class="row">
+			<div class="col-lg-8">
+				<div class="row">
+					<div class="col validator-summary-div">
+						<ul style="margin-bottom: -1px;" class="nav nav-tabs" id="pills-tab" role="tablist">
+							<li class="nav-item">
+								<a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab"
+								aria-controls="overview" aria-selected="true"><i class="tab-icon mr-md-1 far fa-chart-bar"></i><span class="tab-text">Overview</span></a>
+							</li>
+							<li class="nav-item">
+								<a class="nav-link" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
+								aria-controls="blocks" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Proposed Blocks</span> <span class="badge bg-secondary text-white">{{.ProposedBlocksCount}}</span></a>
+							</li>
+							<li class="nav-item">
+								<a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab"
+								aria-controls="attestations" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-file-signature"></i><span class="tab-text">Attestations</span> <span class="badge bg-secondary text-white">{{if eq .AttestationsCount 10000}}&gt;10000{{else}}{{.AttestationsCount}}{{end}}</span></a>
+							</li>
+							<li class="nav-item">
+								<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab"
+								aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span> <span class="badge bg-secondary text-white">{{len .Deposits.Eth1Deposits}}</span></a>
+							</li>
+							{{if gt .SlashingsCount 0}}
+								<li class="nav-item">
+									<a class="nav-link" id="slashings-tab" data-toggle="tab" href="#slashings" role="tab"
+									aria-controls="slashings" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-user-slash"></i><span class="tab-text">Slashings</span> <span class="badge bg-secondary text-white">{{if gt .SlashingsCount 10000}}>10000{{else}}{{.SlashingsCount}}{{end}}</span></a>
+								</li>
+							{{end}}
+						</ul>
+
+						<!-- Start Validator Lifecycle State Diagram -->
+						<div class="validator__lifecycle-container">
+							<div class="validator__lifecycle-content">
+								<div id="lifecycle-deposited" class="validator__lifecycle-node-container validator__lifecycle-deposited">
+									<div class="validator__lifecycle-node-header">Deposited</div>
+									<div class="validator__lifecycle-node">
+										<i class="fas fa-check deposit-success"></i>
+										<i class="fas fa-times fail deposit-fail"></i>
+										<div class="spinner">
+											<div class="double-bounce1"></div>
+											<div class="double-bounce2"></div>
+										</div>
+									</div>
+								</div>
+								<div class="validator__lifecycle-progress validator__lifecycle-deposited text-white"></div>
+								<div id="lifecycle-pending" class="validator__lifecycle-node-container validator__lifecycle-pending">
+									<div class="validator__lifecycle-node-container">
+										<div class="validator__lifecycle-node-header">Pending</div>
+										<div class="validator__lifecycle-node">
+											<i class="fas fa-hourglass-half pending-waiting"></i>
+											<i class="fas fa-check"></i>
+											<div class="spinner">
+												<div class="double-bounce1"></div>
+												<div class="double-bounce2"></div>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="validator__lifecycle-progress validator__lifecycle-pending"></div>
+								<div id="lifecycle-active" class="validator__lifecycle-node-container validator__lifecycle-active">
+									<div class="validator__lifecycle-node-container">
+										<div class="validator__lifecycle-node-header">Active</div>
+										<div class="validator__lifecycle-node">
+											<i class="fas fa-power-off online"></i>
+											<i class="fas fa-power-off offline"></i>
+											<i class="fas fa-check"></i>
+											<div class="spinner">
+												<div class="double-bounce1"></div>
+												<div class="double-bounce2"></div>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="validator__lifecycle-progress validator__lifecycle-active"></div>
+								<div id="lifecycle-exited" class="validator__lifecycle-node-container validator__lifecycle-exited">
+									<div class="validator__lifecycle-node-container">
+										<div class="validator__lifecycle-node-header">Exited</div>
+										<div class="validator__lifecycle-node">
+											<i class="fas fa-door-open"></i>
+											<div class="spinner">
+												<div class="double-bounce1"></div>
+												<div class="double-bounce2"></div>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<!-- End Validator Lifecycle State Diagram -->
+						
+							<div class="row" style="justify-content: center">
+								<div class="col-sm-2">
+									{{.EffectiveBalance | formatEffectiveBalance}}
+								</div>
+								<div class="col-sm-2">
+									{{.Status | formatValidatorStatus}}
+								</div>
+								<div class="col-sm-2">
+									{{.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}}
+								</div>
+							</div>
+						
+					</div>
+				</div>
+				<div class="row">
+					<div class="col validator-charts-div"></div>
+				</div>
+			</div>
+
+			<div class="col validator-live-info-div"></div>
 		</div>
 
 		<!-- Edit Validator Modals -->
@@ -206,91 +306,6 @@
 			</form>
 		</div>
 
-		<!-- Start Validator Lifecycle State Diagram -->
-		<div class="validator__lifecycle-container">
-			<div class="validator__lifecycle-content">
-				<div id="lifecycle-deposited" class="validator__lifecycle-node-container validator__lifecycle-deposited">
-					<div class="validator__lifecycle-node-header">Deposited</div>
-					<div class="validator__lifecycle-node">
-						<i class="fas fa-check deposit-success"></i>
-						<i class="fas fa-times fail deposit-fail"></i>
-						<div class="spinner">
-							<div class="double-bounce1"></div>
-							<div class="double-bounce2"></div>
-						</div>
-					</div>
-				</div>
-				<div class="validator__lifecycle-progress validator__lifecycle-deposited text-white"></div>
-				<div id="lifecycle-pending" class="validator__lifecycle-node-container validator__lifecycle-pending">
-					<div class="validator__lifecycle-node-container">
-						<div class="validator__lifecycle-node-header">Pending</div>
-						<div class="validator__lifecycle-node">
-							<i class="fas fa-hourglass-half pending-waiting"></i>
-							<i class="fas fa-check"></i>
-							<div class="spinner">
-								<div class="double-bounce1"></div>
-								<div class="double-bounce2"></div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="validator__lifecycle-progress validator__lifecycle-pending"></div>
-				<div id="lifecycle-active" class="validator__lifecycle-node-container validator__lifecycle-active">
-					<div class="validator__lifecycle-node-container">
-						<div class="validator__lifecycle-node-header">Active</div>
-						<div class="validator__lifecycle-node">
-							<i class="fas fa-power-off online"></i>
-							<i class="fas fa-power-off offline"></i>
-							<i class="fas fa-check"></i>
-							<div class="spinner">
-								<div class="double-bounce1"></div>
-								<div class="double-bounce2"></div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="validator__lifecycle-progress validator__lifecycle-active"></div>
-				<div id="lifecycle-exited" class="validator__lifecycle-node-container validator__lifecycle-exited">
-					<div class="validator__lifecycle-node-container">
-						<div class="validator__lifecycle-node-header">Exited</div>
-						<div class="validator__lifecycle-node">
-							<i class="fas fa-door-open"></i>
-							<div class="spinner">
-								<div class="double-bounce1"></div>
-								<div class="double-bounce2"></div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-		<!-- End Validator Lifecycle State Diagram -->
-
-
-		<ul style="margin-bottom: -1px;" class="nav nav-tabs" id="pills-tab" role="tablist">
-			<li class="nav-item">
-				<a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab"
-				   aria-controls="overview" aria-selected="true"><i class="tab-icon mr-md-1 far fa-chart-bar"></i><span class="tab-text">Overview</span></a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
-				   aria-controls="blocks" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Proposed Blocks</span> <span class="badge bg-secondary text-white">{{.ProposedBlocksCount}}</span></a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab"
-				   aria-controls="attestations" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-file-signature"></i><span class="tab-text">Attestations</span> <span class="badge bg-secondary text-white">{{if eq .AttestationsCount 10000}}&gt;10000{{else}}{{.AttestationsCount}}{{end}}</span></a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab"
-				   aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span> <span class="badge bg-secondary text-white">{{len .Deposits.Eth1Deposits}}</span></a>
-			</li>
-            {{if gt .SlashingsCount 0}}
-				<li class="nav-item">
-					<a class="nav-link" id="slashings-tab" data-toggle="tab" href="#slashings" role="tab"
-					   aria-controls="slashings" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-user-slash"></i><span class="tab-text">Slashings</span> <span class="badge bg-secondary text-white">{{if gt .SlashingsCount 10000}}>10000{{else}}{{.SlashingsCount}}{{end}}</span></a>
-				</li>
-            {{end}}
-		</ul>
 
         {{ $deposited := or (or (eq .Status "deposited") (eq .Status "deposited_valid")) (eq .Status "deposited_invalid")  }}
 		<div class="tab-content">
