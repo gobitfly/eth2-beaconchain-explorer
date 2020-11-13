@@ -7,11 +7,11 @@
 		var seconds = secondsLeft % 60
 		var min = ((secondsLeft - seconds) / 60) % 60
 		var hour = Math.round((secondsLeft - seconds - (min * 60)) / 3600)
-	
 		if (-1 < hour && hour <= 48) {
 			$('#clock').html(hour + ' hr ' + min + ' min ' + seconds + ' sec')
 			$('#estimated').html('Countdown')
 			$('#minGenesis').addClass('d-none')
+			$('#minGenesisAnd').addClass('d-none')
 			$('#networkStart').removeClass('d-none')
 			// $('#estimated+span').removeClass('d-none')
 			var countdownInterval = setInterval(function () {
@@ -51,21 +51,30 @@
 <div class="d-flex flex-column justify-content-center">
   <h6 class="d-flex justify-content-between">
     <span id="estimated">
-      Estimated between:
+      Estimated {{if not (eq .NetworkStartTs .MinGenesisTime)}}between:{{end}}
 		</span>
 		{{if gt .NetworkStartTs 0}}
-			<small id="minGenesis" data-toggle="tooltip" title="Earliest possible (Min) Genesis Time" class="text-muted" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.MinGenesisTime}}"></small>
 			<small id="networkStart" data-toggle="tooltip" title="Genesis Time" class="text-muted d-none" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></small>
 		{{end}}
   </h6>
-  <p class="align-self-center">
+  <div class="align-self-center text-center">
 		{{if eq .NetworkStartTs 0 }}
-		<strong>Waiting on min genesis time announcement</strong>
+		<div>
+			<strong>Waiting on min genesis time announcement</strong>
+		</div>
 		{{else}}
-			<strong id="clock">
-			<span data-toggle="tooltip" title="Estimated Genesis Time according to the rate of deposits"><span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span>({{.NetworkStartTs | formatTsWithoutTooltip}})</span>
-			</strong>
+		{{if not (eq .NetworkStartTs .MinGenesisTime)}}
+		<div id="minGenesis">
+			<strong data-toggle="tooltip" title="Earliest possible Genesis Time." class="" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.MinGenesisTime}}"></strong>
+		</div>
+		<div id="minGenesisAnd"><span>and</span></div>
 		{{end}}
-  </p>
+		<div>
+			<strong id="clock">
+			<span data-toggle="tooltip" title="Estimated Genesis Time. This time may vary until the deposit threshold is reached."><span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTsWithoutTooltip}})</span>
+			</strong>
+		</div>
+		{{end}}
+  </div>
 </div>
 {{end}}
