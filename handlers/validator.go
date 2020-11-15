@@ -59,6 +59,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
+	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = user
 
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)

@@ -221,6 +221,7 @@ type ValidatorPageData struct {
 	AverageAttestationInclusionDistance float64
 	AttestationInclusionEffectiveness   float64
 	CsrfField                           template.HTML
+	NetworkStats                        *IndexPageData
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
