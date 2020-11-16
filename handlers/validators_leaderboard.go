@@ -137,9 +137,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			SELECT COUNT(*)
 			FROM validator_performance
 				LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+				LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE (encode(validators.pubkey::bytea, 'hex') LIKE $1
 				OR CAST(validators.validatorindex AS text) LIKE $1)
-				OR LOWER(validators.name) LIKE LOWER($1)`, "%"+search+"%")
+				OR LOWER(validator_names.name) LIKE LOWER($1)`, "%"+search+"%")
 		if err != nil {
 			logger.Errorf("error retrieving proposed blocks count with search: %v", err)
 			http.Error(w, "Internal server error", 503)

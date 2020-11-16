@@ -861,10 +861,10 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			res, err := db.DB.Exec(`
 				INSERT INTO validator_names (publickey, name)
 				SELECT publickey, $1 as name
-				FROM (SELECT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature)
+				FROM (SELECT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature) a
 				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, recoveredAddress.Bytes())
 			if err != nil {
-				logger.Errorf("error saving validator name: %v", err)
+				logger.Errorf("error saving validator name (apply to all): %x: %v: %v", pubkeyDecoded, name, err)
 				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
@@ -877,9 +877,9 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			_, err := db.DB.Exec(`
 				INSERT INTO validator_names (publickey, name) 
 				VALUES($2, $1) 
-				ON CONFLICT (publickey) DO UPDATE SET name = $2", name, pubkeyDecoded)`, name, pubkeyDecoded)
+				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, pubkeyDecoded)
 			if err != nil {
-				logger.Errorf("error saving validator name: %v", err)
+				logger.Errorf("error saving validator name: %x: %v: %v", pubkeyDecoded, name, err)
 				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return

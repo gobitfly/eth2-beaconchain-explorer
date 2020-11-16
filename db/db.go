@@ -1156,7 +1156,11 @@ func GetTotalValidatorsCount() (uint64, error) {
 }
 
 func GetValidatorNames() (map[uint64]string, error) {
-	rows, err := DB.Query("SELECT validatorindex, name FROM validators WHERE name IS NOT NULL")
+	rows, err := DB.Query(`
+		SELECT validatorindex, validator_names.name 
+		FROM validators 
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		WHERE validator_names.name IS NOT NULL`)
 
 	if err != nil {
 		return nil, err
