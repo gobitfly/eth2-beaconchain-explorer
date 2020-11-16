@@ -222,6 +222,8 @@ type ValidatorPageData struct {
 	AverageAttestationInclusionDistance float64
 	AttestationInclusionEffectiveness   float64
 	CsrfField                           template.HTML
+	EstimatedActivationTs               int64
+	InclusionDelay                      int64
 }
 
 // DailyProposalCount is a struct for the daily proposal count data

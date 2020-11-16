@@ -15,8 +15,13 @@ type Config struct {
 		SecondsPerSlot                 uint64 `yaml:"secondsPerSlot" envconfig:"CHAIN_SECONDS_PER_SLOT"`
 		GenesisTimestamp               uint64 `yaml:"genesisTimestamp" envconfig:"CHAIN_GENESIS_TIMESTAMP"`
 		MinGenesisActiveValidatorCount uint64 `yaml:"minGenesisActiveValidatorCount" envconfig:"CHAIN_MIN_GENESIS_ACTIVE_VALIDATOR_COUNT"`
+		EpochsPerEth1VotingPeriod      uint64 `yaml:"epochsPerEth1VotingPeriod" envconfig:"EPOCHS_PER_ETH1_VOTING_PERIOD"`
+		Eth1FollowDistance             uint64 `yaml:"eth1FollowDistance" envconfig:"ETH1_FOLLOW_DISTANCE"`
+		SecondsPerEth1Block            uint64 `yaml:"secondsPerEth1Block" envconfig:"SECONDS_PER_ETH1_BLOCK"`
 		GenesisDelay                   uint64 `yaml:"genesisDelay" envconfig:"CHAIN_GENESIS_DELAY"`
 		Mainnet                        bool   `yaml:"mainnet" envconfig:"CHAIN_MAINNET"`
+		MinPerEpochChurnLimit          uint64 `yaml:"minPerEpochChurnLimit" envconfig:"MIN_PER_EPOCH_CHURN_LIMIT"`
+		ChurnLimitQuotient             uint64 `yaml:"churnLimitQuotient" envconfig:"CHURN_LIMIT_QUOTIENT"`
 	} `yaml:"chain"`
 	Indexer struct {
 		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`

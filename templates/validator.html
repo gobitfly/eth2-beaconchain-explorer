@@ -344,7 +344,8 @@
                 {{end}}
 				<div class="row border-bottom p-3 mx-0">
 					<div class="col-md-2">Status:</div>
-					<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}{{if $deposited}} - An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 8 hours</a> until your deposit is processed by the beacon chain. Check out the deposits tab for more details{{end}}</div>
+					<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}{{if $deposited}} -  {{if eq .InclusionDelay 0}} An ETH1 genesis deposit has been made, and your validator will be activated once genesis occurs. Please make sure your validator is up and running before genesis. {{else}} An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a>  until your deposit is processed by the beacon chain. If there is a deposit queue then it may take longer for the validator to be activated. {{end}} This validator will be activated approximately {{.EstimatedActivationTs | formatTsWithoutTooltip}}</span>.
+						{{end}}</div>
 				</div>
                 {{ if gtf .AttestationInclusionEffectiveness 0 }}
 					<div class="row border-bottom p-3 mx-0">

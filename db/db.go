@@ -1155,6 +1155,13 @@ func GetTotalValidatorsCount() (uint64, error) {
 	return totalCount, err
 }
 
+// GetActiveValidatorCount will return the total-validator-count
+func GetActiveValidatorCount(currentEpoch uint64) (uint64, error) {
+	var count uint64
+	err := DB.Get(&count, "SELECT COUNT(*) FROM validators WHERE activationepoch >= $1 AND $2 < exitepoch", currentEpoch, currentEpoch)
+	return count, err
+}
+
 func GetValidatorNames() (map[uint64]string, error) {
 	rows, err := DB.Query("SELECT validatorindex, name FROM validators WHERE name IS NOT NULL")
 
@@ -1178,4 +1185,34 @@ func GetValidatorNames() (map[uint64]string, error) {
 	}
 
 	return validatorIndexToNameMap, nil
+}
+
+// GetPendingValidatorCount queries the pending validators currently in the queue
+func GetPendingValidatorCount() (uint64, error) {
+	count := uint64(0)
+	err := DB.Get(&count, "SELECT entering_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
+	if err != nil && err != sql.ErrNoRows {
+		return 0, fmt.Errorf("error retrieving validator queue count: %v", err)
+	}
+	return count, nil
+}
+
+// GetValidatorChurnLimit returns the rate at which validators can enter or leave the system
+func GetValidatorChurnLimit(currentEpoch uint64) (uint64, error) {
+	min := utils.Config.Chain.MinPerEpochChurnLimit
+
+	count, err := GetActiveValidatorCount(currentEpoch)
+	if err != nil {
+		return 0, err
+	}
+	adaptable := uint64(0)
+	if count > 0 {
+		adaptable = utils.Config.Chain.ChurnLimitQuotient / count
+	}
+
+	if min > adaptable {
+		return min, nil
+	}
+
+	return adaptable, nil
 }

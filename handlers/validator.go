@@ -100,6 +100,39 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.PublicKey = []byte(pubKey)
 			validatorPageData.Deposits = deposits
 
+			churnRate, err := db.GetValidatorChurnLimit(services.LatestEpoch())
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+
+			pendingCount, err := db.GetPendingValidatorCount()
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+
+			validatorPageData.InclusionDelay = int64((utils.Config.Chain.Eth1FollowDistance*utils.Config.Chain.SecondsPerEth1Block+utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch*utils.Config.Chain.EpochsPerEth1VotingPeriod)/3600) + 1
+
+			latestDeposit := time.Now().Unix()
+			if len(deposits.Eth1Deposits) > 1 {
+				latestDeposit = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
+			} else if time.Unix(latestDeposit, 0).Before(utils.SlotToTime(0)) {
+				latestDeposit = utils.SlotToTime(0).Unix()
+				validatorPageData.InclusionDelay = 0
+			}
+
+			if churnRate == 0 {
+				churnRate = 4
+				logger.Warning("Churn rate not set in config using 4 as default please set minPerEpochChurnLimit")
+			}
+
+			activationEstimate := (pendingCount/churnRate)*(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch) + uint64(latestDeposit)
+
+			validatorPageData.EstimatedActivationTs = int64(activationEstimate)
+
 			sumValid := uint64(0)
 			// check if a valid deposit exists
 			for _, d := range deposits.Eth1Deposits {
