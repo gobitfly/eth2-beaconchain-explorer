@@ -65,7 +65,7 @@ func TestHTTPEndpoints(t *testing.T) {
 		{"http://localhost:3333/faq", 200},
 		{"http://localhost:3333/imprint", 200},
 		// api
-		{"http://localhost:3333/api/healthz", 200},
+		// {"http://localhost:3333/api/healthz", 200},
 		{"http://localhost:3333/api/v1/block/1", 200},
 		{"http://localhost:3333/api/v1/block/1/attestations", 200},
 		{"http://localhost:3333/api/v1/block/1/attesterslashings", 200},
