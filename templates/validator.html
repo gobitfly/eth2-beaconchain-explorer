@@ -224,45 +224,33 @@
 								<div class="row" style="margin-top:2%;">
 									<div class="col">
 										<!--temp table begin-->
-											<table class="table" width="100%">
+											<table id="validator-summary-table" class="table" width="100%">
 												<thead>
 													<tr>
-														<th scope="col">col 1</th>
-														<th scope="col">col 2</th>
-														<th scope="col">col 3</th>
-														<th scope="col">col 4</th>
-														<th scope="col">col 5</th>
+														<th scope="col"></th>
+														<th scope="col">1 day</th>
+														<th scope="col">7 days</th>
+														<th scope="col">31 days</th>
+														<th scope="col">Total</th>
 													</tr>
 												</thead>
 												<tbody>
 													<tr>
-														<th scope="row">1</th>
-														<td>2</td>
-														<td>3</td>
-														<td>4</td>
-														<td>5</td>
+														<th scope="row">Income</th>
+														<th>{{.Income1d | formatIncome}}</th>
+														<th>{{.Income7d | formatIncome}}</th>
+														<th>{{.Income31d | formatIncome}}</th>
+														<th>{{ (addI64 .Income31d (addI64 .Income1d .Income7d)) | formatIncome}}</th>
 													</tr>
 													<tr>
-														<th scope="row">2</th>
-														<td>2</td>
-														<td>3</td>
-														<td>4</td>
-														<td>5</td>
-													</tr>
+														<th scope="row">Avg. optimal inclusion distance</th>
 													<tr>
-														<th scope="row">3</th>
-														<td>2</td>
-														<td>3</td>
-														<td>4</td>
-														<td>5</td>
-													</tr>
 													<tr>
-														<th scope="row">4</th>
-														<td>2</td>
-														<td>3</td>
-														<td>4</td>
-														<td>5</td>
-													</tr>
+														<th scope="row">Attestations (executed/missed)</th>
+													<tr>
+													<tr>
+														<th scope="row">Proposals (executed/missed)</th>
+													<tr>
 												</tbody>
 											</table>
 
