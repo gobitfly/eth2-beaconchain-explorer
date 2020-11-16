@@ -280,10 +280,13 @@
 				<div class="row border-bottom p-3 mx-0">
 					<div class="col-md-2">Unique Index:</div>
 					<div class="col-md-10">
-                        {{if $deposited}}Index Pending{{else}}{{.Index}}{{end}}
+											{{if $deposited}}Index Pending{{else}}
+												
+											{{.Index}}
                         {{if eq .Name ""}}
-							| <a href="#" data-toggle="modal" data-target="#edit-validator-modal">Set custom name</a>
+												| <a href="#" data-toggle="modal" data-target="#edit-validator-modal">Set custom name</a>
                         {{end}}
+											{{end}}
 					</div>
 				</div>
                 {{if not $deposited }}
@@ -456,7 +459,7 @@
 									<td>{{formatEth1Block $deposit.BlockNumber}}</td>
 									<td>{{formatTimestamp $deposit.BlockTs}}</td>
 									<td>{{formatDepositAmount $deposit.Amount}}</td>
-									<td>{{$deposit.ValidSignature}}</td>
+									<td>{{if $deposit.ValidSignature}}✅{{else}}❌{{end}}</td>
 								</tr>
                             {{end}}
 							</tbody>

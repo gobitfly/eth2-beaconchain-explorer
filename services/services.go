@@ -51,7 +51,6 @@ func epochUpdater() {
 	firstRun := true
 
 	for true {
-
 		var latestFinalized uint64
 		err := db.DB.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
 		if err != nil {
@@ -183,9 +182,18 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
+		genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+
+		minGenesisTime = minGenesisTime.Add(genesisDelay)
+
 		data.NetworkStartTs = minGenesisTime.Unix()
+		data.MinGenesisTime = minGenesisTime.Unix()
+
+		if minGenesisTime.Before(time.Now()) {
+			minGenesisTime = time.Now()
+		}
 
 		// enough deposits
 		if data.DepositedTotal > data.DepositThreshold {
@@ -194,14 +202,38 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				depositThresholdReached.Store(true)
 			}
 			eth1Block := eth1BlockDepositReached.Load().(time.Time)
-			genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay))
 
 			if !(startSlotTime == time.Unix(0, 0)) && eth1Block.Add(genesisDelay).After(minGenesisTime) {
 				// Network starts after min genesis time
 				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
 			}
 		}
+
+		latestChartsPageData := LatestChartsPageData()
+		if latestChartsPageData != nil {
+			for _, c := range *latestChartsPageData {
+				if c.Path == "deposits" {
+					data.DepositChart = c
+				} else if c.Path == "deposits_distribution" {
+					data.DepositDistribution = c
+				}
+			}
+		}
 	}
+	if data.DepositChart != nil && data.DepositChart.Data != nil && data.DepositChart.Data.Series != nil {
+		series := data.DepositChart.Data.Series
+		if len(series) > 2 {
+			points := series[1].Data.([][]float64)
+			periodDays := float64(len(points))
+			avgDepositPerDay := data.DepositedTotal / periodDays
+			daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
+			estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
+			if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
+				data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
+			}
+		}
+	}
+
 	// has genesis occured
 	if now.After(startSlotTime) {
 		data.Genesis = true
@@ -273,9 +305,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		block.BlockRootFormatted = fmt.Sprintf("%x", block.BlockRoot)
 	}
 
-	// if len(blocks) > 0 {
-	// 	data.CurrentSlot = blocks[0].Slot
-	// }
 	if data.GenesisPeriod {
 		for _, blk := range blocks {
 			if blk.Status != 0 {
@@ -401,6 +430,11 @@ func GetLatestStats() *types.Stats {
 			InvalidDepositCount:  new(uint64),
 			UniqueValidatorCount: new(uint64),
 		}
+	} else if stats.(*types.Stats).TopDepositors != nil && len(*stats.(*types.Stats).TopDepositors) == 1 {
+		*stats.(*types.Stats).TopDepositors = append(*stats.(*types.Stats).TopDepositors, types.StatsTopDepositors{
+			Address:      "000",
+			DepositCount: 0,
+		})
 	}
 	return stats.(*types.Stats)
 }

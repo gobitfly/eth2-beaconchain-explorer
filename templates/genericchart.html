@@ -8,12 +8,16 @@
 <script>
 {{if .IsNormalChart}}
 Highcharts.chart('chart',{
-	chart: { type: {{.Type}} },
+	chart: { 
+			type: {{.Type}}, 
+			height: 600,
+		},
 	rangeSelector: {  enabled: false },
 	title: { text: {{.Title}} },
 	subtitle: { text: {{.Subtitle}} },
 	plotOptions: {
 		column: { stacking: {{.StackingMode}} },
+		{{ if .PlotOptionsPie }}pie: {{.PlotOptionsPie}},{{ end }}
 		wordcloud: {
 			rotation: {
 				from: -10, to: 10, orientations: 5,
@@ -42,6 +46,7 @@ Highcharts.chart('chart',{
 	series: {{.Series}},
 	navigator: {
 		{{ if eq .Type "wordcloud" }}enabled: false,{{end}}
+		{{ if eq .Type "pie" }}enabled: false,{{end}}
 		xAxis: {
 			labels: {
 				{{ if .XAxisLabelsFormatter }}formatter: {{.XAxisLabelsFormatter}},{{end}}

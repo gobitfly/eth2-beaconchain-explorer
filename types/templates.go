@@ -80,6 +80,7 @@ type IndexPageData struct {
 	DepositThreshold          float64                `json:"deposit_threshold"`
 	ValidatorsRemaining       float64                `json:"validators_remaining"`
 	NetworkStartTs            int64                  `json:"network_start_ts"`
+	MinGenesisTime            int64                  `json:"-"`
 	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
 	Epochs                    []*IndexPageDataEpochs `json:"epochs"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
@@ -88,6 +89,8 @@ type IndexPageData struct {
 	Genesis                   bool                   `json:"genesis"`
 	GenesisPeriod             bool                   `json:"genesis_period"`
 	Mainnet                   bool                   `json:"-"`
+	DepositChart              *ChartsPageDataChart
+	DepositDistribution       *ChartsPageDataChart
 }
 
 type IndexPageDataEpochs struct {
@@ -543,6 +546,7 @@ type GenericChartData struct {
 	XAxisLabelsFormatter            template.JS
 	TooltipFormatter                template.JS
 	PlotOptionsSeriesEventsClick    template.JS
+	PlotOptionsPie                  template.JS
 	PlotOptionsSeriesCursor         string
 	Title                           string                    `json:"title"`
 	Subtitle                        string                    `json:"subtitle"`
@@ -629,6 +633,7 @@ type StakingCalculatorPageData struct {
 type EthOneDepositsPageData struct {
 	*Stats
 	DepositContract string
+	DepositChart    *ChartsPageDataChart
 }
 
 type EthOneDepositLeaderBoardPageData struct {

@@ -18,12 +18,14 @@ type chartHandler struct {
 }
 
 var ChartHandlers = map[string]chartHandler{
-	"blocks":                         {1, blocksChartData},
-	"validators":                     {2, activeValidatorsChartData},
-	"staked_ether":                   {3, stakedEtherChartData},
-	"average_balance":                {4, averageBalanceChartData},
-	"network_liveness":               {5, networkLivenessChartData},
-	"participation_rate":             {6, participationRateChartData},
+	"blocks":             {1, blocksChartData},
+	"validators":         {2, activeValidatorsChartData},
+	"staked_ether":       {3, stakedEtherChartData},
+	"average_balance":    {4, averageBalanceChartData},
+	"network_liveness":   {5, networkLivenessChartData},
+	"participation_rate": {6, participationRateChartData},
+	"inclusion_distance": {6, inclusionDistanceChartData},
+	// "incorrect_attestations":         {6, incorrectAttestationsChartData},
 	"validator_income":               {7, averageDailyValidatorIncomeChartData},
 	"staking_rewards":                {8, stakingRewardsChartData},
 	"stake_effectiveness":            {9, stakeEffectivenessChartData},
@@ -31,6 +33,7 @@ var ChartHandlers = map[string]chartHandler{
 	"effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
 	"performance_distribution_365d":  {12, performanceDistribution365dChartData},
 	"deposits":                       {13, depositsChartData},
+	"deposits_distribution":          {13, depositsDistributionChartData},
 	"graffiti_wordcloud":             {14, graffitiCloudChartData},
 }
 
@@ -401,6 +404,116 @@ func participationRateChartData() (*types.GenericChartData, error) {
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Participation Rate",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func inclusionDistanceChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	latestEpoch := LatestEpoch()
+	epochOffset := uint64(0)
+	maxEpochs := 7 * 3600 * 24 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
+	if latestEpoch > maxEpochs {
+		epochOffset = latestEpoch - maxEpochs
+	}
+
+	rows := []struct {
+		Epoch             uint64
+		Inclusiondistance float64
+	}{}
+
+	err := db.DB.Select(&rows, `
+		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
+		from attestation_assignments a
+		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
+		where a.inclusionslot > 0 and a.epoch > $1
+		group by a.epoch
+		order by a.epoch asc`, epochOffset)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
+			utils.RoundDecimals(row.Inclusiondistance, 2),
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Average Inclusion Distance (last 7 days)",
+		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Average Inclusion Distance [slots]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Average Inclusion Distance",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func votingDistributionChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	latestEpoch := LatestEpoch()
+	epochOffset := uint64(0)
+	maxEpochs := 7 * 3600 * 24 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
+	if latestEpoch > maxEpochs {
+		epochOffset = latestEpoch - maxEpochs
+	}
+
+	rows := []struct {
+		Epoch             uint64
+		Inclusiondistance float64
+	}{}
+
+	err := db.DB.Select(&rows, `
+		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
+		from attestation_assignments a
+		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
+		where a.inclusionslot > 0 and a.epoch > $1
+		group by a.epoch
+		order by a.epoch asc`, epochOffset)
+	if err != nil {
+		return nil, err
+	}
+
+	seriesData := [][]float64{}
+
+	for _, row := range rows {
+		seriesData = append(seriesData, []float64{
+			float64(utils.EpochToTime(row.Epoch).Unix() * 1000),
+			utils.RoundDecimals(row.Inclusiondistance, 2),
+		})
+	}
+
+	chartData := &types.GenericChartData{
+		Title:        "Average Inclusion Distance (last 7 days)",
+		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
+		XAxisTitle:   "",
+		YAxisTitle:   "Average Inclusion Distance [slots]",
+		StackingMode: "false",
+		Type:         "line",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Average Inclusion Distance",
 				Data: seriesData,
 			},
 		},
@@ -1287,6 +1400,85 @@ func depositsChartData() (*types.GenericChartData, error) {
 				Name:  "ETH1 (failed)",
 				Data:  dailyFailedEth1Deposits,
 				Stack: "eth1",
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func depositsDistributionChartData() (*types.GenericChartData, error) {
+	var err error
+
+	rows := []struct {
+		Address []byte
+		Count   uint64
+	}{}
+
+	err = db.DB.Select(&rows, `
+		select from_address as address, count(*) as count
+		from (
+			select publickey, from_address
+			from eth1_deposits
+			where valid_signature = true
+			group by publickey, from_address
+			having sum(amount) >= 32e9
+		) a
+		group by from_address
+		order by count desc`)
+	if err != nil {
+		return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
+	}
+
+	type seriesDataItem struct {
+		Name string `json:"name"`
+		Y    uint64 `json:"y"`
+	}
+	seriesData := []seriesDataItem{}
+	othersItem := seriesDataItem{
+		Name: "others",
+		Y:    0,
+	}
+	for i := range rows {
+		if i > 20 {
+			othersItem.Y += rows[i].Count
+			continue
+		}
+		seriesData = append(seriesData, seriesDataItem{
+			Name: string(utils.FormatEth1AddressString(rows[i].Address)),
+			Y:    rows[i].Count,
+		})
+	}
+	if othersItem.Y > 0 {
+		seriesData = append(seriesData, othersItem)
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart:    true,
+		Type:             "pie",
+		Title:            "Deposits Distribution",
+		Subtitle:         "Deposits Distribution by ETH1-Addresses.",
+		TooltipFormatter: `function(){ return '<b>'+this.point.name+'</b><br\>Percentage: '+this.point.percentage.toFixed(2)+'%<br\>Validators: '+this.point.y }`,
+		PlotOptionsPie: `{
+			borderWidth: 1,
+			borderColor: null, 
+			dataLabels: { 
+				enabled:true, 
+				formatter: function() { 
+					var name = this.point.name.length > 8 ? this.point.name.substring(0,8) : this.point.name;
+					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'…</b><span style="stroke:none; fill: var(--font-color)">: '+this.point.y+' ('+this.point.percentage.toFixed(2)+'%)</span></span>' 
+				} 
+			} 
+		}`,
+		PlotOptionsSeriesCursor: "pointer",
+		PlotOptionsSeriesEventsClick: `function(event){ 
+			if (event.point.name == 'others') { window.location.href = '/validators/eth1deposits' }
+			else { window.location.href = '/validators/eth1deposits?q='+encodeURIComponent(event.point.name) } }`,
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "Deposits Distribution",
+				Type: "pie",
+				Data: seriesData,
 			},
 		},
 	}

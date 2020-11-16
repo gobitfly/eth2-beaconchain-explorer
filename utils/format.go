@@ -148,6 +148,12 @@ func FormatEpoch(epoch uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%[1]d\">%[1]d</a>", epoch))
 }
 
+// FormatEth1AddressString will return the eth1-address formated as html string
+func FormatEth1AddressString(addr []byte) template.HTML {
+	eth1Addr := eth1common.BytesToAddress(addr)
+	return template.HTML(fmt.Sprintf("%s", eth1Addr.Hex()))
+}
+
 // FormatEth1Address will return the eth1-address formated as html
 func FormatEth1Address(addr []byte) template.HTML {
 	eth1Addr := eth1common.BytesToAddress(addr)
@@ -241,6 +247,11 @@ func FormatPublicKey(validator []byte) template.HTML {
 // FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTimestamp(ts int64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))
+}
+
+// FormatTs will return a timestamp formated as html. This is supposed to be used together with client-side js
+func FormatTsWithoutTooltip(ts int64) template.HTML {
+	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" data-timestamp=\"%d\"></span>", ts))
 }
 
 // FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
