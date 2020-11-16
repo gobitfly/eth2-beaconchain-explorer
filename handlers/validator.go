@@ -23,8 +23,16 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
-var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator.html"))
-var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validatornotfound.html"))
+var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html",
+	"templates/validator/validator.html",
+	"templates/validator/editModal.html",
+	"templates/validator/bookmarkModal.html",
+	"templates/validator/infoTable.html",
+	"templates/validator/lifeCycleDiagram.html",
+	"templates/validator/summaryTable.html",
+	"templates/validator/networkStats.html",
+	"templates/validator/historyTable.html"))
+var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validator/validatornotfound.html"))
 var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
