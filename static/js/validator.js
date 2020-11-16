@@ -291,7 +291,7 @@ function setupDashboardButtons(validatorIdx) {
 }
 
 function createValidatorDataTable(index) {
-    $(document).ready(function () {
+	$(document).ready(function () {
       $('#blocks-table').DataTable({
         processing: true,
         serverSide: true,
@@ -303,17 +303,6 @@ function createValidatorDataTable(index) {
           formatTimestamps()
         },
       });
-      $('#attestations-table').DataTable({
-        processing: true,
-        serverSide: true,
-        ordering: false,
-        searching: false,
-        ajax: '/validator/'+index+'/attestations',
-        pagingType: 'full',
-        drawCallback: function(settings) {
-          formatTimestamps()
-        },
-      })
       $('#slashings-table').DataTable({
         processing: true,
         serverSide: true,
@@ -324,6 +313,34 @@ function createValidatorDataTable(index) {
         drawCallback: function(settings) {
           formatTimestamps()
         },
-      })
+	  })
+
+	  $.ajax({url:'/validator/'+index+'/attestations',
+			data : {"index": index, "draw":1, "start":0, "length":100}, 
+			success: (result)=>{
+				console.log(result);
+				// result = JSON.parse(result);
+				// var result = result.data;
+				let table = document.getElementById("attestations-summary-table");
+				for (let item of result.data){
+					let row = table.insertRow();
+					row.insertCell().innerHTML = item[3];
+					row.insertCell().innerHTML = item[1];
+					row.insertCell().innerHTML = "not available";
+				}
+
+				$('#attestations-table').DataTable({
+					processing: true,
+					serverSide: false,
+					ordering: false,
+					searching: false,
+					data: result.data,
+					pagingType: 'full',
+					drawCallback: function(settings) {
+					  formatTimestamps()
+					},
+				  })
+			}
+		})
     })
 }
