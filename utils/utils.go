@@ -85,7 +85,7 @@ var LayoutPaths []string = []string{"templates/layout/layout.html", "templates/l
 func IncludeHTML(path string) template.HTML {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Println("includeHTML - error reading file: %v", err)
+		log.Printf("includeHTML - error reading file: %v", err)
 		return ""
 	}
 	return template.HTML(string(b))
