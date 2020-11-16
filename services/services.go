@@ -186,9 +186,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 
-		minGenesisTime = minGenesisTime.Add(genesisDelay)
+		// minGenesisTime = minGenesisTime.Add(genesisDelay)
 
 		data.NetworkStartTs = minGenesisTime.Unix()
+		data.NetworkStartTs = data.NetworkStartTs.Add(genesisDelay)
 		data.MinGenesisTime = minGenesisTime.Unix()
 
 		if minGenesisTime.Before(time.Now()) {
