@@ -24,10 +24,10 @@ var ChartHandlers = map[string]chartHandler{
 	"average_balance":    {4, averageBalanceChartData},
 	"network_liveness":   {5, networkLivenessChartData},
 	"participation_rate": {6, participationRateChartData},
-	"inclusion_distance": {6, inclusionDistanceChartData},
+	"inclusion_distance": {7, inclusionDistanceChartData},
 	// "incorrect_attestations":         {6, incorrectAttestationsChartData},
-	"validator_income":               {7, averageDailyValidatorIncomeChartData},
-	"staking_rewards":                {8, stakingRewardsChartData},
+	// "validator_income":               {7, averageDailyValidatorIncomeChartData},
+	// "staking_rewards":                {8, stakingRewardsChartData},
 	"stake_effectiveness":            {9, stakeEffectivenessChartData},
 	"balance_distribution":           {10, balanceDistributionChartData},
 	"effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
@@ -88,7 +88,9 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 	for i, ch := range ChartHandlers {
 		go func(i string, ch chartHandler) {
 			defer wg.Done()
+			start := time.Now()
 			data, err := ch.DataFunc()
+			logger.WithField("chart", i).WithField("duration", time.Since(start)).WithField("error", err).Info("generated chart")
 			chartHandlerResChan <- &chartHandlerRes{ch.Order, i, data, err}
 		}(i, ch)
 	}
@@ -433,7 +435,7 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
 		from attestation_assignments a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.inclusionslot > 0 and a.epoch > $1
+		where a.epoch > $1 and a.inclusionslot
 		group by a.epoch
 		order by a.epoch asc`, epochOffset)
 	if err != nil {
