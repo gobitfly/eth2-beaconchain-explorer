@@ -110,15 +110,16 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		result = &types.SearchAheadEpochsResult{}
 		err = db.DB.Select(result, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
 	case "validators":
-		// find all validators that have a publickey or index like the search-query
+		// find all validators that have a index, publickey or name like the search-query
 		// or validators that have deposited to the eth1-deposit-contract but did not get included into the beaconchain yet
 		result = &types.SearchAheadValidatorsResult{}
 		err = db.DB.Select(result, `
 			SELECT CAST(validatorindex AS text) AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
 			FROM validators
+			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
 				OR CAST(validatorindex AS text) LIKE $1
-				OR LOWER(name) LIKE LOWER($1)
+				OR LOWER(validator_names.name) LIKE LOWER($1)
 			UNION
 			SELECT 'deposited' AS index, ENCODE(publickey::bytea, 'hex') as pubkey 
 			FROM eth1_deposits 
@@ -142,11 +143,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Select(result, `
 			SELECT DISTINCT CAST(validatorindex AS text) AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
 			FROM validators
+			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			LEFT JOIN eth1_deposits ON eth1_deposits.publickey = validators.pubkey
 			WHERE ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
 				OR CAST(validatorindex AS text) LIKE $1
 				OR ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
-				OR LOWER(name) LIKE LOWER($1)
+				OR LOWER(validator_names.name) LIKE LOWER($1)
 			ORDER BY index LIMIT 10`, search+"%")
 	case "indexed_validators_by_eth1_addresses":
 		// find validators per eth1-address (limit result by 10 addresses and 100 validators per address)
@@ -209,11 +211,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			SELECT name, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT
 					validatorindex,
-					name,
-					DENSE_RANK() OVER(PARTITION BY name ORDER BY validatorindex) AS validatorrow,
-					DENSE_RANK() OVER(PARTITION BY name) AS namerow
+					validator_names.name,
+					DENSE_RANK() OVER(PARTITION BY validator_names.name ORDER BY validatorindex) AS validatorrow,
+					DENSE_RANK() OVER(PARTITION BY validator_names.name) AS namerow
 				FROM validators
-				WHERE LOWER(name) LIKE LOWER($1)
+				LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+				WHERE LOWER(validator_names.name) LIKE LOWER($1)
 			) a
 			WHERE validatorrow <= 101 AND namerow <= 10
 			GROUP BY name
