@@ -21,7 +21,17 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/block.html"))
+var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles(
+	"templates/layout.html",
+	"templates/block/block.html",
+	"templates/block/attestations.html",
+	"templates/block/deposits.html",
+	"templates/block/votes.html",
+	"templates/block/attesterSlashing.html",
+	"templates/block/proposerSlashing.html",
+	"templates/block/exits.html",
+	"templates/block/overview.html",
+))
 var blockNotFoundTemplate = template.Must(template.New("blocknotfound").ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
 
 // Block will return the data for a block
@@ -226,25 +236,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	})
 	blockPageData.VotesCount = uint64(len(blockPageData.Votes))
 
-	var deposits []*types.BlockPageDeposit
-	err = db.DB.Select(&deposits, `
-		SELECT
-			publickey,
-			withdrawalcredentials,
-			amount,
-			signature
-		FROM blocks_deposits
-		WHERE block_slot = $1
-		ORDER BY block_index`,
-		blockPageData.Slot)
-	if err != nil {
-		logger.Errorf("error retrieving block deposit data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	blockPageData.Deposits = deposits
-
 	err = db.DB.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block deposit data: %v", err)
@@ -314,4 +305,129 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+}
+
+// BlockDepositData returns the deposits for a specific slot
+func BlockDepositData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
+	blockSlot := int64(-1)
+	blockRootHash, err := hex.DecodeString(slotOrHash)
+	if err != nil || len(slotOrHash) != 64 {
+		blockRootHash = []byte{}
+		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	} else {
+		err = db.DB.Get(&blockSlot, `
+		SELECT
+			blocks.slot
+		FROM blocks
+		WHERE blocks.blockroot = $1
+		`, blockRootHash)
+		if err != nil {
+			logger.Errorf("error querying for block slot with block root hash %v err: %v", blockRootHash, err)
+			http.Error(w, "Interal server error", 503)
+			return
+		}
+	}
+
+	q := r.URL.Query()
+
+	search := q.Get("search[value]")
+	search = strings.Replace(search, "0x", "", -1)
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if length > 100 {
+		length = 100
+	}
+
+	var count uint64
+
+	err = db.DB.Get(&count, `
+	SELECT 
+		count(*)
+	FROM
+		blocks_deposits
+	WHERE
+	 block_slot = $1
+	GROUP BY
+	 block_slot
+	`, blockSlot)
+	if err != nil {
+		logger.Errorf("error retrieving deposit count for slot", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var deposits []*types.BlockPageDeposit
+
+	err = db.DB.Select(&deposits, `
+		SELECT
+			publickey,
+			withdrawalcredentials,
+			amount,
+			signature
+		FROM blocks_deposits
+		WHERE block_slot = $1
+		ORDER BY block_index
+		LIMIT $2
+		OFFSET $3`,
+		blockSlot, length, start)
+	if err != nil {
+		logger.Errorf("error retrieving block deposit data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(deposits))
+
+	for i, deposit := range deposits {
+		tableData = append(tableData, []interface{}{
+			i + 1,
+			utils.FormatPublicKey(deposit.PublicKey),
+			utils.FormatBalance(deposit.Amount),
+			deposit.WithdrawalCredentials,
+			deposit.Signature,
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    count,
+		RecordsFiltered: count,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error encoding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 }
