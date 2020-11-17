@@ -379,7 +379,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 	 block_slot
 	`, blockSlot)
 	if err != nil {
-		logger.Errorf("error retrieving deposit count for slot", err)
+		logger.Errorf("error retrieving deposit count for slot %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
