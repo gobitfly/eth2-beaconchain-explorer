@@ -105,9 +105,10 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			blocks.voluntaryexitscount,
 			blocks.proposer,
 			blocks.status,
-			COALESCE(validators.name, '') AS name
+			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE blocks.slot = $1 OR blocks.blockroot = $2 ORDER BY blocks.status LIMIT 1`,
 		blockSlot, blockRootHash)
 
