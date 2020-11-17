@@ -347,7 +347,6 @@ type BlockPageData struct {
 	Mainnet                bool
 
 	Attestations      []*BlockPageAttestation // Attestations included in this block
-	Deposits          []*BlockPageDeposit
 	VoluntaryExits    []*BlockPageVoluntaryExits
 	Votes             []*BlockVote // Attestations that voted for that block
 	AttesterSlashings []*BlockPageAttesterSlashing
