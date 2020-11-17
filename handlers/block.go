@@ -409,7 +409,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 
 	for i, deposit := range deposits {
 		tableData = append(tableData, []interface{}{
-			i + 1,
+			i + 1 + int(start),
 			utils.FormatPublicKey(deposit.PublicKey),
 			utils.FormatBalance(deposit.Amount),
 			deposit.WithdrawalCredentials,
