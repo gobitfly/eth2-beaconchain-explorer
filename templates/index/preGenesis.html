@@ -1,9 +1,9 @@
 {{ define "preGenesis" }}
   <div class="row mx-auto align-items-center">
     <div class="col-md-6">
-      <h2 class="h3">Phase 0 Beacon Chain</h2>
-      <p>The Ethereum Beacon Chain is currently undergoing genesis. Please prepare your validators and send your deposits. To join Ethereum 2.0 fire up one of the beacon chain and validator clients. The Mainnet will support <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a
-          href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a>. Please visit the official <a href="https://launchpad.ethereum.org/"> Launchpad</a> for more information on how to deposit.
+      <h2 multiLang="p1_title" class="h3">Phase 0 Beacon Chain</h2>
+      <p><a style="all:unset;" multiLang="p1_text_1">The Ethereum Beacon Chain is currently undergoing genesis. Please prepare your validators and send your deposits. To join Ethereum 2.0 fire up one of the beacon chain and validator clients. The Mainnet will support</a> <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a
+          href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a>. <a style="all:unset;" multiLang="p1_text_2">Please visit the official</a> <a href="https://launchpad.ethereum.org/"> Launchpad</a> <a style="all:unset;" multiLang="p1_text_3">for more information on how to deposit.</a></p>
     </div>
     <div class="col-md-6 my-3">
       {{ template "depositProgress" . }}
@@ -37,4 +37,15 @@
   <div class="row mx-auto align-items-center justify-content-center">
     {{ template "depositDistributionChart" . }}
   </div>
+
+  <script src="/js/langs.js"></script>
+  <script>
+      var activeLang = "rus";
+      let items = document.querySelectorAll('html [multiLang]');
+      items.forEach(item=>{
+          let text_key = item.getAttribute('multiLang')
+          item.textContent = langs[activeLang].preGenesis[text_key]
+      });
+  </script>
+
 {{end}}
