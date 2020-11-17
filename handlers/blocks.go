@@ -118,9 +118,10 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				blocks.status, 
 				COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes,
 				blocks.graffiti,
-				COALESCE(validators.name, '') AS name
+				COALESCE(validator_names.name, '') AS name
 			FROM blocks 
 			LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE blocks.slot >= $1 AND blocks.slot <= $2 
 			ORDER BY blocks.slot DESC`, endSlot, startSlot)
 	} else {
@@ -157,9 +158,10 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				blocks.status, 
 				COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes, 
 				blocks.graffiti,
-				COALESCE(validators.name, '') AS name
+				COALESCE(validator_names.name, '') AS name
 			FROM blocks 
 			LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE slot IN (
 				SELECT slot 
 				FROM blocks
@@ -170,7 +172,8 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 					OR proposer IN (
 						SELECT validatorindex
 						FROM validators
-						WHERE LOWER(name) LIKE LOWER($2)
+						INNER JOIN validator_names ON validators.pubkey = validator_names.publickey
+						WHERE validator_names.name IS NOT NULL AND LOWER(validator_names.name) LIKE LOWER($2)
 					)
 				ORDER BY blocks.slot DESC 
 				LIMIT $4
