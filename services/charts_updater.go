@@ -421,7 +421,7 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 
 	latestEpoch := LatestEpoch()
 	epochOffset := uint64(0)
-	maxEpochs := 7 * 3600 * 24 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
+	maxEpochs := 1 * 24 * 3600 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
 	if latestEpoch > maxEpochs {
 		epochOffset = latestEpoch - maxEpochs
 	}
@@ -435,7 +435,7 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
 		from attestation_assignments a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.epoch > $1 and a.inclusionslot
+		where a.epoch > $1 and a.inclusionslot > 0
 		group by a.epoch
 		order by a.epoch asc`, epochOffset)
 	if err != nil {
@@ -452,7 +452,7 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Average Inclusion Distance (last 7 days)",
+		Title:        "Average Inclusion Distance (last 24h)",
 		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Average Inclusion Distance [slots]",
