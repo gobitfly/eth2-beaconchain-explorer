@@ -186,10 +186,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 
-		minGenesisTime = minGenesisTime.Add(genesisDelay)
-
-		data.NetworkStartTs = minGenesisTime.Unix()
 		data.MinGenesisTime = minGenesisTime.Unix()
+		data.NetworkStartTs = minGenesisTime.Add(genesisDelay).Unix()
 
 		if minGenesisTime.Before(time.Now()) {
 			minGenesisTime = time.Now()
@@ -289,9 +287,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
 			blocks.status,
-			COALESCE(validators.name, '') AS name
+			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE blocks.slot < $1
 		ORDER BY blocks.slot DESC LIMIT 15`, cutoffSlot)
 	if err != nil {

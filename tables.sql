@@ -18,11 +18,18 @@ create table validators
     activationepoch            bigint not null,
     exitepoch                  bigint not null,
     lastattestationslot        bigint,
-    name                       varchar(40),
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
 create index idx_validators_name on validators (name);
+
+drop table if exists validator_names;
+create table validator_names
+(
+    publickey bytea not null,
+    name      varchar(40),
+    primary key (publickey)
+);
 
 drop table if exists validator_set;
 create table validator_set
