@@ -10,11 +10,13 @@
 
 <script>
 var chartFns = []
-chartFns.push(function(){
 {{range $i, $e := .}}
+chartFns.push(function(){
     {{if .Data.IsNormalChart}}
         Highcharts.chart('chart-{{$i}}',{
-            chart: { type: {{.Data.Type}} },
+            chart: { 
+                type: {{.Data.Type}},
+            },
             rangeSelector: {  enabled: false },
             title: { 
                 useHTML: true,
@@ -26,6 +28,7 @@ chartFns.push(function(){
             },
             plotOptions: { 
                 column: { stacking: {{.Data.StackingMode}} }, 
+                {{ if .Data.PlotOptionsPie }}pie: {{.Data.PlotOptionsPie}},{{ end }}
                 wordcloud: {
                     rotation: {
                         from: -10, to: 10, orientations: 5,
@@ -38,7 +41,7 @@ chartFns.push(function(){
                     events: {
                         {{ if .Data.PlotOptionsSeriesEventsClick }}click: {{.Data.PlotOptionsSeriesEventsClick}},{{end}}
                     }
-                }
+                },
             },
             xAxis: {
                 labels: {
@@ -178,8 +181,9 @@ chartFns.push(function(){
             }
         })
     {{end}}
-{{end}}
 })
+{{end}}
+
 $(document).ready(function () {
 function allDone(){
     $('.hide-gaps').click(function(){
@@ -227,7 +231,7 @@ function allDone(){
             <div class="col-md-6 mb-4" id="chart-holder-{{$i}}">
                 <div class="card">
                     <div id="chart-{{$i}}">
-                        <div style="height:400px; display: flex; justify-content: center; align-items:center;">
+                        <div style="height:600px; display: flex; justify-content: center; align-items:center;">
                             <svg width="80%" height="80%">
                                 <use xlink:href="#ab83d798-7d25-4111-a4e2-42875f6e6704"></use>
                             </svg>
@@ -239,7 +243,7 @@ function allDone(){
                 <div class="col-md-6 mb-4" id="chart-holder-{{$i}}-nogaps" style="display:none">
                     <div class="card">
                         <div id="chart-{{$i}}-nogaps">
-                            <div style="height:400px; display: flex; justify-content: center; align-items:center;">
+                            <div style="height: 600px; display: flex; justify-content: center; align-items:center;">
                                 <svg width="80%" height="80%">
                                     <use xlink:href="#ab83d798-7d25-4111-a4e2-42875f6e6704"></use>
                                 </svg>

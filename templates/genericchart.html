@@ -8,12 +8,16 @@
 <script>
 {{if .IsNormalChart}}
 Highcharts.chart('chart',{
-	chart: { type: {{.Type}} },
+	chart: { 
+			type: {{.Type}}, 
+			height: 600,
+		},
 	rangeSelector: {  enabled: false },
 	title: { text: {{.Title}} },
 	subtitle: { text: {{.Subtitle}} },
 	plotOptions: {
 		column: { stacking: {{.StackingMode}} },
+		{{ if .PlotOptionsPie }}pie: {{.PlotOptionsPie}},{{ end }}
 		wordcloud: {
 			rotation: {
 				from: -10, to: 10, orientations: 5,
@@ -42,6 +46,7 @@ Highcharts.chart('chart',{
 	series: {{.Series}},
 	navigator: {
 		{{ if eq .Type "wordcloud" }}enabled: false,{{end}}
+		{{ if eq .Type "pie" }}enabled: false,{{end}}
 		xAxis: {
 			labels: {
 				{{ if .XAxisLabelsFormatter }}formatter: {{.XAxisLabelsFormatter}},{{end}}
@@ -125,6 +130,9 @@ Highcharts.stockChart('chart', {
 	<div class="card-body">
 		<div id="chart" height="600"></div>
 	</div>
+</div>
+<div class="d-flex justify-content-between py-2">
+	<ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
 </div>
 </div>
 {{end}}

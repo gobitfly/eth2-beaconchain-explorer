@@ -10,6 +10,9 @@ all: explorer
 lint:
 	golint ./...
 
+test:
+	go test -tags=blst_enabled ./...
+
 explorer:
 	rm -rf bin/
 	mkdir -p bin/templates/

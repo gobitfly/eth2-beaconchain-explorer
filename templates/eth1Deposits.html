@@ -1,11 +1,13 @@
 {{ define "js"}}
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 <script type="text/javascript" src="/js/datatable_input.js"></script>
+<script src="https://code.highcharts.com/stock/highstock.js"></script>
+<script src="/js/highcharts-global-options.js"></script>
 <script>
 	$(document).ready(function() {
     var usp = new URLSearchParams(window.location.search)
 		var q = usp.get('q')
-
+		{{ if len .DepositContract }}
 		var tbl = $('#deposits').DataTable({
 			processing: true,
 			serverSide: true,
@@ -32,6 +34,7 @@
 				}
 			}
 		})
+		{{end}}
 		if(q) {
 			tbl.search(q);
 			tbl.draw();
@@ -53,7 +56,7 @@
 
 {{end}} {{ define "content"}}
 <div class="container my-2">
-	<div class="d-md-flex py-2 justify-content-md-between">
+	<div class="d-md-flex py-2 justify-content-md-between mb-3">
 		<div class="heading">
 			<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-file-signature mr-2"></i></i>Eth1 Deposits</h1>
 		</div>
@@ -116,6 +119,9 @@
 		</div>
 	</div>
 </div>
+<div>
+	{{ template "depositChart" . }}
+</div>
 <h6 class="my-2 text-muted">This table displays the deposits made on Eth1 for validators who wish to join the Eth2 Beacon Chain.</h6>
 <div class="card">
 	<div class="card-body px-0 py-2">
@@ -133,10 +139,20 @@
 						<th>Valid Signature</th>
 					</tr>
 				</thead>
-				<tbody> </tbody>
+				<tbody> 
+					{{if len .DepositContract}}
+					{{else}}
+						<tr>
+							<td colspan="8">Waiting for Deposit Contract</td>
+						</tr>
+					{{end}}
+				</tbody>
 			</table>
 		</div>
 	</div>
+</div>
+<div class="d-flex justify-content-between py-2">
+	<ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
 </div>
 </div>
 {{end}}

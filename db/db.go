@@ -999,6 +999,11 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				return fmt.Errorf("error deleting placeholder block: %v", err)
 			}
 
+			// Set proposer to MAX_SQL_INTEGER if it is the genesis-block (since we are using integers for validator-indices right now)
+			if b.Slot == 0 {
+				b.Proposer = 2147483647
+			}
+
 			n := time.Now()
 
 			logger.Tracef("writing block data: %v", b.Eth1Data.DepositRoot)
@@ -1151,7 +1156,11 @@ func GetTotalValidatorsCount() (uint64, error) {
 }
 
 func GetValidatorNames() (map[uint64]string, error) {
-	rows, err := DB.Query("SELECT validatorindex, name FROM validators WHERE name IS NOT NULL")
+	rows, err := DB.Query(`
+		SELECT validatorindex, validator_names.name 
+		FROM validators 
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		WHERE validator_names.name IS NOT NULL`)
 
 	if err != nil {
 		return nil, err

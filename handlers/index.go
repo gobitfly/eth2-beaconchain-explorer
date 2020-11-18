@@ -16,6 +16,7 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 	"templates/layout.html",
 	"templates/index/index.html",
 	"templates/index/depositProgress.html",
+	"templates/index/depositChart.html",
 	"templates/index/genesis.html",
 	"templates/index/hero.html",
 	"templates/index/networkStats.html",
@@ -25,6 +26,7 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 	"templates/index/recentBlocks.html",
 	"templates/index/recentEpochs.html",
 	"templates/index/genesisCountdown.html",
+	"templates/index/depositDistribution.html",
 	"templates/components/banner.html",
 	"templates/svg/bricks.html",
 	"templates/svg/professor.html",
@@ -54,6 +56,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage

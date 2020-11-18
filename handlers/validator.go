@@ -55,6 +55,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	validatorPageData.User = user
@@ -165,12 +167,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch, 
 			validators.exitepoch, 
 			validators.lastattestationslot, 
-			COALESCE(validators.name, '') AS name,
+			COALESCE(validator_names.name, '') AS name,
 			COALESCE(validator_balances.balance, 0) AS balance 
 		FROM validators 
 		LEFT JOIN validator_balances 
 			ON validators.validatorindex = validator_balances.validatorindex 
 			AND validator_balances.epoch = $1 
+		LEFT JOIN validator_names 
+			ON validators.pubkey = validator_names.publickey
 		WHERE validators.validatorindex = $2 
 		LIMIT 1`, services.LatestEpoch(), index)
 	if err != nil {
@@ -301,6 +305,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.Income7d = earnings.LastWeek
 	validatorPageData.Income31d = earnings.LastMonth
 	validatorPageData.Apr = (((float64(earnings.LastWeek) / 1e9) / (depositSum / 1e9)) * 365) / 7
+	if validatorPageData.Apr < float64(-1) {
+		validatorPageData.Apr = float64(-1)
+	}
 
 	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
 	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, COALESCE(effectivebalance, 0) as balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
@@ -851,10 +858,13 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 
 	if strings.ToLower(depositedAddress) == strings.ToLower(recoveredAddress.Hex()) {
 		if applyNameToAll == "on" {
-			res, err := db.DB.Exec("UPDATE validators SET name = $1 WHERE pubkey IN (SELECT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature)", name, recoveredAddress.Bytes())
-
+			res, err := db.DB.Exec(`
+				INSERT INTO validator_names (publickey, name)
+				SELECT publickey, $1 as name
+				FROM (SELECT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature) a
+				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, recoveredAddress.Bytes())
 			if err != nil {
-				logger.Errorf("error saving validator name: %v", err)
+				logger.Errorf("error saving validator name (apply to all): %x: %v: %v", pubkeyDecoded, name, err)
 				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
@@ -864,9 +874,12 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			utils.SetFlash(w, r, validatorEditFlash, fmt.Sprintf("Your custom name has been saved for %v validator(s).", rowsAffected))
 			http.Redirect(w, r, "/validator/"+pubkey, 301)
 		} else {
-			_, err := db.DB.Exec("UPDATE validators SET name = $1 WHERE pubkey = $2", name, pubkeyDecoded)
+			_, err := db.DB.Exec(`
+				INSERT INTO validator_names (publickey, name) 
+				VALUES($2, $1) 
+				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, pubkeyDecoded)
 			if err != nil {
-				logger.Errorf("error saving validator name: %v", err)
+				logger.Errorf("error saving validator name: %x: %v: %v", pubkeyDecoded, name, err)
 				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return

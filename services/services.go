@@ -51,7 +51,6 @@ func epochUpdater() {
 	firstRun := true
 
 	for true {
-
 		var latestFinalized uint64
 		err := db.DB.Get(&latestFinalized, "SELECT COALESCE(MAX(epoch), 0) FROM epochs where finalized is true")
 		if err != nil {
@@ -136,6 +135,7 @@ func indexPageDataUpdater() {
 
 func getIndexPageData() (*types.IndexPageData, error) {
 	data := &types.IndexPageData{}
+	data.Mainnet = utils.Config.Chain.Mainnet
 
 	data.NetworkName = utils.Config.Chain.Network
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
@@ -155,7 +155,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	now := time.Now()
 
 	// run deposit query until the Genesis period is over
-	if now.Before(genesisTransition) {
+	if now.Before(genesisTransition) || startSlotTime == time.Unix(0, 0) {
 		if cutoffSlot < 15 {
 			cutoffSlot = 15
 		}
@@ -167,12 +167,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		deposit := Deposit{}
 
 		err = db.DB.Get(&deposit, `
-			SELECT COUNT(*) as total, COALESCE(MAX(block_ts),NOW()) as block_ts
-			FROM 
-				eth1_deposits as eth1 
-			WHERE 
-				eth1.amount >= 32e9 and eth1.valid_signature = true;
-		`)
+			SELECT COUNT(*) as total, COALESCE(MAX(block_ts),NOW()) AS block_ts
+			FROM (
+				SELECT publickey, SUM(amount) AS amount, MAX(block_ts) as block_ts
+				FROM eth1_deposits
+				WHERE valid_signature = true
+				GROUP BY publickey
+				HAVING SUM(amount) >= 32e9
+			) a`)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
 		}
@@ -180,9 +182,16 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
+		genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
-		data.NetworkStartTs = minGenesisTime.Unix()
+
+		data.MinGenesisTime = minGenesisTime.Unix()
+		data.NetworkStartTs = minGenesisTime.Add(genesisDelay).Unix()
+
+		if minGenesisTime.Before(time.Now()) {
+			minGenesisTime = time.Now()
+		}
 
 		// enough deposits
 		if data.DepositedTotal > data.DepositThreshold {
@@ -191,14 +200,38 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				depositThresholdReached.Store(true)
 			}
 			eth1Block := eth1BlockDepositReached.Load().(time.Time)
-			genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay))
 
-			if eth1Block.Add(genesisDelay).After(minGenesisTime) {
+			if !(startSlotTime == time.Unix(0, 0)) && eth1Block.Add(genesisDelay).After(minGenesisTime) {
 				// Network starts after min genesis time
 				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
 			}
 		}
+
+		latestChartsPageData := LatestChartsPageData()
+		if latestChartsPageData != nil {
+			for _, c := range *latestChartsPageData {
+				if c.Path == "deposits" {
+					data.DepositChart = c
+				} else if c.Path == "deposits_distribution" {
+					data.DepositDistribution = c
+				}
+			}
+		}
 	}
+	if data.DepositChart != nil && data.DepositChart.Data != nil && data.DepositChart.Data.Series != nil {
+		series := data.DepositChart.Data.Series
+		if len(series) > 2 {
+			points := series[1].Data.([][]float64)
+			periodDays := float64(len(points))
+			avgDepositPerDay := data.DepositedTotal / periodDays
+			daysUntilThreshold := (data.DepositThreshold - data.DepositedTotal) / avgDepositPerDay
+			estimatedTimeToThreshold := time.Now().Add(time.Hour * 24 * time.Duration(daysUntilThreshold))
+			if estimatedTimeToThreshold.After(time.Unix(data.NetworkStartTs, 0)) {
+				data.NetworkStartTs = estimatedTimeToThreshold.Add(time.Duration(int64(utils.Config.Chain.GenesisDelay) * 1000 * 1000 * 1000)).Unix()
+			}
+		}
+	}
+
 	// has genesis occured
 	if now.After(startSlotTime) {
 		data.Genesis = true
@@ -212,6 +245,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.GenesisPeriod = false
 	}
 
+	if startSlotTime == time.Unix(0, 0) {
+		data.Genesis = false
+	}
+
 	var epochs []*types.IndexPageDataEpochs
 	err = db.DB.Select(&epochs, `SELECT epoch, finalized , eligibleether, globalparticipationrate, votedether FROM epochs ORDER BY epochs DESC LIMIT 15`)
 	if err != nil {
@@ -222,7 +259,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		epoch.Ts = utils.EpochToTime(epoch.Epoch)
 		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
 		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther)
-		epoch.EligibleEtherFormatted = utils.FormatBalance(epoch.EligibleEther)
+		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther)
 		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate)
 	}
 	data.Epochs = epochs
@@ -250,9 +287,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
 			blocks.status,
-			COALESCE(validators.name, '') AS name
+			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE blocks.slot < $1
 		ORDER BY blocks.slot DESC LIMIT 15`, cutoffSlot)
 	if err != nil {
@@ -266,9 +304,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		block.BlockRootFormatted = fmt.Sprintf("%x", block.BlockRoot)
 	}
 
-	// if len(blocks) > 0 {
-	// 	data.CurrentSlot = blocks[0].Slot
-	// }
 	if data.GenesisPeriod {
 		for _, blk := range blocks {
 			if blk.Status != 0 {
@@ -394,6 +429,11 @@ func GetLatestStats() *types.Stats {
 			InvalidDepositCount:  new(uint64),
 			UniqueValidatorCount: new(uint64),
 		}
+	} else if stats.(*types.Stats).TopDepositors != nil && len(*stats.(*types.Stats).TopDepositors) == 1 {
+		*stats.(*types.Stats).TopDepositors = append(*stats.(*types.Stats).TopDepositors, types.StatsTopDepositors{
+			Address:      "000",
+			DepositCount: 0,
+		})
 	}
 	return stats.(*types.Stats)
 }

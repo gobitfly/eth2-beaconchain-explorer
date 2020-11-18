@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1Deposits.html"))
+var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1Deposits.html", "templates/index/depositChart.html"))
 var eth1DepositsLeaderboardTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1DepositsLeaderboard.html"))
 
 // Eth1Deposits will return information about deposits using a go template
@@ -24,7 +24,18 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 
 	pageData := &types.EthOneDepositsPageData{}
 
+	latestChartsPageData := services.LatestChartsPageData()
+	if latestChartsPageData != nil {
+		for _, c := range *latestChartsPageData {
+			if c.Path == "deposits" {
+				pageData.DepositChart = c
+				break
+			}
+		}
+	}
+
 	pageData.Stats = services.GetLatestStats()
+	pageData.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 
 	data := &types.PageData{
 		HeaderAd: true,
@@ -45,6 +56,8 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err := eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)
@@ -117,6 +130,10 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(deposits))
 	for i, d := range deposits {
+		valid := "❌"
+		if d.ValidSignature {
+			valid = "✅"
+		}
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
 			utils.FormatPublicKey(d.PublicKey),
@@ -125,7 +142,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatTimestamp(d.BlockTs.Unix()),
 			utils.FormatEth1Block(d.BlockNumber),
 			utils.FormatValidatorStatus(d.State),
-			d.ValidSignature,
+			valid,
 		}
 	}
 
@@ -167,6 +184,12 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
+	}
+
+	data.Data = types.EthOneDepositLeaderBoardPageData{
+		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err := eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)
@@ -181,7 +204,6 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 // Eth1DepositsData will return eth1-deposits as json
 func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")

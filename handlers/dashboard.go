@@ -74,6 +74,8 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err := dashboardTemplate.ExecuteTemplate(w, "layout", data)
@@ -284,8 +286,10 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			a.state,
 			COALESCE(p1.count, 0) as executedproposals,
 			COALESCE(p2.count, 0) as missedproposals,
-			COALESCE(validator_performance.performance7d, 0) as performance7d
+			COALESCE(validator_performance.performance7d, 0) as performance7d,
+			COALESCE(validator_names.name, '') AS name
 		FROM validators
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		INNER JOIN (
 			SELECT validatorindex,
 			CASE 

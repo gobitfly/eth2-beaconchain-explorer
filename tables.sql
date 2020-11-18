@@ -18,11 +18,18 @@ create table validators
     activationepoch            bigint not null,
     exitepoch                  bigint not null,
     lastattestationslot        bigint,
-    name                       varchar(40),
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
 create index idx_validators_name on validators (name);
+
+drop table if exists validator_names;
+create table validator_names
+(
+    publickey bytea not null,
+    name      varchar(40),
+    primary key (publickey)
+);
 
 drop table if exists validator_set;
 create table validator_set
@@ -310,6 +317,45 @@ create table users
     primary key (id, email)
 );
 
+drop table if exists oauth_apps;
+create table oauth_apps
+(
+    id                    serial                      not null,
+    owner_id              int                         not null,
+    redirect_uri          character varying(100)      not null unique,
+    app_name              character varying(35)       not null,
+    active                bool                        not null default 't',
+    created_ts            timestamp without time zone not null,
+    primary key (id, redirect_uri)
+);
+
+drop table if exists oauth_codes;
+create table oauth_codes
+(
+    id              serial                      not null,
+    user_id         int                         not null,
+    code            character varying(64)       not null,
+    consumed        bool                        not null default 'f',
+    app_id          int                         not null,
+    created_ts      timestamp without time zone not null,
+    primary key (user_id, code)
+);
+
+drop table if exists users_devices;
+create table users_devices
+(
+    id                    serial                      not null,
+    user_id               int                         not null,
+    refresh_token         character varying(64)       not null,
+    device_name           character varying(20)       not null,
+    notification_token    character varying(500),
+    notify_enabled        bool                        not null default 'f',
+    active                bool                        not null default 't',
+    app_id                int                         not null,
+    created_ts            timestamp without time zone not null,
+    primary key (user_id, refresh_token)
+);
+
 drop table if exists users_subscriptions;
 create table users_subscriptions
 (
@@ -321,7 +367,7 @@ create table users_subscriptions
     last_sent_epoch int,
     created_ts      timestamp without time zone not null,
     created_epoch   int                         not null,
-    primary key (user_id, event_name, event_filter),
+    primary key (user_id, event_name, event_filter)
 );
 
 drop table if exists users_validators_tags;
@@ -330,7 +376,7 @@ create table users_validators_tags
     user_id             int                    not null,
     validator_publickey bytea                  not null,
     tag                 character varying(100) not null,
-    primary key (user_id, validator_publickey, tag),
+    primary key (user_id, validator_publickey, tag)
 );
 
 drop table if exists mails_sent;

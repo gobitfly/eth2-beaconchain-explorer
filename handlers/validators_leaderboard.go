@@ -40,6 +40,8 @@ func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err := validatorsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)
@@ -118,9 +120,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
 					validator_performance.*,
 					validators.pubkey, 
-					COALESCE(validators.name, '') AS name
+					COALESCE(validator_names.name, '') AS name
 				FROM validator_performance 
 					LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+					LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 				ORDER BY `+orderBy+` `+orderDir+`
 			) AS a
 			LIMIT $1 OFFSET $2`, length, start)
@@ -134,9 +137,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			SELECT COUNT(*)
 			FROM validator_performance
 				LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+				LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE (encode(validators.pubkey::bytea, 'hex') LIKE $1
 				OR CAST(validators.validatorindex AS text) LIKE $1)
-				OR LOWER(validators.name) LIKE LOWER($1)`, "%"+search+"%")
+				OR LOWER(validator_names.name) LIKE LOWER($1)`, "%"+search+"%")
 		if err != nil {
 			logger.Errorf("error retrieving proposed blocks count with search: %v", err)
 			http.Error(w, "Internal server error", 503)
@@ -149,9 +153,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
 					validator_performance.*,
 					validators.pubkey, 
-					COALESCE(validators.name, '') AS name
+					COALESCE(validator_names.name, '') AS name
 				FROM validator_performance 
 					LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+					LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 				ORDER BY `+orderBy+` `+orderDir+`
 			) AS a
 			WHERE (encode(a.pubkey::bytea, 'hex') LIKE $3

@@ -24,6 +24,8 @@ type PageData struct {
 	CurrentEpoch          uint64
 	CurrentSlot           uint64
 	FinalizationDelay     uint64
+	Mainnet               bool
+	DepositContract       string
 }
 
 // Meta is a struct to hold metadata about the page
@@ -78,6 +80,7 @@ type IndexPageData struct {
 	DepositThreshold          float64                `json:"deposit_threshold"`
 	ValidatorsRemaining       float64                `json:"validators_remaining"`
 	NetworkStartTs            int64                  `json:"network_start_ts"`
+	MinGenesisTime            int64                  `json:"-"`
 	Blocks                    []*IndexPageDataBlocks `json:"blocks"`
 	Epochs                    []*IndexPageDataEpochs `json:"epochs"`
 	StakedEtherChartData      [][]float64            `json:"staked_ether_chart_data"`
@@ -85,6 +88,9 @@ type IndexPageData struct {
 	Subtitle                  template.HTML          `json:"-"`
 	Genesis                   bool                   `json:"genesis"`
 	GenesisPeriod             bool                   `json:"genesis_period"`
+	Mainnet                   bool                   `json:"-"`
+	DepositChart              *ChartsPageDataChart
+	DepositDistribution       *ChartsPageDataChart
 }
 
 type IndexPageDataEpochs struct {
@@ -215,6 +221,7 @@ type ValidatorPageData struct {
 	User                                *User
 	AverageAttestationInclusionDistance float64
 	AttestationInclusionEffectiveness   float64
+	CsrfField                           template.HTML
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -337,9 +344,9 @@ type BlockPageData struct {
 	VoluntaryExitscount    uint64 `db:"voluntaryexitscount"`
 	SlashingsCount         uint64
 	VotesCount             uint64
+	Mainnet                bool
 
 	Attestations      []*BlockPageAttestation // Attestations included in this block
-	Deposits          []*BlockPageDeposit
 	VoluntaryExits    []*BlockPageVoluntaryExits
 	Votes             []*BlockVote // Attestations that voted for that block
 	AttesterSlashings []*BlockPageAttesterSlashing
@@ -538,6 +545,7 @@ type GenericChartData struct {
 	XAxisLabelsFormatter            template.JS
 	TooltipFormatter                template.JS
 	PlotOptionsSeriesEventsClick    template.JS
+	PlotOptionsPie                  template.JS
 	PlotOptionsSeriesCursor         string
 	Title                           string                    `json:"title"`
 	Subtitle                        string                    `json:"subtitle"`
@@ -623,6 +631,12 @@ type StakingCalculatorPageData struct {
 
 type EthOneDepositsPageData struct {
 	*Stats
+	DepositContract string
+	DepositChart    *ChartsPageDataChart
+}
+
+type EthOneDepositLeaderBoardPageData struct {
+	DepositContract string
 }
 
 // EpochsPageData is a struct to hold epoch data for the epochs page
@@ -683,12 +697,23 @@ type User struct {
 }
 
 type AuthData struct {
-	Flashes []interface{}
-	Email   string
+	Flashes   []interface{}
+	Email     string
+	CsrfField template.HTML
+}
+
+type CsrfData struct {
+	CsrfField template.HTML
 }
 
 type UserSettingsPageData struct {
-	Email string `json:"email"`
+	Email     string `json:"email"`
+	CsrfField template.HTML
+	AuthData
+}
+
+type UserAuthorizeConfirmPageData struct {
+	AppData *OAuthAppData
 	AuthData
 }
 
@@ -704,11 +729,13 @@ type UserNotificationsPageData struct {
 
 type AdvertiseWithUsPageData struct {
 	FlashMessage string
+	CsrfField    template.HTML
 }
 
 type ApiPricing struct {
 	FlashMessage string
 	User         *User
+	CsrfField    template.HTML
 }
 
 type StakeWithUsPageData struct {

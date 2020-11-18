@@ -280,10 +280,13 @@
 				<div class="row border-bottom p-3 mx-0">
 					<div class="col-md-2">Unique Index:</div>
 					<div class="col-md-10">
-                        {{if $deposited}}Index Pending{{else}}{{.Index}}{{end}}
+											{{if $deposited}}Index Pending{{else}}
+												
+											{{.Index}}
                         {{if eq .Name ""}}
-							| <a href="#" data-toggle="modal" data-target="#edit-validator-modal">Set custom name</a>
+												| <a href="#" data-toggle="modal" data-target="#edit-validator-modal">Set custom name</a>
                         {{end}}
+											{{end}}
 					</div>
 				</div>
                 {{if not $deposited }}
@@ -341,7 +344,7 @@
                 {{end}}
 				<div class="row border-bottom p-3 mx-0">
 					<div class="col-md-2">Status:</div>
-					<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}{{if $deposited}}(An ETH1 deposit has been made, it will take around 8 hours until your deposit is processed by the beacon chain. Check out the deposits tab for more details){{end}}</div>
+					<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}{{if $deposited}} - An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 8 hours</a> until your deposit is processed by the beacon chain. Check out the deposits tab for more details{{end}}</div>
 				</div>
                 {{ if gtf .AttestationInclusionEffectiveness 0 }}
 					<div class="row border-bottom p-3 mx-0">
@@ -424,8 +427,8 @@
 							<th>Status</th>
 							<th>Time</th>
 							<th>Committee Index</th>
-							<th>Inclusion Slot</th>
-							<th data-toggle="tooltip" title="Eth 2 uses the metric inclusion distance when calculating attestation rewards for validators. The inclusion distance of a slot is the difference between the slot in which an attestation is made and the lowest slot number of the block in which the attestation is included. Attestations should be included as soon as possible. A large inclusion distance will reduce the income of a validator significantly.">Inclusion Distance</th>
+							<th>Inclusion Slot</th> 
+							<th data-toggle="tooltip" title="The optimal inclusion distance shows the difference between the inclusion slot and the earliest slot it could have been included. The best case for the optimal inclusion distance is 0.">Optimal Inclusion Distance</th>
 						</tr>
 						</thead>
 						<tbody></tbody>
@@ -456,7 +459,7 @@
 									<td>{{formatEth1Block $deposit.BlockNumber}}</td>
 									<td>{{formatTimestamp $deposit.BlockTs}}</td>
 									<td>{{formatDepositAmount $deposit.Amount}}</td>
-									<td>{{$deposit.ValidSignature}}</td>
+									<td>{{if $deposit.ValidSignature}}✅{{else}}❌{{end}}</td>
 								</tr>
                             {{end}}
 							</tbody>

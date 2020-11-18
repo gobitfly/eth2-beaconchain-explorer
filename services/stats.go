@@ -7,15 +7,11 @@ import (
 )
 
 func statsUpdater() {
-	sleepDuration := time.Duration(6 * time.Minute)
-	var prevEpoch uint64
+	sleepDuration := time.Duration(time.Minute)
 
 	for {
 		latestEpoch := LatestEpoch()
-		if prevEpoch >= latestEpoch {
-			time.Sleep(sleepDuration)
-			continue
-		}
+
 		now := time.Now()
 		statResult, err := calculateStats()
 		if err != nil {
@@ -25,7 +21,7 @@ func statsUpdater() {
 		}
 		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(now)).Info("stats update completed")
 		latestStats.Store(statResult)
-		prevEpoch = latestEpoch
+		time.Sleep(sleepDuration)
 	}
 }
 
@@ -37,7 +33,6 @@ func calculateStats() (*types.Stats, error) {
 		return nil, err
 	}
 	stats.TopDepositors = topDeposits
-
 	invalidCount, err := eth1InvalidDeposits()
 	if err != nil {
 		return nil, err

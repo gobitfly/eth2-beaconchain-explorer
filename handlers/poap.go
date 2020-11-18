@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"eth2-exporter/db"
@@ -22,6 +23,10 @@ var poapTemplate = template.Must(template.ParseFiles("templates/layout.html", "t
 
 // do not change existing entries, only append new entries
 var poapClients = []string{"Prysm", "Lighthouse", "Teku", "Nimbus", "Lodestar"}
+var poapMaxSlot = uint64(300000)
+
+var poapData atomic.Value
+var poapDataEpoch uint64
 
 func Poap(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -48,6 +53,8 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 	err := poapTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -60,6 +67,20 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 func PoapData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	latestEpoch := services.LatestEpoch()
+	latestPoapDataEpoch := atomic.LoadUint64(&poapDataEpoch)
+	latestPoapData := poapData.Load()
+
+	if latestPoapData != nil && (latestEpoch < latestPoapDataEpoch || latestEpoch == 0 || latestEpoch > utils.EpochOfSlot(poapMaxSlot)) {
+		err := json.NewEncoder(w).Encode(latestPoapData.(*types.DataTableResponse))
+		if err != nil {
+			logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		return
+	}
+
 	sqlRes := []struct {
 		Graffiti       string
 		Blockcount     uint64
@@ -71,8 +92,8 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 			count(*) as blockcount,
 			count(distinct proposer) as validatorcount
 		from blocks
-		where slot < 300000 and graffiti like 'poap%'
-		group by graffiti`)
+		where slot <= $1 and graffiti like 'poap%'
+		group by graffiti`, poapMaxSlot)
 	if err != nil {
 		logger.Errorf("error retrieving poap data: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -121,6 +142,9 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 		RecordsFiltered: 1,
 		Data:            tableData,
 	}
+
+	poapData.Store(data)
+	atomic.StoreUint64(&poapDataEpoch, latestEpoch)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {

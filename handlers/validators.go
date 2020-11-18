@@ -81,6 +81,8 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		Mainnet:               utils.Config.Chain.Mainnet,
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err = validatorsTemplate.ExecuteTemplate(w, "layout", data)
@@ -247,11 +249,12 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch,
 			validators.exitepoch,
 			validators.lastattestationslot,
-			COALESCE(validators.name, '') AS name,
+			COALESCE(validator_names.name, '') AS name,
 			a.state,
 			COALESCE(p1.count,0) AS executedproposals,
 			COALESCE(p2.count,0) AS missedproposals
 		FROM validators
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		INNER JOIN (
 			SELECT validatorindex,
 			CASE 
