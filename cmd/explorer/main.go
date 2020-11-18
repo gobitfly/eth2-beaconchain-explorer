@@ -139,6 +139,7 @@ func main() {
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
+				//csrf.Secure(false), // Only enable this in development environment to pass csrf checks
 			)
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
