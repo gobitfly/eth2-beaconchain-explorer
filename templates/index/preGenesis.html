@@ -41,7 +41,6 @@
 
   <script src="/js/langs.js"></script>
   <script>
-      //var activeLang = "eng";
       function updateLang(lang){
         console.log(langs, lang);
         let items = document.querySelectorAll('html [multiLang]');
@@ -57,12 +56,8 @@
         button.innerHTML = item.lang;
         button.className = "btn btn-link";
         button.setAttribute("onClick", 'updateLang("'+item.lang+'")');
-        //button.onClick = function(){console.log("clicked"); updateLang(item.lang);};
-        //button.addEventListener("click", function(){console.log("clicked"); updateLang(langs, item.lang)})
         butt_div.appendChild(button);
-        //butt_div.insertAdjacentHTML('beforeend',`<button type="button" class="btn btn-link" onclick="updateLang(`+langs+","+item.lang+`)">`+item.lang+`</button>`);
       });
-      
   </script>
 
 {{end}}
