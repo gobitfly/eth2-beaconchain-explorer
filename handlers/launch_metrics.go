@@ -22,6 +22,7 @@ type sqlBlocks struct {
 // var currentEpoch uint64
 // var currentSlot uint64
 
+// LaunchMetricsData returns the metrics for the earliest epochs
 func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -39,9 +40,6 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 		end as status,
 		b.epoch,
 		e.globalparticipationrate,
-		nl.finalizedepoch,
-		nl.justifiedepoch,
-		nl.previousjustifiedepoch,
 		case when nl.finalizedepoch >= b.epoch then true else false end as finalized,
 		case when nl.justifiedepoch >= b.epoch then true else false end as justified,
 		case when nl.previousjustifiedepoch >= b.epoch then true else false end as previousjustified
