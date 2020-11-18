@@ -1,6 +1,7 @@
 {{ define "preGenesis" }}
   <div class="row mx-auto align-items-center">
     <div class="col-md-6">
+      <div id="lang_buttons"></div>
       <h2 multiLang="p1_title" class="h3">Phase 0 Beacon Chain</h2>
       <p><a style="all:unset;" multiLang="p1_text_1">The Ethereum Beacon Chain is currently undergoing genesis. Please prepare your validators and send your deposits. To join Ethereum 2.0 fire up one of the beacon chain and validator clients. The Mainnet will support</a> <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a
           href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a>. <a style="all:unset;" multiLang="p1_text_2">Please visit the official</a> <a href="https://launchpad.ethereum.org/"> Launchpad</a> <a style="all:unset;" multiLang="p1_text_3">for more information on how to deposit.</a></p>
@@ -11,10 +12,10 @@
   </div>
   <div class="row mx-auto align-items-center">
     <div class="col-md-6 my-3">
-      <h2 class="h3">When is genesis reached?</h2>
+      <h2 multiLang="p2_title" class="h3">When is genesis reached?</h2>
       <p style="text-overflow: ellipsis; overflow: hidden;">
-        Genesis will occur once enough deposits have been made to the deposit contract{{if len .DepositContract}} <a href="/validators/eth1deposits" class="text-truncate text-monospace">{{.DepositContract}}</a>{{end}}. Each deposit is registered by the beacon chain after a block delay of <i>2048</i>
-        Ethereum 1.0 blocks. The earliest possible genesis time and the estimated genesis time (according to the rate of deposits) can be seen on the right.
+        <a style="all:unset;" multiLang="p2_text_1">Genesis will occur once enough deposits have been made to the deposit contract</a>{{if len .DepositContract}} <a href="/validators/eth1deposits" class="text-truncate text-monospace">{{.DepositContract}}</a>{{end}}. <a style="all:unset;" multiLang="p2_text_2">Each deposit is registered by the beacon chain after a block delay of</a> <i>2048</i>
+        <a style="all:unset;" multiLang="p2_text_3">Ethereum 1.0 blocks. The earliest possible genesis time and the estimated genesis time (according to the rate of deposits) can be seen on the right.</a>
       </p>
     </div>
     <div class="col-md-6 my-3">
@@ -23,11 +24,11 @@
   </div>
   <div class="row mx-auto align-items-center">
     <div class="col-md-6 my-3">
-      <h2 class="h3">Explore & Manage</h2>
+      <h2 multiLang="p3_title" class="h3">Explore & Manage</h2>
       <p>
-        Once the beacon chain has reached genesis you can explore <a href="/epochs">epochs</a>, <a href="/blocks">slots</a> and see <a href="/charts">statistics</a>.
-        Further, you can monitor your validators performance using our <a href="/dashboard">dashboard</a> feature.
-        <a href="/register">Sign up</a> and add alerts on the <a href="/user/notifications">accounts page</a>. Get notified if your validators go offline. For more information about the beacon chain view our <a href="https://kb.beaconcha.in/">knowledge base.</a>
+        <a style="all:unset;" multiLang="p3_text_1">Once the beacon chain has reached genesis you can explore</a> <a href="/epochs" multiLang="p3_text_2" >epochs</a>, <a href="/blocks" multiLang="p3_text_3">slots</a> <a style="all:unset;" multiLang="p3_text_4">and see</a> <a multiLang="p3_text_5" href="/charts">statistics</a>.
+        <a style="all:unset;" multiLang="p3_text_6">Further, you can monitor your validators performance using our</a> <a href="/dashboard" multiLang="p3_text_7">dashboard</a> <a style="all:unset;" multiLang="p3_text_8">feature</a>.
+        <a href="/register" multiLang="p3_text_9">Sign up</a> <a style="all:unset;" multiLang="p3_text_10">and add alerts on the</a> <a href="/user/notifications" multiLang="p3_text_11">accounts page</a>. <a style="all:unset;" multiLang="p3_text_12">Get notified if your validators go offline. For more information about the beacon chain view our</a> <a href="https://kb.beaconcha.in/" multiLang="p3_text_13">knowledge base.</a>
       </p>
     </div>
     <div style="max-height: 250px" class="col-md-6 my-3 d-flex flex-column justify-content-center">
@@ -40,12 +41,28 @@
 
   <script src="/js/langs.js"></script>
   <script>
-      var activeLang = "rus";
-      let items = document.querySelectorAll('html [multiLang]');
-      items.forEach(item=>{
-          let text_key = item.getAttribute('multiLang')
-          item.textContent = langs[activeLang].preGenesis[text_key]
+      //var activeLang = "eng";
+      function updateLang(lang){
+        console.log(langs, lang);
+        let items = document.querySelectorAll('html [multiLang]');
+        items.forEach(item=>{
+            let text_key = item.getAttribute('multiLang');
+            item.textContent = langs[lang].preGenesis[text_key];
+        });
+      }
+
+      let butt_div = document.getElementById("lang_buttons");
+      langs.available.forEach(item=>{
+        let button = document.createElement('Button');
+        button.innerHTML = item.lang;
+        button.className = "btn btn-link";
+        button.setAttribute("onClick", 'updateLang("'+item.lang+'")');
+        //button.onClick = function(){console.log("clicked"); updateLang(item.lang);};
+        //button.addEventListener("click", function(){console.log("clicked"); updateLang(langs, item.lang)})
+        butt_div.appendChild(button);
+        //butt_div.insertAdjacentHTML('beforeend',`<button type="button" class="btn btn-link" onclick="updateLang(`+langs+","+item.lang+`)">`+item.lang+`</button>`);
       });
+      
   </script>
 
 {{end}}
