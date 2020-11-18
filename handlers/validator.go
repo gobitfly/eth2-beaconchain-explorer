@@ -78,6 +78,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
+			var name string
+			err = db.DB.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
+			if err != nil {
+				logger.Errorf("error getting validator-name from db: %v", err)
+			} else {
+				validatorPageData.Name = name
+			}
 			deposits, err := db.GetValidatorDeposits(pubKey)
 			if err != nil {
 				logger.Errorf("error getting validator-deposits from db: %v", err)
