@@ -7,8 +7,9 @@ services:
         volumes:
             - ./private/eth1_node:/root
         network_mode: host
-        command: 
-            - --goerli
+        # uncomment the lines below for goerli testnet
+        # command: 
+        #     - --goerli
 
 
     postgres:
@@ -18,7 +19,8 @@ services:
         environment:
             - POSTGRES_PASSWORD=pass
             - POSTGRES_USER=postgres
-            - POSTGRES_DB=db
+            # - POSTGRES_DB=db // goerli db
+            - POSTGRES_DB=maindb
             - PGDATA=/postgresql/data
         volumes:
             - db:/postgresql/data
@@ -30,13 +32,14 @@ services:
         restart: always
         volumes:
             - ./private/eth2_data:/data
-            - ./private/eth1_node/.ethereum/goerli:$HOME/Goerli
+            #- ./private/eth1_node/.ethereum/goerli:$HOME/ipc # goerli testnet
+            - ./private/eth1_node/.ethereum/:$HOME/ipc # mainnet
         network_mode: host
         command: 
             - --datadir=/data
             - --rpc-host=0.0.0.0
             - --monitoring-host=0.0.0.0
-            - --http-web3provider=$HOME/Goerli/geth.ipc
+            - --http-web3provider=$HOME/ipc/geth.ipc
             - --accept-terms-of-use
         depends_on:
             - eth1
@@ -56,6 +59,18 @@ services:
         command: /bin/sh
         stdin_open: true
         tty: true
+
+    kong:
+        image: kong:2.2.0
+        container_name: kong 
+        restart: always
+        network_mode: host
+        environment: 
+            - KONG_DATABASE=postgres 
+            - KONG_PG_HOST=0.0.0.0
+        # command: kong migrations bootstrap
+        depends_on:
+            - prysm
 
 volumes: 
     db:

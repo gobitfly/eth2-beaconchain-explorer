@@ -62,9 +62,19 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	apiKey, err := db.GetUserApiKeyById(user.UserID)
+	if err != nil {
+		logger.Errorf("Error retrieving the api_key for user: %v %v", user.UserID, err)
+		session.Flashes("Error: Something went wrong.")
+		session.Save(r, w)
+		apiKey = "Not available!"
+		//return
+	}
+
 	userSettingsData.Email = email
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
+	userSettingsData.APIKey = apiKey
 
 	data := &types.PageData{
 		HeaderAd: true,

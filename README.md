@@ -68,7 +68,7 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 ## Developing locally with docker
 - Clone the repository
 - Run `docker-compose up` to start instances of the following containers `eth1`, `prysm`, `postgres` and `golang`.
-- Open a new terminal in project directory and run `docker run -it --rm --net=host -v ${pwd}/:/src  postgres psql -f /src/tables.sql -d db -h 0.0.0.0 -U postgres` to create new tables in the database  
+- Open a new terminal in project directory and run `docker run -it --rm --net=host -v $(pwd):/src  postgres psql -f /src/tables.sql -d db -h 0.0.0.0 -U postgres` to create new tables in the database  
 - Wait for the client to finish initial sync, you can check this by looking at logs of `prysm` instance.
 - Copy the `config-example.yml` file and adapt it to your environment.\
  In your `.yml` file specify `eth1Endpoint` as `'./private/eth1_node/.ethereum/goerli/geth.ipc'`. 
@@ -76,7 +76,14 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 - Connect to `golang` instance by running `docker exec -ti golang bash` and run `make all`
 - Start the explorer binary and pass the path to the config file as argument 
 
-      ./bin/explorer --config your_config.yml   
+      ./bin/explorer --config your_config.yml  
+
+## For Kong
+- Type in the database `create role kong login;` and `create database kong;` 
+- Uncomment `"# command: kong migrations bootstrap"` line in the `docker-compose.yml` file
+- Run `docker-compose up` wait till you see `kong exit(0)` then stop containers by pressing `ctr+C` and run `docker-compose down`
+- Comment this line "command: kong migrations bootstrap"`
+- Run `docker-compose up`
 
 ## Development
 

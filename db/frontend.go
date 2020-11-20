@@ -21,6 +21,12 @@ func GetUserEmailById(id uint64) (string, error) {
 	return mail, err
 }
 
+func GetUserApiKeyById(id uint64) (string, error) {
+	var apiKey string = ""
+	err := FrontendDB.Get(&apiKey, "SELECT api_key FROM users WHERE id = $1", id)
+	return apiKey, err
+}
+
 // DeleteUserByEmail deletes a user.
 func DeleteUserByEmail(email string) error {
 	_, err := FrontendDB.Exec("DELETE FROM users WHERE email = $1", email)
