@@ -35,8 +35,16 @@ func Init() {
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
-	go indexPageDataUpdater()
+	if utils.Config.Frontend.OnlyAPI {
+		ready.Done()
+	} else {
+		go indexPageDataUpdater()
+	}
 	ready.Wait()
+
+	if utils.Config.Frontend.OnlyAPI {
+		return
+	}
 
 	go chartsPageDataUpdater()
 	go statsUpdater()
