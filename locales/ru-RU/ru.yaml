@@ -1,6 +1,6 @@
 p1_title: "Beacon Chain Фаза 0"
-p1_text: 'Настоящее время Ethereum Beacon Chain находится в стадии genesis. 
-  Пожалуйста, подготовьте ваши валидаторы и отправьте свои депозиты. 
+p1_text: 'В настоящее время Ethereum Beacon Chain находится в стадии genesis. 
+  Пожалуйста, подготовьте ваши валидаторы и отправьте свои депозиты в депозит контракт. 
   Чтобы присоединиться к Ethereum 2.0, запустите одну из beacon chain валидаторов. 
   Основная сеть будет поддерживать <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>,
   <a href="https://github.com/sigp/lighthouse">Lighthouse</a>,
