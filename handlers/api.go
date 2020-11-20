@@ -43,6 +43,17 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if 18446744073709551615 == utils.Config.Chain.GenesisTimestamp {
+		fmt.Fprint(w, "OK. No GENESIS_TIMESTAMP defined yet")
+		return
+	}
+
+	genesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+	if genesisTime.After(time.Now()) {
+		fmt.Fprintf(w, "OK. Genesis in %v (%v)", time.Until(genesisTime), genesisTime)
+		return
+	}
+
 	epochTime := utils.EpochToTime(lastEpoch)
 	if epochTime.Before(time.Now().Add(time.Minute * -13)) {
 		http.Error(w, "Internal server error: last epoch in db is more than 13 minutes old", 503)
