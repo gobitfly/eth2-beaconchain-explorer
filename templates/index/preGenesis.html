@@ -2,8 +2,8 @@
   <div class="row mx-auto align-items-center">
     <div class="col-md-6">
       <div>
-        <a  onClick="updateLang('en')">Eng</a> |
-        <a  onClick="updateLang('ru')">Rus</a>
+        <button class="btn btn-link" style="padding-right:0; padding-left:0;" onClick="updateLang('en')">Eng</button> |
+        <button class="btn btn-link" style="padding-right:0; padding-left:0;"onClick="updateLang('ru')">Rus</button>
       </div>
       <h2 class="h3">{{ trLang .Lang "p1_title" }}</h2>
       <p> {{ trLang .Lang "p1_text" }}</p>
