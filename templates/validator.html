@@ -344,7 +344,7 @@
                 {{end}}
 				<div class="row border-bottom p-3 mx-0">
 					<div class="col-md-2">Status:</div>
-					<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}{{if $deposited}} - An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 8 hours</a> until your deposit is processed by the beacon chain. Check out the deposits tab for more details{{end}}</div>
+					<div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}{{if $deposited}} - An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">at least 12 hours</a> until your deposit is processed by the beacon chain. Check out the deposits tab for more details{{end}}</div>
 				</div>
                 {{ if gtf .AttestationInclusionEffectiveness 0 }}
 					<div class="row border-bottom p-3 mx-0">
@@ -469,7 +469,7 @@
 				<div class="table-eth2">
 					<h4 class="my-3">Eth2 Deposits</h4>
                     {{if not .Deposits.Eth2Deposits}}
-						<h6 class="">No beacon chain deposits found for this validator. It takes around 8 hours for a deposit to be processed by the beacon chain.</h6>
+						<h6 class="">No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">at least 12 hours</a> for a deposit to be processed by the beacon chain.</h6>
 						<div class="wip d-flex justify-content-center p-3">
 							<svg id="a1bb6ffe-8d83-4899-8fa0-fcb3165ea164" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" width="442.595" height="314.60077" viewBox="0 0 884.595 628.60077">
 								<ellipse cx="75.17704" cy="619.60077" rx="75.13932" ry="9" fill="#e6e6e6"/>
