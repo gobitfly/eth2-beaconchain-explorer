@@ -76,6 +76,7 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
+		"derefString": DerefString,
 	}
 }
 

@@ -10,10 +10,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	httpSwagger "github.com/swaggo/http-swagger"
+	"gopkg.in/yaml.v2"
 
 	"github.com/sirupsen/logrus"
 
@@ -23,9 +26,25 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/phyber/negroni-gzip/gzip"
+	"github.com/stripe/stripe-go/v72"
 	"github.com/urfave/negroni"
 	"github.com/zesik/proxyaddr"
 )
+
+func initStripe(http *mux.Router) error {
+	if utils.Config == nil {
+		return fmt.Errorf("error no config found")
+	}
+	stripe.Key = utils.Config.Frontend.Stripe.SecretKey //os.Getenv("STRIPE_SECRET_KEY")
+	// http.HandleFunc("/stripe/setup", handlers.StripeSetup)
+	http.HandleFunc("/stripe/create-checkout-session", handlers.StripeCreateCheckoutSession).Methods("POST")
+	http.HandleFunc("/stripe/checkout-session", handlers.StripeCheckoutSession).Methods("GET")
+	http.HandleFunc("/stripe/customer-portal", handlers.StripeCustomerPortal).Methods("POST")
+	http.HandleFunc("/stripe/webhook", handlers.StripeWebhook).Methods("POST")
+	http.HandleFunc("/stripe/success", handlers.PricingSuccess).Methods("GET")
+	http.HandleFunc("/stripe/cancled", handlers.PricingCancled).Methods("GET")
+	return nil
+}
 
 func main() {
 	configPath := flag.String("config", "config.yml", "Path to the config file")
@@ -34,11 +53,27 @@ func main() {
 	logrus.Printf("config file path: %v", *configPath)
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
-
 	if err != nil {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
+
+	// decode phase0 config
+	if len(utils.Config.Chain.Phase0Path) > 0 {
+		phase0 := &types.Phase0{}
+		f, err := os.Open(utils.Config.Chain.Phase0Path)
+		if err != nil {
+			fmt.Errorf("error opening Phase0 Config file %v: %v", utils.Config.Chain.Phase0Path, err)
+		} else {
+			decoder := yaml.NewDecoder(f)
+			err = decoder.Decode(phase0)
+			if err != nil {
+				fmt.Errorf("error decoding Phase0 Config file %v: %v", utils.Config.Chain.Phase0Path, err)
+			} else {
+				utils.Config.Chain.Phase0 = *phase0
+			}
+		}
+	}
 
 	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
 	defer db.DB.Close()
@@ -97,6 +132,8 @@ func main() {
 
 		router := mux.NewRouter()
 
+		initStripe(router)
+
 		apiV1Router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
 		router.PathPrefix("/api/v1/docs/").Handler(httpSwagger.WrapHandler)
 		apiV1Router.HandleFunc("/epoch/{epoch}", handlers.ApiEpoch).Methods("GET", "OPTIONS")
@@ -120,7 +157,7 @@ func main() {
 		apiV1Router.Use(utils.CORSMiddleware)
 		router.PathPrefix("/api/v1").Handler(apiV1Router)
 
-		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
+		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {

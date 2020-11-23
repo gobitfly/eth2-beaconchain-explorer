@@ -395,3 +395,10 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 		return template.HTML(fmt.Sprintf("<span class=\"text-danger\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Bad <i class=\"fas fa-frown\"></i>", tooltipText, eff))
 	}
 }
+
+func DerefString(str *string) string {
+	if str != nil {
+		return *str
+	}
+	return ""
+}

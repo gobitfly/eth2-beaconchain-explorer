@@ -53,7 +53,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email, err := db.GetUserEmailById(user.UserID)
+	subscription, err := db.GetUserSubscription(user.UserID)
 	if err != nil {
 		logger.Errorf("Error retrieving the email for user: %v %v", user.UserID, err)
 		session.Flashes("Error: Something went wrong.")
@@ -62,7 +62,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userSettingsData.Email = email
+	userSettingsData.Subscription = subscription
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
