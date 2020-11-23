@@ -1,0 +1,29 @@
+p1_title: "Beacon Chain Фаза 0"
+p1_text: 'В настоящее время Ethereum Beacon Chain находится в стадии genesis. 
+  Пожалуйста, подготовьте Ваши валидаторы и отправьте свои депозиты в депозит контракт. 
+  Чтобы присоединиться к Ethereum 2.0, запустите одну из beacon chain валидаторов. 
+  Основная сеть будет поддерживать <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>,
+  <a href="https://github.com/sigp/lighthouse">Lighthouse</a>,
+  <a href="https://github.com/PegaSysEng/teku">Teku</a>,
+  <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a>.
+  Пожалуйста зайдите в официальный веб сайт <a href="https://launchpad.ethereum.org/">Launchpad</a>
+  для подробней информации о депозитов.'
+p2_title: "Когда будет genesis достижон?"
+p2_text:
+  'Genesis достигнет когда необходимое количество депозитов будут сделаны на депозит контракт
+  <a href="/validators/eth1deposits" class="text-truncate text-monospace">
+  0x00000000219ab540356cbb839cbe05303d7705fa</a>.
+  Каждый депозит будет зарегистрирован в beacon chain после <i>2048</i>
+  Ethereum 1.0 блоков. На правой стороне сайта Вы можете найти предположительное время до genesis 
+  (основано на степень получених депозитов).'
+p3_title: "Исследовать и Управлять"
+p3_text: '
+  Как только beacon chain дойдёт до genesis Вы сможете исследовать <a href="/epochs">эпохи</a>, 
+  <a href="/blocks">слоты</a> и смотреть <a href="/charts">статистики</a>.
+  Вы можете отслеживать эффективность Ваших валидаторов с помощью нашего 
+  <a href="/dashboard">dashboard</a> функции.
+  <a href="/register">Вы можете зарегистрироваться</a> и включить уведомления для Вашего 
+  <a href="/user/notifications">аккаунта</a>. 
+  В случае если Ваши валидаторы отключатся, Вы будете получать уведомления. 
+  Для дополнительной информации о beacon chain зайдите в наш 
+  <a href="https://kb.beaconcha.in/">информационный центр.</a>'
