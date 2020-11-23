@@ -23,7 +23,7 @@ import (
 // @description High performance API for querying information from the Ethereum 2.0 beacon chain
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
 // @description 10 requests / 1 minute / IP. All API results are cached for 1 minute.
-// @description If you required a higher usage plan please checkout https://beaconcha.in/api/pricing.
+// @description If you required a higher usage plan please checkout https://beaconcha.in/pricing.
 
 // ApiHealthz godoc
 // @Summary Health of the explorer
@@ -40,6 +40,17 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", 503)
+		return
+	}
+
+	if 18446744073709551615 == utils.Config.Chain.GenesisTimestamp {
+		fmt.Fprint(w, "OK. No GENESIS_TIMESTAMP defined yet")
+		return
+	}
+
+	genesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+	if genesisTime.After(time.Now()) {
+		fmt.Fprintf(w, "OK. Genesis in %v (%v)", time.Until(genesisTime), genesisTime)
 		return
 	}
 
@@ -526,7 +537,7 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidatorAttestations godoc
-// @Summary Get all attestations during the last 100 epochs for up to 100 validators
+// @Summary Get all attestations during the last 10 epochs for up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
@@ -545,7 +556,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT attestation_assignments.* FROM attestation_assignments LEFT JOIN validators ON validators.validatorindex = attestation_assignments.validatorindex WHERE (attestation_assignments.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) AND epoch > $3 ORDER BY validatorindex, epoch desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-100)
+	rows, err := db.DB.Query("SELECT attestation_assignments.* FROM attestation_assignments LEFT JOIN validators ON validators.validatorindex = attestation_assignments.validatorindex WHERE (attestation_assignments.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) AND epoch > $3 ORDER BY validatorindex, epoch desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-10)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return

@@ -31,6 +31,7 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 	"templates/svg/bricks.html",
 	"templates/svg/professor.html",
 	"templates/svg/timeline.html",
+	"templates/components/rocket.html",
 ))
 
 // Index will return the main "index" page using a go template
