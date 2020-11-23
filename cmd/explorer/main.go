@@ -38,7 +38,6 @@ func initStripe(http *mux.Router) error {
 	stripe.Key = utils.Config.Frontend.Stripe.SecretKey //os.Getenv("STRIPE_SECRET_KEY")
 	// http.HandleFunc("/stripe/setup", handlers.StripeSetup)
 	http.HandleFunc("/stripe/create-checkout-session", handlers.StripeCreateCheckoutSession).Methods("POST")
-	http.HandleFunc("/stripe/checkout-session", handlers.StripeCheckoutSession).Methods("GET")
 	http.HandleFunc("/stripe/customer-portal", handlers.StripeCustomerPortal).Methods("POST")
 	http.HandleFunc("/stripe/webhook", handlers.StripeWebhook).Methods("POST")
 	http.HandleFunc("/stripe/success", handlers.PricingSuccess).Methods("GET")
@@ -274,7 +273,7 @@ func main() {
 			router.PathPrefix("/user").Handler(
 				negroni.New(
 					negroni.HandlerFunc(handlers.UserAuthMiddleware),
-					negroni.Wrap(csrfHandler(authRouter)),
+					negroni.Wrap(csrfHandler(router)),
 				),
 			)
 
