@@ -58,6 +58,19 @@
             }
 		</script>
 
+		<script>
+			//try{
+			//	var currentLanguage = localStorage.getItem('language');
+			//}catch (e) { console.error(e) }
+			function updateLang(lang){
+				//if (currentLanguage===lang) return;
+				localStorage.setItem("language", lang);
+				let url = window.location.href.split("?")[0];
+				window.location.replace(url+'?lang='+lang);
+			}
+			//if (currentLanguage!=="en") updateLang(currentLanguage);
+		</script>
+
 	</head>
 	<header>
 	</header>
@@ -135,6 +148,15 @@
 				</div>
 			</div>
 			<div class="info-banner-right">
+			<div class="dropdown">
+				<a class="btn btn-transparent dropdown-toggle" data-toggle="dropdown" aira-haspopup="true" aria-expanded="false">
+					<i style="margin: 0; padding: 0;" class="fas fa-globe"></i>
+				</a>
+				<div class="dropdown-menu dropdown-meu-right" aria-labelledby="langDropdown">
+					<a class="dropdown-item" onClick="updateLang('en')">ENG</a>
+					<a class="dropdown-item" onClick="updateLang('ru')">RUS</a>
+				</div>
+			</div>
 			{{if .User.Authenticated}}
 				<div class="dropdown">
 					<a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -685,6 +707,7 @@
 
 		</script>
     {{end}}
+	
 	<script async src="https://ads.bitfly.at/www/delivery/asyncjs.php"></script>
 	</body>
 	</html>
