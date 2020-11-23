@@ -273,7 +273,7 @@ func main() {
 			router.PathPrefix("/user").Handler(
 				negroni.New(
 					negroni.HandlerFunc(handlers.UserAuthMiddleware),
-					negroni.Wrap(csrfHandler(router)),
+					negroni.Wrap(csrfHandler(authRouter)),
 				),
 			)
 

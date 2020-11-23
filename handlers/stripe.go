@@ -464,49 +464,47 @@ func postToKongAdmin(apiURL string, data string) (response string) {
 
 // SubUserToSapphire subscribe a user to Sapphire plan
 func SubUserToSapphire(customer string) error {
-	// user, err := db.GetUserIdByStripeId(customer)
-	// if err != nil {
-	// 	return err
-	// }
-	// postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
-	// 	"name=rate-limiting&config.minute=100&config.day=100000&config.month=500000&config.policy=local")
+	user, err := db.GetUserIdByStripeId(customer)
+	if err != nil {
+		return err
+	}
+	postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
+		"name=rate-limiting&config.minute=100&config.day=100000&config.month=500000&config.policy=local&config.limit_by=consumer")
 
 	return nil
 }
 
 // SubUserToEmerald subscribe a user to Emerald plan
 func SubUserToEmerald(customer string) error {
-	// user, err := db.GetUserIdByStripeId(customer)
-	// if err != nil {
-	// 	return err
-	// }
-	// postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
-	// 	"name=rate-limiting&config.day=200000&config.month=1000000&config.policy=local")
+	user, err := db.GetUserIdByStripeId(customer)
+	if err != nil {
+		return err
+	}
+	postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
+		"name=rate-limiting&config.day=200000&config.month=1000000&config.policy=local&config.limit_by=consumer")
 	return nil
 }
 
 // SubUserToDiamond subscribe a user to Diamond plan
 func SubUserToDiamond(customer string) error {
-	// user, err := db.GetUserIdByStripeId(customer)
-	// if err != nil {
-	// 	return err
-	// }
-	// postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
-	// 	"name=rate-limiting&config.month=4000000&config.policy=local")
+	user, err := db.GetUserIdByStripeId(customer)
+	if err != nil {
+		return err
+	}
+	postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
+		"name=rate-limiting&config.month=4000000&config.policy=local&config.limit_by=consumer")
 
 	return nil
 }
 
 // SubUserToFree subscribe a user to Free plan
 func SubUserToFree(customer string) error {
-
-	log.Println("SUBBING TO FREE TIER")
-	// user, err := db.GetUserIdByStripeId(customer)
-	// if err != nil {
-	// 	return err
-	// }
-	// postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
-	// 	"name=rate-limiting&config.minute=10&config.day=10000&config.month=30000&config.policy=local")
+	user, err := db.GetUserIdByStripeId(customer)
+	if err != nil {
+		return err
+	}
+	postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
+		"name=rate-limiting&config.minute=10&config.day=10000&config.month=30000&config.policy=local&config.limit_by=consumer")
 
 	return nil
 }
