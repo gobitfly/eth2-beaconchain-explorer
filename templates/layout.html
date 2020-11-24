@@ -59,16 +59,10 @@
 		</script>
 
 		<script>
-			//try{
-			//	var currentLanguage = localStorage.getItem('language');
-			//}catch (e) { console.error(e) }
 			function updateLang(lang){
-				//if (currentLanguage===lang) return;
-				localStorage.setItem("language", lang);
-				let url = window.location.href.split("?")[0];
-				window.location.replace(url+'?lang='+lang);
+				document.cookie = "language="+lang
+				window.location.reload();
 			}
-			//if (currentLanguage!=="en") updateLang(currentLanguage);
 		</script>
 
 	</head>
@@ -153,8 +147,8 @@
 					<i style="margin: 0; padding: 0;" class="fas fa-globe"></i>
 				</a>
 				<div class="dropdown-menu dropdown-meu-right" aria-labelledby="langDropdown">
-					<a class="dropdown-item" onClick="updateLang('en')">ENG</a>
-					<a class="dropdown-item" onClick="updateLang('ru')">RUS</a>
+					<a class="dropdown-item" onClick="updateLang('en-US')">English</a>
+					<a class="dropdown-item" onClick="updateLang('ru-RU')">Russian</a>
 				</div>
 			</div>
 			{{if .User.Authenticated}}
