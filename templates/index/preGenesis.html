@@ -1,10 +1,6 @@
 {{ define "preGenesis" }}
   <div class="row mx-auto align-items-center">
     <div class="col-md-6">
-      <div>
-        <button class="btn btn-link" style="padding-right:0; padding-left:0;" onClick="updateLang('en')">Eng</button> |
-        <button class="btn btn-link" style="padding-right:0; padding-left:0;"onClick="updateLang('ru')">Rus</button>
-      </div>
       <h2 class="h3">{{ trLang .Lang "p1_title" }}</h2>
       <p> {{ trLang .Lang "p1_text" }}</p>
     </div>
@@ -37,12 +33,4 @@
   <div class="row mx-auto align-items-center justify-content-center">
     {{ template "depositDistributionChart" . }}
   </div>
-
-  <script>
-    function updateLang(lang){
-      let url = window.location.href.split("?")[0]
-      window.location.replace(url+'?lang='+lang)
-    }
-  </script>
-
 {{end}}

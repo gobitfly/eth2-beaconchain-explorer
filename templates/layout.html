@@ -58,6 +58,13 @@
             }
 		</script>
 
+		<script>
+			function updateLang(lang){
+				document.cookie = "language="+lang
+				window.location.reload();
+			}
+		</script>
+
 	</head>
 	<header>
 	</header>
@@ -135,6 +142,15 @@
 				</div>
 			</div>
 			<div class="info-banner-right">
+			<div class="dropdown">
+				<a class="btn btn-transparent dropdown-toggle" data-toggle="dropdown" aira-haspopup="true" aria-expanded="false">
+					<i style="margin: 0; padding: 0;" class="fas fa-globe"></i>
+				</a>
+				<div class="dropdown-menu dropdown-meu-right" aria-labelledby="langDropdown">
+					<a class="dropdown-item" onClick="updateLang('en-US')">English</a>
+					<a class="dropdown-item" onClick="updateLang('ru-RU')">Russian</a>
+				</div>
+			</div>
 			{{if .User.Authenticated}}
 				<div class="dropdown">
 					<a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -685,6 +701,7 @@
 
 		</script>
     {{end}}
+	
 	<script async src="https://ads.bitfly.at/www/delivery/asyncjs.php"></script>
 	</body>
 	</html>

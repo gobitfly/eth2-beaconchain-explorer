@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -62,9 +63,14 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
-	for k, v := range r.URL.Query() {
-		if k == "lang" {
-			data.Data.(*types.IndexPageData).Lang = v[0]
+
+	if strings.Contains(r.Header.Get("Accept-Language"), "ru") {
+		data.Data.(*types.IndexPageData).Lang = "ru-RU"
+	}
+
+	for _, v := range r.Cookies() {
+		if v.Name == "language" {
+			data.Data.(*types.IndexPageData).Lang = v.Value
 			break
 		}
 	}
