@@ -1,11 +1,9 @@
 {{ define "genesis" }}
-{{ if not .Genesis }}
 <div class="row pt-3">
   <div class="col-lg-5 my-2">{{ template "depositProgress" .}}</div>
   <div class="col-lg-2 my-2"></div>
   <div class="col-lg-5 my-2">{{ template "genesisCountdown" .}}</div>
 </div>
-{{ end }}
 <div style="position:relative" class="card mt-3 index-stats">
   <div class="card-header pt-3">
     <div class="row">
