@@ -236,7 +236,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 				// Network starts after min genesis time
 				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
 			} else {
-				data.NetworkStartTs = minGenesisTime.Add(time.Second * 23).Unix()
+				data.NetworkStartTs = minGenesisTime.Unix()
 			}
 		}
 
