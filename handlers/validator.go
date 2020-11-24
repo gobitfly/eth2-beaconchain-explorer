@@ -100,12 +100,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
+
 			// there is no validator-index but there are eth1-deposits for the publickey
 			// which means the validator is in DEPOSITED state
 			// in this state there is nothing to display but the eth1-deposits
 			validatorPageData.Status = "deposited"
-			validatorPageData.PublicKey = []byte(pubKey)
+			validatorPageData.PublicKey = pubKey
 			validatorPageData.Deposits = deposits
+
+			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
+				if deposit.ValidSignature {
+					validatorPageData.Eth1DepositAddress = deposit.FromAddress
+					break
+				}
+			}
 
 			sumValid := uint64(0)
 			// check if a valid deposit exists
