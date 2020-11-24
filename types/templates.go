@@ -91,6 +91,7 @@ type IndexPageData struct {
 	Mainnet                   bool                   `json:"-"`
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
+	Lang                      string
 }
 
 type IndexPageDataEpochs struct {

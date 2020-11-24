@@ -62,7 +62,12 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
-
+	for k, v := range r.URL.Query() {
+		if k == "lang" {
+			data.Data.(*types.IndexPageData).Lang = v[0]
+			break
+		}
+	}
 	err := indexTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {
