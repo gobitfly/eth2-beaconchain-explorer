@@ -57,11 +57,14 @@ $(document).ready(function() {
     var bookmarkIcon = $("<i class='far fa-bookmark' style='width:15px;'></i>")
     var errorIcon = $("<i class='fas fa-exclamation' style='width:15px;'></i>")
     $('#bookmark-button').empty().append(spinnerSmall)
-
+    let csrfToken = document.getElementsByName("CsrfField")[0].value
+    console.log("TOKEN:", csrfToken)
     fetch('/user/dashboard/save', {
       method: "POST",
+      credentials: 'include',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': $("#bookmark-button").attr("csrf"),
       },
       body: JSON.stringify(state.validators),
     }).then(function(res) {

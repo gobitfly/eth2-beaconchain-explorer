@@ -577,9 +577,10 @@ type ChartsPageDataChart struct {
 
 // DashboardData is a struct to hold data for the dashboard-page
 type DashboardData struct {
-	BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
-	Earnings       ValidatorEarnings                `json:"earnings"`
-	Validators     [][]interface{}                  `json:"validators"`
+	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
+	// Earnings       ValidatorEarnings                `json:"earnings"`
+	// Validators     [][]interface{}                  `json:"validators"`
+	Csrf string `json:"csrf"`
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page

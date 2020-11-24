@@ -131,6 +131,21 @@ func main() {
 
 		router := mux.NewRouter()
 
+		csrfBytes, err := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
+		if err != nil {
+			logrus.WithError(err).Error("error decoding csrfBytes")
+		}
+		csrfHandler := csrf.Protect(
+			csrfBytes,
+			csrf.FieldName("CsrfField"),
+			csrf.Secure(false), // Only enable this in development environment to pass csrf checks
+			csrf.Path("/"),
+			csrf.HttpOnly(false),
+			csrf.Domain("localhost"),
+		)
+
+		router.Use(csrfHandler)
+
 		initStripe(router)
 
 		apiV1Router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
@@ -171,13 +186,6 @@ func main() {
 			logrus.Infof("frontend services initiated")
 			utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
-			csrfBytes, _ := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
-			csrfHandler := csrf.Protect(
-				csrfBytes,
-				csrf.FieldName("CsrfField"),
-				//csrf.Secure(false), // Only enable this in development environment to pass csrf checks
-			)
-
 			router.HandleFunc("/", handlers.Index).Methods("GET")
 			router.HandleFunc("/latestState", handlers.LatestState).Methods("GET")
 			router.HandleFunc("/launchMetrics", handlers.LaunchMetricsData).Methods("GET")
@@ -216,7 +224,11 @@ func main() {
 			router.HandleFunc("/validators/eth2deposits", handlers.Eth2Deposits).Methods("GET")
 			router.HandleFunc("/validators/eth2deposits/data", handlers.Eth2DepositsData).Methods("GET")
 
+			// dashboardRouter := mux.NewRouter().PathPrefix("/dashboard").Subrouter()
 			router.HandleFunc("/dashboard", handlers.Dashboard).Methods("GET")
+			router.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
+			// router.PathPrefix("/dashboard").Handler(csrfHandler(dashboardRouter))
+
 			router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET")
 			router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
 			router.HandleFunc("/dashboard/data/validators", handlers.DashboardDataValidators).Methods("GET")
@@ -267,13 +279,15 @@ func main() {
 			authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
+			authRouter.Use(csrfHandler)
 
 			authRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
 
 			router.PathPrefix("/user").Handler(
 				negroni.New(
 					negroni.HandlerFunc(handlers.UserAuthMiddleware),
-					negroni.Wrap(csrfHandler(authRouter)),
+					negroni.Wrap(authRouter),
+					// negroni.Wrap(csrfHandler(authRouter)),
 				),
 			)
 
