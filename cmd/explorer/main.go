@@ -122,6 +122,9 @@ func main() {
 
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
 
+		services.Init() // Init frontend services
+		logrus.Infof("frontend services initiated")
+
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {
 				utils.Config.Frontend.SiteDomain = "beaconcha.in"
@@ -130,9 +133,7 @@ func main() {
 			defer db.FrontendDB.Close()
 
 			logrus.Infof("frontend database connection established")
-			services.Init() // Init frontend services
 
-			logrus.Infof("frontend services initiated")
 			utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
 			csrfBytes, _ := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
