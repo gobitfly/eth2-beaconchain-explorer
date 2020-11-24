@@ -111,7 +111,7 @@
 							</button>
 						</div>
 						<div class="modal-body">
-							<p>In order to save any validator details you will need to provide a signed message of the eth1 account that sent the first valid deposit ({{formatEth1Address .Eth1DepositAddress}}) for verification. Currently we support signatures generated with <a target="_blank" href="https://www.mycrypto.com/sign-and-verify-message/sign">MyCrypto</a> and <a target="_blank" href="https://www.myetherwallet.com/interface/sign-message">MyEtherWallet</a>.</p>
+							<p>In order to save any validator details you will need to provide a signed message of the eth1 account that sent the first valid deposit ({{formatEth1Address .Eth1DepositAddress}}) for verification. Currently we support signatures generated with <a target="_blank" href="https://app.mycrypto.com/sign-message">MyCrypto</a> and <a target="_blank" href="https://www.myetherwallet.com/interface/sign-message">MyEtherWallet</a>.</p>
 							<p>The signature text MUST CONTAIN the string <b>beaconcha.in</b>.</p>
 							<input type="hidden" value="0x{{printf "%x" .PublicKey}}" name="pubkey">
 							<div class="form-group">
@@ -280,13 +280,7 @@
 				<div class="row border-bottom p-3 mx-0">
 					<div class="col-md-2">Unique Index:</div>
 					<div class="col-md-10">
-											{{if $deposited}}Index Pending{{else}}
-												
-											{{.Index}}
-                        {{if eq .Name ""}}
-												| <a href="#" data-toggle="modal" data-target="#edit-validator-modal">Set custom name</a>
-                        {{end}}
-											{{end}}
+						{{if $deposited}}Index Pending{{else}}{{.Index}}{{end}}{{if eq .Name ""}} | <a href="#" data-toggle="modal" data-target="#edit-validator-modal">Set custom name</a>{{end}}
 					</div>
 				</div>
                 {{if not $deposited }}
