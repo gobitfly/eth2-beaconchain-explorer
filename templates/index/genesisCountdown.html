@@ -24,7 +24,7 @@
 		var seconds = secondsLeft % 60
 		var min = ((secondsLeft - seconds) / 60) % 60
 		var hour = Math.round((secondsLeft - seconds - (min * 60)) / 3600) % 24
-		var days = Math.round((secondsLeft - seconds - (min * 60) - (hour * 24)) / 86400)
+		var days = Math.round((secondsLeft - seconds - (min * 60) - (hour * 60 * 60)) / 86400)
 		if (-1 < days && days <= 7) {
 			setTime(days, hour, min, seconds)
 			$('#estimated').html('Countdown')
