@@ -157,11 +157,11 @@ chartFns.push(function(){
             xAxis: {
                 type: 'datetime',
                 labels: {
-                    // formatter: function(){
-                    //     var epoch = timeToEpoch(this.value)
-                    //     var orig = this.axis.defaultLabelFormatter.call(this)
-                    //     return `${orig}<br/>Epoch ${epoch}`
-                    // }
+                    formatter: function(){
+                        var epoch = timeToEpoch(this.value)
+                        var orig = this.axis.defaultLabelFormatter.call(this)
+                        return `${orig}<br/>Epoch ${epoch}`
+                    }
                 }
             },
             yAxis: [{ 
