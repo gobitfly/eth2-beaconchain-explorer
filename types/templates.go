@@ -703,7 +703,8 @@ type UserSubscription struct {
 	Active         bool    `db:"stripe_active"`
 	CustomerID     *string `db:"stripe_customerid"`
 	SubscriptionID *string `db:"stripe_subscriptionid"`
-	ProductID      *string `db:"stripe_productid"`
+	PriceID        *string `db:"stripe_priceid"`
+	ApiKey         *string `db:"api_key"`
 }
 
 type AuthData struct {

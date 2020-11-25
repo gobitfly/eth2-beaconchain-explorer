@@ -138,10 +138,10 @@ func main() {
 		csrfHandler := csrf.Protect(
 			csrfBytes,
 			csrf.FieldName("CsrfField"),
-			csrf.Secure(false), // Only enable this in development environment to pass csrf checks
+			// csrf.Secure(false), // Only enable this in development environment to pass csrf checks
 			csrf.Path("/"),
-			csrf.HttpOnly(false),
-			csrf.Domain("localhost"),
+			// csrf.HttpOnly(false),
+			// csrf.Domain("localhost"),
 		)
 
 		router.Use(csrfHandler)
@@ -279,15 +279,15 @@ func main() {
 			authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
-			authRouter.Use(csrfHandler)
+			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
+			// authRouter.Use(csrfHandler)
 
 			authRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
 
 			router.PathPrefix("/user").Handler(
 				negroni.New(
 					negroni.HandlerFunc(handlers.UserAuthMiddleware),
-					negroni.Wrap(authRouter),
-					// negroni.Wrap(csrfHandler(authRouter)),
+					negroni.Wrap(csrfHandler(authRouter)),
 				),
 			)
 

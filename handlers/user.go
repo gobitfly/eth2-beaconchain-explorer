@@ -94,6 +94,21 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GenerateAPIKey generates an API key for users that do not yet have a key.
+func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
+
+	err := db.CreateAPIKey(user.UserID)
+	if err != nil {
+		logger.WithError(err).Error("Could not create API key for user")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	http.Redirect(w, r, r.Referer(), http.StatusSeeOther)
+}
+
 // UserAuthorizeConfirm renders the user-authorize template
 func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -218,7 +233,6 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
-
 	err = notificationTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)

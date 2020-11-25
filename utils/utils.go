@@ -3,6 +3,7 @@ package utils
 import (
 	securerand "crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"eth2-exporter/types"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v2"
@@ -344,4 +346,15 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 	}
 
 	return finalRows, nil
+}
+
+// GenerateAPIKey generates an API key for a user
+func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
+	apiKey, err := bcrypt.GenerateFromPassword([]byte(passwordHash+email+Ts), 10)
+	if err != nil {
+		return "", err
+	}
+	key := apiKey[:15]
+	apiKeyBase64 := base64.StdEncoding.EncodeToString(key)
+	return apiKeyBase64, nil
 }

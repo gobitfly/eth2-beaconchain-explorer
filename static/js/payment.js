@@ -4,13 +4,18 @@
   var manageBillingForm = document.querySelectorAll('.manage-billing-form');
   for (let i = 0; i < manageBillingForm.length; i++) {
     manageBillingForm[i].addEventListener('submit', function(e) {
-      console.log('submitting manage billing form')
       e.preventDefault();
+      var token = ""
+      if (document.getElementsByName("CsrfField") && document.getElementsByName("CsrfField").length) {
+        token = document.getElementsByName("CsrfField")[0].value
+      }
       fetch('/stripe/customer-portal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': token,
         },
+        credentials: 'include',
         body: JSON.stringify({
           returnURL: window.location.href
         }),

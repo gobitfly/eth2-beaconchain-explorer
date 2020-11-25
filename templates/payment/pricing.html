@@ -8,6 +8,7 @@ var handleFetchResult = function(result) {
   if (!result.ok) {
     return result.json().then(function(json) {
       if (json.error && json.error.message) {
+        showError("Something went wrong connecting to stripe")
         throw new Error(result.url + ' ' + result.status + ' ' + json.error.message);
       }
     });
@@ -17,10 +18,12 @@ var handleFetchResult = function(result) {
 
 // Create a Checkout Session with the selected plan ID
 var createCheckoutSession = function(priceId) {
+  let csrfToken = document.getElementsByName("CsrfField")[0].value
   return fetch("/stripe/create-checkout-session", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+       "X-CSRF-Token": csrfToken,
     },
     body: JSON.stringify({
       priceId: priceId
@@ -31,15 +34,19 @@ var createCheckoutSession = function(priceId) {
 // Handle any errors returned from Checkout
 var handleResult = function(result) {
   if (result.error) {
-    // var displayError = document.getElementById("error-message");
-    // displayError.textContent = result.error.message;
+    showError(result.error.message)
     console.log("ERROR:", result)
   }
 };
 
+function showError(message) {
+  $('#error-modal-content').text(message)
+  $('#error-modal').modal('show')
+}
+
 var setupStripe = function() {
+  try {
     var stripe = Stripe({{.StripePK}});
-    try {
       // Setup event handler to create a Checkout Session when button is clicked
       document
         .getElementById("sapphire")
@@ -80,8 +87,7 @@ var setupStripe = function() {
               .then(handleResult);
           });
         });
-    } catch (err)
-    {}
+    } catch (err) { }
 }
 setupStripe()
   </script>
@@ -177,7 +183,11 @@ setupStripe()
                   <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing</button>
               </form>
               {{else}}
-                <button id="sapphire" class="btn btn-lg btn-block btn-outline-primary">Select</button>
+                {{ if and .StripePK .Sapphire }}
+                  <button id="sapphire" class="btn btn-lg btn-block btn-outline-primary">Select</button>
+                {{else}}
+                  <a href="#contact" class="btn btn-lg btn-block btn-outline-primary">Contact Us</a>
+                {{end}}
               {{end}}
             {{else}}
               <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
@@ -205,7 +215,11 @@ setupStripe()
                 <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing</button>
             </form>
             {{else}}
-              <button id="emerald" class="btn btn-lg btn-block btn-outline-primary">Select</button>
+              {{ if and .StripePK .Emerald }}
+                <button id="emerald" class="btn btn-lg btn-block btn-outline-primary">Select</button>
+              {{else}}
+                <a href="#contact" class="btn btn-lg btn-block btn-outline-primary">Contact Us</a>
+              {{end}}
             {{end}}
             {{else}}
               <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
@@ -230,7 +244,11 @@ setupStripe()
                 <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing</button>
             </form>
             {{else}}
-              <button id="diamond" class="btn btn-lg btn-block btn-outline-primary">Select</button>
+              {{ if and .StripePK .Diamond }}
+                <button id="diamond" class="btn btn-lg btn-block btn-outline-primary">Select</button>
+              {{else}}
+                <a href="#contact" class="btn btn-lg btn-block btn-outline-primary">Contact Us</a>
+              {{end}}
             {{end}}
             {{else}}
               <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
@@ -293,5 +311,27 @@ setupStripe()
       </div>
     </div>
   </section>
+
+  	<!-- Error Modal -->
+		<div class="modal fade" id="error-modal" tabindex="-1" role="dialog" aria-labelledby="error-modal-label" aria-hidden="true">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="exampleModalLabel">Something went wrong</h5>
+							<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
+						<div class="modal-body">
+              <p id="error-modal-content"></p>
+              <p>Please contact us if this error persists</p>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+						</div>
+					</div>
+				</div>
+    </div>
+    
 </div>
 {{ end }}

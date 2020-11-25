@@ -317,8 +317,8 @@ create table users
     api_key                 character varying(256) unique,
     stripe_customerID       character varying(256) unique,
     stripe_subscriptionID   character varying(256) unique,
-    stripe_productID        character varying(256) unique,
-    stripe_active bool      not null default 'f',
+    stripe_priceID          character varying(256) unique,
+    stripe_active           bool                   not null default 'f',
     primary key (id, email)
 );
 

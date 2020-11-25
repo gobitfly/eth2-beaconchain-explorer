@@ -59,10 +59,10 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		CancelURL:  stripe.String(utils.Config.Frontend.SiteDomain + "/pricing"),
 		// if the customer exists use the existing customer
 		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
-			DefaultTaxRates: stripe.StringSlice([]string{
-				"txr_1HqcFcBiORp9oTlKnyNWVp4r",
-				// "txr_1HqdWaBiORp9oTlKkij8L6dU",
-			}),
+			// DefaultTaxRates: stripe.StringSlice([]string{
+			// "txr_1HqcFcBiORp9oTlKnyNWVp4r",
+			// "txr_1HqdWaBiORp9oTlKkij8L6dU",
+			// }),
 		},
 		CustomerEmail: &subscription.Email,
 		PaymentMethodTypes: stripe.StringSlice([]string{
