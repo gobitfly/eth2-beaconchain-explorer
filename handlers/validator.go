@@ -839,14 +839,17 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
-	if signatureParsed[64] != 27 && signatureParsed[64] != 28 {
-		logger.Errorf("invalid Ethereum signature (V is not 27 or 28)")
-		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, 301)
-		return
-	}
 
-	signatureParsed[64] -= 27
+	if signatureParsed[64] != 0 {
+		if signatureParsed[64] != 27 && signatureParsed[64] != 28 {
+			logger.Errorf("invalid Ethereum signature (V is not 27 or 28)")
+			utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
+			http.Redirect(w, r, "/validator/"+pubkey, 301)
+			return
+		}
+
+		signatureParsed[64] -= 27
+	}
 
 	recoveredPubkey, err := crypto.SigToPub(msgHash.Bytes(), signatureParsed)
 	if err != nil {
