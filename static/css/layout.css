@@ -40,7 +40,7 @@ ins[data-revive-zoneid] > a > img {
   .navbar .nav-link, .navbar .dropdown-item {
     display: flex;
   }
-  .dropdown-toggle::after { 
+  .navbar .dropdown-toggle::after { 
     align-self: center;
     display: inline-flex;
     justify-self: flex-end;
