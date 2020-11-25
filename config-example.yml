@@ -11,6 +11,7 @@ chain:
   slotsPerEpoch: 32
   secondsPerSlot: 12
   genesisTimestamp: 1573489682
+  minGenesisActiveValidatorCount: 16384
 
 # Note: It is possible to run either the frontend or the indexer or both at the same time
 # Frontend config

@@ -25,11 +25,26 @@ import (
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v2"
 
+	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
 )
 
 // Config is the globally accessible configuration
 var Config *types.Config
+
+var localiser *i18n.I18n
+
+// making sure language files are loaded only once
+func getLocaliser() *i18n.I18n {
+	if localiser == nil {
+		localiser, err := i18n.New(i18n.Glob("locales/*/*"), "en-US", "ru-RU")
+		if err != nil {
+			log.Println(err)
+		}
+		return localiser
+	}
+	return localiser
+}
 
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
@@ -79,6 +94,7 @@ func GetTemplateFuncs() template.FuncMap {
 			return p.Sprintf("%.0f\n", i)
 		},
 		"derefString": DerefString,
+		"trLang":      TrLang,
 	}
 }
 

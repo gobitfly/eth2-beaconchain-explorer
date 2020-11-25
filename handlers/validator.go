@@ -78,6 +78,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
+			var name string
+			err = db.DB.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
+			if err != nil {
+				logger.Errorf("error getting validator-name from db: %v", err)
+			} else {
+				validatorPageData.Name = name
+			}
 			deposits, err := db.GetValidatorDeposits(pubKey)
 			if err != nil {
 				logger.Errorf("error getting validator-deposits from db: %v", err)
@@ -93,12 +100,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
+
 			// there is no validator-index but there are eth1-deposits for the publickey
 			// which means the validator is in DEPOSITED state
 			// in this state there is nothing to display but the eth1-deposits
 			validatorPageData.Status = "deposited"
-			validatorPageData.PublicKey = []byte(pubKey)
+			validatorPageData.PublicKey = pubKey
 			validatorPageData.Deposits = deposits
+
+			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
+				if deposit.ValidSignature {
+					validatorPageData.Eth1DepositAddress = deposit.FromAddress
+					break
+				}
+			}
 
 			sumValid := uint64(0)
 			// check if a valid deposit exists
@@ -824,14 +839,17 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
-	if signatureParsed[64] != 27 && signatureParsed[64] != 28 {
-		logger.Errorf("invalid Ethereum signature (V is not 27 or 28)")
-		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, 301)
-		return
-	}
 
-	signatureParsed[64] -= 27
+	if signatureParsed[64] != 0 {
+		if signatureParsed[64] != 27 && signatureParsed[64] != 28 {
+			logger.Errorf("invalid Ethereum signature (V is not 27 or 28)")
+			utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
+			http.Redirect(w, r, "/validator/"+pubkey, 301)
+			return
+		}
+
+		signatureParsed[64] -= 27
+	}
 
 	recoveredPubkey, err := crypto.SigToPub(msgHash.Bytes(), signatureParsed)
 	if err != nil {

@@ -402,3 +402,9 @@ func DerefString(str *string) string {
 	}
 	return ""
 }
+
+// TrLang returns translated text based on language tag and text id
+func TrLang(lang string, key string) template.HTML {
+	I18n := getLocaliser()
+	return template.HTML(I18n.Tr(lang, key))
+}
