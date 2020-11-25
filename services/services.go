@@ -187,6 +187,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
 		}
 
+		threshold, err := db.GetDepositThresholdTime()
+		if err != nil {
+			logger.WithError(err).Error("error could not calcualte threshold time")
+		}
+		if threshold == nil {
+			*threshold = deposit.BlockTs
+		}
+
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
@@ -204,7 +212,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		// enough deposits
 		if data.DepositedTotal > data.DepositThreshold {
 			if depositThresholdReached.Load() == nil {
-				eth1BlockDepositReached.Store(deposit.BlockTs)
+				eth1BlockDepositReached.Store(*threshold)
 				depositThresholdReached.Store(true)
 			}
 			eth1Block := eth1BlockDepositReached.Load().(time.Time)
