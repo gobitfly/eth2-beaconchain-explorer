@@ -628,6 +628,7 @@ type ValidatorSlashing struct {
 type StakingCalculatorPageData struct {
 	BestValidatorBalanceHistory *[]ValidatorBalanceHistory
 	WatchlistBalanceHistory     [][]interface{}
+	TotalStaked                 uint64
 }
 
 type EthOneDepositsPageData struct {
