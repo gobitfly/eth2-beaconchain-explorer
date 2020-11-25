@@ -1183,3 +1183,43 @@ func GetValidatorNames() (map[uint64]string, error) {
 
 	return validatorIndexToNameMap, nil
 }
+
+func GetTotalEligableEther() (uint64, error) {
+	var total uint64
+
+	err := DB.Get(&total, `
+		SELECT eligibleether FROM epochs ORDER BY epoch desc LIMIT 1
+	`)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return total / 1e9, nil
+}
+
+func GetDepositThresholdTime() (*time.Time, error) {
+	var threshold time.Time
+	err := DB.Get(&threshold, `
+	select min(block_ts) from (
+		select block_ts, block_number, sum(amount) over (order by block_ts) as totalsum
+			from (
+				SELECT
+					publickey,
+					32e9 AS amount,
+					MAX(block_ts) as block_ts,
+					MAX(block_number) as block_number
+				FROM eth1_deposits
+				WHERE valid_signature = true
+				GROUP BY publickey
+				HAVING SUM(amount) >= 32e9
+			) a
+		) b
+		where totalsum > $1;
+		 `, utils.Config.Chain.MinGenesisActiveValidatorCount*32e9)
+	if err != nil {
+		return nil, err
+	}
+	return &threshold, nil
+}
