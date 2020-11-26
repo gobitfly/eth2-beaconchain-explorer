@@ -1011,7 +1011,7 @@ var SwaggerInfo = swaggerInfo{
 	BasePath:    "",
 	Schemes:     []string{},
 	Title:       "Beaconcha.in ETH2 API",
-	Description: "High performance API for querying information from the Ethereum 2.0 beacon chain\nThe API is currently free to use. A fair use policy applies. Calls are rate limited to\n10 requests / 1 minute / IP. All API results are cached for 1 minute.\nIf you required a higher usage plan please checkout https://beaconcha.in/api/pricing.",
+	Description: "High performance API for querying information from the Ethereum 2.0 beacon chain\nThe API is currently free to use. A fair use policy applies. Calls are rate limited to\n10 requests / 1 minute / IP. All API results are cached for 1 minute.\nIf you required a higher usage plan please checkout https://beaconcha.in/pricing.",
 }
 
 type s struct{}

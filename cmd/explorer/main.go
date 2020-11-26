@@ -130,7 +130,6 @@ func main() {
 		apiV1AuthRouter.HandleFunc("/validator/{pubkey}/add", handlers.UserValidatorWatchlistAdd).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST", "OPTIONS")
-
 		apiV1AuthRouter.Use(utils.AuthorizedAPIMiddleware)
 
 		router.PathPrefix("/api/v1").Handler(apiV1Router)
@@ -150,7 +149,10 @@ func main() {
 			logrus.Infof("frontend services initiated")
 			utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
-			csrfBytes, _ := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
+			csrfBytes, err := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
+			if err != nil {
+				logrus.WithError(err).Error("error decoding csrf auth key falling back to empty csrf key")
+			}
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),

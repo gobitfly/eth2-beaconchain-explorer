@@ -42,7 +42,7 @@ info:
     High performance API for querying information from the Ethereum 2.0 beacon chain
     The API is currently free to use. A fair use policy applies. Calls are rate limited to
     10 requests / 1 minute / IP. All API results are cached for 1 minute.
-    If you required a higher usage plan please checkout https://beaconcha.in/api/pricing.
+    If you required a higher usage plan please checkout https://beaconcha.in/pricing.
   title: Beaconcha.in ETH2 API
   version: "1.0"
 paths:

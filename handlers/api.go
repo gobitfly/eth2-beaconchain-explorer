@@ -25,7 +25,7 @@ import (
 // @description High performance API for querying information from the Ethereum 2.0 beacon chain
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
 // @description 10 requests / 1 minute / IP. All API results are cached for 1 minute.
-// @description If you required a higher usage plan please checkout https://beaconcha.in/api/pricing.
+// @description If you required a higher usage plan please checkout https://beaconcha.in/pricing.
 // @securitydefinitions.oauth2.accessCode OAuthAccessCode
 // @tokenurl https://beaconcha.in/user/token
 // @authorizationurl https://beaconcha.in/user/authorize
