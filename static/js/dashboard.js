@@ -1,19 +1,4 @@
 
-function setTooltip(selector, message) {
-  $(selector).tooltip('hide').attr('data-original-title', message)
-  setTimeout(function(){
-    $(selector)
-      .tooltip('show');
-  }, 50)
-}
-
-function hideTooltip(selector, message) {
-  setTimeout(function () {
-    $(selector).tooltip('hide')
-      .attr('data-original-title', message)
-  }, 1000)
-}
-
 function createBlock(x, y) {
   use = document.createElementNS("http://www.w3.org/2000/svg","use")
   // use.setAttributeNS(null, "style", `transform: translate(calc(${x} * var(--disperse-factor)), calc(${y} * var(--disperse-factor)));`)
@@ -56,12 +41,12 @@ $(document).ready(function() {
     var spinnerSmall = $('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>')
     var bookmarkIcon = $("<i class='far fa-bookmark' style='width:15px;'></i>")
     var errorIcon = $("<i class='fas fa-exclamation' style='width:15px;'></i>")
-    $('#bookmark-button').empty().append(spinnerSmall)
-
     fetch('/user/dashboard/save', {
       method: "POST",
+      credentials: 'include',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': $("#bookmark-button").attr("csrf"),
       },
       body: JSON.stringify(state.validators),
     }).then(function(res) {
@@ -98,35 +83,11 @@ $(document).ready(function() {
       console.log(err)
     })
   })
-
-  var clipboard = new ClipboardJS('#copy-button');
-
-  var copyButton = $('#copy-button')
   var clearSearch = $('#clear-search')
   //'<i class="fa fa-copy"></i>'
   var copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
   //'<i class="fas fa-check"></i>'
   var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
-
-  clipboard.on('success', function (e) {
-    copyButton.empty().append(tickIcon);
-
-    setTooltip('#copy-button', 'Link Copied')
-    hideTooltip('#copy-button', 'Copy Link to Dashboard')
-
-    setTimeout(function(){
-      copyButton.empty().append(copyIcon);
-    }, 500)
-  });
-
-  clipboard.on('error', function (e) {
-    setTooltip('#copy-button', 'Failed to copy Dashboard Link!');
-    hideTooltip('#copy-button');
-  });
-
-  copyButton.on('click', function() {
-    
-  })
 
   clearSearch.on('click', function() {
     clearSearch.empty().append(tickIcon);
