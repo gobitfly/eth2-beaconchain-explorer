@@ -1,7 +1,7 @@
 {{ define "js"}}
 
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
-
+{{ .CsrfField }}
 <script>
 
 	var events = {
@@ -39,11 +39,15 @@
 				filter = encodeURI(filter)
 				event = encodeURI(event)
 
+				let csrfToken = document.getElementsByName("CsrfField")[0].value
+				
 				debounceTimeouts[box.id] = null
 				if (box.checked) {
 					// subscribe
 					fetch('/user/notifications/subscribe?filter=' + filter + '&event=' + event, {
-						method: 'POST'
+						method: 'POST',
+						headers: { "X-CSRF-Token": csrfToken },
+						credentials: 'include'
 					}).then(function (response) {
 						box.classList.remove('d-none')
 						box.previousSibling.classList.add('d-none')
@@ -65,7 +69,9 @@
 				} else {
 					// unsubscribe
 					fetch('/user/notifications/unsubscribe?filter=' + filter + '&event=' + event, {
-						method: 'POST'
+						method: 'POST',
+						headers: { "X-CSRF-Token": csrfToken },
+						credentials: 'include'
 					}).then(function (response) {
 						box.classList.remove('d-none')
 						box.previousSibling.classList.add('d-none')

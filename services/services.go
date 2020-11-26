@@ -35,8 +35,16 @@ func Init() {
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
-	go indexPageDataUpdater()
+	if utils.Config.Frontend.OnlyAPI {
+		ready.Done()
+	} else {
+		go indexPageDataUpdater()
+	}
 	ready.Wait()
+
+	if utils.Config.Frontend.OnlyAPI {
+		return
+	}
 
 	go chartsPageDataUpdater()
 	go statsUpdater()
@@ -179,6 +187,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
 		}
 
+		threshold, err := db.GetDepositThresholdTime()
+		if err != nil {
+			logger.WithError(err).Error("error could not calcualte threshold time")
+		}
+		if threshold == nil {
+			*threshold = deposit.BlockTs
+		}
+
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
@@ -186,10 +202,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 
-		minGenesisTime = minGenesisTime.Add(genesisDelay)
-
-		data.NetworkStartTs = minGenesisTime.Unix()
 		data.MinGenesisTime = minGenesisTime.Unix()
+		data.NetworkStartTs = minGenesisTime.Add(genesisDelay).Unix()
 
 		if minGenesisTime.Before(time.Now()) {
 			minGenesisTime = time.Now()
@@ -198,7 +212,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		// enough deposits
 		if data.DepositedTotal > data.DepositThreshold {
 			if depositThresholdReached.Load() == nil {
-				eth1BlockDepositReached.Store(deposit.BlockTs)
+				eth1BlockDepositReached.Store(*threshold)
 				depositThresholdReached.Store(true)
 			}
 			eth1Block := eth1BlockDepositReached.Load().(time.Time)
@@ -206,6 +220,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			if !(startSlotTime == time.Unix(0, 0)) && eth1Block.Add(genesisDelay).After(minGenesisTime) {
 				// Network starts after min genesis time
 				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
+			} else {
+				data.NetworkStartTs = minGenesisTime.Unix()
 			}
 		}
 
@@ -289,9 +305,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
 			blocks.status,
-			COALESCE(validators.name, '') AS name
+			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE blocks.slot < $1
 		ORDER BY blocks.slot DESC LIMIT 15`, cutoffSlot)
 	if err != nil {

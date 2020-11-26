@@ -136,6 +136,9 @@ func main() {
 
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
 
+		services.Init() // Init frontend services
+		logrus.Infof("frontend services initiated")
+
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {
 				utils.Config.Frontend.SiteDomain = "beaconcha.in"
@@ -144,9 +147,7 @@ func main() {
 			defer db.FrontendDB.Close()
 
 			logrus.Infof("frontend database connection established")
-			services.Init() // Init frontend services
 
-			logrus.Infof("frontend services initiated")
 			utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
 			csrfBytes, err := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
@@ -156,6 +157,7 @@ func main() {
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
+				//csrf.Secure(false), // Only enable this in development environment to pass csrf checks
 			)
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
@@ -163,6 +165,7 @@ func main() {
 			router.HandleFunc("/launchMetrics", handlers.LaunchMetricsData).Methods("GET")
 			router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
 			router.HandleFunc("/block/{slotOrHash}", handlers.Block).Methods("GET")
+			router.HandleFunc("/block/{slotOrHash}/deposits", handlers.BlockDepositData).Methods("GET")
 			router.HandleFunc("/blocks", handlers.Blocks).Methods("GET")
 			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")

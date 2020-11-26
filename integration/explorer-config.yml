@@ -22,6 +22,12 @@ frontend:
   server:
     host: '0.0.0.0' # Address to listen on
     port: '3333' # Port to listen on
+  database:
+    user: beaconchain
+    name: beaconchain
+    host: db
+    port: 5432
+    password: xxx
 
 # Indexer config
 indexer:

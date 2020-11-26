@@ -16,6 +16,18 @@ var stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(u
 
 // StakingCalculator renders stakingCalculatorTemplate
 func StakingCalculator(w http.ResponseWriter, r *http.Request) {
+
+	calculatorPageData := types.StakingCalculatorPageData{}
+
+	total, err := db.GetTotalEligableEther()
+	if err != nil {
+		logger.WithError(err).Error("error getting total staked ether")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	calculatorPageData.TotalStaked = total
+
 	w.Header().Set("Content-Type", "text/html")
 	stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
 	data := &types.PageData{
@@ -28,7 +40,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "stats",
-		Data:                  nil,
+		Data:                  calculatorPageData,
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -42,7 +54,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// stakingCalculatorTemplate = template.Must(template.New("staking_estimator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
-	err := stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)
+	err = stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
