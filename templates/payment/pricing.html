@@ -18,7 +18,10 @@ var handleFetchResult = function(result) {
 
 // Create a Checkout Session with the selected plan ID
 var createCheckoutSession = function(priceId) {
-  let csrfToken = document.getElementsByName("CsrfField")[0].value
+  var csrfToken = ""
+  if (document.getElementsByName("CsrfField").length) {
+    csrfToken = document.getElementsByName("CsrfField")[0].value
+  }
   return fetch("/stripe/create-checkout-session", {
     method: "POST",
     headers: {
@@ -147,6 +150,7 @@ setupStripe()
 {{ end }}
 
 {{ define "content" }}
+{{.CsrfField}}
 
 {{if ne .FlashMessage ""}}
 <div

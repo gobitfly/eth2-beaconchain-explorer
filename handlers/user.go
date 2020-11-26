@@ -29,15 +29,17 @@ var userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFun
 var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notifications.html"))
 var authorizeTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/authorize.html"))
 
-func UserAuthMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	user := getUser(w, r)
-	if !user.Authenticated {
-		logger.Errorf("User not authorized")
-		utils.SetFlash(w, r, authSessionName, "Error: Please login first")
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-	next(w, r)
+func UserAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUser(w, r)
+		if !user.Authenticated {
+			logger.Errorf("User not authorized")
+			utils.SetFlash(w, r, authSessionName, "Error: Please login first")
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // UserSettings renders the user-template

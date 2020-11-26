@@ -1,6 +1,10 @@
 package db
 
-import "eth2-exporter/types"
+import (
+	"eth2-exporter/types"
+	"fmt"
+	"log"
+)
 
 func UpdateRemoveStripeCustomer(customerID string) error {
 	tx, err := FrontendDB.Begin()
@@ -34,24 +38,17 @@ func UpdateAddSubscription(customerID, productID, subscriptionID string) error {
 	return err
 }
 
-func UpdateFulfillOrder(customerID string) (*string, error) {
-	tx, err := FrontendDB.Begin()
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
+func UpdateSubscriptionStatus(customerID string, status bool) error {
+	_, err := FrontendDB.Exec("UPDATE users SET stripe_active = $1 WHERE stripe_customerID = $2", status, customerID)
+	return err
+}
 
-	_, err = tx.Exec("UPDATE users SET stripe_active = 't' WHERE stripe_customerID = $1", customerID)
-	if err != nil {
-		return nil, err
-	}
+func UpdateActivateSubsciption(customerID string) error {
+	return UpdateSubscriptionStatus(customerID, true)
+}
 
-	row := tx.QueryRow("SELECT stripe_priceID FROM users WHERE stripe_customerID = $1", customerID)
-	var productID string
-	row.Scan(&productID)
-
-	err = tx.Commit()
-	return &productID, err
+func UpdateCancelSubscription(customerID string) error {
+	return UpdateSubscriptionStatus(customerID, false)
 }
 
 func UpdateRemoveSubscription(customerID string) error {
@@ -82,8 +79,8 @@ func GetUserSubscription(id uint64) (types.UserSubscription, error) {
 	return userSub, err
 }
 
-func GetUserPriceID(customerID string) (string, error) {
-	var priceID string
+func GetUserPriceID(customerID string) (*string, error) {
+	var priceID *string
 	err := FrontendDB.Get(&priceID, "SELECT stripe_priceID FROM users WHERE stripe_customerID = $1", customerID)
 	return priceID, err
 }
@@ -94,6 +91,17 @@ func UpdateStripeCustomer(email, customerID string) error {
 		return err
 	}
 	defer tx.Rollback()
+
+	var currID string
+
+	row := tx.QueryRow("SELECT stripe_customerID FROM users WHERE email = $1", email)
+	row.Scan(&currID)
+
+	log.Println("CURR ID:", currID)
+
+	if currID != "" && customerID != currID {
+		return fmt.Errorf("error updating stripe customer id, the user already has an id: ", currID, " failed to overwrite with: "+customerID)
+	}
 
 	_, err = tx.Exec("UPDATE users SET stripe_customerID = $1 WHERE email = $2", customerID, email)
 	if err != nil {
