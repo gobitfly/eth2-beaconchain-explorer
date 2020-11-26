@@ -52,7 +52,6 @@
         {{if .DepositChart}}
     var series = {{.DepositChart.Data.Series}}
     var filteredSeries = []
-    console.log("SERIES LENGTH", series.length)
     if (series && series.length && series.length > 1) {
       filteredSeries.push(series[1])
       // for (let i = 0; i < series.length; i++) {
