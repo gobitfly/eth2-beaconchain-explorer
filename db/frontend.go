@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
+	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -46,6 +49,12 @@ func DeleteUserByEmail(email string) error {
 	return err
 }
 
+func GetUserApiKeyById(id uint64) (string, error) {
+	var apiKey string = ""
+	err := FrontendDB.Get(&apiKey, "SELECT api_key FROM users WHERE id = $1", id)
+	return apiKey, err
+}
+
 // DeleteUserById deletes a user.
 func DeleteUserById(id uint64) error {
 	_, err := FrontendDB.Exec("DELETE FROM users WHERE id = $1", id)
@@ -71,8 +80,45 @@ func GetAppDataFromRedirectUri(callback string) (*types.OAuthAppData, error) {
 	if len(data) > 0 {
 		return data[0], nil
 	}
-
 	return nil, errors.New("no rows found")
+}
+
+// CreateAPIKey creates an API key for the user and saves it to the database
+func CreateAPIKey(userID uint64) error {
+	type user struct {
+		Password   string
+		RegisterTs time.Time
+		Email      string
+	}
+
+	tx, err := FrontendDB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	u := user{}
+
+	row := tx.QueryRow("SELECT register_ts, password, email FROM users where id = $1", userID)
+	err = row.Scan(&u.RegisterTs, &u.Password, &u.Email)
+	if err != nil {
+		return err
+	}
+
+	key, err := utils.GenerateAPIKey(u.Password, u.Email, fmt.Sprint(u.RegisterTs.Unix()))
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("UPDATE users SET api_key = $1 where id = $2", key, userID)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetUserAuthDataByAuthorizationCode checks an oauth code for validity, consumes the code and returns the userId on success

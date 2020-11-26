@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gorilla/csrf"
 	"github.com/lib/pq"
 )
 
@@ -55,6 +56,10 @@ func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 func Dashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
+	dashboardData := types.DashboardData{}
+
+	dashboardData.Csrf = csrf.Token(r)
+
 	data := &types.PageData{
 		HeaderAd: true,
 		Meta: &types.Meta{
@@ -65,7 +70,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "dashboard",
-		Data:                  nil,
+		Data:                  dashboardData,
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
