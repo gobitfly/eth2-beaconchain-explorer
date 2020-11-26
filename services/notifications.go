@@ -129,11 +129,10 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[stri
 	}
 
 	err := db.DB.Select(&dbResult, `
-		SELECT id, email, validatorindex, startbalance, endbalance FROM (
+		SELECT id, user_id, validatorindex, startbalance, endbalance FROM (
 			SELECT 
 				us.id, 
 				us.user_id, 
-				u.email, 
 				v.validatorindex, 
 				vb0.balance AS endbalance, 
 				vb3.balance AS startbalance, 
@@ -169,6 +168,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[stri
 	for _, r := range dbResult {
 		email, exists := emailsByUserID[r.UserID]
 		if !exists {
+			logger.Errorf("could not find email for user %v for sending notification", r.UserID)
 			continue
 		}
 		n := &validatorBalanceDecreasedNotification{
@@ -238,12 +238,12 @@ func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map
 					SELECT
 						blocks.slot, 
 						blocks.epoch, 
-						blocks.proposer AS slasher,
+						blocks.proposer AS slasher, 
 						UNNEST(ARRAY(
 							SELECT UNNEST(attestation1_indices)
 								INTERSECT
 							SELECT UNNEST(attestation2_indices)
-						)) AS slashedvalidator,
+						)) AS slashedvalidator, 
 						'Attestation Violation' AS reason
 					FROM blocks_attesterslashings 
 					LEFT JOIN blocks ON blocks_attesterslashings.block_slot = blocks.slot
@@ -282,6 +282,7 @@ func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map
 	for _, r := range dbResult {
 		email, exists := emailsByUserID[r.UserID]
 		if !exists {
+			logger.Errorf("could not find email for user %v for sending notification", r.UserID)
 			continue
 		}
 		n := &validatorGotSlashedNotification{
