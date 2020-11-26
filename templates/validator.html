@@ -68,6 +68,7 @@
 						</button>
                         {{ if len .Watchlist }}
 							<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
+								{{.CsrfField}}
 								<button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button" title="Stop receiving updates for this validator.">
 									<i class="fas fa-bookmark"></i>
 								</button>
@@ -79,6 +80,7 @@
 								</button>
                             {{ else }}
 								<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
+									{{.CsrfField}}
 									<button class="btn btn-dark text-white btn-sm" id="follow-button" title="Follow this validator and receive email notifications">
 										<i class="far fa-bookmark"></i>
 									</button>
@@ -143,6 +145,7 @@
 		<!-- Add Validator to Watchlist Modal -->
 		<div class="modal fade" id="bookmark-validator-modal" tabindex="-1" role="dialog" aria-labelledby="bookmark-validator-modal-label" aria-hidden="true">
 			<form action="{{printf "%#x" .PublicKey}}/add" method="post">
+				{{.CsrfField}}
 				<div class="modal-dialog">
 					<div class="modal-content">
 						<div class="modal-header">
