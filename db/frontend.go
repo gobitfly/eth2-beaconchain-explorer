@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/types"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 // FrontendDB is a pointer to the auth-database
@@ -28,7 +29,7 @@ func GetUserEmailsByIds(ids []uint64) (map[uint64]string, error) {
 		ID    uint64 `db:"id"`
 		Email string `db:"email"`
 	}
-	err := FrontendDB.Get(&rows, "SELECT email FROM users WHERE id IN $1", ids)
+	err := FrontendDB.Get(&rows, "SELECT email FROM users WHERE id IN $1", pq.Array(ids))
 	if err != nil {
 		return nil, err
 	}
