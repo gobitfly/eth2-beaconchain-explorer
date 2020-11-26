@@ -28,15 +28,18 @@ func GetUserEmailById(id uint64) (string, error) {
 
 // GetUserEmailsByIds returns the emails of users.
 func GetUserEmailsByIds(ids []uint64) (map[uint64]string, error) {
+	mailsByID := map[uint64]string{}
+	if len(ids) == 0 {
+		return mailsByID, nil
+	}
 	var rows []struct {
 		ID    uint64 `db:"id"`
 		Email string `db:"email"`
 	}
-	err := FrontendDB.Get(&rows, "SELECT email FROM users WHERE id IN $1", pq.Array(ids))
+	err := FrontendDB.Select(&rows, "SELECT id, email FROM users WHERE id = ANY($1)", pq.Array(ids))
 	if err != nil {
 		return nil, err
 	}
-	mailsByID := map[uint64]string{}
 	for _, r := range rows {
 		mailsByID[r.ID] = r.Email
 	}
