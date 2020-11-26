@@ -187,27 +187,12 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
 		}
 
-		var threshold time.Time
-		err = db.DB.Get(&threshold, `
-		select min(block_ts) from (
-			select block_ts, block_number, sum(amount) over (order by block_ts) as totalsum
-				from (
-					SELECT
-						publickey,
-						32e9 AS amount,
-						MAX(block_ts) as block_ts,
-						MAX(block_number) as block_number
-					FROM eth1_deposits
-					WHERE valid_signature = true
-					GROUP BY publickey
-					HAVING SUM(amount) >= 32e9
-				) a
-			) b
-			where totalsum > $1;
-			 `, utils.Config.Chain.MinGenesisActiveValidatorCount*32e9)
+		threshold, err := db.GetDepositThresholdTime()
 		if err != nil {
-			// return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
 			logger.WithError(err).Error("error could not calcualte threshold time")
+		}
+		if threshold == nil {
+			*threshold = deposit.BlockTs
 		}
 
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
@@ -227,7 +212,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		// enough deposits
 		if data.DepositedTotal > data.DepositThreshold {
 			if depositThresholdReached.Load() == nil {
-				eth1BlockDepositReached.Store(threshold)
+				eth1BlockDepositReached.Store(*threshold)
 				depositThresholdReached.Store(true)
 			}
 			eth1Block := eth1BlockDepositReached.Load().(time.Time)

@@ -80,10 +80,24 @@ type TaggedValidators struct {
 	Events []EventName `db:"events"`
 }
 
+type MinimalTaggedValidators struct {
+	PubKey string
+	Index  uint64
+}
+
 type OAuthAppData struct {
 	ID          uint64 `db:"id"`
 	Owner       uint64 `db:"owner_id"`
 	AppName     string `db:"app_name"`
 	RedirectURI string `db:"redirect_uri"`
 	Active      bool   `db:"active"`
+}
+
+type OAuthCodeData struct {
+	AppID  uint64 `db:"app_id"`
+	UserID uint64 `db:"user_id"`
+}
+
+type MobileSettingsData struct {
+	NotifyToken string `json:"notify_token"`
 }
