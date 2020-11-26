@@ -109,7 +109,7 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 		SELECT user_id`
 
 	if filter.JoinValidators {
-		qry += ", balance, pubkey"
+		qry += ", balance, pubkey, validatorindex"
 	}
 
 	qry += `

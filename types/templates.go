@@ -629,6 +629,7 @@ type ValidatorSlashing struct {
 type StakingCalculatorPageData struct {
 	BestValidatorBalanceHistory *[]ValidatorBalanceHistory
 	WatchlistBalanceHistory     [][]interface{}
+	TotalStaked                 uint64
 }
 
 type EthOneDepositsPageData struct {
@@ -711,6 +712,7 @@ type UserSubscription struct {
 type AuthData struct {
 	Flashes   []interface{}
 	Email     string
+	State     string
 	CsrfField template.HTML
 }
 
