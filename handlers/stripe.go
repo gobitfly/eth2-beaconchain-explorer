@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
@@ -12,7 +13,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/stripe/stripe-go/v72"
 	portalsession "github.com/stripe/stripe-go/v72/billingportal/session"
@@ -205,12 +205,13 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-		err = SubUserToFree(customer.ID)
-		if err != nil {
-			logger.WithError(err).Error("Could not unsubscribe user from free tier")
-			http.Error(w, "Internal server error", 503)
-			return
-		}
+
+		// err = SubUserToFree(customer.ID)
+		// if err != nil {
+		// 	logger.WithError(err).Error("Could not unsubscribe user from free tier")
+		// 	http.Error(w, "Internal server error", 503)
+		// 	return
+		// }
 
 	case "checkout.session.completed":
 		// Payment is successful and the subscription is created.
@@ -265,16 +266,16 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		productID := subscription.Items.Data[0].Price.ID
+		priceID := subscription.Items.Data[0].Price.ID
 
-		currProductID, err := db.GetUserProductID(subscription.Customer.ID)
-		if err != nil {
-			logger.WithError(err).Error("error retrieving customers productID ", subscription.Customer.ID)
+		currPriceID, err := db.GetUserPriceID(subscription.Customer.ID)
+		if err != nil && err != sql.ErrNoRows {
+			logger.WithError(err).Error("error retrieving customers priceID ", subscription.Customer.ID)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
 
-		err = db.UpdateAddSubscription(subscription.Customer.ID, productID, subscription.ID)
+		err = db.UpdateAddSubscription(subscription.Customer.ID, priceID, subscription.ID)
 		if err != nil {
 			logger.WithError(err).Error("error updating user with subscription", event.Data.Object)
 			http.Error(w, "Internal server error", 503)
@@ -282,7 +283,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// new subscription product update api key
-		if currProductID != productID {
+		if currPriceID != priceID {
 			err = FulfillOrder(subscription.Customer.ID)
 			if err != nil {
 				logger.WithError(err).Error("Failed to fulfill order for customer", subscription.Customer.ID)
@@ -307,12 +308,12 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = SubUserToFree(subscription.Customer.ID)
-		if err != nil {
-			logger.WithError(err).Error("Could not unsubscribe user from free tier")
-			http.Error(w, "Internal server error", 503)
-			return
-		}
+		// err = SubUserToFree(subscription.Customer.ID)
+		// if err != nil {
+		// 	logger.WithError(err).Error("Could not unsubscribe user from free tier")
+		// 	http.Error(w, "Internal server error", 503)
+		// 	return
+		// }
 
 	// inform the user when the subscription will expire
 	case "invoice.paid":
@@ -357,38 +358,26 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 func FulfillOrder(customerID string) error {
 	// update kong variables
 	// set subscription as active
-	product, err := db.UpdateFulfillOrder(customerID)
+	priceID, err := db.UpdateFulfillOrder(customerID)
 	if err != nil {
 		return err
 	}
-	if product == nil {
-		return fmt.Errorf("error no product found")
+	if priceID == nil {
+		return fmt.Errorf("error no priceID found")
 	}
 
-	switch *product {
+	switch *priceID {
 	case utils.Config.Frontend.Stripe.Sapphire:
 		logger.Info("subscribing to sapphire")
-		err = SubUserToSapphire(customerID)
-		if err != nil {
-			return err
-		}
 		EmailCustomerAboutFulfilledOrder("Sapphire")
 	case utils.Config.Frontend.Stripe.Emerald:
 		logger.Info("subscribing to emerald")
-		err = SubUserToEmerald(customerID)
-		if err != nil {
-			return err
-		}
 		EmailCustomerAboutFulfilledOrder("Emerald")
 	case utils.Config.Frontend.Stripe.Diamond:
 		logger.Info("subscribing to diamond")
-		err = SubUserToDiamond(customerID)
-		if err != nil {
-			return err
-		}
 		EmailCustomerAboutFulfilledOrder("Diamond")
 	default:
-		logger.Error("Could not fulfill order for", product)
+		logger.Error("Could not fulfill order for", priceID)
 		EmailCustomerAboutFailedFulfillment()
 	}
 
@@ -446,65 +435,65 @@ func writeJSON(w http.ResponseWriter, v interface{}) {
 	}
 }
 
-func postToKongAdmin(apiURL string, data string) (response string) {
-	apiURL = utils.Config.Frontend.Kong + apiURL
-	reqBody := strings.NewReader(data)
-	resp, err := http.Post(apiURL,
-		"application/x-www-form-urlencoded", reqBody)
-	if err != nil {
-		logger.Errorf("error posting to kong admin: %v", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		logger.Errorf("error receiving kong admin response: %v", err)
-	}
-	return string(body)
-}
+// func postToKongAdmin(apiURL string, data string) (response string) {
+// 	apiURL = utils.Config.Frontend.Kong + apiURL
+// 	reqBody := strings.NewReader(data)
+// 	resp, err := http.Post(apiURL,
+// 		"application/x-www-form-urlencoded", reqBody)
+// 	if err != nil {
+// 		logger.Errorf("error posting to kong admin: %v", err)
+// 	}
+// 	defer resp.Body.Close()
+// 	body, err := ioutil.ReadAll(resp.Body)
+// 	if err != nil {
+// 		logger.Errorf("error receiving kong admin response: %v", err)
+// 	}
+// 	return string(body)
+// }
 
-// SubUserToSapphire subscribe a user to Sapphire plan
-func SubUserToSapphire(customer string) error {
-	user, err := db.GetUserIdByStripeId(customer)
-	if err != nil {
-		return err
-	}
-	postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
-		"name=rate-limiting&config.minute=100&config.day=100000&config.month=500000&config.policy=local&config.limit_by=consumer")
+// // SubUserToSapphire subscribe a user to Sapphire plan
+// func SubUserToSapphire(customer string) error {
+// 	user, err := db.GetUserIdByStripeId(customer)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	postToKongAdmin("/consumers/"+fmt.Sprint(user.UserID)+"/plugins/",
+// 		"name=rate-limiting&config.minute=100&config.day=100000&config.month=500000&config.policy=local&config.limit_by=consumer")
 
-	return nil
-}
+// 	return nil
+// }
 
-// SubUserToEmerald subscribe a user to Emerald plan
-func SubUserToEmerald(customer string) error {
-	user, err := db.GetUserIdByStripeId(customer)
-	if err != nil {
-		return err
-	}
-	postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
-		"name=rate-limiting&config.day=200000&config.month=1000000&config.policy=local&config.limit_by=consumer")
-	return nil
-}
+// // SubUserToEmerald subscribe a user to Emerald plan
+// func SubUserToEmerald(customer string) error {
+// 	// user, err := db.GetUserIdByStripeId(customer)
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
+// 	// postToKongAdmin("/consumers/"+fmt.Sprint(user.UserID)+"/plugins/",
+// 	// 	"name=rate-limiting&config.day=200000&config.month=1000000&config.policy=local&config.limit_by=consumer")
+// 	return nil
+// }
 
-// SubUserToDiamond subscribe a user to Diamond plan
-func SubUserToDiamond(customer string) error {
-	user, err := db.GetUserIdByStripeId(customer)
-	if err != nil {
-		return err
-	}
-	postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
-		"name=rate-limiting&config.month=4000000&config.policy=local&config.limit_by=consumer")
+// // SubUserToDiamond subscribe a user to Diamond plan
+// func SubUserToDiamond(customer string) error {
+// 	// user, err := db.GetUserIdByStripeId(customer)
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
+// 	// postToKongAdmin("/consumers/"+fmt.Sprint(user.UserID)+"/plugins/",
+// 	// 	"name=rate-limiting&config.month=4000000&config.policy=local&config.limit_by=consumer")
 
-	return nil
-}
+// 	return nil
+// }
 
-// SubUserToFree subscribe a user to Free plan
-func SubUserToFree(customer string) error {
-	user, err := db.GetUserIdByStripeId(customer)
-	if err != nil {
-		return err
-	}
-	postToKongAdmin("/consumers/"+string(user.UserID)+"/plugins/",
-		"name=rate-limiting&config.minute=10&config.day=10000&config.month=30000&config.policy=local&config.limit_by=consumer")
+// // SubUserToFree subscribe a user to Free plan
+// func SubUserToFree(customer string) error {
+// 	// user, err := db.GetUserIdByStripeId(customer)
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
+// 	// postToKongAdmin("/consumers/"+fmt.Sprint(user.UserID)+"/plugins/",
+// 	// 	"name=rate-limiting&config.minute=10&config.day=10000&config.month=30000&config.policy=local&config.limit_by=consumer")
 
-	return nil
-}
+// 	return nil
+// }

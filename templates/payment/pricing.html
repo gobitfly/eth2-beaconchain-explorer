@@ -8,7 +8,7 @@ var handleFetchResult = function(result) {
   if (!result.ok) {
     return result.json().then(function(json) {
       if (json.error && json.error.message) {
-        showError("Something went wrong connecting to stripe")
+        showError("Something went wrong connecting to stripe: "+ json.error.message)
         throw new Error(result.url + ' ' + result.status + ' ' + json.error.message);
       }
     });
@@ -25,10 +25,15 @@ var createCheckoutSession = function(priceId) {
       "Content-Type": "application/json",
        "X-CSRF-Token": csrfToken,
     },
+    credentials: 'include',
     body: JSON.stringify({
       priceId: priceId
     })
-  }).then(handleFetchResult);
+  })
+  .then(handleFetchResult)
+  .catch(err => {
+    console.error("error posting to create checkout session endpoint",err)
+  });
 };
 
 // Handle any errors returned from Checkout
@@ -57,8 +62,16 @@ var setupStripe = function() {
               .redirectToCheckout({
                 sessionId: data.sessionId
               })
-              .then(handleResult);
-          });
+              .then(handleResult)
+              .catch(err => {
+                console.log("error: ", err)
+                showError("Failed to create Stripe Checkout Session")
+              });
+          }).catch(err => {
+            console.log("error: ", err)
+            showError("Failed to create Stripe Checkout Session")
+          })
+
         });
   
       // Setup event handler to create a Checkout Session when button is clicked
@@ -71,8 +84,15 @@ var setupStripe = function() {
               .redirectToCheckout({
                 sessionId: data.sessionId
               })
-              .then(handleResult);
-          });
+              .then(handleResult)
+              .catch(err => {
+                console.log("error: ", err)
+                showError("Failed to create Stripe Checkout Session")
+              });
+          }).catch(err => {
+            console.log("error: ", err)
+            showError("Failed to create Stripe Checkout Session")
+          })
         });
   
       document
@@ -84,8 +104,15 @@ var setupStripe = function() {
               .redirectToCheckout({
                 sessionId: data.sessionId
               })
-              .then(handleResult);
-          });
+              .then(handleResult)
+              .catch(err => {
+                console.log("error: ", err)
+                showError("Failed to create Stripe Checkout Session")
+              });
+          }).catch(err => {
+            console.log("error: ", err)
+            showError("Failed to create Stripe Checkout Session")
+          })
         });
     } catch (err) { }
 }
@@ -120,6 +147,7 @@ setupStripe()
 {{ end }}
 
 {{ define "content" }}
+
 {{if ne .FlashMessage ""}}
 <div
   class="alert container mt-2 {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
@@ -266,6 +294,7 @@ setupStripe()
             <p class="text-muted col-md-8 px-0 mx-auto">Let us know which plan works best for you and we'll get back to
               you.</p>
             <form id="contact" action="/api/pricing" method="post">
+              {{.CsrfField}}
               <div class="text-left">
                 <div class="form-row">
                   <div class="form-group col-md-6">
@@ -327,7 +356,7 @@ setupStripe()
               <p>Please contact us if this error persists</p>
 						</div>
 						<div class="modal-footer">
-							<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+							<button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
 						</div>
 					</div>
 				</div>

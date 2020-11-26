@@ -82,10 +82,10 @@ func GetUserSubscription(id uint64) (types.UserSubscription, error) {
 	return userSub, err
 }
 
-func GetUserProductID(customerID string) (string, error) {
-	var productID string
-	err := FrontendDB.Get(&productID, "SELECT stripe_priceID FROM users WHERE stripe_customerID = $1", customerID)
-	return productID, err
+func GetUserPriceID(customerID string) (string, error) {
+	var priceID string
+	err := FrontendDB.Get(&priceID, "SELECT stripe_priceID FROM users WHERE stripe_customerID = $1", customerID)
+	return priceID, err
 }
 
 func UpdateStripeCustomer(email, customerID string) error {

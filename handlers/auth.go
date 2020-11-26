@@ -120,7 +120,7 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 
 	registerTs := time.Now().Unix()
 
-	apiKey, err := utils.GenerateAPIKey(string(pHash), email, string(registerTs))
+	apiKey, err := utils.GenerateAPIKey(string(pHash), email, fmt.Sprint(registerTs))
 	if err != nil {
 		logger.Errorf("error generating hash for api_key: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)

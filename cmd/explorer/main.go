@@ -39,7 +39,6 @@ func initStripe(http *mux.Router) error {
 	// http.HandleFunc("/stripe/setup", handlers.StripeSetup)
 	http.HandleFunc("/stripe/create-checkout-session", handlers.StripeCreateCheckoutSession).Methods("POST")
 	http.HandleFunc("/stripe/customer-portal", handlers.StripeCustomerPortal).Methods("POST")
-	// http.HandleFunc("/stripe/webhook", handlers.StripeWebhook).Methods("POST")
 	http.HandleFunc("/stripe/success", handlers.PricingSuccess).Methods("GET")
 	http.HandleFunc("/stripe/cancled", handlers.PricingCancled).Methods("GET")
 	return nil
@@ -155,6 +154,7 @@ func main() {
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
 		apiV1Router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/stripe/webhook", handlers.StripeWebhook).Methods("POST")
 		apiV1Router.Use(utils.CORSMiddleware)
 
 		apiV1AuthRouter := apiV1Router.PathPrefix("/user").Subrouter()
@@ -193,10 +193,10 @@ func main() {
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
-				//csrf.Secure(false), // Only enable this in development environment to pass csrf checks
+				// csrf.Secure(false), // Only enable this in development environment to pass csrf checks
 			)
 
-			router.Use(csrfHandler)
+			// router.Use(csrfHandler)
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
 			router.HandleFunc("/latestState", handlers.LatestState).Methods("GET")
@@ -236,10 +236,8 @@ func main() {
 			router.HandleFunc("/validators/eth2deposits", handlers.Eth2Deposits).Methods("GET")
 			router.HandleFunc("/validators/eth2deposits/data", handlers.Eth2DepositsData).Methods("GET")
 
-			// dashboardRouter := mux.NewRouter().PathPrefix("/dashboard").Subrouter()
 			router.HandleFunc("/dashboard", handlers.Dashboard).Methods("GET")
 			router.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
-			// router.PathPrefix("/dashboard").Handler(csrfHandler(dashboardRouter))
 
 			router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET")
 			router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
@@ -292,7 +290,6 @@ func main() {
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
-			// authRouter.Use(csrfHandler)
 
 			authRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
 
