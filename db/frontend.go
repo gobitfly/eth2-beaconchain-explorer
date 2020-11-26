@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 // FrontendDB is a pointer to the auth-database
@@ -23,6 +24,23 @@ func GetUserEmailById(id uint64) (string, error) {
 	var mail string = ""
 	err := FrontendDB.Get(&mail, "SELECT email FROM users WHERE id = $1", id)
 	return mail, err
+}
+
+// GetUserEmailsByIds returns the emails of users.
+func GetUserEmailsByIds(ids []uint64) (map[uint64]string, error) {
+	var rows []struct {
+		ID    uint64 `db:"id"`
+		Email string `db:"email"`
+	}
+	err := FrontendDB.Get(&rows, "SELECT email FROM users WHERE id IN $1", pq.Array(ids))
+	if err != nil {
+		return nil, err
+	}
+	mailsByID := map[uint64]string{}
+	for _, r := range rows {
+		mailsByID[r.ID] = r.Email
+	}
+	return mailsByID, nil
 }
 
 // DeleteUserByEmail deletes a user.
