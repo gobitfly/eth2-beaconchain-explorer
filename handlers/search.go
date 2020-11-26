@@ -119,7 +119,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
 				OR CAST(validatorindex AS text) LIKE $1
-				OR LOWER(validator_names.name) LIKE LOWER($1)
+				OR LOWER(validator_names.name) LIKE LOWER($2)
 			UNION
 			SELECT 'deposited' AS index, ENCODE(eth1_deposits.publickey::bytea, 'hex') as pubkey 
 			FROM eth1_deposits 
@@ -129,9 +129,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				(
 					ENCODE(eth1_deposits.publickey::bytea, 'hex') LIKE LOWER($1)
 					OR ENCODE(eth1_deposits.from_address::bytea, 'hex') LIKE LOWER($1)
-					OR LOWER(validator_names.name) LIKE LOWER($1)
+					OR LOWER(validator_names.name) LIKE LOWER($2)
 				)
-			ORDER BY index LIMIT 10`, "%"+search+"%")
+			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "eth1_addresses":
 		result = &types.SearchAheadEth1Result{}
 		err = db.DB.Select(result, `
