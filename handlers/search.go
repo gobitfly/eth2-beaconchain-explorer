@@ -111,26 +111,16 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Select(result, "SELECT epoch FROM epochs WHERE CAST(epoch AS text) LIKE $1 ORDER BY epoch LIMIT 10", search+"%")
 	case "validators":
 		// find all validators that have a index, publickey or name like the search-query
-		// or validators that have deposited to the eth1-deposit-contract but did not get included into the beaconchain yet
 		result = &types.SearchAheadValidatorsResult{}
 		err = db.DB.Select(result, `
-			SELECT CAST(validatorindex AS text) AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
+			SELECT
+				DISTINCT validatorindex AS index,
+				ENCODE(pubkey::bytea, 'hex') AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
-				OR CAST(validatorindex AS text) LIKE $1
+			WHERE CAST(validatorindex AS text) LIKE $1
+				OR ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
 				OR LOWER(validator_names.name) LIKE LOWER($2)
-			UNION
-			SELECT 'deposited' AS index, ENCODE(eth1_deposits.publickey::bytea, 'hex') as pubkey 
-			FROM eth1_deposits 
-			LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey
-			LEFT JOIN validator_names ON eth1_deposits.publickey = validator_names.publickey
-			WHERE validators.pubkey IS NULL AND 
-				(
-					ENCODE(eth1_deposits.publickey::bytea, 'hex') LIKE LOWER($1)
-					OR ENCODE(eth1_deposits.from_address::bytea, 'hex') LIKE LOWER($1)
-					OR LOWER(validator_names.name) LIKE LOWER($2)
-				)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "eth1_addresses":
 		result = &types.SearchAheadEth1Result{}
@@ -143,15 +133,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
 		err = db.DB.Select(result, `
-			SELECT DISTINCT CAST(validatorindex AS text) AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
+			SELECT DISTINCT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			LEFT JOIN eth1_deposits ON eth1_deposits.publickey = validators.pubkey
-			WHERE ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
-				OR CAST(validatorindex AS text) LIKE $1
-				OR ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
-				OR LOWER(validator_names.name) LIKE LOWER($1)
-			ORDER BY index LIMIT 10`, search+"%")
+			WHERE CAST(validatorindex AS text) LIKE $1
+				OR ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
+				OR LOWER(validator_names.name) LIKE LOWER($2)
+			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":
 		// find validators per eth1-address (limit result by 10 addresses and 100 validators per address)
 		result = &[]struct {
