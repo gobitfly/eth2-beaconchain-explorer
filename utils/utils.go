@@ -2,6 +2,7 @@ package utils
 
 import (
 	securerand "crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/types"
@@ -235,6 +236,12 @@ func IsValidEmail(s string) bool {
 func RoundDecimals(f float64, n int) float64 {
 	d := math.Pow10(n)
 	return math.Round(f*d) / d
+}
+
+// HashAndEncode digests the input with sha256 and returns it as hex string
+func HashAndEncode(input string) string {
+	codeHashedBytes := sha256.Sum256([]byte(input))
+	return hex.EncodeToString(codeHashedBytes[:])
 }
 
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
