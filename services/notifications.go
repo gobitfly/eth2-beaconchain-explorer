@@ -122,17 +122,17 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[stri
 
 	var dbResult []struct {
 		SubscriptionID uint64 `db:"id"`
-		Email          string `db:"email"`
+		UserID         uint64 `db:"user_id"`
 		ValidatorIndex uint64 `db:"validatorindex"`
 		StartBalance   uint64 `db:"startbalance"`
 		EndBalance     uint64 `db:"endbalance"`
 	}
 
 	err := db.DB.Select(&dbResult, `
-		SELECT id, email, validatorindex, startbalance, endbalance FROM (
+		SELECT id, user_id, validatorindex, startbalance, endbalance FROM (
 			SELECT 
 				us.id, 
-				u.email, 
+				us.user_id, 
 				v.validatorindex, 
 				vb0.balance AS endbalance, 
 				vb3.balance AS startbalance, 
@@ -143,7 +143,6 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[stri
 					WHERE validatorindex = v.validatorindex AND epoch > us.last_sent_epoch AND epoch > $2 - 10
 				) b WHERE diff > 0) AS lastbalanceincreaseepoch
 			FROM users_subscriptions us
-			INNER JOIN users u ON u.id = us.user_id
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 			INNER JOIN validator_balances vb0 ON v.validatorindex = vb0.validatorindex AND vb0.epoch = $2
 			INNER JOIN validator_balances vb1 ON v.validatorindex = vb1.validatorindex AND vb1.epoch = $2 - 1 AND vb1.balance > vb0.balance
@@ -156,7 +155,22 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[stri
 		return err
 	}
 
+	// fetch user-emails from users-db (which might not be the same as data-db)
+	userIDs := []uint64{}
 	for _, r := range dbResult {
+		userIDs = append(userIDs, r.UserID)
+	}
+	emailsByUserID, err := db.GetUserEmailsByIds(userIDs)
+	if err != nil {
+		return err
+	}
+
+	for _, r := range dbResult {
+		email, exists := emailsByUserID[r.UserID]
+		if !exists {
+			logger.Errorf("could not find email for user %v for sending notification", r.UserID)
+			continue
+		}
 		n := &validatorBalanceDecreasedNotification{
 			SubscriptionID: r.SubscriptionID,
 			ValidatorIndex: r.ValidatorIndex,
@@ -166,13 +180,13 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[stri
 			EndBalance:     r.EndBalance,
 		}
 
-		if _, exists := notificationsByEmail[r.Email]; !exists {
-			notificationsByEmail[r.Email] = map[types.EventName][]types.Notification{}
+		if _, exists := notificationsByEmail[email]; !exists {
+			notificationsByEmail[email] = map[types.EventName][]types.Notification{}
 		}
-		if _, exists := notificationsByEmail[r.Email][n.GetEventName()]; !exists {
-			notificationsByEmail[r.Email][n.GetEventName()] = []types.Notification{}
+		if _, exists := notificationsByEmail[email][n.GetEventName()]; !exists {
+			notificationsByEmail[email][n.GetEventName()] = []types.Notification{}
 		}
-		notificationsByEmail[r.Email][n.GetEventName()] = append(notificationsByEmail[r.Email][n.GetEventName()], n)
+		notificationsByEmail[email][n.GetEventName()] = append(notificationsByEmail[email][n.GetEventName()], n)
 	}
 
 	return nil
@@ -210,7 +224,7 @@ func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map
 
 	var dbResult []struct {
 		SubscriptionID uint64 `db:"id"`
-		Email          string `db:"email"`
+		UserID         uint64 `db:"user_id"`
 		ValidatorIndex uint64 `db:"validatorindex"`
 		Slasher        uint64 `db:"slasher"`
 		Epoch          uint64 `db:"epoch"`
@@ -224,12 +238,12 @@ func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map
 					SELECT
 						blocks.slot, 
 						blocks.epoch, 
-						blocks.proposer AS slasher,
+						blocks.proposer AS slasher, 
 						UNNEST(ARRAY(
 							SELECT UNNEST(attestation1_indices)
 								INTERSECT
 							SELECT UNNEST(attestation2_indices)
-						)) AS slashedvalidator,
+						)) AS slashedvalidator, 
 						'Attestation Violation' AS reason
 					FROM blocks_attesterslashings 
 					LEFT JOIN blocks ON blocks_attesterslashings.block_slot = blocks.slot
@@ -245,9 +259,8 @@ func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map
 				) a
 				ORDER BY slashedvalidator, slot
 			)
-		SELECT us.id, u.email, v.validatorindex, s.slasher, s.epoch, s.reason
+		SELECT us.id, us.user_id, v.validatorindex, s.slasher, s.epoch, s.reason
 		FROM users_subscriptions us
-		INNER JOIN users u ON u.id = us.user_id
 		INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 		INNER JOIN slashings s ON s.slashedvalidator = v.validatorindex
 		WHERE us.event_name = $1 AND us.last_sent_epoch IS NULL AND us.created_epoch < s.epoch`,
@@ -256,7 +269,22 @@ func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map
 		return err
 	}
 
+	// fetch user-emails from users-db (which might not be the same as data-db)
+	userIDs := []uint64{}
 	for _, r := range dbResult {
+		userIDs = append(userIDs, r.UserID)
+	}
+	emailsByUserID, err := db.GetUserEmailsByIds(userIDs)
+	if err != nil {
+		return err
+	}
+
+	for _, r := range dbResult {
+		email, exists := emailsByUserID[r.UserID]
+		if !exists {
+			logger.Errorf("could not find email for user %v for sending notification", r.UserID)
+			continue
+		}
 		n := &validatorGotSlashedNotification{
 			SubscriptionID: r.SubscriptionID,
 			ValidatorIndex: r.ValidatorIndex,
@@ -264,13 +292,13 @@ func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map
 			Epoch:          r.Epoch,
 			Reason:         r.Reason,
 		}
-		if _, exists := notificationsByEmail[r.Email]; !exists {
-			notificationsByEmail[r.Email] = map[types.EventName][]types.Notification{}
+		if _, exists := notificationsByEmail[email]; !exists {
+			notificationsByEmail[email] = map[types.EventName][]types.Notification{}
 		}
-		if _, exists := notificationsByEmail[r.Email][n.GetEventName()]; !exists {
-			notificationsByEmail[r.Email][n.GetEventName()] = []types.Notification{}
+		if _, exists := notificationsByEmail[email][n.GetEventName()]; !exists {
+			notificationsByEmail[email][n.GetEventName()] = []types.Notification{}
 		}
-		notificationsByEmail[r.Email][n.GetEventName()] = append(notificationsByEmail[r.Email][n.GetEventName()], n)
+		notificationsByEmail[email][n.GetEventName()] = append(notificationsByEmail[email][n.GetEventName()], n)
 	}
 
 	return nil

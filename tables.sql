@@ -314,6 +314,11 @@ create table users
     password_reset_hash     character varying(40),
     password_reset_ts       timestamp without time zone,
     register_ts             timestamp without time zone,
+    api_key                 character varying(256) unique,
+    stripe_customerID       character varying(256) unique,
+    stripe_subscriptionID   character varying(256) unique,
+    stripe_priceID          character varying(256) unique,
+    stripe_active           bool                   not null default 'f',
     primary key (id, email)
 );
 

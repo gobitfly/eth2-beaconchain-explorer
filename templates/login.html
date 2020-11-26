@@ -21,6 +21,7 @@
                 {{end}}
             {{end}}
             <form action="/login" method="post">
+                {{.CsrfField}}
                 <div class="form-group">
                     <label for="email">Email address</label>
                     <input required inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email">
