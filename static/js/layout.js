@@ -234,31 +234,31 @@ $('[aria-ethereum-date]').each(function(item) {
 })
 
 $(document).ready(function() {
-  var clipboard = new ClipboardJS('#copy-deposit');
-  clipboard.on('success', function (e) {
-    console.log('success')
-    setTooltip('Address Copied!');
-    hideTooltip();
-  });
+    var clipboard = new ClipboardJS('[data-clipboard-text]');
+    clipboard.on('success', function (e) {
+      var title = $(e.trigger).attr("data-original-title")
+      $(e.trigger).tooltip('hide')
+      .attr('data-original-title', "Copied!")
+      .tooltip('show');
 
-  clipboard.on('error', function (e) {
-    setTooltip('Failed to copy!');
-    hideTooltip();
+        setTimeout(function () {
+        $(e.trigger).tooltip('hide')
+        .attr('data-original-title', title)
+      }, 1000);
+    });
+
+    clipboard.on('error', function (e) {
+      var title = $(e.trigger).attr("data-original-title")
+      $(e.trigger).tooltip('hide')
+      .attr('data-original-title', "Failed to Copy!")
+      .tooltip('show');
+
+    setTimeout(function () {
+      $(e.trigger).tooltip('hide')
+      .attr('data-original-title', title)
+    }, 1000);
   });
 })
-// clipboard
-function setTooltip(message) {
-$('#copy-deposit').tooltip('hide')
-.attr('data-original-title', message)
-.tooltip('show');
-}
-
-function hideTooltip() {
-setTimeout(function () {
-$('#copy-deposit').tooltip('hide')
-  .attr('data-original-title', 'Copy Address')
-}, 1000);
-}
 
 // var indicator = $('#nav .nav-indicator')
 // var items = document.querySelectorAll('#nav .nav-item')

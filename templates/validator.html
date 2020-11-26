@@ -6,7 +6,6 @@
 		})
 	</script>
 </script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 	<script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}})</script>
 
@@ -54,7 +53,7 @@
 				<div class="d-flex mb-1">
 					<h1 class="h4 mb-1 mb-md-0">
 						<span>Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</span>
-						<button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" data-placement="right" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
+						<button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" data-placement="right" data-original-title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
 							<i class="fa fa-copy"></i>
 						</button>
 						<!-- <button class="btn btn-dark text-white btn-sm" type="button" id="add-to-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Add validator to dashboard">
@@ -68,6 +67,7 @@
 						</button>
                         {{ if len .Watchlist }}
 							<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
+								{{.CsrfField}}
 								<button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button" title="Stop receiving updates for this validator.">
 									<i class="fas fa-bookmark"></i>
 								</button>
@@ -79,6 +79,7 @@
 								</button>
                             {{ else }}
 								<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
+									{{.CsrfField}}
 									<button class="btn btn-dark text-white btn-sm" id="follow-button" title="Follow this validator and receive email notifications">
 										<i class="far fa-bookmark"></i>
 									</button>
@@ -143,6 +144,7 @@
 		<!-- Add Validator to Watchlist Modal -->
 		<div class="modal fade" id="bookmark-validator-modal" tabindex="-1" role="dialog" aria-labelledby="bookmark-validator-modal-label" aria-hidden="true">
 			<form action="{{printf "%#x" .PublicKey}}/add" method="post">
+				{{.CsrfField}}
 				<div class="modal-dialog">
 					<div class="modal-content">
 						<div class="modal-header">

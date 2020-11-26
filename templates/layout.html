@@ -94,7 +94,7 @@
 				</div>
 				
 
-				<div class=" d-none d-md-block">
+				<div class="d-none d-md-block">
 					<div id="banner-slot" class="info-item d-flex mr-2">
 						<div class="info-item-header mr-2">
 							<span class="item-icon">
@@ -105,15 +105,17 @@
 						<div class="info-item-body"><a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
 					</div>
 				</div>
-
-				<div id="banner-eth-price" class="info-item d-flex mr-2">
-					<div class="info-item-header mr-2">
-						<span class="item-icon">
-							<i class="fas fa-cubes"></i>
-						</span>
-						<span class="item-text">Pr<span class="d-none d-md-inline">ice</span>:</span>
+				
+				<div id="banner-eth-price">
+					<div class="info-item d-flex mr-2">
+						<div class="info-item-header mr-2">
+							<span class="item-icon">
+								<i class="fas fa-cubes"></i>
+							</span>
+							<span class="item-text">Pr<span class="d-none d-md-inline">ice</span>:</span>
+						</div>
+						<div class="info-item-body"><a id="banner-eth-price-data"></a></div>
 					</div>
-					<div class="info-item-body"><a id="banner-eth-price-data"></a></div>
 				</div>
 
                 {{if not .ShowSyncingMessage}}
@@ -518,7 +520,7 @@
 					{{if len .DepositContract}}
 					<div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="contract text-center p-2">
 						<i class="fas fa-file-contract mr-2"></i><span class="contract-description mr-2">Deposit Contract:</span><a href="https://etherchain.org/account/{{.DepositContract}}" class="text-primary text-monospace">{{.DepositContract}}</a>
-						<a style="color: #fff" id="copy-deposit" data-toggle="tooltip" title="Copy Address" data-clipboard-text="{{.DepositContract}}" class="btn btn-primary mb-1 btn-icon-inside">
+						<a style="color: #fff" id="copy-deposit" data-toggle="tooltip" data-original-title="Copy Address" data-clipboard-text="{{.DepositContract}}" class="btn btn-primary mb-1 btn-icon-inside">
 							<span class="fa fa-copy icon-inside"></span>
 						</a> 
 					</div>
@@ -720,16 +722,23 @@
 	
 	<script async src="https://ads.bitfly.at/www/delivery/asyncjs.php"></script>
 	<script>
-		let ethPriceHandle = document.getElementById('banner-eth-price-data')
-		function getEthPrice(){
-			fetch("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=BTC,USD,EUR,GBP,JPY,RUB,CNY,AUD,CAD,CZK")
-			.then(res => res.json()).then(data => {
-    			ethPriceHandle.innerHTML = "$"+Math.round(data.USD); 
-  			}).catch(err => {
-				console.error(err)
-			})
+		let ethPriceHandle = document.getElementById('banner-eth-price-data');
+		let priceDiv = document.getElementById('banner-eth-price');
+		async function getEthPrice(){
+			try{
+				let json = await fetch("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=BTC,USD,EUR,GBP,JPY,RUB,CNY,AUD,CAD,CZK")
+				let data = await json.json()
+				let price = parseInt(data.USD);
+				if (price > 0){
+					ethPriceHandle.innerHTML = "$"+price;
+					priceDiv.setAttribute("class", "d-block");
+				}else {priceDiv.setAttribute("class", "d-none");}
+			}catch (err){
+				priceDiv.setAttribute("class", "d-none");
+				console.error("getEthPrice(): ", err)
+			}
 		}
-		getEthPrice()
+		getEthPrice().then(()=>{})
 		setInterval(getEthPrice,12000)
 	</script>
 	</body>

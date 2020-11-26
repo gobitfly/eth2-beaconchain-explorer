@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
 )
@@ -37,6 +38,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	validatorPageData := types.ValidatorPageData{}
+	validatorPageData.CsrfField = csrf.TemplateField(r)
 
 	data := &types.PageData{
 		HeaderAd: true,
@@ -840,14 +842,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if signatureParsed[64] != 0 {
-		if signatureParsed[64] != 27 && signatureParsed[64] != 28 {
-			logger.Errorf("invalid Ethereum signature (V is not 27 or 28)")
-			utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-			http.Redirect(w, r, "/validator/"+pubkey, 301)
-			return
-		}
-
+	if signatureParsed[64] == 27 || signatureParsed[64] == 28 {
 		signatureParsed[64] -= 27
 	}
 

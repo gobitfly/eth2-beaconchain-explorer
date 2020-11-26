@@ -2,7 +2,6 @@
 <script src="https://code.highcharts.com/stock/highstock.js"></script>
 <script src="https://code.highcharts.com/modules/annotations.js"></script>
 <script src="/js/highcharts-global-options.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 <script>
 	// share
 	var left = (screen.width - 570) / 2;
@@ -23,44 +22,6 @@
 		},false)
 	})
 
-var clipboard = new ClipboardJS('#copy-button');
-var copyButton = $('#copy-button')
-var clearSearch = $('#clear-search')
-copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
-tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
-
-function setTooltip(selector, message) {
-  $(selector).tooltip('hide').attr('data-original-title', message)
-  setTimeout(function(){
-    $(selector)
-      .tooltip('show');
-  }, 50)
-}
-
-function hideTooltip(selector, message) {
-  setTimeout(function () {
-    $(selector).tooltip('hide')
-      .attr('data-original-title', message)
-  }, 1000);
-}
-
-
-clipboard.on('success', function (e) {
-	copyButton.empty().append(tickIcon);
-	setTooltip('#copy-button', 'Link Copied')
-	hideTooltip('#copy-button', 'Copy Link to Dashboard')
-	setTimeout(function(){
-		copyButton.empty().append(copyIcon);
-	}, 500)
-});
-clipboard.on('error', function (e) {
-	setTooltip('#copy-button', 'Failed to copy Dashboard Link!');
-	hideTooltip('#copy-button');
-});
-
-copyButton.on('click', function() {
-	
-})
 
 function formatNumberSpacing(str) {
 	var result = ''
@@ -301,7 +262,9 @@ class Calculator {
 					}
 					var ethSupply = this.config.totalEthSupply / 1e9
 					document.getElementById('staking-variable-totalStake').setAttribute('max', ethSupply)
-					document.getElementById('staking-variable-totalStake').setAttribute('value', (ethSupply) * 0.01)
+					if (document.getElementById('staking-variable-totalStake').getAttribute('value') === "0") {
+						document.getElementById('staking-variable-totalStake').setAttribute('value', (ethSupply) * 0.01)
+					}
 					document.getElementById('staking-variable-totalStake-slider').setAttribute('max', ethSupply)
 					document.getElementById('staking-variable-totalStake-slider').setAttribute('step', (ethSupply) * 0.0025)
 					count += 1
@@ -869,7 +832,7 @@ td,th {
 							<h6 width="50%">Total staked ether <span id="totalStake-currency">ETH</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Total staked ether is the sum of effective balances of all active validators attesting in the network."></i></h6>
 							<span  id="staking-variable-totalStake-percentage"></span>
 						</div>
-						<input id="staking-variable-totalStake" class="staking-variable form-control" type="text" value=1100000>
+						<input id="staking-variable-totalStake" class="staking-variable form-control" type="text" value={{.TotalStaked}}>
 						<input id="staking-variable-totalStake-slider" class="form-control" type="range" value=1100000 min=0 max=100e6>
 						<span id="staking-variable-totalStake-validation" class="input-validation">Total stake must be greater or equal to 524384 (minimum stake required)</span>
 					</div>
@@ -893,7 +856,7 @@ td,th {
 	<div class="col-md-7 col-sm-12">
 				<h5 class="my-3 px-0 col-10">Estimated Rewards</h5> 
 				<div style="height: calc(54px - 1rem);" class="my-3 px-0 col-10 d-flex justif-content-center align-items-center">
-					<button style="width:38px; height:28px;" data-toggle="tooltip" title="Copy Link to Configuration" id="copy-button" data-clipboard-text="https://beaconcha.in/calculator" type="button" class="d-flex justify-content-center align-items-center btn btn-primary btn-sm m-1">
+					<button style="width:38px; height:28px;" data-toggle="tooltip" data-original-title="Copy Link to Configuration" id="copy-button" data-clipboard-text="https://beaconcha.in/calculator" type="button" class="d-flex justify-content-center align-items-center btn btn-primary btn-sm m-1">
 						<i class="fa fa-copy"></i>
 					</button>
 					<button id="twitter-share" style="width:38px; height:28px;color:#fff;background-color:#1DA1F2" type="button" class="d-flex justify-content-center align-items-center btn btn-sm m-1">

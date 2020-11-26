@@ -578,9 +578,10 @@ type ChartsPageDataChart struct {
 
 // DashboardData is a struct to hold data for the dashboard-page
 type DashboardData struct {
-	BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
-	Earnings       ValidatorEarnings                `json:"earnings"`
-	Validators     [][]interface{}                  `json:"validators"`
+	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
+	// Earnings       ValidatorEarnings                `json:"earnings"`
+	// Validators     [][]interface{}                  `json:"validators"`
+	Csrf string `json:"csrf"`
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
@@ -628,6 +629,7 @@ type ValidatorSlashing struct {
 type StakingCalculatorPageData struct {
 	BestValidatorBalanceHistory *[]ValidatorBalanceHistory
 	WatchlistBalanceHistory     [][]interface{}
+	TotalStaked                 uint64
 }
 
 type EthOneDepositsPageData struct {
@@ -697,9 +699,20 @@ type User struct {
 	Authenticated bool   `json:"authenticated"`
 }
 
+type UserSubscription struct {
+	UserID         uint64  `db:"id"`
+	Email          string  `db:"email"`
+	Active         bool    `db:"stripe_active"`
+	CustomerID     *string `db:"stripe_customerid"`
+	SubscriptionID *string `db:"stripe_subscriptionid"`
+	PriceID        *string `db:"stripe_priceid"`
+	ApiKey         *string `db:"api_key"`
+}
+
 type AuthData struct {
 	Flashes   []interface{}
 	Email     string
+	State     string
 	CsrfField template.HTML
 }
 
@@ -708,9 +721,9 @@ type CsrfData struct {
 }
 
 type UserSettingsPageData struct {
-	Email     string `json:"email"`
 	CsrfField template.HTML
 	AuthData
+	Subscription UserSubscription
 }
 
 type UserAuthorizeConfirmPageData struct {
@@ -737,6 +750,11 @@ type ApiPricing struct {
 	FlashMessage string
 	User         *User
 	CsrfField    template.HTML
+	Subscription UserSubscription
+	StripePK     string
+	Sapphire     string
+	Emerald      string
+	Diamond      string
 }
 
 type StakeWithUsPageData struct {
