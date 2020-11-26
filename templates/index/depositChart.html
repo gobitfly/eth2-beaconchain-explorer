@@ -59,6 +59,10 @@
         }
       }
     }
+    // Hide eth2 deposit series
+    if (filteredSeries.length > 1) {
+        filteredSeries[0].visible = false
+    }
     window.addEventListener('load', function() {
         Highcharts.stockChart('deposit-chart',{
             chart: {
