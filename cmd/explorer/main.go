@@ -190,7 +190,7 @@ func main() {
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
-				csrf.Secure(false), // Only enable this in development environment to pass csrf checks
+				// csrf.Secure(false), // Only enable this in development environment to pass csrf checks
 			)
 
 			frontendRouter := router.PathPrefix("/").Subrouter()
