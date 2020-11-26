@@ -55,7 +55,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := &stripe.CheckoutSessionParams{
-		SuccessURL: stripe.String(utils.Config.Frontend.SiteDomain + "/stripe/success"),
+		SuccessURL: stripe.String(utils.Config.Frontend.SiteDomain + "/user/settings"),
 		CancelURL:  stripe.String(utils.Config.Frontend.SiteDomain + "/pricing"),
 		// if the customer exists use the existing customer
 		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
@@ -131,8 +131,6 @@ func StripeCustomerPortal(w http.ResponseWriter, r *http.Request) {
 	// The URL to which the user is redirected when they are done managing
 	// billing in the portal.
 
-	log.Println("got a manage billing request for", customerID)
-
 	params := &stripe.BillingPortalSessionParams{
 		Customer:  stripe.String(customerID),
 		ReturnURL: stripe.String(req.ReturnURL),
@@ -165,9 +163,6 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		logger.WithError(err).Error("error constructing webhook stripe signature event")
 		return
 	}
-
-	log.Println("EVENT OCCURED", event.Type)
-	// log.Println("EVENT OBJECTS: ", event.Data.Object)
 
 	switch event.Type {
 	case "customer.created":
@@ -219,18 +214,18 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if session.CustomerEmail != "" {
-			err = db.UpdateStripeCustomer(session.CustomerEmail, session.Customer.ID)
-			if err != nil {
-				logger.WithError(err).Error("error could not update user with a stripe customerID")
-				http.Error(w, "Internal server error", 503)
-				return
-			}
-		} else {
-			logger.Error("error no email provided when creating stripe customer")
-			http.Error(w, "Internal server error", 503)
-			return
-		}
+		// if session.Customer.Email != "" {
+		// 	err = db.UpdateStripeCustomer(session.Customer.Email, session.Customer.ID)
+		// 	if err != nil {
+		// 		logger.WithError(err).Error("error could not update user with a stripe customerID")
+		// 		http.Error(w, "Internal server error", 503)
+		// 		return
+		// 	}
+		// } else {
+		// 	logger.Error("the session object does not have a customer email", session, session.Customer)
+		// 	http.Error(w, "Internal server error", 503)
+		// 	return
+		// }
 
 	case "customer.subscription.created":
 		var subscription stripe.Subscription

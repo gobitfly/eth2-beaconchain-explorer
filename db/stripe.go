@@ -3,7 +3,6 @@ package db
 import (
 	"eth2-exporter/types"
 	"fmt"
-	"log"
 )
 
 func UpdateRemoveStripeCustomer(customerID string) error {
@@ -97,10 +96,8 @@ func UpdateStripeCustomer(email, customerID string) error {
 	row := tx.QueryRow("SELECT stripe_customerID FROM users WHERE email = $1", email)
 	row.Scan(&currID)
 
-	log.Println("CURR ID:", currID)
-
 	if currID != "" && customerID != currID {
-		return fmt.Errorf("error updating stripe customer id, the user already has an id: ", currID, " failed to overwrite with: "+customerID)
+		return fmt.Errorf("error updating stripe customer id, the user already has an id: %v failed to overwrite with: %v", currID, customerID)
 	}
 
 	_, err = tx.Exec("UPDATE users SET stripe_customerID = $1 WHERE email = $2", customerID, email)

@@ -84,7 +84,15 @@
                                 </span>
                             </div>
                             <div class="my-2">
-                                <span style="font-weight:bold"><i class="fas fa-key"></i> </span> <span style="font-size: 90%; user-select: all;">{{.Subscription.ApiKey}} <a style="color: #fff" id="copy-apiKey" data-toggle="tooltip" data-original-title="Copy API Key" data-clipboard-text="{{.Subscription.ApiKey}}" class="btn btn-primary mb-1 btn-icon-inside"></a></span> 
+                                <span style="font-weight:bold">
+                                    <i class="fas fa-key"></i> 
+                                </span> 
+                                <span style="font-size: 90%; user-select: all;">
+                                    {{.Subscription.ApiKey}} 
+                                    <a style="color: #fff" id="copy-apiKey" data-toggle="tooltip" data-original-title="Copy API Key" data-clipboard-text="{{.Subscription.ApiKey}}" class="btn btn-primary mb-1 btn-icon-inside">
+                                        <span class="fa fa-copy icon-inside"></span>
+                                    </a>
+                                </span> 
                             </div>
                         {{else}}
                             <div class="my-2">
