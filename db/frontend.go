@@ -5,6 +5,7 @@ import (
 	"errors"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -86,7 +87,7 @@ func CreateAPIKey(userID uint64) error {
 		return err
 	}
 
-	key, err := utils.GenerateAPIKey(u.Password, u.Email, string(u.RegisterTs.Unix()))
+	key, err := utils.GenerateAPIKey(u.Password, u.Email, fmt.Sprint(u.RegisterTs.Unix()))
 	if err != nil {
 		return err
 	}
