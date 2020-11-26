@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -26,10 +27,12 @@ var indexTemplate = template.Must(template.New("index").Funcs(utils.GetTemplateF
 	"templates/index/recentBlocks.html",
 	"templates/index/recentEpochs.html",
 	"templates/index/genesisCountdown.html",
+	"templates/index/depositDistribution.html",
 	"templates/components/banner.html",
 	"templates/svg/bricks.html",
 	"templates/svg/professor.html",
 	"templates/svg/timeline.html",
+	"templates/components/rocket.html",
 ))
 
 // Index will return the main "index" page using a go template
@@ -61,6 +64,16 @@ func Index(w http.ResponseWriter, r *http.Request) {
 
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
 
+	if strings.Contains(r.Header.Get("Accept-Language"), "ru") {
+		data.Data.(*types.IndexPageData).Lang = "ru-RU"
+	}
+
+	for _, v := range r.Cookies() {
+		if v.Name == "language" {
+			data.Data.(*types.IndexPageData).Lang = v.Value
+			break
+		}
+	}
 	err := indexTemplate.ExecuteTemplate(w, "layout", data)
 
 	if err != nil {

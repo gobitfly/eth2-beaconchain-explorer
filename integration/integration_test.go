@@ -40,12 +40,11 @@ func TestHTTPEndpoints(t *testing.T) {
 	endpointTests := []endpointTest{
 		{"http://localhost:3333", 200},
 		{"http://localhost:3333/index/data", 200},
-		{"http://localhost:3333/block/0", 200},
+		{"http://localhost:3333/block/1", 200},
 		{"http://localhost:3333/blocks", 200},
 		{"http://localhost:3333/blocks/data?draw=1&columns%5B0%5D%5Bdata%5D=0&columns%5B0%5D%5Bname%5D=&columns%5B0%5D%5Bsearchable%5D=true&columns%5B0%5D%5Borderable%5D=false&columns%5B0%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B0%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B1%5D%5Bdata%5D=1&columns%5B1%5D%5Bname%5D=&columns%5B1%5D%5Bsearchable%5D=true&columns%5B1%5D%5Borderable%5D=false&columns%5B1%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B1%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B2%5D%5Bdata%5D=2&columns%5B2%5D%5Bname%5D=&columns%5B2%5D%5Bsearchable%5D=true&columns%5B2%5D%5Borderable%5D=false&columns%5B2%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B2%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B3%5D%5Bdata%5D=3&columns%5B3%5D%5Bname%5D=&columns%5B3%5D%5Bsearchable%5D=true&columns%5B3%5D%5Borderable%5D=false&columns%5B3%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B3%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B4%5D%5Bdata%5D=4&columns%5B4%5D%5Bname%5D=&columns%5B4%5D%5Bsearchable%5D=true&columns%5B4%5D%5Borderable%5D=false&columns%5B4%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B4%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B5%5D%5Bdata%5D=5&columns%5B5%5D%5Bname%5D=&columns%5B5%5D%5Bsearchable%5D=true&columns%5B5%5D%5Borderable%5D=false&columns%5B5%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B5%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B6%5D%5Bdata%5D=6&columns%5B6%5D%5Bname%5D=&columns%5B6%5D%5Bsearchable%5D=true&columns%5B6%5D%5Borderable%5D=false&columns%5B6%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B6%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B7%5D%5Bdata%5D=7&columns%5B7%5D%5Bname%5D=&columns%5B7%5D%5Bsearchable%5D=true&columns%5B7%5D%5Borderable%5D=false&columns%5B7%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B7%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B8%5D%5Bdata%5D=8&columns%5B8%5D%5Bname%5D=&columns%5B8%5D%5Bsearchable%5D=true&columns%5B8%5D%5Borderable%5D=false&columns%5B8%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B8%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B9%5D%5Bdata%5D=9&columns%5B9%5D%5Bname%5D=&columns%5B9%5D%5Bsearchable%5D=true&columns%5B9%5D%5Borderable%5D=false&columns%5B9%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B9%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B10%5D%5Bdata%5D=10&columns%5B10%5D%5Bname%5D=&columns%5B10%5D%5Bsearchable%5D=true&columns%5B10%5D%5Borderable%5D=false&columns%5B10%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B10%5D%5Bsearch%5D%5Bregex%5D=false&start=0&length=10&search%5Bvalue%5D=&search%5Bregex%5D=false", 200},
 		{"http://localhost:3333/vis", 200},
 		{"http://localhost:3333/vis/blocks", 200},
-		{"http://localhost:3333/vis/votes", 200},
 		{"http://localhost:3333/charts", 200},
 		{"http://localhost:3333/epoch/1", 200},
 		{"http://localhost:3333/epochs", 200},
@@ -65,6 +64,16 @@ func TestHTTPEndpoints(t *testing.T) {
 		{"http://localhost:3333/search/validators/1", 200},
 		{"http://localhost:3333/faq", 200},
 		{"http://localhost:3333/imprint", 200},
+		// api
+		// {"http://localhost:3333/api/healthz", 200},
+		{"http://localhost:3333/api/v1/block/1", 200},
+		{"http://localhost:3333/api/v1/block/1/attestations", 200},
+		{"http://localhost:3333/api/v1/block/1/attesterslashings", 200},
+		{"http://localhost:3333/api/v1/block/1/deposits", 200},
+		{"http://localhost:3333/api/v1/block/1/proposerslashings", 200},
+		{"http://localhost:3333/api/v1/block/1/voluntaryexits", 200},
+		{"http://localhost:3333/api/v1/epoch/1", 200},
+		{"http://localhost:3333/api/v1/epoch/1/blocks", 200},
 	}
 
 	// wait until explorer is up
@@ -83,6 +92,8 @@ func TestHTTPEndpoints(t *testing.T) {
 		break
 	}
 
+	// time.Sleep(time.Second)
+
 	// run tests
 	for _, et := range endpointTests {
 		status, err := checkEndpoint(et.endpoint)
@@ -99,7 +110,7 @@ func TestHTTPEndpoints(t *testing.T) {
 
 func checkEndpoint(addr string) (int, error) {
 	client := http.Client{
-		Timeout: time.Second * 2,
+		Timeout: time.Second * 4,
 	}
 	req, err := http.NewRequest("GET", addr, nil)
 	if err != nil {

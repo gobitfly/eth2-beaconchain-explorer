@@ -301,7 +301,9 @@ class Calculator {
 					}
 					var ethSupply = this.config.totalEthSupply / 1e9
 					document.getElementById('staking-variable-totalStake').setAttribute('max', ethSupply)
-					document.getElementById('staking-variable-totalStake').setAttribute('value', (ethSupply) * 0.01)
+					if (document.getElementById('staking-variable-totalStake').getAttribute('value') === "0") {
+						document.getElementById('staking-variable-totalStake').setAttribute('value', (ethSupply) * 0.01)
+					}
 					document.getElementById('staking-variable-totalStake-slider').setAttribute('max', ethSupply)
 					document.getElementById('staking-variable-totalStake-slider').setAttribute('step', (ethSupply) * 0.0025)
 					count += 1
@@ -869,7 +871,7 @@ td,th {
 							<h6 width="50%">Total staked ether <span id="totalStake-currency">ETH</span> <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="Total staked ether is the sum of effective balances of all active validators attesting in the network."></i></h6>
 							<span  id="staking-variable-totalStake-percentage"></span>
 						</div>
-						<input id="staking-variable-totalStake" class="staking-variable form-control" type="text" value=1100000>
+						<input id="staking-variable-totalStake" class="staking-variable form-control" type="text" value={{.TotalStaked}}>
 						<input id="staking-variable-totalStake-slider" class="form-control" type="range" value=1100000 min=0 max=100e6>
 						<span id="staking-variable-totalStake-validation" class="input-validation">Total stake must be greater or equal to 524384 (minimum stake required)</span>
 					</div>

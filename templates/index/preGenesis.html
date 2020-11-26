@@ -1,9 +1,8 @@
 {{ define "preGenesis" }}
   <div class="row mx-auto align-items-center">
     <div class="col-md-6">
-      <h2 class="h3">Phase 0 Beacon Chain</h2>
-      <p>The Ethereum Beacon Chain is currently undergoing genesis. Please prepare your validators and send your deposits. To join Ethereum 2.0 fire up one of the beacon chain and validator clients. The Mainnet will support <a href="https://github.com/prysmaticlabs/prysm">Prysm</a>, <a
-          href="https://github.com/sigp/lighthouse">Lighthouse</a>, <a href="https://github.com/PegaSysEng/teku">Teku</a>, <a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a>. Please visit the official <a href="https://launchpad.ethereum.org/"> Launchpad</a> for more information on how to deposit.
+      <h2 class="h3">{{ trLang .Lang "p1_title" }}</h2>
+      <p> {{ trLang .Lang "p1_text" }}</p>
     </div>
     <div class="col-md-6 my-3">
       {{ template "depositProgress" . }}
@@ -11,10 +10,9 @@
   </div>
   <div class="row mx-auto align-items-center">
     <div class="col-md-6 my-3">
-      <h2 class="h3">When is genesis reached?</h2>
+      <h2 class="h3">{{ trLang .Lang "p2_title" }}</h2>
       <p style="text-overflow: ellipsis; overflow: hidden;">
-        Genesis will occur once enough deposits have been made to the deposit contract{{if len .DepositContract}} <a href="/validators/eth1deposits" class="text-truncate text-monospace">{{.DepositContract}}</a>{{end}}. Each deposit is registered by the beacon chain after a block delay of <i>2048</i>
-        Ethereum 1.0 blocks. The earliest possible genesis time and the estimated genesis time (according to the rate of deposits) can be seen on the right.
+        {{ trLang .Lang "p2_text" }}
       </p>
     </div>
     <div class="col-md-6 my-3">
@@ -23,15 +21,16 @@
   </div>
   <div class="row mx-auto align-items-center">
     <div class="col-md-6 my-3">
-      <h2 class="h3">Explore & Manage</h2>
+      <h2 class="h3">{{ trLang .Lang "p3_title" }}</h2>
       <p>
-        Once the beacon chain has reached genesis you can explore <a href="/epochs">epochs</a>, <a href="/blocks">slots</a> and see <a href="/charts">statistics</a>.
-        Further, you can monitor your validators performance using our <a href="/dashboard">dashboard</a> feature.
-        <a href="/register">Sign up</a> and add alerts on the <a href="/user/notifications">accounts page</a>. Get notified if your validators go offline. For more information about the beacon chain view our <a href="https://kb.beaconcha.in/">knowledge base.</a>
+        {{ trLang .Lang "p3_text" }}
       </p>
     </div>
     <div style="max-height: 250px" class="col-md-6 my-3 d-flex flex-column justify-content-center">
         {{ template "depositChart" . }}
     </div>
+  </div>
+  <div class="row mx-auto align-items-center justify-content-center">
+    {{ template "depositDistributionChart" . }}
   </div>
 {{end}}

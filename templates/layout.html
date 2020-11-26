@@ -58,6 +58,13 @@
             }
 		</script>
 
+		<script>
+			function updateLang(lang){
+				document.cookie = "language="+lang
+				window.location.reload();
+			}
+		</script>
+
 	</head>
 	<header>
 	</header>
@@ -73,26 +80,44 @@
 				<a style="white-space:nowrap;" class="mr-2" href="/">
 					<i class="fas fa-home"></i> <span>|</span>
 				</a>
+				
 				<div id="banner-epoch" class="info-item d-flex mr-2">
 					<div class="info-item-header mr-2">
-              <span class="item-icon">
-                <i class="fas fa-history"></i>
-							</span>
-						
+              			<span class="item-icon">
+               				 <i class="fas fa-history"></i>
+						</span>	
 						<span class="item-text">Ep<span class="d-none d-md-inline">och</span>:</span>
 					</div>
 					<div class="info-item-body">
-						<a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a></div>
-				</div>
-				<div id="banner-slot" class="info-item d-flex mr-2">
-					<div class="info-item-header mr-2">
-              <span class="item-icon">
-                <i class="fas fa-cubes"></i>
-              </span>
-						<span class="item-text">Sl<span class="d-none d-md-inline">ot</span>:</span>
+						<a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a>
 					</div>
-					<div class="info-item-body"><a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
 				</div>
+				
+
+				<div class="d-none d-md-block">
+					<div id="banner-slot" class="info-item d-flex mr-2">
+						<div class="info-item-header mr-2">
+							<span class="item-icon">
+								<i class="fas fa-cubes"></i>
+							</span>
+							<span class="item-text">Slot:</span>
+						</div>
+						<div class="info-item-body"><a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
+					</div>
+				</div>
+				
+				<div id="banner-eth-price">
+					<div class="info-item d-flex mr-2">
+						<div class="info-item-header mr-2">
+							<span class="item-icon">
+								<i class="fas fa-cubes"></i>
+							</span>
+							<span class="item-text">Pr<span class="d-none d-md-inline">ice</span>:</span>
+						</div>
+						<div class="info-item-body"><a id="banner-eth-price-data"></a></div>
+					</div>
+				</div>
+
                 {{if not .ShowSyncingMessage}}
                     {{if gt .FinalizationDelay 3}}
 						<div id="banner-fin" class="info-item d-flex mr-3">
@@ -135,7 +160,16 @@
 				</div>
 			</div>
 			<div class="info-banner-right">
-			{{if .User.Authenticated}}
+				<div class="dropdown">
+					<a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown" aira-haspopup="true" aria-expanded="false">
+						<i class="fas fa-globe m-0 p-0"></i>
+					</a>
+					<div class="dropdown-menu dropdown-menu-right" aria-labelledby="langDropdown">
+						<a class="dropdown-item" onClick="updateLang('en-US')">English</a>
+						<a class="dropdown-item" onClick="updateLang('ru-RU')">Russian</a>
+					</div>
+				</div>
+				{{if .User.Authenticated}}
 				<div class="dropdown">
 					<a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 						<i class="fas fa-user-circle m-0 p-0"></i>
@@ -146,25 +180,25 @@
 						<a data-no-instant class="dropdown-item" href="/logout">Logout</a>
 					</div>
 				</div>
-							{{else}}
-			<div class="d-md-none">
-				<div class="dropdown" class="d-md-none">
-					<a class="btn btn-transparent btn-sm dropdown-toggle" id="loginDropdown" data-toggle="dropdown" aira-haspopup="true" aria-expanded="false">
-						<i style="margin: 0; padding: 0;" class="fas fa-sign-in-alt"></i>
-					</a>
-					<div class="dropdown-menu dropdown-meu-right" aria-labelledby="loginDropdown">
-						<a class="dropdown-item" href="/login">Sign In</a>
-						<a class="dropdown-item" href="/register">Sign Up</a>
+				{{else}}
+				<div class="d-md-none">
+					<div class="dropdown" class="d-md-none">
+						<a class="btn btn-transparent btn-sm dropdown-toggle" id="loginDropdown" data-toggle="dropdown" aira-haspopup="true" aria-expanded="false">
+							<i style="margin: 0; padding: 0;" class="fas fa-sign-in-alt"></i>
+						</a>
+						<div class="dropdown-menu dropdown-menu-right" aria-labelledby="loginDropdown">
+							<a class="dropdown-item" href="/login">Sign In</a>
+							<a class="dropdown-item" href="/register">Sign Up</a>
+						</div>
 					</div>
 				</div>
-			</div>
-				<a href="/login" class="mr-3 d-none d-md-flex">
-					<span>Sign In</span>
-				</a>
-				<a href="/register" class="btn btn-primary btn-sm d-none d-md-flex">
-					<span class="text-white"><b>Sign Up</b></span>
-				</a>
-			{{end}}
+					<a href="/login" class="mr-3 d-none d-md-flex">
+						<span>Sign In</span>
+					</a>
+					<a href="/register" class="btn btn-primary btn-sm d-none d-md-flex">
+						<span class="text-white"><b>Sign Up</b></span>
+					</a>
+				{{end}}
 			</div>
 		</div>
 	</div>
@@ -427,7 +461,7 @@
 								</span>
 								<span class="nav-text">Knowledge Base</span>
 							</a>
-							<a class="dropdown-item" href="/api/pricing">
+							<a class="dropdown-item" href="/pricing">
 								<span class="nav-icon">
 									<i class="fas fa-laptop-code mr-2"></i>
 								</span>
@@ -515,7 +549,7 @@
 					<div class="d-flex flex-column">
 						<a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-2"></i>Advertise</a>
 						<a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag Shop</a>
-						<a class="my-1" href="/api/pricing"><i class="fas fa-laptop-code mr-2"></i></i>API Pricing</a>
+						<a class="my-1" href="/pricing"><i class="fas fa-laptop-code mr-2"></i></i>API Pricing</a>
 						<a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>Github</a>
 					</div>
 				</div>
@@ -614,13 +648,13 @@
 					m  : ' 1 min',
 					mm : '%d mins',
 					h  : ' 1 h',
-					hh : '%dh',
-					d  : ' 1 d',
-					dd : '%dd',
+					hh : '%d hrs',
+					d  : ' 1 day',
+					dd : '%dd days',
 					M  : ' 1 mth',
-					MM : '%dmth',
-					y  : ' 1 y',
-					yy : '%dy'
+					MM : '%d mths',
+					y  : ' 1 year',
+					yy : '%d years'
 				}
 			});
 	</script>
@@ -685,7 +719,28 @@
 
 		</script>
     {{end}}
+	
 	<script async src="https://ads.bitfly.at/www/delivery/asyncjs.php"></script>
+	<script>
+		let ethPriceHandle = document.getElementById('banner-eth-price-data');
+		let priceDiv = document.getElementById('banner-eth-price');
+		async function getEthPrice(){
+			try{
+				let json = await fetch("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=BTC,USD,EUR,GBP,JPY,RUB,CNY,AUD,CAD,CZK")
+				let data = await json.json()
+				let price = parseInt(data.USD);
+				if (price > 0){
+					ethPriceHandle.innerHTML = "$"+price;
+					priceDiv.setAttribute("class", "d-block");
+				}else {priceDiv.setAttribute("class", "d-none");}
+			}catch (err){
+				priceDiv.setAttribute("class", "d-none");
+				console.error("getEthPrice(): ", err)
+			}
+		}
+		getEthPrice().then(()=>{})
+		setInterval(getEthPrice,12000)
+	</script>
 	</body>
 	</html>
 {{end}}

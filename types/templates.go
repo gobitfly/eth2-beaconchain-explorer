@@ -90,6 +90,8 @@ type IndexPageData struct {
 	GenesisPeriod             bool                   `json:"genesis_period"`
 	Mainnet                   bool                   `json:"-"`
 	DepositChart              *ChartsPageDataChart
+	DepositDistribution       *ChartsPageDataChart
+	Lang                      string
 }
 
 type IndexPageDataEpochs struct {
@@ -347,7 +349,6 @@ type BlockPageData struct {
 	Mainnet                bool
 
 	Attestations      []*BlockPageAttestation // Attestations included in this block
-	Deposits          []*BlockPageDeposit
 	VoluntaryExits    []*BlockPageVoluntaryExits
 	Votes             []*BlockVote // Attestations that voted for that block
 	AttesterSlashings []*BlockPageAttesterSlashing
@@ -628,6 +629,7 @@ type ValidatorSlashing struct {
 type StakingCalculatorPageData struct {
 	BestValidatorBalanceHistory *[]ValidatorBalanceHistory
 	WatchlistBalanceHistory     [][]interface{}
+	TotalStaked                 uint64
 }
 
 type EthOneDepositsPageData struct {
@@ -700,6 +702,7 @@ type User struct {
 type AuthData struct {
 	Flashes   []interface{}
 	Email     string
+	State     string
 	CsrfField template.HTML
 }
 

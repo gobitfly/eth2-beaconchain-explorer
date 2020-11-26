@@ -602,6 +602,18 @@ func ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUser(w http.ResponseWriter, r *http.Request) *types.User {
+	if IsMobileAuth(r) {
+		claims := getAuthClaims(r)
+		u := &types.User{}
+		u.UserID = claims.UserID
+		u.Authenticated = true
+		return u
+	} else {
+		return getUserFromSessionStore(w, r)
+	}
+}
+
+func getUserFromSessionStore(w http.ResponseWriter, r *http.Request) *types.User {
 	u := &types.User{}
 	session, err := utils.SessionStore.Get(r, authSessionName)
 	if err != nil {

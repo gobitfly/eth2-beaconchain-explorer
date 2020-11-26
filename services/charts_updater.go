@@ -24,10 +24,10 @@ var ChartHandlers = map[string]chartHandler{
 	"average_balance":    {4, averageBalanceChartData},
 	"network_liveness":   {5, networkLivenessChartData},
 	"participation_rate": {6, participationRateChartData},
-	"inclusion_distance": {6, inclusionDistanceChartData},
+	"inclusion_distance": {7, inclusionDistanceChartData},
 	// "incorrect_attestations":         {6, incorrectAttestationsChartData},
-	"validator_income":               {7, averageDailyValidatorIncomeChartData},
-	"staking_rewards":                {8, stakingRewardsChartData},
+	// "validator_income":               {7, averageDailyValidatorIncomeChartData},
+	// "staking_rewards":                {8, stakingRewardsChartData},
 	"stake_effectiveness":            {9, stakeEffectivenessChartData},
 	"balance_distribution":           {10, balanceDistributionChartData},
 	"effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
@@ -88,7 +88,9 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 	for i, ch := range ChartHandlers {
 		go func(i string, ch chartHandler) {
 			defer wg.Done()
+			start := time.Now()
 			data, err := ch.DataFunc()
+			logger.WithField("chart", i).WithField("duration", time.Since(start)).WithField("error", err).Info("generated chart")
 			chartHandlerResChan <- &chartHandlerRes{ch.Order, i, data, err}
 		}(i, ch)
 	}
@@ -419,7 +421,7 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 
 	latestEpoch := LatestEpoch()
 	epochOffset := uint64(0)
-	maxEpochs := 7 * 3600 * 24 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
+	maxEpochs := 1 * 24 * 3600 / (utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot)
 	if latestEpoch > maxEpochs {
 		epochOffset = latestEpoch - maxEpochs
 	}
@@ -433,7 +435,7 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
 		from attestation_assignments a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.inclusionslot > 0 and a.epoch > $1
+		where a.epoch > $1 and a.inclusionslot > 0
 		group by a.epoch
 		order by a.epoch asc`, epochOffset)
 	if err != nil {
@@ -450,7 +452,7 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Average Inclusion Distance (last 7 days)",
+		Title:        "Average Inclusion Distance (last 24h)",
 		Subtitle:     "Inclusion Distance measures how long it took to include attestations in slots.",
 		XAxisTitle:   "",
 		YAxisTitle:   "Average Inclusion Distance [slots]",
@@ -1459,9 +1461,17 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		Title:            "Deposits Distribution",
 		Subtitle:         "Deposits Distribution by ETH1-Addresses.",
 		TooltipFormatter: `function(){ return '<b>'+this.point.name+'</b><br\>Percentage: '+this.point.percentage.toFixed(2)+'%<br\>Validators: '+this.point.y }`,
-		PlotOptionsPie: `{ dataLabels: { enabled:true, formatter:function(){ 
-			var name = this.point.name.length > 8 ? this.point.name.substring(0,8) : this.point.name;
-			return '<b>'+name+'…</b>: '+this.point.y+' ('+this.point.percentage.toFixed(2)+'%)' } } }`,
+		PlotOptionsPie: `{
+			borderWidth: 1,
+			borderColor: null, 
+			dataLabels: { 
+				enabled:true, 
+				formatter: function() { 
+					var name = this.point.name.length > 8 ? this.point.name.substring(0,8) : this.point.name;
+					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'…</b><span style="stroke:none; fill: var(--font-color)">: '+this.point.y+' ('+this.point.percentage.toFixed(2)+'%)</span></span>' 
+				} 
+			} 
+		}`,
 		PlotOptionsSeriesCursor: "pointer",
 		PlotOptionsSeriesEventsClick: `function(event){ 
 			if (event.point.name == 'others') { window.location.href = '/validators/eth1deposits' }

@@ -50,7 +50,6 @@
     </div>
     <script>
         {{if .DepositChart}}
-        console.log('series', {{.DepositChart.Data.Series}})
     var series = {{.DepositChart.Data.Series}}
     var filteredSeries = []
     if (series && series.length) {
@@ -60,12 +59,15 @@
         }
       }
     }
+    // Hide eth2 deposit series
+    if (filteredSeries.length > 1) {
+        filteredSeries[0].visible = false
+    }
     window.addEventListener('load', function() {
         Highcharts.stockChart('deposit-chart',{
             chart: {
                type: {{.DepositChart.Data.Type}},
                height: 180,
-
             },
             rangeSelector: {  enabled: false },
             // title: { 

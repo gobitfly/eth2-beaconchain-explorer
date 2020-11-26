@@ -117,10 +117,27 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/deposits", handlers.ApiValidatorDeposits).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
+		apiV1Router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET", "OPTIONS")
 		apiV1Router.Use(utils.CORSMiddleware)
+
+		apiV1AuthRouter := apiV1Router.PathPrefix("/user").Subrouter()
+		apiV1AuthRouter.HandleFunc("/mobile/notify/register", handlers.MobileNotificationUpdatePOST).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/mobile/settings", handlers.MobileDeviceSettings).Methods("GET", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/mobile/settings", handlers.MobileDeviceSettingsPOST).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/validator/saved", handlers.MobileTagedValidators).Methods("GET", "OPTIONS")
+
+		apiV1AuthRouter.HandleFunc("/validator/{pubkey}/add", handlers.UserValidatorWatchlistAdd).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.Use(utils.AuthorizedAPIMiddleware)
+
 		router.PathPrefix("/api/v1").Handler(apiV1Router)
 
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET")
+
+		services.Init() // Init frontend services
+		logrus.Infof("frontend services initiated")
 
 		if !utils.Config.Frontend.OnlyAPI {
 			if utils.Config.Frontend.SiteDomain == "" {
@@ -130,15 +147,17 @@ func main() {
 			defer db.FrontendDB.Close()
 
 			logrus.Infof("frontend database connection established")
-			services.Init() // Init frontend services
 
-			logrus.Infof("frontend services initiated")
 			utils.InitSessionStore(cfg.Frontend.SessionSecret)
 
-			csrfBytes, _ := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
+			csrfBytes, err := hex.DecodeString(cfg.Frontend.CsrfAuthKey)
+			if err != nil {
+				logrus.WithError(err).Error("error decoding csrf auth key falling back to empty csrf key")
+			}
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
+				//csrf.Secure(false), // Only enable this in development environment to pass csrf checks
 			)
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
@@ -146,6 +165,7 @@ func main() {
 			router.HandleFunc("/launchMetrics", handlers.LaunchMetricsData).Methods("GET")
 			router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
 			router.HandleFunc("/block/{slotOrHash}", handlers.Block).Methods("GET")
+			router.HandleFunc("/block/{slotOrHash}/deposits", handlers.BlockDepositData).Methods("GET")
 			router.HandleFunc("/blocks", handlers.Blocks).Methods("GET")
 			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")

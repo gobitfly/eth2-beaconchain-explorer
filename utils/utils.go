@@ -2,6 +2,7 @@ package utils
 
 import (
 	securerand "crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/types"
@@ -23,11 +24,26 @@ import (
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v2"
 
+	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
 )
 
 // Config is the globally accessible configuration
 var Config *types.Config
+
+var localiser *i18n.I18n
+
+// making sure language files are loaded only once
+func getLocaliser() *i18n.I18n {
+	if localiser == nil {
+		localiser, err := i18n.New(i18n.Glob("locales/*/*"), "en-US", "ru-RU")
+		if err != nil {
+			log.Println(err)
+		}
+		return localiser
+	}
+	return localiser
+}
 
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
@@ -57,6 +73,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatSlashedValidator":                  FormatSlashedValidator,
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
 		"formatTimestamp":                         FormatTimestamp,
+		"formatTsWithoutTooltip":                  FormatTsWithoutTooltip,
 		"formatTimestampTs":                       FormatTimestampTs,
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
@@ -76,6 +93,7 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
+		"trLang": TrLang,
 	}
 }
 
@@ -85,7 +103,7 @@ var LayoutPaths []string = []string{"templates/layout/layout.html", "templates/l
 func IncludeHTML(path string) template.HTML {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Println("includeHTML - error reading file: %v", err)
+		log.Printf("includeHTML - error reading file: %v", err)
 		return ""
 	}
 	return template.HTML(string(b))
@@ -219,6 +237,12 @@ func IsValidEmail(s string) bool {
 func RoundDecimals(f float64, n int) float64 {
 	d := math.Pow10(n)
 	return math.Round(f*d) / d
+}
+
+// HashAndEncode digests the input with sha256 and returns it as hex string
+func HashAndEncode(input string) string {
+	codeHashedBytes := sha256.Sum256([]byte(input))
+	return hex.EncodeToString(codeHashedBytes[:])
 }
 
 const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
