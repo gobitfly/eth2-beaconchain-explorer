@@ -29,15 +29,17 @@ var userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFun
 var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notifications.html"))
 var authorizeTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/authorize.html"))
 
-func UserAuthMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	user := getUser(w, r)
-	if !user.Authenticated {
-		logger.Errorf("User not authorized")
-		utils.SetFlash(w, r, authSessionName, "Error: Please login first")
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-	next(w, r)
+func UserAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := getUser(w, r)
+		if !user.Authenticated {
+			logger.Errorf("User not authorized")
+			utils.SetFlash(w, r, authSessionName, "Error: Please login first")
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // UserSettings renders the user-template
@@ -52,7 +54,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email, err := db.GetUserEmailById(user.UserID)
+	subscription, err := db.GetUserSubscription(user.UserID)
 	if err != nil {
 		logger.Errorf("Error retrieving the email for user: %v %v", user.UserID, err)
 		session.Flashes("Error: Something went wrong.")
@@ -61,7 +63,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userSettingsData.Email = email
+	userSettingsData.Subscription = subscription
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
@@ -82,6 +84,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -91,6 +94,21 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+}
+
+// GenerateAPIKey generates an API key for users that do not yet have a key.
+func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
+
+	err := db.CreateAPIKey(user.UserID)
+	if err != nil {
+		logger.WithError(err).Error("Could not create API key for user")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	http.Redirect(w, r, r.Referer(), http.StatusSeeOther)
 }
 
 // UserAuthorizeConfirm renders the user-authorize template
@@ -141,6 +159,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 	}
 	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -215,10 +234,10 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
-
 	err = notificationTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)

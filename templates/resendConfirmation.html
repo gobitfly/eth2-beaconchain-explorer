@@ -21,6 +21,7 @@
                 {{end}}
             {{end}}
             <form action="/resend" method="post">
+                {{.CsrfField}}
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="text" class="form-control" id="email" name="email" inputmode="email" maxlength="100" required>

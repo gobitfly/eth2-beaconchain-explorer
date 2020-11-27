@@ -5,7 +5,6 @@
   <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
   <script src="/js/highcharts-global-options.js"></script>
   <script src="/js/dashboard.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 {{end}} 
 
 {{ define "css"}}
@@ -220,7 +219,7 @@
           <button data-toggle="tooltip" title="Save all to Watchlist" style="visibility:hidden;" id="bookmark-button" type="button" class="btn btn-primary btn-sm m-1">
             <i class="far fa-bookmark" style="width: 15px;"></i>
           </button>
-          <button data-toggle="tooltip" title="Copy Link to Dashboard" style="visibility:hidden;" id="copy-button" data-clipboard-text="https://beaconcha.in/dashboard" type="button" class="btn btn-primary btn-sm m-1">
+          <button data-toggle="tooltip" data-original-title="Copy Link to Dashboard" style="visibility:hidden;" id="copy-button" data-clipboard-text="https://beaconcha.in/dashboard" type="button" class="btn btn-primary btn-sm m-1">
             <i class="fa fa-copy" style="width: 15px;"></i>
           </button>
           <button  data-toggle="tooltip" title="Clear Dashboard"  style="visibility:hidden;" id="clear-search" type="button" class="btn btn-primary btn-sm m-1">

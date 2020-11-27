@@ -15,8 +15,8 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/google/go-cmp v0.5.1 // indirect
-	github.com/gorilla/context v1.1.1
 	github.com/google/go-querystring v1.0.0
+	github.com/gorilla/context v1.1.1
 	github.com/gorilla/csrf v1.7.0
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/sessions v1.2.0
@@ -41,6 +41,7 @@ require (
 	github.com/prysmaticlabs/go-ssz v0.0.0-20200612203617-6d5c9aa213ae
 	github.com/prysmaticlabs/prysm v1.0.0-alpha.25.0.20200917185001-3db678499074
 	github.com/sirupsen/logrus v1.6.0
+	github.com/stripe/stripe-go/v72 v72.24.0
 	github.com/swaggo/http-swagger v0.0.0-20200308142732-58ac5e232fba
 	github.com/swaggo/swag v1.6.9
 	github.com/urfave/cli/v2 v2.3.0 // indirect

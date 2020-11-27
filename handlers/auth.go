@@ -15,6 +15,7 @@ import (
 	"html/template"
 	"net/http"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
@@ -41,7 +42,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "register",
-		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
+		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)},
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -50,6 +51,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -118,11 +120,22 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	registerTs := time.Now().Unix()
+
+	apiKey, err := utils.GenerateAPIKey(string(pHash), email, fmt.Sprint(registerTs))
+	if err != nil {
+		logger.Errorf("error generating hash for api_key: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
+		return
+	}
+
 	_, err = tx.Exec(`
-		INSERT INTO users (password, email, register_ts)
-		VALUES ($1, $2, TO_TIMESTAMP($3))`,
-		string(pHash), email, registerTs,
+      INSERT INTO users (password, email, register_ts, api_key)
+      VALUES ($1, $2, TO_TIMESTAMP($3), $4)`,
+		string(pHash), email, registerTs, apiKey,
 	)
+
 	if err != nil {
 		logger.Errorf("error saving new user into db: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
@@ -163,7 +176,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "login",
-		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
+		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)},
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -172,6 +185,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -325,7 +339,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "requestReset",
-		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email},
+		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email, CsrfField: csrf.TemplateField(r)},
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -334,6 +348,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -411,7 +426,7 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "register",
-		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
+		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)},
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -420,6 +435,7 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -489,7 +505,7 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 			GATag:       utils.Config.Frontend.GATag,
 		},
 		Active:                "resendConfirmation",
-		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
+		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)},
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -498,6 +514,7 @@ func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
