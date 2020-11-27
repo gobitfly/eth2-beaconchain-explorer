@@ -41,12 +41,12 @@ $(document).ready(function() {
     var spinnerSmall = $('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>')
     var bookmarkIcon = $("<i class='far fa-bookmark' style='width:15px;'></i>")
     var errorIcon = $("<i class='fas fa-exclamation' style='width:15px;'></i>")
-    fetch('/user/dashboard/save', {
+    fetch('/dashboard/save', {
       method: "POST",
-      credentials: 'include',
+      // credentials: 'include',
       headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': $("#bookmark-button").attr("csrf"),
+        'Content-Type': 'application/json'
+        // 'X-CSRF-Token': $("#bookmark-button").attr("csrf"),
       },
       body: JSON.stringify(state.validators),
     }).then(function(res) {
