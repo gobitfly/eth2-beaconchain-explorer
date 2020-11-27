@@ -26,6 +26,7 @@ type PageData struct {
 	FinalizationDelay     uint64
 	Mainnet               bool
 	DepositContract       string
+	EthPrice              int
 }
 
 // Meta is a struct to hold metadata about the page
@@ -48,6 +49,7 @@ type LatestState struct {
 	CurrentFinalizedEpoch uint64 `json:"currentFinalizedEpoch"`
 	FinalityDelay         uint64 `json:"finalityDelay"`
 	IsSyncing             bool   `json:"syncing"`
+	EthPrice              int    `json:"ethPrice"`
 }
 
 type Stats struct {
