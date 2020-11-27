@@ -315,6 +315,7 @@
 							<h1 class="h4 ">Request to add your Staking Service</h1>
 							<p class="text-muted col-md-8 px-0 mx-auto">If you have a staking service and want it to be listed above please fill out the form below or create a <a class="" href="https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/templates/stakingServices.html">pull request <i class="fab fa-github"></i></a></p>
 							<form id="contact" action="/stakingServices" method="post">
+								{{.CsrfField}}
 								<div class="text-left">
 									<div class="form-row">
 										<div class="form-group col-md-6">

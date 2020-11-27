@@ -55,6 +55,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		CurrentEpoch:          services.LatestEpoch(),
+		CsrfField:             csrf.TemplateField(r),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 		Mainnet:               utils.Config.Chain.Mainnet,

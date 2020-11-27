@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/gorilla/csrf"
 )
 
 var epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/layout.html", "templates/epochs.html"))
@@ -38,6 +40,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		CurrentEpoch:          services.LatestEpoch(),
+		CsrfField:             csrf.TemplateField(r),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 		Mainnet:               utils.Config.Chain.Mainnet,

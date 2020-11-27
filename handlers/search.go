@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 )
@@ -56,6 +57,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 			ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 			ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 			CurrentEpoch:          services.LatestEpoch(),
+			CsrfField:             csrf.TemplateField(r),
 			CurrentSlot:           services.LatestSlot(),
 		}
 		err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)

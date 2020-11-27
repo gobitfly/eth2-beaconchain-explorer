@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/csrf"
 )
 
 var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1Deposits.html", "templates/index/depositChart.html"))
@@ -54,6 +56,7 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		ShowSyncingMessage:    services.IsSyncing(),
 		CurrentEpoch:          services.LatestEpoch(),
+		CsrfField:             csrf.TemplateField(r),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 		Mainnet:               utils.Config.Chain.Mainnet,
@@ -182,6 +185,7 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		ShowSyncingMessage:    services.IsSyncing(),
 		CurrentEpoch:          services.LatestEpoch(),
+		CsrfField:             csrf.TemplateField(r),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 		Mainnet:               utils.Config.Chain.Mainnet,

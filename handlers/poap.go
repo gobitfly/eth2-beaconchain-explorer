@@ -17,6 +17,7 @@ import (
 	"eth2-exporter/version"
 
 	eth1common "github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/csrf"
 )
 
 var poapTemplate = template.Must(template.ParseFiles("templates/layout.html", "templates/poap.html"))
@@ -51,6 +52,7 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		CurrentEpoch:          services.LatestEpoch(),
+		CsrfField:             csrf.TemplateField(r),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 		Mainnet:               utils.Config.Chain.Mainnet,

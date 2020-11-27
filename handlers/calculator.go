@@ -10,6 +10,8 @@ import (
 	"html/template"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/csrf"
 )
 
 var stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
@@ -47,6 +49,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		CurrentEpoch:          services.LatestEpoch(),
+		CsrfField:             csrf.TemplateField(r),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 		Mainnet:               utils.Config.Chain.Mainnet,

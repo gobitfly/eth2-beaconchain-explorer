@@ -10,6 +10,8 @@ import (
 	"html/template"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/csrf"
 )
 
 var advertisewithusTemplate = template.Must(template.New("advertisewithus").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/advertisewithus.html"))
@@ -33,6 +35,7 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
 		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 		CurrentEpoch:          services.LatestEpoch(),
+		CsrfField:             csrf.TemplateField(r),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 		Mainnet:               utils.Config.Chain.Mainnet,
@@ -40,6 +43,7 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pageData := &types.AdvertiseWithUsPageData{}
+	pageData.CsrfField = csrf.TemplateField(r)
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "ad_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)

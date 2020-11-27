@@ -26,6 +26,7 @@ type PageData struct {
 	FinalizationDelay     uint64
 	Mainnet               bool
 	DepositContract       string
+	CsrfField             template.HTML
 }
 
 // Meta is a struct to hold metadata about the page
@@ -759,6 +760,7 @@ type ApiPricing struct {
 
 type StakeWithUsPageData struct {
 	FlashMessage string
+	CsrfField    template.HTML
 }
 
 type RateLimitError struct {
