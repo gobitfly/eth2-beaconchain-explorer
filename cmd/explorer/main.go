@@ -190,12 +190,10 @@ func main() {
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
-				// csrf.Secure(false), // Only enable this in development environment to pass csrf checks
+				csrf.Secure(false), // Only enable this in development environment to pass csrf checks
 			)
 
 			frontendRouter := router.PathPrefix("/").Subrouter()
-			frontendRouter.Use(csrfHandler)
-			initStripe(frontendRouter)
 
 			frontendRouter.HandleFunc("/", handlers.Index).Methods("GET")
 			frontendRouter.HandleFunc("/latestState", handlers.LatestState).Methods("GET")
@@ -294,6 +292,8 @@ func main() {
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
 			authRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
 			authRouter.Use(handlers.UserAuthMiddleware)
+			authRouter.Use(csrfHandler)
+			initStripe(authRouter)
 
 			router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
 		}

@@ -22,7 +22,7 @@ var createCheckoutSession = function(priceId) {
   if (document.getElementsByName("CsrfField").length) {
     csrfToken = document.getElementsByName("CsrfField")[0].value
   }
-  return fetch("/stripe/create-checkout-session", {
+  return fetch("/user/stripe/create-checkout-session", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
