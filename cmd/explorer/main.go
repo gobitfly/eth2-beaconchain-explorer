@@ -60,12 +60,12 @@ func main() {
 		phase0 := &types.Phase0{}
 		f, err := os.Open(utils.Config.Chain.Phase0Path)
 		if err != nil {
-			fmt.Errorf("error opening Phase0 Config file %v: %v", utils.Config.Chain.Phase0Path, err)
+			logrus.Errorf("error opening Phase0 Config file %v: %v", utils.Config.Chain.Phase0Path, err)
 		} else {
 			decoder := yaml.NewDecoder(f)
 			err = decoder.Decode(phase0)
 			if err != nil {
-				fmt.Errorf("error decoding Phase0 Config file %v: %v", utils.Config.Chain.Phase0Path, err)
+				logrus.Errorf("error decoding Phase0 Config file %v: %v", utils.Config.Chain.Phase0Path, err)
 			} else {
 				utils.Config.Chain.Phase0 = *phase0
 			}
