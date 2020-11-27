@@ -873,7 +873,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			res, err := db.DB.Exec(`
 				INSERT INTO validator_names (publickey, name)
 				SELECT publickey, $1 as name
-				FROM (SELECT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature) a
+				FROM (SELECT DISTINCT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature) a
 				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, recoveredAddress.Bytes())
 			if err != nil {
 				logger.Errorf("error saving validator name (apply to all): %x: %v: %v", pubkeyDecoded, name, err)
