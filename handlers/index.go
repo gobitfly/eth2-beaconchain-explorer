@@ -64,7 +64,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
 
-	if strings.Contains(r.Header.Get("Accept-Language"), "ru") {
+	if strings.Contains(strings.Split(r.Header.Get("Accept-Language"), ",")[0], "ru-RU") {
 		data.Data.(*types.IndexPageData).Lang = "ru-RU"
 	}
 
