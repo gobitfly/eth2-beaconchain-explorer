@@ -877,7 +877,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, recoveredAddress.Bytes())
 			if err != nil {
 				logger.Errorf("error saving validator name (apply to all): %x: %v: %v", pubkeyDecoded, name, err)
-				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
+				utils.SetFlash(w, r, validatorEditFlash, "Error: Db error while updating validator names")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
 			}
@@ -892,7 +892,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, pubkeyDecoded)
 			if err != nil {
 				logger.Errorf("error saving validator name: %x: %v: %v", pubkeyDecoded, name, err)
-				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
+				utils.SetFlash(w, r, validatorEditFlash, "Error: Db error while updating validator name")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
 			}
