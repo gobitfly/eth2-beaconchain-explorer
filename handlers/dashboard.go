@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/csrf"
 	"github.com/lib/pq"
 )
 
@@ -57,8 +56,6 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	dashboardData := types.DashboardData{}
-
-	dashboardData.Csrf = csrf.Token(r)
 
 	data := &types.PageData{
 		HeaderAd: true,

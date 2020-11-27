@@ -9,7 +9,7 @@
       if (document.getElementsByName("CsrfField") && document.getElementsByName("CsrfField").length) {
         token = document.getElementsByName("CsrfField")[0].value
       }
-      fetch('/stripe/customer-portal', {
+      fetch('/user/stripe/customer-portal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

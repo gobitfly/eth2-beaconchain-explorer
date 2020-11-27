@@ -19,7 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
 
-	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
 )
@@ -38,7 +37,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	validatorPageData := types.ValidatorPageData{}
-	validatorPageData.CsrfField = csrf.TemplateField(r)
 
 	data := &types.PageData{
 		HeaderAd: true,
