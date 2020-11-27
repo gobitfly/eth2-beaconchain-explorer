@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/csrf"
 	"github.com/lib/pq"
 )
 
@@ -58,8 +57,6 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	dashboardData := types.DashboardData{}
 
-	dashboardData.Csrf = csrf.Token(r)
-
 	data := &types.PageData{
 		HeaderAd: true,
 		Meta: &types.Meta{
@@ -79,6 +76,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
