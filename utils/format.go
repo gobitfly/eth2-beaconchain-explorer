@@ -396,6 +396,13 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	}
 }
 
+func DerefString(str *string) string {
+	if str != nil {
+		return *str
+	}
+	return ""
+}
+
 // TrLang returns translated text based on language tag and text id
 func TrLang(lang string, key string) template.HTML {
 	I18n := getLocaliser()

@@ -77,32 +77,6 @@ function setValidatorStatus(state) {
   }
 }
 
-// clipboard
-function setTooltip(message) {
-  $('#copy-button').tooltip('hide')
-    .attr('data-original-title', message)
-    .tooltip('show');
-}
-
-function hideTooltip() {
-  setTimeout(function () {
-    $('#copy-button').tooltip('hide')
-      .attr('data-original-title', 'Copy public key to clipboard')
-  }, 1000);
-}
-
-var clipboard = new ClipboardJS('#copy-button');
-
-clipboard.on('success', function (e) {
-  setTooltip('Public key copied!');
-  hideTooltip();
-});
-
-clipboard.on('error', function (e) {
-  setTooltip('Failed to copy public key!');
-  hideTooltip();
-});
-
 // set date
 $('span[aria-ethereum-date]').each(function () {
   var d = $(this).attr('aria-ethereum-date');

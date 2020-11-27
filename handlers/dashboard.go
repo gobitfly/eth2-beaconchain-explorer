@@ -55,6 +55,8 @@ func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 func Dashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
+	dashboardData := types.DashboardData{}
+
 	data := &types.PageData{
 		HeaderAd: true,
 		Meta: &types.Meta{
@@ -65,7 +67,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		},
 		ShowSyncingMessage:    services.IsSyncing(),
 		Active:                "dashboard",
-		Data:                  nil,
+		Data:                  dashboardData,
 		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
@@ -74,6 +76,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}

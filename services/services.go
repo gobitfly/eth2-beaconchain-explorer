@@ -2,11 +2,13 @@ package services
 
 import (
 	"database/sql"
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -29,12 +31,19 @@ var depositThresholdReached atomic.Value
 
 var logger = logrus.New().WithField("module", "services")
 
+type EthPrice struct {
+	USD float64
+}
+
+var ethPrice *EthPrice = new(EthPrice)
+
 // Init will initialize the services
 func Init() {
 	ready.Add(4)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
+	go updateEthPrice()
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()
 	} else {
@@ -387,6 +396,25 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	return data, nil
 }
 
+func updateEthPrice() {
+	for true {
+		resp, err := http.Get("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD")
+
+		if err != nil {
+			logger.Errorln(err)
+		}
+
+		defer resp.Body.Close()
+
+		err = json.NewDecoder(resp.Body).Decode(&ethPrice)
+
+		if err != nil {
+			logger.Errorln(err)
+		}
+		time.Sleep(time.Minute)
+	}
+}
+
 // LatestEpoch will return the latest epoch
 func LatestEpoch() uint64 {
 	return atomic.LoadUint64(&latestEpoch)
@@ -426,6 +454,7 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
+	data.EthPrice = GetEthPrice()
 	return data
 }
 
@@ -459,4 +488,8 @@ func GetLatestStats() *types.Stats {
 // IsSyncing returns true if the chain is still syncing
 func IsSyncing() bool {
 	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
+}
+
+func GetEthPrice() int {
+	return int(ethPrice.USD)
 }

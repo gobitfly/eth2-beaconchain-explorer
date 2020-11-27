@@ -63,6 +63,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -881,11 +882,11 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			res, err := db.DB.Exec(`
 				INSERT INTO validator_names (publickey, name)
 				SELECT publickey, $1 as name
-				FROM (SELECT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature) a
+				FROM (SELECT DISTINCT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature) a
 				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, recoveredAddress.Bytes())
 			if err != nil {
 				logger.Errorf("error saving validator name (apply to all): %x: %v: %v", pubkeyDecoded, name, err)
-				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
+				utils.SetFlash(w, r, validatorEditFlash, "Error: Db error while updating validator names")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
 			}
@@ -900,7 +901,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, pubkeyDecoded)
 			if err != nil {
 				logger.Errorf("error saving validator name: %x: %v: %v", pubkeyDecoded, name, err)
-				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
+				utils.SetFlash(w, r, validatorEditFlash, "Error: Db error while updating validator name")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
 			}
