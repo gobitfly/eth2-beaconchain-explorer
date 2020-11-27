@@ -67,8 +67,8 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")
 
 	if len(acceptedLangs) > 0 {
-		if acceptedLangs[0] == "ru-RU" {
-			data.Data.(*types.IndexPageData).Lang = acceptedLangs[0]
+		if strings.Contains(acceptedLangs[0], "ru") || strings.Contains(acceptedLangs[0], "RU") {
+			data.Data.(*types.IndexPageData).Lang = "ru-RU"
 		}
 	}
 
