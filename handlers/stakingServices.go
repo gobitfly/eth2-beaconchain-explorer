@@ -101,7 +101,7 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 	err = mail.SendMail("support@beaconcha.in", "New staking inquiry", msg)
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
-		utils.SetFlash(w, r, "stake_flash", "Error: unable to submit ad request")
+		utils.SetFlash(w, r, "stake_flash", "Error: unable to submit request")
 		http.Redirect(w, r, "/stakingServices", http.StatusSeeOther)
 		return
 	}
