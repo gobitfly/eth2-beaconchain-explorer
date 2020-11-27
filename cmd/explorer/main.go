@@ -253,9 +253,6 @@ func main() {
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
 
-			router.HandleFunc("/pricing", handlers.Pricing).Methods("GET")
-			router.HandleFunc("/pricing", handlers.PricingPost).Methods("POST")
-
 			// confirming the email update should not require auth
 			router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
 
@@ -275,6 +272,8 @@ func main() {
 			signUpRouter.HandleFunc("/reset/{hash}", handlers.ResetPassword).Methods("GET")
 			signUpRouter.HandleFunc("/confirm/{hash}", handlers.ConfirmEmail).Methods("GET")
 			signUpRouter.HandleFunc("/confirmation", handlers.Confirmation).Methods("GET")
+			signUpRouter.HandleFunc("/pricing", handlers.Pricing).Methods("GET")
+			signUpRouter.HandleFunc("/pricing", handlers.PricingPost).Methods("POST")
 			signUpRouter.Use(csrfHandler)
 
 			authRouter := router.PathPrefix("/user").Subrouter()
