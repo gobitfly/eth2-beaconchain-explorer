@@ -147,44 +147,13 @@
 											aria-controls="slashings" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-user-slash"></i><span class="tab-text">Slashings</span> <span class="badge bg-secondary text-white">{{if gt .SlashingsCount 10000}}>10000{{else}}{{.SlashingsCount}}{{end}}</span></a>
 										</li>
 									{{end}}
-								</ul>
-
-								<!-- Validator Lifecycle State Diagram -->
-								{{ template "validatorLifeCycleDiagram" }}
-								
-								<div class="row" style="justify-content: center">
-									<div class="col-sm-2">
-										{{.EffectiveBalance | formatEffectiveBalance}}
-									</div>
-									<div class="col-sm-2">
-										{{.Status | formatValidatorStatus}}
-									</div>
-									<div class="col-sm-2">
-										{{.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}}
-									</div>
-								</div>
-
-								<div class="row" style="margin-top:2%;">
-									<div class="col">
-										{{ template "validatorSummaryTable" .}}
-									</div>
-								</div>
+								</ul>	
 							</div>
 						</div>
+
 						<div class="row">
-							<div class="col validator-charts-div">
-								<ul class="nav nav-tabs" id="chartTabs" role="tablist">
-									<li class="nav-item">
-										<a class="nav-link active" id="balancechart-tag" data-toggle="tab" href="#balancechart" role="tab" aria-controls="balancechart" aria-selected="true">Balance Chart</a>
-									</li>
-									<li class="nav-item">
-										<a class="nav-link" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart" aria-selected="false">Proposed Chart</a>
-									</li>
-								</ul>
-								<div class="tab-content" id="myTabContent">
-									<div class="tab-pane fade show active" role="tabpanel" aria-labelledby="balancechart-tag" id="balancechart" height="200px"></div>
-									<div class="tab-pane fade" role="tabpanel" aria-labelledby="proposedChart-tab" id="proposedChart" height="200px"></div>
-								</div>
+							<div class="col">
+								{{ template "validatorInfoTable" .}}
 							</div>
 						</div>
 					</div>
@@ -198,13 +167,6 @@
 								{{ template "validatorHistoryTable"}}
 							</div>
 						</div>
-					</div>
-				</div>
-
-				<div class="row" style="width:100%">
-					<div class="col">
-						<!-- Info table -->
-						{{ template "validatorInfoTable" .}}
 					</div>
 				</div>
 			</div>

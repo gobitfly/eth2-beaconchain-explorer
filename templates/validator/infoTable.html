@@ -2,67 +2,74 @@
 {{ $deposited := or (or (eq .Status "deposited") (eq .Status "deposited_valid")) (eq .Status "deposited_invalid")  }}
 <div class="tab-content">
     <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab" aria-controls="overview">
-        {{if ne .Name ""}}
-            <div class="row border-bottom p-3 mx-0">
-                <div class="col-md-2">Name:</div>
-                <div class="col-md-10">
-                    {{formatValidatorName .Name}}
-                    <a class="ml-1" href="#" data-toggle="modal" data-target="#edit-validator-modal" title="Edit validator name">
-                        <i class="fa fa-edit small"></i>
-                    </a>
-                </div>
-            </div>
-        {{end}}
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-2">Unique Index:</div>
-            <div class="col-md-10">
-                {{if $deposited}}Index Pending{{else}}{{.Index}}{{end}}
-                {{if eq .Name ""}}
-                    | <a href="#" data-toggle="modal" data-target="#edit-validator-modal">Set custom name</a>
-                {{end}}
-            </div>
+        <!-- Validator Lifecycle State Diagram -->
+        <div class="row">
+            {{ template "validatorLifeCycleDiagram" }}
         </div>
         {{if not $deposited }}
-            <div class="row border-bottom p-3 mx-0">
-                <div class="col-md-2">Current Balance:</div>
-                <div class="col-md-10">{{.CurrentBalance | formatCurrentBalance}}</div>
+        <div class="row" style="justify-content: center">
+            <div class="col-sm-2">
+                {{.EffectiveBalance | formatEffectiveBalance}}
             </div>
-            <div class="row border-bottom p-3 mx-0">
-                <div class="col-md-2">Effective Balance:</div>
-                <div class="col-md-10">{{.EffectiveBalance | formatEffectiveBalance}}</div>
+            <div class="col-sm-2">
+                {{.Status | formatValidatorStatus}}
             </div>
-            <div class="row border-bottom p-3 mx-0">
-                <div class="col-md-2">Income:</div>
-                <div class="col-md-10">
-                    <div class="row">
+            {{ if gtf .AttestationInclusionEffectiveness 0 }}
+            <div class="col-sm-2">
+                {{.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}}
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+        <div class="row" style="margin-top:2%;">
+            <div class="col">
+                {{ template "validatorSummaryTable" .}}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col validator-charts-div">
+                <ul class="nav nav-tabs" id="chartTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="balancechart-tag" data-toggle="tab" href="#balancechart" role="tab" aria-controls="balancechart" aria-selected="true">Balance Chart</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart" aria-selected="false">Proposed Chart</a>
+                    </li>
+                </ul>
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" role="tabpanel" aria-labelledby="balancechart-tag" id="balancechart" height="200px"></div>
+                    <div class="tab-pane fade" role="tabpanel" aria-labelledby="proposedChart-tab" id="proposedChart" height="200px"></div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                {{if ne .Name ""}}
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col">Name:</div>
                         <div class="col">
-                            <span>1 day:</span> 
-                        </div>
-                        <div class="col">
-                            <span>
-                                {{.Income1d | formatIncome}} 
-                            </span>
+                            {{formatValidatorName .Name}}
+                            <a class="ml-1" href="#" data-toggle="modal" data-target="#edit-validator-modal" title="Edit validator name">
+                                <i class="fa fa-edit small"></i>
+                            </a>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col">
-                            <span class="mr-2">7 day:</span> 
-                        </div>
-                        <div class="col">
-                            <span>{{.Income7d | formatIncome}} </span>
-                        </div>
+                {{end}}
+                <div class="row border-bottom p-3 mx-0">
+                    <div class="col">Unique Index:</div>
+                    <div class="col">
+                        {{if $deposited}}Index Pending{{else}}{{.Index}}{{end}}
+                        {{if eq .Name ""}}
+                            | <a href="#" data-toggle="modal" data-target="#edit-validator-modal">Set custom name</a>
+                        {{end}}
                     </div>
-                    <div class="row">
-                        <div class="col">
-                            <span class="mr-2">31 day:</span> 
-                        </div>
-                        <div class="col">
-                            <span>
-                                {{.Income31d | formatIncome}}
-                            </span>
-                        </div>
+                </div>
+                {{if not $deposited }}
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col">Current Balance:</div>
+                        <div class="col">{{.CurrentBalance | formatCurrentBalance}}</div>
                     </div>
-                    <div class="row">
+                    <div class="row border-bottom p-3 mx-0">
                         <div class="col">
                             <span class="mr-2">APR:</span> 
                         </div>
@@ -72,51 +79,42 @@
                             </span>
                         </div>
                     </div>
-                </div>
-            </div>
-        {{end}}
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-2">Status:</div>
-            <div class="col-md-10">{{.Status | formatValidatorStatus}} {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}{{if $deposited}} - An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around 8 hours</a> until your deposit is processed by the beacon chain. Check out the deposits tab for more details{{end}}</div>
-        </div>
-        {{ if gtf .AttestationInclusionEffectiveness 0 }}
-            <div class="row border-bottom p-3 mx-0">
-                <div class="col-md-2" data-toggle="tooltip" title="The attestation effectiveness measures the average time it takes for attestations of this validator to be included in the chain. A low attestation effectiveness has a negative influence on the income of the validator thus it should be as close to 100% as possible. Calculated over the last 100 epochs.">Att. Effectiveness <a href="https://www.attestant.io/posts/defining-attestation-effectiveness/" target="_blank" rel="nofollow noreferrer"><i class="fas fa-external-link-alt"></i></a>:</div>
-                <div class="col-md-10">{{.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}}</div>
-            </div>
-        {{end}}
-        {{if not $deposited}}
-            <div class="row border-bottom p-3 mx-0">
-                <div class="col-md-2">Eligible for Activation:</div>
-                <div class="col-md-10"><span title="{{.ActivationEligibilityTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
-                    (Epoch {{.ActivationEligibilityEpoch}})
-                </div>
-            </div>
-            <div class="row border-bottom p-3 mx-0">
-                {{if eq .Status "pending"}}
-                    <div class="col-md-2">Estimated Activation:</div>
-                {{else}}
-                    <div class="col-md-2">Active since:</div>
                 {{end}}
-                <div class="col-md-10"><span title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
-                    (Epoch {{.ActivationEpoch}})
-                </div>
+
+                {{if not $deposited}}
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col">Eligible for Activation:</div>
+                        <div class="col"><span title="{{.ActivationEligibilityTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
+                            (Epoch {{.ActivationEligibilityEpoch}})
+                        </div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
+                        {{if eq .Status "pending"}}
+                            <div class="col">Estimated Activation:</div>
+                        {{else}}
+                            <div class="col">Active since:</div>
+                        {{end}}
+                        <div class="col"><span title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
+                            (Epoch {{.ActivationEpoch}})
+                        </div>
+                    </div>
+                    {{if (or (eq .Status "slashed") (eq .Status "exited"))}}
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col">Exit on:</div>
+                        <div class="col"><span title="{{.ExitTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
+                            (Epoch {{.ExitEpoch}})
+                        </div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col">Withdrawable on:</div>
+                        <div class="col"><span title="{{.WithdrawableTs}}" data-toggle="tooltip" aria-ethereum-date="{{.WithdrawableTs.Unix}}">{{.WithdrawableTs}}</span>
+                            (Epoch {{.WithdrawableEpoch}})
+                        </div>
+                    </div>
+                    {{end}}
+                {{end}}
             </div>
-            {{if (or (eq .Status "slashed") (eq .Status "exited"))}}
-                <div class="row border-bottom p-3 mx-0">
-                    <div class="col-md-2">Exit on:</div>
-                    <div class="col-md-10"><span title="{{.ExitTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
-                        (Epoch {{.ExitEpoch}})
-                    </div>
-                </div>
-                <div class="row border-bottom p-3 mx-0">
-                    <div class="col-md-2">Withdrawable on:</div>
-                    <div class="col-md-10"><span title="{{.WithdrawableTs}}" data-toggle="tooltip" aria-ethereum-date="{{.WithdrawableTs.Unix}}">{{.WithdrawableTs}}</span>
-                        (Epoch {{.WithdrawableEpoch}})
-                    </div>
-                </div>
-            {{end}}
-        {{end}}
+        </div>
     </div>
     <div class="tab-pane fade" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
         <div class="table-responsive my-3">
