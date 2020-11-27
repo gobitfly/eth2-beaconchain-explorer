@@ -401,7 +401,9 @@ func updateEthPrice() {
 		resp, err := http.Get("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD")
 
 		if err != nil {
-			logger.Errorln(err)
+			logger.Errorf("error retrieving ETH price: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
 		}
 
 		defer resp.Body.Close()
@@ -409,7 +411,9 @@ func updateEthPrice() {
 		err = json.NewDecoder(resp.Body).Decode(&ethPrice)
 
 		if err != nil {
-			logger.Errorln(err)
+			logger.Errorf("error decoding ETH price json response to struct: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
 		}
 		time.Sleep(time.Minute)
 	}
