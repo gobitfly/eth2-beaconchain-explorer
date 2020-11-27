@@ -1,16 +1,16 @@
 {{ define "validatorHistoryTable"}}
 <span class="h4" >Validator History</span>
-<div class="table-wrapper-scroll-y scrollbar scrollbar-black bordered-black square thin" style="display: block;width:100%; height: 500px; overflow: auto;">
-    <table id="attestations-summary-table" class="table" width="100%">
-        <thead>
+<div class="table-responsive my-3">
+        <table class="table" id="attestations-summary-table" width="100%">
+            <thead>
             <tr>
-                <th scope="col">Epoch</th>
-                <th scope="col">Slot</th>
-                <th scope="col">Balance Change</th>
-                <th scope="col">Event</th>
-            <tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-</div>
+                <th>Epoch</th>
+                <th>Slot</th>
+                <th>Balance Change</th>
+                <th>Event</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
 {{end}}

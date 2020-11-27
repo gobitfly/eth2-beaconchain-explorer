@@ -619,6 +619,13 @@ type ValidatorProposerSlashing struct {
 	ProposerIndex uint64 `db:"proposerindex" json:"proposer_index,omitempty"`
 }
 
+type ValidatorHistory struct {
+	Epoch         uint64 `db:"epoch" json:"epoch,omitempty"`
+	BalanceChange int64  `db:"balancechange" json:"balance_change,omitempty"`
+	AttesterSlot  uint64 `db:"attestatation_attesterslot" json:"attester_slot,omitempty"`
+	InclusionSlot uint64 `db:"attestation_inclusionslot" json:"inclusion_slot,omitempty"`
+}
+
 type ValidatorSlashing struct {
 	Epoch                  uint64        `db:"epoch" json:"epoch,omitempty"`
 	Slot                   uint64        `db:"slot" json:"slot,omitempty"`

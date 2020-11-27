@@ -916,3 +916,84 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+// ValidatorHistory returns a validators history in json
+func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	q := r.URL.Query()
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var totalCount uint64
+	err = db.DB.Get(&totalCount, `
+		select
+			(
+				select count(*) from validator_balances vb
+				left join attestation_assignments a on vb.validatorindex = a.validatorindex and vb.epoch = a.epoch
+				left join blocks b on vb.validatorindex = b.proposer and vb.epoch = b.epoch
+				where vb.validatorindex = $1)`, index)
+	if err != nil {
+		logger.Errorf("error retrieving totalCount of validator-slashings: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var validatorHistory []*types.ValidatorHistory
+	err = db.DB.Select(&validatorHistory, `
+			select 
+				vb.epoch, 
+				vb.balance-LAG(vb.balance) OVER (ORDER BY vb.epoch) as balancechange,
+				a.attesterslot as attestatation_attesterslot,
+				a.inclusionslot as attestation_inclusionslot
+			from validator_balances vb
+			left join attestation_assignments a on vb.validatorindex = a.validatorindex and vb.epoch = a.epoch
+			left join blocks b on vb.validatorindex = b.proposer and vb.epoch = b.epoch
+			where vb.validatorindex = $1
+			order by epoch desc
+			limit 10
+			`, index)
+
+	if err != nil {
+		logger.Errorf("error retrieving validator history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, len(validatorHistory))
+	for i, b := range validatorHistory {
+		tableData[i] = []interface{}{
+			utils.FormatEpoch(b.Epoch),
+			utils.FormatAttestationInclusionSlot(b.InclusionSlot),
+			utils.FormatBalanceChange(b.BalanceChange),
+			"Att. Inclusion",
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}

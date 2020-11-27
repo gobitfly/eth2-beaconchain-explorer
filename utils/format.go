@@ -54,6 +54,15 @@ func FormatBalance(balance uint64) template.HTML {
 	return template.HTML(string(rb) + " ETH")
 }
 
+// FormatBalanceChange will return a string for a balance change
+func FormatBalanceChange(balance int64) template.HTML {
+	balanceF := float64(balance) / float64(1e9)
+	if balanceF < 0 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.5f ETH</span>", balanceF))
+	}
+	return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.5f ETH</span>", balanceF))
+}
+
 // FormatBalance will return a string for a balance
 func FormatBalanceShort(balance uint64) template.HTML {
 	p := message.NewPrinter(language.English)
