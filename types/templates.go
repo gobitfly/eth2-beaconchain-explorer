@@ -279,6 +279,11 @@ type ValidatorAttestation struct {
 	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
 }
 
+// type AvgInclusionDistance struct {
+// 	InclusionSlot         uint64 `db:"inclusionslot"`
+// 	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
+// }
+
 // VisPageData is a struct to hold the visualizations page data
 type VisPageData struct {
 	ChartData  []*VisChartData
@@ -621,7 +626,7 @@ type ValidatorProposerSlashing struct {
 
 type ValidatorHistory struct {
 	Epoch         uint64 `db:"epoch" json:"epoch,omitempty"`
-	BalanceChange int64  `db:"balancechange" json:"balance_change,omitempty"`
+	BalanceChange *int64 `db:"balancechange" json:"balance_change,omitempty"`
 	AttesterSlot  uint64 `db:"attestatation_attesterslot" json:"attester_slot,omitempty"`
 	InclusionSlot uint64 `db:"attestation_inclusionslot" json:"inclusion_slot,omitempty"`
 }

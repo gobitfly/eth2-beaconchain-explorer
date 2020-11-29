@@ -497,3 +497,34 @@ func IsSyncing() bool {
 func GetEthPrice() int {
 	return int(ethPrice.USD)
 }
+
+// func GetAvgOptimalInclusionDistances(validatorIndex uint64) [4]template.HTML {
+// 	var avgDistance []*types.AvgInclusionDistance
+// 	var distances [4]template.HTML
+// 	err := db.DB.Select(&avgDistance, `
+// 			SELECT
+// 				attestation_assignments.inclusionslot,
+// 				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0) AS earliestinclusionslot
+// 			FROM attestation_assignments
+// 			WHERE validatorindex = $1
+// 			ORDER BY attesterslot DESC, epoch DESC
+// 			LIMIT 100`, validatorIndex)
+
+// 	if err != nil {
+// 		logger.Errorf("error retrieving validator attestations data: %v", err)
+// 		return distances
+// 	}
+
+// 	distances[0] = utils.FormatInclusionDelay(avgDistance[0].InclusionSlot, avgDistance[0].InclusionSlot-avgDistance[0].EarliestInclusionSlot)
+// 	for i, item :=range avgDistance{
+// 		if i<7{ //blocks
+// 			distances[1]+=item.InclusionSlot-item.EarliestInclusionSlot
+// 		}
+// 		if i<31{ //blocks
+// 			distances[3]+=item.InclusionSlot-item.EarliestInclusionSlot
+// 		}
+// 		distances[4]+=item.InclusionSlot-item.EarliestInclusionSlot
+// 	}
+
+// 	return distances
+// }

@@ -17,7 +17,8 @@
             <th>{{.Income31d | formatIncome}}</th>
             <th>{{ (addI64 .Income31d (addI64 .Income1d .Income7d)) | formatIncome}}</th>
         </tr>
-        <tr>
+        <!--
+         <tr>
             <th scope="row">Avg. optimal inclusion distance</th>
         <tr>
         <tr>
@@ -25,7 +26,7 @@
         <tr>
         <tr>
             <th scope="row">Proposals (executed/missed)</th>
-        <tr>
+        <tr> -->
     </tbody>
 </table>
 {{end}}

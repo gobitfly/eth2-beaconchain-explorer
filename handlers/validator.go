@@ -179,6 +179,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// GetAvgOptimalInclusionDistance(index)
+
 	data.Meta.Title = fmt.Sprintf("%v - Validator %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
@@ -938,6 +940,22 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	if length > 100 {
+		length = 100
+	}
+
 	var totalCount uint64
 	err = db.DB.Get(&totalCount, `
 		select
@@ -947,7 +965,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				left join blocks b on vb.validatorindex = b.proposer and vb.epoch = b.epoch
 				where vb.validatorindex = $1)`, index)
 	if err != nil {
-		logger.Errorf("error retrieving totalCount of validator-slashings: %v", err)
+		logger.Errorf("error retrieving totalCount of validator-history: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
@@ -963,9 +981,9 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			left join attestation_assignments a on vb.validatorindex = a.validatorindex and vb.epoch = a.epoch
 			left join blocks b on vb.validatorindex = b.proposer and vb.epoch = b.epoch
 			where vb.validatorindex = $1
-			order by epoch desc
-			limit 10
-			`, index)
+			order by epoch desc 
+			limit $2 offset $3
+			`, index, length, start)
 
 	if err != nil {
 		logger.Errorf("error retrieving validator history: %v", err)

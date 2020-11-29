@@ -308,13 +308,13 @@ function createValidatorDataTable(index) {
 	// 		}
 	// 	})
 
-	    $('#attestations-summary-table').DataTable({
+	    $('#validator-history-table').DataTable({
 			processing: true,
 			serverSide: true,
 			ordering: false,
 			searching: false,
 			ajax: '/validator/'+index+'/history',
-			pagingType: 'full',
+			pagingType: 'simple',
 			drawCallback: function(settings) {
 			formatTimestamps()
 			},
