@@ -1200,7 +1200,7 @@ func GetTotalEligableEther() (uint64, error) {
 }
 
 func GetDepositThresholdTime() (*time.Time, error) {
-	var threshold time.Time
+	var threshold *time.Time
 	err := DB.Get(&threshold, `
 	select min(block_ts) from (
 		select block_ts, block_number, sum(amount) over (order by block_ts) as totalsum
@@ -1221,5 +1221,5 @@ func GetDepositThresholdTime() (*time.Time, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &threshold, nil
+	return threshold, nil
 }

@@ -201,7 +201,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			logger.WithError(err).Error("error could not calcualte threshold time")
 		}
 		if threshold == nil {
-			*threshold = deposit.BlockTs
+			threshold = &deposit.BlockTs
 		}
 
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
