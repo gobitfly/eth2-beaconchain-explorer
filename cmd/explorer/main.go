@@ -75,6 +75,9 @@ func main() {
 	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
 	defer db.DB.Close()
 
+	db.MustInitFrontendDB(cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name, cfg.Frontend.SessionSecret)
+	defer db.FrontendDB.Close()
+
 	logrus.Infof("database connection established")
 	if utils.Config.Chain.SlotsPerEpoch == 0 || utils.Config.Chain.SecondsPerSlot == 0 {
 		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
@@ -176,8 +179,6 @@ func main() {
 			if utils.Config.Frontend.SiteDomain == "" {
 				utils.Config.Frontend.SiteDomain = "beaconcha.in"
 			}
-			db.MustInitFrontendDB(cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name, cfg.Frontend.SessionSecret)
-			defer db.FrontendDB.Close()
 
 			logrus.Infof("frontend database connection established")
 
@@ -213,6 +214,7 @@ func main() {
 			router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")
 			router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
 			router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
+			router.HandleFunc("/validator/{index}/history", handlers.ValidatorHistory).Methods("GET")
 			router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
 			router.HandleFunc("/validator/{index}/slashings", handlers.ValidatorSlashings).Methods("GET")
 			router.HandleFunc("/validator/{pubkey}/save", handlers.ValidatorSave).Methods("POST")

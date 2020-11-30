@@ -1,0 +1,181 @@
+{{ define "js"}}
+	<script>
+		window.addEventListener('popstate', function(event) {
+			event.preventDefault();
+			history.back();
+		})
+	</script>
+</script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
+	<script src="/js/validator.js"></script>
+	<script>setValidatorStatus({{.Status}})</script>
+
+    {{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
+		<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+		<script>createValidatorDataTable({{.Index}})</script>
+		<script src="https://code.highcharts.com/stock/highstock.js"></script>
+		<script src="https://code.highcharts.com/modules/exporting.js"></script>
+		<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
+		<script src="/js/highcharts-global-options.js"></script>
+		<script>
+            createBalanceChart({{.BalanceHistoryChartData}}, {{.EffectiveBalanceHistoryChartData}})
+            {{if .ProposedBlocksCount}}
+            createProposedBlockChart({{.Proposals}})
+            {{end}}
+            setupDashboardButtons({{.Index }}+'')
+		</script>
+    {{end}}
+{{end}}
+
+{{ define "css"}}
+	<link rel="stylesheet" href="/css/validator.css">
+	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
+	<style>
+        /* #TODO:stefan maybe make this prettier somehow? */
+        #slashings-table td:first-child {
+            white-space: break-spaces;
+        }
+
+		.validator-summary-div{
+			border-right-color: rgba(50,50,50,0.5);
+			border-right-style: solid;
+			padding-bottom: 2%;
+		}
+		.validator-border-bottom{
+			border-bottom-color: rgba(50,50,50,0.5);
+			border-bottom-style: solid;
+		}
+		.validator-charts-div{
+			border-right-color: rgba(50,50,50,0.5);
+			border-right-style: solid;
+			border-top-color: rgba(50,50,50,0.5);
+			border-top-style: solid;
+			border-bottom-color: rgba(50,50,50,0.5);
+			border-bottom-style: solid;
+			padding-top: 1%;
+		}
+	</style>
+{{end}}
+
+{{ define "content"}}
+	<div class="container mt-2">
+        {{if ne .FlashMessage ""}}
+			<div class="alert {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
+				<div class="p-2">{{.FlashMessage | formatHTML}}</div>
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+        {{end}}
+
+		<div class="my-3 py-2">
+			<div class="d-md-flex justify-content-md-between">
+				<div class="d-flex mb-1">
+					<h1 class="h4 mb-1 mb-md-0">
+						<span>Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</span>
+						<button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" data-placement="right" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
+							<i class="fa fa-copy"></i>
+						</button>
+						<!-- <button class="btn btn-dark text-white btn-sm" type="button" id="add-to-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Add validator to dashboard">
+							<i class="fa fa-plus"></i>
+						</button>
+						<button class="btn btn-dark text-white btn-sm" type="button" id="remove-from-dashboard-button" style="display:none;" data-toggle="tooltip" data-placement="right" title="Remove validator from dashboard">
+							<i class="fa fa-minus"></i>
+						</button> -->
+						<button class="btn btn-dark text-white btn-sm" type="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" title="Edit validator name">
+							<i class="fa fa-edit"></i>
+						</button>
+                        {{ if len .Watchlist }}
+							<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
+								<button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button" title="Stop receiving updates for this validator.">
+									<i class="fas fa-bookmark"></i>
+								</button>
+							</form>
+                        {{else}}
+                            {{ if .User.Authenticated }}
+								<button class="btn btn-dark text-white btn-sm" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" title="Follow this validator and receive email notifications">
+									<i class="far fa-bookmark"></i>
+								</button>
+                            {{ else }}
+								<form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
+									<button class="btn btn-dark text-white btn-sm" id="follow-button" title="Follow this validator and receive email notifications">
+										<i class="far fa-bookmark"></i>
+									</button>
+								</form>
+                            {{end}}
+                        {{end}}
+
+					</h1>
+				</div>
+				<nav aria-label="breadcrumb">
+					<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+						<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+						<li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+						<li class="breadcrumb-item active" aria-current="page">Validator details</li>
+					</ol>
+				</nav>
+			</div>
+			<div class="text-monospace text-secondary text-truncate text-sm mb-0" id="copy-input">0x{{printf "%x" .PublicKey}}</div>
+		</div>
+
+		<div class="row card card-body p-0 fade show active">
+			<div class="col">
+				<div class="row">
+					<div class="col-lg-8">
+						<div class="row">
+							<div class="col validator-summary-div">
+								<ul style="margin-bottom: -1px;" class="nav nav-tabs" id="pills-tab" role="tablist">
+									<li class="nav-item">
+										<a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab"
+										aria-controls="overview" aria-selected="true"><i class="tab-icon mr-md-1 far fa-chart-bar"></i><span class="tab-text">Overview</span></a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
+										aria-controls="blocks" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Proposed Blocks</span> <span class="badge bg-secondary text-white">{{.ProposedBlocksCount}}</span></a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab"
+										aria-controls="attestations" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-file-signature"></i><span class="tab-text">Attestations</span> <span class="badge bg-secondary text-white">{{if eq .AttestationsCount 10000}}&gt;10000{{else}}{{.AttestationsCount}}{{end}}</span></a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab"
+										aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span> <span class="badge bg-secondary text-white">{{len .Deposits.Eth1Deposits}}</span></a>
+									</li>
+									{{if gt .SlashingsCount 0}}
+										<li class="nav-item">
+											<a class="nav-link" id="slashings-tab" data-toggle="tab" href="#slashings" role="tab"
+											aria-controls="slashings" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-user-slash"></i><span class="tab-text">Slashings</span> <span class="badge bg-secondary text-white">{{if gt .SlashingsCount 10000}}>10000{{else}}{{.SlashingsCount}}{{end}}</span></a>
+										</li>
+									{{end}}
+								</ul>	
+							</div>
+						</div>
+
+						<div class="row">
+							<div class="col">
+								{{ template "validatorInfoTable" .}}
+							</div>
+						</div>
+					</div>
+
+					<div class="col validator-border-bottom">
+						<div style="display:flex; align-items: center; flex-direction: column; width:100%">
+							<div style="display:flex; align-items: center; flex-direction: column; width:100%; padding-top:1%;">
+								{{template "validatorNetworkStats" .}}
+							</div>
+							<div style="display:flex; align-items: center; flex-direction: column; width:100%; padding-top:3%;">
+								{{ template "validatorHistoryTable"}}
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Edit Validator Modals -->
+		{{ template "validatorEditModal" }}
+
+		<!-- Add Validator to Watchlist Modal -->
+		{{ template "validatorBookmarkModal" }}
+	</div>
+{{end}}

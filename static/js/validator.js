@@ -265,7 +265,7 @@ function setupDashboardButtons(validatorIdx) {
 }
 
 function createValidatorDataTable(index) {
-    $(document).ready(function () {
+	$(document).ready(function () {
       $('#blocks-table').DataTable({
         processing: true,
         serverSide: true,
@@ -277,17 +277,6 @@ function createValidatorDataTable(index) {
           formatTimestamps()
         },
       });
-      $('#attestations-table').DataTable({
-        processing: true,
-        serverSide: true,
-        ordering: false,
-        searching: false,
-        ajax: '/validator/'+index+'/attestations',
-        pagingType: 'full',
-        drawCallback: function(settings) {
-          formatTimestamps()
-        },
-      })
       $('#slashings-table').DataTable({
         processing: true,
         serverSide: true,
@@ -298,6 +287,37 @@ function createValidatorDataTable(index) {
         drawCallback: function(settings) {
           formatTimestamps()
         },
-      })
+	  })
+
+	  $('#attestations-table').DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        searching: false,
+        ajax: '/validator/'+index+'/attestations',
+        pagingType: 'full',
+        drawCallback: function(settings) {
+          formatTimestamps()
+        },
+	  })
+	  
+	//   $.ajax({url:'/validator/'+index+'/history',
+	// 		data : {"index": index, "draw":1, "start":0, "length":100}, 
+	// 		success: (result)=>{
+	// 			console.log(result);
+	// 		}
+	// 	})
+
+	    $('#validator-history-table').DataTable({
+			processing: true,
+			serverSide: true,
+			ordering: false,
+			searching: false,
+			ajax: '/validator/'+index+'/history',
+			pagingType: 'simple',
+			drawCallback: function(settings) {
+			formatTimestamps()
+			},
+		})
     })
 }
