@@ -972,17 +972,19 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	var validatorHistory []*types.ValidatorHistory
 	err = db.DB.Select(&validatorHistory, `
-			select 
-				vb.epoch, 
-				vb.balance-LAG(vb.balance) OVER (ORDER BY vb.epoch) as balancechange,
-				a.attesterslot as attestatation_attesterslot,
-				a.inclusionslot as attestation_inclusionslot
-			from validator_balances vb
-			left join attestation_assignments a on vb.validatorindex = a.validatorindex and vb.epoch = a.epoch
-			left join blocks b on vb.validatorindex = b.proposer and vb.epoch = b.epoch
-			where vb.validatorindex = $1
-			order by epoch desc 
-			limit $2 offset $3
+			SELECT 
+				vbalance.epoch, 
+				vbalance.balance-LAG(vbalance.balance) OVER (ORDER BY vbalance.epoch) AS balancechange,
+				assign.attesterslot AS attestatation_attesterslot,
+				assign.inclusionslot AS attestation_inclusionslot,
+				vblocks.status as proposal_status,
+				vblocks.slot as proposal_slot
+			FROM validator_balances vbalance
+			LEFT JOIN attestation_assignments assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch
+			LEFT JOIN blocks vblocks ON vbalance.validatorindex = vblocks.proposer AND vbalance.epoch = vblocks.epoch
+			WHERE vbalance.validatorindex = $1
+			ORDER BY epoch DESC 
+			LIMIT $2 OFFSET $3
 			`, index, length, start)
 
 	if err != nil {
@@ -991,13 +993,33 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tableData := make([][]interface{}, len(validatorHistory))
-	for i, b := range validatorHistory {
-		tableData[i] = []interface{}{
-			utils.FormatEpoch(b.Epoch),
-			utils.FormatAttestationInclusionSlot(b.InclusionSlot),
-			utils.FormatBalanceChange(b.BalanceChange),
-			"Att. Inclusion",
+	tableData := make([][]interface{}, 0, len(validatorHistory))
+	for _, b := range validatorHistory {
+		if b.InclusionSlot != nil {
+			tableData = append(tableData, []interface{}{
+				utils.FormatEpoch(b.Epoch),
+				utils.FormatAttestationInclusionSlot(*b.InclusionSlot),
+				utils.FormatBalanceChange(b.BalanceChange),
+				"Att. Inclusion",
+			})
+		}
+
+		if b.ProposalSlot != nil {
+			tableData = append(tableData, []interface{}{
+				utils.FormatEpoch(b.Epoch),
+				utils.FormatAttestationInclusionSlot(*b.ProposalSlot),
+				utils.FormatBalanceChange(b.BalanceChange),
+				"Proposed",
+			})
+		}
+
+		if b.InclusionSlot == nil && b.ProposalSlot == nil {
+			tableData = append(tableData, []interface{}{
+				utils.FormatEpoch(b.Epoch),
+				template.HTML("-"),
+				utils.FormatBalanceChange(b.BalanceChange),
+				"Other",
+			})
 		}
 	}
 
