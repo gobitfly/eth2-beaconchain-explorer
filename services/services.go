@@ -381,6 +381,9 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		}
 
 		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther))
+		if len(data.StakedEther) < 1 {
+			data.StakedEther = string(utils.FormatBalance(0))
+		}
 		data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
 	}
 

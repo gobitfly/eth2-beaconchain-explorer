@@ -1000,7 +1000,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				utils.FormatEpoch(b.Epoch),
 				utils.FormatAttestationInclusionSlot(*b.InclusionSlot),
 				utils.FormatBalanceChange(b.BalanceChange),
-				"Att. Inclusion",
+				"Attestation",
 			})
 		}
 
@@ -1018,7 +1018,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				utils.FormatEpoch(b.Epoch),
 				template.HTML("-"),
 				utils.FormatBalanceChange(b.BalanceChange),
-				"Other",
+				"Unavailable",
 			})
 		}
 	}
