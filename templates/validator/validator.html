@@ -123,7 +123,7 @@
 				<div class="row">
 					<div class="col-lg-8">
 						<div class="row">
-							<div class="col validator-summary-div">
+							<div class="col">
 								<ul style="margin-bottom: -1px;" class="nav nav-tabs" id="pills-tab" role="tablist">
 									<li class="nav-item">
 										<a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab"
@@ -156,14 +156,30 @@
 								{{ template "validatorInfoTable" .}}
 							</div>
 						</div>
+						<div class="row" style="margin-top:3%;">
+							<div class="col">
+								<ul class="nav nav-tabs" id="chartTabs" role="tablist">
+									<li class="nav-item">
+										<a class="nav-link active" id="balancechart-tag" data-toggle="tab" href="#balancechart" role="tab" aria-controls="balancechart" aria-selected="true">Balance Chart</a>
+									</li>
+									<li class="nav-item">
+										<a class="nav-link" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart" aria-selected="false">Proposed Chart</a>
+									</li>
+								</ul>
+								<div class="tab-content" id="myTabContent">
+									<div class="tab-pane fade show active" role="tabpanel" aria-labelledby="balancechart-tag" id="balancechart" height="200px"></div>
+									<div class="tab-pane fade" role="tabpanel" aria-labelledby="proposedChart-tab" id="proposedChart" height="200px"></div>
+								</div>
+							</div>
+						</div>
 					</div>
 
-					<div class="col validator-border-bottom">
+					<div class="col">
 						<div style="display:flex; align-items: center; flex-direction: column; width:100%">
 							<div style="display:flex; align-items: center; flex-direction: column; width:100%; padding-top:1%;">
 								{{template "validatorNetworkStats" .}}
 							</div>
-							<div style="display:flex; align-items: center; flex-direction: column; width:100%; padding-top:3%;">
+							<div style="display:flex; align-items: center; flex-direction: column; width:100%; padding-top:7%;">
 								{{ template "validatorHistoryTable"}}
 							</div>
 						</div>

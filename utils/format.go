@@ -57,7 +57,7 @@ func FormatBalance(balance uint64) template.HTML {
 // FormatBalanceChange will return a string for a balance change
 func FormatBalanceChange(balance *int64) template.HTML {
 	if balance == nil {
-		return template.HTML("<span>Not Available</span>")
+		return template.HTML("<span> 0.00000 ETH</span>")
 	}
 	balanceF := float64(*balance) / float64(1e9)
 	if balanceF < 0 {

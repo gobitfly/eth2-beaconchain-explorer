@@ -8,7 +8,8 @@
         </div>
         {{if not $deposited }}
         <div class="row" style="justify-content: center">
-            <div class="col-sm-2">
+            <div class="col-sm-3">
+                <span style="font-weight: bold; font-size:18px;">{{.CurrentBalance | formatCurrentBalance}}</span>
                 {{.EffectiveBalance | formatEffectiveBalance}}
             </div>
             <div class="col-sm-2">
@@ -26,22 +27,7 @@
                 {{ template "validatorSummaryTable" .}}
             </div>
         </div>
-        <div class="row">
-            <div class="col validator-charts-div">
-                <ul class="nav nav-tabs" id="chartTabs" role="tablist">
-                    <li class="nav-item">
-                        <a class="nav-link active" id="balancechart-tag" data-toggle="tab" href="#balancechart" role="tab" aria-controls="balancechart" aria-selected="true">Balance Chart</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart" aria-selected="false">Proposed Chart</a>
-                    </li>
-                </ul>
-                <div class="tab-content" id="myTabContent">
-                    <div class="tab-pane fade show active" role="tabpanel" aria-labelledby="balancechart-tag" id="balancechart" height="200px"></div>
-                    <div class="tab-pane fade" role="tabpanel" aria-labelledby="proposedChart-tab" id="proposedChart" height="200px"></div>
-                </div>
-            </div>
-        </div>
+        <!--
         <div class="row">
             <div class="col">
                 {{if ne .Name ""}}
@@ -115,6 +101,8 @@
                 {{end}}
             </div>
         </div>
+        -->
+
     </div>
     <div class="tab-pane fade" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
         <div class="table-responsive my-3">
