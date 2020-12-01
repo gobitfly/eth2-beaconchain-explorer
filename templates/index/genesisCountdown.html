@@ -26,14 +26,18 @@
 		var hour = Math.round((secondsLeft - seconds - (min * 60)) / 3600) % 24
 		var days = Math.round((secondsLeft - seconds - (min * 60) - (hour * 60 * 60)) / 86400)
 		if (-1 < days && days <= 7) {
-			setTime(days, hour, min, seconds)
+			if (seconds > -1) {
+				setTime(days, hour, min, seconds)
+			} else {
+				setTime(0, 0, 0, 0)
+			}
 			$('#estimated').html('Countdown')
 			$('#minGenesis').addClass('d-none')
 			$('#minGenesisAnd').addClass('d-none')
 			$('#networkStart').removeClass('d-none')
 			// $('#estimated+span').removeClass('d-none')
 			var countdownInterval = setInterval(function () {
-				if (hour === 0 && min === 0 && seconds === 0 && days === 0) {
+				if (hour <= 0 && min <= 0 && seconds <= 0 && days <= 0) {
 					clearInterval(countdownInterval)
 					$('#rocket').removeClass('d-none')
 					return
