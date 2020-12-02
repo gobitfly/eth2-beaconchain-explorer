@@ -24,7 +24,7 @@ var ChartHandlers = map[string]chartHandler{
 	"average_balance":    {4, averageBalanceChartData},
 	"network_liveness":   {5, networkLivenessChartData},
 	"participation_rate": {6, participationRateChartData},
-	"inclusion_distance": {7, inclusionDistanceChartData},
+	// "inclusion_distance":             {7, inclusionDistanceChartData},
 	// "incorrect_attestations":         {6, incorrectAttestationsChartData},
 	// "validator_income":               {7, averageDailyValidatorIncomeChartData},
 	// "staking_rewards":                {8, stakingRewardsChartData},
