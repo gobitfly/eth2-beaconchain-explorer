@@ -306,7 +306,7 @@ function createValidatorDataTable(index) {
 			data : {"index": index}, 
 			success: (result)=>{
 				console.log(result);
-				$('#validatorRank').html("<span style=\"font-weight: bold; font-size:18px;\" >#"+result[0].rank+"</span>")
+				$('#validatorRank').html(result[0].rank)
 			}
 		})
 
