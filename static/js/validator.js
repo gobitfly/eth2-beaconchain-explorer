@@ -312,6 +312,7 @@ function createValidatorDataTable(index) {
 	    $('#validator-history-table').DataTable({
 			processing: true,
 			serverSide: true,
+			lengthChange: false,
 			ordering: false,
 			searching: false,
 			ajax: '/validator/'+index+'/history',

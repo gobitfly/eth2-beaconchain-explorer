@@ -997,7 +997,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	for _, b := range validatorHistory {
 		if b.InclusionSlot != nil {
 			tableData = append(tableData, []interface{}{
-				utils.FormatEpoch(b.Epoch),
+				// utils.FormatEpoch(b.Epoch),
 				utils.FormatAttestationInclusionSlot(*b.InclusionSlot),
 				utils.FormatBalanceChange(b.BalanceChange),
 				"Attestation",
@@ -1006,7 +1006,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 		if b.ProposalSlot != nil {
 			tableData = append(tableData, []interface{}{
-				utils.FormatEpoch(b.Epoch),
+				// utils.FormatEpoch(b.Epoch),
 				utils.FormatAttestationInclusionSlot(*b.ProposalSlot),
 				utils.FormatBalanceChange(b.BalanceChange),
 				"Proposed",
@@ -1015,7 +1015,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 		if b.InclusionSlot == nil && b.ProposalSlot == nil {
 			tableData = append(tableData, []interface{}{
-				utils.FormatEpoch(b.Epoch),
+				// utils.FormatEpoch(b.Epoch),
 				template.HTML("-"),
 				utils.FormatBalanceChange(b.BalanceChange),
 				"Unavailable",

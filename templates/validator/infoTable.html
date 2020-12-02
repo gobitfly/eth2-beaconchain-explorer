@@ -28,7 +28,7 @@
             {{end}}
         </div>
         {{end}}
-        <div class="row" style="margin-top:2%;">
+        <div class="row">
             <div class="col">
                 {{ template "validatorSummaryTable" .}}
             </div>
@@ -150,7 +150,7 @@
             </table>
         </div>
     </div>
-    <div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
+    <div class="tab-pane fade px-3" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
         <div class="table-eth1">
             <h4 class="my-3">Eth1 Deposits</h4>
             <h6 class="">This table displays the deposits made to the Eth1 deposit contract.</h6>
@@ -180,6 +180,9 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+        <div class="text-center">
+            <i class="fas fa-arrow-down"></i>
         </div>
         <div class="table-eth2">
             <h4 class="my-3">Eth2 Deposits</h4>
@@ -284,7 +287,7 @@
                 </div>
             {{else}}
                 <h6 class="">This table displays the deposits received and processed by the beacon chain.</h6>
-                <div class="table-responsive my-3">
+                <div class="table-responsive p-0 card card-body my-3">
                     <table class="table" id="deposits-eth2-table" width="100%">
                         <thead>
                         <tr>
