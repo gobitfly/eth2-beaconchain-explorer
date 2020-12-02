@@ -190,7 +190,7 @@
         <div class="row border-bottom p-3 mx-0">
             <div class="col-md-3">Voting Participation:</div>
             <div class="col-md-9">
-                <div>{{.VotedEther | formatBalance}} of {{.EligibleEther | formatBalance}}<small class="text-muted ml-1">({{.GlobalParticipationRate | formatPercentage}}%)</small></div>
+                <div>{{.VotedEther | formatBalance}} of {{.EligibleEther | formatBalance}}<small class="text-muted ml-1">({{formatPercentageWithPrecision .GlobalParticipationRate 1}}%)</small></div>
                 <div class="progress" style="height:5px; width: 250px;">
                     <div class="progress-bar" role="progressbar" style="width: {{.GlobalParticipationRate | formatPercentage}}%;" aria-valuenow="{{.GlobalParticipationRate | formatPercentage}}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
