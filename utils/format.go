@@ -387,6 +387,8 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	tooltipText := "The attestation inclusion effectiveness should be 80% or higher to minimize reward penalties."
 	if eff == 0 {
 		return ""
+	} else if eff >= 100 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Perfect <i class=\"fas fa-grin-stars\"></i>", tooltipText, eff))
 	} else if eff > 80 {
 		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Good <i class=\"fas fa-smile\"></i>", tooltipText, eff))
 	} else if eff > 60 {
