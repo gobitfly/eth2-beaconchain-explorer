@@ -1037,3 +1037,42 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+//ValidatorRank returns rank of a validator as a json
+func ValidatorRank(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var valRank []*types.ValidatorRank
+
+	err = db.DB.Select(&valRank, `
+		SELECT rank FROM( 
+				SELECT
+					ROW_NUMBER() OVER (ORDER BY "performance7d" DESC) AS rank,
+					validatorindex, 
+					performance7d
+				FROM validator_performance
+			) AS rankTable
+		WHERE validatorindex=$1
+		`, index)
+	if err != nil {
+		logger.Errorf("error retrieving validator rank data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(valRank)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+}

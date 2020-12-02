@@ -228,6 +228,11 @@ type ValidatorPageData struct {
 	NetworkStats                        *IndexPageData
 }
 
+//ValidatorRank is a struct for validator rank data
+type ValidatorRank struct {
+	Rank int64 `db:"rank" json:"rank"`
+}
+
 // DailyProposalCount is a struct for the daily proposal count data
 type DailyProposalCount struct {
 	Day      int64

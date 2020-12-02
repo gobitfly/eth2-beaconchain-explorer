@@ -302,12 +302,13 @@ function createValidatorDataTable(index) {
         },
 	  })
 	  
-	//   $.ajax({url:'/validator/'+index+'/history',
-	// 		data : {"index": index, "draw":1, "start":0, "length":100}, 
-	// 		success: (result)=>{
-	// 			console.log(result);
-	// 		}
-	// 	})
+	  $.ajax({url:'/validator/'+index+'/rank',
+			data : {"index": index}, 
+			success: (result)=>{
+				console.log(result);
+				$('#validatorRank').html("<span style=\"font-weight: bold; font-size:18px;\" >#"+result[0].rank+"</span>")
+			}
+		})
 
 	    $('#validator-history-table').DataTable({
 			processing: true,
