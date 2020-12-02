@@ -58,14 +58,19 @@ func Index(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
 
-	if strings.Contains(r.Header.Get("Accept-Language"), "ru") {
-		data.Data.(*types.IndexPageData).Lang = "ru-RU"
+	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")
+
+	if len(acceptedLangs) > 0 {
+		if strings.Contains(acceptedLangs[0], "ru") || strings.Contains(acceptedLangs[0], "RU") {
+			data.Data.(*types.IndexPageData).Lang = "ru-RU"
+		}
 	}
 
 	for _, v := range r.Cookies() {

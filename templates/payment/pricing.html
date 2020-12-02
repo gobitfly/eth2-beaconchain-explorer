@@ -22,7 +22,7 @@ var createCheckoutSession = function(priceId) {
   if (document.getElementsByName("CsrfField").length) {
     csrfToken = document.getElementsByName("CsrfField")[0].value
   }
-  return fetch("/stripe/create-checkout-session", {
+  return fetch("/user/stripe/create-checkout-session", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -297,7 +297,7 @@ setupStripe()
             <h1 class="h4 ">Contact us about your API needs</h1>
             <p class="text-muted col-md-8 px-0 mx-auto">Let us know which plan works best for you and we'll get back to
               you.</p>
-            <form id="contact" action="/api/pricing" method="post">
+            <form id="contact" action="/pricing" method="post">
               {{.CsrfField}}
               <div class="text-left">
                 <div class="form-row">
