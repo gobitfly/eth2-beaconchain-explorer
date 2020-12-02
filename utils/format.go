@@ -185,7 +185,7 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
 func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
 	p := message.NewPrinter(language.English)
-	rr := fmt.Sprintf("%.0f%%", r*100)
+	rr := fmt.Sprintf("%.1f%%", r*100)
 	tpl := `
 	<div style="position:relative;width:inherit;height:inherit;">
 	  %.8[1]g <small class="text-muted ml-3">(%[2]v)</small>
