@@ -71,6 +71,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorInt64":                    FormatValidatorInt64,
 		"formatValidatorStatus":                   FormatValidatorStatus,
 		"formatPercentage":                        FormatPercentage,
+		"formatPercentageWithPrecision":           FormatPercentageWithPrecision,
 		"formatPublicKey":                         FormatPublicKey,
 		"formatSlashedValidator":                  FormatSlashedValidator,
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
