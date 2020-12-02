@@ -410,7 +410,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	FROM 
 		blocks 
 	WHERE 
-		slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0)), 0) 
+		slot > attestation_assignments.attesterslot AND blocks.status = '1'), 0)), 0) 
 	FROM 
 		attestation_assignments 
 	WHERE epoch > $1 AND validatorindex = $2 AND inclusionslot > 0
@@ -626,7 +626,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 				attestation_assignments.committeeindex, 
 				attestation_assignments.status, 
 				attestation_assignments.inclusionslot, 
-				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0) AS earliestinclusionslot 
+				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status = '1'), 0) AS earliestinclusionslot 
 			FROM attestation_assignments 
 			WHERE validatorindex = $1 
 			ORDER BY attesterslot DESC, epoch DESC
