@@ -28,6 +28,8 @@ func FormatAttestationStatus(status uint64) template.HTML {
 		return "<span class=\"badge bg-success text-white\">Attested</span>"
 	} else if status == 2 {
 		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+	} else if status == 3 {
+		return "<span class=\"badge bg-warning text-dark\">Orphaned</span>"
 	} else {
 		return "Unknown"
 	}
