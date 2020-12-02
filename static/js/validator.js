@@ -305,7 +305,6 @@ function createValidatorDataTable(index) {
 	  $.ajax({url:'/validator/'+index+'/rank',
 			data : {"index": index}, 
 			success: (result)=>{
-				console.log(result);
 				$('#validatorRank').html(result[0].rank)
 			}
 		})
