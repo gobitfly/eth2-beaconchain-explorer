@@ -794,7 +794,7 @@ func getDeviceNameFromUA(userAgent string) string {
 // @Failure 400 {object} types.ApiResponse
 // @Failure 500 {object} types.ApiResponse
 // @Security ApiKeyAuth
-// @Router /api/v1/user/dashboard/save [post]
+// @Router /api/v1/mobile/notify/register [post]
 func MobileNotificationUpdatePOST(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
