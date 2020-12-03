@@ -95,8 +95,9 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
-		"derefString": DerefString,
-		"trLang":      TrLang,
+		"derefString":      DerefString,
+		"trLang":           TrLang,
+		"firstCharToUpper": func(s string) string { return strings.Title(s) },
 	}
 }
 

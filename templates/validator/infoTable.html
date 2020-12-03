@@ -7,7 +7,7 @@
             {{ template "validatorLifeCycleDiagram" }}
         </div>
         {{if not $deposited }}
-        <div class="row" style="justify-content: center">
+        <div class="row" style="justify-content: center; margin-bottom:1%">
             <div class="col-2">
                 <i class="fas fa-medal"></i>
                 <span id="validatorRank" style="font-weight: bold; font-size:18px;"></span>
@@ -33,82 +33,6 @@
                 {{ template "validatorSummaryTable" .}}
             </div>
         </div>
-        <!--
-        <div class="row">
-            <div class="col">
-                {{if ne .Name ""}}
-                    <div class="row border-bottom p-3 mx-0">
-                        <div class="col">Name:</div>
-                        <div class="col">
-                            {{formatValidatorName .Name}}
-                            <a class="ml-1" href="#" data-toggle="modal" data-target="#edit-validator-modal" title="Edit validator name">
-                                <i class="fa fa-edit small"></i>
-                            </a>
-                        </div>
-                    </div>
-                {{end}}
-                <div class="row border-bottom p-3 mx-0">
-                    <div class="col">Unique Index:</div>
-                    <div class="col">
-                        {{if $deposited}}Index Pending{{else}}{{.Index}}{{end}}
-                        {{if eq .Name ""}}
-                            | <a href="#" data-toggle="modal" data-target="#edit-validator-modal">Set custom name</a>
-                        {{end}}
-                    </div>
-                </div>
-                {{if not $deposited }}
-                    <div class="row border-bottom p-3 mx-0">
-                        <div class="col">Current Balance:</div>
-                        <div class="col">{{.CurrentBalance | formatCurrentBalance}}</div>
-                    </div>
-                    <div class="row border-bottom p-3 mx-0">
-                        <div class="col">
-                            <span class="mr-2">APR:</span> 
-                        </div>
-                        <div class="col">
-                            <span>
-                                {{.Apr | formatPercentage}} % <span class="text-muted">(estimated based on the last 7 days)</span>
-                            </span>
-                        </div>
-                    </div>
-                {{end}}
-
-                {{if not $deposited}}
-                    <div class="row border-bottom p-3 mx-0">
-                        <div class="col">Eligible for Activation:</div>
-                        <div class="col"><span title="{{.ActivationEligibilityTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
-                            (Epoch {{.ActivationEligibilityEpoch}})
-                        </div>
-                    </div>
-                    <div class="row border-bottom p-3 mx-0">
-                        {{if eq .Status "pending"}}
-                            <div class="col">Estimated Activation:</div>
-                        {{else}}
-                            <div class="col">Active since:</div>
-                        {{end}}
-                        <div class="col"><span title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
-                            (Epoch {{.ActivationEpoch}})
-                        </div>
-                    </div>
-                    {{if (or (eq .Status "slashed") (eq .Status "exited"))}}
-                    <div class="row border-bottom p-3 mx-0">
-                        <div class="col">Exit on:</div>
-                        <div class="col"><span title="{{.ExitTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ExitTs.Unix}}">{{.ExitTs}}</span>
-                            (Epoch {{.ExitEpoch}})
-                        </div>
-                    </div>
-                    <div class="row border-bottom p-3 mx-0">
-                        <div class="col">Withdrawable on:</div>
-                        <div class="col"><span title="{{.WithdrawableTs}}" data-toggle="tooltip" aria-ethereum-date="{{.WithdrawableTs.Unix}}">{{.WithdrawableTs}}</span>
-                            (Epoch {{.WithdrawableEpoch}})
-                        </div>
-                    </div>
-                    {{end}}
-                {{end}}
-            </div>
-        </div>
-        -->
-
     </div>
     <div class="tab-pane fade" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
         <div class="table-responsive my-3">
