@@ -166,6 +166,10 @@ func main() {
 		apiV1AuthRouter.HandleFunc("/validator/{pubkey}/add", handlers.UserValidatorWatchlistAdd).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/clients", handlers.UserClientsAdd).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/clients/delete", handlers.UserClientsDelete).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.Use(utils.CORSMiddleware)
 		apiV1AuthRouter.Use(utils.AuthorizedAPIMiddleware)
 
