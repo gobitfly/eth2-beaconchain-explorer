@@ -26,22 +26,43 @@ func notificationsSender() {
 	}
 }
 
-func collectNotifications() map[string]map[types.EventName][]types.Notification {
-	notificationsByEmail := map[string]map[types.EventName][]types.Notification{}
+func collectNotifications() map[uint64]map[types.EventName][]types.Notification {
+	notificationsByUserID := map[uint64]map[types.EventName][]types.Notification{}
 	var err error
-	err = collectValidatorBalanceDecreasedNotifications(notificationsByEmail)
+	err = collectValidatorBalanceDecreasedNotifications(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting validator_balance_decreased notifications: %v", err)
 	}
-	err = collectValidatorGotSlashedNotifications(notificationsByEmail)
+	err = collectValidatorGotSlashedNotifications(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
-	return notificationsByEmail
+	return notificationsByUserID
 }
 
-func sendNotifications(notificationsByEmail map[string]map[types.EventName][]types.Notification) {
-	for userEmail, userNotifications := range notificationsByEmail {
+func sendNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
+	sendEmailNotifications(notificationsByUserID)
+	// sendPushNotifications(notificationsByUserID)
+	// sendWebhookNotifications(notificationsByUserID)
+}
+
+func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
+	userIDs := []uint64{}
+	for userID := range notificationsByUserID {
+		userIDs = append(userIDs, userID)
+	}
+	emailsByUserID, err := db.GetUserEmailsByIds(userIDs)
+	if err != nil {
+		logger.Errorf("error when sending eamil-notificaitons: could not get emails: %v", err)
+		return
+	}
+
+	for userID, userNotifications := range notificationsByUserID {
+		userEmail, exists := emailsByUserID[userID]
+		if !exists {
+			logger.Errorf("error when sending email-notification: could not find email for user %v", userID)
+			continue
+		}
 		go func(userEmail string, userNotifications map[types.EventName][]types.Notification) {
 			sentSubsByEpoch := map[uint64][]uint64{}
 			subject := fmt.Sprintf("%s: Notification", utils.Config.Frontend.SiteDomain)
@@ -114,7 +135,7 @@ func (n *validatorBalanceDecreasedNotification) GetInfo() string {
 // and creates notifications for all subscriptions which have not been notified about the validator since the last time its balance increased.
 // It looks 10 epochs back for when the balance increased the last time, this means if the explorer is not running for 10 epochs it is possible
 // that no new notification is sent even if there was a balance-increase.
-func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[string]map[types.EventName][]types.Notification) error {
+func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	latestEpoch := LatestEpoch()
 	if latestEpoch < 3 {
 		return nil
@@ -155,22 +176,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[stri
 		return err
 	}
 
-	// fetch user-emails from users-db (which might not be the same as data-db)
-	userIDs := []uint64{}
 	for _, r := range dbResult {
-		userIDs = append(userIDs, r.UserID)
-	}
-	emailsByUserID, err := db.GetUserEmailsByIds(userIDs)
-	if err != nil {
-		return err
-	}
-
-	for _, r := range dbResult {
-		email, exists := emailsByUserID[r.UserID]
-		if !exists {
-			logger.Errorf("could not find email for user %v for sending notification", r.UserID)
-			continue
-		}
 		n := &validatorBalanceDecreasedNotification{
 			SubscriptionID: r.SubscriptionID,
 			ValidatorIndex: r.ValidatorIndex,
@@ -180,13 +186,13 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByEmail map[stri
 			EndBalance:     r.EndBalance,
 		}
 
-		if _, exists := notificationsByEmail[email]; !exists {
-			notificationsByEmail[email] = map[types.EventName][]types.Notification{}
+		if _, exists := notificationsByUserID[r.UserID]; !exists {
+			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
 		}
-		if _, exists := notificationsByEmail[email][n.GetEventName()]; !exists {
-			notificationsByEmail[email][n.GetEventName()] = []types.Notification{}
+		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 		}
-		notificationsByEmail[email][n.GetEventName()] = append(notificationsByEmail[email][n.GetEventName()], n)
+		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 	}
 
 	return nil
@@ -216,7 +222,7 @@ func (n *validatorGotSlashedNotification) GetInfo() string {
 	return fmt.Sprintf(`Validator %[1]v has been slashed at epoch %[2]v by validator %[3]v for %[4]s. For more information visit: https://%[5]v/validator/%[1]v`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason, utils.Config.Frontend.SiteDomain)
 }
 
-func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map[types.EventName][]types.Notification) error {
+func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	latestEpoch := LatestEpoch()
 	if latestEpoch == 0 {
 		return nil
@@ -269,22 +275,7 @@ func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map
 		return err
 	}
 
-	// fetch user-emails from users-db (which might not be the same as data-db)
-	userIDs := []uint64{}
 	for _, r := range dbResult {
-		userIDs = append(userIDs, r.UserID)
-	}
-	emailsByUserID, err := db.GetUserEmailsByIds(userIDs)
-	if err != nil {
-		return err
-	}
-
-	for _, r := range dbResult {
-		email, exists := emailsByUserID[r.UserID]
-		if !exists {
-			logger.Errorf("could not find email for user %v for sending notification", r.UserID)
-			continue
-		}
 		n := &validatorGotSlashedNotification{
 			SubscriptionID: r.SubscriptionID,
 			ValidatorIndex: r.ValidatorIndex,
@@ -292,13 +283,13 @@ func collectValidatorGotSlashedNotifications(notificationsByEmail map[string]map
 			Epoch:          r.Epoch,
 			Reason:         r.Reason,
 		}
-		if _, exists := notificationsByEmail[email]; !exists {
-			notificationsByEmail[email] = map[types.EventName][]types.Notification{}
+		if _, exists := notificationsByUserID[r.UserID]; !exists {
+			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
 		}
-		if _, exists := notificationsByEmail[email][n.GetEventName()]; !exists {
-			notificationsByEmail[email][n.GetEventName()] = []types.Notification{}
+		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 		}
-		notificationsByEmail[email][n.GetEventName()] = append(notificationsByEmail[email][n.GetEventName()], n)
+		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 	}
 
 	return nil
