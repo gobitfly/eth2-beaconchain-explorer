@@ -9,9 +9,9 @@
 {{if .IsNormalChart}}
 Highcharts.chart('chart',{
 	chart: { 
-			type: {{.Type}}, 
-			height: 600,
-		},
+		type: {{.Type}}, 
+		height: 600,
+	},
 	rangeSelector: {  enabled: false },
 	title: { text: {{.Title}} },
 	subtitle: { text: {{.Subtitle}} },
@@ -59,7 +59,10 @@ Highcharts.chart('chart',{
 })
 {{else}}
 Highcharts.stockChart('chart', {
-	chart: { type: {{.Type}} },
+	chart: {
+		type: {{.Type}},
+		height: 600,
+	},
 	rangeSelector: {  enabled: true },
 	title: { text: {{.Title}} },
 	subtitle: { text: {{.Subtitle}} },
@@ -68,7 +71,11 @@ Highcharts.stockChart('chart', {
 			stacking: {{.StackingMode}},
 			dataGrouping: {
 				{{ if .ColumnDataGroupingApproximation }}approximation: {{.ColumnDataGroupingApproximation}},{{end}}
-			}
+			},
+			dataLabels: {
+				enabled: {{ .DataLabelsEnabled }},
+				{{ if .DataLabelsFormatter }} formatter: {{ .DataLabelsFormatter }}, {{end}}
+			},
 		},
 		wordcloud: {
 			rotation: {
@@ -101,12 +108,20 @@ Highcharts.stockChart('chart', {
 		opposite: false
 	}],
 	tooltip: {
+		{{ if .TooltipFormatter }}
+		formatter: {{.TooltipFormatter}},
+		{{ else }}
 		formatter: function(tooltip) {
 			var orig = tooltip.defaultFormatter.call(this, tooltip)
 			var epoch = timeToEpoch(this.x)
 			orig[0] = orig[0]+'<span style="font-size:10px">Epoch '+epoch+'</span>'
 			return orig
-		}
+		},
+		{{end}}
+		shared: {{.TooltipShared}},
+		useHTML: {{.TooltipUseHTML}},
+		split: {{.TooltipSplit}},
+		followPointer: {{.TooltipFollowPointer}},
 	},
 	legend: {enabled:true},
 	series: {{.Series}},
