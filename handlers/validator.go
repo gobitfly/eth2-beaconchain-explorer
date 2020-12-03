@@ -405,15 +405,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, `
-	SELECT 
-		COALESCE(AVG(1 + inclusionslot - COALESCE((SELECT MIN(slot) 
-	FROM 
-		blocks 
-	WHERE 
-		slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0)), 0) 
-	FROM 
-		attestation_assignments 
-	WHERE epoch > $1 AND validatorindex = $2 AND inclusionslot > 0
+	SELECT COALESCE(
+		AVG(1 + inclusionslot - COALESCE((
+			SELECT MIN(slot) 
+			FROM blocks 
+			WHERE slot > aa.attesterslot AND blocks.status = '1'
+		), 0)
+	), 0) 
+	FROM attestation_assignments aa
+	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+	WHERE aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
 	`, int64(data.CurrentEpoch)-100, index)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
@@ -621,13 +622,20 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		var blocks []*types.ValidatorAttestation
 		err = db.DB.Select(&blocks, `
 			SELECT 
-				attestation_assignments.epoch, 
-				attestation_assignments.attesterslot, 
-				attestation_assignments.committeeindex, 
-				attestation_assignments.status, 
-				attestation_assignments.inclusionslot, 
-				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0) AS earliestinclusionslot 
-			FROM attestation_assignments 
+				aa.epoch, 
+				aa.attesterslot, 
+				aa.committeeindex, 
+				CASE 
+					WHEN blocks.status = '3' THEN '3'
+					ELSE aa.status
+				END AS status,
+				CASE 
+					WHEN blocks.status = '3' THEN 0
+					ELSE aa.inclusionslot
+				END AS inclusionslot,
+				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > aa.attesterslot AND blocks.status = '1'), 0) AS earliestinclusionslot 
+			FROM attestation_assignments aa
+			LEFT JOIN blocks on blocks.slot = aa.inclusionslot
 			WHERE validatorindex = $1 
 			ORDER BY attesterslot DESC, epoch DESC
 			LIMIT $2 OFFSET $3`, index, length, start)

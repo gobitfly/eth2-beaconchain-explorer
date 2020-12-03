@@ -6,6 +6,7 @@ import (
 	"html"
 	"html/template"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +28,8 @@ func FormatAttestationStatus(status uint64) template.HTML {
 		return "<span class=\"badge bg-success text-white\">Attested</span>"
 	} else if status == 2 {
 		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+	} else if status == 3 {
+		return "<span class=\"badge bg-warning text-dark\">Orphaned</span>"
 	} else {
 		return "Unknown"
 	}
@@ -185,7 +188,7 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
 func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
 	p := message.NewPrinter(language.English)
-	rr := fmt.Sprintf("%.0f%%", r*100)
+	rr := fmt.Sprintf("%.1f%%", r*100)
 	tpl := `
 	<div style="position:relative;width:inherit;height:inherit;">
 	  %.8[1]g <small class="text-muted ml-3">(%[2]v)</small>
@@ -237,6 +240,11 @@ func FormatIncome(income int64) template.HTML {
 // FormatPercentage will return a string for a percentage
 func FormatPercentage(percentage float64) string {
 	return fmt.Sprintf("%.0f", percentage*float64(100))
+}
+
+// FormatPercentageWithPrecision will return a string for a percentage
+func FormatPercentageWithPrecision(percentage float64, precision int) string {
+	return fmt.Sprintf("%."+strconv.Itoa(precision)+"f", percentage*float64(100))
 }
 
 // FormatPublicKey will return html formatted text for a validator-public-key
@@ -387,6 +395,8 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	tooltipText := "The attestation inclusion effectiveness should be 80% or higher to minimize reward penalties."
 	if eff == 0 {
 		return ""
+	} else if eff >= 100 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Perfect <i class=\"fas fa-grin-stars\"></i>", tooltipText, eff))
 	} else if eff > 80 {
 		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Good <i class=\"fas fa-smile\"></i>", tooltipText, eff))
 	} else if eff > 60 {
