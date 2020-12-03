@@ -396,7 +396,11 @@ $(document).ready(function() {
       var validatorsStr = localStorage.getItem('dashboard_validators')
       if (validatorsStr) {
         state.validators = JSON.parse(validatorsStr)
-        state.validators = state.validators.filter((v, i) => state.validators.indexOf(v) === i)
+        state.validators = state.validators.filter((v, i) => {
+          v = escape(v)
+          if (isNaN(parseInt(v))) return false
+          return state.validators.indexOf(v) === i
+        })
         state.validators.sort(sortValidators)
       } else {
         state.validators = []
@@ -404,7 +408,11 @@ $(document).ready(function() {
       return
     }
     state.validators = validatorsStr.split(',')
-    state.validators = state.validators.filter((v, i) => state.validators.indexOf(v) === i)
+    state.validators = state.validators.filter((v, i) => {
+      v = escape(v)
+      if (isNaN(parseInt(v))) return false
+      return state.validators.indexOf(v) === i
+    })
     state.validators.sort(sortValidators)
     if (state.validators.length > 100) {
       state.validators = state.validators.slice(0,100)
