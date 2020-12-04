@@ -548,8 +548,14 @@ type GenericChartData struct {
 	ShowGapHider                    bool
 	XAxisLabelsFormatter            template.JS
 	TooltipFormatter                template.JS
+	TooltipShared                   bool
+	TooltipUseHTML                  bool
+	TooltipSplit                    bool
+	TooltipFollowPointer            bool
 	PlotOptionsSeriesEventsClick    template.JS
 	PlotOptionsPie                  template.JS
+	DataLabelsEnabled               bool
+	DataLabelsFormatter             template.JS
 	PlotOptionsSeriesCursor         string
 	Title                           string                    `json:"title"`
 	Subtitle                        string                    `json:"subtitle"`
@@ -567,6 +573,7 @@ type GenericChartDataSeries struct {
 	Data  interface{} `json:"data"`
 	Stack string      `json:"stack,omitempty"`
 	Type  string      `json:"type,omitempty"`
+	Color string      `json:"color,omitempty"`
 }
 
 // ChartsPageData is an array to hold charts for the charts-page

@@ -59,6 +59,7 @@ chartFns.push(function(){
             scrollbar: { enabled: false },
             tooltip: {
                 {{ if .Data.TooltipFormatter }}formatter: {{.Data.TooltipFormatter}},{{end}}
+                shared: {{.Data.TooltipShared}},
             }
         })
         {{ if .Data.ShowGapHider }}
@@ -138,6 +139,10 @@ chartFns.push(function(){
                     stacking: {{.Data.StackingMode}},
                     dataGrouping: {
                         {{ if .Data.ColumnDataGroupingApproximation }}approximation: {{.Data.ColumnDataGroupingApproximation}},{{end}}
+                    },
+                    dataLabels: {
+                        enabled: {{ .Data.DataLabelsEnabled }},
+                        {{ if .Data.DataLabelsFormatter }} formatter: {{ .Data.DataLabelsFormatter }}, {{end}}
                     }
                 },
                 wordcloud: {
@@ -151,8 +156,8 @@ chartFns.push(function(){
                     {{ if .Data.PlotOptionsSeriesCursor }}cursor: {{.Data.PlotOptionsSeriesCursor}},{{end}}
                     events: {
                         {{ if .Data.PlotOptionsSeriesEventsClick }}click: {{.Data.PlotOptionsSeriesEventsClick}},{{end}}
-                    }
-                }
+                    },
+                },
             },
             xAxis: {
                 type: 'datetime',
@@ -172,12 +177,20 @@ chartFns.push(function(){
             navigator: { enabled: false },
             scrollbar: { enabled: false },
             tooltip: {
+                {{ if .Data.TooltipFormatter }}
+                formatter: {{.Data.TooltipFormatter}},
+                {{ else }}
                 formatter: function(tooltip) {
                     var orig = tooltip.defaultFormatter.call(this, tooltip)
                     var epoch = timeToEpoch(this.x)
                     orig[0] = orig[0]+'<span style="font-size:10px">Epoch '+epoch+'</span>'
                     return orig
-                }
+                },
+                {{end}}
+                shared: {{.Data.TooltipShared}},
+                useHTML: {{.Data.TooltipUseHTML}},
+                split: {{.Data.TooltipSplit}},
+                followPointer: {{.Data.TooltipFollowPointer}},
             }
         })
     {{end}}
@@ -231,7 +244,7 @@ function allDone(){
             <div class="col-md-6 mb-4" id="chart-holder-{{$i}}">
                 <div class="card">
                     <div id="chart-{{$i}}">
-                        <div style="height:600px; display: flex; justify-content: center; align-items:center;">
+                        <div style="height:400px; display: flex; justify-content: center; align-items:center;">
                             <svg width="80%" height="80%">
                                 <use xlink:href="#ab83d798-7d25-4111-a4e2-42875f6e6704"></use>
                             </svg>
@@ -243,7 +256,7 @@ function allDone(){
                 <div class="col-md-6 mb-4" id="chart-holder-{{$i}}-nogaps" style="display:none">
                     <div class="card">
                         <div id="chart-{{$i}}-nogaps">
-                            <div style="height: 600px; display: flex; justify-content: center; align-items:center;">
+                            <div style="height: 400px; display: flex; justify-content: center; align-items:center;">
                                 <svg width="80%" height="80%">
                                     <use xlink:href="#ab83d798-7d25-4111-a4e2-42875f6e6704"></use>
                                 </svg>

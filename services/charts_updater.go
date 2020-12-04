@@ -170,24 +170,50 @@ func blocksChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Blocks",
-		Subtitle:     "History of daily blocks proposed.",
-		XAxisTitle:   "",
-		YAxisTitle:   "# of Blocks",
-		StackingMode: "normal",
-		Type:         "column",
+		Title:                "Blocks",
+		Subtitle:             "History of daily blocks proposed.",
+		XAxisTitle:           "",
+		YAxisTitle:           "% of Blocks",
+		Type:                 "column",
+		StackingMode:         "percent",
+		DataLabelsEnabled:    true,
+		DataLabelsFormatter:  `function(){ return this.point.percentage.toFixed(2)+'%' }`,
+		TooltipShared:        true,
+		TooltipUseHTML:       true,
+		TooltipFollowPointer: true,
+		TooltipFormatter: `function(tooltip){
+	let header = '<div style="font-weight:bold; text-align:center;">' + Highcharts.dateFormat("%Y-%m-%d %H:%M", this.x) + '</div><table>'
+	this.points.sort((a, b) => b.y - a.y)
+	let total = 0
+	return this.points.reduce(function (s, point) {
+		total += point.y
+		return s +
+			'<tr><td>' +
+			'<span style="color:' + point.series.color + ';">\u25CF </span>' +
+			'<span style="font-weight:bold;">' + point.series.name + ':</span></td><td>' +
+			point.percentage.toFixed(2)+'% ('+point.y+' blocks)'
+			'</td></tr>'
+	}, header) + 
+	'<tr><td>' + 
+	'<span>\u25CF </span><span style="font-weight:bold;">Total:</span></td><td>' + total + ' blocks'
+	'</td></tr>' +
+	'</table>'
+}`,
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Proposed",
-				Data: dailyProposedBlocks,
+				Name:  "Proposed",
+				Color: "#90ed7d",
+				Data:  dailyProposedBlocks,
 			},
 			{
-				Name: "Missed",
-				Data: dailyMissedBlocks,
+				Name:  "Missed",
+				Color: "#f7a35c",
+				Data:  dailyMissedBlocks,
 			},
 			{
-				Name: "Orphaned",
-				Data: dailyOrphanedBlocks,
+				Name:  "Orphaned",
+				Color: "#adadad",
+				Data:  dailyOrphanedBlocks,
 			},
 		},
 	}

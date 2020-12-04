@@ -59,6 +59,7 @@ func Charts(w http.ResponseWriter, r *http.Request) {
 
 	data.Data = chartsPageData
 
+	chartsTemplate = template.Must(template.New("charts").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/charts.html"))
 	err := chartsTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -124,6 +125,7 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = "/charts/" + chartVar
 	data.Data = chartData
 
+	genericChartTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/genericchart.html"))
 	err := genericChartTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
