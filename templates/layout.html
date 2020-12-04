@@ -678,7 +678,8 @@
     <script src="/js/layout.js"></script>
     <script src="/js/banner.js"></script>
     <script>
-        var ethPriceUSD = {{.EthPrice}};
+        var currency = {{.Currency}};
+        var exchangeRate = {{.ExchangeRate}};
 
         function slotToTime(slot) {
             var gts = {{.ChainGenesisTimestamp}}

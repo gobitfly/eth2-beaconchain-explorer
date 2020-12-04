@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"eth2-exporter/price"
 	"fmt"
 	"html"
 	"html/template"
@@ -198,7 +199,7 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
-func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
+func FormatGlobalParticipationRate(e uint64, r float64, currency string) template.HTML {
 	p := message.NewPrinter(language.English)
 	rr := fmt.Sprintf("%.1f%%", r*100)
 	tpl := `
@@ -208,7 +209,7 @@ func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
 		<div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
 	  </div>
 	</div>`
-	return template.HTML(p.Sprintf(tpl, float64(e)/1e9, rr))
+	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr))
 }
 
 // FormatGraffiti will return the graffiti formated as html

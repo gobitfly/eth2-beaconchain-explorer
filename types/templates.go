@@ -28,6 +28,7 @@ type PageData struct {
 	DepositContract       string
 	EthPrice              float64
 	Currency              string
+	ExchangeRate          float64
 }
 
 // Meta is a struct to hold metadata about the page
