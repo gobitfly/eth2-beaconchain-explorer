@@ -41,9 +41,12 @@ func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint6
 }
 
 // FormatBalance will return a string for a balance
-func FormatBalance(balance uint64) template.HTML {
+func FormatBalance(balanceInt uint64, currency string) template.HTML {
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+
 	p := message.NewPrinter(language.English)
-	rb := []rune(p.Sprintf("%.2f", float64(balance)/float64(1e9)))
+	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
 	// remove trailing zeros
 	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
 		for rb[len(rb)-1] == '0' {
@@ -54,13 +57,16 @@ func FormatBalance(balance uint64) template.HTML {
 
 		}
 	}
-	return template.HTML(string(rb) + " ETH")
+	return template.HTML(string(rb) + " " + currency)
 }
 
 // FormatBalance will return a string for a balance
-func FormatBalanceShort(balance uint64) template.HTML {
+func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+
 	p := message.NewPrinter(language.English)
-	rb := []rune(p.Sprintf("%.2f", float64(balance)/float64(1e9)))
+	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
 	// remove trailing zeros
 	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
 		for rb[len(rb)-1] == '0' {
@@ -71,7 +77,7 @@ func FormatBalanceShort(balance uint64) template.HTML {
 
 		}
 	}
-	return template.HTML(string(rb))
+	return template.HTML(rb)
 }
 
 // FormatBlockRoot will return the block-root formated as html
@@ -132,18 +138,24 @@ func FormatBlockStatus(status uint64) template.HTML {
 }
 
 // FormatCurrentBalance will return the current balance formated as string with 9 digits after the comma (1 gwei = 1e9 eth)
-func FormatCurrentBalance(balance uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.9f ETH", float64(balance)/float64(1e9)))
+func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+	return template.HTML(fmt.Sprintf("%.9f %v", balance*exchangeRate, currency))
 }
 
 // FormatDepositAmount will return the deposit amount formated as string
-func FormatDepositAmount(amount uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.0f ETH", float64(amount)/float64(1e9)))
+func FormatDepositAmount(balanceInt uint64, currency string) template.HTML {
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+	return template.HTML(fmt.Sprintf("%.0f %v", balance*exchangeRate, currency))
 }
 
 // FormatEffectiveBalance will return the effective balance formated as string with 1 digit after the comma
-func FormatEffectiveBalance(balance uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.1f ETH", float64(balance)/float64(1e9)))
+func FormatEffectiveBalance(balanceInt uint64, currency string) template.HTML {
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+	return template.HTML(fmt.Sprintf("%.1f %v", balance*exchangeRate, currency))
 }
 
 // FormatEpoch will return the epoch formated as html
@@ -227,13 +239,17 @@ func FormatHash(hash []byte) template.HTML {
 }
 
 // FormatIncome will return a string for a balance
-func FormatIncome(income int64) template.HTML {
-	if income > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f ETH</b></span>`, float64(income)/float64(1e9)))
-	} else if income < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f ETH</b></span>`, float64(income)/float64(1e9)))
+func FormatIncome(balanceInt int64, currency string) template.HTML {
+
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+
+	if balance > 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f %v</b></span>`, balance*exchangeRate, currency))
+	} else if balance < 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f %v</b></span>`, balance*exchangeRate, currency))
 	} else {
-		return template.HTML(fmt.Sprintf(`<b>%.4f ETH</b>`, float64(income)/float64(1e9)))
+		return template.HTML(fmt.Sprintf(`<b>%.4f %v</b>`, balance*exchangeRate, currency))
 	}
 }
 
