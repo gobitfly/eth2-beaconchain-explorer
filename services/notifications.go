@@ -24,7 +24,7 @@ func notificationsSender() {
 		start := time.Now()
 		notifications := collectNotifications()
 		sendNotifications(notifications)
-		logger.WithField("emails", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
+		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
 		time.Sleep(time.Second * 60)
 	}
 }
