@@ -17,7 +17,7 @@ func AddSubscription(userID uint64, eventName types.EventName, eventFilter strin
 	now := time.Now()
 	nowTs := now.Unix()
 	nowEpoch := utils.TimeToEpoch(now)
-	_, err := DB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5)", userID, eventName, eventFilter, nowTs, nowEpoch)
+	_, err := DB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5) ON CONFLICT DO NOTHING", userID, eventName, eventFilter, nowTs, nowEpoch)
 	return err
 }
 
