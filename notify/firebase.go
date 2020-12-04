@@ -30,6 +30,11 @@ func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, err
 		logger.Errorf("error sending push notifications: %v", err)
 		return nil, err
 	}
+	for _, response := range result.Responses {
+		if !response.Success {
+			logger.Errorf("firebase error %v %v", response.Error, response.MessageID)
+		}
+	}
 
 	logger.Infof("Successfully send %v firebase notifications. Successfull: %v | Failed: %v", len(messages), result.SuccessCount, result.FailureCount)
 	return result, nil
