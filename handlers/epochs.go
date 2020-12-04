@@ -132,7 +132,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
 			utils.FormatYesNo(b.Finalized),
 			utils.FormatBalance(b.EligibleEther, currency),
-			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate),
+			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate, currency),
 		}
 	}
 
