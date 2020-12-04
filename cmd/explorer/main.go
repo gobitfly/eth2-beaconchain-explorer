@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
+	"eth2-exporter/price"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -166,6 +167,10 @@ func main() {
 		apiV1AuthRouter.HandleFunc("/validator/{pubkey}/add", handlers.UserValidatorWatchlistAdd).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/validator/{pubkey}/remove", handlers.UserValidatorWatchlistRemove).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/clients", handlers.UserClientsAdd).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/clients/delete", handlers.UserClientsDelete).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.Use(utils.CORSMiddleware)
 		apiV1AuthRouter.Use(utils.AuthorizedAPIMiddleware)
 
@@ -174,6 +179,8 @@ func main() {
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 
 		services.Init() // Init frontend services
+		price.Init()
+
 		logrus.Infof("frontend services initiated")
 
 		if !utils.Config.Frontend.OnlyAPI {

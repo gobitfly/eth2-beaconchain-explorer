@@ -226,3 +226,24 @@ func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
 	)
 	return rows, err
 }
+
+func UserClientEntry(userID uint64, clientName string, clientVersion int64, notifyEnabled bool) error {
+	var updateClientVersion = ""
+	if clientVersion != 0 {
+		updateClientVersion = ", client_version = $3"
+	}
+
+	_, err := FrontendDB.Query(
+		"INSERT INTO users_clients (user_id, client, client_version, notify_enabled, created_ts) VALUES($1, $2, $3, $4, 'now')"+
+			"ON CONFLICT (user_id, client) "+
+			"DO UPDATE SET notify_enabled = $4"+updateClientVersion+";",
+		userID, clientName, clientVersion, notifyEnabled,
+	)
+
+	return err
+}
+
+func UserClientDelete(userID uint64, clientName string) error {
+	_, err := FrontendDB.Exec("DELETE FROM users_clients WHERE user_id = $1 AND client = $2 ", userID, clientName)
+	return err
+}

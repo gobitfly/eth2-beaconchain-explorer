@@ -1,6 +1,6 @@
 module eth2-exporter
 
-go 1.14
+go 1.15
 
 require (
 	cloud.google.com/go/firestore v1.4.0 // indirect

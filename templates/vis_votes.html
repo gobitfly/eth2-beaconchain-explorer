@@ -52,15 +52,17 @@
 {{end}}
 
 {{ define "content"}}
-<div class="container mt-2">
-    <div class="text-center">
-        <h1 class="mt-4"><i class="fas fa-project-diagram"></i> Eth2 Blockchain Visualization</h1>
-        <small>By <a href="https://www.beaconcha.in">beaconcha.in</a></small>
-    </div>
-    <div class="row">
-        <div class="col-md-12 text-center">
-            <div id="graph" style="width: 100%; height: 600px"></div>
+    {{with .Data}}
+        <div class="container mt-2">
+            <div class="text-center">
+                <h1 class="mt-4"><i class="fas fa-project-diagram"></i> Eth2 Blockchain Visualization</h1>
+                <small>By <a href="https://www.beaconcha.in">beaconcha.in</a></small>
+            </div>
+            <div class="row">
+                <div class="col-md-12 text-center">
+                    <div id="graph" style="width: 100%; height: 600px"></div>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
+    {{end}}
 {{end}}
