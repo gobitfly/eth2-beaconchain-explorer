@@ -27,6 +27,7 @@ func Init() {
 func updateEthPrice() {
 	for true {
 		fetchPrice()
+		time.Sleep(time.Minute)
 	}
 }
 
@@ -35,7 +36,6 @@ func fetchPrice() {
 
 	if err != nil {
 		logger.Errorf("error retrieving ETH price: %v", err)
-		time.Sleep(time.Second * 10)
 		return
 	}
 
@@ -47,11 +47,10 @@ func fetchPrice() {
 
 	if err != nil {
 		logger.Errorf("error decoding ETH price json response to struct: %v", err)
-		time.Sleep(time.Second * 10)
 		return
 	}
-	time.Sleep(time.Minute * 5)
 }
+
 func GetEthPrice(currency string) float64 {
 	ethPriceMux.RLock()
 	defer ethPriceMux.RUnlock()
