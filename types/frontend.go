@@ -1,6 +1,7 @@
 package types
 
 import (
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -40,6 +41,10 @@ var EventNames = []EventName{
 	NetworkLivenessIncreasedEventName,
 }
 
+func GetDisplayableEventName(event EventName) string {
+	return strings.Title(strings.ReplaceAll(string(event), "_", " "))
+}
+
 func EventNameFromString(event string) (EventName, error) {
 	for _, en := range EventNames {
 		if string(en) == event {
@@ -59,7 +64,8 @@ type Notification interface {
 	GetSubscriptionID() uint64
 	GetEventName() EventName
 	GetEpoch() uint64
-	GetInfo() string
+	GetInfo(includeUrl bool) string
+	GetTitle() string
 }
 
 type Subscription struct {
