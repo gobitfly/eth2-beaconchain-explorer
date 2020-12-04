@@ -128,6 +128,16 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	redirectURI := q.Get("redirect_uri")
 	state := q.Get("state")
 
+	session.Values["state"] = state
+	session.Values["oauth_redirect_uri"] = redirectURI
+	session.Save(r, w)
+
+	if !user.Authenticated {
+		logger.Errorf("User not authorized")
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
 	appData, err := db.GetAppDataFromRedirectUri(redirectURI)
 
 	if err != nil {
@@ -164,10 +174,26 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		callback := appData.RedirectURI + "?error=temporarily_unaviable&error_description=err_template"
+		callback := appData.RedirectURI + "?error=temporarily_unaviable&error_description=err_template&state=" + state
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	}
+}
+
+// UserAuthorizationCancel cancels oauth authorization session states and redirects to frontpage
+func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
+	_, session, err := getUserSession(w, r)
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	delete(session.Values, "oauth_redirect_uri")
+	delete(session.Values, "state")
+	session.Save(r, w)
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+	return
 }
 
 func UserNotifications(w http.ResponseWriter, r *http.Request) {
