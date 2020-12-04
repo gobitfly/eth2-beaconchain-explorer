@@ -710,28 +710,28 @@
             var slot = Math.floor((ts / 1000 - gts) / sps)
             if (slot < 0) return 0
             return slot
-        }
-
-        moment.updateLocale('en', {
-            relativeTime: {
-                future: 'in %s',
-                past: '%s ago',
-                s: function (number, withoutSuffix) {
-                    return withoutSuffix ? 'now' : 'a few secs';
-                },
-                m: ' 1 min',
-                mm: '%d mins',
-                h: ' 1 h',
-                hh: '%d hrs',
-                d: ' 1 day',
-                dd: '%dd days',
-                M: ' 1 mth',
-                MM: '%d mths',
-                y: ' 1 year',
-                yy: '%d years'
-            }
-        });
-    </script>
+				}
+				
+		moment.updateLocale('en', {
+			relativeTime: {
+					future : 'in %s',
+					past   : '%s ago',
+					s  : function (number, withoutSuffix) {
+						return withoutSuffix ? 'now' : 'a few secs';
+					},
+					m  : ' 1 min',
+					mm : '%d mins',
+					h  : ' 1 h',
+					hh : '%d hrs',
+					d  : ' 1 day',
+					dd : '%d days',
+					M  : ' 1 mth',
+					MM : '%d mths',
+					y  : ' 1 year',
+					yy : '%d years'
+				}
+			});
+	</script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
     {{ template "js" .Data }}
