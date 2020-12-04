@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -40,7 +41,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
+		EthPrice:              price.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -153,7 +154,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 			b.DepositsCount,
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
 			utils.FormatYesNo(b.Finalized),
-			utils.FormatBalance(b.EligibleEther),
+			utils.FormatBalance(b.EligibleEther, "ETH"),
 			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate),
 		}
 	}

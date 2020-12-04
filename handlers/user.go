@@ -6,6 +6,7 @@ import (
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -84,7 +85,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
+		EthPrice:              price.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -159,7 +160,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
+		EthPrice:              price.GetEthPrice(),
 	}
 	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -234,7 +235,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
+		EthPrice:              price.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -312,7 +313,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	for _, entry := range wl {
 		tableData = append(tableData, []interface{}{
 			utils.FormatPublicKey(entry.Publickey),
-			utils.FormatBalance(entry.Balance),
+			utils.FormatBalance(entry.Balance, "ETH"),
 			entry.Events,
 			// utils.FormatBalance(item.Balance),
 			// item.Events[0],

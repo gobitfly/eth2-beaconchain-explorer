@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -57,7 +58,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 			ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
 			CurrentEpoch:          services.LatestEpoch(),
 			CurrentSlot:           services.LatestSlot(),
-			EthPrice:              services.GetEthPrice(),
+			EthPrice:              price.GetEthPrice(),
 		}
 		err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {

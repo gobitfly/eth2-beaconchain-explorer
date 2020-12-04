@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -81,7 +82,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
+		EthPrice:              price.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}

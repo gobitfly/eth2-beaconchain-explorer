@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -76,7 +77,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
+		EthPrice:              price.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -371,7 +372,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		// })
 
 		// tableData[i] = append(tableData[i], fmt.Sprintf("%.4f ETH", float64(v.Performance7d)/float64(1e9)))
-		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d))
+		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, "ETH"))
 	}
 
 	type dataType struct {

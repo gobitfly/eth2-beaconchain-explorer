@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -65,7 +66,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
+		EthPrice:              price.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -412,7 +413,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		tableData = append(tableData, []interface{}{
 			i + 1 + int(start),
 			utils.FormatPublicKey(deposit.PublicKey),
-			utils.FormatBalance(deposit.Amount),
+			utils.FormatBalance(deposit.Amount, "ETH"),
 			deposit.WithdrawalCredentials,
 			deposit.Signature,
 		})

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -40,7 +41,7 @@ func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
+		EthPrice:              price.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -120,7 +121,7 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatBlockSlot(d.BlockSlot),
 			utils.FormatPublicKey(d.Publickey),
-			utils.FormatDepositAmount(d.Amount),
+			utils.FormatDepositAmount(d.Amount, "ETH"),
 			utils.FormatHash(d.Withdrawalcredentials),
 			utils.FormatHash(d.Signature),
 		}

@@ -2,13 +2,12 @@ package services
 
 import (
 	"database/sql"
-	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -31,19 +30,12 @@ var depositThresholdReached atomic.Value
 
 var logger = logrus.New().WithField("module", "services")
 
-type EthPrice struct {
-	USD float64
-}
-
-var ethPrice *EthPrice = new(EthPrice)
-
 // Init will initialize the services
 func Init() {
 	ready.Add(4)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
-	go updateEthPrice()
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()
 	} else {
@@ -285,8 +277,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	for _, epoch := range epochs {
 		epoch.Ts = utils.EpochToTime(epoch.Epoch)
 		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
-		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther)
-		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther)
+		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther, "ETH")
+		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther, "ETH")
 		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate)
 	}
 	data.Epochs = epochs
@@ -363,7 +355,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
 	}
-	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance)))
+	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance), "ETH"))
 
 	var epochHistory []*types.IndexPageEpochHistory
 	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 ORDER BY epoch", epoch)
@@ -380,7 +372,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			}
 		}
 
-		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther))
+		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther, "ETH"))
 		data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
 	}
 
@@ -394,29 +386,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
 
 	return data, nil
-}
-
-func updateEthPrice() {
-	for true {
-		resp, err := http.Get("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD")
-
-		if err != nil {
-			logger.Errorf("error retrieving ETH price: %v", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		defer resp.Body.Close()
-
-		err = json.NewDecoder(resp.Body).Decode(&ethPrice)
-
-		if err != nil {
-			logger.Errorf("error decoding ETH price json response to struct: %v", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-		time.Sleep(time.Minute)
-	}
 }
 
 // LatestEpoch will return the latest epoch
@@ -458,7 +427,7 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
-	data.EthPrice = GetEthPrice()
+	data.EthPrice = price.GetEthPrice()
 	return data
 }
 
@@ -492,8 +461,4 @@ func GetLatestStats() *types.Stats {
 // IsSyncing returns true if the chain is still syncing
 func IsSyncing() bool {
 	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
-}
-
-func GetEthPrice() int {
-	return int(ethPrice.USD)
 }

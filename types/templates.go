@@ -27,6 +27,7 @@ type PageData struct {
 	Mainnet               bool
 	DepositContract       string
 	EthPrice              int
+	Currency              string
 }
 
 // Meta is a struct to hold metadata about the page

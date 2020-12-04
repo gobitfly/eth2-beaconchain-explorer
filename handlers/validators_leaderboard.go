@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -40,7 +41,7 @@ func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
+		EthPrice:              price.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
@@ -178,10 +179,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatValidatorWithName(b.Index, b.Name),
 			utils.FormatPublicKey(b.PublicKey),
 			fmt.Sprintf("%v", b.Balance),
-			utils.FormatIncome(b.Performance1d),
-			utils.FormatIncome(b.Performance7d),
-			utils.FormatIncome(b.Performance31d),
-			utils.FormatIncome(b.Performance365d),
+			utils.FormatIncome(b.Performance1d, "ETH"),
+			utils.FormatIncome(b.Performance7d, "ETH"),
+			utils.FormatIncome(b.Performance31d, "ETH"),
+			utils.FormatIncome(b.Performance365d, "ETH"),
 		}
 	}
 
