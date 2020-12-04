@@ -286,8 +286,12 @@ func main() {
 			signUpRouter.HandleFunc("/pricing", handlers.PricingPost).Methods("POST")
 			signUpRouter.Use(csrfHandler)
 
+			oauthRouter := router.PathPrefix("/user").Subrouter()
+			oauthRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirm).Methods("GET")
+			oauthRouter.HandleFunc("/cancel", handlers.UserAuthorizationCancel).Methods("GET")
+			oauthRouter.Use(csrfHandler)
+
 			authRouter := router.PathPrefix("/user").Subrouter()
-			authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirm).Methods("GET")
 			authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirmPost).Methods("POST")
 			authRouter.HandleFunc("/settings", handlers.UserSettings).Methods("GET")
 			authRouter.HandleFunc("/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
