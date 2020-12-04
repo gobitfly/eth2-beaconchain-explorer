@@ -217,7 +217,7 @@ func (n *validatorBalanceDecreasedNotification) GetInfo(includeUrl bool) string 
 
 	generalPart := fmt.Sprintf(`The balance of validator %[1]v decreased for 3 consecutive epochs by %.9[2]f ETH to %.9[3]f ETH from epoch %[4]v to epoch %[5]v.`, n.ValidatorIndex, diff, balance, n.StartEpoch, n.EndEpoch)
 	if includeUrl {
-		return generalPart + getUrlPart()
+		return generalPart + getUrlPart(n.ValidatorIndex)
 	}
 	return generalPart
 }
@@ -226,8 +226,8 @@ func (n *validatorBalanceDecreasedNotification) GetTitle() string {
 	return "Validator Balance Decreased"
 }
 
-func getUrlPart() string {
-	return fmt.Sprintf(` For more information visit: https://%[6]s/validator/%[1]v.`, utils.Config.Frontend.SiteDomain)
+func getUrlPart(validatorIndex uint64) string {
+	return fmt.Sprintf(` For more information visit: https://%[2]s/validator/%[1]v.`, validatorIndex, utils.Config.Frontend.SiteDomain)
 }
 
 // collectValidatorBalanceDecreasedNotifications finds all validators whose balance decreased for 3 consecutive epochs
@@ -320,7 +320,7 @@ func (n *validatorGotSlashedNotification) GetEventName() types.EventName {
 func (n *validatorGotSlashedNotification) GetInfo(includeUrl bool) string {
 	generalPart := fmt.Sprintf(`Validator %[1]v has been slashed at epoch %[2]v by validator %[3]v for %[4]s.`, n.ValidatorIndex, n.Epoch, n.Slasher, n.Reason)
 	if includeUrl {
-		return generalPart + getUrlPart()
+		return generalPart + getUrlPart(n.ValidatorIndex)
 	}
 	return generalPart
 }
