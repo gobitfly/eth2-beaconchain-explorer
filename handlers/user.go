@@ -859,6 +859,72 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	OKResponse(w, r)
 }
 
+// UserClientsAdd godoc
+// @Summary  associates an ethereum or ethereum 2 client with an user
+// @Tags User
+// @Produce  json
+// @Param clientName body []string true "Valid client names are: lighthouse, prysm, nimbus, teku, geth, openeth, nethermind, besu"
+// @Param clientVersion body string true "Client version (github release api: release id) or 0 for unknown or no change."
+// @Param notify body boolean true "Receive client update notifications"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/clients [post]
+func UserClientsAdd(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	j := json.NewEncoder(w)
+
+	clientName := FormValueOrJSON(r, "clientName")
+	clientVersion := FormValueOrJSON(r, "clientVersion")
+	notifyEnabled := FormValueOrJSON(r, "notify") == "true"
+
+	clientVersionNumber, err := strconv.ParseInt(clientVersion, 10, 64)
+	if err != nil {
+		logger.Errorf("error invalid client version number: %v: %v, %v", clientVersion, r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	user := getUser(w, r)
+
+	err2 := db.UserClientEntry(user.UserID, clientName, clientVersionNumber, notifyEnabled)
+	if err2 != nil {
+		logger.Errorf("error inserting or updating client entry %v, %v", r.URL.String(), err2)
+		sendErrorResponse(j, r.URL.String(), "error inserting or updating client entry")
+		return
+	}
+
+	OKResponse(w, r)
+}
+
+// UserClientsDelete godoc
+// @Summary  deletes an ethereum or ethereum 2 client from a user
+// @Tags User
+// @Produce  json
+// @Param clientName body []string true "Valid client names are: lighthouse, prysm, nimbus, teku, geth, openethereum, nethermind, besu"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/clients [delete]
+func UserClientsDelete(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	j := json.NewEncoder(w)
+
+	clientName := FormValueOrJSON(r, "clientName")
+	user := getUser(w, r)
+
+	err2 := db.UserClientDelete(user.UserID, clientName)
+	if err2 != nil {
+		logger.Errorf("error deleting client entry %v, %v", r.URL.String(), err2)
+		sendErrorResponse(j, r.URL.String(), "error deleting client entry")
+		return
+	}
+
+	OKResponse(w, r)
+}
+
 // UserValidatorWatchlistRemove godoc
 // @Summary  unsubscribes a user from a specific validator
 // @Tags User
@@ -922,25 +988,59 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
 		logger.Errorf("error invalid event name: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	isPkey := !pkeyRegex.MatchString(filter)
+	filterLen := len(filter)
 
-	if len(filter) != 96 && isPkey {
+	if filterLen != 96 && filterLen != 0 && isPkey {
 		logger.Errorf("error invalid pubkey characters or length: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	err = db.AddSubscription(user.UserID, eventName, filter)
-	if err != nil {
-		logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if filterLen == 0 { // no filter = add all my watched validators (max 100)
+
+		filter := db.WatchlistFilter{
+			UserId:         user.UserID,
+			Validators:     nil,
+			Tag:            types.ValidatorTagsWatchlist,
+			JoinValidators: true,
+		}
+
+		myValidators, err2 := db.GetTaggedValidators(filter)
+		if err2 != nil {
+			ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
+			return
+		}
+
+		// not quite happy performance wise, placing a TODO here for future me
+		for i, v := range myValidators {
+			err = db.AddSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
+			if err != nil {
+				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			if i >= 100 {
+				break
+			}
+		}
+	} else {
+		// add filtered one
+
+		err = db.AddSubscription(user.UserID, eventName, filter)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
-	w.WriteHeader(200)
+
+	OKResponse(w, r)
 }
 
 func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
@@ -954,23 +1054,56 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
 		logger.Errorf("error invalid event name: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	isPkey := !pkeyRegex.MatchString(filter)
+	filterLen := len(filter)
 
-	if len(filter) != 96 && isPkey {
+	if len(filter) != 96 && filterLen != 0 && isPkey {
 		logger.Errorf("error invalid pubkey characters or length: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	err = db.DeleteSubscription(user.UserID, eventName, filter)
-	if err != nil {
-		logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if filterLen == 0 { // no filter = add all my watched validators (max 100)
+
+		filter := db.WatchlistFilter{
+			UserId:         user.UserID,
+			Validators:     nil,
+			Tag:            types.ValidatorTagsWatchlist,
+			JoinValidators: true,
+		}
+
+		myValidators, err2 := db.GetTaggedValidators(filter)
+		if err2 != nil {
+			ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
+			return
+		}
+
+		// not quite happy performance wise, placing a TODO here for future me
+		for i, v := range myValidators {
+			err = db.DeleteSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
+			if err != nil {
+				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			if i >= 100 {
+				break
+			}
+		}
+	} else {
+		// filtered one only
+		err = db.DeleteSubscription(user.UserID, eventName, filter)
+		if err != nil {
+			logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
-	w.WriteHeader(200)
+
+	OKResponse(w, r)
 }
