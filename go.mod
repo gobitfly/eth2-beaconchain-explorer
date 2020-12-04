@@ -3,6 +3,8 @@ module eth2-exporter
 go 1.14
 
 require (
+	cloud.google.com/go/firestore v1.4.0 // indirect
+	firebase.google.com/go v3.13.0+incompatible
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/chromedp/cdproto v0.0.0-20200709115526-d1f6fc58448b
@@ -13,8 +15,6 @@ require (
 	github.com/ethereum/go-ethereum v1.9.14
 	github.com/go-openapi/spec v0.19.12 // indirect
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
-	github.com/google/go-cmp v0.5.1 // indirect
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/csrf v1.7.0
@@ -48,11 +48,10 @@ require (
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
-	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102 // indirect
 	golang.org/x/text v0.3.4
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
-	golang.org/x/tools v0.0.0-20201105001634-bc3cf281b174 // indirect
-	google.golang.org/grpc v1.29.1
+	google.golang.org/api v0.36.0
+	google.golang.org/grpc v1.33.2
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.3.0
 )
