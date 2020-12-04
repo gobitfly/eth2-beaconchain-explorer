@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
@@ -381,4 +382,8 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 	key := apiKey[:15]
 	apiKeyBase64 := base64.StdEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
+}
+
+func ExchangeRateForCurrency(currency string) float64 {
+	return price.GetEthPrice(currency)
 }

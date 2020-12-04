@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
+	"eth2-exporter/price"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -178,6 +179,8 @@ func main() {
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 
 		services.Init() // Init frontend services
+		price.Init()
+
 		logrus.Infof("frontend services initiated")
 
 		if !utils.Config.Frontend.OnlyAPI {

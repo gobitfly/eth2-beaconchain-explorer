@@ -6,13 +6,10 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
-	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1Deposits.html", "templates/index/depositChart.html"))
@@ -37,29 +34,9 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 	pageData.Stats = services.GetLatestStats()
 	pageData.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Eth1 Deposits - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/deposits/eth1",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "eth1Deposits",
-		Data:                  pageData,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		ShowSyncingMessage:    services.IsSyncing(),
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Eth1 Deposits")
+	data.HeaderAd = true
+	data.Data = pageData
 
 	err := eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -138,7 +115,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
 			utils.FormatPublicKey(d.PublicKey),
-			utils.FormatDepositAmount(d.Amount),
+			utils.FormatDepositAmount(d.Amount, "ETH"),
 			utils.FormatEth1TxHash(d.TxHash),
 			utils.FormatTimestamp(d.BlockTs.Unix()),
 			utils.FormatEth1Block(d.BlockNumber),
@@ -166,29 +143,8 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Eth1 Deposits - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/deposits/eth1",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "eth1Deposits",
-		Data:                  nil,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		ShowSyncingMessage:    services.IsSyncing(),
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Eth1 Deposits")
+	data.HeaderAd = true
 
 	data.Data = types.EthOneDepositLeaderBoardPageData{
 		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
@@ -265,7 +221,7 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	for i, d := range deposits {
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
-			utils.FormatBalance(d.Amount),
+			utils.FormatBalance(d.Amount, "ETH"),
 			d.ValidCount,
 			d.InvalidCount,
 			d.PendingCount,

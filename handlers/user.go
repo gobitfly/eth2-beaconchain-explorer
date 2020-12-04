@@ -6,10 +6,8 @@ import (
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -67,27 +65,11 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/user",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "user",
-		Data:                  userSettingsData,
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "user", "/user", "User Settings")
+	data.HeaderAd = true
+	data.Data = userSettingsData
+	data.User = user
+
 	err = userTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -142,25 +124,9 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	authorizeData.CsrfField = csrf.TemplateField(r)
 	authorizeData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
-	data := &types.PageData{
-		HeaderAd: false,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/user",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "user",
-		Data:                  authorizeData,
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-	}
+	data := InitPageData(w, r, "user", "/user", "")
+	data.Data = authorizeData
+
 	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -217,27 +183,10 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	link = link[:len(link)-1]
 	userNotificationsData.DashboardLink = link
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/user",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "user",
-		Data:                  userNotificationsData,
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "user", "/user", "")
+	data.Data = userNotificationsData
+	data.User = user
+
 	err = notificationTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -312,7 +261,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	for _, entry := range wl {
 		tableData = append(tableData, []interface{}{
 			utils.FormatPublicKey(entry.Publickey),
-			utils.FormatBalance(entry.Balance),
+			utils.FormatBalance(entry.Balance, "ETH"),
 			entry.Events,
 			// utils.FormatBalance(item.Balance),
 			// item.Events[0],
