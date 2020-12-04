@@ -53,7 +53,8 @@ type Config struct {
 	Frontend struct {
 		Kong         string `yaml:"kong" envconfig:"FRONTEND_KONG"`
 		OnlyAPI      bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
-		CsrfAuthKey  string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRFAUTHKEY`
+		CsrfAuthKey  string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY"`
+		CsrfInsecure bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`
 		Enabled      bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
 		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
 		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
