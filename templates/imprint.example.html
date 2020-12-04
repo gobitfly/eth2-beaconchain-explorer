@@ -5,8 +5,10 @@
 {{end}}
 
 {{ define "content"}}
-<div class="container mt-2">
-    <h2>Imprint</h2>
-    </div><a href="/" class="btn btn-primary mt-4">Back</a>
-</div>
+    {{with .Data}}
+        <div class="container mt-2">
+            <h2>Imprint</h2>
+        </div><a href="/" class="btn btn-primary mt-4">Back</a>
+        </div>
+    {{end}}
 {{end}}

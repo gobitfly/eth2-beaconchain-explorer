@@ -385,13 +385,5 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 }
 
 func ExchangeRateForCurrency(currency string) float64 {
-	if currency == "ETH" {
-		return 1
-	}
-
-	if currency == "USD" {
-		return float64(price.GetEthPrice())
-	}
-
-	return 1
+	return price.GetEthPrice(currency)
 }

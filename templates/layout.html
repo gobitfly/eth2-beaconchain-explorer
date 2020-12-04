@@ -60,7 +60,11 @@
 
         <script>
             function updateLang(lang) {
-                document.cookie = "language=" + lang
+                document.cookie = "language=" + lang + ";samesite=strict;path=/"
+                window.location.reload();
+            }
+            function updateCurrency(currency) {
+                document.cookie = "currency=" + currency + ";samesite=strict;path=/"
                 window.location.reload();
             }
         </script>
@@ -167,6 +171,19 @@
                 </div>
             </div>
             <div class="info-banner-right">
+                <div class="dropdown">
+                    <a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown"
+                       aira-haspopup="true" aria-expanded="false">
+                        {{.Currency}}
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="langDropdown">
+                        <a class="dropdown-item" onClick="updateCurrency('ETH')">ETH</a>
+                        <a class="dropdown-item" onClick="updateCurrency('USD')">USD</a>
+                        <a class="dropdown-item" onClick="updateCurrency('EUR')">EUR</a>
+                        <a class="dropdown-item" onClick="updateCurrency('CNY')">CNY</a>
+                        <a class="dropdown-item" onClick="updateCurrency('RUB')">RUB</a>
+                    </div>
+                </div>
                 <div class="dropdown">
                     <a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown"
                        aira-haspopup="true" aria-expanded="false">

@@ -3,17 +3,12 @@ package handlers
 import (
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
-	"eth2-exporter/price"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
+	"github.com/gorilla/csrf"
 	"html/template"
 	"net/http"
-	"time"
-
-	"github.com/gorilla/csrf"
 )
 
 var pricingTemplate = template.Must(template.New("pricing").Funcs(utils.GetTemplateFuncs()).ParseFiles(
@@ -36,33 +31,13 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - API Pricing - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/pricing",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "pricing",
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              price.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+
+	data := InitPageData(w, r, "pricing", "/pricing", "API Pricing")
 
 	pageData := &types.ApiPricing{}
 	pageData.CsrfField = csrf.TemplateField(r)
 
-	pageData.User = user
+	pageData.User = data.User
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
@@ -70,8 +45,8 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.Authenticated {
-		subscription, err := db.GetUserSubscription(user.UserID)
+	if data.User.Authenticated {
+		subscription, err := db.GetUserSubscription(data.User.UserID)
 		if err != nil {
 			logger.Errorf("error retrieving user subscriptions %v", err)
 			http.Error(w, "Internal server error", 503)
@@ -138,30 +113,10 @@ func PricingSuccess(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - API Pricing - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/pricing",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "pricing",
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "pricing", "/pricing", "API Pricing")
 
 	pageData := &types.ApiPricing{}
-	pageData.User = user
+	pageData.User = data.User
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
@@ -183,30 +138,11 @@ func PricingCancled(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - API Pricing - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/pricing",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "pricing",
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+
+	data := InitPageData(w, r, "pricing", "/pricing", "API Pricing")
 
 	pageData := &types.ApiPricing{}
-	pageData.User = user
+	pageData.User = data.User
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)

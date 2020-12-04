@@ -26,7 +26,7 @@ type PageData struct {
 	FinalizationDelay     uint64
 	Mainnet               bool
 	DepositContract       string
-	EthPrice              int
+	EthPrice              float64
 	Currency              string
 }
 
@@ -44,13 +44,13 @@ type Meta struct {
 
 //LatestState is a struct to hold data for the banner
 type LatestState struct {
-	LastProposedSlot      uint64 `json:"lastProposedSlot"`
-	CurrentSlot           uint64 `json:"currentSlot"`
-	CurrentEpoch          uint64 `json:"currentEpoch"`
-	CurrentFinalizedEpoch uint64 `json:"currentFinalizedEpoch"`
-	FinalityDelay         uint64 `json:"finalityDelay"`
-	IsSyncing             bool   `json:"syncing"`
-	EthPrice              int    `json:"ethPrice"`
+	LastProposedSlot      uint64  `json:"lastProposedSlot"`
+	CurrentSlot           uint64  `json:"currentSlot"`
+	CurrentEpoch          uint64  `json:"currentEpoch"`
+	CurrentFinalizedEpoch uint64  `json:"currentFinalizedEpoch"`
+	FinalityDelay         uint64  `json:"finalityDelay"`
+	IsSyncing             bool    `json:"syncing"`
+	EthPrice              float64 `json:"ethPrice"`
 }
 
 type Stats struct {
@@ -777,4 +777,7 @@ type RateLimitError struct {
 
 func (e *RateLimitError) Error() string {
 	return fmt.Sprintf("rate limit has been exceeded, %v left", e.TimeLeft)
+}
+
+type Empty struct {
 }
