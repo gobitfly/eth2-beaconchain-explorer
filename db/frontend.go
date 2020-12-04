@@ -189,6 +189,30 @@ func MobileNotificatonTokenUpdate(userID, deviceID uint64, notifyToken string) e
 	return err
 }
 
+func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
+	pushByID := map[uint64][]string{}
+	if len(ids) == 0 {
+		return pushByID, nil
+	}
+	var rows []struct {
+		ID    uint64 `db:"user_id"`
+		Token string `db:"notification_token"`
+	}
+	err := FrontendDB.Select(&rows, "SELECT user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL", pq.Array(ids))
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		val, ok := pushByID[r.ID]
+		if ok {
+			pushByID[r.ID] = append(val, r.Token)
+		} else {
+			pushByID[r.ID] = []string{r.Token}
+		}
+	}
+	return pushByID, nil
+}
+
 func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled bool) (*sql.Rows, error) {
 	rows, err := FrontendDB.Query("UPDATE users_devices SET notify_enabled = $1 WHERE user_id = $2 AND id = $3 RETURNING notify_enabled;",
 		notifyEnabled, userID, deviceID,
