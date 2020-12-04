@@ -219,6 +219,25 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	session.Save(r, w)
 	logger.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"])
+
+	redirectURI, RedirectExists := session.Values["oauth_redirect_uri"]
+
+	if RedirectExists {
+		state, stateExists := session.Values["state"]
+		var stateParam = ""
+
+		if stateExists {
+			stateParam = "&state=" + state.(string)
+		}
+
+		delete(session.Values, "oauth_redirect_uri")
+		delete(session.Values, "state")
+		session.Save(r, w)
+
+		http.Redirect(w, r, "/user/authorize?redirect_uri="+redirectURI.(string)+stateParam, http.StatusSeeOther)
+		return
+	}
+
 	// Index(w, r)
 	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 }
