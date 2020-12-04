@@ -33,6 +33,7 @@ func Epochs(w http.ResponseWriter, r *http.Request) {
 
 // EpochsData will return the epoch data using a go template
 func EpochsData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -130,7 +131,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 			b.DepositsCount,
 			fmt.Sprintf("%v / %v", b.ProposerSlashingsCount, b.AttesterSlashingsCount),
 			utils.FormatYesNo(b.Finalized),
-			utils.FormatBalance(b.EligibleEther, "ETH"),
+			utils.FormatBalance(b.EligibleEther, currency),
 			utils.FormatGlobalParticipationRate(b.VotedEther, b.GlobalParticipationRate),
 		}
 	}

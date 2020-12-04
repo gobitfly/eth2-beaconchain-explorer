@@ -32,6 +32,7 @@ func Eth2Deposits(w http.ResponseWriter, r *http.Request) {
 
 // Eth2DepositsData will return information eth1-deposits in json
 func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -96,7 +97,7 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatBlockSlot(d.BlockSlot),
 			utils.FormatPublicKey(d.Publickey),
-			utils.FormatDepositAmount(d.Amount, "ETH"),
+			utils.FormatDepositAmount(d.Amount, currency),
 			utils.FormatHash(d.Withdrawalcredentials),
 			utils.FormatHash(d.Signature),
 		}

@@ -34,12 +34,9 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		EthPrice:              price.GetEthPrice("USD"),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-		Currency:              "ETH",
+		Currency:              GetCurrency(r),
 	}
-
-	if langCookie, err := r.Cookie("currency"); err == nil {
-		data.Currency = langCookie.Value
-	}
+	data.ExchangeRate = price.GetEthPrice(data.Currency)
 
 	return data
 }

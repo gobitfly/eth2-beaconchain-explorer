@@ -659,7 +659,7 @@ $(document).ready(function() {
             validatorCount[i] = [res[0], res[1]]
             balance[i] = [res[0], res[2]]
             effectiveBalance[i] = [res[0], res[3]]
-            utilization[i] = [res[0], res[3] / (res[1] * 32)]
+            utilization[i] = [res[0], res[3] / (res[1] * (32 * exchangeRate))]
           }
   
           var t2 = Date.now()
@@ -724,7 +724,7 @@ function createBalanceChart(effective, balance, utilization, missedAttestations)
     yAxis: [
       {
         title: {
-          text: 'Balance [ETH]'
+          text: 'Balance [' + currency + ']'
         },
         opposite: false,
         labels: {

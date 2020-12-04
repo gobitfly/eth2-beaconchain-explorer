@@ -150,3 +150,11 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func GetCurrency(r *http.Request) string {
+	if langCookie, err := r.Cookie("currency"); err == nil {
+		return langCookie.Value
+	}
+
+	return "ETH"
+}

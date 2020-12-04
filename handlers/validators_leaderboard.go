@@ -32,6 +32,8 @@ func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 // ValidatorsLeaderboardData returns the leaderboard of validators according to their income in json
 func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -154,10 +156,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatValidatorWithName(b.Index, b.Name),
 			utils.FormatPublicKey(b.PublicKey),
 			fmt.Sprintf("%v", b.Balance),
-			utils.FormatIncome(b.Performance1d, "ETH"),
-			utils.FormatIncome(b.Performance7d, "ETH"),
-			utils.FormatIncome(b.Performance31d, "ETH"),
-			utils.FormatIncome(b.Performance365d, "ETH"),
+			utils.FormatIncome(b.Performance1d, currency),
+			utils.FormatIncome(b.Performance7d, currency),
+			utils.FormatIncome(b.Performance31d, currency),
+			utils.FormatIncome(b.Performance365d, currency),
 		}
 	}
 
