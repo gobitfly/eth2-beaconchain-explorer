@@ -189,10 +189,11 @@ func main() {
 			if err != nil {
 				logrus.WithError(err).Error("error decoding csrf auth key falling back to empty csrf key")
 			}
+
 			csrfHandler := csrf.Protect(
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
-				// csrf.Secure(false), // Only enable this in development environment to pass csrf checks
+				csrf.Secure(!cfg.Frontend.CsrfInsecure),
 			)
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
