@@ -41,7 +41,7 @@ func getLocaliser() *i18n.I18n {
 	if localiser == nil {
 		localiser, err := i18n.New(i18n.Glob("locales/*/*"), "en-US", "ru-RU")
 		if err != nil {
-			log.Println(err)
+			logger.Errorf("Error opening language files %v", err)
 		}
 		return localiser
 	}

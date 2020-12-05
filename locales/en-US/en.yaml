@@ -27,3 +27,6 @@ p3_text: '
   Get notified if your validators go offline. 
   For more information about the beacon chain view our 
   <a href="https://kb.beaconcha.in/">knowledge base.</a>'
+# banner
+banner_epoch: 'Ep<span class="d-none d-md-inline">och</span>:'
+# /banner

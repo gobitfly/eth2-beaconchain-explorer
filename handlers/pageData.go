@@ -7,9 +7,10 @@ import (
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
-	"github.com/gorilla/sessions"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/sessions"
 )
 
 func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string) *types.PageData {
@@ -35,6 +36,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 		Currency:              GetCurrency(r),
+		Lang:                  GetLanguage(r),
 	}
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
 

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -157,4 +158,22 @@ func GetCurrency(r *http.Request) string {
 	}
 
 	return "ETH"
+}
+
+// GetLanguage returns a language token from browser accepted langs. or from cookies
+func GetLanguage(r *http.Request) string {
+	var language string = "en-US"
+	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")
+
+	if len(acceptedLangs) > 0 {
+		if strings.Contains(acceptedLangs[0], "ru") || strings.Contains(acceptedLangs[0], "RU") {
+			language = "ru-RU"
+		}
+	}
+
+	if langCookie, err := r.Cookie("language"); err == nil {
+		return langCookie.Value
+	}
+
+	return language
 }
