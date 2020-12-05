@@ -4,10 +4,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -48,27 +46,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 	}
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "blocks",
-		Data:                  nil,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "blocks", "/blocks", "")
 
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
@@ -311,6 +289,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 // BlockDepositData returns the deposits for a specific slot
 func BlockDepositData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -412,7 +391,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		tableData = append(tableData, []interface{}{
 			i + 1 + int(start),
 			utils.FormatPublicKey(deposit.PublicKey),
-			utils.FormatBalance(deposit.Amount),
+			utils.FormatBalance(deposit.Amount, currency),
 			deposit.WithdrawalCredentials,
 			deposit.Signature,
 		})

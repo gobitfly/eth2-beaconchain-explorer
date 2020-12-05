@@ -361,6 +361,18 @@ create table users_devices
     primary key (user_id, refresh_token)
 );
 
+drop table if exists users_clients;
+create table users_clients
+(
+    id                    serial                      not null,
+    user_id               int                         not null,
+    client         	      character varying(12)       not null,
+    client_version        int       			      not null,
+    notify_enabled        bool                        not null default 't',
+    created_ts            timestamp without time zone not null,
+    primary key (user_id, client)
+);
+
 drop table if exists users_subscriptions;
 create table users_subscriptions
 (
