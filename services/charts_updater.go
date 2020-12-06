@@ -1484,8 +1484,8 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 	chartData := &types.GenericChartData{
 		IsNormalChart:    true,
 		Type:             "pie",
-		Title:            "Deposits Distribution",
-		Subtitle:         "Deposits Distribution by ETH1-Addresses.",
+		Title:            "Eth1 Deposit Addresses",
+		Subtitle:         "Validator distribution by Eth1 deposit address.",
 		TooltipFormatter: `function(){ return '<b>'+this.point.name+'</b><br\>Percentage: '+this.point.percentage.toFixed(2)+'%<br\>Validators: '+this.point.y }`,
 		PlotOptionsPie: `{
 			borderWidth: 1,
