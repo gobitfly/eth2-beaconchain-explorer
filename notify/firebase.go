@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var logger = logrus.New().WithField("module", "firebase")
+var logger = logrus.New().WithField("module", "notify").WithField("service", "firebase")
 
 func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, error) {
 	ctx := context.Background()
