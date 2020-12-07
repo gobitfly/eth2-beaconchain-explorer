@@ -8,6 +8,7 @@ import (
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/api/option"
 )
 
 var logger = logrus.New().WithField("module", "notify").WithField("service", "firebase")
