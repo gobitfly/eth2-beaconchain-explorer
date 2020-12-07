@@ -55,7 +55,9 @@ func Init() {
 		return
 	}
 
-	go chartsPageDataUpdater()
+	if !utils.Config.Frontend.DisableCharts {
+		go chartsPageDataUpdater()
+	}
 	go statsUpdater()
 
 	if utils.Config.Frontend.Notifications.Enabled {
