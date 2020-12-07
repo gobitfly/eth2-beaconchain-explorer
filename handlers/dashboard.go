@@ -311,10 +311,15 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
 			},
 			v.State,
-			[]interface{}{
+		}
+
+		if v.ActivationEpoch != 9223372036854775807 {
+			tableData[i] = append(tableData[i], []interface{}{
 				v.ActivationEpoch,
 				utils.EpochToTime(v.ActivationEpoch).Unix(),
-			},
+			})
+		} else {
+			tableData[i] = append(tableData[i], nil)
 		}
 
 		if v.ExitEpoch != 9223372036854775807 {
