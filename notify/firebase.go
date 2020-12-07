@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var logger = logrus.New().WithField("module", "firebase")
+var logger = logrus.New().WithField("module", "notify").WithField("service", "firebase")
 
 func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, error) {
 	ctx := context.Background()
@@ -29,6 +29,11 @@ func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, err
 	if err != nil {
 		logger.Errorf("error sending push notifications: %v", err)
 		return nil, err
+	}
+	for _, response := range result.Responses {
+		if !response.Success {
+			logger.Errorf("firebase error %v %v", response.Error, response.MessageID)
+		}
 	}
 
 	logger.Infof("Successfully send %v firebase notifications. Successfull: %v | Failed: %v", len(messages), result.SuccessCount, result.FailureCount)
