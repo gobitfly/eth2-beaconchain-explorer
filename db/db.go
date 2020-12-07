@@ -983,10 +983,13 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 
 	for _, slot := range slots {
 		for _, b := range blocks[slot] {
-			var dbBlockRootHash []byte
-			err := DB.Get(&dbBlockRootHash, "SELECT blockroot FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
+			var dbBlock struct {
+				Blockroot []byte
+				Status    string
+			}
+			err := DB.Get(&dbBlock, "SELECT blockroot, status FROM blocks WHERE slot = $1 and blockroot = $2", b.Slot, b.BlockRoot)
 
-			if err == nil && bytes.Compare(dbBlockRootHash, b.BlockRoot) == 0 {
+			if err == nil && bytes.Compare(dbBlock.Blockroot, b.BlockRoot) == 0 && dbBlock.Status != "2" && dbBlock.Status != "3" { {
 				logger.Printf("skipping export of block %x at slot %v as it is already present in the db", b.BlockRoot, b.Slot)
 				continue
 			}
@@ -1053,12 +1056,17 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 
 			logger.Tracef("writing attestation data")
 
+			inclusionSlot := b.Slot
+			// set inclusionslot to 0  if this block has been missed or orphaned
+			if dbBlock.Status == "2" || dbBlock.Status == "3" {
+				inclusionSlot = 0
+			}
 			for i, a := range b.Attestations {
 				attestationAssignmentsArgs := make([][]interface{}, 0, 10000)
 				attestingValidators := make([]string, 0, 10000)
 
 				for _, validator := range a.Attesters {
-					attestationAssignmentsArgs = append(attestationAssignmentsArgs, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot})
+					attestationAssignmentsArgs = append(attestationAssignmentsArgs, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, inclusionSlot})
 					attestingValidators = append(attestingValidators, strconv.FormatUint(validator, 10))
 				}
 
