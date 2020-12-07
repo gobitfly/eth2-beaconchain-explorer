@@ -105,7 +105,7 @@
 							<span class="item-icon">
 								<i class="fas fa-cubes"></i>
 							</span>
-                            <span class="item-text">Slot:</span>
+                            <span class="item-text">{{ trLang .Lang "Slot"}}:</span>
                         </div>
                         <div class="info-item-body"><a id="banner-slot-data"
                                                        href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
@@ -118,7 +118,7 @@
 							<span class="item-icon">
 								<i class="fas fa-cubes"></i>
 							</span>
-                            <span class="item-text">Pr<span class="d-none d-md-inline">ice</span>:</span>
+                            <span class="item-text">{{ trLang .Lang "banner_price"}}</span>
                         </div>
                         <div class="info-item-body"><a id="banner-eth-price-data">${{.EthPrice}}</a></div>
                     </div>
@@ -133,7 +133,7 @@
                    data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
               </span>
                                 <span class="item-text d-none d-xl-block">
-                Finality
+                {{ trLang .Lang "Finality"}}
               </span>
                             </div>
                             <div class="info-item-body text-warning">
@@ -191,7 +191,7 @@
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="langDropdown">
                         <a class="dropdown-item" onClick="updateLang('en-US')">English</a>
-                        <a class="dropdown-item" onClick="updateLang('ru-RU')">Russian</a>
+                        <a class="dropdown-item" onClick="updateLang('ru-RU')">Русский</a>
                     </div>
                 </div>
                 {{if .User.Authenticated}}
@@ -201,9 +201,9 @@
                             <i class="fas fa-user-circle m-0 p-0"></i>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
-                            <a class="dropdown-item" href="/user/notifications">Watchlist</a>
-                            <a class="dropdown-item" href="/user/settings">Settings</a>
-                            <a data-no-instant class="dropdown-item" href="/logout">Logout</a>
+                            <a class="dropdown-item" href="/user/notifications">{{ trLang .Lang "Watchlist"}}</a>
+                            <a class="dropdown-item" href="/user/settings">{{ trLang .Lang "Settings"}}</a>
+                            <a data-no-instant class="dropdown-item" href="/logout">{{ trLang .Lang "Logout"}}</a>
                         </div>
                     </div>
                 {{else}}
@@ -214,8 +214,8 @@
                                 <i style="margin: 0; padding: 0;" class="fas fa-sign-in-alt"></i>
                             </a>
                             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="loginDropdown">
-                                <a class="dropdown-item" href="/login">Sign In</a>
-                                <a class="dropdown-item" href="/register">Sign Up</a>
+                                <a class="dropdown-item" href="/login">{{ trLang .Lang "Sign In"}}</a>
+                                <a class="dropdown-item" href="/register">{{ trLang .Lang "Sign Up"}}</a>
                             </div>
                         </div>
                     </div>
@@ -223,7 +223,7 @@
                         <span>Sign In</span>
                     </a>
                     <a href="/register" class="btn btn-primary btn-sm d-none d-md-flex">
-                        <span class="text-white"><b>Sign Up</b></span>
+                        <span class="text-white"><b>{{ trLang .Lang "Sign Up"}}</b></span>
                     </a>
                 {{end}}
             </div>
@@ -252,7 +252,7 @@
 							<span class="nav-icon">
 								<img src="/img/gitcoin_logo.svg" style="width: auto; height: 1rem;" class="mb-2">
 							</span>
-                            <span class="nav-text">Support Eth2</span>
+                            <span class="nav-text">{{ trLang .Lang "Support"}} Eth2</span>
                         </a>
                     </li>
                     <li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
@@ -260,7 +260,7 @@
 						<span class="nav-icon">
 							<i class="fas fa-history"></i>
 						</span>
-                            <span class="nav-text">Epochs</span>
+                            <span class="nav-text">{{ trLang .Lang "Epochs"}}</span>
                         </a>
                     </li>
                     <li class="nav-item {{ if eq .Active "blocks"}}active{{end}}">
@@ -268,7 +268,7 @@
 							<span class="nav-icon">
 								<i class="fas fa-cubes"></i>
 							</span>
-                            <span class="nav-text">Blocks</span>
+                            <span class="nav-text">{{ trLang .Lang "Blocks"}}</span>
                         </a>
                     </li>
                     <li class="nav-item {{ if eq .Active "validators"}}active{{end}} dropdown">
@@ -277,38 +277,38 @@
 							<span class="nav-icon">
 								<i class="fas fa-thumbs-up"></i>
 							</span>
-                            <span class="nav-text">Validators</span>
+                            <span class="nav-text">{{ trLang .Lang "Validators"}}</span>
                         </a>
                         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                             <a class="dropdown-item" href="/validators">
                                 <span class="nav-icon"><i class="fas fa-table mr-2"></i></span>
-                                <span class="nav-text">Overview</span>
+                                <span class="nav-text">{{ trLang .Lang "Overview"}}</span>
                             </a>
                             <a class="dropdown-item" href="/validators/leaderboard">
                                 <span class="nav-icon"><i class="fas fa-medal mr-2"></i></span>
-                                <span class="nav-text">Leaderboard</span>
+                                <span class="nav-text">{{ trLang .Lang "Leaderboard"}}</span>
                             </a>
                             <a class="dropdown-item" href="/validators/slashings">
                                 <span class="nav-icon"><i class="fas fa-user-slash mr-2"></i></span>
-                                <span class="nav-text">Slashings</span>
+                                <span class="nav-text">{{ trLang .Lang "Slashings"}}</span>
                             </a>
                             <hr>
                             <a class="dropdown-item" href="/validators/leaderboard">
                                 <span class="nav-icon"><i class="fas fa-medal mr-2"></i></span>
-                                <span class="nav-text">Validator Leaderboard</span>
+                                <span class="nav-text">{{ trLang .Lang "Validator Leaderboard"}}</span>
                             </a>
                             <a class="dropdown-item" href="/validators/eth1leaderboard">
                                 <span class="nav-icon"><i class="fas fa-file-import mr-2"></i></span>
-                                <span class="nav-text">Deposit Leaderboard</span>
+                                <span class="nav-text">{{ trLang .Lang "Deposit Leaderboard"}}</span>
                             </a>
                             <hr>
                             <a class="dropdown-item" href="/validators/eth1deposits">
                                 <span class="nav-icon"><i class="fas fa-file-signature mr-2"></i></span>
-                                <span class="nav-text">Eth1 Deposits</span>
+                                <span class="nav-text">Eth1 {{ trLang .Lang "Deposits"}}</span>
                             </a>
                             <a class="dropdown-item" href="/validators/eth2deposits">
                                 <span class="nav-icon"><i class="fas fa-clipboard-check mr-2"></i></span>
-                                <span class="nav-text">Eth2 Deposits</span>
+                                <span class="nav-text">Eth2 {{ trLang .Lang "Deposits"}}</span>
                             </a>
                         </div>
                     </li>
@@ -318,16 +318,16 @@
 							<span class="nav-icon">
 								<i class="fas fa-cubes"></i>
 							</span>
-                            <span class="nav-text">Stats</span>
+                            <span class="nav-text">{{ trLang .Lang "Stats"}}</span>
                         </a>
                         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                             <a class="dropdown-item" href="/charts">
                                 <span class="nav-icon"><i class="fas fa-chart-bar mr-2"></i></span>
-                                <span class="nav-text">Charts</span>
+                                <span class="nav-text">{{ trLang .Lang "Charts"}}</span>
                             </a>
                             <a class="dropdown-item" href="/calculator">
                                 <span class="nav-icon"><i class="fas fa-calculator mr-2"></i></span>
-                                <span class="nav-text">Calculator</span>
+                                <span class="nav-text">{{ trLang .Lang "Calculator"}}</span>
                             </a>
                             <hr>
                             <a class="dropdown-item" href="/vis">
@@ -452,7 +452,7 @@
 								</svg>
 							</span>
                             <span class="nav-text">
-								Dashboard
+								{{ trLang .Lang "Dashboard"}}
 							</span>
                         </a>
                     </li>
@@ -463,7 +463,7 @@
 								<i class="fas fa-info mr-2"></i>
 							</span>
                             <span class="nav-text">
-								More
+								{{ trLang .Lang "More"}}
 							</span>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
@@ -471,23 +471,23 @@
 								<span class="nav-icon">
 									<i class="fas fa-laptop-code mr-2"></i>
 								</span>
-                                <span class="nav-text">API Docs</span>
+                                <span class="nav-text">API {{ trLang .Lang "Docs"}}</span>
                             </a>
                             <a class="dropdown-item" href="/pricing">
 								<span class="nav-icon">
 									<i class="fas fa-laptop-code mr-2"></i>
 								</span>
-                                <span class="nav-text">API Pricing</span>
+                                <span class="nav-text">API {{ trLang .Lang "Pricing"}}</span>
                             </a>
                             <a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
 								<span class="nav-icon">
 									<i class="fas fa-external-link-alt mr-2"></i>
 								</span>
-                                <span class="nav-text">Knowledge Base</span>
+                                <span class="nav-text">{{ trLang .Lang "Knowledge Base"}}</span>
                             </a>
                             <a class="dropdown-item" href="/stakingServices">
                                 <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
-                                <span class="nav-text">Staking Services</span>
+                                <span class="nav-text">{{ trLang .Lang "Staking Services"}}</span>
                             </a>
                             <a class="dropdown-item" href="/graffitiwall">
 								<span class="nav-icon">
@@ -606,13 +606,13 @@
         <footer class="container">
             <div class="row">
                 <div class="col-md-4 mb-2">
-                    <h5>Legal Notices</h5>
+                    <h5>{{ trLang .Lang "Legal Notices"}}</h5>
                     <div class="d-flex flex-column">
                         <a class="my-1" href="/imprint">Imprint</a>
                     </div>
                 </div>
                 <div class="col-md-4 mb-2">
-                    <h5>Resources</h5>
+                    <h5>{{ trLang .Lang "Resources"}}</h5>
                     <div class="d-flex flex-column">
                         <a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-2"></i>Advertise</a>
                         <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag
@@ -623,7 +623,7 @@
                     </div>
                 </div>
                 <div class="col-md-4 mb-2">
-                    <h5>Social Media</h5>
+                    <h5>{{ trLang .Lang "Social Media"}}</h5>
                     <div class="d-flex flex-column">
                         <a class="my-1" href="https://twitter.com/etherchain_org"><i class="fab fa-twitter mr-2"></i>Twitter</a>
                         <a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a>

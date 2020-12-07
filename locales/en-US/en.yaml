@@ -27,6 +27,68 @@ p3_text: '
   Get notified if your validators go offline. 
   For more information about the beacon chain view our 
   <a href="https://kb.beaconcha.in/">knowledge base.</a>'
+
 # banner
 banner_epoch: 'Ep<span class="d-none d-md-inline">och</span>:'
+banner_price: 'Pr<span class="d-none d-md-inline">ice</span>:'
 # /banner
+
+#layout
+Slot: "Slot"
+Finality: "Finality"
+Watchlist: "Watchlist"
+Settings: "Settings"
+Logout: "Logout"
+Sign In: "Sign In"
+Sign Up: "Sign Up"
+Support: "Support"
+Epochs: "Epochs"
+Blocks: "Blocks"
+Validators: "Validators"
+Overview: "Overview"
+Leaderboard: "Leaderboard"
+Slashings: "Slashings"
+Validator Leaderboard: "Validator Leaderboard"
+Deposit Leaderboard: "Deposit Leaderboard"
+Deposits: "Deposits"
+Stats: "Stats"
+Charts: "Charts"
+Calculator: "Calculator"
+Dashboard: "Dashboard"
+More: "More"
+Docs: "Docs"
+Pricing: "Pricing"
+Knowledge Base: "Knowledge Base"
+Staking Services: "Staking Services"
+Legal Notices: "Legal Notices"
+Resources: "Resources"
+Social Media: "Social Media"
+# /layout
+
+hero_t1: "Open Source Ethereum 2.0 Beacon Chain Explorer"
+
+#recentBlocks
+Epoch: "Epoch"
+Most recent blocks: "Most recent blocks"
+View more: "View more"
+Status: "Status"
+Time: "Time"
+Proposer: "Proposer"
+Next update in: "Next update in"
+Att: "Att"
+#/recentBlocks
+
+#recentEpochs
+Most recent epochs: "Most recent epochs"
+Final: "Final"
+Eligible: "Eligible"
+Voted: "Voted"
+#/recentEpochs
+
+#networkStats
+Current Slot: "Current Slot"
+Active Validators: "Active Validators"
+Pending Validators: "Pending Validators"
+Staked Ether: "Staked Ether"
+Average Balance: "Average Balance"
+#/networkStats

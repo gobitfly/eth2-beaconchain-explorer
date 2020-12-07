@@ -39,6 +39,7 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "index", "", "Index")
 	data.Data = services.LatestIndexPageData()
 
+	data.Data.(*types.IndexPageData).Lang = GetLanguage(r)
 	data.Data.(*types.IndexPageData).ShowSyncingMessage = data.ShowSyncingMessage
 
 	err := indexTemplate.ExecuteTemplate(w, "layout", data)

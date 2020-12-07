@@ -2,8 +2,8 @@
 <div class="card">
   <div class="card-header">
     <h3 class="card-title d-flex justify-content-between align-items-center" style="margin: .5rem 0;">
-      <span><i class="fa fa-cubes"></i> Most recent blocks</span>
-      <a class="btn btn-primary btn-sm float-right" href="/blocks">View more</a>
+      <span><i class="fa fa-cubes"></i> {{ trLang .Lang "Most recent blocks"}}</span>
+      <a class="btn btn-primary btn-sm float-right" href="/blocks">{{ trLang .Lang "View more"}}</a>
     </h3>
   </div>
   <div class="card-body p-0">
@@ -11,13 +11,13 @@
       <table class="table">
         <thead>
         <tr>
-          <th>Epoch</th>
-          <th>Slot</th>
-          <th>Status</th>
-          <th>Time</th>
-          <th>Proposer</th>
+          <th>{{ trLang .Lang "Epoch"}}</th>
+          <th>{{ trLang .Lang "Slot"}}</th>
+          <th>{{ trLang .Lang "Status"}}</th>
+          <th>{{ trLang .Lang "Time"}}</th>
+          <th>{{ trLang .Lang "Proposer"}}</th>
           <!-- <th>Root Hash</th> -->
-          <th data-toggle="tooltip" title="Attestations">Att</th>
+          <th data-toggle="tooltip" title="Attestations">{{ trLang .Lang "Att"}}</th>
           <!-- <th>Deposits</th>
           <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
           <th>Exits</th> -->
@@ -56,7 +56,7 @@
           </tr>
         </tbody>
       </table>
-      <small style="position: absolute; right: 0;" class="float-right pt-md-0 pt-2 m-2"> Next update in ${updateIn}s</small>
+      <small style="position: absolute; right: 0;" class="float-right pt-md-0 pt-2 m-2"> {{ trLang .Lang "Next update in"}} ${updateIn}s</small>
     </div>
   </div>
 </div>

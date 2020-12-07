@@ -27,3 +27,68 @@ p3_text: '
   В случае если Ваши валидаторы отключатся, Вы будете получать уведомления. 
   Для дополнительной информации о beacon chain зайдите в наш 
   <a href="https://kb.beaconcha.in/">информационный центр.</a>'
+
+# banner
+banner_epoch: 'Э<span class="d-none d-md-inline">ра</span>:'
+banner_price: 'Це<span class="d-none d-md-inline">на</span>:'
+# /banner
+
+#layout
+Slot: "Слот"
+Finality: "Finality"
+Watchlist: "Список наблюдения"
+Settings: "Настройки"
+Logout: "Выход"
+Sign In: "Вход"
+Sign Up: "Регистрация"
+Support: "Поддержите"
+Epochs: "Эпохи"
+Blocks: "Блоки"
+Validators: "Валидаторы"
+Overview: "Обзор"
+Leaderboard: "Таблица лидеров"
+Slashings: "Slashings"
+Validator Leaderboard: "Таблица Валидаторов"
+Deposit Leaderboard: "Таблица Депозитов"
+Deposits: "Депозиты"
+Stats: "Статистика"
+Charts: "Диаграммы"
+Calculator: "Калькулятор"
+Dashboard: "Приборная доска"
+More: "Больше"
+Docs: "Документация"
+Pricing: "Цены"
+Knowledge Base: "Knowledge Base"
+Staking Services: "Услуги по Staking"
+Legal Notices: "Юридическая информация"
+Resources: "Ресурсы"
+Social Media: "Социальные сети"
+# /layout
+
+hero_t1: "Ethereum 2.0 Beacon Chain Explorer с открытым источником кодом"
+
+#recentBlocks
+Epoch: "Эра"
+Most recent blocks: "Последние блоки"
+View more: "Посмотреть больше"
+Status: "Статус"
+Time: "Время"
+Proposer: "Автор предложения"
+Next update in: "Следующее обновление в"
+Att: "Ат"
+#/recentBlocks
+
+#recentEpochs
+Most recent epochs: "Последние Эпохи"
+Final: "Завершено"
+Eligible: "Разрешенный"
+Voted: "Проголосовал"
+#/recentEpochs
+
+#networkStats
+Current Slot: "Текущий слот"
+Active Validators: "Активные валидаторы"
+Pending Validators: "Ожидающие валидаторы"
+Staked Ether: "Депозированый Ether"
+Average Balance: "Средний баланс"
+#/networkStats

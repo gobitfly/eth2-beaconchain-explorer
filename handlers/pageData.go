@@ -39,7 +39,6 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Lang:                  GetLanguage(r),
 	}
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
-
 	return data
 }
 
