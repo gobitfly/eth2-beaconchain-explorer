@@ -130,31 +130,20 @@ func CreateAPIKey(userID uint64) error {
 
 // GetUserAuthDataByAuthorizationCode checks an oauth code for validity, consumes the code and returns the userId on success
 func GetUserAuthDataByAuthorizationCode(code string) (*types.OAuthCodeData, error) {
-	data := types.OAuthCodeData{
-		UserID: 0,
-		AppID:  0,
-	}
-	rows, err := FrontendDB.Query("UPDATE oauth_codes SET consumed = true WHERE code = $1 AND "+
+	var rows []*types.OAuthCodeData
+	err := FrontendDB.Select(&rows, "UPDATE oauth_codes SET consumed = true WHERE code = $1 AND "+
 		"consumed = false AND created_ts + INTERVAL '5 minutes' > NOW() "+
 		"RETURNING user_id, app_id;", code)
-
-	defer rows.Close()
 
 	if err != nil {
 		return nil, err
 	}
 
-	for rows.Next() {
-		err := rows.Scan(&data.UserID, &data.AppID)
-		if err != nil {
-			return nil, err
+	for _, r := range rows {
+		if r.UserID > 0 {
+			return r, nil
 		}
 	}
-
-	if data.UserID > 0 {
-		return &data, nil
-	}
-
 	return nil, errors.New("no rows found")
 }
 
