@@ -2,8 +2,6 @@ package notify
 
 import (
 	"context"
-	"os"
-	"strings"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
@@ -15,22 +13,11 @@ var logger = logrus.New().WithField("module", "notify").WithField("service", "fi
 
 func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, error) {
 	ctx := context.Background()
-	//utils.Config.Frontend
 	opt := option.WithCredentialsFile("./firebaseadminsdk.json")
-	app, err := firebase.NewApp(context.Background(), nil, opt) //, opt)
+	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		logger.Errorf("error initializing app:  %v", err)
 		return nil, err
-	}
-	for _, e := range os.Environ() {
-		pair := strings.SplitN(e, "=", 2)
-		logger.Infof("env %v", pair)
-	}
-
-	logger.Infof("Firebase app %v", app)
-
-	for _, message := range messages {
-		logger.Infof("Firebase messages %v", message)
 	}
 
 	client, err := app.Messaging(ctx)

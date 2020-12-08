@@ -79,7 +79,11 @@ func AddAuthorizeCode(userId uint64, code string, appId uint64) error {
 // GetAppNameFromRedirectUri receives an oauth redirect_url and returns the registered app name, if exists
 func GetAppDataFromRedirectUri(callback string) (*types.OAuthAppData, error) {
 	data := []*types.OAuthAppData{}
-	FrontendDB.Select(&data, "SELECT id, app_name, redirect_uri, active, owner_id FROM oauth_apps WHERE active = true AND redirect_uri = $1", callback)
+	err := FrontendDB.Select(&data, "SELECT id, app_name, redirect_uri, active, owner_id FROM oauth_apps WHERE active = true AND redirect_uri = $1", callback)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(data) > 0 {
 		return data[0], nil
 	}
@@ -126,31 +130,20 @@ func CreateAPIKey(userID uint64) error {
 
 // GetUserAuthDataByAuthorizationCode checks an oauth code for validity, consumes the code and returns the userId on success
 func GetUserAuthDataByAuthorizationCode(code string) (*types.OAuthCodeData, error) {
-	data := types.OAuthCodeData{
-		UserID: 0,
-		AppID:  0,
-	}
-	rows, err := FrontendDB.Query("UPDATE oauth_codes SET consumed = true WHERE code = $1 AND "+
+	var rows []*types.OAuthCodeData
+	err := FrontendDB.Select(&rows, "UPDATE oauth_codes SET consumed = true WHERE code = $1 AND "+
 		"consumed = false AND created_ts + INTERVAL '5 minutes' > NOW() "+
 		"RETURNING user_id, app_id;", code)
-
-	defer rows.Close()
 
 	if err != nil {
 		return nil, err
 	}
 
-	for rows.Next() {
-		err := rows.Scan(&data.UserID, &data.AppID)
-		if err != nil {
-			return nil, err
+	for _, r := range rows {
+		if r.UserID > 0 {
+			return r, nil
 		}
 	}
-
-	if data.UserID > 0 {
-		return &data, nil
-	}
-
 	return nil, errors.New("no rows found")
 }
 
