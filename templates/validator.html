@@ -400,9 +400,12 @@
                     {{if not $deposited}}
                         <div class="row border-bottom p-3 mx-0">
                             <div class="col-md-2">Eligible for Activation:</div>
-                            <div class="col-md-10"><span title="{{.ActivationEligibilityTs}}" data-toggle="tooltip"
-                                                         aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span>
-                                (Epoch {{.ActivationEligibilityEpoch}})
+                            <div class="col-md-10">
+                                {{if eq .ActivationEpoch 9223372036854775807}}
+                                    -
+                                {{else}}
+                                    <span title="{{.ActivationEligibilityTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}">{{.ActivationEligibilityTs}}</span> (Epoch {{.ActivationEligibilityEpoch}})
+                                {{end}}
                             </div>
                         </div>
                         <div class="row border-bottom p-3 mx-0">
@@ -411,9 +414,12 @@
                             {{else}}
                                 <div class="col-md-2">Active since:</div>
                             {{end}}
-                            <div class="col-md-10"><span title="{{.ActivationTs}}" data-toggle="tooltip"
-                                                         aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
-                                (Epoch {{.ActivationEpoch}})
+                            <div class="col-md-10">
+                                {{if eq .ActivationEpoch 9223372036854775807}}
+                                    -
+                                {{else}}
+                                    <span title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> (Epoch {{.ActivationEpoch}})
+                                {{end}}
                             </div>
                         </div>
                         {{if (or (eq .Status "slashed") (eq .Status "exited"))}}
