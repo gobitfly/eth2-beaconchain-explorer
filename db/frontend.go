@@ -79,7 +79,11 @@ func AddAuthorizeCode(userId uint64, code string, appId uint64) error {
 // GetAppNameFromRedirectUri receives an oauth redirect_url and returns the registered app name, if exists
 func GetAppDataFromRedirectUri(callback string) (*types.OAuthAppData, error) {
 	data := []*types.OAuthAppData{}
-	FrontendDB.Select(&data, "SELECT id, app_name, redirect_uri, active, owner_id FROM oauth_apps WHERE active = true AND redirect_uri = $1", callback)
+	err := FrontendDB.Select(&data, "SELECT id, app_name, redirect_uri, active, owner_id FROM oauth_apps WHERE active = true AND redirect_uri = $1", callback)
+	if err != nil {
+		return nil, err
+	}
+	
 	if len(data) > 0 {
 		return data[0], nil
 	}
