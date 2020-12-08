@@ -2,18 +2,26 @@ package notify
 
 import (
 	"context"
+	"eth2-exporter/utils"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/api/option"
 )
 
 var logger = logrus.New().WithField("module", "firebase")
 
 func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, error) {
+	credentialsPath := utils.Config.Frontend.Notifications.FirebaseCredentialsPath
+	if credentialsPath == "" {
+		logger.Errorf("firebase credentials path not provided, disabling push notifications")
+		return nil, nil
+	}
+
 	ctx := context.Background()
-	//opt := option.WithCredentialsFile("./run-local/firebaseAdminSdk.json")
-	app, err := firebase.NewApp(context.Background(), nil) //, opt)
+	opt := option.WithCredentialsFile(credentialsPath)
+	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		logger.Errorf("error initializing app:  %v", err)
 		return nil, err
