@@ -20,10 +20,6 @@ func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, err
 		return nil, err
 	}
 
-	for _, message := range messages {
-		logger.Infof("Firebase messages %v", message)
-	}
-
 	client, err := app.Messaging(ctx)
 	if err != nil {
 		logger.Errorf("error initializing messaging: %v", err)
