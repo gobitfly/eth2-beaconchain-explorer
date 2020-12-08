@@ -141,7 +141,7 @@ func GetUserAuthDataByAuthorizationCode(code string) (*types.OAuthCodeData, erro
 	}
 
 	for _, r := range rows {
-		logger.Infof("debug auth_code row %v", r)
+		logger.Infof("debug auth_code row %v | %v", r.UserID, r.AppID)
 		if r.UserID > 0 {
 			return r, nil
 		}
