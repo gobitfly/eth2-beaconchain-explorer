@@ -72,7 +72,9 @@ func UpdatePassword(userId uint64, hash []byte) error {
 
 // AddAuthorizeCode registers a code that can be used in exchange for an access token
 func AddAuthorizeCode(userId uint64, code string, appId uint64) error {
-	_, err := FrontendDB.Exec("INSERT INTO oauth_codes (user_id, code, app_id, created_ts) VALUES($1, $2, $3, 'now')", userId, code, appId)
+	now := time.Now()
+	nowTs := now.Unix()
+	_, err := FrontendDB.Exec("INSERT INTO oauth_codes (user_id, code, app_id, created_ts) VALUES($1, $2, $3, TO_TIMESTAMP($4))", userId, code, appId, nowTs)
 	return err
 }
 
@@ -132,22 +134,19 @@ func CreateAPIKey(userID uint64) error {
 func GetUserAuthDataByAuthorizationCode(code string) (*types.OAuthCodeData, error) {
 	var rows []*types.OAuthCodeData
 	err := FrontendDB.Select(&rows, "UPDATE oauth_codes SET consumed = true WHERE code = $1 AND "+
-		"consumed = false AND created_ts + INTERVAL '5 minutes' > NOW() "+
+		"consumed = false AND created_ts + INTERVAL '35 minutes' > NOW() "+
 		"RETURNING user_id, app_id;", code)
 
-	logger.Infof("debug auth_code %v", code)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, r := range rows {
-		logger.Infof("debug auth_code row %v | %v", r.UserID, r.AppID)
 		if r.UserID > 0 {
 			return r, nil
 		}
 	}
 
-	logger.Infof("debug no rows found %v", code)
 	return nil, errors.New("no rows found")
 }
 
@@ -168,7 +167,7 @@ func GetByRefreshToken(claimUserID, claimAppID, claimDeviceID uint64, hashedRefr
 // InsertUserDevice Insert user device and return device id
 func InsertUserDevice(userID uint64, hashedRefreshToken string, name string, appID uint64) (uint64, error) {
 	var deviceID uint64
-	err := FrontendDB.Get(&deviceID, "INSERT INTO users_devices (user_id, refresh_token, device_name, app_id, created_ts) VALUES($1, $2, $3, $4, 'now') RETURNING id",
+	err := FrontendDB.Get(&deviceID, "INSERT INTO users_devices (user_id, refresh_token, device_name, app_id, created_ts) VALUES($1, $2, $3, $4, 'NOW()') RETURNING id",
 		userID, hashedRefreshToken, name, appID,
 	)
 
@@ -231,7 +230,7 @@ func UserClientEntry(userID uint64, clientName string, clientVersion int64, noti
 	}
 
 	_, err := FrontendDB.Query(
-		"INSERT INTO users_clients (user_id, client, client_version, notify_enabled, created_ts) VALUES($1, $2, $3, $4, 'now')"+
+		"INSERT INTO users_clients (user_id, client, client_version, notify_enabled, created_ts) VALUES($1, $2, $3, $4, 'NOW()')"+
 			"ON CONFLICT (user_id, client) "+
 			"DO UPDATE SET notify_enabled = $4"+updateClientVersion+";",
 		userID, clientName, clientVersion, notifyEnabled,
