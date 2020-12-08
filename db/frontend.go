@@ -83,7 +83,7 @@ func GetAppDataFromRedirectUri(callback string) (*types.OAuthAppData, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(data) > 0 {
 		return data[0], nil
 	}
