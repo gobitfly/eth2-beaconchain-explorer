@@ -289,6 +289,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 // BlockDepositData returns the deposits for a specific slot
 func BlockDepositData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -390,7 +391,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		tableData = append(tableData, []interface{}{
 			i + 1 + int(start),
 			utils.FormatPublicKey(deposit.PublicKey),
-			utils.FormatBalance(deposit.Amount, "ETH"),
+			utils.FormatBalance(deposit.Amount, currency),
 			deposit.WithdrawalCredentials,
 			deposit.Signature,
 		})

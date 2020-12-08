@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -69,6 +70,8 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -120,8 +123,8 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	for i, item := range data {
 		balanceHistoryChartData[i][0] = float64(utils.EpochToTime(item.Epoch).Unix() * 1000)
 		balanceHistoryChartData[i][1] = item.ValidatorCount
-		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9
-		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9
+		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9 * price.GetEthPrice(currency)
+		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9 * price.GetEthPrice(currency)
 	}
 
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
@@ -230,6 +233,8 @@ func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
 }
 
 func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -302,14 +307,19 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			[]interface{}{
-				fmt.Sprintf("%.4f ETH", float64(v.CurrentBalance)/float64(1e9)),
-				fmt.Sprintf("%.1f ETH", float64(v.EffectiveBalance)/float64(1e9)),
+				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
+				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
 			},
 			v.State,
-			[]interface{}{
+		}
+
+		if v.ActivationEpoch != 9223372036854775807 {
+			tableData[i] = append(tableData[i], []interface{}{
 				v.ActivationEpoch,
 				utils.EpochToTime(v.ActivationEpoch).Unix(),
-			},
+			})
+		} else {
+			tableData[i] = append(tableData[i], nil)
 		}
 
 		if v.ExitEpoch != 9223372036854775807 {
@@ -350,7 +360,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		// })
 
 		// tableData[i] = append(tableData[i], fmt.Sprintf("%.4f ETH", float64(v.Performance7d)/float64(1e9)))
-		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, "ETH"))
+		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, currency))
 	}
 
 	type dataType struct {

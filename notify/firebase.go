@@ -10,7 +10,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-var logger = logrus.New().WithField("module", "firebase")
+var logger = logrus.New().WithField("module", "notify").WithField("service", "firebase")
 
 func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, error) {
 	credentialsPath := utils.Config.Frontend.Notifications.FirebaseCredentialsPath

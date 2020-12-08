@@ -222,6 +222,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -287,7 +288,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	for _, entry := range wl {
 		tableData = append(tableData, []interface{}{
 			utils.FormatPublicKey(entry.Publickey),
-			utils.FormatBalance(entry.Balance, "ETH"),
+			utils.FormatBalance(entry.Balance, currency),
 			entry.Events,
 			// utils.FormatBalance(item.Balance),
 			// item.Events[0],

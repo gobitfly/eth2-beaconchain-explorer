@@ -49,6 +49,8 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 
 // Eth1DepositsData will return eth1-deposits as json
 func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -115,7 +117,7 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
 			utils.FormatPublicKey(d.PublicKey),
-			utils.FormatDepositAmount(d.Amount, "ETH"),
+			utils.FormatDepositAmount(d.Amount, currency),
 			utils.FormatEth1TxHash(d.TxHash),
 			utils.FormatTimestamp(d.BlockTs.Unix()),
 			utils.FormatEth1Block(d.BlockNumber),
@@ -161,6 +163,7 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 // Eth1DepositsData will return eth1-deposits as json
 func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
 	w.Header().Set("Content-Type", "application/json")
 	q := r.URL.Query()
 
@@ -221,7 +224,7 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	for i, d := range deposits {
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
-			utils.FormatBalance(d.Amount, "ETH"),
+			utils.FormatBalance(d.Amount, currency),
 			d.ValidCount,
 			d.InvalidCount,
 			d.PendingCount,
