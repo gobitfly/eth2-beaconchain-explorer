@@ -72,7 +72,8 @@ type Config struct {
 			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
 		} `yaml:"database"`
 		Notifications struct {
-			Enabled bool `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+			Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+			FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
 		} `yaml:"notifications"`
 		Stripe struct {
 			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
