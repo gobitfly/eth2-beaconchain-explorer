@@ -238,7 +238,6 @@ ul.multiselect input:focus {
 }
 
 .dashboard-header-content .stat::after {
-  content: ' Eth';
   font-size: 0.8rem;
   font-weight: 400;
   color: var(--gray);
