@@ -11,6 +11,7 @@ require (
 	github.com/chromedp/chromedp v0.5.3
 	github.com/cloudflare/roughtime v0.0.0-20200528200038-bacff06d032d // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
+	github.com/davecgh/go-spew v1.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ethereum/go-ethereum v1.9.14
 	github.com/go-openapi/spec v0.19.12 // indirect
