@@ -135,15 +135,19 @@ func GetUserAuthDataByAuthorizationCode(code string) (*types.OAuthCodeData, erro
 		"consumed = false AND created_ts + INTERVAL '5 minutes' > NOW() "+
 		"RETURNING user_id, app_id;", code)
 
+	logger.Infof("debug auth_code %v", code)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, r := range rows {
+		logger.Infof("debug auth_code row %v", r)
 		if r.UserID > 0 {
 			return r, nil
 		}
 	}
+
+	logger.Infof("debug no rows found %v", code)
 	return nil, errors.New("no rows found")
 }
 
