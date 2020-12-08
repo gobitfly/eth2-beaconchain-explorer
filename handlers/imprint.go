@@ -10,7 +10,7 @@ import (
 func Imprint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	imprintTemplate, err := template.ParseFiles("templates/layout.html", utils.Config.Frontend.Imprint)
+	imprintTemplate, err := template.New("index").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", utils.Config.Frontend.Imprint)
 
 	if err != nil {
 		logger.Errorf("error parsing imprint page template: %v", err)
