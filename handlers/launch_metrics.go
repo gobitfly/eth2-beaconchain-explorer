@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/utils"
-	"log"
 	"net/http"
 	"time"
 )
@@ -54,7 +53,6 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	log.Println("BLOCKS", blks)
 
 	currentSlot := utils.TimeToSlot(uint64(time.Now().Unix()))
 	currentEpoch := utils.EpochOfSlot(currentSlot)
