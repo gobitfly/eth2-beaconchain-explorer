@@ -1184,7 +1184,7 @@ func GetTotalValidatorsCount() (uint64, error) {
 // GetActiveValidatorCount will return the total-validator-count
 func GetActiveValidatorCount() (uint64, error) {
 	var count uint64
-	err := DB.Get(&count, "select count(*) from validstors where status in ('active_offline', 'active_online');")
+	err := DB.Get(&count, "select count(*) from validators where status in ('active_offline', 'active_online');")
 	return count, err
 }
 
