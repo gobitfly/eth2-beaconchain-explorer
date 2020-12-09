@@ -957,12 +957,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	var totalCount uint64
 	err = db.DB.Get(&totalCount, `
-		select
-			(
 				select count(*) from validator_balances vb
 				left join attestation_assignments a on vb.validatorindex = a.validatorindex and vb.epoch = a.epoch
 				left join blocks b on vb.validatorindex = b.proposer and vb.epoch = b.epoch
-				where vb.validatorindex = $1)`, index)
+				where vb.validatorindex = $1`, index)
 	if err != nil {
 		logger.Errorf("error retrieving totalCount of validator-history: %v", err)
 		http.Error(w, "Internal server error", 503)
