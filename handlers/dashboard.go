@@ -246,9 +246,6 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
-	latestEpoch := services.LatestEpoch()
-	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
-
 	var validators []*types.ValidatorsPageDataValidators
 	err = db.DB.Select(&validators, `
 		WITH
@@ -256,7 +253,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 				SELECT validatorindex, pa.status, count(*)
 				FROM proposal_assignments pa
 				INNER JOIN blocks b ON pa.proposerslot = b.slot AND b.status <> '3'
-				WHERE validatorindex = ANY($3)
+				WHERE validatorindex = ANY($1)
 				GROUP BY validatorindex, pa.status
 			)
 		SELECT
@@ -270,30 +267,18 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			validators.lastattestationslot,
 			validators.activationepoch,
 			validators.exitepoch,
-			a.state,
 			COALESCE(p1.count, 0) as executedproposals,
 			COALESCE(p2.count, 0) as missedproposals,
 			COALESCE(validator_performance.performance7d, 0) as performance7d,
-			COALESCE(validator_names.name, '') AS name
+			COALESCE(validator_names.name, '') AS name,
+		    validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		INNER JOIN (
-			SELECT validatorindex,
-			CASE 
-				WHEN exitepoch <= $1 then 'exited'
-				WHEN activationepoch > $1 then 'pending'
-				WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
-				WHEN slashed then 'slashing_online'
-				WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
-				ELSE 'active_online'
-			END AS state
-			FROM validators
-		) a ON a.validatorindex = validators.validatorindex
 		LEFT JOIN proposals p1 ON validators.validatorindex = p1.validatorindex AND p1.status = 1
 		LEFT JOIN proposals p2 ON validators.validatorindex = p2.validatorindex AND p2.status = 2
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
-		WHERE validators.validatorindex = ANY($3)
-		LIMIT 100`, latestEpoch, validatorOnlineThresholdSlot, filter)
+		WHERE validators.validatorindex = ANY($1)
+		LIMIT 100`, filter)
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator data")
@@ -311,10 +296,15 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
 			},
 			v.State,
-			[]interface{}{
+		}
+
+		if v.ActivationEpoch != 9223372036854775807 {
+			tableData[i] = append(tableData[i], []interface{}{
 				v.ActivationEpoch,
 				utils.EpochToTime(v.ActivationEpoch).Unix(),
-			},
+			})
+		} else {
+			tableData[i] = append(tableData[i], nil)
 		}
 
 		if v.ExitEpoch != 9223372036854775807 {

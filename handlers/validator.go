@@ -209,7 +209,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch, 
 			validators.lastattestationslot, 
 			COALESCE(validator_names.name, '') AS name,
-			COALESCE(validator_balances.balance, 0) AS balance 
+			COALESCE(validator_balances.balance, 0) AS balance,
+		    validators.status
 		FROM validators 
 		LEFT JOIN validator_balances 
 			ON validators.validatorindex = validator_balances.validatorindex 
@@ -361,30 +362,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(effectiveBalanceHistory))
 	for i, balance := range effectiveBalanceHistory {
 		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
-	}
-
-	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
-
-	if validatorPageData.Epoch > validatorPageData.ExitEpoch {
-		if validatorPageData.Slashed {
-			validatorPageData.Status = "slashed"
-		} else {
-			validatorPageData.Status = "exited"
-		}
-	} else if validatorPageData.Epoch < validatorPageData.ActivationEpoch {
-		validatorPageData.Status = "pending"
-	} else if validatorPageData.Slashed {
-		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < validatorOnlineThresholdSlot) {
-			validatorPageData.Status = "slashing_offline"
-		} else {
-			validatorPageData.Status = "slashing_online"
-		}
-	} else {
-		if validatorPageData.ActivationEpoch < services.LatestEpoch() && (validatorPageData.LastAttestationSlot == nil || *validatorPageData.LastAttestationSlot < validatorOnlineThresholdSlot) {
-			validatorPageData.Status = "active_offline"
-		} else {
-			validatorPageData.Status = "active_online"
-		}
 	}
 
 	if validatorPageData.Slashed {

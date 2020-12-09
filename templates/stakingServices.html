@@ -1,4 +1,5 @@
 {{ define "js"}}
+<script src="/js/requestInterval.js"></script>
 {{end}}
 
 {{ define "css"}}
@@ -270,6 +271,24 @@
                                                     class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
                                 </tr>
                                 <tr>
+                                    <td data-column="Service"><a href="https://stkr.io">STKR</a></td>
+                                    <td data-column="Validator key owner">Service</td>
+                                    <td data-column="Withdrawal key owner">Service</td>
+                                    <td data-column="Pool token">Yes</td>
+                                    <td data-column="3rd Party Software">No</td>
+                                    <td data-column="Min. Stake">0.5 ETH</td>
+                                    <td data-column="Fee">23% of rewards</td>
+                                    <td data-column="Open Source">Yes</td>
+                                    <td data-column="Social">
+                                        <a href="https://twitter.com/ankr" target="_blank"><i
+                                                    class="fab fa-twitter ml-1 mr-1"></i></a>
+                                        <a href="https://t.me/ankrnetwork" target="_blank"><i
+                                                    class="fab fa-telegram ml-1 mr-1"></i></a>
+                                        <a href="https://medium.com/ankr-network" target="_blank"><i
+                                                    class="fab fa-medium ml-1"></i></a>
+                                    </td>
+                                </tr>
+                                <tr>
                                     <td data-column="Service"><a href="https://stakewise.io/app/pool">Stakewise Pool</a>
                                     </td>
                                     <td data-column="Validator key owner">Service</td>
@@ -303,24 +322,7 @@
                                                 href="https://twitter.com/stakewise_io" target="_blank"><i
                                                     class="fab fa-twitter ml-1 mr-1"></i></a></td>
                                 </tr>
-                                <tr>
-                                    <td data-column="Service"><a href="https://stkr.io">Stkr</a></td>
-                                    <td data-column="Validator key owner">Service</td>
-                                    <td data-column="Withdrawal key owner">Service</td>
-                                    <td data-column="Pool token">Yes</td>
-                                    <td data-column="3rd Party Software">No</td>
-                                    <td data-column="Min. Stake">0.5 ETH</td>
-                                    <td data-column="Fee">23% of rewards</td>
-                                    <td data-column="Open Source">Yes</td>
-                                    <td data-column="Social">
-                                        <a href="https://twitter.com/ankr" target="_blank"><i
-                                                    class="fab fa-twitter ml-1 mr-1"></i></a>
-                                        <a href="https://t.me/ankrnetwork" target="_blank"><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i></a>
-                                        <a href="https://medium.com/ankr-network" target="_blank"><i
-                                                    class="fab fa-medium ml-1"></i></a>
-                                    </td>
-                                </tr>
+                               
                                 <tr>
                                     <td data-column="Service"><a href="https://www.bloxstaking.com/">Bloxstaking</a>
                                     </td>
@@ -329,7 +331,7 @@
                                     <td data-column="Pool token">No</td>
                                     <td data-column="3rd Party Software">Yes</td>
                                     <td data-column="Min. Stake">32 ETH</td>
-                                    <td data-column="Fee">?</td>
+                                    <td data-column="Fee">US$180/validator/one-time</td>
                                     <td data-column="Open Source">Yes</td>
                                     <td data-column="Social"><a href="https://twitter.com/Blox_Staking" target="_blank"><i
                                                     class="fab fa-twitter ml-1 mr-1"></i></a><a
@@ -416,10 +418,10 @@
                                 </tr>
                                 <tr>
                                     <td data-column="Service"><a href="https://staked.us/">StakedUs</a></td>
-                                    <td data-column="Validator key owner">?</td>
-                                    <td data-column="Withdrawal key owner"> ?</td>
-                                    <td data-column="Pool token"> ?</td>
-                                    <td data-column="3rd Party Software"> ?</td>
+                                    <td data-column="Validator key owner">Service</td>
+                                    <td data-column="Withdrawal key owner">User</td>
+                                    <td data-column="Pool token">No</td>
+                                    <td data-column="3rd Party Software">No</td>
                                     <td data-column="Min. Stake">32 ETH</td>
                                     <td data-column="Fee">US$5/validator/month</td>
                                     <td data-column="Open Source">No</td>
@@ -574,9 +576,9 @@
                                     <td data-column="Validator key owner">?</td>
                                     <td data-column="Withdrawal key owner">?</td>
                                     <td data-column="Pool token">?</td>
-                                    <td data-column="3rd Party Software">Yes</td>
+                                    <td data-column="3rd Party Software">?</td>
                                     <td data-column="Min. Stake">?</td>
-                                    <td data-column="Fee">10%</td>
+                                    <td data-column="Fee">?</td>
                                     <td data-column="Open Source"><a href="https://github.com/stereum-dev">Yes</a></td>
                                     <td data-column="Social"><a href="https://discord.gg/8Znj8K6GjN" target="_blank"><i
                                                     class="fab fa-discord ml-1 mr-1"></i></a><i
@@ -601,12 +603,54 @@
                                                     class="fab fa-telegram ml-1 mr-1"></i></a><a
                                                 href="mailto:hello@guarda.com"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a>
                                     </td>
-                                </tr>
+								</tr>
+								<tr>
+                                    <td data-column="Service"><a href="https://codefi.consensys.net/staking">Codefi Staking</a></td>
+                                    <td data-column="Validator key owner">?</td>
+                                    <td data-column="Withdrawal key owner"> ?</td>
+                                    <td data-column="Pool token"> ?</td>
+                                    <td data-column="3rd Party Software"> ?</td>
+                                    <td data-column="Min. Stake">Any amount</td>
+                                    <td data-column="Fee">?</td>
+                                    <td data-column="Open Source">No</td>
+                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a
+										href="https://twitter.com/ConsenSysCodefi" target="_blank"><i
+											class="fab fa-twitter ml-1 mr-1"></i></a><i
+											class="fab fa-telegram ml-1 mr-1"></i></a><i 
+											class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+								</tr>
+								<tr>
+                                    <td data-column="Service"><a href="https://www.stafi.io/">StaFi</a></td>
+                                    <td data-column="Validator key owner">?</td>
+                                    <td data-column="Withdrawal key owner"> ?</td>
+                                    <td data-column="Pool token"> ?</td>
+                                    <td data-column="3rd Party Software"> Yes</td>
+                                    <td data-column="Min. Stake">0.01 ETH</td>
+                                    <td data-column="Fee">20% of rewards</td>
+                                    <td data-column="Open Source">Yes</td>
+                                    <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a
+										href="https://twitter.com/Stafi_Protocol" target="_blank"><i
+											class="fab fa-twitter ml-1 mr-1"></i></a><i
+											class="fab fa-telegram ml-1 mr-1"></i></a><i 
+											class="fa fa-mail-bulk ml-1 mr-1"></i></a>
+								</tr>
+								<tr>
+									<td data-column="Service"><a href="https://atomicwallet.io">Atomic Wallet</a></td>
+									<td data-column="Validator key owner">?</td>
+									<td data-column="Withdrawal key owner">?</td>
+									<td data-column="Pool token">No</td>
+									<td data-column="3rd Party Software">No</td>
+									<td data-column="Min. Stake">Any amount</td>
+									<td data-column="Fee">?</td>
+									<td data-column="Open Source">No</td>
+									<td data-column="Social"><a href="https://twitter.com/atomicwallet" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/AtomicWallet" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:support@atomicwallet.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
+								</tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+                {{ template "bannerStakingServices" }}
             </section>
             <section class="my-5">
                 <div class="row">
@@ -680,7 +724,7 @@
                                                 <input type="text" class="form-control" id="open" required name="open"
                                                        placeholder="Ex. Yes, https://github.com/repo">
                                             </div>
-                                            <div class="form-group">
+                                            <div class="form-group col-md-6">
                                                 <label for="links">Social Links (required)</label>
                                                 <input type="text" class="form-control" id="links" required name="links"
                                                        placeholder="Ex. https://discord.com/xyz, https://twitter.com/example....">

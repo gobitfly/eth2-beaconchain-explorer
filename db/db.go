@@ -810,6 +810,32 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 		}
 	}
 
+	logger.Infof("saving validator status")
+	var latestBlock uint64
+	err := DB.Get(&latestBlock, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
+	if err != nil {
+		return err
+	}
+
+	thresholdSlot := latestBlock - 64
+	if latestBlock < 64 {
+		thresholdSlot = 0
+	}
+
+	s := time.Now()
+	_, err = tx.Exec(`UPDATE validators SET status = CASE 
+				WHEN exitepoch <= $1 then 'exited'
+				WHEN activationepoch > $1 then 'pending'
+				WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
+				WHEN slashed then 'slashing_online'
+				WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
+				ELSE 'active_online'
+			END`, latestBlock/32, thresholdSlot)
+	if err != nil {
+		return err
+	}
+	logger.Infof("saving validator status completed, took %v", time.Since(s))
+
 	return nil
 }
 

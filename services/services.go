@@ -361,7 +361,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance), currency))
 
 	var epochHistory []*types.IndexPageEpochHistory
-	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 ORDER BY epoch", epoch)
+	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epoch-1600)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
 	}

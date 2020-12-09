@@ -43,26 +43,6 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	return notificationsByUserID
 }
 
-func collectDummy() map[uint64]map[types.EventName][]types.Notification {
-	notificationsByUserID := map[uint64]map[types.EventName][]types.Notification{}
-
-	n := &validatorGotSlashedNotification{
-		SubscriptionID: 4,
-		ValidatorIndex: 9,
-		Slasher:        8,
-		Epoch:          4,
-		Reason:         "looking funny",
-	}
-	if _, exists := notificationsByUserID[1]; !exists {
-		notificationsByUserID[1] = map[types.EventName][]types.Notification{}
-	}
-	if _, exists := notificationsByUserID[1][n.GetEventName()]; !exists {
-		notificationsByUserID[1][n.GetEventName()] = []types.Notification{}
-	}
-	notificationsByUserID[1][n.GetEventName()] = append(notificationsByUserID[1][n.GetEventName()], n)
-	return notificationsByUserID
-}
-
 func sendNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
 	sendEmailNotifications(notificationsByUserID)
 	sendPushNotifications(notificationsByUserID)
@@ -83,7 +63,6 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 	for userID, userNotifications := range notificationsByUserID {
 		userTokens, exists := tokensByUserID[userID]
 		if !exists {
-			logger.Errorf("error when sending push-notification: could not find tokens for user %v", userID)
 			continue
 		}
 
