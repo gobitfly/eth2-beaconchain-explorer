@@ -164,7 +164,7 @@
                     <td>{{formatEth1TxHash $deposit.TxHash}}</td>
                     <td>{{formatEth1Block $deposit.BlockNumber}}</td>
                     <td>{{formatTimestamp $deposit.BlockTs}}</td>
-                    <td>{{formatDepositAmount $deposit.Amount}}</td>
+                    <td>{{formatDepositAmount $deposit.Amount $.Currency}}</td>
                     <td>{{$deposit.ValidSignature}}</td>
                 </tr>
             {{end}}
@@ -298,7 +298,7 @@
                         <td>{{epochOfSlot $deposit.BlockSlot | formatEpoch}}</td>
                         <td>{{formatBlockSlot $deposit.BlockSlot}}</td>
                         <td>{{formatSlotToTimestamp $deposit.BlockSlot}}</td>
-                        <td>{{formatDepositAmount $deposit.Amount}}</td>
+                        <td>{{formatDepositAmount $deposit.Amount $.Currency}}</td>
                         <!-- <td>{{formatHash $deposit.Proof}}</td> -->
                         <td>{{formatHash $deposit.Withdrawalcredentials}}</td>
                         <td>{{formatHash $deposit.Signature}}</td>
@@ -356,15 +356,15 @@
     <tbody>
         <tr>
             <th scope="row">Day</th>
-            <td>{{.Income1d | formatIncome}}</td>
+            <td>{{formatIncome .Income1d $.Currency}}</td>
         </tr>
         <tr>
             <th scope="row">Week</th>
-            <td>{{.Income7d | formatIncome}}</td>
+            <td>{{formatIncome .Income7d $.Currency}}</td>
         </tr>
         <tr>
             <th scope="row">Month</th>
-            <td>{{.Income31d | formatIncome}}</td>
+            <td>{{formatIncome .Income31d $.Currency}}</td>
         </tr>
         <tr>
             <th scope="row">APR <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="far fa-question-circle"></i></span></th>
