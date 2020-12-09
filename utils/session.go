@@ -13,6 +13,7 @@ var SessionStore *sessions.CookieStore
 // InitSessionStore initializes SessionStore with the given secret.
 func InitSessionStore(secret string) {
 	SessionStore = sessions.NewCookieStore([]byte(secret))
+	SessionStore.Options.HttpOnly = true
 }
 
 func SetFlash(w http.ResponseWriter, r *http.Request, name string, value string) {

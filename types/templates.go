@@ -26,7 +26,9 @@ type PageData struct {
 	FinalizationDelay     uint64
 	Mainnet               bool
 	DepositContract       string
-	EthPrice              int
+	EthPrice              float64
+	Currency              string
+	ExchangeRate          float64
 }
 
 // Meta is a struct to hold metadata about the page
@@ -43,13 +45,13 @@ type Meta struct {
 
 //LatestState is a struct to hold data for the banner
 type LatestState struct {
-	LastProposedSlot      uint64 `json:"lastProposedSlot"`
-	CurrentSlot           uint64 `json:"currentSlot"`
-	CurrentEpoch          uint64 `json:"currentEpoch"`
-	CurrentFinalizedEpoch uint64 `json:"currentFinalizedEpoch"`
-	FinalityDelay         uint64 `json:"finalityDelay"`
-	IsSyncing             bool   `json:"syncing"`
-	EthPrice              int    `json:"ethPrice"`
+	LastProposedSlot      uint64  `json:"lastProposedSlot"`
+	CurrentSlot           uint64  `json:"currentSlot"`
+	CurrentEpoch          uint64  `json:"currentEpoch"`
+	CurrentFinalizedEpoch uint64  `json:"currentFinalizedEpoch"`
+	FinalityDelay         uint64  `json:"finalityDelay"`
+	IsSyncing             bool    `json:"syncing"`
+	EthPrice              float64 `json:"ethPrice"`
 }
 
 type Stats struct {
@@ -560,8 +562,14 @@ type GenericChartData struct {
 	ShowGapHider                    bool
 	XAxisLabelsFormatter            template.JS
 	TooltipFormatter                template.JS
+	TooltipShared                   bool
+	TooltipUseHTML                  bool
+	TooltipSplit                    bool
+	TooltipFollowPointer            bool
 	PlotOptionsSeriesEventsClick    template.JS
 	PlotOptionsPie                  template.JS
+	DataLabelsEnabled               bool
+	DataLabelsFormatter             template.JS
 	PlotOptionsSeriesCursor         string
 	Title                           string                    `json:"title"`
 	Subtitle                        string                    `json:"subtitle"`
@@ -579,6 +587,7 @@ type GenericChartDataSeries struct {
 	Data  interface{} `json:"data"`
 	Stack string      `json:"stack,omitempty"`
 	Type  string      `json:"type,omitempty"`
+	Color string      `json:"color,omitempty"`
 }
 
 // ChartsPageData is an array to hold charts for the charts-page
@@ -791,4 +800,7 @@ type RateLimitError struct {
 
 func (e *RateLimitError) Error() string {
 	return fmt.Sprintf("rate limit has been exceeded, %v left", e.TimeLeft)
+}
+
+type Empty struct {
 }

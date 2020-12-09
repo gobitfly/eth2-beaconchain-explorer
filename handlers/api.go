@@ -564,7 +564,7 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT attestation_assignments.* FROM attestation_assignments LEFT JOIN validators ON validators.validatorindex = attestation_assignments.validatorindex WHERE (attestation_assignments.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) AND epoch > $3 ORDER BY validatorindex, epoch desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-10)
+	rows, err := db.DB.Query("SELECT attestation_assignments.* FROM attestation_assignments LEFT JOIN validators ON validators.validatorindex = attestation_assignments.validatorindex WHERE (validators.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) AND epoch > $3 ORDER BY validatorindex, epoch desc LIMIT 100", pq.Array(queryIndices), queryPubkeys, services.LatestEpoch()-10)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -794,7 +794,7 @@ func getDeviceNameFromUA(userAgent string) string {
 // @Failure 400 {object} types.ApiResponse
 // @Failure 500 {object} types.ApiResponse
 // @Security ApiKeyAuth
-// @Router /api/v1/user/dashboard/save [post]
+// @Router /api/v1/mobile/notify/register [post]
 func MobileNotificationUpdatePOST(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")

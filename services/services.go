@@ -2,13 +2,12 @@ package services
 
 import (
 	"database/sql"
-	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -31,19 +30,12 @@ var depositThresholdReached atomic.Value
 
 var logger = logrus.New().WithField("module", "services")
 
-type EthPrice struct {
-	USD float64
-}
-
-var ethPrice *EthPrice = new(EthPrice)
-
 // Init will initialize the services
 func Init() {
 	ready.Add(4)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
-	go updateEthPrice()
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()
 	} else {
@@ -153,6 +145,8 @@ func indexPageDataUpdater() {
 }
 
 func getIndexPageData() (*types.IndexPageData, error) {
+	currency := "ETH"
+
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.Mainnet
 
@@ -287,9 +281,9 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	for _, epoch := range epochs {
 		epoch.Ts = utils.EpochToTime(epoch.Epoch)
 		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
-		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther)
-		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther)
-		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate)
+		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther, currency)
+		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther, currency)
+		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
 	}
 	data.Epochs = epochs
 
@@ -365,7 +359,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
 	}
-	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance)))
+	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance), currency))
 
 	var epochHistory []*types.IndexPageEpochHistory
 	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 ORDER BY epoch", epoch)
@@ -382,10 +376,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			}
 		}
 
-		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther))
-		if len(data.StakedEther) < 1 {
-			data.StakedEther = string(utils.FormatBalance(0))
-		}
+		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther, currency))
 		data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
 	}
 
@@ -399,29 +390,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
 
 	return data, nil
-}
-
-func updateEthPrice() {
-	for true {
-		resp, err := http.Get("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD")
-
-		if err != nil {
-			logger.Errorf("error retrieving ETH price: %v", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		defer resp.Body.Close()
-
-		err = json.NewDecoder(resp.Body).Decode(&ethPrice)
-
-		if err != nil {
-			logger.Errorf("error decoding ETH price json response to struct: %v", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-		time.Sleep(time.Minute)
-	}
 }
 
 // LatestEpoch will return the latest epoch
@@ -463,7 +431,7 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
-	data.EthPrice = GetEthPrice()
+	data.EthPrice = price.GetEthPrice("USD")
 	return data
 }
 
@@ -498,38 +466,3 @@ func GetLatestStats() *types.Stats {
 func IsSyncing() bool {
 	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
 }
-
-func GetEthPrice() int {
-	return int(ethPrice.USD)
-}
-
-// func GetAvgOptimalInclusionDistances(validatorIndex uint64) [4]template.HTML {
-// 	var avgDistance []*types.AvgInclusionDistance
-// 	var distances [4]template.HTML
-// 	err := db.DB.Select(&avgDistance, `
-// 			SELECT
-// 				attestation_assignments.inclusionslot,
-// 				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0) AS earliestinclusionslot
-// 			FROM attestation_assignments
-// 			WHERE validatorindex = $1
-// 			ORDER BY attesterslot DESC, epoch DESC
-// 			LIMIT 100`, validatorIndex)
-
-// 	if err != nil {
-// 		logger.Errorf("error retrieving validator attestations data: %v", err)
-// 		return distances
-// 	}
-
-// 	distances[0] = utils.FormatInclusionDelay(avgDistance[0].InclusionSlot, avgDistance[0].InclusionSlot-avgDistance[0].EarliestInclusionSlot)
-// 	for i, item :=range avgDistance{
-// 		if i<7{ //blocks
-// 			distances[1]+=item.InclusionSlot-item.EarliestInclusionSlot
-// 		}
-// 		if i<31{ //blocks
-// 			distances[3]+=item.InclusionSlot-item.EarliestInclusionSlot
-// 		}
-// 		distances[4]+=item.InclusionSlot-item.EarliestInclusionSlot
-// 	}
-
-// 	return distances
-// }

@@ -3,10 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -57,29 +57,9 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	dashboardData := types.DashboardData{}
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Dashboard - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/dashboard",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "dashboard",
-		Data:                  dashboardData,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard")
+	data.HeaderAd = true
+	data.Data = dashboardData
 
 	err := dashboardTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -90,6 +70,8 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -141,8 +123,8 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	for i, item := range data {
 		balanceHistoryChartData[i][0] = float64(utils.EpochToTime(item.Epoch).Unix() * 1000)
 		balanceHistoryChartData[i][1] = item.ValidatorCount
-		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9
-		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9
+		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9 * price.GetEthPrice(currency)
+		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9 * price.GetEthPrice(currency)
 	}
 
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
@@ -251,6 +233,8 @@ func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
 }
 
 func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -323,8 +307,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			[]interface{}{
-				fmt.Sprintf("%.4f ETH", float64(v.CurrentBalance)/float64(1e9)),
-				fmt.Sprintf("%.1f ETH", float64(v.EffectiveBalance)/float64(1e9)),
+				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
+				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
 			},
 			v.State,
 			[]interface{}{
@@ -371,7 +355,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		// })
 
 		// tableData[i] = append(tableData[i], fmt.Sprintf("%.4f ETH", float64(v.Performance7d)/float64(1e9)))
-		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d))
+		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, currency))
 	}
 
 	type dataType struct {

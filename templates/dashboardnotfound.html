@@ -1,5 +1,8 @@
-{{ define "js"}} {{end}} {{ define "css"}} {{end}} {{ define "content"}}
-<div class="container mt-2">
-<h1 class="mt-4 text-center">Sorry but we could not find the dashboard you are looking for</h1>
-</div>
+{{ define "js"}} {{end}} {{ define "css"}} {{end}}
+{{ define "content"}}
+    {{with .Data}}
+        <div class="container mt-2">
+            <h1 class="mt-4 text-center">Sorry but we could not find the dashboard you are looking for</h1>
+        </div>
+    {{end}}
 {{end}}

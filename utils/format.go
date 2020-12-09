@@ -2,10 +2,12 @@ package utils
 
 import (
 	"bytes"
+	"eth2-exporter/price"
 	"fmt"
 	"html"
 	"html/template"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +29,8 @@ func FormatAttestationStatus(status uint64) template.HTML {
 		return "<span class=\"badge bg-success text-white\">Attested</span>"
 	} else if status == 2 {
 		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+	} else if status == 3 {
+		return "<span class=\"badge bg-warning text-dark\">Orphaned</span>"
 	} else {
 		return "Unknown"
 	}
@@ -38,9 +42,12 @@ func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint6
 }
 
 // FormatBalance will return a string for a balance
-func FormatBalance(balance uint64) template.HTML {
+func FormatBalance(balanceInt uint64, currency string) template.HTML {
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+
 	p := message.NewPrinter(language.English)
-	rb := []rune(p.Sprintf("%.2f", float64(balance)/float64(1e9)))
+	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
 	// remove trailing zeros
 	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
 		for rb[len(rb)-1] == '0' {
@@ -51,7 +58,7 @@ func FormatBalance(balance uint64) template.HTML {
 
 		}
 	}
-	return template.HTML(string(rb) + " ETH")
+	return template.HTML(string(rb) + " " + currency)
 }
 
 // FormatBalanceChange will return a string for a balance change
@@ -67,9 +74,12 @@ func FormatBalanceChange(balance *int64) template.HTML {
 }
 
 // FormatBalance will return a string for a balance
-func FormatBalanceShort(balance uint64) template.HTML {
+func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+
 	p := message.NewPrinter(language.English)
-	rb := []rune(p.Sprintf("%.2f", float64(balance)/float64(1e9)))
+	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
 	// remove trailing zeros
 	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
 		for rb[len(rb)-1] == '0' {
@@ -80,7 +90,7 @@ func FormatBalanceShort(balance uint64) template.HTML {
 
 		}
 	}
-	return template.HTML(string(rb))
+	return template.HTML(rb)
 }
 
 // FormatBlockRoot will return the block-root formated as html
@@ -141,18 +151,24 @@ func FormatBlockStatus(status uint64) template.HTML {
 }
 
 // FormatCurrentBalance will return the current balance formated as string with 9 digits after the comma (1 gwei = 1e9 eth)
-func FormatCurrentBalance(balance uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.5f ETH", float64(balance)/float64(1e9)))
+func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+	return template.HTML(fmt.Sprintf("%.5f %v", balance*exchangeRate, currency))
 }
 
 // FormatDepositAmount will return the deposit amount formated as string
-func FormatDepositAmount(amount uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.0f ETH", float64(amount)/float64(1e9)))
+func FormatDepositAmount(balanceInt uint64, currency string) template.HTML {
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+	return template.HTML(fmt.Sprintf("%.0f %v", balance*exchangeRate, currency))
 }
 
 // FormatEffectiveBalance will return the effective balance formated as string with 1 digit after the comma
-func FormatEffectiveBalance(balance uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("%.1f ETH", float64(balance)/float64(1e9)))
+func FormatEffectiveBalance(balanceInt uint64, currency string) template.HTML {
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+	return template.HTML(fmt.Sprintf("%.1f %v", balance*exchangeRate, currency))
 }
 
 // FormatEpoch will return the epoch formated as html
@@ -195,9 +211,9 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
-func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
+func FormatGlobalParticipationRate(e uint64, r float64, currency string) template.HTML {
 	p := message.NewPrinter(language.English)
-	rr := fmt.Sprintf("%.0f%%", r*100)
+	rr := fmt.Sprintf("%.1f%%", r*100)
 	tpl := `
 	<div style="position:relative;width:inherit;height:inherit;">
 	  %.8[1]g <small class="text-muted ml-3">(%[2]v)</small>
@@ -205,7 +221,7 @@ func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
 		<div class="progress-bar" role="progressbar" style="width: %[2]v;" aria-valuenow="%[2]v" aria-valuemin="0" aria-valuemax="100"></div>
 	  </div>
 	</div>`
-	return template.HTML(p.Sprintf(tpl, float64(e)/1e9, rr))
+	return template.HTML(p.Sprintf(tpl, float64(e)/1e9*price.GetEthPrice(currency), rr))
 }
 
 // FormatGraffiti will return the graffiti formated as html
@@ -239,19 +255,28 @@ func FormatHash(hash []byte) template.HTML {
 }
 
 // FormatIncome will return a string for a balance
-func FormatIncome(income int64) template.HTML {
-	if income > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f ETH</b></span>`, float64(income)/float64(1e9)))
-	} else if income < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f ETH</b></span>`, float64(income)/float64(1e9)))
+func FormatIncome(balanceInt int64, currency string) template.HTML {
+
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt) / float64(1e9)
+
+	if balance > 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f %v</b></span>`, balance*exchangeRate, currency))
+	} else if balance < 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f %v</b></span>`, balance*exchangeRate, currency))
 	} else {
-		return template.HTML(fmt.Sprintf(`<b>%.4f ETH</b>`, float64(income)/float64(1e9)))
+		return template.HTML(fmt.Sprintf(`<b>%.4f %v</b>`, balance*exchangeRate, currency))
 	}
 }
 
 // FormatPercentage will return a string for a percentage
 func FormatPercentage(percentage float64) string {
 	return fmt.Sprintf("%.0f", percentage*float64(100))
+}
+
+// FormatPercentageWithPrecision will return a string for a percentage
+func FormatPercentageWithPrecision(percentage float64, precision int) string {
+	return fmt.Sprintf("%."+strconv.Itoa(precision)+"f", percentage*float64(100))
 }
 
 // FormatPublicKey will return html formatted text for a validator-public-key
@@ -402,6 +427,8 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	tooltipText := "The attestation inclusion effectiveness should be 80% or higher to minimize reward penalties."
 	if eff == 0 {
 		return ""
+	} else if eff >= 100 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Perfect <i class=\"fas fa-grin-stars\"></i>", tooltipText, eff))
 	} else if eff > 80 {
 		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Good <i class=\"fas fa-smile\"></i></span>", tooltipText, eff))
 	} else if eff > 60 {

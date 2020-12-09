@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
@@ -71,6 +72,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorInt64":                    FormatValidatorInt64,
 		"formatValidatorStatus":                   FormatValidatorStatus,
 		"formatPercentage":                        FormatPercentage,
+		"formatPercentageWithPrecision":           FormatPercentageWithPrecision,
 		"formatPublicKey":                         FormatPublicKey,
 		"formatSlashedValidator":                  FormatSlashedValidator,
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
@@ -204,7 +206,7 @@ func MustParseHex(hexString string) []byte {
 
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Headers:", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*, Authorization")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "*")
 		if r.Method == "OPTIONS" {
@@ -382,4 +384,8 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 	key := apiKey[:15]
 	apiKeyBase64 := base64.StdEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
+}
+
+func ExchangeRateForCurrency(currency string) float64 {
+	return price.GetEthPrice(currency)
 }

@@ -3,10 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -41,24 +39,9 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/validators/eth1deposits?q="+search, 301)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
-		data := &types.PageData{
-			HeaderAd: true,
-			Meta: &types.Meta{
-				Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-				GATag:       utils.Config.Frontend.GATag,
-			},
-			ShowSyncingMessage:    services.IsSyncing(),
-			Active:                "search",
-			Data:                  nil,
-			User:                  getUser(w, r),
-			Version:               version.Version,
-			ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-			ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-			ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-			CurrentEpoch:          services.LatestEpoch(),
-			CurrentSlot:           services.LatestSlot(),
-			EthPrice:              services.GetEthPrice(),
-		}
+		data := InitPageData(w, r, "search", "/search", "")
+		data.HeaderAd = true
+
 		err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -115,7 +98,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		result = &types.SearchAheadValidatorsResult{}
 		err = db.DB.Select(result, `
 			SELECT
-				DISTINCT validatorindex AS index,
+				validatorindex AS index,
 				ENCODE(pubkey::bytea, 'hex') AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
@@ -126,7 +109,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "eth1_addresses":
 		result = &types.SearchAheadEth1Result{}
 		err = db.DB.Select(result, `
-			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
+			SELECT ENCODE(from_address::bytea, 'hex') as from_address
 			FROM eth1_deposits
 			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
 			LIMIT 10`, search+"%")
@@ -134,7 +117,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
 		err = db.DB.Select(result, `
-			SELECT DISTINCT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
+			SELECT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE CAST(validatorindex AS text) LIKE $1

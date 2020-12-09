@@ -7,7 +7,6 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -45,34 +44,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	var index uint64
 	var err error
-	user := getUser(w, r)
 
 	validatorPageData := types.ValidatorPageData{}
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "validators",
-		Data:                  nil,
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
-
-	validatorPageData.NetworkStats = services.LatestIndexPageData()
-	validatorPageData.User = user
+	data := InitPageData(w, r, "validators", "/validators", "")
+	data.HeaderAd = true
+	validatorPageData.User = data.User
 
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
 	if err != nil {
@@ -176,7 +153,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			filter := db.WatchlistFilter{
-				UserId:         user.UserID,
+				UserId:         data.User.UserID,
 				Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
 				Tag:            types.ValidatorTagsWatchlist,
 				JoinValidators: false,
@@ -269,7 +246,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filter := db.WatchlistFilter{
-		UserId:         user.UserID,
+		UserId:         data.User.UserID,
 		Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
 		Tag:            types.ValidatorTagsWatchlist,
 		JoinValidators: false,
@@ -452,15 +429,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, `
-	SELECT 
-		COALESCE(AVG(1 + inclusionslot - COALESCE((SELECT MIN(slot) 
-	FROM 
-		blocks 
-	WHERE 
-		slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0)), 0) 
-	FROM 
-		attestation_assignments 
-	WHERE epoch > $1 AND validatorindex = $2 AND inclusionslot > 0
+	SELECT COALESCE(
+		AVG(1 + inclusionslot - COALESCE((
+			SELECT MIN(slot) 
+			FROM blocks 
+			WHERE slot > aa.attesterslot AND blocks.status = '1'
+		), 0)
+	), 0) 
+	FROM attestation_assignments aa
+	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+	WHERE aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
 	`, int64(data.CurrentEpoch)-100, index)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
@@ -668,13 +646,20 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		var blocks []*types.ValidatorAttestation
 		err = db.DB.Select(&blocks, `
 			SELECT 
-				attestation_assignments.epoch, 
-				attestation_assignments.attesterslot, 
-				attestation_assignments.committeeindex, 
-				attestation_assignments.status, 
-				attestation_assignments.inclusionslot, 
-				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0) AS earliestinclusionslot 
-			FROM attestation_assignments 
+				aa.epoch, 
+				aa.attesterslot, 
+				aa.committeeindex, 
+				CASE 
+					WHEN blocks.status = '3' THEN '3'
+					ELSE aa.status
+				END AS status,
+				CASE 
+					WHEN blocks.status = '3' THEN 0
+					ELSE aa.inclusionslot
+				END AS inclusionslot,
+				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > aa.attesterslot AND blocks.status = '1'), 0) AS earliestinclusionslot 
+			FROM attestation_assignments aa
+			LEFT JOIN blocks on blocks.slot = aa.inclusionslot
 			WHERE validatorindex = $1 
 			ORDER BY attesterslot DESC, epoch DESC
 			LIMIT $2 OFFSET $3`, index, length, start)
