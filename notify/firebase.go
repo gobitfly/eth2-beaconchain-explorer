@@ -2,8 +2,7 @@ package notify
 
 import (
 	"context"
-	"os"
-	"strings"
+	"eth2-exporter/utils"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/messaging"
@@ -14,23 +13,18 @@ import (
 var logger = logrus.New().WithField("module", "notify").WithField("service", "firebase")
 
 func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, error) {
+	credentialsPath := utils.Config.Frontend.Notifications.FirebaseCredentialsPath
+	if credentialsPath == "" {
+		logger.Errorf("firebase credentials path not provided, disabling push notifications")
+		return nil, nil
+	}
+
 	ctx := context.Background()
-	//utils.Config.Frontend
-	opt := option.WithCredentialsFile("./firebaseadminsdk.json")
-	app, err := firebase.NewApp(context.Background(), nil, opt) //, opt)
+	opt := option.WithCredentialsFile(credentialsPath)
+	app, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
 		logger.Errorf("error initializing app:  %v", err)
 		return nil, err
-	}
-	for _, e := range os.Environ() {
-		pair := strings.SplitN(e, "=", 2)
-		logger.Infof("env %v", pair)
-	}
-
-	logger.Infof("Firebase app %v", app)
-
-	for _, message := range messages {
-		logger.Infof("Firebase messages %v", message)
 	}
 
 	client, err := app.Messaging(ctx)
