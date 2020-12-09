@@ -186,7 +186,7 @@ type ValidatorsPageDataValidators struct {
 type ValidatorPageData struct {
 	Epoch                               uint64 `db:"epoch"`
 	ValidatorIndex                      uint64 `db:"validatorindex"`
-	PublicKey                           []byte
+	PublicKey                           []byte `db:"pubkey"`
 	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
 	CurrentBalance                      uint64 `db:"balance"`
 	EffectiveBalance                    uint64 `db:"effectivebalance"`
@@ -247,8 +247,9 @@ type DailyProposalCount struct {
 
 // ValidatorBalanceHistory is a struct for the validator balance history data
 type ValidatorBalanceHistory struct {
-	Epoch   uint64 `db:"epoch"`
-	Balance uint64 `db:"balance"`
+	Epoch            uint64 `db:"epoch"`
+	Balance          uint64 `db:"balance"`
+	EffectiveBalance uint64 `db:"effectivebalance"`
 }
 
 type ValidatorBalanceHistoryChartData struct {

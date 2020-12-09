@@ -200,6 +200,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Get(&validatorPageData, `
 		SELECT 
+			validators.pubkey, 
 			validators.validatorindex, 
 			validators.withdrawableepoch, 
 			validators.effectivebalance, 
@@ -234,7 +235,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.Epoch = services.LatestEpoch()
 	validatorPageData.Index = index
-	validatorPageData.PublicKey, err = db.GetValidatorPublicKey(index)
 	if err != nil {
 		logger.Errorf("error retrieving validator public key %v: %v", index, err)
 
@@ -303,12 +303,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = db.DB.Get(&validatorPageData.ProposedBlocksCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", index)
-	if err != nil {
-		logger.Errorf("error retrieving proposed blocks count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
+	validatorPageData.ProposedBlocksCount = uint64(len(proposals))
+
+	validatorPageData.AttestationsCount = services.LatestEpoch() - validatorPageData.ActivationEpoch + 1
 
 	err = db.DB.Get(&validatorPageData.AttestationsCount, "SELECT LEAST(COUNT(*), 10000) FROM attestation_assignments WHERE validatorindex = $1", index)
 	if err != nil {
@@ -318,7 +315,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
+	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, effectivebalance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
