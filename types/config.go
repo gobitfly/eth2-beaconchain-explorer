@@ -54,6 +54,7 @@ type Config struct {
 		Kong          string `yaml:"kong" envconfig:"FRONTEND_KONG"`
 		OnlyAPI       bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
 		CsrfAuthKey   string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRFAUTHKEY`
+		CsrfInsecure  bool   `yaml:"csrfInsecure envconfig:"FRONTEND_CSRFINSECURE"`
 		DisableCharts bool   `yaml:"disableCharts" envconfig:"disableCharts"`
 		Enabled       bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
 		Imprint       string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`

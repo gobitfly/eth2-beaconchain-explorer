@@ -62,18 +62,18 @@
 
 
 {{ define "validatorOverviewDeposited"}}
-<div class="p-2 text-justify row justify-content-center">
-    <div style="max-width: 50rem;">
-        <span>
-            {{if eq .InclusionDelay 0}} 
-                An ETH1 genesis deposit has been made, and your validator will be activated once genesis occurs. Please make sure your validator is up and running before genesis. 
-            {{else}} 
-                An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a>  until your deposit is processed by the beacon chain. If there is a deposit queue then it may take longer for the validator to be activated. 
-            {{end}}
-            This validator will be activated approximately <span class="font-weight-bolder">{{.EstimatedActivationTs | formatTsWithoutTooltip}}</span> after being registered by the beacon chain.
-        </span>
-    </div>
-</div>
+        <div class="p-2 text-justify row justify-content-center">
+            <div style="max-width: 50rem;">
+                <span>
+                    {{if eq .InclusionDelay 0}} 
+                        An ETH1 genesis deposit has been made, and your validator will be activated once genesis occurs. Please make sure your validator is up and running before genesis. 
+                    {{else}} 
+                        An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a>  until your deposit is processed by the beacon chain. If there is a deposit queue then it may take longer for the validator to be activated. 
+                    {{end}}
+                    This validator will be activated approximately <span class="font-weight-bolder">{{.EstimatedActivationTs | formatTsWithoutTooltip}}</span> after being registered by the beacon chain.
+                </span>
+            </div>
+        </div>
 {{end}}
 
 {{ define "validatorOverviewValidating"}}
@@ -87,22 +87,22 @@
             </div>
             <div class="m-3">
                 <div class="d-flex flex-column">
-                <span style="font-weight: bold; font-size:18px;">{{formatCurrentBalance .CurrentBalance $.Currency }}</span>
-                <span>{{formatEffectiveBalance .EffectiveBalance $.Currency }} <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"><a class="no-highlight" href="https://kb.beaconcha.in/attestation#rewards"><i class="far ml-1 fa-question-circle"></i></a></span></span>
+                <span style="font-weight: bold; font-size:18px;">{{formatCurrentBalance .Data.CurrentBalance $.Currency }}</span>
+                <span>{{formatEffectiveBalance .Data.EffectiveBalance $.Currency }} <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"><a class="no-highlight" href="https://kb.beaconcha.in/attestation#rewards"><i class="far ml-1 fa-question-circle"></i></a></span></span>
                 </div>
             </div>
             <div class="m-3">
-                {{.Status | formatValidatorStatus}}
+                {{.Data.Status | formatValidatorStatus}}
             </div>
-            {{ if gtf .AttestationInclusionEffectiveness 0 }}
+            {{ if gtf .Data.AttestationInclusionEffectiveness 0 }}
             <div class="m-3">
-                {{.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}}
+                {{.Data.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}}
             </div>
             {{end}}
         </div>
-{{if .Index }}
+{{if .Data.Index }}
     <script>
-        var index = {{.Index}}
+        var index = {{.Data.Index}}
         window.addEventListener('load', function () {
             $.ajax({
                 url: "/validator/"+index+"/rank",
@@ -121,23 +121,23 @@
 {{end}}
 
 {{ define "validatorOverviewPending" }}
-<div class="p-2 text-justify row justify-content-center">
-    <div style="max-width: 50rem;">
-        This validator has been processed by the beacon chain and is currently waiting to be activated. It will approximately be activated <span class="font-weight-bolder" title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> during epoch <span class="font-weight-bolder">{{.ActivationEpoch}}</span>.
-    </div>
-    <div class="py-2" style="min-width:300px;">
-        {{ template "validatorCountdown" .}}
-    </div>
-</div>
+        <div class="p-2 text-justify row justify-content-center">
+            <div style="max-width: 50rem;">
+                This validator has been processed by the beacon chain and is currently waiting to be activated. It will approximately be activated <span class="font-weight-bolder" title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> during epoch <span class="font-weight-bolder">{{.ActivationEpoch}}</span>.
+            </div>
+            <div class="py-2" style="min-width:300px;">
+                {{ template "validatorCountdown" .}}
+            </div>
+        </div>
 {{end}}
 
 {{ define "validatorOverviewExited"}}
-<div class="p-2 text-justify row justify-content-center">
-    <div style="max-width: 50rem;">
-        <span>
-             {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}
-            <div class="p-2 row justify-content-center"> your validator has exited the system and is no longer validating </div>
-        </span>
-    </div>
-</div>
+        <div class="p-2 text-justify row justify-content-center">
+            <div style="max-width: 50rem;">
+                <span>
+                    {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}
+                    <div class="p-2 row justify-content-center"> your validator has exited the system and is no longer validating </div>
+                </span>
+            </div>
+        </div>
 {{end}}

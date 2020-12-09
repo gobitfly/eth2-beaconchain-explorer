@@ -149,7 +149,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.Mainnet
-
 	data.NetworkName = utils.Config.Chain.Network
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 
