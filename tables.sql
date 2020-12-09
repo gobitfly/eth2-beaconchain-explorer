@@ -18,10 +18,11 @@ create table validators
     activationepoch            bigint not null,
     exitepoch                  bigint not null,
     lastattestationslot        bigint,
+    status                     varchar(20) not null default '',
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
-create index idx_validators_name on validators (name);
+create index idx_validators_status on validators (status);
 
 drop table if exists validator_names;
 create table validator_names
