@@ -952,16 +952,36 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
-	var totalCount uint64
-	err = db.DB.Get(&totalCount, `
-				select count(*) from validator_balances vb
-				left join attestation_assignments a on vb.validatorindex = a.validatorindex and vb.epoch = a.epoch
-				left join blocks b on vb.validatorindex = b.proposer and vb.epoch = b.epoch
-				where vb.validatorindex = $1`, index)
+	var proposalCount uint64
+	err = db.DB.Get(&proposalCount, `select count(*) from blocks where proposer = $1`, index)
 	if err != nil {
-		logger.Errorf("error retrieving totalCount of validator-history: %v", err)
+		logger.Errorf("error retrieving proposalCount for validator-history: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
+	}
+
+	var activationAndExitEpoch = struct {
+		ActivationEpoch uint64 `db:"activationepoch"`
+		ExitEpoch       uint64 `db:"exitepoch"`
+	}{}
+	err = db.DB.Get(&activationAndExitEpoch, "SELECT activationepoch, exitepoch FROM validators WHERE validatorindex = $1", index)
+	if err != nil {
+		logger.Errorf("error retrieving activationAndExitEpoch for validator-history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	totalCount := proposalCount
+
+	// Every validator is scheduled to issue an attestation once per epoch
+	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
+	// Special care needs to be take for exited and pending validators
+	if activationAndExitEpoch.ActivationEpoch > services.LatestEpoch() {
+		totalCount = 0
+	} else if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
+		totalCount += activationAndExitEpoch.ExitEpoch - activationAndExitEpoch.ActivationEpoch
+	} else {
+		totalCount += services.LatestEpoch() - activationAndExitEpoch.ActivationEpoch + 1
 	}
 
 	var validatorHistory []*types.ValidatorHistory
