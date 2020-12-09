@@ -574,6 +574,7 @@ CREATE TABLE public.validators (
     activationepoch bigint NOT NULL,
     exitepoch bigint NOT NULL,
     lastattestationslot bigint,
+    status varchar(20) not null default '',
     name character varying(40)
 );
 
