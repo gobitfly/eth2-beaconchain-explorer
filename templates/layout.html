@@ -626,7 +626,7 @@
                 </div>
             </div>
             <div class="text-center row justify-content-center">
-                <div class="col-12">
+                <div class="col-12 d-flex justify-content-center align-items-center">
                     <span>© bitfly gmbh 2020 | {{.Version}} |</span>
                     <div class="theme-switch-wrapper mr-1">
                         <label class="theme-switch" for="toggleSwitch">
@@ -655,10 +655,14 @@
                         </script>
                     </div>
                     |
-                    <div class="dropup" style="position: relative; display: inline-flex;">
-                        <a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown"
+                    <div class="dropup position-relative d-inline-flex">
+                        <a class="btn btn-transparent btn-sm dropdown-toggle d-flex align-items-center" id="langDropdown" data-toggle="dropdown"
                         aira-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-globe fa-lg m-0 p-0"></i>
+                            {{if eq .Lang "ru-RU"}}
+                                <image src="/img/ru-flag.svg" style="width: auto; height: 18px;"/>
+                            {{else}}
+                                <image src="/img/us-flag.svg" style="width: auto; height: 18px;"/>
+                            {{end}}
                         </a>
                         <div class="dropdown-menu dropdown-menu-right" aria-labelledby="langDropdown">
                             <a class="dropdown-item" onClick="updateLang('en-US')">English</a>
