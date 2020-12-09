@@ -1182,9 +1182,9 @@ func GetTotalValidatorsCount() (uint64, error) {
 }
 
 // GetActiveValidatorCount will return the total-validator-count
-func GetActiveValidatorCount(currentEpoch uint64) (uint64, error) {
+func GetActiveValidatorCount() (uint64, error) {
 	var count uint64
-	err := DB.Get(&count, "select count(*) from validstors where status in ('active_offline', 'active_online');", currentEpoch, currentEpoch)
+	err := DB.Get(&count, "select count(*) from validstors where status in ('active_offline', 'active_online');")
 	return count, err
 }
 
@@ -1231,7 +1231,7 @@ func GetPendingValidatorCount() (uint64, error) {
 func GetValidatorChurnLimit(currentEpoch uint64) (uint64, error) {
 	min := utils.Config.Chain.MinPerEpochChurnLimit
 
-	count, err := GetActiveValidatorCount(currentEpoch)
+	count, err := GetActiveValidatorCount()
 	if err != nil {
 		return 0, err
 	}
