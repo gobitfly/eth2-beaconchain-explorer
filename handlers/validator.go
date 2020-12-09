@@ -25,13 +25,16 @@ import (
 
 var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html",
 	"templates/validator/validator.html",
-	"templates/validator/editModal.html",
-	"templates/validator/bookmarkModal.html",
-	"templates/validator/infoTable.html",
-	"templates/validator/lifeCycleDiagram.html",
-	"templates/validator/summaryTable.html",
-	"templates/validator/networkStats.html",
-	"templates/validator/historyTable.html"))
+	"templates/validator/heading.html",
+	"templates/validator/tables.html",
+	"templates/validator/modals.html",
+	"templates/validator/overview.html",
+	"templates/validator/charts.html",
+	"templates/validator/countdown.html",
+
+	"templates/components/flashMessage.html",
+	"templates/components/rocket.html",
+))
 var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validator/validatornotfound.html"))
 var validatorEditFlash = "edit_validator_flash"
 
@@ -117,6 +120,39 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.Status = "deposited"
 			validatorPageData.PublicKey = pubKey
 			validatorPageData.Deposits = deposits
+
+			churnRate, err := db.GetValidatorChurnLimit(services.LatestEpoch())
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+
+			pendingCount, err := db.GetPendingValidatorCount()
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+
+			validatorPageData.InclusionDelay = int64((utils.Config.Chain.Phase0.Eth1FollowDistance*utils.Config.Chain.Phase0.SecondsPerETH1Block+utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch*utils.Config.Chain.Phase0.EpochsPerEth1VotingPeriod)/3600) + 1
+
+			latestDeposit := time.Now().Unix()
+			if len(deposits.Eth1Deposits) > 1 {
+				latestDeposit = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
+			} else if time.Unix(latestDeposit, 0).Before(utils.SlotToTime(0)) {
+				latestDeposit = utils.SlotToTime(0).Unix()
+				validatorPageData.InclusionDelay = 0
+			}
+
+			if churnRate == 0 {
+				churnRate = 4
+				logger.Warning("Churn rate not set in config using 4 as default please set minPerEpochChurnLimit")
+			}
+
+			activationEstimate := (pendingCount/churnRate)*(utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch) + uint64(latestDeposit)
+
+			validatorPageData.EstimatedActivationTs = int64(activationEstimate)
 
 			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
 				if deposit.ValidSignature {

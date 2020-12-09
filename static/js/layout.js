@@ -231,6 +231,7 @@ $('[aria-ethereum-date]').each(function(item) {
   } else {
     $(this).text(moment.unix(dt).format(format))
   }
+  $(this).attr('title', moment.unix(dt).format("LLL"))
 })
 
 $(document).ready(function() {
@@ -313,7 +314,7 @@ function formatTimestamps(selStr) {
   sel.find('.timestamp').each(function(){
     var ts = $(this).data('timestamp')
     var tsMoment = moment.unix(ts)
-    this.title = tsMoment.format()
+    $(this).attr("data-original-title", tsMoment.format("LLL"))
     $(this).text(tsMoment.fromNow())
   })
   sel.find('[data-toggle="tooltip"]').tooltip()

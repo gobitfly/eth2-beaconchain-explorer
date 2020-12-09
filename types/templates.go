@@ -226,6 +226,8 @@ type ValidatorPageData struct {
 	AttestationInclusionEffectiveness   float64
 	CsrfField                           template.HTML
 	NetworkStats                        *IndexPageData
+	EstimatedActivationTs               int64
+	InclusionDelay                      int64
 }
 
 //ValidatorRank is a struct for validator rank data
