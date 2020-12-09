@@ -23,8 +23,6 @@ create table validators
 );
 create index idx_validators_pubkey on validators (pubkey);
 create index idx_validators_status on validators (status);
-create index idx_validators_activationepoch on validators (activationepoch);
-create index idx_validators_exitepoch on validators (exitepoch);
 
 drop table if exists validator_names;
 create table validator_names
