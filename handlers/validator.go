@@ -16,8 +16,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/lib/pq"
-
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
 )
@@ -154,20 +152,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.Status = "deposited_valid"
 			}
 
-			filter := db.WatchlistFilter{
-				UserId:         data.User.UserID,
-				Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
-				Tag:            types.ValidatorTagsWatchlist,
-				JoinValidators: false,
-			}
-			watchlist, err := db.GetTaggedValidators(filter)
-			if err != nil {
-				logger.Errorf("error getting tagged validators from db: %v", err)
-				http.Error(w, "Internal server error", 503)
-				return
-			}
-
-			validatorPageData.Watchlist = watchlist
+			//filter := db.WatchlistFilter{
+			//	UserId:         data.User.UserID,
+			//	Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
+			//	Tag:            types.ValidatorTagsWatchlist,
+			//	JoinValidators: false,
+			//}
+			//watchlist, err := db.GetTaggedValidators(filter)
+			//if err != nil {
+			//	logger.Errorf("error getting tagged validators from db: %v", err)
+			//	http.Error(w, "Internal server error", 503)
+			//	return
+			//}
+			//
+			//validatorPageData.Watchlist = watchlist
 			data.Data = validatorPageData
 			if utils.IsApiRequest(r) {
 				w.Header().Set("Content-Type", "application/json")
@@ -248,21 +246,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter := db.WatchlistFilter{
-		UserId:         data.User.UserID,
-		Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
-		Tag:            types.ValidatorTagsWatchlist,
-		JoinValidators: false,
-	}
-
-	watchlist, err := db.GetTaggedValidators(filter)
-	if err != nil {
-		logger.Errorf("error getting tagged validators from db: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	validatorPageData.Watchlist = watchlist
+	//filter := db.WatchlistFilter{
+	//	UserId:         data.User.UserID,
+	//	Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
+	//	Tag:            types.ValidatorTagsWatchlist,
+	//	JoinValidators: false,
+	//}
+	//
+	//watchlist, err := db.GetTaggedValidators(filter)
+	//if err != nil {
+	//	logger.Errorf("error getting tagged validators from db: %v", err)
+	//	http.Error(w, "Internal server error", 503)
+	//	return
+	//}
+	//
+	//validatorPageData.Watchlist = watchlist
 
 	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
 	if err != nil {
