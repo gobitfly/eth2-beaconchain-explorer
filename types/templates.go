@@ -205,7 +205,7 @@ type ValidatorPageData struct {
 	ActivationEligibilityTs             time.Time
 	ActivationTs                        time.Time
 	ExitTs                              time.Time
-	Status                              string
+	Status                              string `db:"status"`
 	ProposedBlocksCount                 uint64
 	AttestationsCount                   uint64
 	StatusProposedCount                 uint64
