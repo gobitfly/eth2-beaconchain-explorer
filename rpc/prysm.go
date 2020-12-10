@@ -252,20 +252,36 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	err = pc.getBlockData(data)
-	if err != nil {
-		return nil, err
-	}
+	wg := &sync.WaitGroup{}
+	wg.Add(3)
 
-	err = pc.getValidatorData(data)
-	if err != nil {
-		return nil, err
-	}
+	go func() {
+		defer wg.Done()
+		localErr := pc.getBlockData(data)
+		if localErr != nil {
+			err = localErr
+		}
+	}()
 
-	data.EpochParticipationStats, err = pc.GetValidatorParticipation(epoch)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
-	}
+	go func() {
+		defer wg.Done()
+		localErr := pc.getValidatorData(data)
+		if localErr != nil {
+			err = localErr
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		stats, localErr := pc.GetValidatorParticipation(data.Epoch)
+		if localErr != nil {
+			err = localErr
+		} else {
+			data.EpochParticipationStats = stats
+		}
+	}()
+
+	wg.Wait()
 
 	return data, nil
 }
