@@ -317,13 +317,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
 
-	err = db.DB.Get(&validatorPageData.AttestationsCount, "SELECT LEAST(COUNT(*), 10000) FROM attestation_assignments WHERE validatorindex = $1", index)
-	if err != nil {
-		logger.Errorf("error retrieving attestation count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
 	var balanceHistory []*types.ValidatorBalanceHistory
 	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
 	if err != nil {
@@ -343,16 +336,22 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	earnings, err := GetValidatorEarnings([]uint64{index})
 	if err != nil {
-		logger.Errorf("error retrieving validator effective balance history: %v", err)
+		logger.Errorf("error retrieving validator earnings: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 	var depositSum = float64(0)
-	db.DB.Get(&depositSum, `
-	SELECT sum(amount)
-	FROM eth1_deposits
-	WHERE valid_signature = true and publickey = $1
-	`, validatorPageData.PublicKey)
+	err = db.DB.Get(&depositSum, `
+			SELECT sum(amount)
+			FROM eth1_deposits
+			WHERE valid_signature = true and publickey = $1
+		`, validatorPageData.PublicKey)
+	if err != nil {
+		logger.Errorf("error retrieving validator deposit sum: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 	validatorPageData.Income1d = earnings.LastDay
 	validatorPageData.Income7d = earnings.LastWeek
 	validatorPageData.Income31d = earnings.LastMonth
@@ -388,15 +387,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.DB.Get(&validatorPageData.SlashingsCount, `
-		select
-			(
-				select count(*) from blocks_attesterslashings a
-				inner join blocks b on b.slot = a.block_slot and b.proposer = $1
-				where attestation1_indices is not null and attestation2_indices is not null
-			) + (
-				select count(*) from blocks_proposerslashings c
-				inner join blocks d on d.slot = c.block_slot and d.proposer = $1
-			)`, index)
+		select sum(attesterslashingscount) + sum(proposerslashingscount) from blocks where blocks.proposer = $1
+		`, index)
 	if err != nil {
 		logger.Errorf("error retrieving slashings-count: %v", err)
 		http.Error(w, "Internal server error", 503)
