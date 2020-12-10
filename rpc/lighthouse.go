@@ -251,6 +251,9 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 		}
 	}
 
+	// Unused for now
+	data.BeaconCommittees = make(map[uint64][]*types.BeaconCommitteItem)
+
 	data.EpochParticipationStats, err = lc.GetValidatorParticipation(epoch)
 	if err != nil {
 		logger.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)

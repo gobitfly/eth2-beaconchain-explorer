@@ -309,8 +309,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
 	// Special care needs to be take for exited and pending validators
-	validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
-	if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
+	validatorPageData.AttestationsCount = services.LatestEpoch() - validatorPageData.ActivationEpoch + 1
+	if validatorPageData.ActivationEpoch > services.LatestEpoch() {
 		validatorPageData.AttestationsCount = 0
 	}
 	if validatorPageData.ExitEpoch != 9223372036854775807 {
