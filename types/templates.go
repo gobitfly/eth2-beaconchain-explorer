@@ -187,7 +187,7 @@ type ValidatorsPageDataValidators struct {
 type ValidatorPageData struct {
 	Epoch                               uint64 `db:"epoch"`
 	ValidatorIndex                      uint64 `db:"validatorindex"`
-	PublicKey                           []byte
+	PublicKey                           []byte `db:"pubkey"`
 	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
 	CurrentBalance                      uint64 `db:"balance"`
 	EffectiveBalance                    uint64 `db:"effectivebalance"`
@@ -228,6 +228,14 @@ type ValidatorPageData struct {
 	AverageAttestationInclusionDistance float64
 	AttestationInclusionEffectiveness   float64
 	CsrfField                           template.HTML
+	NetworkStats                        *IndexPageData
+	EstimatedActivationTs               int64
+	InclusionDelay                      int64
+}
+
+//ValidatorRank is a struct for validator rank data
+type ValidatorRank struct {
+	Rank int64 `db:"rank" json:"rank"`
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -240,8 +248,9 @@ type DailyProposalCount struct {
 
 // ValidatorBalanceHistory is a struct for the validator balance history data
 type ValidatorBalanceHistory struct {
-	Epoch   uint64 `db:"epoch"`
-	Balance uint64 `db:"balance"`
+	Epoch            uint64 `db:"epoch"`
+	Balance          uint64 `db:"balance"`
+	EffectiveBalance uint64 `db:"effectivebalance"`
 }
 
 type ValidatorBalanceHistoryChartData struct {
@@ -280,6 +289,11 @@ type ValidatorAttestation struct {
 	InclusionSlot         uint64 `db:"inclusionslot"`
 	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
 }
+
+// type AvgInclusionDistance struct {
+// 	InclusionSlot         uint64 `db:"inclusionslot"`
+// 	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
+// }
 
 // VisPageData is a struct to hold the visualizations page data
 type VisPageData struct {
@@ -626,6 +640,15 @@ type ValidatorProposerSlashing struct {
 	Slot          uint64 `db:"slot" json:"slot,omitempty"`
 	Proposer      uint64 `db:"proposer" json:"proposer,omitempty"`
 	ProposerIndex uint64 `db:"proposerindex" json:"proposer_index,omitempty"`
+}
+
+type ValidatorHistory struct {
+	Epoch          uint64  `db:"epoch" json:"epoch,omitempty"`
+	BalanceChange  *int64  `db:"balancechange" json:"balance_change,omitempty"`
+	AttesterSlot   *uint64 `db:"attestatation_attesterslot" json:"attester_slot,omitempty"`
+	InclusionSlot  *uint64 `db:"attestation_inclusionslot" json:"inclusion_slot,omitempty"`
+	ProposalStatus *uint64 `db:"proposal_status" json:"proposal_status,omitempty"`
+	ProposalSlot   *uint64 `db:"proposal_slot" json:"proposal_slot,omitempty"`
 }
 
 type ValidatorSlashing struct {

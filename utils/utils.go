@@ -86,6 +86,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"mod":                                     func(i, j int) bool { return i%j == 0 },
 		"sub":                                     func(i, j int) int { return i - j },
 		"add":                                     func(i, j int) int { return i + j },
+		"addI64":                                  func(i, j int64) int64 { return i + j },
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"gtf":                                     func(i, j float64) bool { return i > j },
 		"round": func(i float64, n int) float64 {
@@ -96,8 +97,9 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
-		"derefString": DerefString,
-		"trLang":      TrLang,
+		"derefString":      DerefString,
+		"trLang":           TrLang,
+		"firstCharToUpper": func(s string) string { return strings.Title(s) },
 	}
 }
 

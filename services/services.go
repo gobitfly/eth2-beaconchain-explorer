@@ -47,7 +47,9 @@ func Init() {
 		return
 	}
 
-	go chartsPageDataUpdater()
+	if !utils.Config.Frontend.DisableCharts {
+		go chartsPageDataUpdater()
+	}
 	go statsUpdater()
 
 	if utils.Config.Frontend.Notifications.Enabled {
@@ -147,7 +149,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.Mainnet
-
 	data.NetworkName = utils.Config.Chain.Network
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 
@@ -195,7 +196,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			logger.WithError(err).Error("error could not calcualte threshold time")
 		}
 		if threshold == nil {
-			*threshold = deposit.BlockTs
+			threshold = &deposit.BlockTs
 		}
 
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
@@ -359,13 +360,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	}
 	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance), currency))
 
-	var epochLowerBound uint64
-	if epochLowerBound = 0; epoch > 1600 {
-		epochLowerBound = epoch - 1600
-	}
-
 	var epochHistory []*types.IndexPageEpochHistory
-	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
+
+	cutoffEpoch := epoch - 1600
+	if epoch < 1600 {
+		cutoffEpoch = 0
+	}
+	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, cutoffEpoch)
+
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
 	}
