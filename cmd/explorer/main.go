@@ -260,6 +260,9 @@ func main() {
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
 
+			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
+			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
+
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
 
