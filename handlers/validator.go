@@ -22,7 +22,6 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
-
 var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
 	"templates/validator/validator.html",
@@ -32,7 +31,6 @@ var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetT
 	"templates/validator/overview.html",
 	"templates/validator/charts.html",
 	"templates/validator/countdown.html",
-
 	"templates/components/flashMessage.html",
 	"templates/components/rocket.html",
 ))
