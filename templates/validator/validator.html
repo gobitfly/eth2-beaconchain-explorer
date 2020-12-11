@@ -70,10 +70,12 @@
 		{{ template "flashMessage" .Data }}
 		{{ template "validatorHeading" .Data }}
 				<div class="row align-items-stretch">
-					<div class="col-lg-8 px-2 my-2">
+					<div class="col-lg-8 px-lg-2 my-2">
 						<div class="card h-100 py-0 px-0 card-body">
 							<div class="row">
-								{{ template "validatorLifeCycleDiagram" .Data}}
+								<div class="col overflow-hidden">
+									{{ template "validatorLifeCycleDiagram" .Data}}
+								</div>
 							</div>
 							<div class="row">
 								<div class="col">
@@ -93,8 +95,8 @@
 							</div>
 						</div>
 					</div>
-					<div class="col-lg-4 px-2 my-2">
-						<div class="card card-body  py-2 px-0 h-100 d-flex align-items-center">
+					<div class="col-lg-4 px-lg-2 my-2">
+						<div class="card card-body py-2 px-0 h-100 d-flex align-items-center">
 							{{if $validating }}
 								{{template "validatorIncomeTable" .}}
 							{{else}}
@@ -104,7 +106,7 @@
 					</div>					
 				</div>
 				<div class="row align-items-stretch">
-					<div class="col-lg-8 px-2 my-2">
+					<div class="col-lg-8 px-lg-2 my-2">
 						<div class="card h-100 px-0 py-0 card-body">
 							<ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="chartTabs" role="tablist">
 								<li class="nav-item">
@@ -159,12 +161,10 @@
 										{{template "validatorDepositsTable" .}}
 									</div>
 								</div>
-								
-					
-						</div>
+							</div>
 						</div>
 					</div>
-					<div class="col-lg-4 px-2 d-flex align-items-center my-2">
+					<div class="col-lg-4 px-lg-2 d-flex align-items-center my-2">
 						<div class="card h-100 px-0 pt-0 card-body">
 							<div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
 								<span class="h4 text-center mb-0">Validator History</span>
