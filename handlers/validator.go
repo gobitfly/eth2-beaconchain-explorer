@@ -81,6 +81,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logger.Errorf("error getting validator-deposits from db: %v", err)
 			}
+			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
 				data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
@@ -271,6 +272,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	validatorPageData.Deposits = deposits
+	validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
 
 	for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
 		if deposit.ValidSignature {
@@ -387,7 +389,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.DB.Get(&validatorPageData.SlashingsCount, `
-		select sum(attesterslashingscount) + sum(proposerslashingscount) from blocks where blocks.proposer = $1
+		select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1
 		`, index)
 	if err != nil {
 		logger.Errorf("error retrieving slashings-count: %v", err)

@@ -55,6 +55,12 @@
 		#chartTabs .nav-link {
 			padding: .5rem .8rem;
 		}
+		/* .overview-container {
+			max-width: 600px;
+		}
+		.overview-container > div {
+			flex: 0 1 100px;
+		} */
 	</style>
 {{end}}
 
@@ -74,12 +80,11 @@
 					<div class="col-lg-8 px-lg-2 my-2">
 						<div class="card h-100 py-0 px-0 card-body">
 							<div class="row">
-								<div class="col overflow-hidden">
+								<div class="col">
 									{{ template "validatorLifeCycleDiagram" .}}
 								</div>
 							</div>
-							<div class="row">
-								<div class="col">
+							<div class="d-flex flex-column justify-content-center">
 									{{ if $deposited }}
 										{{ template "validatorOverviewDeposited" .}}
 									{{end}}
@@ -92,7 +97,6 @@
 									{{ if $exited }}
 									  {{ template "validatorOverviewExited" .}}
 									{{end}}
-								</div>
 							</div>
 						</div>
 					</div>
@@ -170,7 +174,7 @@
 							<div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
 								<span class="h4 text-center mb-0">Validator History</span>
 							</div>
-							{{ if gt .AttestationsCount 0 }}
+							{{ if $validating }}
 								{{ template "validatorHistoryTable" $}}
 							{{ else }}
 							<div class="d-flex align-items-center justify-content-center p-5">

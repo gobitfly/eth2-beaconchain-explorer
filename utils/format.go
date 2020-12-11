@@ -182,9 +182,15 @@ func FormatBlockStatus(status uint64) template.HTML {
 
 // FormatCurrentBalance will return the current balance formated as string with 9 digits after the comma (1 gwei = 1e9 eth)
 func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
-	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := float64(balanceInt) / float64(1e9)
-	return template.HTML(fmt.Sprintf("%.5f %v", balance*exchangeRate, currency))
+	if currency == "ETH" {
+		exchangeRate := ExchangeRateForCurrency(currency)
+		balance := float64(balanceInt) / float64(1e9)
+		return template.HTML(fmt.Sprintf("%.5f %v", balance*exchangeRate, currency))
+	} else {
+		exchangeRate := ExchangeRateForCurrency(currency)
+		balance := float64(balanceInt) / float64(1e9)
+		return template.HTML(fmt.Sprintf("%.2f %v", balance*exchangeRate, currency))
+	}
 }
 
 // FormatDepositAmount will return the deposit amount formated as string
