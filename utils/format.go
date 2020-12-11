@@ -55,22 +55,52 @@ func FormatBalance(balanceInt uint64, currency string) template.HTML {
 		}
 		if rb[len(rb)-1] == '.' {
 			rb = rb[:len(rb)-1]
-
 		}
 	}
 	return template.HTML(string(rb) + " " + currency)
 }
 
 // FormatBalanceChange will return a string for a balance change
-func FormatBalanceChange(balance *int64) template.HTML {
-	if balance == nil {
-		return template.HTML("<span> 0.00000 ETH</span>")
-	}
+func FormatBalanceChange(balance *int64, currency string) template.HTML {
 	balanceF := float64(*balance) / float64(1e9)
-	if balanceF < 0 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.5f ETH</span>", balanceF))
+	if currency == "ETH" {
+		if balance == nil {
+			return template.HTML("<span> 0.00000 " + currency + "</span>")
+		} else if *balance == 0 {
+			return template.HTML("pending")
+		}
+
+		if balanceF < 0 {
+			return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.5f ETH</span>", balanceF))
+		}
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\">+%.5f ETH</span>", balanceF))
+	} else {
+		if balance == nil {
+			return template.HTML("<span> 0.00" + currency + "</span>")
+		}
+		exchangeRate := ExchangeRateForCurrency(currency)
+
+		p := message.NewPrinter(language.English)
+		rb := []rune(p.Sprintf("%.2f", balanceF*exchangeRate))
+		// remove trailing zeros
+		if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+			for rb[len(rb)-1] == '0' {
+				rb = rb[:len(rb)-1]
+			}
+			if rb[len(rb)-1] == '.' {
+				rb = rb[:len(rb)-1]
+			}
+		}
+		if *balance > 0 {
+			return template.HTML("<span class=\"text-success\">" + string(rb) + " " + currency + "</span>")
+		}
+		if *balance < 0 {
+			return template.HTML("<span class=\"text-danger\">" + string(rb) + " " + currency + "</span>")
+		}
+
+		return template.HTML("pending")
+
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-success\">+%.5f ETH</span>", balanceF))
 }
 
 // FormatBalance will return a string for a balance

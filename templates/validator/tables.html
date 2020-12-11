@@ -140,6 +140,7 @@
 {{end}}
 
 {{define "validatorDepositsTable"}}
+{{ with .Data }}
     <div class="table-eth1">
         <h4 class="my-3">Eth1 Deposits</h4>
         <h6 class="">This table displays the deposits made to the Eth1 deposit contract.</h6>
@@ -156,7 +157,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                {{range $i, $deposit := .Data.Deposits.Eth1Deposits}}
+                {{range $i, $deposit := .Deposits.Eth1Deposits}}
                     <tr>
                         <td>{{formatEth1Address $deposit.FromAddress}}</td>
                         <td>{{formatEth1TxHash $deposit.TxHash}}</td>
@@ -175,7 +176,7 @@
     </div>
     <div class="table-eth2">
         <h4 class="my-3">Eth2 Deposits</h4>
-        {{if not .Data.Deposits.Eth2Deposits}}
+        {{if not .Deposits.Eth2Deposits}}
             <h6 class="">No beacon chain deposits found for this validator. It takes around 8 hours for a deposit to be
                 processed by the beacon chain.</h6>
             <div class="wip d-flex justify-content-center p-3">
@@ -378,7 +379,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                    {{range $i, $deposit := .Data.Deposits.Eth2Deposits}}
+                    {{range $i, $deposit := .Deposits.Eth2Deposits}}
                         <tr>
                             <td>{{epochOfSlot $deposit.BlockSlot | formatEpoch}}</td>
                             <td>{{formatBlockSlot $deposit.BlockSlot}}</td>
@@ -394,19 +395,21 @@
             </div>
         {{end}}
     </div>
+    {{end}}
 {{ end }}
 
 
 
 {{ define "validatorHistoryTable"}}
+{{ with .Data }}
     <div class="table-responsive px-0 py-0">
         <table style="margin-top: 0px !important;" class="table" id="validator-history-table" width="100%">
             <thead>
             <tr>
-                <!-- <th>Epoch</th> -->
-                <th>Slot</th>
+                <th>Epoch</th>
+                <!-- <th>Slot</th> -->
                 <th>Balance Change</th>
-                <th>Event</th>
+                <th data-toggle="tooltip" title="Attestation and block proposal status for a given epoch">Att. & Prop.</th>
             </tr>
             </thead>
             <tbody></tbody>
@@ -430,41 +433,43 @@
                 })
             })
     </script>
+{{end}}
 {{ end }}
 
 
 {{ define "validatorIncomeTable"}}
+{{ with .Data }}
     <span class="h4">Income</span>
     <table class="table" style="margin-top: 0 !important" width="100%">
         <tbody>
         <tr>
             <th scope="row">Day</th>
-            <td>{{formatIncome .Data.Income1d $.Currency}}</td>
+            <td>{{formatIncome .Income1d $.Currency}}</td>
         </tr>
         <tr>
             <th scope="row">Week</th>
-            <td>{{formatIncome .Data.Income7d $.Currency}}</td>
+            <td>{{formatIncome .Income7d $.Currency}}</td>
         </tr>
         <tr>
             <th scope="row">Month</th>
-            <td>{{formatIncome .Data.Income31d $.Currency}}</td>
+            <td>{{formatIncome .Income31d $.Currency}}</td>
         </tr>
         <tr>
             <th scope="row">APR <span data-toggle="tooltip"
                                       title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i
                             class="far fa-question-circle"></i></span></th>
             <td>
-                <span class="{{if gtf .Data.Apr 0}}text-success{{end}} {{if gtf  0 .Data.Apr}}text-danger{{end}}"><b>{{.Data.Apr | formatPercentage}} %</b></span>
+                <span class="{{if gtf .Apr 0}}text-success{{end}} {{if gtf  0 .Apr}}text-danger{{end}}"><b>{{.Apr | formatPercentage}} %</b></span>
             </td>
         </tr>
         <tr>
-            <th scope="row">Active Since</th>
+            <th scope="row">Active for</th>
             <td>
-                {{if eq .Data.ActivationEpoch 9223372036854775807}}
+                {{if eq .ActivationEpoch 9223372036854775807}}
                     -
                 {{else}}
-                    <span title="{{.Data.ActivationTs}}" data-toggle="tooltip"
-                          aria-ethereum-date="{{.Data.ActivationTs.Unix}}">{{.Data.ActivationTs}}</span>
+                    <span title="{{.ActivationTs}}" data-toggle="tooltip"
+                          aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
                 {{end}}
             </td>
 
@@ -481,6 +486,7 @@
         <tr> -->
         </tbody>
     </table>
+    {{end}}
 {{end}}
 
 {{ define "validatorNetworkStatsTable"}}
