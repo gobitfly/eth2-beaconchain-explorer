@@ -31,11 +31,11 @@ var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetT
 	"templates/validator/overview.html",
 	"templates/validator/charts.html",
 	"templates/validator/countdown.html",
-
 	"templates/components/flashMessage.html",
 	"templates/components/rocket.html",
 ))
 var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validator/validatornotfound.html"))
+
 var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template

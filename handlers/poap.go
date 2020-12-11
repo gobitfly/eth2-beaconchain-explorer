@@ -8,14 +8,15 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	eth1common "github.com/ethereum/go-ethereum/common"
 	"html/template"
 	"net/http"
 	"strconv"
 	"sync/atomic"
+
+	eth1common "github.com/ethereum/go-ethereum/common"
 )
 
-var poapTemplate = template.Must(template.ParseFiles("templates/layout.html", "templates/poap.html"))
+var poapTemplate = template.Must(template.New("poap").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/poap.html"))
 
 // do not change existing entries, only append new entries
 var poapClients = []string{"Prysm", "Lighthouse", "Teku", "Nimbus", "Lodestar"}

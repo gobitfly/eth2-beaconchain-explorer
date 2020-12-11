@@ -7,7 +7,7 @@
   {{end}}
   <div class="card-header pt-3">
     <div class="row">
-      {{ template "networkStats" }}
+      {{ template "networkStats" .}}
     </div>
   </div>
   <div class="card-body">
@@ -20,10 +20,10 @@
 </div>
 <div class="row">
   <div class="col-lg-6 mt-3 pr-lg-2">
-    {{template "recentEpochs"}}
+    {{template "recentEpochs" .}}
   </div>
   <div class="col-lg-6 mt-3 pl-lg-2">
-    {{ template "recentBlocks"}}
+    {{ template "recentBlocks" .}}
   </div>
 </div>
 {{end}}

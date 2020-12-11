@@ -30,7 +30,7 @@ var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateF
 	"templates/block/exits.html",
 	"templates/block/overview.html",
 ))
-var blockNotFoundTemplate = template.Must(template.New("blocknotfound").ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
+var blockNotFoundTemplate = template.Must(template.New("blocknotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
 
 // Block will return the data for a block
 func Block(w http.ResponseWriter, r *http.Request) {

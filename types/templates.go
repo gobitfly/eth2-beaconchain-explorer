@@ -29,6 +29,7 @@ type PageData struct {
 	EthPrice              float64
 	Currency              string
 	ExchangeRate          float64
+	Lang                  string
 }
 
 // Meta is a struct to hold metadata about the page
@@ -95,7 +96,7 @@ type IndexPageData struct {
 	Mainnet                   bool                   `json:"-"`
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
-	Lang                      string
+	Lang                      string `json:"lang"`
 }
 
 type IndexPageDataEpochs struct {

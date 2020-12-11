@@ -15,7 +15,7 @@ import (
 	"github.com/lib/pq"
 )
 
-var searchNotFoundTemplate = template.Must(template.New("searchnotfound").ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
+var searchNotFoundTemplate = template.Must(template.New("searchnotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
 
 // Search handles search requests
 func Search(w http.ResponseWriter, r *http.Request) {
