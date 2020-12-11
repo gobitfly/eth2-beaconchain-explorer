@@ -163,7 +163,7 @@
                 <span data-toggle="tooltip" title="Blocks proposed"><i class="tab-icon fas fa-cubes"></i> {{ .ProposedBlocksCount }}</span>
             </div>
             <div class="mx-3">
-                <span data-toggle="tooltip" title="Attestations published"><i class="tab-icon fas fa-file-signature"></i> <span>{{.AttestationsCount}} {{if or (gt .AttestationsCount .CurrentEpoch) (eq .AttestationsCount .CurrentEpoch) }}- Perfect <i class="fas fa-grin-stars"></i>{{end}}</span></span>
+                <span data-toggle="tooltip" title="Attestations published"><i class="tab-icon fas fa-file-signature"></i> <span>{{.AttestationsCount}}</span>
             </div>
             <div class="mx-3">
                 <span data-toggle="tooltip" title="Other validators slashed"><i class="tab-icon fas fa-user-slash"></i> {{.SlashingsCount}}</span>
