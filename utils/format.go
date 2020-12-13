@@ -158,7 +158,7 @@ func FormatInclusionDelay(inclusionSlot, delay uint64) template.HTML {
 	}
 }
 
-// FormatSlotToTimestamp will return the momentjs time elapsed since blockSlot
+// FormatSlotToTimestamp will return the time elapsed since blockSlot
 func FormatSlotToTimestamp(blockSlot uint64) template.HTML {
 	time := SlotToTime(blockSlot)
 	return FormatTimestamp(time.Unix())
