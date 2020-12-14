@@ -336,7 +336,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var balanceHistory []*types.ValidatorBalanceHistory
 	var epochs []uint64
 	for i := uint64(0); i <= validatorPageData.Epoch; i++ {
-		if i%225 == 0 || i < validatorPageData.Epoch-(225*7) {
+		if i%225 == 0 || i > validatorPageData.Epoch-(225*7) {
 			epochs = append(epochs, i)
 		}
 	}
