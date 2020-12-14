@@ -10,6 +10,7 @@ config.yml
 config-staging.yml
 config-pyrmont.yml
 config-lighthouse.yml
+config-pyrmont.yml
 .*swp
 bootstrap/node_modules
 private/
