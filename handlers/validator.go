@@ -990,6 +990,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		totalCount += services.LatestEpoch() - activationAndExitEpoch.ActivationEpoch + 1
 	}
 
+	if length > 100 {
+		length = 100
+	}
+
 	var validatorHistory []*types.ValidatorHistory
 	err = db.DB.Select(&validatorHistory, `
 			SELECT 
@@ -1030,40 +1034,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			events += " & " + block
 		}
 
-		// if *b.InclusionSlot != 0 {
-		// 	events = "<span data-toggle=\"tooltip\" title=\"Your validator attested successfully during this epoch\" class=\"text-success\">Attested</span>"
-		// }
-
-		// if *b.ProposalStatus == 1 {
-		// 	events = "<span data-toggle=\"tooltip\" title=\"Your validator proposed successfully during this epoch\" class=\"text-success\">Attested</span>"
-		// }
-
-		// if *b.InclusionSlot == 0 && b.ProposalSlot != nil && *b.ProposalStatus > 0 {
-		// 	events = "<span data-toggle=\"tooltip\" title=\"Your validator is scheduled to attest and propose during this epoch\"><span>Prop.</span> & <span>Att.</span></span>"
-		// }
-
-		// if *b.InclusionSlot == 0 && b.ProposalSlot != nil && *b.ProposalStatus == 0 {
-		// 	events = "<span data-toggle=\"tooltip\" title=\"Your validator is scheduled to attest and propose during this epoch\"><span>Prop.</span> & <span>Att.</span></span>"
-		// }
-
-		// if *b.InclusionSlot == 0 && b.ProposalSlot != nil && *b.ProposalStatus == 0 {
-		// 	events = "<span data-toggle=\"tooltip\" title=\"Your validator is scheduled to attest and propose during this epoch\"><span>Prop.</span> & <span>Att.</span></span>"
-		// }
-
-		// if *b.InclusionSlot != 0 && b.ProposalSlot != nil && *b.ProposalStatus > 1 {
-		// 	events = "<span data-toggle=\"tooltip\" title=\"Your validator attested successfully, but failed to propose during this epoch\"><span class=\"text-danger\">Prop.</span> & <span class=\"text-success\">Att.</span></span>"
-		// }
-
-		// if *b.InclusionSlot == 0 && b.ProposalSlot != nil && *b.ProposalStatus == 1 {
-		// 	events = "<span data-toggle=\"tooltip\" title=\"Your validator proposed successfully, but failed to attest during this epoch\"><span class=\"text-success\">Prop.</span> & <span class=\"text-danger\">Att.</span></span>"
-		// }
-
-		// if *b.InclusionSlot != 0 && b.ProposalSlot != nil && *b.ProposalStatus == 1 {
-		// 	events = "<span data-toggle=\"tooltip\" title=\"Your validator proposed and attested successfully during this epoch\" class=\"text-success\">Prop. & Att.</span>"
-		// }
-
-		// }
-
 		if b.BalanceChange.Valid {
 			tableData = append(tableData, []interface{}{
 				utils.FormatEpoch(b.Epoch),
@@ -1071,33 +1041,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				template.HTML(events),
 			})
 		}
-
-		// if b.InclusionSlot != nil {
-		// 	tableData = append(tableData, []interface{}{
-		// 		// utils.FormatEpoch(b.Epoch),
-		// 		utils.FormatAttestationInclusionSlot(*b.InclusionSlot),
-		// 		utils.FormatBalanceChange(b.BalanceChange),
-		// 		"Attestation",
-		// 	})
-		// }
-
-		// if b.ProposalSlot != nil {
-		// 	tableData = append(tableData, []interface{}{
-		// 		// utils.FormatEpoch(b.Epoch),
-		// 		utils.FormatAttestationInclusionSlot(*b.ProposalSlot),
-		// 		utils.FormatBalanceChange(b.BalanceChange),
-		// 		"Proposed",
-		// 	})
-		// }
-
-		// if b.InclusionSlot == nil && b.ProposalSlot == nil {
-		// 	tableData = append(tableData, []interface{}{
-		// 		// utils.FormatEpoch(b.Epoch),
-		// 		template.HTML("-"),
-		// 		utils.FormatBalanceChange(b.BalanceChange),
-		// 		"Unavailable",
-		// 	})
-		// }
 	}
 
 	data := &types.DataTableResponse{
