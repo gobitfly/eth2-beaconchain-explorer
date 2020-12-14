@@ -560,6 +560,8 @@ func updateValidatorPerformance() error {
 		depositsMap[d.Validatorindex][d.Epoch] = d.Amount
 	}
 
+	data := make([]*types.ValidatorPerformance, 0, len(performance))
+
 	for validator, balances := range performance {
 
 		currentBalance := balances[int64(currentEpoch)]
@@ -608,10 +610,28 @@ func updateValidatorPerformance() error {
 			}
 		}
 
+		data = append(data, &types.ValidatorPerformance{
+			Rank:            0,
+			Index:           validator,
+			PublicKey:       nil,
+			Name:            "",
+			Balance:         uint64(currentBalance),
+			Performance1d:   performance1d,
+			Performance7d:   performance7d,
+			Performance31d:  performance31d,
+			Performance365d: performance365d,
+		})
+	}
+
+	sort.Slice(data, func(i, j int) bool {
+		return data[i].Performance7d > data[j].Performance7d
+	})
+
+	for i, d := range data {
 		_, err := tx.Exec(`
-			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d)
-			VALUES ($1, $2, $3, $4, $5, $6)`,
-			validator, currentBalance, performance1d, performance7d, performance31d, performance365d)
+			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			d.Index, d.Balance, d.Performance1d, d.Performance7d, d.Performance31d, d.Performance365d, i+1)
 
 		if err != nil {
 			return fmt.Errorf("error saving validator performance data: %w", err)

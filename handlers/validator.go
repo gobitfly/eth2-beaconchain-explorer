@@ -218,10 +218,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.lastattestationslot, 
 			COALESCE(validator_names.name, '') AS name,
 			COALESCE(validators.balance, 0) AS balance,
+			COALESCE(validator_performance.rank7d, 0) AS rank7d,
 		    validators.status
 		FROM validators 
 		LEFT JOIN validator_names 
 			ON validators.pubkey = validator_names.publickey
+		LEFT JOIN validator_performance 
+			ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = $1`, index)
 	if err != nil {
 		//logger.Errorf("error retrieving validator page data: %v", err)
@@ -1012,18 +1015,18 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 	for _, b := range validatorHistory {
-		if utils.SlotToTime(*b.AttesterSlot).Before(time.Now().Add(time.Minute*-1)) && *b.InclusionSlot == 0 {
+		if b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
 			b.AttestationStatus = 2
 		}
 
-		if *b.InclusionSlot != 0 && b.AttestationStatus == 0 {
+		if b.InclusionSlot.Valid && b.InclusionSlot.Int64 != 0 && b.AttestationStatus == 0 {
 			b.AttestationStatus = 1
 		}
 
 		events := utils.FormatAttestationStatus(b.AttestationStatus)
 
-		if b.ProposalSlot != nil {
-			block := utils.FormatBlockStatus(*b.ProposalStatus)
+		if b.ProposalSlot.Valid {
+			block := utils.FormatBlockStatus(uint64(b.ProposalStatus.Int64))
 			events += " & " + block
 		}
 
@@ -1060,11 +1063,14 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		// }
 
 		// }
-		tableData = append(tableData, []interface{}{
-			utils.FormatEpoch(b.Epoch),
-			utils.FormatBalanceChange(b.BalanceChange, currency),
-			template.HTML(events),
-		})
+
+		if b.BalanceChange.Valid {
+			tableData = append(tableData, []interface{}{
+				utils.FormatEpoch(b.Epoch),
+				utils.FormatBalanceChange(&b.BalanceChange.Int64, currency),
+				template.HTML(events),
+			})
+		}
 
 		// if b.InclusionSlot != nil {
 		// 	tableData = append(tableData, []interface{}{
@@ -1107,43 +1113,4 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-}
-
-//ValidatorRank returns rank of a validator as a json
-func ValidatorRank(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	vars := mux.Vars(r)
-	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing validator index: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	var valRank []*types.ValidatorRank
-
-	err = db.DB.Select(&valRank, `
-		SELECT rank FROM( 
-				SELECT
-					ROW_NUMBER() OVER (ORDER BY "performance7d" DESC) AS rank,
-					validatorindex, 
-					performance7d
-				FROM validator_performance
-			) AS rankTable
-		WHERE validatorindex=$1
-		`, index)
-	if err != nil {
-		logger.Errorf("error retrieving validator rank data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	err = json.NewEncoder(w).Encode(valRank)
-	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
 }

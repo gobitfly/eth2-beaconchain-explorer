@@ -7,16 +7,16 @@ In the future it is better to replace this table with an in memory cache (redis)
 drop table if exists validators;
 create table validators
 (
-    validatorindex             int    not null,
-    pubkey                     bytea  not null,
-    withdrawableepoch          bigint not null,
-    withdrawalcredentials      bytea  not null,
-    balance                    bigint not null,
-    effectivebalance           bigint not null,
-    slashed                    bool   not null,
-    activationeligibilityepoch bigint not null,
-    activationepoch            bigint not null,
-    exitepoch                  bigint not null,
+    validatorindex             int         not null,
+    pubkey                     bytea       not null,
+    withdrawableepoch          bigint      not null,
+    withdrawalcredentials      bytea       not null,
+    balance                    bigint      not null,
+    effectivebalance           bigint      not null,
+    slashed                    bool        not null,
+    activationeligibilityepoch bigint      not null,
+    activationepoch            bigint      not null,
+    exitepoch                  bigint      not null,
     lastattestationslot        bigint,
     status                     varchar(20) not null default '',
     primary key (validatorindex)
@@ -56,6 +56,7 @@ create table validator_performance
     performance7d   bigint not null,
     performance31d  bigint not null,
     performance365d bigint not null,
+    rank7d          int    not null,
     primary key (validatorindex)
 );
 create index idx_validator_performance_balance on validator_performance (balance);
@@ -63,6 +64,7 @@ create index idx_validator_performance_performance1d on validator_performance (p
 create index idx_validator_performance_performance7d on validator_performance (performance7d);
 create index idx_validator_performance_performance31d on validator_performance (performance31d);
 create index idx_validator_performance_performance365d on validator_performance (performance365d);
+create index idx_validator_performance_rank7d on validator_performance (rank7d);
 
 drop table if exists proposal_assignments;
 create table proposal_assignments
@@ -326,51 +328,51 @@ create table users
 drop table if exists oauth_apps;
 create table oauth_apps
 (
-    id                    serial                      not null,
-    owner_id              int                         not null,
-    redirect_uri          character varying(100)      not null unique,
-    app_name              character varying(35)       not null,
-    active                bool                        not null default 't',
-    created_ts            timestamp without time zone not null,
+    id           serial                      not null,
+    owner_id     int                         not null,
+    redirect_uri character varying(100)      not null unique,
+    app_name     character varying(35)       not null,
+    active       bool                        not null default 't',
+    created_ts   timestamp without time zone not null,
     primary key (id, redirect_uri)
 );
 
 drop table if exists oauth_codes;
 create table oauth_codes
 (
-    id              serial                      not null,
-    user_id         int                         not null,
-    code            character varying(64)       not null,
-    consumed        bool                        not null default 'f',
-    app_id          int                         not null,
-    created_ts      timestamp without time zone not null,
+    id         serial                      not null,
+    user_id    int                         not null,
+    code       character varying(64)       not null,
+    consumed   bool                        not null default 'f',
+    app_id     int                         not null,
+    created_ts timestamp without time zone not null,
     primary key (user_id, code)
 );
 
 drop table if exists users_devices;
 create table users_devices
 (
-    id                    serial                      not null,
-    user_id               int                         not null,
-    refresh_token         character varying(64)       not null,
-    device_name           character varying(20)       not null,
-    notification_token    character varying(500),
-    notify_enabled        bool                        not null default 't',
-    active                bool                        not null default 't',
-    app_id                int                         not null,
-    created_ts            timestamp without time zone not null,
+    id                 serial                      not null,
+    user_id            int                         not null,
+    refresh_token      character varying(64)       not null,
+    device_name        character varying(20)       not null,
+    notification_token character varying(500),
+    notify_enabled     bool                        not null default 't',
+    active             bool                        not null default 't',
+    app_id             int                         not null,
+    created_ts         timestamp without time zone not null,
     primary key (user_id, refresh_token)
 );
 
 drop table if exists users_clients;
 create table users_clients
 (
-    id                    serial                      not null,
-    user_id               int                         not null,
-    client         	      character varying(12)       not null,
-    client_version        int       			      not null,
-    notify_enabled        bool                        not null default 't',
-    created_ts            timestamp without time zone not null,
+    id             serial                      not null,
+    user_id        int                         not null,
+    client         character varying(12)       not null,
+    client_version int                         not null,
+    notify_enabled bool                        not null default 't',
+    created_ts     timestamp without time zone not null,
     primary key (user_id, client)
 );
 
