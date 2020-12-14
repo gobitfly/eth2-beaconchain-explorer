@@ -6,10 +6,8 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"fmt"
 	"net/http"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/lib/pq"
@@ -36,106 +34,115 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := services.LatestEpoch()
 	now := utils.EpochToTime(latestEpoch)
-	lastDayEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 1 * -1))
-	lastWeekEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 7 * -1))
-	lastMonthEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 31 * -1))
+	lastDayEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 1 * -1)))
+	lastWeekEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 7 * -1)))
+	lastMonthEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 31 * -1)))
 
-	query := `
-		WITH 
-			minmaxepoch AS (
-				SELECT
-					validatorindex,
-					MIN(epoch) AS firstepoch,
-					MAX(epoch) AS lastepoch
-				FROM validator_balances
-				WHERE validatorindex = ANY($1) AND epoch > $2
-				GROUP by validatorindex
-			),
-			deposits AS (
-				SELECT vv.validatorindex, COALESCE(SUM(bd.amount),0) AS amount
-				FROM minmaxepoch
-				INNER JOIN validators vv
-					ON vv.validatorindex = minmaxepoch.validatorindex
-				LEFT JOIN blocks_deposits bd 
-					ON bd.publickey = vv.pubkey
-					AND (bd.block_slot/32)-1 > minmaxepoch.firstepoch
-				GROUP BY vv.validatorindex
-			)
-		SELECT
-			COALESCE(SUM(last.balance - first.balance - d.amount), 0) AS earnings
-		FROM minmaxepoch
-		INNER JOIN validator_balances first
-			ON first.validatorindex = minmaxepoch.validatorindex
-			AND first.epoch = minmaxepoch.firstepoch
-		INNER JOIN validator_balances last
-			ON last.validatorindex = minmaxepoch.validatorindex
-			AND last.epoch = minmaxepoch.lastepoch
-		LEFT JOIN deposits d ON d.validatorindex = minmaxepoch.validatorindex`
+	var activationEpoch uint64
+	err := db.DB.Get(&activationEpoch, "SELECT CAST(MIN(activationepoch) AS BIGINT) FROM validators WHERE validatorindex = ANY($1)", validatorsPQArray)
+	if err != nil {
+		return nil, err
+	}
+
+	if activationEpoch == 9223372036854775807 {
+		activationEpoch = 0
+	}
+
+	balances := []struct {
+		Epoch   uint64
+		Balance int64
+	}{}
+
+	err = db.DB.Select(&balances, "SELECT epoch, COALESCE(SUM(balance), 0) AS balance FROM validator_balances WHERE epoch = ANY($1) AND validatorindex = ANY($2) GROUP BY epoch", pq.Array([]uint64{latestEpoch, lastDayEpoch, lastWeekEpoch, lastMonthEpoch, activationEpoch}), validatorsPQArray)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	balancesEpochMap := make(map[uint64]int64)
+	for _, b := range balances {
+		balancesEpochMap[b.Epoch] = b.Balance
+	}
+
+	deposits := []struct {
+		Epoch   uint64
+		Deposit int64
+	}{}
+
+	err = db.DB.Select(&deposits, "SELECT block_slot / 32 AS epoch, SUM(amount) AS deposit FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1)) GROUP BY epoch", validatorsPQArray)
+	if err != nil {
+		return nil, err
+	}
 
 	var earningsTotal int64
 	var earningsLastDay int64
 	var earningsLastWeek int64
 	var earningsLastMonth int64
+	var apr float64
+	var totalDeposits int64
 
-	wg := sync.WaitGroup{}
-	wg.Add(4)
-	errs := make(chan error, 4)
-
-	go func() {
-		defer wg.Done()
-		err := db.DB.Get(&earningsTotal, query, validatorsPQArray, 0)
-		if err != nil {
-			err = fmt.Errorf("error retrieving total earnings: %w", err)
-		}
-		errs <- err
-	}()
-
-	go func() {
-		defer wg.Done()
-		err := db.DB.Get(&earningsLastDay, query, validatorsPQArray, lastDayEpoch)
-		if err != nil {
-			err = fmt.Errorf("error retrieving earnings of last day: %w", err)
-		}
-		errs <- err
-	}()
-
-	go func() {
-		defer wg.Done()
-		err := db.DB.Get(&earningsLastWeek, query, validatorsPQArray, lastWeekEpoch)
-		if err != nil {
-			err = fmt.Errorf("error retrieving earnings of last week: %w", err)
-		}
-		errs <- err
-	}()
-
-	go func() {
-		defer wg.Done()
-		err := db.DB.Get(&earningsLastMonth, query, validatorsPQArray, lastMonthEpoch)
-		if err != nil {
-			err = fmt.Errorf("error retrieving earnings of last month: %w", err)
-		}
-		errs <- err
-	}()
-
-	go func() {
-		wg.Wait()
-		close(errs)
-	}()
-
-	for err := range errs {
-		if err != nil {
-			return nil, err
-		}
+	for _, d := range deposits {
+		totalDeposits += d.Deposit
 	}
 
-	earnings := &types.ValidatorEarnings{
+	// Calculate earnings
+	start := activationEpoch
+	end := latestEpoch
+	initialBalance := balancesEpochMap[start]
+	endBalance := balancesEpochMap[end]
+	depositSum := int64(0)
+	for _, d := range deposits {
+		if d.Epoch > start && d.Epoch < end {
+			depositSum += d.Deposit
+		}
+	}
+	earningsTotal = endBalance - initialBalance - depositSum
+
+	start = lastMonthEpoch
+	initialBalance = balancesEpochMap[start]
+	endBalance = balancesEpochMap[end]
+	depositSum = int64(0)
+	for _, d := range deposits {
+		if d.Epoch > start && d.Epoch < end {
+			depositSum += d.Deposit
+		}
+	}
+	earningsLastMonth = endBalance - initialBalance - depositSum
+
+	start = lastWeekEpoch
+	initialBalance = balancesEpochMap[start]
+	endBalance = balancesEpochMap[end]
+	depositSum = int64(0)
+	for _, d := range deposits {
+		if d.Epoch > start && d.Epoch < end {
+			depositSum += d.Deposit
+		}
+	}
+	earningsLastWeek = endBalance - initialBalance - depositSum
+
+	start = lastDayEpoch
+	initialBalance = balancesEpochMap[start]
+	endBalance = balancesEpochMap[end]
+	depositSum = int64(0)
+	for _, d := range deposits {
+		if d.Epoch > start && d.Epoch < end {
+			depositSum += d.Deposit
+		}
+	}
+	earningsLastDay = endBalance - initialBalance - depositSum
+
+	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
+	if apr < float64(-1) {
+		apr = float64(-1)
+	}
+
+	return &types.ValidatorEarnings{
 		Total:     earningsTotal,
 		LastDay:   earningsLastDay,
 		LastWeek:  earningsLastWeek,
 		LastMonth: earningsLastMonth,
-	}
-
-	return earnings, nil
+		APR:       apr,
+	}, nil
 }
 
 // LatestState will return common information that about the current state of the eth2 chain

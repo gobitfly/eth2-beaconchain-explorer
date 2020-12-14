@@ -47,7 +47,9 @@ func Init() {
 		return
 	}
 
-	go chartsPageDataUpdater()
+	if !utils.Config.Frontend.DisableCharts {
+		go chartsPageDataUpdater()
+	}
 	go statsUpdater()
 
 	if utils.Config.Frontend.Notifications.Enabled {
@@ -147,7 +149,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.Mainnet
-
 	data.NetworkName = utils.Config.Chain.Network
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 
@@ -195,7 +196,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			logger.WithError(err).Error("error could not calcualte threshold time")
 		}
 		if threshold == nil {
-			*threshold = deposit.BlockTs
+			threshold = &deposit.BlockTs
 		}
 
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
