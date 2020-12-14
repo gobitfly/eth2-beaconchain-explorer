@@ -1015,18 +1015,18 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 	for _, b := range validatorHistory {
-		if utils.SlotToTime(*b.AttesterSlot).Before(time.Now().Add(time.Minute*-1)) && *b.InclusionSlot == 0 {
+		if b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
 			b.AttestationStatus = 2
 		}
 
-		if *b.InclusionSlot != 0 && b.AttestationStatus == 0 {
+		if b.InclusionSlot.Valid && b.InclusionSlot.Int64 != 0 && b.AttestationStatus == 0 {
 			b.AttestationStatus = 1
 		}
 
 		events := utils.FormatAttestationStatus(b.AttestationStatus)
 
-		if b.ProposalSlot != nil {
-			block := utils.FormatBlockStatus(*b.ProposalStatus)
+		if b.ProposalSlot.Valid {
+			block := utils.FormatBlockStatus(uint64(b.ProposalStatus.Int64))
 			events += " & " + block
 		}
 
@@ -1063,11 +1063,14 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		// }
 
 		// }
-		tableData = append(tableData, []interface{}{
-			utils.FormatEpoch(b.Epoch),
-			utils.FormatBalanceChange(b.BalanceChange, currency),
-			template.HTML(events),
-		})
+
+		if b.BalanceChange.Valid {
+			tableData = append(tableData, []interface{}{
+				utils.FormatEpoch(b.Epoch),
+				utils.FormatBalanceChange(&b.BalanceChange.Int64, currency),
+				template.HTML(events),
+			})
+		}
 
 		// if b.InclusionSlot != nil {
 		// 	tableData = append(tableData, []interface{}{

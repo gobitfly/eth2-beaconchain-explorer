@@ -1,6 +1,7 @@
 package types
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -645,13 +646,13 @@ type ValidatorProposerSlashing struct {
 }
 
 type ValidatorHistory struct {
-	Epoch             uint64  `db:"epoch" json:"epoch,omitempty"`
-	BalanceChange     *int64  `db:"balancechange" json:"balance_change,omitempty"`
-	AttesterSlot      *uint64 `db:"attestatation_attesterslot" json:"attester_slot,omitempty"`
-	InclusionSlot     *uint64 `db:"attestation_inclusionslot" json:"inclusion_slot,omitempty"`
-	AttestationStatus uint64  `db:"attestation_status" json:"attestation_status,omitempty"`
-	ProposalStatus    *uint64 `db:"proposal_status" json:"proposal_status,omitempty"`
-	ProposalSlot      *uint64 `db:"proposal_slot" json:"proposal_slot,omitempty"`
+	Epoch             uint64        `db:"epoch" json:"epoch,omitempty"`
+	BalanceChange     sql.NullInt64 `db:"balancechange" json:"balance_change,omitempty"`
+	AttesterSlot      sql.NullInt64 `db:"attestatation_attesterslot" json:"attester_slot,omitempty"`
+	InclusionSlot     sql.NullInt64 `db:"attestation_inclusionslot" json:"inclusion_slot,omitempty"`
+	AttestationStatus uint64        `db:"attestation_status" json:"attestation_status,omitempty"`
+	ProposalStatus    sql.NullInt64 `db:"proposal_status" json:"proposal_status,omitempty"`
+	ProposalSlot      sql.NullInt64 `db:"proposal_slot" json:"proposal_slot,omitempty"`
 }
 
 type ValidatorSlashing struct {
