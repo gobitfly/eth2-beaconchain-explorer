@@ -1,6 +1,7 @@
 package types
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -214,6 +215,7 @@ type ValidatorPageData struct {
 	Income1d                            int64
 	Income7d                            int64
 	Income31d                           int64
+	Rank7d                              int64 `db:"rank7d"`
 	Apr                                 float64
 	Proposals                           [][]uint64
 	BalanceHistoryChartData             [][]float64
@@ -277,6 +279,7 @@ type ValidatorPerformance struct {
 	Performance7d   int64  `db:"performance7d"`
 	Performance31d  int64  `db:"performance31d"`
 	Performance365d int64  `db:"performance365d"`
+	Rank7d          int64  `db:"rank7d"`
 }
 
 // ValidatorAttestation is a struct for the validators attestations data
@@ -643,13 +646,13 @@ type ValidatorProposerSlashing struct {
 }
 
 type ValidatorHistory struct {
-	Epoch             uint64  `db:"epoch" json:"epoch,omitempty"`
-	BalanceChange     *int64  `db:"balancechange" json:"balance_change,omitempty"`
-	AttesterSlot      *uint64 `db:"attestatation_attesterslot" json:"attester_slot,omitempty"`
-	InclusionSlot     *uint64 `db:"attestation_inclusionslot" json:"inclusion_slot,omitempty"`
-	AttestationStatus uint64  `db:"attestation_status" json:"attestation_status,omitempty"`
-	ProposalStatus    *uint64 `db:"proposal_status" json:"proposal_status,omitempty"`
-	ProposalSlot      *uint64 `db:"proposal_slot" json:"proposal_slot,omitempty"`
+	Epoch             uint64        `db:"epoch" json:"epoch,omitempty"`
+	BalanceChange     sql.NullInt64 `db:"balancechange" json:"balance_change,omitempty"`
+	AttesterSlot      sql.NullInt64 `db:"attestatation_attesterslot" json:"attester_slot,omitempty"`
+	InclusionSlot     sql.NullInt64 `db:"attestation_inclusionslot" json:"inclusion_slot,omitempty"`
+	AttestationStatus uint64        `db:"attestation_status" json:"attestation_status,omitempty"`
+	ProposalStatus    sql.NullInt64 `db:"proposal_status" json:"proposal_status,omitempty"`
+	ProposalSlot      sql.NullInt64 `db:"proposal_slot" json:"proposal_slot,omitempty"`
 }
 
 type ValidatorSlashing struct {

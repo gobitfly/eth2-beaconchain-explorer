@@ -217,22 +217,23 @@ $(document).ready(function() {
   })
 })
 
-moment.locale((window.navigator.userLanguage || window.navigator.language).toLowerCase())
 $('[aria-ethereum-date]').each(function(item) {
   var dt = $(this).attr('aria-ethereum-date')
   var format = $(this).attr('aria-ethereum-date-format')
 
   if (!format) {
-    format = 'L LTS'
+    format = 'ff'
   }
 
   if (format === 'FROMNOW') {
-    $(this).text(moment.unix(dt).fromNow())
+    $(this).text(luxon.DateTime.fromMillis(dt * 1000).toRelative({ style: "short"}))
+    $(this).attr('title', luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
   } else {
-    $(this).text(moment.unix(dt).format(format))
+    $(this).text(luxon.DateTime.fromMillis(dt * 1000).toFormat(format))
   }
-  $(this).attr('title', moment.unix(dt).format("LLL"))
 })
+
+
 
 $(document).ready(function() {
     var clipboard = new ClipboardJS('[data-clipboard-text]');
@@ -261,36 +262,6 @@ $(document).ready(function() {
   });
 })
 
-// var indicator = $('#nav .nav-indicator')
-// var items = document.querySelectorAll('#nav .nav-item')
-// var selectedLi = indicator.parent()[0]
-// var navigated = false
-
-// function handleIndicator(el) {
-//   indicator.css({
-//     width: `${el.offsetWidth}px`,
-//     left: `${el.offsetLeft}px`,
-//     bottom: 0
-//   })
-// }
-
-// items.forEach(function(item, index) {
-//   item.addEventListener('click', el => {
-//     if (navigated === false) {
-//       indicator
-//         .css({
-//           width: `${selectedLi.offsetWidth}px`,
-//           left: `${selectedLi.offsetLeft}px`,
-//           bottom: 0
-//         })
-//         .detach()
-//         .appendTo('.navbar ul') //.appendTo(el.target)
-//     }
-//     navigated = true
-//     handleIndicator(item)
-//   })
-// })
-
 // With HTML5 history API, we can easily prevent scrolling!
 $('.nav-tabs a').on('shown.bs.tab', function (e) {
     if (history.replaceState) {
@@ -313,9 +284,9 @@ function formatTimestamps(selStr) {
   }
   sel.find('.timestamp').each(function(){
     var ts = $(this).data('timestamp')
-    var tsMoment = moment.unix(ts)
-    $(this).attr("data-original-title", tsMoment.format("LLL"))
-    $(this).text(tsMoment.fromNow())
+    var tsLuxon = luxon.DateTime.fromMillis(ts * 1000)
+    $(this).attr("data-original-title", tsLuxon.toFormat("LLL"))
+    $(this).text(tsLuxon.toRelative({ style: "short"}))
   })
   sel.find('[data-toggle="tooltip"]').tooltip()
 }

@@ -286,10 +286,6 @@
                                 <span class="nav-icon"><i class="fas fa-table mr-2"></i></span>
                                 <span class="nav-text">Overview</span>
                             </a>
-                            <a class="dropdown-item" href="/validators/leaderboard">
-                                <span class="nav-icon"><i class="fas fa-medal mr-2"></i></span>
-                                <span class="nav-text">Leaderboard</span>
-                            </a>
                             <a class="dropdown-item" href="/validators/slashings">
                                 <span class="nav-icon"><i class="fas fa-user-slash mr-2"></i></span>
                                 <span class="nav-text">Slashings</span>
@@ -687,7 +683,10 @@
             crossorigin="anonymous"></script>
 
     <script src="/theme/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
+
+    <script src="/js/luxon.js"></script>
+    <script>luxon.DateTime.local();</script>
+
     <script src="/js/typeahead.bundle.min.js"></script>
     <script src="/js/layout.js"></script>
     <script src="/js/banner.js"></script>
@@ -725,27 +724,7 @@
             var slot = Math.floor((ts / 1000 - gts) / sps)
             if (slot < 0) return 0
             return slot
-				}
-
-		moment.updateLocale('en', {
-			relativeTime: {
-					future : 'in %s',
-					past   : '%s ago',
-					s  : function (number, withoutSuffix) {
-						return withoutSuffix ? 'now' : 'a few secs';
-					},
-					m  : ' 1 min',
-					mm : '%d mins',
-					h  : ' 1 h',
-					hh : '%d hrs',
-					d  : ' 1 day',
-					dd : '%d days',
-					M  : ' 1 mth',
-					MM : '%d mths',
-					y  : ' 1 year',
-					yy : '%d years'
-				}
-			});
+        }
 	</script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
