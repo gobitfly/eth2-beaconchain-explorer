@@ -34,33 +34,38 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := services.LatestEpoch()
 	now := utils.EpochToTime(latestEpoch)
-	lastDayEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 1 * -1))
-	lastWeekEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 7 * -1))
-	lastMonthEpoch := utils.TimeToEpoch(now.Add(time.Hour * 24 * 31 * -1))
+	lastDayEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 1 * -1)))
+	lastWeekEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 7 * -1)))
+	lastMonthEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 31 * -1)))
 
-	var activationEpoch int64
-	err := db.DB.Get(&activationEpoch, "SELECT MIN(activationepoch) FROM validators WHERE validatorindex = ANY($1)", validatorsPQArray)
+	var activationEpoch uint64
+	err := db.DB.Get(&activationEpoch, "SELECT CAST(MIN(activationepoch) AS BIGINT) FROM validators WHERE validatorindex = ANY($1)", validatorsPQArray)
 	if err != nil {
 		return nil, err
+	}
+
+	if activationEpoch == 9223372036854775807 {
+		activationEpoch = 0
 	}
 
 	balances := []struct {
-		Epoch   int64
+		Epoch   uint64
 		Balance int64
 	}{}
 
-	err = db.DB.Select(&balances, "SELECT epoch, COALESCE(SUM(balance), 0) AS balance FROM validator_balances WHERE epoch = ANY($1) AND validatorindex = ANY($2) GROUP BY epoch", pq.Array([]int64{int64(latestEpoch), lastDayEpoch, lastWeekEpoch, lastMonthEpoch, activationEpoch}), validatorsPQArray)
+	err = db.DB.Select(&balances, "SELECT epoch, COALESCE(SUM(balance), 0) AS balance FROM validator_balances WHERE epoch = ANY($1) AND validatorindex = ANY($2) GROUP BY epoch", pq.Array([]uint64{latestEpoch, lastDayEpoch, lastWeekEpoch, lastMonthEpoch, activationEpoch}), validatorsPQArray)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
-	balancesEpochMap := make(map[int64]int64)
+	balancesEpochMap := make(map[uint64]int64)
 	for _, b := range balances {
 		balancesEpochMap[b.Epoch] = b.Balance
 	}
 
 	deposits := []struct {
-		Epoch   int64
+		Epoch   uint64
 		Deposit int64
 	}{}
 
@@ -76,7 +81,7 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 
 	// Calculate earnings
 	start := activationEpoch
-	end := int64(latestEpoch)
+	end := latestEpoch
 	initialBalance := balancesEpochMap[start]
 	endBalance := balancesEpochMap[end]
 	depositSum := int64(0)
