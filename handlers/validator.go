@@ -334,16 +334,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances WHERE validatorindex = $1", index)
+	var epochs []uint64
+	for i := uint64(0); i <= validatorPageData.Epoch; i++ {
+		if i%225 == 0 || i < validatorPageData.Epoch-(225*7) {
+			epochs = append(epochs, i)
+		}
+	}
+	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances WHERE validatorindex = $1 AND epoch = ANY($2) ORDER BY epoch", index, pq.Array(epochs))
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-
-	sort.Slice(balanceHistory, func(i, j int) bool {
-		return balanceHistory[i].Epoch < balanceHistory[j].Epoch
-	})
 
 	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
 	validatorPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(balanceHistory))
