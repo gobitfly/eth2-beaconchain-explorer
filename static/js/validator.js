@@ -77,12 +77,6 @@ function setValidatorStatus(state) {
   }
 }
 
-// set date
-$('span[aria-ethereum-date]').each(function () {
-  var d = $(this).attr('aria-ethereum-date');
-  $(this).html(luxon.DateTime.fromMillis(d * 1000).toRelative({ style: "short"}))
-})
-
 
 function setupDashboardButtons(validatorIdx) {
   var validators = []

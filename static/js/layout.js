@@ -222,16 +222,15 @@ $('[aria-ethereum-date]').each(function(item) {
   var format = $(this).attr('aria-ethereum-date-format')
 
   if (!format) {
-    format = 'L LTS'
+    format = 'ff'
   }
-  console.log('formatting aria dates', DateTime)
 
   if (format === 'FROMNOW') {
     $(this).text(luxon.DateTime.fromMillis(dt * 1000).toRelative({ style: "short"}))
+    $(this).attr('title', luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
   } else {
     $(this).text(luxon.DateTime.fromMillis(dt * 1000).toFormat(format))
   }
-  $(this).attr('title', luxon.DateTime.fromMillis(dt * 1000).toFormat("LLL"))
 })
 
 
