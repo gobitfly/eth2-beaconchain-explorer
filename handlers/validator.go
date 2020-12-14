@@ -311,8 +311,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
 	// Special care needs to be take for exited and pending validators
-	validatorPageData.AttestationsCount = services.LatestEpoch() - validatorPageData.ActivationEpoch + 1
-	if validatorPageData.ActivationEpoch > services.LatestEpoch() {
+	validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
+	if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
 		validatorPageData.AttestationsCount = 0
 	}
 	if validatorPageData.ExitEpoch != 9223372036854775807 {
@@ -320,7 +320,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
+	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances WHERE validatorindex = $1 AND (epoch % 225 = 0 OR epoch > $2) ORDER BY epoch", index, validatorPageData.Epoch-225)
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -342,25 +342,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	var depositSum = float64(0)
-	err = db.DB.Get(&depositSum, `
-			SELECT sum(amount)
-			FROM eth1_deposits
-			WHERE valid_signature = true and publickey = $1
-		`, validatorPageData.PublicKey)
-	if err != nil {
-		logger.Errorf("error retrieving validator deposit sum: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
 
 	validatorPageData.Income1d = earnings.LastDay
 	validatorPageData.Income7d = earnings.LastWeek
 	validatorPageData.Income31d = earnings.LastMonth
-	validatorPageData.Apr = (((float64(earnings.LastWeek) / 1e9) / (depositSum / 1e9)) * 365) / 7
-	if validatorPageData.Apr < float64(-1) {
-		validatorPageData.Apr = float64(-1)
-	}
+	validatorPageData.Apr = earnings.APR
 
 	if validatorPageData.Slashed {
 		var slashingInfo struct {
@@ -408,7 +394,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	FROM attestation_assignments aa
 	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
 	WHERE aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
-	`, int64(data.CurrentEpoch)-100, index)
+	`, int64(validatorPageData.Epoch)-100, index)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
 		http.Error(w, "Internal server error", 503)

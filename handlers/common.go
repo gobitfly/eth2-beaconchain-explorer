@@ -78,6 +78,12 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	var earningsLastDay int64
 	var earningsLastWeek int64
 	var earningsLastMonth int64
+	var apr float64
+	var totalDeposits int64
+
+	for _, d := range deposits {
+		totalDeposits += d.Deposit
+	}
 
 	// Calculate earnings
 	start := activationEpoch
@@ -125,11 +131,17 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}
 	earningsLastDay = endBalance - initialBalance - depositSum
 
+	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
+	if apr < float64(-1) {
+		apr = float64(-1)
+	}
+
 	return &types.ValidatorEarnings{
 		Total:     earningsTotal,
 		LastDay:   earningsLastDay,
 		LastWeek:  earningsLastWeek,
 		LastMonth: earningsLastMonth,
+		APR:       apr,
 	}, nil
 }
 
