@@ -218,10 +218,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.lastattestationslot, 
 			COALESCE(validator_names.name, '') AS name,
 			COALESCE(validators.balance, 0) AS balance,
+			COALESCE(validator_performance.rank7d, 0) AS rank7d,
 		    validators.status
 		FROM validators 
 		LEFT JOIN validator_names 
 			ON validators.pubkey = validator_names.publickey
+		LEFT JOIN validator_performance 
+			ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = $1`, index)
 	if err != nil {
 		//logger.Errorf("error retrieving validator page data: %v", err)
@@ -1107,43 +1110,4 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-}
-
-//ValidatorRank returns rank of a validator as a json
-func ValidatorRank(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	vars := mux.Vars(r)
-	index, err := strconv.ParseUint(vars["index"], 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing validator index: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	var valRank []*types.ValidatorRank
-
-	err = db.DB.Select(&valRank, `
-		SELECT rank FROM( 
-				SELECT
-					ROW_NUMBER() OVER (ORDER BY "performance7d" DESC) AS rank,
-					validatorindex, 
-					performance7d
-				FROM validator_performance
-			) AS rankTable
-		WHERE validatorindex=$1
-		`, index)
-	if err != nil {
-		logger.Errorf("error retrieving validator rank data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	err = json.NewEncoder(w).Encode(valRank)
-	if err != nil {
-		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
 }
