@@ -40,6 +40,10 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	if err != nil {
 		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
+	err = collectBlockProposalNotifications(notificationsByUserID)
+	if err != nil {
+		logger.Errorf("error collecting validator_new_proposal notifications: %v", err)
+	}
 	return notificationsByUserID
 }
 
@@ -54,6 +58,7 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 	for userID := range notificationsByUserID {
 		userIDs = append(userIDs, userID)
 	}
+
 	tokensByUserID, err := db.GetUserPushTokenByIds(userIDs)
 	if err != nil {
 		logger.Errorf("error when sending push-notificaitons: could not get tokens: %v", err)
@@ -274,6 +279,82 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	}
 
 	return nil
+}
+
+func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
+	latestEpoch := LatestEpoch()
+
+	var dbResult []struct {
+		SubscriptionID uint64 `db:"id"`
+		UserID         uint64 `db:"user_id"`
+		ValidatorIndex uint64 `db:"validatorindex"`
+		Epoch          uint64 `db:"epoch"`
+	}
+
+	err := db.DB.Select(&dbResult, `
+			SELECT 
+				us.id, 
+				us.user_id, 
+				v.validatorindex, 
+				pa.epoch
+			FROM users_subscriptions us
+			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
+			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch = $2
+			WHERE us.event_name = $1 AND us.created_epoch <= $2 AND pa.epoch >= ($2 - 3) AND (us.last_sent_epoch < $2 OR us.last_sent_epoch IS NULL)`,
+		types.ValidatorNewProposalEventName, latestEpoch)
+	if err != nil {
+		return err
+	}
+
+	for _, r := range dbResult {
+
+		n := &validatorNewProposalNotification{
+			SubscriptionID: r.SubscriptionID,
+			ValidatorIndex: r.ValidatorIndex,
+			Epoch:          r.Epoch,
+		}
+
+		if _, exists := notificationsByUserID[r.UserID]; !exists {
+			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+		}
+		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+		}
+		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+	}
+
+	return nil
+}
+
+type validatorNewProposalNotification struct {
+	SubscriptionID     uint64
+	ValidatorIndex     uint64
+	ValidatorPublicKey string
+	Epoch              uint64
+}
+
+func (n *validatorNewProposalNotification) GetSubscriptionID() uint64 {
+	return n.SubscriptionID
+}
+
+func (n *validatorNewProposalNotification) GetEpoch() uint64 {
+	return n.Epoch
+}
+
+func (n *validatorNewProposalNotification) GetEventName() types.EventName {
+	return types.ValidatorNewProposalEventName
+}
+
+func (n *validatorNewProposalNotification) GetInfo(includeUrl bool) string {
+	generalPart := fmt.Sprintf(`Validator %[1]v proposed a new block.`, n.ValidatorIndex)
+	if includeUrl {
+		return generalPart + getUrlPart(n.ValidatorIndex)
+	}
+	return generalPart
+}
+
+func (n *validatorNewProposalNotification) GetTitle() string {
+	return "New Block Proposal"
 }
 
 type validatorGotSlashedNotification struct {

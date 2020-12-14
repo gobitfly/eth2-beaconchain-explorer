@@ -12,6 +12,7 @@ type EventName string
 const (
 	ValidatorBalanceDecreasedEventName              EventName = "validator_balance_decreased"
 	ValidatorMissedProposalEventName                EventName = "validator_missed_proposal"
+	ValidatorNewProposalEventName                   EventName = "validator_new_proposal"
 	ValidatorMissedAttestationEventName             EventName = "validator_missed_attestation"
 	ValidatorGotSlashedEventName                    EventName = "validator_got_slashed"
 	ValidatorDidSlashEventName                      EventName = "validator_did_slash"
@@ -27,6 +28,7 @@ const (
 
 var EventNames = []EventName{
 	ValidatorBalanceDecreasedEventName,
+	ValidatorNewProposalEventName,
 	ValidatorMissedProposalEventName,
 	ValidatorMissedAttestationEventName,
 	ValidatorGotSlashedEventName,
