@@ -74,19 +74,18 @@
 
 
 {{ define "validatorOverviewDeposited"}}
-        <div class="text-justify row justify-content-center mb-2">
-            <div class="col">
-                <div class="px-2">
-                    <div class="px-2" style="max-width: 50rem;">
-                        <span>
-                            {{if eq .InclusionDelay 0}} 
-                                An ETH1 genesis deposit has been made, and your validator will be activated once genesis occurs. Please make sure your validator is up and running before genesis. 
-                            {{else}} 
-                                An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a>  until your deposit is processed by the beacon chain. If there is a deposit queue then it may take longer for the validator to be activated. 
-                            {{end}}
-                            This validator will be activated approximately on <span class="font-weight-bolder">{{.EstimatedActivationTs | formatTsWithoutTooltip}}</span> after being registered by the beacon chain.
-                        </span>
-                    </div>
+    <div class="text-justify row justify-content-center mb-2">
+        <div class="col">
+            <div class="px-2">
+                <div class="px-2" style="max-width: 50rem;">
+                    <span>
+                        {{if eq .InclusionDelay 0}} 
+                            An ETH1 genesis deposit has been made, and your validator will be activated once genesis occurs. Please make sure your validator is up and running before genesis. 
+                        {{else}} 
+                            An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a>  until your deposit is processed by the beacon chain. If there is a deposit queue then it may take longer for the validator to be activated. 
+                        {{end}}
+                        This validator will be activated approximately on <span class="font-weight-bolder">{{.EstimatedActivationTs | formatTsWithoutTooltip}}</span> after being registered by the beacon chain.
+                    </span>
                 </div>
             </div>
         </div>
@@ -94,15 +93,14 @@
 {{end}}
 
 {{ define "validatorOverviewPending" }}
-        <div class="text-justify row justify-content-center mb-2">
-            <div class="col">
-                <div class="px-2">
-                    <div class="p-2" style="max-width: 50rem;">
-                        This validator has been processed by the beacon chain and is currently waiting to be activated. It will approximately be activated on <span class="font-weight-bolder" title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> during epoch <span class="font-weight-bolder">{{.ActivationEpoch}}</span>. Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
-                    </div>
-                    <div class="py-2" style="min-width:300px;">
-                        {{ template "validatorCountdown" .}}
-                    </div>
+    <div class="text-justify row justify-content-center mb-2">
+        <div class="col">
+            <div class="px-2">
+                <div class="p-2" style="max-width: 50rem;">
+                    This validator has been processed by the beacon chain and is currently waiting to be activated. It will approximately be activated on <span class="font-weight-bolder" title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> during epoch <span class="font-weight-bolder">{{.ActivationEpoch}}</span>. Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
+                </div>
+                <div class="py-2" style="min-width:300px;">
+                    {{ template "validatorCountdown" .}}
                 </div>
             </div>
         </div>
@@ -113,7 +111,7 @@
     {{ with .Data }}
         <!-- Validator Lifecycle State Diagram -->
         <div class="overview-container d-flex flex-wrap justify-content-center">
-            <div style="flex: 0 1 80px;" class="m-3 position-relative">
+            <div style="width: 80px;" class="m-3 position-relative">
                 <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Rank</small></span>
                 <a class="no-highlight" href="/validators/leaderboard">
                     <i class="fas fa-medal"></i>
@@ -124,7 +122,7 @@
             <div class="m-3 position-relative">
                 <span style="top:-1.2rem;"
                       class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
-                <div class="d-flex flex-column">
+                <div style="width: 8.32rem" class="d-flex flex-column">
                     <span style="font-weight: bold; font-size:18px;">{{formatCurrentBalance .CurrentBalance $.Currency }}</span>
                     <span>{{formatEffectiveBalance .EffectiveBalance "ETH" }} <span data-toggle="tooltip"
                                                                                     title="The effective balance is used to calculate the base rewards of a validator"><a
@@ -132,25 +130,20 @@
                                         class="far ml-1 fa-question-circle"></i></a></span></span>
                 </div>
             </div>
-            <div style="flex: 0 1 80px;" class="m-3 position-relative">
+            <div style="width: 80px;" class="m-3 position-relative">
                 <span style="top:-1.2rem;"
                       class="text-muted font-weight-lighter position-absolute"><small>Status</small></span>
                 {{.Status | formatValidatorStatus}}
             </div>
             {{ if gtf .AttestationInclusionEffectiveness 0 }}
-                <div class="m-3 position-relative">
+                <div style="width: 8.32rem" class="m-3 position-relative">
                     <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Effectiveness</small></span>
                     {{.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}}
                 </div>
             {{end}}
-        </div>
-        <div class="d-flex flex-wrap justify-content-center p-2">
-            <div class="mx-3">
-                <span data-toggle="tooltip" title="Blocks proposed"><i
-                            class="tab-icon fas fa-cubes"></i> {{ .ProposedBlocksCount }}</span>
-            </div>
-            {{ template "validatorOverviewCount" .}}
-{{end}}
+        </div>        
+        {{ template "validatorOverviewCount" .}}
+    {{end}}
 {{end}}
 
 {{ define "validatorOverviewExited"}}
