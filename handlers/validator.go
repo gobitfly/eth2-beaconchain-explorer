@@ -211,16 +211,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch, 
 			validators.lastattestationslot, 
 			COALESCE(validator_names.name, '') AS name,
-			COALESCE(validator_balances.balance, 0) AS balance,
+			COALESCE(validators.balance, 0) AS balance,
 		    validators.status
 		FROM validators 
-		LEFT JOIN validator_balances 
-			ON validators.validatorindex = validator_balances.validatorindex 
-			AND validator_balances.epoch = $1 
 		LEFT JOIN validator_names 
 			ON validators.pubkey = validator_names.publickey
-		WHERE validators.validatorindex = $2 
-		LIMIT 1`, services.LatestEpoch(), index)
+		WHERE validators.validatorindex = $1`, index)
 	if err != nil {
 		//logger.Errorf("error retrieving validator page data: %v", err)
 
