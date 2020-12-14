@@ -277,6 +277,7 @@ type ValidatorPerformance struct {
 	Performance7d   int64  `db:"performance7d"`
 	Performance31d  int64  `db:"performance31d"`
 	Performance365d int64  `db:"performance365d"`
+	Rank7d          int64  `db:"rank7d"`
 }
 
 // ValidatorAttestation is a struct for the validators attestations data
