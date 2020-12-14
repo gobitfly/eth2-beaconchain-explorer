@@ -74,32 +74,37 @@
 
 
 {{ define "validatorOverviewDeposited"}}
-    <div class="p-2 text-justify row justify-content-center">
-        <div style="max-width: 50rem;">
-                <span>
-                    {{if eq .InclusionDelay 0}}
-                        An ETH1 genesis deposit has been made, and your validator will be activated once genesis occurs. Please make sure your validator is up and running before genesis.
-                    {{else}}
-                        An ETH1 deposit has been made, it will take <a
-                                href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a>  until your deposit is processed by the beacon chain. If there is a deposit queue then it may take longer for the validator to be activated.
-                    {{end}}
-                    This validator will be activated approximately <span
-                            class="font-weight-bolder">{{.EstimatedActivationTs | formatTsWithoutTooltip}}</span> after being registered by the beacon chain.
-                </span>
+        <div class="text-justify row justify-content-center mb-2">
+            <div class="col">
+                <div class="px-2">
+                    <div class="px-2" style="max-width: 50rem;">
+                        <span>
+                            {{if eq .InclusionDelay 0}} 
+                                An ETH1 genesis deposit has been made, and your validator will be activated once genesis occurs. Please make sure your validator is up and running before genesis. 
+                            {{else}} 
+                                An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a>  until your deposit is processed by the beacon chain. If there is a deposit queue then it may take longer for the validator to be activated. 
+                            {{end}}
+                            This validator will be activated approximately on <span class="font-weight-bolder">{{.EstimatedActivationTs | formatTsWithoutTooltip}}</span> after being registered by the beacon chain.
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 {{end}}
 
 {{ define "validatorOverviewPending" }}
-    <div class="p-2 text-justify row justify-content-center">
-        <div style="max-width: 50rem;">
-            This validator has been processed by the beacon chain and is currently waiting to be activated. It will
-            approximately be activated <span class="font-weight-bolder" title="{{.ActivationTs}}" data-toggle="tooltip"
-                                             aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> during
-            epoch <span class="font-weight-bolder">{{.ActivationEpoch}}</span>.
-        </div>
-        <div class="py-2" style="min-width:300px;">
-            {{ template "validatorCountdown" .}}
+        <div class="text-justify row justify-content-center mb-2">
+            <div class="col">
+                <div class="px-2">
+                    <div class="p-2" style="max-width: 50rem;">
+                        This validator has been processed by the beacon chain and is currently waiting to be activated. It will approximately be activated on <span class="font-weight-bolder" title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> during epoch <span class="font-weight-bolder">{{.ActivationEpoch}}</span>. Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
+                    </div>
+                    <div class="py-2" style="min-width:300px;">
+                        {{ template "validatorCountdown" .}}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 {{end}}
@@ -144,47 +149,35 @@
                 <span data-toggle="tooltip" title="Blocks proposed"><i
                             class="tab-icon fas fa-cubes"></i> {{ .ProposedBlocksCount }}</span>
             </div>
-            <div class="mx-3">
-                <span data-toggle="tooltip" title="Attestations published"><i
-                            class="tab-icon fas fa-file-signature"></i> <span>{{.AttestationsCount}}</span></span>
-            </div>
-            <div class="mx-3">
-                <span data-toggle="tooltip" title="Other validators slashed"><i
-                            class="tab-icon fas fa-user-slash"></i> {{.SlashingsCount}}</span>
-            </div>
-            <div class="mx-3">
-                <span data-toggle="tooltip" title="Deposits made to the deposit contract"><i
-                            class="tab-icon fas fa-wallet"></i> {{.DepositsCount}}</span>
-            </div>
-        </div>
-    {{end}}
+            {{ template "validatorOverviewCount" .}}
+{{end}}
 {{end}}
 
 {{ define "validatorOverviewExited"}}
-    <div class="p-2 text-justify row justify-content-center">
-        <div style="max-width: 50rem;">
-                <span>
-                    {{if .Slashed}}(Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}){{end}}
-                    <div class="p-2 row justify-content-center"> your validator has exited the system and is no longer validating </div>
-                </span>
+        <div class="p-2 text-justify row justify-content-center">
+            <div class="col">
+                <div class="px-2" style="max-width: 50rem;">
+                    <div class="p-2 text-justify">Your validator has exited the system and is no longer validating. There is no need to keep the validator running anymore.</div>
+                    {{if .Slashed}}<div class="p-2">Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}</div>{{end}}
+                </div>
+            </div>
         </div>
+        {{ template "validatorOverviewCount" .}}
+{{end}}
+
+{{define "validatorOverviewCount"}}
+<div class="row flex-wrap justify-content-center p-3 mb-3">
+    <div class="mx-3">
+        <span data-toggle="tooltip" title="Blocks proposed"><i class="tab-icon fas fa-cubes"></i> {{ .ProposedBlocksCount }}</span>
     </div>
-    <div class="row flex-wrap justify-content-center p-3 mb-3">
-        <div class="mx-3">
-            <span data-toggle="tooltip" title="Blocks proposed"><i
-                        class="tab-icon fas fa-cubes"></i> {{ .ProposedBlocksCount }}</span>
-        </div>
-        <div class="mx-3">
-                <span data-toggle="tooltip" title="Attestations published"><i
-                            class="tab-icon fas fa-file-signature"></i> <span>{{.AttestationsCount}}</span>
-        </div>
-        <div class="mx-3">
-            <span data-toggle="tooltip" title="Other validators slashed"><i
-                        class="tab-icon fas fa-user-slash"></i> {{.SlashingsCount}}</span>
-        </div>
-        <div class="mx-3">
-            <span data-toggle="tooltip" title="Deposits made to the deposit contract"><i
-                        class="tab-icon fas fa-wallet"></i> {{.DepositsCount}}</span>
-        </div>
+    <div class="mx-3">
+        <span data-toggle="tooltip" title="Attestations published"><i class="tab-icon fas fa-file-signature"></i> <span>{{.AttestationsCount}}</span>
     </div>
+    <div class="mx-3">
+        <span data-toggle="tooltip" title="Other validators slashed"><i class="tab-icon fas fa-user-slash"></i> {{.SlashingsCount}}</span>
+    </div>
+    <div class="mx-3">
+        <span data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="tab-icon fas fa-wallet"></i> {{.DepositsCount}}</span>
+    </div>
+</div>
 {{end}}

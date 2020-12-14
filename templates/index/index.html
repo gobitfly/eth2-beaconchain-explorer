@@ -157,7 +157,7 @@
             },
             filters: {
                 fromNow(date) {
-                    return moment(date).fromNow();
+                    return luxon.DateTime.fromISO(date).toRelative({ style: "short"});
                 }
             },
             created: function () {

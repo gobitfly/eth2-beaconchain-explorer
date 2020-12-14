@@ -55,13 +55,12 @@
 		}, 1000)
 	})
 </script>
-<div class="position-relative">
+<div class="position-relative d-flex justify-content-center">
 	{{template "rocket"}}
-	<div id="countdown" class="d-flex flex-column justify-content-center">
+	<div style="max-width: 300px;" id="countdown" class="d-flex flex-column justify-content-center">
 		<div class="align-self-center text-center">
 			<div>
 				<strong id="clock">
-				<span data-toggle="tooltip" title="Validator Activation Countdown"><span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.ActivationTs}}"></span> ({{.ActivationTs.Unix | formatTsWithoutTooltip}})</span>
 				</strong>
 			</div>
 		</div>
