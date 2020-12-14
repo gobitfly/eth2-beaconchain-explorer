@@ -4,10 +4,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -21,7 +19,17 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/block.html"))
+var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles(
+	"templates/layout.html",
+	"templates/block/block.html",
+	"templates/block/attestations.html",
+	"templates/block/deposits.html",
+	"templates/block/votes.html",
+	"templates/block/attesterSlashing.html",
+	"templates/block/proposerSlashing.html",
+	"templates/block/exits.html",
+	"templates/block/overview.html",
+))
 var blockNotFoundTemplate = template.Must(template.New("blocknotfound").ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
 
 // Block will return the data for a block
@@ -38,29 +46,12 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 	}
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "blocks",
-		Data:                  nil,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-	}
+	data := InitPageData(w, r, "blocks", "/blocks", "")
 
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
-		//logger.Errorf("error retrieving block data: %v", err)
+		logger.Errorf("error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
@@ -72,36 +63,38 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 
 	blockPageData := types.BlockPageData{}
+	blockPageData.Mainnet = utils.Config.Chain.Mainnet
 	err = db.DB.Get(&blockPageData, `
 		SELECT
-			epoch,
-			slot,
-			blockroot,
-			parentroot,
-			stateroot,
-			signature,
-			randaoreveal,
-			graffiti,
-			eth1data_depositroot,
-			eth1data_depositcount,
-			eth1data_blockhash,
-			proposerslashingscount,
-			attesterslashingscount,
-			attestationscount,
-			depositscount,
-			voluntaryexitscount,
-			proposer,
-			status,
-			COALESCE(validators.name, '') AS name
+			blocks.epoch,
+			blocks.slot,
+			blocks.blockroot,
+			blocks.parentroot,
+			blocks.stateroot,
+			blocks.signature,
+			blocks.randaoreveal,
+			blocks.graffiti,
+			blocks.eth1data_depositroot,
+			blocks.eth1data_depositcount,
+			blocks.eth1data_blockhash,
+			blocks.proposerslashingscount,
+			blocks.attesterslashingscount,
+			blocks.attestationscount,
+			blocks.depositscount,
+			blocks.voluntaryexitscount,
+			blocks.proposer,
+			blocks.status,
+			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-		WHERE slot = $1 OR blockroot = $2 ORDER BY status LIMIT 1`,
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		WHERE blocks.slot = $1 OR blocks.blockroot = $2 ORDER BY blocks.status LIMIT 1`,
 		blockSlot, blockRootHash)
 
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
 		data.Meta.Path = "/block/" + slotOrHash
-		//logger.Errorf("error retrieving block data: %v", err)
+		logger.Errorf("error retrieving block data: %v", err)
 		err = blockNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 
 		if err != nil {
@@ -223,25 +216,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	})
 	blockPageData.VotesCount = uint64(len(blockPageData.Votes))
 
-	var deposits []*types.BlockPageDeposit
-	err = db.DB.Select(&deposits, `
-		SELECT
-			publickey,
-			withdrawalcredentials,
-			amount,
-			signature
-		FROM blocks_deposits
-		WHERE block_slot = $1
-		ORDER BY block_index`,
-		blockPageData.Slot)
-	if err != nil {
-		logger.Errorf("error retrieving block deposit data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	blockPageData.Deposits = deposits
-
 	err = db.DB.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block deposit data: %v", err)
@@ -311,4 +285,130 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+}
+
+// BlockDepositData returns the deposits for a specific slot
+func BlockDepositData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
+	blockSlot := int64(-1)
+	blockRootHash, err := hex.DecodeString(slotOrHash)
+	if err != nil || len(slotOrHash) != 64 {
+		blockRootHash = []byte{}
+		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	} else {
+		err = db.DB.Get(&blockSlot, `
+		SELECT
+			blocks.slot
+		FROM blocks
+		WHERE blocks.blockroot = $1
+		`, blockRootHash)
+		if err != nil {
+			logger.Errorf("error querying for block slot with block root hash %v err: %v", blockRootHash, err)
+			http.Error(w, "Interal server error", 503)
+			return
+		}
+	}
+
+	q := r.URL.Query()
+
+	search := q.Get("search[value]")
+	search = strings.Replace(search, "0x", "", -1)
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if length > 100 {
+		length = 100
+	}
+
+	var count uint64
+
+	err = db.DB.Get(&count, `
+	SELECT 
+		count(*)
+	FROM
+		blocks_deposits
+	WHERE
+	 block_slot = $1
+	GROUP BY
+	 block_slot
+	`, blockSlot)
+	if err != nil {
+		logger.Errorf("error retrieving deposit count for slot %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var deposits []*types.BlockPageDeposit
+
+	err = db.DB.Select(&deposits, `
+		SELECT
+			publickey,
+			withdrawalcredentials,
+			amount,
+			signature
+		FROM blocks_deposits
+		WHERE block_slot = $1
+		ORDER BY block_index
+		LIMIT $2
+		OFFSET $3`,
+		blockSlot, length, start)
+	if err != nil {
+		logger.Errorf("error retrieving block deposit data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(deposits))
+
+	for i, deposit := range deposits {
+		tableData = append(tableData, []interface{}{
+			i + 1 + int(start),
+			utils.FormatPublicKey(deposit.PublicKey),
+			utils.FormatBalance(deposit.Amount, currency),
+			deposit.WithdrawalCredentials,
+			deposit.Signature,
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    count,
+		RecordsFiltered: count,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error encoding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 }

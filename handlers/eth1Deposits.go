@@ -6,16 +6,13 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
-	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
-var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1Deposits.html"))
+var eth1DepositsTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1Deposits.html", "templates/index/depositChart.html"))
 var eth1DepositsLeaderboardTemplate = template.Must(template.New("eth1Deposits").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/eth1DepositsLeaderboard.html"))
 
 // Eth1Deposits will return information about deposits using a go template
@@ -24,28 +21,22 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 
 	pageData := &types.EthOneDepositsPageData{}
 
-	pageData.Stats = services.GetLatestStats()
-
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Eth1 Deposits - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/deposits/eth1",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "eth1Deposits",
-		Data:                  pageData,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		ShowSyncingMessage:    services.IsSyncing(),
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
+	latestChartsPageData := services.LatestChartsPageData()
+	if latestChartsPageData != nil {
+		for _, c := range *latestChartsPageData {
+			if c.Path == "deposits" {
+				pageData.DepositChart = c
+				break
+			}
+		}
 	}
+
+	pageData.Stats = services.GetLatestStats()
+	pageData.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
+
+	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Eth1 Deposits")
+	data.HeaderAd = true
+	data.Data = pageData
 
 	err := eth1DepositsTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -58,6 +49,8 @@ func Eth1Deposits(w http.ResponseWriter, r *http.Request) {
 
 // Eth1DepositsData will return eth1-deposits as json
 func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -117,15 +110,19 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(deposits))
 	for i, d := range deposits {
+		valid := "❌"
+		if d.ValidSignature {
+			valid = "✅"
+		}
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
 			utils.FormatPublicKey(d.PublicKey),
-			utils.FormatDepositAmount(d.Amount),
+			utils.FormatDepositAmount(d.Amount, currency),
 			utils.FormatEth1TxHash(d.TxHash),
 			utils.FormatTimestamp(d.BlockTs.Unix()),
 			utils.FormatEth1Block(d.BlockNumber),
 			utils.FormatValidatorStatus(d.State),
-			d.ValidSignature,
+			valid,
 		}
 	}
 
@@ -148,25 +145,11 @@ func Eth1DepositsData(w http.ResponseWriter, r *http.Request) {
 func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Eth1 Deposits - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/deposits/eth1",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "eth1Deposits",
-		Data:                  nil,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		ShowSyncingMessage:    services.IsSyncing(),
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
+	data := InitPageData(w, r, "eth1Deposits", "/deposits/eth1", "Eth1 Deposits")
+	data.HeaderAd = true
+
+	data.Data = types.EthOneDepositLeaderBoardPageData{
+		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
 	err := eth1DepositsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)
@@ -180,8 +163,8 @@ func Eth1DepositsLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 // Eth1DepositsData will return eth1-deposits as json
 func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
 	w.Header().Set("Content-Type", "application/json")
-
 	q := r.URL.Query()
 
 	search := q.Get("search[value]")
@@ -241,7 +224,7 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	for i, d := range deposits {
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
-			utils.FormatBalance(d.Amount),
+			utils.FormatBalance(d.Amount, currency),
 			d.ValidCount,
 			d.InvalidCount,
 			d.PendingCount,

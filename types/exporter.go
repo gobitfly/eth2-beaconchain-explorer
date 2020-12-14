@@ -26,7 +26,6 @@ type EpochData struct {
 	Validators              []*Validator
 	ValidatorIndices        map[string]uint64
 	ValidatorAssignmentes   *EpochAssignments
-	BeaconCommittees        map[uint64][]*BeaconCommitteItem
 	Blocks                  map[uint64]map[string]*Block
 	EpochParticipationStats *ValidatorParticipation
 }

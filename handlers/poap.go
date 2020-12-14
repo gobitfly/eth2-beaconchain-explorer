@@ -3,52 +3,38 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"html/template"
-	"net/http"
-	"strconv"
-	"time"
-
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
-
+	"fmt"
 	eth1common "github.com/ethereum/go-ethereum/common"
+	"html/template"
+	"net/http"
+	"strconv"
+	"sync/atomic"
 )
 
 var poapTemplate = template.Must(template.ParseFiles("templates/layout.html", "templates/poap.html"))
 
 // do not change existing entries, only append new entries
 var poapClients = []string{"Prysm", "Lighthouse", "Teku", "Nimbus", "Lodestar"}
+var poapMaxSlot = uint64(300000)
+
+var poapData atomic.Value
+var poapDataEpoch uint64
 
 func Poap(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - POAP - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/poap",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage: services.IsSyncing(),
-		Active:             "more",
-		Data: struct {
-			PoapClients []string
-		}{
-			PoapClients: poapClients,
-		},
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
+
+	data := InitPageData(w, r, "more", "/poap", "POAP")
+	data.HeaderAd = true
+	data.Data = struct {
+		PoapClients []string
+	}{
+		PoapClients: poapClients,
 	}
+
 	err := poapTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -59,6 +45,20 @@ func Poap(w http.ResponseWriter, r *http.Request) {
 
 func PoapData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	latestEpoch := services.LatestEpoch()
+	latestPoapDataEpoch := atomic.LoadUint64(&poapDataEpoch)
+	latestPoapData := poapData.Load()
+
+	if latestPoapData != nil && (latestEpoch < latestPoapDataEpoch || latestEpoch == 0 || latestEpoch > utils.EpochOfSlot(poapMaxSlot)) {
+		err := json.NewEncoder(w).Encode(latestPoapData.(*types.DataTableResponse))
+		if err != nil {
+			logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		return
+	}
 
 	sqlRes := []struct {
 		Graffiti       string
@@ -71,8 +71,8 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 			count(*) as blockcount,
 			count(distinct proposer) as validatorcount
 		from blocks
-		where slot < 300000 and graffiti like 'poap%'
-		group by graffiti`)
+		where slot <= $1 and graffiti like 'poap%'
+		group by graffiti`, poapMaxSlot)
 	if err != nil {
 		logger.Errorf("error retrieving poap data: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -121,6 +121,9 @@ func PoapData(w http.ResponseWriter, r *http.Request) {
 		RecordsFiltered: 1,
 		Data:            tableData,
 	}
+
+	poapData.Store(data)
+	atomic.StoreUint64(&poapDataEpoch, latestEpoch)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {

@@ -3,17 +3,16 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var validatorsTemplate = template.Must(template.New("validators").ParseFiles("templates/layout.html", "templates/validators.html"))
@@ -62,26 +61,9 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData.SlashingCount = validatorsPageData.SlashingOnlineCount + validatorsPageData.SlashingOfflineCount
 	validatorsPageData.ExitingCount = validatorsPageData.ExitingOnlineCount + validatorsPageData.ExitingOfflineCount
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Validators - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/validators",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "validators",
-		Data:                  validatorsPageData,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-	}
+	data := InitPageData(w, r, "validators", "/validators", "Validators")
+	data.HeaderAd = true
+	data.Data = validatorsPageData
 
 	err = validatorsTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -114,29 +96,29 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	var qryStateFilter string
 	switch filterByState {
 	case "pending":
-		qryStateFilter = "AND a.state LIKE 'pending%'"
+		qryStateFilter = "AND validators.status LIKE 'pending%'"
 	case "active":
-		qryStateFilter = "AND a.state LIKE 'active%'"
+		qryStateFilter = "AND validators.status LIKE 'active%'"
 	case "active_online":
-		qryStateFilter = "AND a.state = 'active_online'"
+		qryStateFilter = "AND validators.status = 'active_online'"
 	case "active_offline":
-		qryStateFilter = "AND a.state = 'active_offline'"
+		qryStateFilter = "AND validators.status = 'active_offline'"
 	case "slashing":
-		qryStateFilter = "AND a.state LIKE 'slashing%'"
+		qryStateFilter = "AND validators.status LIKE 'slashing%'"
 	case "slashing_online":
-		qryStateFilter = "AND a.state = 'slashing_online'"
+		qryStateFilter = "AND validators.status = 'slashing_online'"
 	case "slashing_offline":
-		qryStateFilter = "AND a.state = 'slashing_offline'"
+		qryStateFilter = "AND validators.status = 'slashing_offline'"
 	case "slashed":
-		qryStateFilter = "AND a.state = 'slashed'"
+		qryStateFilter = "AND validators.status = 'slashed'"
 	case "exiting":
-		qryStateFilter = "AND a.state LIKE 'exiting%'"
+		qryStateFilter = "AND validators.status LIKE 'exiting%'"
 	case "exiting_online":
-		qryStateFilter = "AND a.state = 'exiting_online'"
+		qryStateFilter = "AND validators.status = 'exiting_online'"
 	case "exiting_offline":
-		qryStateFilter = "AND a.state = 'exiting_offline'"
+		qryStateFilter = "AND validators.status = 'exiting_offline'"
 	case "exited":
-		qryStateFilter = "AND a.state = 'exited'"
+		qryStateFilter = "AND validators.status = 'exited'"
 	default:
 		qryStateFilter = ""
 	}
@@ -210,6 +192,8 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 
 // ValidatorsData returns all validators and their balances
 func ValidatorsData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	dataQuery, err := parseValidatorsDataQueryParams(r)
@@ -225,9 +209,6 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-
-	latestEpoch := services.LatestEpoch()
-	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
 
 	qry := fmt.Sprintf(`
 		WITH
@@ -247,33 +228,22 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			validators.activationepoch,
 			validators.exitepoch,
 			validators.lastattestationslot,
-			COALESCE(validators.name, '') AS name,
-			a.state,
+			COALESCE(validator_names.name, '') AS name,
+			validators.status AS state,
 			COALESCE(p1.count,0) AS executedproposals,
 			COALESCE(p2.count,0) AS missedproposals
 		FROM validators
-		INNER JOIN (
-			SELECT validatorindex,
-			CASE 
-				WHEN exitepoch <= $1 THEN 'exited'
-				WHEN activationepoch > $1 THEN 'pending'
-				WHEN slashed AND activationepoch < $1 AND (lastattestationslot < $2 OR lastattestationslot IS NULL) THEN 'slashing_offline'
-				WHEN slashed THEN 'slashing_online'
-				WHEN activationepoch < $1 AND (lastattestationslot < $2 OR lastattestationslot IS NULL) THEN 'active_offline' 
-				ELSE 'active_online'
-			END AS state
-			FROM validators
-		) a ON a.validatorindex = validators.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		LEFT JOIN proposals p1 ON validators.validatorindex = p1.validatorindex AND p1.status = 1
 		LEFT JOIN proposals p2 ON validators.validatorindex = p2.validatorindex AND p2.status = 2
-		WHERE (ENCODE(validators.pubkey::bytea, 'hex') LIKE $3
-			OR CAST(validators.validatorindex AS text) LIKE $3)
+		WHERE (ENCODE(validators.pubkey::bytea, 'hex') LIKE $1
+			OR CAST(validators.validatorindex AS text) LIKE $1)
 		%s
 		ORDER BY %s %s
-		LIMIT $4 OFFSET $5`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
+		LIMIT $2 OFFSET $3`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
 
 	var validators []*types.ValidatorsPageDataValidators
-	err = db.DB.Select(&validators, qry, latestEpoch, validatorOnlineThresholdSlot, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
+	err = db.DB.Select(&validators, qry, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -286,8 +256,8 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%x", v.PublicKey),
 			fmt.Sprintf("%v", v.ValidatorIndex),
 			[]interface{}{
-				fmt.Sprintf("%.4f ETH", float64(v.CurrentBalance)/float64(1e9)),
-				fmt.Sprintf("%.1f ETH", float64(v.EffectiveBalance)/float64(1e9)),
+				fmt.Sprintf("%.4f %v", float64(v.CurrentBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
+				fmt.Sprintf("%.1f %v", float64(v.EffectiveBalance)/float64(1e9)*price.GetEthPrice(currency), currency),
 			},
 			v.State,
 			[]interface{}{

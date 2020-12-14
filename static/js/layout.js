@@ -231,6 +231,34 @@ $('[aria-ethereum-date]').each(function(item) {
   } else {
     $(this).text(moment.unix(dt).format(format))
   }
+  $(this).attr('title', moment.unix(dt).format("LLL"))
+})
+
+$(document).ready(function() {
+    var clipboard = new ClipboardJS('[data-clipboard-text]');
+    clipboard.on('success', function (e) {
+      var title = $(e.trigger).attr("data-original-title")
+      $(e.trigger).tooltip('hide')
+      .attr('data-original-title', "Copied!")
+      .tooltip('show');
+
+        setTimeout(function () {
+        $(e.trigger).tooltip('hide')
+        .attr('data-original-title', title)
+      }, 1000);
+    });
+
+    clipboard.on('error', function (e) {
+      var title = $(e.trigger).attr("data-original-title")
+      $(e.trigger).tooltip('hide')
+      .attr('data-original-title', "Failed to Copy!")
+      .tooltip('show');
+
+    setTimeout(function () {
+      $(e.trigger).tooltip('hide')
+      .attr('data-original-title', title)
+    }, 1000);
+  });
 })
 
 // var indicator = $('#nav .nav-indicator')
@@ -286,7 +314,7 @@ function formatTimestamps(selStr) {
   sel.find('.timestamp').each(function(){
     var ts = $(this).data('timestamp')
     var tsMoment = moment.unix(ts)
-    this.title = tsMoment.format()
+    $(this).attr("data-original-title", tsMoment.format("LLL"))
     $(this).text(tsMoment.fromNow())
   })
   sel.find('[data-toggle="tooltip"]').tooltip()

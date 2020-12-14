@@ -1,11 +1,9 @@
 {{ define "genesis" }}
-{{ if not .Genesis }}
 <div class="row pt-3">
   <div class="col-lg-5 my-2">{{ template "depositProgress" .}}</div>
   <div class="col-lg-2 my-2"></div>
   <div class="col-lg-5 my-2">{{ template "genesisCountdown" .}}</div>
 </div>
-{{ end }}
 <div style="position:relative" class="card mt-3 index-stats">
   <div class="card-header pt-3">
     <div class="row">
@@ -25,7 +23,7 @@
                 <input id="01" type="checkbox" name="r" value="1" disabled>
                 <label for="01">First Block Proposed</label>
                 <input id="02" type="checkbox" name="r" value="2" disabled>
-                <label for="02">Participation > 80%</label>
+                <label for="02">Participation > 2/3</label>
               </div>
             </div>
             <div class="checklist">
@@ -34,7 +32,7 @@
                 <input id="03" type="checkbox" name="r" value="3" disabled>
                 <label for="03">First Block Proposed</label>
                 <input id="04" type="checkbox" name="r" value="4" disabled>
-                <label for="04">Participation > 80%</label>
+                <label for="04">Participation > 2/3</label>
               </div>
             </div>
           </div>
@@ -45,9 +43,9 @@
                 <!-- <input id="05" type="checkbox" name="r" value="5">
                   <label for="05">First Block Proposed</label> -->
                 <input id="06" type="checkbox" name="r" value="6" disabled>
-                <label for="06">Participation > 80%</label>
-                <input id="07" type="checkbox" name="r" value="7" disabled>
-                <label for="07">Epoch 1 finalized</label>
+                <label for="06">Participation > 2/3</label>
+                <!-- <input id="07" type="checkbox" name="r" value="7" disabled>
+                <label for="07">Epoch 1 finalized</label> -->
                 <input id="08" type="checkbox" name="r" value="8" disabled>
                 <label for="08">Epoch 2 justified</label>
               </div>
@@ -58,9 +56,9 @@
                 <!-- <input id="09" type="checkbox" name="r" value="9">
                   <label for="09">First Block Proposed</label> -->
                 <input id="10" type="checkbox" name="r" value="10" disabled>
-                <label for="10">Participation > 80%</label>
+                <label for="10">Participation > 2/3</label>
                 <input id="11" type="checkbox" name="r" value="11" disabled>
-                <label for="11">Epoch 2 finalized</label>
+                <label for="11">Epoch 1 finalized</label>
                 <input id="12" type="checkbox" name="r" value="12" disabled>
                 <label for="12">Epoch 3 justified</label>
               </div>
@@ -375,10 +373,10 @@
     function fetchMetrics() {
       fetch('/launchMetrics').then(res => res.json()).then(data => {
         data = data.Epochs
-        participationInputs = ["02", "04", "06", "10"]
-        firstProposed = ["01", "03", null, null]
-        finalized = [null, null, '07', '11']
-        justified = [null, null, '08', '12']
+        var participationInputs = ["02", "04", "06", "10"]
+        var firstProposed = ["01", "03", null, null]
+        var finalized = [null, null, '11', null]
+        var justified = [null, null, '08', '12']
 
         for (var i = 0; i < data.length; i++) {
           if(i > 3) {
@@ -397,7 +395,7 @@
             data[i].participation = Math.round(data[i].participation * 10000) / 100
           }
 
-          if(data[i].participation >= 80) {
+          if(data[i].participation >= 66.666) {
             document.getElementById(participationInputs[i]).checked = true
           }
           var slots = data[i].slots

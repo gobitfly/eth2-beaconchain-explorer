@@ -3,16 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var validatorsLeaderboardTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators_leaderboard.html"))
@@ -21,26 +18,8 @@ var validatorsLeaderboardTemplate = template.Must(template.New("validators").Fun
 func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Validator Staking Leaderboard - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/validators/leaderboard",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "validators",
-		Data:                  nil,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-	}
+	data := InitPageData(w, r, "validators", "/validators/leaderboard", "Validator Staking Leaderboard")
+	data.HeaderAd = true
 
 	err := validatorsLeaderboardTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -53,6 +32,8 @@ func ValidatorsLeaderboard(w http.ResponseWriter, r *http.Request) {
 
 // ValidatorsLeaderboardData returns the leaderboard of validators according to their income in json
 func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -118,9 +99,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
 					validator_performance.*,
 					validators.pubkey, 
-					COALESCE(validators.name, '') AS name
+					COALESCE(validator_names.name, '') AS name
 				FROM validator_performance 
 					LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+					LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 				ORDER BY `+orderBy+` `+orderDir+`
 			) AS a
 			LIMIT $1 OFFSET $2`, length, start)
@@ -134,9 +116,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			SELECT COUNT(*)
 			FROM validator_performance
 				LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+				LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE (encode(validators.pubkey::bytea, 'hex') LIKE $1
 				OR CAST(validators.validatorindex AS text) LIKE $1)
-				OR LOWER(validators.name) LIKE LOWER($1)`, "%"+search+"%")
+				OR LOWER(validator_names.name) LIKE LOWER($1)`, "%"+search+"%")
 		if err != nil {
 			logger.Errorf("error retrieving proposed blocks count with search: %v", err)
 			http.Error(w, "Internal server error", 503)
@@ -149,9 +132,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
 					validator_performance.*,
 					validators.pubkey, 
-					COALESCE(validators.name, '') AS name
+					COALESCE(validator_names.name, '') AS name
 				FROM validator_performance 
 					LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
+					LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 				ORDER BY `+orderBy+` `+orderDir+`
 			) AS a
 			WHERE (encode(a.pubkey::bytea, 'hex') LIKE $3
@@ -172,10 +156,10 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatValidatorWithName(b.Index, b.Name),
 			utils.FormatPublicKey(b.PublicKey),
 			fmt.Sprintf("%v", b.Balance),
-			utils.FormatIncome(b.Performance1d),
-			utils.FormatIncome(b.Performance7d),
-			utils.FormatIncome(b.Performance31d),
-			utils.FormatIncome(b.Performance365d),
+			utils.FormatIncome(b.Performance1d, currency),
+			utils.FormatIncome(b.Performance7d, currency),
+			utils.FormatIncome(b.Performance31d, currency),
+			utils.FormatIncome(b.Performance365d, currency),
 		}
 	}
 

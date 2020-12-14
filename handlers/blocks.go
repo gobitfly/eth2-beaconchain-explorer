@@ -3,16 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocks.html"))
@@ -21,26 +18,7 @@ var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplat
 func Blocks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Blocks - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/blocks",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "blocks",
-		Data:                  nil,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-	}
+	data := InitPageData(w, r, "blocks", "/blocks", "Blocks")
 
 	err := blocksTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -116,9 +94,10 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				blocks.status, 
 				COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes,
 				blocks.graffiti,
-				COALESCE(validators.name, '') AS name
+				COALESCE(validator_names.name, '') AS name
 			FROM blocks 
 			LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE blocks.slot >= $1 AND blocks.slot <= $2 
 			ORDER BY blocks.slot DESC`, endSlot, startSlot)
 	} else {
@@ -155,9 +134,10 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				blocks.status, 
 				COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes, 
 				blocks.graffiti,
-				COALESCE(validators.name, '') AS name
+				COALESCE(validator_names.name, '') AS name
 			FROM blocks 
 			LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE slot IN (
 				SELECT slot 
 				FROM blocks
@@ -168,7 +148,8 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 					OR proposer IN (
 						SELECT validatorindex
 						FROM validators
-						WHERE LOWER(name) LIKE LOWER($2)
+						INNER JOIN validator_names ON validators.pubkey = validator_names.publickey
+						WHERE validator_names.name IS NOT NULL AND LOWER(validator_names.name) LIKE LOWER($2)
 					)
 				ORDER BY blocks.slot DESC 
 				LIMIT $4

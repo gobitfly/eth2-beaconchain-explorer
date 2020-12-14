@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
+	"regexp"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -33,6 +34,8 @@ var eth1DepositContractFirstBlock uint64
 var eth1DepositContractAddress common.Address
 var eth1Client *ethclient.Client
 var eth1RPCClient *gethRPC.Client
+var infuraToMuchResultsErrorRE = regexp.MustCompile("query returned more than [0-9]+ results")
+var gethRequestEntityTooLargeRE = regexp.MustCompile("413 Request Entity Too Large")
 
 // eth1DepositsExporter regularly fetches the depositcontract-logs of the
 // last 100 blocks and exports the deposits into the database.
@@ -95,9 +98,19 @@ func eth1DepositsExporter() {
 
 		depositsToSave, err := fetchEth1Deposits(fromBlock, toBlock)
 		if err != nil {
-			logger.WithError(err).Errorf("error fetching eth1-deposits")
-			time.Sleep(time.Second * 5)
-			continue
+			if infuraToMuchResultsErrorRE.MatchString(err.Error()) || gethRequestEntityTooLargeRE.MatchString(err.Error()) {
+				toBlock = fromBlock + 100
+				if toBlock > blockHeight {
+					toBlock = blockHeight
+				}
+				logger.Infof("limiting block-range to %v-%v when fetching eth1-deposits due to too much results", fromBlock, toBlock)
+				depositsToSave, err = fetchEth1Deposits(fromBlock, toBlock)
+			}
+			if err != nil {
+				logger.WithError(err).WithField("fromBlock", fromBlock).WithField("toBlock", toBlock).Errorf("error fetching eth1-deposits")
+				time.Sleep(time.Second * 5)
+				continue
+			}
 		}
 
 		err = saveEth1Deposits(depositsToSave)
@@ -302,6 +315,10 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 		errors = append(errors, err)
 	}
 
+	if len(elems) == 0 {
+		return headers, txs, nil
+	}
+
 	ioErr := eth1RPCClient.BatchCall(elems)
 	if ioErr != nil {
 		return nil, nil, ioErr
@@ -380,6 +397,20 @@ func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
 		domain, err = ComputeDomain(
 			cfg.DomainDeposit,
 			[]byte{0x00, 0x00, 0x00, 0x03},
+			cfg.ZeroHash[:],
+		)
+	}
+	if utils.Config.Chain.Network == "toledo" {
+		domain, err = ComputeDomain(
+			cfg.DomainDeposit,
+			[]byte{0x00, 0x70, 0x1E, 0xD0},
+			cfg.ZeroHash[:],
+		)
+	}
+	if utils.Config.Chain.Network == "pyrmont" {
+		domain, err = ComputeDomain(
+			cfg.DomainDeposit,
+			[]byte{0x00, 0x00, 0x20, 0x09},
 			cfg.ZeroHash[:],
 		)
 	}

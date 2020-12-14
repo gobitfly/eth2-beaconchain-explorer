@@ -1,19 +1,4 @@
 
-function setTooltip(selector, message) {
-  $(selector).tooltip('hide').attr('data-original-title', message)
-  setTimeout(function(){
-    $(selector)
-      .tooltip('show');
-  }, 50)
-}
-
-function hideTooltip(selector, message) {
-  setTimeout(function () {
-    $(selector).tooltip('hide')
-      .attr('data-original-title', message)
-  }, 1000)
-}
-
 function createBlock(x, y) {
   use = document.createElementNS("http://www.w3.org/2000/svg","use")
   // use.setAttributeNS(null, "style", `transform: translate(calc(${x} * var(--disperse-factor)), calc(${y} * var(--disperse-factor)));`)
@@ -56,12 +41,12 @@ $(document).ready(function() {
     var spinnerSmall = $('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>')
     var bookmarkIcon = $("<i class='far fa-bookmark' style='width:15px;'></i>")
     var errorIcon = $("<i class='fas fa-exclamation' style='width:15px;'></i>")
-    $('#bookmark-button').empty().append(spinnerSmall)
-
-    fetch('/user/dashboard/save', {
+    fetch('/dashboard/save', {
       method: "POST",
+      // credentials: 'include',
       headers: {
         'Content-Type': 'application/json'
+        // 'X-CSRF-Token': $("#bookmark-button").attr("csrf"),
       },
       body: JSON.stringify(state.validators),
     }).then(function(res) {
@@ -98,35 +83,11 @@ $(document).ready(function() {
       console.log(err)
     })
   })
-
-  var clipboard = new ClipboardJS('#copy-button');
-
-  var copyButton = $('#copy-button')
   var clearSearch = $('#clear-search')
   //'<i class="fa fa-copy"></i>'
   var copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
   //'<i class="fas fa-check"></i>'
   var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
-
-  clipboard.on('success', function (e) {
-    copyButton.empty().append(tickIcon);
-
-    setTooltip('#copy-button', 'Link Copied')
-    hideTooltip('#copy-button', 'Copy Link to Dashboard')
-
-    setTimeout(function(){
-      copyButton.empty().append(copyIcon);
-    }, 500)
-  });
-
-  clipboard.on('error', function (e) {
-    setTooltip('#copy-button', 'Failed to copy Dashboard Link!');
-    hideTooltip('#copy-button');
-  });
-
-  copyButton.on('click', function() {
-    
-  })
 
   clearSearch.on('click', function() {
     clearSearch.empty().append(tickIcon);
@@ -435,7 +396,11 @@ $(document).ready(function() {
       var validatorsStr = localStorage.getItem('dashboard_validators')
       if (validatorsStr) {
         state.validators = JSON.parse(validatorsStr)
-        state.validators = state.validators.filter((v, i) => state.validators.indexOf(v) === i)
+        state.validators = state.validators.filter((v, i) => {
+          v = escape(v)
+          if (isNaN(parseInt(v))) return false
+          return state.validators.indexOf(v) === i
+        })
         state.validators.sort(sortValidators)
       } else {
         state.validators = []
@@ -443,7 +408,11 @@ $(document).ready(function() {
       return
     }
     state.validators = validatorsStr.split(',')
-    state.validators = state.validators.filter((v, i) => state.validators.indexOf(v) === i)
+    state.validators = state.validators.filter((v, i) => {
+      v = escape(v)
+      if (isNaN(parseInt(v))) return false
+      return state.validators.indexOf(v) === i
+    })
     state.validators.sort(sortValidators)
     if (state.validators.length > 100) {
       state.validators = state.validators.slice(0,100)
@@ -572,20 +541,21 @@ $(document).ready(function() {
           console.log(`loaded earnings: fetch: ${t1-t0}ms`)
           if (!result) return
           // document.getElementById('stats').style.display = 'flex'
-          var lastDay = (result.lastDay/1e9).toFixed(4) 
-          var lastWeek = (result.lastWeek/1e9).toFixed(4)
-          var lastMonth = (result.lastMonth/1e9).toFixed(4)
-          var total = (result.total/1e9).toFixed(4)
-  
+          var lastDay = (result.lastDay / 1e9 * exchangeRate).toFixed(4)
+          var lastWeek = (result.lastWeek / 1e9 * exchangeRate).toFixed(4)
+          var lastMonth = (result.lastMonth / 1e9 * exchangeRate).toFixed(4)
+          var total = (result.total / 1e9 * exchangeRate).toFixed(4)
+
+          console.log(total, exchangeRate, result.total)
           addChange("#earnings-day-header", lastDay)
           addChange("#earnings-week-header", lastWeek)
           addChange("#earnings-month-header", lastMonth)
           addChange("#earnings-total-header", total)
 
-          document.querySelector('#earnings-day').innerText = lastDay || '0.000'
-          document.querySelector('#earnings-week').innerText = lastWeek || '0.000'
-          document.querySelector('#earnings-month').innerText = lastMonth || '0.000'
-          document.querySelector('#earnings-total').innerText = total || '0.000'
+          document.querySelector('#earnings-day').innerHTML = (lastDay || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-week').innerHTML = (lastWeek || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-month').innerHTML = (lastMonth || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-total').innerHTML = (total || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
         }
       })
       $.ajax({
@@ -690,7 +660,7 @@ $(document).ready(function() {
             validatorCount[i] = [res[0], res[1]]
             balance[i] = [res[0], res[2]]
             effectiveBalance[i] = [res[0], res[3]]
-            utilization[i] = [res[0], res[3] / (res[1] * 32)]
+            utilization[i] = [res[0], res[3] / (res[1] * (32 * exchangeRate))]
           }
   
           var t2 = Date.now()
@@ -755,7 +725,7 @@ function createBalanceChart(effective, balance, utilization, missedAttestations)
     yAxis: [
       {
         title: {
-          text: 'Balance [ETH]'
+          text: 'Balance [' + currency + ']'
         },
         opposite: false,
         labels: {

@@ -17,7 +17,7 @@ func AddSubscription(userID uint64, eventName types.EventName, eventFilter strin
 	now := time.Now()
 	nowTs := now.Unix()
 	nowEpoch := utils.TimeToEpoch(now)
-	_, err := DB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5)", userID, eventName, eventFilter, nowTs, nowEpoch)
+	_, err := DB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5) ON CONFLICT DO NOTHING", userID, eventName, eventFilter, nowTs, nowEpoch)
 	return err
 }
 
@@ -109,7 +109,7 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 		SELECT user_id`
 
 	if filter.JoinValidators {
-		qry += ", balance, pubkey"
+		qry += ", balance, pubkey, validatorindex"
 	}
 
 	qry += `
@@ -202,7 +202,7 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 
 // UpdateSubscriptionsLastSent upates `last_sent_ts` column of the `users_subscriptions` table.
 func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time, epoch uint64) error {
-	_, err := FrontendDB.Exec(`
+	_, err := DB.Exec(`
 		UPDATE users_subscriptions
 		SET last_sent_ts = TO_TIMESTAMP($1), last_sent_epoch = $2
 		WHERE id = ANY($3)`, sent.Unix(), epoch, pq.Array(subscriptionIDs))
@@ -212,7 +212,7 @@ func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time, epoch
 // CountSentMail increases the count of sent mails in the table `mails_sent` for this day.
 func CountSentMail(email string) error {
 	day := time.Now().Truncate(time.Hour * 24).Unix()
-	_, err := DB.Exec(`
+	_, err := FrontendDB.Exec(`
 		INSERT INTO mails_sent (email, ts, cnt) VALUES ($1, TO_TIMESTAMP($2), 1)
 		ON CONFLICT (email, ts) DO UPDATE SET cnt = mails_sent.cnt+1`, email, day)
 	return err
@@ -222,7 +222,7 @@ func CountSentMail(email string) error {
 func GetMailsSentCount(email string, t time.Time) (int, error) {
 	day := t.Truncate(time.Hour * 24).Unix()
 	count := 0
-	err := DB.Get(&count, "SELECT cnt FROM mails_sent WHERE email = $1 AND ts = TO_TIMESTAMP($2)", email, day)
+	err := FrontendDB.Get(&count, "SELECT cnt FROM mails_sent WHERE email = $1 AND ts = TO_TIMESTAMP($2)", email, day)
 	if err == sql.ErrNoRows {
 		return 0, nil
 	}

@@ -61,9 +61,22 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 - Setup a PostgreSQL DB and import the `tables.sql` file from the root of this repository
 - Install go version 1.13 or higher
 - Clone the repository and run `make all` to build the indexer and front-end binaries
-- Copy the config-example.yml file an adapt it to your environment
+- Copy the config-example.yml file and adapt it to your environment
 - Start the explorer binary and pass the path to the config file as argument
 - To build bootstrap run `npm run --prefix ./bootstrap dist-css` in project folder.
+
+## Developing locally with docker
+- Clone the repository
+- Run `docker-compose up` to start instances of the following containers `eth1`, `prysm`, `postgres` and `golang`.
+- Open a new terminal in project directory and run `docker run -it --rm --net=host -v $(pwd):/src  postgres psql -f /src/tables.sql -d db -h 0.0.0.0 -U postgres` to create new tables in the database  
+- Wait for the client to finish initial sync, you can check this by looking at logs of `prysm` instance.
+- Copy the `config-example.yml` file and adapt it to your environment.\
+ In your `.yml` file specify `eth1Endpoint` as `'./private/eth1_node/.ethereum/goerli/geth.ipc'`. 
+ For database information check `postgres` section in `docker-compose.yml` file.
+- Connect to `golang` instance by running `docker exec -ti golang bash` and run `make all`
+- Start the explorer binary and pass the path to the config file as argument 
+
+      ./bin/explorer --config your_config.yml   
 
 ## Development
 

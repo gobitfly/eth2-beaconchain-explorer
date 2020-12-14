@@ -810,6 +810,32 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 		}
 	}
 
+	logger.Infof("saving validator status")
+	var latestBlock uint64
+	err := DB.Get(&latestBlock, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
+	if err != nil {
+		return err
+	}
+
+	thresholdSlot := latestBlock - 64
+	if latestBlock < 64 {
+		thresholdSlot = 0
+	}
+
+	s := time.Now()
+	_, err = tx.Exec(`UPDATE validators SET status = CASE 
+				WHEN exitepoch <= $1 then 'exited'
+				WHEN activationepoch > $1 then 'pending'
+				WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
+				WHEN slashed then 'slashing_online'
+				WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
+				ELSE 'active_online'
+			END`, latestBlock/32, thresholdSlot)
+	if err != nil {
+		return err
+	}
+	logger.Infof("saving validator status completed, took %v", time.Since(s))
+
 	return nil
 }
 
@@ -999,6 +1025,11 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 				return fmt.Errorf("error deleting placeholder block: %v", err)
 			}
 
+			// Set proposer to MAX_SQL_INTEGER if it is the genesis-block (since we are using integers for validator-indices right now)
+			if b.Slot == 0 {
+				b.Proposer = 2147483647
+			}
+
 			n := time.Now()
 
 			logger.Tracef("writing block data: %v", b.Eth1Data.DepositRoot)
@@ -1150,8 +1181,19 @@ func GetTotalValidatorsCount() (uint64, error) {
 	return totalCount, err
 }
 
+// GetActiveValidatorCount will return the total-validator-count
+func GetActiveValidatorCount() (uint64, error) {
+	var count uint64
+	err := DB.Get(&count, "select count(*) from validators where status in ('active_offline', 'active_online');")
+	return count, err
+}
+
 func GetValidatorNames() (map[uint64]string, error) {
-	rows, err := DB.Query("SELECT validatorindex, name FROM validators WHERE name IS NOT NULL")
+	rows, err := DB.Query(`
+		SELECT validatorindex, validator_names.name 
+		FROM validators 
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		WHERE validator_names.name IS NOT NULL`)
 
 	if err != nil {
 		return nil, err
@@ -1173,4 +1215,74 @@ func GetValidatorNames() (map[uint64]string, error) {
 	}
 
 	return validatorIndexToNameMap, nil
+}
+
+// GetPendingValidatorCount queries the pending validators currently in the queue
+func GetPendingValidatorCount() (uint64, error) {
+	count := uint64(0)
+	err := DB.Get(&count, "SELECT entering_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
+	if err != nil && err != sql.ErrNoRows {
+		return 0, fmt.Errorf("error retrieving validator queue count: %v", err)
+	}
+	return count, nil
+}
+
+// GetValidatorChurnLimit returns the rate at which validators can enter or leave the system
+func GetValidatorChurnLimit(currentEpoch uint64) (uint64, error) {
+	min := utils.Config.Chain.MinPerEpochChurnLimit
+
+	count, err := GetActiveValidatorCount()
+	if err != nil {
+		return 0, err
+	}
+	adaptable := uint64(0)
+	if count > 0 {
+		adaptable = utils.Config.Chain.ChurnLimitQuotient / count
+	}
+
+	if min > adaptable {
+		return min, nil
+	}
+
+	return adaptable, nil
+}
+
+func GetTotalEligableEther() (uint64, error) {
+	var total uint64
+
+	err := DB.Get(&total, `
+		SELECT eligibleether FROM epochs ORDER BY epoch desc LIMIT 1
+	`)
+	if err == sql.ErrNoRows {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return total / 1e9, nil
+}
+
+func GetDepositThresholdTime() (*time.Time, error) {
+	var threshold *time.Time
+	err := DB.Get(&threshold, `
+	select min(block_ts) from (
+		select block_ts, block_number, sum(amount) over (order by block_ts) as totalsum
+			from (
+				SELECT
+					publickey,
+					32e9 AS amount,
+					MAX(block_ts) as block_ts,
+					MAX(block_number) as block_number
+				FROM eth1_deposits
+				WHERE valid_signature = true
+				GROUP BY publickey
+				HAVING SUM(amount) >= 32e9
+			) a
+		) b
+		where totalsum > $1;
+		 `, utils.Config.Chain.MinGenesisActiveValidatorCount*32e9)
+	if err != nil {
+		return nil, err
+	}
+	return threshold, nil
 }

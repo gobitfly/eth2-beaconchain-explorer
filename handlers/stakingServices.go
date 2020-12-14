@@ -2,40 +2,21 @@ package handlers
 
 import (
 	"eth2-exporter/mail"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
-	"time"
 )
 
-var stakingServicesTemplate = template.Must(template.New("stakingServices").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/stakingServices.html"))
+var stakingServicesTemplate = template.Must(template.New("stakingServices").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/stakingServices.html", "templates/components/bannerStakingServices.html"))
 
 func StakingServices(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Ethereum 2.0 Staking Services Overview - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/stakingServices",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "stakingServices",
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-	}
+
+	data := InitPageData(w, r, "stakingServices", "/stakingServices", "Ethereum 2.0 Staking Services Overview")
 
 	pageData := &types.StakeWithUsPageData{}
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "stake_flash")
@@ -71,6 +52,10 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 	open := r.FormValue("open")
 	links := r.FormValue("links")
 	comments := r.FormValue("comments")
+	thirdParty := r.FormValue("3rdPartySoftware")
+	pooltoken := r.FormValue("pooltoken")
+	validatorKeyOwner := r.FormValue("validator_keyowner")
+	withdrawalKeyOwner := r.FormValue("withdrawal_keyowner")
 
 	msg := fmt.Sprintf(`Add new Staking Service:
 								Name: %s
@@ -80,7 +65,11 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 								Fee: %s
 								Open Source: %s
 								Social Links: %s
-								Comments: %s`, name, url, custodial, stake, fee, open, links, comments)
+								thirdParty: %s
+								Pool Token: %s
+								Validator Key Owner: %s
+								Validator Key Owner: %s
+								Comments: %s`, name, url, custodial, stake, fee, open, links, thirdParty, pooltoken, validatorKeyOwner, withdrawalKeyOwner, comments)
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 

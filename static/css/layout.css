@@ -13,6 +13,10 @@ ins[data-revive-zoneid] > a > img {
   border-radius: .225rem;
 }
 
+.dropdown-menu .nav-icon i {
+  width: 1rem;
+}
+
 @media (min-width: 1140px) and (max-width: 1440px) { 
 
   .navbar .nav-item img {
@@ -21,11 +25,9 @@ ins[data-revive-zoneid] > a > img {
 
 }
 
-@media (max-width: 1140px) {
-  
-  .navbar > .nav-item > .nav-link > a > .nav-icon {
 
-  }
+
+@media (max-width: 1140px) {
   .nav-icon {
     width: 38px;
     overflow: hidden;
@@ -38,7 +40,7 @@ ins[data-revive-zoneid] > a > img {
   .navbar .nav-link, .navbar .dropdown-item {
     display: flex;
   }
-  .dropdown-toggle::after { 
+  .navbar .dropdown-toggle::after { 
     align-self: center;
     display: inline-flex;
     justify-self: flex-end;
@@ -317,4 +319,37 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   }
 }
 
+@media (max-width: 650px) {
+  .contract {
+    font-size: 75%;
+  }
+  .contract .contract-description {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .contract .fa-file-contract {
+    display: none;
+  }
+  .contract #copy-deposit {
+    display: none;
+  }
+}
+
+.icon-inside {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+}
+.btn-icon-inside {
+  position: relative;
+  line-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: .531376rem;
+  width: 1.3rem;
+  height: 1.3rem;
+}
 

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -40,6 +41,10 @@ var EventNames = []EventName{
 	NetworkLivenessIncreasedEventName,
 }
 
+func GetDisplayableEventName(event EventName) string {
+	return strings.Title(strings.ReplaceAll(string(event), "_", " "))
+}
+
 func EventNameFromString(event string) (EventName, error) {
 	for _, en := range EventNames {
 		if string(en) == event {
@@ -59,7 +64,8 @@ type Notification interface {
 	GetSubscriptionID() uint64
 	GetEventName() EventName
 	GetEpoch() uint64
-	GetInfo() string
+	GetInfo(includeUrl bool) string
+	GetTitle() string
 }
 
 type Subscription struct {
@@ -78,4 +84,26 @@ type TaggedValidators struct {
 	Tag    string `db:"tag"`
 	Validator
 	Events []EventName `db:"events"`
+}
+
+type MinimalTaggedValidators struct {
+	PubKey string
+	Index  uint64
+}
+
+type OAuthAppData struct {
+	ID          uint64 `db:"id"`
+	Owner       uint64 `db:"owner_id"`
+	AppName     string `db:"app_name"`
+	RedirectURI string `db:"redirect_uri"`
+	Active      bool   `db:"active"`
+}
+
+type OAuthCodeData struct {
+	AppID  uint64 `db:"app_id"`
+	UserID uint64 `db:"user_id"`
+}
+
+type MobileSettingsData struct {
+	NotifyToken string `json:"notify_token"`
 }

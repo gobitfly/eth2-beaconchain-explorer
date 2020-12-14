@@ -21,6 +21,7 @@ type sqlBlocks struct {
 // var currentEpoch uint64
 // var currentSlot uint64
 
+// LaunchMetricsData returns the metrics for the earliest epochs
 func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -28,24 +29,25 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 
 	err := db.DB.Select(&blks, `
 		select
-			b.slot,
-			case
-				when b.status = '0' then 'scheduled'
-				when b.status = '1' then 'proposed'
-				when b.status = '2' then 'missed'
-				when b.status = '3' then 'orphaned'
-				else 'unknown'
-			end as status,
-			b.epoch,
-			e.globalparticipationrate,
-			case when nl.finalizedepoch >= b.epoch then true else false end as finalized,
-			case when nl.justifiedepoch = b.epoch then true else false end as justified,
-			case when nl.previousjustifiedepoch = b.epoch then true else false end as previousjustified
-		from blocks b
-			left join epochs e on e.epoch = b.epoch
-			left join network_liveness nl on headepoch = b.epoch
-		where b.epoch < 5
-		order by slot asc`)
+		b.slot,
+		case
+			when b.status = '0' then 'scheduled'
+			when b.status = '1' then 'proposed'
+			when b.status = '2' then 'missed'
+			when b.status = '3' then 'orphaned'
+			else 'unknown'
+		end as status,
+		b.epoch,
+		e.globalparticipationrate,
+		case when nl.finalizedepoch >= b.epoch then true else false end as finalized,
+		case when nl.justifiedepoch >= b.epoch then true else false end as justified,
+		case when nl.previousjustifiedepoch >= b.epoch then true else false end as previousjustified
+	from blocks b
+		left join epochs e on e.epoch = b.epoch
+		left join network_liveness nl on headepoch = (select max(headepoch) from network_liveness)
+	where b.epoch < 5
+	order by slot asc
+`)
 	if err != nil {
 		logger.Errorf("error querying blocks table for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)

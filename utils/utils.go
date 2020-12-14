@@ -1,8 +1,12 @@
 package utils
 
 import (
+	securerand "crypto/rand"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
@@ -10,7 +14,6 @@ import (
 	"log"
 	"math"
 	"math/big"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,15 +22,31 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 	"gopkg.in/yaml.v2"
 
+	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
 )
 
 // Config is the globally accessible configuration
 var Config *types.Config
+
+var localiser *i18n.I18n
+
+// making sure language files are loaded only once
+func getLocaliser() *i18n.I18n {
+	if localiser == nil {
+		localiser, err := i18n.New(i18n.Glob("locales/*/*"), "en-US", "ru-RU")
+		if err != nil {
+			log.Println(err)
+		}
+		return localiser
+	}
+	return localiser
+}
 
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
@@ -53,10 +72,12 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorInt64":                    FormatValidatorInt64,
 		"formatValidatorStatus":                   FormatValidatorStatus,
 		"formatPercentage":                        FormatPercentage,
+		"formatPercentageWithPrecision":           FormatPercentageWithPrecision,
 		"formatPublicKey":                         FormatPublicKey,
 		"formatSlashedValidator":                  FormatSlashedValidator,
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
 		"formatTimestamp":                         FormatTimestamp,
+		"formatTsWithoutTooltip":                  FormatTsWithoutTooltip,
 		"formatTimestampTs":                       FormatTimestampTs,
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
@@ -65,14 +86,20 @@ func GetTemplateFuncs() template.FuncMap {
 		"mod":                                     func(i, j int) bool { return i%j == 0 },
 		"sub":                                     func(i, j int) int { return i - j },
 		"add":                                     func(i, j int) int { return i + j },
+		"addI64":                                  func(i, j int64) int64 { return i + j },
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"gtf":                                     func(i, j float64) bool { return i > j },
-		"round":                                   func(i float64, n int) float64 { return math.Round(i*math.Pow10(n)) / math.Pow10(n) },
-		"percent":                                 func(i float64) float64 { return i * 100 },
+		"round": func(i float64, n int) float64 {
+			return math.Round(i*math.Pow10(n)) / math.Pow10(n)
+		},
+		"percent": func(i float64) float64 { return i * 100 },
 		"formatThousands": func(i float64) string {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
+		"derefString":      DerefString,
+		"trLang":           TrLang,
+		"firstCharToUpper": func(s string) string { return strings.Title(s) },
 	}
 }
 
@@ -82,7 +109,7 @@ var LayoutPaths []string = []string{"templates/layout/layout.html", "templates/l
 func IncludeHTML(path string) template.HTML {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Println("includeHTML - error reading file: %v", err)
+		log.Printf("includeHTML - error reading file: %v", err)
 		return ""
 	}
 	return template.HTML(string(b))
@@ -179,7 +206,7 @@ func MustParseHex(hexString string) []byte {
 
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Headers:", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*, Authorization")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "*")
 		if r.Method == "OPTIONS" {
@@ -218,17 +245,31 @@ func RoundDecimals(f float64, n int) float64 {
 	return math.Round(f*d) / d
 }
 
-const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+// HashAndEncode digests the input with sha256 and returns it as hex string
+func HashAndEncode(input string) string {
+	codeHashedBytes := sha256.Sum256([]byte(input))
+	return hex.EncodeToString(codeHashedBytes[:])
+}
 
-var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 
 // RandomString returns a random hex-string
 func RandomString(length int) string {
-	b := make([]byte, length)
+	b, _ := GenerateRandomBytesSecure(length)
 	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
+		b[i] = charset[int(b[i])%len(charset)]
 	}
 	return string(b)
+}
+
+func GenerateRandomBytesSecure(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := securerand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
 
 func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
@@ -332,4 +373,19 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 	}
 
 	return finalRows, nil
+}
+
+// GenerateAPIKey generates an API key for a user
+func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
+	apiKey, err := bcrypt.GenerateFromPassword([]byte(passwordHash+email+Ts), 10)
+	if err != nil {
+		return "", err
+	}
+	key := apiKey[:15]
+	apiKeyBase64 := base64.StdEncoding.EncodeToString(key)
+	return apiKeyBase64, nil
+}
+
+func ExchangeRateForCurrency(currency string) float64 {
+	return price.GetEthPrice(currency)
 }

@@ -5,18 +5,16 @@ import (
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"time"
 
 	"html/template"
 	"net/http"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -34,23 +32,10 @@ var authInternalServerErrorFlashMsg = "Error: Something went wrong :( Please ret
 // Register handler renders a template that allows for the creation of a new user.
 func Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/register",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "register",
-		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-	}
+
+	data := InitPageData(w, r, "register", "/register", "Register new account")
+	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
+
 	err := registerTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -116,11 +101,22 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	registerTs := time.Now().Unix()
+
+	apiKey, err := utils.GenerateAPIKey(string(pHash), email, fmt.Sprint(registerTs))
+	if err != nil {
+		logger.Errorf("error generating hash for api_key: %v", err)
+		session.AddFlash(authInternalServerErrorFlashMsg)
+		session.Save(r, w)
+		http.Redirect(w, r, "/register", http.StatusSeeOther)
+		return
+	}
+
 	_, err = tx.Exec(`
-		INSERT INTO users (password, email, register_ts)
-		VALUES ($1, $2, TO_TIMESTAMP($3))`,
-		string(pHash), email, registerTs,
+      INSERT INTO users (password, email, register_ts, api_key)
+      VALUES ($1, $2, TO_TIMESTAMP($3), $4)`,
+		string(pHash), email, registerTs, apiKey,
 	)
+
 	if err != nil {
 		logger.Errorf("error saving new user into db: %v", err)
 		session.AddFlash(authInternalServerErrorFlashMsg)
@@ -154,23 +150,10 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 // Login handler renders a template that allows a user to login.
 func Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/login",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "login",
-		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-	}
+
+	data := InitPageData(w, r, "login", "/login", "Login")
+	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
+
 	err := loginTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -236,6 +219,25 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	session.Save(r, w)
 	logger.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"])
+
+	redirectURI, RedirectExists := session.Values["oauth_redirect_uri"]
+
+	if RedirectExists {
+		state, stateExists := session.Values["state"]
+		var stateParam = ""
+
+		if stateExists {
+			stateParam = "&state=" + state.(string)
+		}
+
+		delete(session.Values, "oauth_redirect_uri")
+		delete(session.Values, "state")
+		session.Save(r, w)
+
+		http.Redirect(w, r, "/user/authorize?redirect_uri="+redirectURI.(string)+stateParam, http.StatusSeeOther)
+		return
+	}
+
 	// Index(w, r)
 	http.Redirect(w, r, "/user/notifications", http.StatusSeeOther)
 }
@@ -313,24 +315,8 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	session.Save(r, w)
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/requestReset",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "requestReset",
-		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email},
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-	}
+	data := InitPageData(w, r, "requestReset", "/requestReset", "Reset Password")
+	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email, CsrfField: csrf.TemplateField(r)}
 
 	err = resetPasswordTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -398,23 +384,8 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 // RequestResetPassword renders a template that lets the user enter his email and request a reset link.
 func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/register",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "register",
-		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-	}
+	data := InitPageData(w, r, "register", "/register", "Reset Password")
+	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
 	err := requestResetPaswordTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -474,23 +445,10 @@ func RequestResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 // ResendConfirmation handler sends a template for the user to request another confirmation link via email.
 func ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/resendConfirmation",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "resendConfirmation",
-		Data:                  types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName)},
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-	}
+
+	data := InitPageData(w, r, "resendConfirmation", "/resendConfirmation", "Resend Password Reset")
+	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
+
 	err := resendConfirmationTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -589,48 +547,6 @@ func ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 
 	utils.SetFlash(w, r, authSessionName, "Your email has been confirmed! You can log in now.")
 	http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
-}
-
-func getUser(w http.ResponseWriter, r *http.Request) *types.User {
-	u := &types.User{}
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("error getting session from sessionStore: %v", err)
-		return u
-	}
-	ok := false
-	u.Authenticated, ok = session.Values["authenticated"].(bool)
-	if !ok {
-		u.Authenticated = false
-		return u
-	}
-	u.UserID, ok = session.Values["user_id"].(uint64)
-	if !ok {
-		u.Authenticated = false
-		return u
-	}
-	return u
-}
-
-func getUserSession(w http.ResponseWriter, r *http.Request) (*types.User, *sessions.Session, error) {
-	u := &types.User{}
-	session, err := utils.SessionStore.Get(r, authSessionName)
-	if err != nil {
-		logger.Errorf("error getting session from sessionStore: %v", err)
-		return u, session, err
-	}
-	ok := false
-	u.Authenticated, ok = session.Values["authenticated"].(bool)
-	if !ok {
-		u.Authenticated = false
-		return u, session, nil
-	}
-	u.UserID, ok = session.Values["user_id"].(uint64)
-	if !ok {
-		u.Authenticated = false
-		return u, session, nil
-	}
-	return u, session, nil
 }
 
 func sendConfirmationEmail(email string) error {

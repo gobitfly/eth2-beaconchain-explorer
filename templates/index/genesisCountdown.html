@@ -1,21 +1,51 @@
 {{ define "genesisCountdown" }}
 <script>
+	function setTime(days, hour, min, second) {
+		if (second < 10) {
+			second = '0'+ second 
+		}
+		if (min < 10) {
+			min = '0' + min
+		}
+		if (hour < 10) {
+			hour = '0' + hour
+		}
+		if (days < 10) {
+			days = '0' + days
+		}
+
+		$('#clock').html(days+' days '+hour + ' hr ' + min + ' min ' + second + ' sec')
+	}
+
 	document.addEventListener('DOMContentLoaded', function() {
 		var genesis = {{.NetworkStartTs}}
 		var now = Math.round((new Date()).getTime() / 1000)
 		var secondsLeft = genesis - now
 		var seconds = secondsLeft % 60
 		var min = ((secondsLeft - seconds) / 60) % 60
-		var hour = Math.round((secondsLeft - seconds - (min * 60)) / 3600)
-	
-		if (-1 < hour && hour <= 48) {
-			$('#clock').html(hour + ' hr ' + min + ' min ' + seconds + ' sec')
+		var hour = Math.round((secondsLeft - seconds - (min * 60)) / 3600) % 24
+		var days = Math.round((secondsLeft - seconds - (min * 60) - (hour * 60 * 60)) / 86400)
+		if (-1 < days && days <= 7) {
+			if (seconds > -1) {
+				setTime(days, hour, min, seconds)
+			} else {
+				setTime(0, 0, 0, 0)
+			}
 			$('#estimated').html('Countdown')
-			$('#estimated+span').removeClass('d-none')
+			$('#minGenesis').addClass('d-none')
+			$('#minGenesisAnd').addClass('d-none')
+			$('#networkStart').removeClass('d-none')
+			// $('#estimated+span').removeClass('d-none')
 			var countdownInterval = setInterval(function () {
-				if (hour === 0 && min === 0 && seconds === 0) {
+				if (hour <= 0 && min <= 0 && seconds <= 0 && days <= 0) {
 					clearInterval(countdownInterval)
-					// window.location.href = "/"
+					$('#rocket').removeClass('d-none')
+					return
+				}
+
+				if (seconds === 0 && min === 0 && hour === 0 && days > 0) {
+					hour = 24
+					days -= 1
 				}
 	
 				if (seconds === 0 && min === 0 && hour > 0) {
@@ -27,23 +57,44 @@
 					seconds = 60
 					min -= 1
 				}
+
 				seconds -= 1
-				$('#clock').html(hour + ' hr ' + min + ' min ' + seconds + ' sec')
+				
+				setTime(days, hour, min, seconds)
 			}, 1000)
 		}
 	})
 </script>
-<div class="d-flex flex-column justify-content-center">
-  <h6 class="d-flex justify-content-between">
-    <span id="estimated">
-      Estimated
-    </span>
-    <small class="text-muted d-inline-block d-none" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></small>
-  </h6>
-  <p class="align-self-center">
-    <strong id="clock">
-      <span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTimestamp}})
-    </strong>
-  </p>
+<div class="position-relative">
+	{{template "rocket"}}
+	<div id="countdown" class="d-flex flex-column justify-content-center">
+		<h6 class="d-flex justify-content-between">
+			<span id="estimated">
+				Estimated {{if gt .ValidatorsRemaining 0.0}}between:{{end}}
+			</span>
+			{{if gt .NetworkStartTs 0}}
+				<small id="networkStart" data-toggle="tooltip" title="Genesis Time" class="text-muted d-none" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></small>
+			{{end}}
+		</h6>
+		<div class="align-self-center text-center">
+			{{if eq .NetworkStartTs 0 }}
+			<div>
+				<strong>Waiting on min genesis time announcement</strong>
+			</div>
+			{{else}}
+			{{if gt .ValidatorsRemaining 0.0}}
+			<div id="minGenesis">
+				<strong data-toggle="tooltip" title="Earliest possible Genesis Time." class="" aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.MinGenesisTime}}"></strong>
+			</div>
+			<div id="minGenesisAnd"><span>and</span></div>
+			{{end}}
+			<div>
+				<strong id="clock">
+				<span data-toggle="tooltip" title="Estimated Genesis Time. This time may vary until the deposit threshold is reached."><span aria-ethereum-date-format="MMMM Do, YYYY, h:mm a" aria-ethereum-date="{{.NetworkStartTs}}"></span> ({{.NetworkStartTs | formatTsWithoutTooltip}})</span>
+				</strong>
+			</div>
+			{{end}}
+		</div>
+	</div>
 </div>
 {{end}}
