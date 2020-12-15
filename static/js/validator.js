@@ -77,12 +77,6 @@ function setValidatorStatus(state) {
   }
 }
 
-// set date
-$('span[aria-ethereum-date]').each(function () {
-  var d = $(this).attr('aria-ethereum-date');
-  $(this).html(moment.unix(d).fromNow())
-})
-
 
 function setupDashboardButtons(validatorIdx) {
   var validators = []
