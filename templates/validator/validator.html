@@ -6,17 +6,16 @@
 		})
 	</script>
 </script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 	<script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}})</script>
 
     {{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
-		<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+		<script type="text/javascript" src="/js/datatables.min.js"></script>
 		<script type="text/javascript" src="/js/datatable_input.js"></script>
-		<script src="https://code.highcharts.com/stock/highstock.js"></script>
-		<script src="https://code.highcharts.com/modules/exporting.js"></script>
-		<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
-		<script src="/js/highcharts-global-options.js"></script>
+		<script src="/js/highcharts/highstock.min.js"></script>
+		<script src="/js/highcharts/exporting.js"></script>
+		<script src="/js/highcharts/offline-exporting.js"></script>
+		<script src="/js/highcharts/highcharts-global-options.js"></script>
 		<script>
             setupDashboardButtons({{.Index }}+'')
 		</script>
@@ -25,7 +24,7 @@
 
 {{ define "css"}}
 	<link rel="stylesheet" href="/css/validator.css">
-	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
+	<link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
 	<style>
 			/* #TODO:stefan maybe make this prettier somehow? */
 			#slashings-table td:first-child {

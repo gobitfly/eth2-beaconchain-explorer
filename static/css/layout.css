@@ -49,6 +49,12 @@ ins[data-revive-zoneid] > a > img {
   }
 }
 
+@media (max-width: 960px) {
+  div.dataTables_wrapper div.dataTables_paginate ul.pagination {
+    justify-content: center !important;
+  }
+}
+
 .paginate_input {
     padding: .25rem .5rem;
     font-size: .875rem;
@@ -70,6 +76,8 @@ ins[data-revive-zoneid] > a > img {
 
 .paginate_button, .page-link {
   background-color: var(--bg-color-secondary);
+  cursor: pointer;
+  color: var(--link-color, #2d5986);
 }
 
 .page-item.disabled .page-link {

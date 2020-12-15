@@ -1,10 +1,10 @@
 {{ define "js"}}
-    <script src="https://code.highcharts.com/stock/highstock.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
-    <script src="/js/highcharts-vue.min.js"></script>
-    <script src="/js/highcharts-global-options.js"></script>
+    <script src="/js/highcharts/highstock.min.js"></script>
+    <script src="/js/highcharts/exporting.js"></script>
+    <script src="/js/highcharts/offline-exporting.js"></script>
+    <script src="/js/vue.min.js"></script>
+    <script src="/js/highcharts/highcharts-vue.min.js"></script>
+    <script src="/js/highcharts/highcharts-global-options.js"></script>
     <script src="/js/requestInterval.js"></script>
 
     <!-- <script type="text/javascript" src="js/slick.min.js"></script> -->
@@ -12,7 +12,7 @@
 
 
     {{ if .GenesisPeriod }}
-        <script src="https://d3js.org/d3.v6.min.js"></script>
+        <script src="/js/d3.min.js"></script>
     {{ end }}
     <script>
         var app = new Vue({

@@ -468,8 +468,7 @@
                 {{if eq .ActivationEpoch 9223372036854775807}}
                     -
                 {{else}}
-                    <span title="{{.ActivationTs}}" data-toggle="tooltip"
-                          aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
+                    <span title="Epoch {{.ActivationEpoch}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}"></span>
                 {{end}}
             </td>
 
