@@ -280,8 +280,8 @@
                                     <td data-column="Name"><a
                                                 href="https://docs.teku.consensys.net/en/latest/">Teku</a></td>
                                     <td data-column="Language">Java</td>
-                                    <td data-column="Latest update"><a
-                                                href="https://github.com/ConsenSys/teku/releases">Github (TBD)</a></td>
+                                    <td data-column="Latest update"><a id="teku"
+                                                href="https://github.com/ConsenSys/teku/releases">Github</a></td>
                                     <td data-column="Social media">
                                                       <a href="https://discord.gg/7hPv2T6" target="_blank">
                                                       <i class="fab fa-discord ml-1 mr-1"></i></a>
@@ -294,8 +294,8 @@
                                     <td data-column="Name"><a
                                                 href="https://prysmaticlabs.com/">Prysm</a></td>
                                     <td data-column="Language">GO</td>
-                                    <td data-column="Latest update"><a
-                                                href="https://github.com/prysmaticlabs/prysm/releases">Github (TBD)</a></td>
+                                    <td data-column="Latest update"><a id="prysm"
+                                                href="https://github.com/prysmaticlabs/prysm/releases">Github</a></td>
                                     <td data-column="Social media">
                                                 <a href="https://discord.gg/XkyZSSk4My" target="_blank">
                                                 <i class="fab fa-discord ml-1 mr-1"></i></a>
@@ -309,8 +309,8 @@
                                     <td data-column="Name"><a
                                                 href="https://nimbus.team/">Nimbus</a></td>
                                     <td data-column="Language">Nim</td>
-                                    <td data-column="Latest update"><a
-                                                href="https://github.com/status-im/nimbus-eth2/releases">Github (TBD)</a></td>
+                                    <td data-column="Latest update"><a id="nimbus"
+                                                href="https://github.com/status-im/nimbus-eth2/releases">Github</a></td>
                                     <td data-column="Social media">
                                                 <a href="https://discord.gg/XRxWahP" target="_blank">
                                                 <i class="fab fa-discord ml-1 mr-1"></i></a>
@@ -324,8 +324,8 @@
                                     <td data-column="Name"><a
                                                 href="https://lighthouse.sigmaprime.io/">Lighthouse</a></td>
                                     <td data-column="Language">Rust</td>
-                                    <td data-column="Latest update"><a
-                                                href="https://github.com/sigp/lighthouse/releases">Github (TBD)</a></td>
+                                    <td data-column="Latest update"><a id="lighthouse"
+                                                href="https://github.com/sigp/lighthouse/releases">Github</a></td>
                                     <td data-column="Social media">
                                                 <a href="https://discord.gg/cyAszAh" target="_blank">
                                                 <i class="fab fa-discord ml-1 mr-1"></i></a>
@@ -359,4 +359,26 @@
         </section>
     </div>
 
+<script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+<script>
+    function getLetestRelease(id, url){
+        $.ajax({
+            url: url,
+            cache: false,
+            success: function(resp){
+                if (resp.length>0){
+                    $("#"+id).html(resp[0].name);
+                }else{
+                    $("#"+id).html("N/A");
+                }
+            }
+            });
+    }
+    $(document).ready(function() {
+        getLetestRelease("teku", "https://api.github.com/repos/ConsenSys/teku/releases")
+        getLetestRelease("prysm", "https://api.github.com/repos/prysmaticlabs/prysm/releases")
+        getLetestRelease("nimbus", "https://api.github.com/repos/status-im/nimbus-eth2/releases")
+        getLetestRelease("lighthouse","https://api.github.com/repos/sigp/lighthouse/releases")
+    });
+</script>
 {{end}}
