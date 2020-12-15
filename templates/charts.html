@@ -1,11 +1,11 @@
 {{ define "js"}}
-    <script src="/js/highcharts/highstock.min.js"></script>
-    <script src="/js/highcharts-more.js"></script>
-    <script src="/js/highcharts/exporting.js"></script>
-    <script src="/js/highcharts/wordcloud.js"></script>
-    <script src="/js/highcharts/offline-exporting.js"></script>
-    <script src="/js/highcharts/accessibility.js"></script>
-    <script src="/js/highcharts/highcharts-global-options.js"></script>
+    <script src="/js/bundle/highcharts/highstock.min.js"></script>
+    <script src="/js/bundle/highcharts-more.js"></script>
+    <script src="/js/bundle/highcharts/exporting.js"></script>
+    <script src="/js/bundle/highcharts/wordcloud.js"></script>
+    <script src="/js/bundle/highcharts/offline-exporting.js"></script>
+    <script src="/js/bundle/highcharts/accessibility.js"></script>
+    <script src="/js/bundle/highcharts/highcharts-global-options.js"></script>
     <script>
         var chartFns = []
         {{range $i, $e := .}}

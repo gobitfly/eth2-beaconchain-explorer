@@ -1,6 +1,6 @@
 {{ define "js"}}
 
-    <script type="text/javascript" src="/js/datatables.min.js"></script>
+    <script type="text/javascript" src="/js/bundle/datatables.min.js"></script>
     {{ .CsrfField }}
     <script>
         var events = {
@@ -226,7 +226,7 @@
         })
     </script>
 {{end}} {{ define "css"}}
-    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
+    <link rel="stylesheet" type="text/css" src="/css/bundle/datatables.min.css"/>
     <style>
         input[type="checkbox"] {
             width: 1rem;

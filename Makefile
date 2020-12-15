@@ -17,6 +17,7 @@ explorer:
 	rm -rf bin/
 	mkdir -p bin/templates/
 	cp -r templates/ bin/
+	go run cmd/bundle/main.go
 	cp -r static/ bin/static
 	cp -r locales/ bin/
 	go build --ldflags=${LDFLAGS} --tags=blst_enabled -o bin/explorer cmd/explorer/main.go
