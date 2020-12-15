@@ -42,7 +42,6 @@ var validatorEditFlash = "edit_validator_flash"
 func Validator(w http.ResponseWriter, r *http.Request) {
 
 	//start := time.Now()
-
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 
