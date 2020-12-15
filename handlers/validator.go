@@ -144,7 +144,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			sumValid := uint64(0)
-			// check if a valid deposit exists
+			// check if a valid deposit exists.
 			for _, d := range deposits.Eth1Deposits {
 				if d.ValidSignature {
 					sumValid += d.Amount
