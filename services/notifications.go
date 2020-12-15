@@ -364,11 +364,11 @@ func (n *validatorProposalNotification) GetInfo(includeUrl bool) string {
 	var generalPart = ""
 	switch n.Status {
 	case 0:
-		generalPart = fmt.Sprintf(`New scheduled block for Validator %[1]v.`, n.ValidatorIndex)
+		generalPart = fmt.Sprintf(`New scheduled block proposal for Validator %[1]v.`, n.ValidatorIndex)
 	case 1:
 		generalPart = fmt.Sprintf(`Validator %[1]v proposed a new block.`, n.ValidatorIndex)
 	case 2:
-		generalPart = fmt.Sprintf(`Validator %[1]v missed a block.`, n.ValidatorIndex)
+		generalPart = fmt.Sprintf(`Validator %[1]v missed a block proposal.`, n.ValidatorIndex)
 	}
 
 	if includeUrl {
