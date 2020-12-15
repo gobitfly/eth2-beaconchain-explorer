@@ -153,6 +153,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			// enough deposited for the validator to be activated
 			if sumValid >= 32e9 {
 				validatorPageData.Status = "deposited_valid"
 			}
