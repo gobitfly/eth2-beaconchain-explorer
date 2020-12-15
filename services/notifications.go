@@ -40,10 +40,19 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	if err != nil {
 		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
-	err = collectBlockProposalNotifications(notificationsByUserID)
+
+	// executed Proposals
+	err = collectBlockProposalNotifications(notificationsByUserID, 1, types.ValidatorExecutedProposalEventName)
 	if err != nil {
-		logger.Errorf("error collecting validator_new_proposal notifications: %v", err)
+		logger.Errorf("error collecting validator_executed_proposal notifications: %v", err)
 	}
+
+	// Missed proposals
+	err = collectBlockProposalNotifications(notificationsByUserID, 2, types.ValidatorMissedProposalEventName)
+	if err != nil {
+		logger.Errorf("error collecting validator_missed_proposal notifications: %v", err)
+	}
+
 	return notificationsByUserID
 }
 
@@ -281,7 +290,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	return nil
 }
 
-func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
+func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
 	latestEpoch := LatestEpoch()
 
 	var dbResult []struct {
@@ -289,6 +298,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 		UserID         uint64 `db:"user_id"`
 		ValidatorIndex uint64 `db:"validatorindex"`
 		Epoch          uint64 `db:"epoch"`
+		Status         uint64 `db:"status"`
 	}
 
 	err := db.DB.Select(&dbResult, `
@@ -296,22 +306,25 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 				us.id, 
 				us.user_id, 
 				v.validatorindex, 
-				pa.epoch
+				pa.epoch,
+				pa.status
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch = $2
-			WHERE us.event_name = $1 AND us.created_epoch <= $2 AND pa.epoch >= ($2 - 3) AND (us.last_sent_epoch < $2 OR us.last_sent_epoch IS NULL)`,
-		types.ValidatorNewProposalEventName, latestEpoch)
+			WHERE us.event_name = $1 AND status = $3 AND us.created_epoch <= $2 AND pa.epoch >= ($2 - 5) AND (us.last_sent_epoch < $2 OR us.last_sent_epoch IS NULL)`,
+		eventName, latestEpoch, status)
 	if err != nil {
 		return err
 	}
 
 	for _, r := range dbResult {
 
-		n := &validatorNewProposalNotification{
+		n := &validatorProposalNotification{
 			SubscriptionID: r.SubscriptionID,
 			ValidatorIndex: r.ValidatorIndex,
 			Epoch:          r.Epoch,
+			Status:         r.Status,
+			EventName:      eventName,
 		}
 
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
@@ -326,35 +339,54 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 	return nil
 }
 
-type validatorNewProposalNotification struct {
+type validatorProposalNotification struct {
 	SubscriptionID     uint64
 	ValidatorIndex     uint64
 	ValidatorPublicKey string
 	Epoch              uint64
+	Status             uint64 // * Can be 0 = scheduled, 1 executed, 2 missed */
+	EventName          types.EventName
 }
 
-func (n *validatorNewProposalNotification) GetSubscriptionID() uint64 {
+func (n *validatorProposalNotification) GetSubscriptionID() uint64 {
 	return n.SubscriptionID
 }
 
-func (n *validatorNewProposalNotification) GetEpoch() uint64 {
+func (n *validatorProposalNotification) GetEpoch() uint64 {
 	return n.Epoch
 }
 
-func (n *validatorNewProposalNotification) GetEventName() types.EventName {
-	return types.ValidatorNewProposalEventName
+func (n *validatorProposalNotification) GetEventName() types.EventName {
+	return n.EventName
 }
 
-func (n *validatorNewProposalNotification) GetInfo(includeUrl bool) string {
-	generalPart := fmt.Sprintf(`Validator %[1]v proposed a new block.`, n.ValidatorIndex)
+func (n *validatorProposalNotification) GetInfo(includeUrl bool) string {
+	var generalPart = ""
+	switch n.Status {
+	case 0:
+		generalPart = fmt.Sprintf(`New scheduled block for Validator %[1]v.`, n.ValidatorIndex)
+	case 1:
+		generalPart = fmt.Sprintf(`Validator %[1]v proposed a new block.`, n.ValidatorIndex)
+	case 2:
+		generalPart = fmt.Sprintf(`Validator %[1]v missed a block.`, n.ValidatorIndex)
+	}
+
 	if includeUrl {
 		return generalPart + getUrlPart(n.ValidatorIndex)
 	}
 	return generalPart
 }
 
-func (n *validatorNewProposalNotification) GetTitle() string {
-	return "New Block Proposal"
+func (n *validatorProposalNotification) GetTitle() string {
+	switch n.Status {
+	case 0:
+		return "Block Proposal Scheduled"
+	case 1:
+		return "New Block Proposal"
+	case 2:
+		return "Block Proposal Missed"
+	}
+	return "-"
 }
 
 type validatorGotSlashedNotification struct {
