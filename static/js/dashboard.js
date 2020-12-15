@@ -158,7 +158,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
           if (data === null) return '-'
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
       {
@@ -167,7 +167,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
           if (data === null) return '-'
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
       {
@@ -176,7 +176,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
           if (data === null) return '-'
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
       {
@@ -185,7 +185,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
           if (data === null) return 'No Attestation found'
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
+          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
         }
       },
       {
