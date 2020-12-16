@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"eth2-exporter/ethClients"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
@@ -14,6 +15,15 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "ethClientsServices", "/ethClientsServices", "Ethereum Clients Services Overview")
+
+	pageData := ethClients.GetEthClientData()
+
+	if err != nil {
+		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	data.Data = pageData
 
 	err = ethClientsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

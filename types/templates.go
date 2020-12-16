@@ -772,6 +772,23 @@ type StakeWithUsPageData struct {
 	FlashMessage string
 }
 
+type EthClients struct {
+	ClientReleaseVersion string
+	ClientReleaseDate    string
+}
+
+type EthClientServicesPageData struct {
+	LastUpdate   time.Time
+	Geth         EthClients
+	Nethermind   EthClients
+	OpenEthereum EthClients
+	Besu         EthClients
+	Teku         EthClients
+	Prysm        EthClients
+	Nimbus       EthClients
+	Lighthouse   EthClients
+}
+
 type RateLimitError struct {
 	TimeLeft time.Duration
 }
