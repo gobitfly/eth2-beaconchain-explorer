@@ -587,10 +587,10 @@
 					</div>
 				</div>
 				{{end}} -->
-        {{if .Mainnet}}
+       <!--  {{if .Mainnet}}
             {{if not (or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")))}}
                 {{if len .DepositContract}}
-                    <!-- <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);"
+                    <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);"
                          class="contract text-center p-2">
                         <i class="fas fa-file-contract mr-2"></i><span class="contract-description mr-2">Deposit Contract:</span><a
                                 href="https://etherchain.org/account/{{.DepositContract}}"
