@@ -13,9 +13,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var logger = logrus.New().WithField("module", "ethPrice")
+var logger = logrus.New().WithField("module", "ethClients")
 
-type GitApiResponse struct {
+type gitApiResponse struct {
 	Url       string `json:"url"`
 	AssetsUrl string `json:"assets_url"`
 	UploadUrl string `json:"upload_url"`
@@ -56,10 +56,16 @@ type GitApiResponse struct {
 }
 
 var ethClients = new(types.EthClientServicesPageData)
+
 var ethClientsMux = &sync.RWMutex{}
 
-func fetchClientData(repo string) *GitApiResponse {
-	gitApi := new(GitApiResponse)
+// Init starts a go routine to update the ETH Clients Info
+func Init() {
+	go update()
+}
+
+func fetchClientData(repo string) *gitApiResponse {
+	gitApi := new(gitApiResponse)
 
 	resp, err := http.Get("https://api.github.com/repos" + repo + "/releases/latest")
 
@@ -67,8 +73,6 @@ func fetchClientData(repo string) *GitApiResponse {
 		logger.Errorf("error retrieving ETH Client Data: %v", err)
 	}
 
-	ethClientsMux.Lock()
-	defer ethClientsMux.Unlock()
 	defer resp.Body.Close()
 
 	err = json.NewDecoder(resp.Body).Decode(&gitApi)
@@ -80,12 +84,11 @@ func fetchClientData(repo string) *GitApiResponse {
 	return gitApi
 }
 
-func updateEthClient(repo string, curTime time.Time) (string, string) {
+func prepareEthClientData(repo string, curTime time.Time) (string, string) {
 	var year, month, day int64
 	var err error
 	client := fetchClientData(repo)
 	date := strings.Split(client.PublishedDate, "T")
-	time.Sleep(time.Millisecond * 10)
 	if len(date) > 0 {
 		dateDays := strings.Split(date[0], "-")
 		year, err = strconv.ParseInt(dateDays[0], 10, 0)
@@ -111,23 +114,39 @@ func updateEthClient(repo string, curTime time.Time) (string, string) {
 	return client.Name, ""
 }
 
-func GetEthClientData() types.EthClientServicesPageData {
+func updateEthClient() {
 	curTime := time.Now()
 
-	if curTime.Sub(ethClients.LastUpdate) >= time.Hour {
-		logger.Println("1 hour passed, updating ETH Clients Information")
-		ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = updateEthClient("/ethereum/go-ethereum", curTime)
-		ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = updateEthClient("/NethermindEth/nethermind", curTime)
-		ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = updateEthClient("/openethereum/openethereum", curTime)
-		ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = updateEthClient("/hyperledger/besu", curTime)
-
-		ethClients.Teku.ClientReleaseVersion, ethClients.Teku.ClientReleaseDate = updateEthClient("/ConsenSys/teku", curTime)
-		ethClients.Prysm.ClientReleaseVersion, ethClients.Prysm.ClientReleaseDate = updateEthClient("/prysmaticlabs/prysm", curTime)
-		ethClients.Nimbus.ClientReleaseVersion, ethClients.Nimbus.ClientReleaseDate = updateEthClient("/status-im/nimbus-eth2", curTime)
-		ethClients.Lighthouse.ClientReleaseVersion, ethClients.Lighthouse.ClientReleaseDate = updateEthClient("/sigp/lighthouse", curTime)
-
-		ethClients.LastUpdate = curTime
+	if curTime.Sub(ethClients.LastUpdate) < time.Hour { // LastUpdate is initialized at January 1, year 1 so no need to check for nil
+		return
 	}
 
-	return *ethClients
+	logger.Println("Updating ETH Clients Information")
+	ethClientsMux.Lock()
+	defer ethClientsMux.Unlock()
+	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", curTime)
+	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", curTime)
+	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", curTime)
+	ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = prepareEthClientData("/hyperledger/besu", curTime)
+
+	ethClients.Teku.ClientReleaseVersion, ethClients.Teku.ClientReleaseDate = prepareEthClientData("/ConsenSys/teku", curTime)
+	ethClients.Prysm.ClientReleaseVersion, ethClients.Prysm.ClientReleaseDate = prepareEthClientData("/prysmaticlabs/prysm", curTime)
+	ethClients.Nimbus.ClientReleaseVersion, ethClients.Nimbus.ClientReleaseDate = prepareEthClientData("/status-im/nimbus-eth2", curTime)
+	ethClients.Lighthouse.ClientReleaseVersion, ethClients.Lighthouse.ClientReleaseDate = prepareEthClientData("/sigp/lighthouse", curTime)
+
+	ethClients.LastUpdate = curTime
+}
+
+func update() {
+	for true {
+		updateEthClient()
+		time.Sleep(time.Minute * 20)
+	}
+}
+
+// GetEthClientData returns a pointer of EthClientServicesPageData
+func GetEthClientData() *types.EthClientServicesPageData {
+	ethClientsMux.Lock()
+	defer ethClientsMux.Unlock()
+	return ethClients
 }
