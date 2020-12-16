@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"html/template"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -307,6 +308,9 @@ func FormatIncome(balanceInt int64, currency string) template.HTML {
 
 // FormatPercentage will return a string for a percentage
 func FormatPercentage(percentage float64) string {
+	if math.IsInf(percentage, 0) || math.IsNaN(percentage) {
+		return fmt.Sprintf("%.0f", float64(0))
+	}
 	return fmt.Sprintf("%.0f", percentage*float64(100))
 }
 

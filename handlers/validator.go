@@ -117,6 +117,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", 503)
 				return
 			}
+			validatorPageData.PendingCount = pendingCount
 
 			validatorPageData.InclusionDelay = int64((utils.Config.Chain.Phase0.Eth1FollowDistance*utils.Config.Chain.Phase0.SecondsPerETH1Block+utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch*utils.Config.Chain.Phase0.EpochsPerEth1VotingPeriod)/3600) + 1
 
@@ -134,7 +135,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			activationEstimate := (pendingCount/churnRate)*(utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch) + uint64(latestDeposit)
-
 			validatorPageData.EstimatedActivationTs = int64(activationEstimate)
 
 			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
