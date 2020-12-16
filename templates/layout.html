@@ -248,7 +248,7 @@
 
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                 <ul class="navbar-nav ml-auto">
-                    <li class="nav-item">
+                    <!-- <li class="nav-item">
                         <a ga-outbound="" class="nav-link text-primary"
                            href="https://gitcoin.co/grants/collections?collection_id=14#">
 							<span class="nav-icon">
@@ -256,7 +256,7 @@
 							</span>
                             <span class="nav-text">Support Eth2</span>
                         </a>
-                    </li>
+                    </li> -->
                     <li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
                         <a class="nav-link" href="/epochs">
 						<span class="nav-icon">
@@ -590,7 +590,7 @@
         {{if .Mainnet}}
             {{if not (or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")))}}
                 {{if len .DepositContract}}
-                    <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);"
+                    <!-- <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);"
                          class="contract text-center p-2">
                         <i class="fas fa-file-contract mr-2"></i><span class="contract-description mr-2">Deposit Contract:</span><a
                                 href="https://etherchain.org/account/{{.DepositContract}}"
@@ -600,7 +600,7 @@
                            class="btn btn-primary mb-1 btn-icon-inside">
                             <span class="fa fa-copy icon-inside"></span>
                         </a>
-                    </div>
+                    </div> -->
                 {{else}}
                     <div style="background-color: var(--bg-color-light);" class="contract text-center p-2">
                         Deposit Contract: <span class="text-primary text-monospace">0x(Pending)</span>
