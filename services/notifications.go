@@ -310,7 +310,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 				pa.status
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
-			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch = $2
+			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($2 - 5) 
 			WHERE us.event_name = $1 AND status = $3 AND us.created_epoch <= $2 AND pa.epoch >= ($2 - 5) AND (us.last_sent_epoch < $2 OR us.last_sent_epoch IS NULL)`,
 		eventName, latestEpoch, status)
 	if err != nil {
