@@ -587,27 +587,7 @@
 					</div>
 				</div>
 				{{end}} -->
-       <!--  {{if .Mainnet}}
-            {{if not (or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")))}}
-                {{if len .DepositContract}}
-                    <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);"
-                         class="contract text-center p-2">
-                        <i class="fas fa-file-contract mr-2"></i><span class="contract-description mr-2">Deposit Contract:</span><a
-                                href="https://etherchain.org/account/{{.DepositContract}}"
-                                class="text-primary text-monospace">{{.DepositContract}}</a>
-                        <a style="color: #fff" id="copy-deposit" data-toggle="tooltip"
-                           data-original-title="Copy Address" data-clipboard-text="{{.DepositContract}}"
-                           class="btn btn-primary mb-1 btn-icon-inside">
-                            <span class="fa fa-copy icon-inside"></span>
-                        </a>
-                    </div> -->
-                {{else}}
-                    <div style="background-color: var(--bg-color-light);" class="contract text-center p-2">
-                        Deposit Contract: <span class="text-primary text-monospace">0x(Pending)</span>
-                    </div>
-                {{end}}
-            {{end}}
-        {{end}}
+      
         {{ template "content" . }}
     </main>
 
