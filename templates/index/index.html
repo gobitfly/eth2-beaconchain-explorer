@@ -186,8 +186,16 @@
                 })
             }
         })
-
-    </script>
+    function hideCookieBanner(){
+        if (document.cookie.indexOf("cookie=accepted")!=-1){
+            $('#cookie-banner').attr("class", "d-none");
+            return
+        }
+        document.cookie = "cookie=accepted"
+            $('#cookie-banner').attr("class", "d-none");
+    }
+    hideCookieBanner()
+</script>
 {{end}}
 
 {{ define "css"}}
@@ -373,6 +381,18 @@
                 {{else}}
                     {{template "postGenesis" .}}
                 {{end}}
+            </div>
+        </div>
+        <div id="cookie-banner" style="position: fixed; display: flex; flex-direction: column; z-index:999; bottom: 3%; width: 100%; justify-content: center; align-items: center">
+            <div class="card card-body row">
+                <div class="row">
+                    <div class="col">
+                        <span>By using our site you agree to our use of cookies to deliver a better user experience.</span>
+                    </div>
+                    <div class="col-2 d-flex justify-content-center align-items-center">
+                        <button class="btn btn-primary btn-sm" style="margin-left: 1%" onclick="hideCookieBanner()">Got it</button>
+                    <div>
+                </div>
             </div>
         </div>
     {{end}}
