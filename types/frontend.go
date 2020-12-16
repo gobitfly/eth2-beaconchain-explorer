@@ -11,9 +11,9 @@ type EventName string
 
 const (
 	ValidatorBalanceDecreasedEventName              EventName = "validator_balance_decreased"
-	ValidatorMissedProposalEventName                EventName = "validator_missed_proposal"
-	ValidatorExecutedProposalEventName              EventName = "validator_executed_proposal"
-	ValidatorMissedAttestationEventName             EventName = "validator_missed_attestation"
+	ValidatorMissedProposalEventName                EventName = "validator_proposal_missed"
+	ValidatorExecutedProposalEventName              EventName = "validator_proposal_submitted"
+	ValidatorMissedAttestationEventName             EventName = "validator_attestation_missed"
 	ValidatorGotSlashedEventName                    EventName = "validator_got_slashed"
 	ValidatorDidSlashEventName                      EventName = "validator_did_slash"
 	ValidatorStateChangedEventName                  EventName = "validator_state_changed"

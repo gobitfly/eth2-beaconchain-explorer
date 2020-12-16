@@ -44,13 +44,13 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	// executed Proposals
 	err = collectBlockProposalNotifications(notificationsByUserID, 1, types.ValidatorExecutedProposalEventName)
 	if err != nil {
-		logger.Errorf("error collecting validator_executed_proposal notifications: %v", err)
+		logger.Errorf("error collecting validator_proposal_submitted notifications: %v", err)
 	}
 
 	// Missed proposals
 	err = collectBlockProposalNotifications(notificationsByUserID, 2, types.ValidatorMissedProposalEventName)
 	if err != nil {
-		logger.Errorf("error collecting validator_missed_proposal notifications: %v", err)
+		logger.Errorf("error collecting validator_proposal_missed notifications: %v", err)
 	}
 
 	return notificationsByUserID
