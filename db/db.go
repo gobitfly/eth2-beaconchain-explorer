@@ -829,6 +829,8 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 				WHEN activationepoch > $1 then 'pending'
 				WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
 				WHEN slashed then 'slashing_online'
+				WHEN exitepoch < 9223372036854775807 and (lastattestationslot < $2 OR lastattestationslot is null) then 'exiting_offline'
+				WHEN exitepoch < 9223372036854775807 then 'exiting_online'
 				WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
 				ELSE 'active_online'
 			END`, latestBlock/32, thresholdSlot)
