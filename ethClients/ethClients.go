@@ -1,4 +1,4 @@
-package ethClients
+package ethclients
 
 import (
 	"encoding/json"
@@ -15,32 +15,13 @@ import (
 
 var logger = logrus.New().WithField("module", "ethClients")
 
-type gitApiResponse struct {
-	Url       string `json:"url"`
-	AssetsUrl string `json:"assets_url"`
-	UploadUrl string `json:"upload_url"`
-	HtmlUrl   string `json:"html_url"`
-	ID        uint64 `json:"id"`
-	Author    struct {
-		Login        string `json:"login"`
-		ID           uint64 `json:"id"`
-		NodeID       string `json:"node_id"`
-		AvatarURL    string `json:"avatar_url"`
-		GravatarID   string `json:"gravatar_id"`
-		Url          string `json:"url"`
-		HtmlUrl      string `json:"html_url"`
-		FollowersUrl string `json:"followers_url"`
-		FollowingUrl string `json:"following_url"`
-		GistsUrl     string `json:"gists_url"`
-		StarredUrl   string `json:"starred_url"`
-		SubUrl       string `json:"subscriptions_url"`
-		OrgUrl       string `json:"organizations_url"`
-		ReposUrl     string `json:"repos_url"`
-		EventsUrl    string `json:"events_url"`
-		RxEventUrl   string `json:"received_events_url"`
-		Type         string `json:"type"`
-		SiteAdmin    bool   `json:"site_admin"`
-	} `json:"author"`
+type gitAPIResponse struct {
+	URL           string        `json:"url"`
+	AssetsURL     string        `json:"assets_url"`
+	UploadURL     string        `json:"upload_url"`
+	HTMLURL       string        `json:"html_url"`
+	ID            uint64        `json:"id"`
+	Author        interface{}   `json:"author"`
 	NodeID        string        `json:"node_id"`
 	TagName       string        `json:"tag_name"`
 	Target        string        `json:"target_commitish"`
@@ -64,8 +45,8 @@ func Init() {
 	go update()
 }
 
-func fetchClientData(repo string) *gitApiResponse {
-	gitApi := new(gitApiResponse)
+func fetchClientData(repo string) *gitAPIResponse {
+	gitAPI := new(gitAPIResponse)
 
 	resp, err := http.Get("https://api.github.com/repos" + repo + "/releases/latest")
 
@@ -75,13 +56,13 @@ func fetchClientData(repo string) *gitApiResponse {
 
 	defer resp.Body.Close()
 
-	err = json.NewDecoder(resp.Body).Decode(&gitApi)
+	err = json.NewDecoder(resp.Body).Decode(&gitAPI)
 
 	if err != nil {
 		logger.Errorf("error decoding ETH Clients json response to struct: %v", err)
 	}
 
-	return gitApi
+	return gitAPI
 }
 
 func prepareEthClientData(repo string, curTime time.Time) (string, string) {

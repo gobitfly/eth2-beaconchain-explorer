@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"eth2-exporter/db"
-	"eth2-exporter/ethClients"
+	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
 	"eth2-exporter/price"
@@ -181,7 +181,7 @@ func main() {
 
 		services.Init() // Init frontend services
 		price.Init()
-		ethClients.Init()
+		ethclients.Init()
 
 		logrus.Infof("frontend services initiated")
 
