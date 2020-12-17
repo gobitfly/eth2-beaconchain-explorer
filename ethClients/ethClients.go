@@ -16,6 +16,10 @@ import (
 
 var logger = logrus.New().WithField("module", "ethClients")
 
+type ethernodesAPIStruct struct {
+	Client string `json:"client"`
+	Value  int    `json:"value"`
+}
 type gitAPIResponse struct {
 	URL           string        `json:"url"`
 	AssetsURL     string        `json:"assets_url"`
@@ -66,6 +70,25 @@ func fetchClientData(repo string) *gitAPIResponse {
 	return gitAPI
 }
 
+func fetchClientNetworkShare() []ethernodesAPIStruct {
+	var ethernodesAPI []ethernodesAPIStruct
+	resp, err := http.Get("https://ethernodes.org/api/clients")
+
+	if err != nil {
+		logger.Errorf("error retrieving ETH Clients Network Share Data: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&ethernodesAPI)
+
+	if err != nil {
+		logger.Errorf("error decoding ETH Clients Network Share json response to struct: %v", err)
+	}
+
+	return ethernodesAPI
+}
+
 func getRepoTime(date string) (time.Time, error) {
 	var year, month, day int64
 	var err error
@@ -109,9 +132,33 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 	return client.Name, ""
 }
 
+func updateEthClientNetShare() {
+	nShare := fetchClientNetworkShare()
+	total := 0
+	for _, item := range nShare {
+		total += item.Value
+	}
+
+	for _, item := range nShare {
+		switch item.Client {
+		case "geth":
+			ethClients.Geth.NetworkShare = fmt.Sprintf("%.1f%%", (float64(item.Value)/float64(total))*100.0)
+		case "openethereum":
+			ethClients.OpenEthereum.NetworkShare = fmt.Sprintf("%.1f%%", (float64(item.Value)/float64(total))*100.0)
+		case "nethermind":
+			ethClients.Nethermind.NetworkShare = fmt.Sprintf("%.1f%%", (float64(item.Value)/float64(total))*100.0)
+		case "besu":
+			ethClients.Besu.NetworkShare = fmt.Sprintf("%.1f%%", (float64(item.Value)/float64(total))*100.0)
+		default:
+			continue
+		}
+	}
+}
+
 func updateEthClient() {
 	curTime := time.Now()
-
+	// sending 8 requests to github per call
+	// git api rate-limit 60 per hour : 60/8 = 7.5 minutes minimum
 	if curTime.Sub(ethClients.LastUpdate) < time.Hour { // LastUpdate is initialized at January 1, year 1 so no need to check for nil
 		return
 	}
@@ -122,6 +169,7 @@ func updateEthClient() {
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
 	bannerClients = ""
+	updateEthClientNetShare()
 	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Go-Ethereum", curTime)
 	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
 	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", "OpenEthereum", curTime)
@@ -137,8 +185,8 @@ func updateEthClient() {
 
 func update() {
 	for true {
-		updateEthClient()            // sending 8 requests to github per call
-		time.Sleep(time.Minute * 20) // git api rate-limit 60 per hour : 60/8 = 7.5 minutes minimum
+		updateEthClient()
+		time.Sleep(time.Minute * 5)
 	}
 }
 

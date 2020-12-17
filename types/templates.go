@@ -775,6 +775,7 @@ type StakeWithUsPageData struct {
 type EthClients struct {
 	ClientReleaseVersion string
 	ClientReleaseDate    string
+	NetworkShare         string
 }
 
 type EthClientServicesPageData struct {
