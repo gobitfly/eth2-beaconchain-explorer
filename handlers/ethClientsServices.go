@@ -17,6 +17,7 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "ethClientsServices", "/ethClientsServices", "Ethereum Clients Services Overview")
 
 	pageData := ethclients.GetEthClientData()
+	pageData.Banner = ethclients.GetBannerClients()
 
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)

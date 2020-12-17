@@ -2,6 +2,7 @@ package ethclients
 
 import (
 	"encoding/json"
+	"errors"
 	"eth2-exporter/types"
 	"fmt"
 	"net/http"
@@ -37,8 +38,9 @@ type gitAPIResponse struct {
 }
 
 var ethClients = new(types.EthClientServicesPageData)
-
 var ethClientsMux = &sync.RWMutex{}
+var bannerClients = ""
+var bannerClientsMux = &sync.RWMutex{}
 
 // Init starts a go routine to update the ETH Clients Info
 func Init() {
@@ -47,7 +49,6 @@ func Init() {
 
 func fetchClientData(repo string) *gitAPIResponse {
 	gitAPI := new(gitAPIResponse)
-
 	resp, err := http.Get("https://api.github.com/repos" + repo + "/releases/latest")
 
 	if err != nil {
@@ -65,28 +66,41 @@ func fetchClientData(repo string) *gitAPIResponse {
 	return gitAPI
 }
 
-func prepareEthClientData(repo string, curTime time.Time) (string, string) {
+func getRepoTime(date string) (time.Time, error) {
 	var year, month, day int64
 	var err error
+	dateDays := strings.Split(date, "-")
+	if len(dateDays) < 3 {
+		return time.Now(), errors.New("Invalid date string " + date)
+	}
+	year, err = strconv.ParseInt(dateDays[0], 10, 0)
+	if err != nil {
+		logger.Errorf("error parsing year: %v", err)
+	}
+	month, err = strconv.ParseInt(dateDays[1], 10, 0)
+	if err != nil {
+		logger.Errorf("error parsing month: %v", err)
+	}
+	day, err = strconv.ParseInt(dateDays[2], 10, 0)
+	if err != nil {
+		logger.Errorf("error parsing day: %v", err)
+	}
+	return time.Date(int(year), time.Month(int(month)), int(day), 0, 0, 0, 0, time.UTC), nil
+}
+
+func prepareEthClientData(repo string, name string, curTime time.Time) (string, string) {
+
 	client := fetchClientData(repo)
 	date := strings.Split(client.PublishedDate, "T")
+
 	if len(date) > 0 {
-		dateDays := strings.Split(date[0], "-")
-		year, err = strconv.ParseInt(dateDays[0], 10, 0)
+		rTime, err := getRepoTime(date[0])
 		if err != nil {
-			logger.Errorf("error parsing year: %v", err)
+			return client.Name, "N/A"
 		}
-		month, err = strconv.ParseInt(dateDays[1], 10, 0)
-		if err != nil {
-			logger.Errorf("error parsing month: %v", err)
-		}
-		day, err = strconv.ParseInt(dateDays[2], 10, 0)
-		if err != nil {
-			logger.Errorf("error parsing day: %v", err)
-		}
-		rTime := time.Date(int(year), time.Month(int(month)), int(day), 0, 0, 0, 0, time.UTC)
 		timeDiff := curTime.Sub(rTime).Hours() / 24
-		if timeDiff < 1 {
+		if timeDiff < 2 {
+			bannerClients += name + " " + client.Name + " | "
 			return client.Name, "Recently"
 		}
 
@@ -105,23 +119,26 @@ func updateEthClient() {
 	logger.Println("Updating ETH Clients Information")
 	ethClientsMux.Lock()
 	defer ethClientsMux.Unlock()
-	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", curTime)
-	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", curTime)
-	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", curTime)
-	ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = prepareEthClientData("/hyperledger/besu", curTime)
+	bannerClientsMux.Lock()
+	defer bannerClientsMux.Unlock()
+	bannerClients = ""
+	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Go-Ethereum", curTime)
+	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
+	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", "OpenEthereum", curTime)
+	ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = prepareEthClientData("/hyperledger/besu", "Besu", curTime)
 
-	ethClients.Teku.ClientReleaseVersion, ethClients.Teku.ClientReleaseDate = prepareEthClientData("/ConsenSys/teku", curTime)
-	ethClients.Prysm.ClientReleaseVersion, ethClients.Prysm.ClientReleaseDate = prepareEthClientData("/prysmaticlabs/prysm", curTime)
-	ethClients.Nimbus.ClientReleaseVersion, ethClients.Nimbus.ClientReleaseDate = prepareEthClientData("/status-im/nimbus-eth2", curTime)
-	ethClients.Lighthouse.ClientReleaseVersion, ethClients.Lighthouse.ClientReleaseDate = prepareEthClientData("/sigp/lighthouse", curTime)
+	ethClients.Teku.ClientReleaseVersion, ethClients.Teku.ClientReleaseDate = prepareEthClientData("/ConsenSys/teku", "Teku", curTime)
+	ethClients.Prysm.ClientReleaseVersion, ethClients.Prysm.ClientReleaseDate = prepareEthClientData("/prysmaticlabs/prysm", "Prysm", curTime)
+	ethClients.Nimbus.ClientReleaseVersion, ethClients.Nimbus.ClientReleaseDate = prepareEthClientData("/status-im/nimbus-eth2", "Nimbus-ETH2", curTime)
+	ethClients.Lighthouse.ClientReleaseVersion, ethClients.Lighthouse.ClientReleaseDate = prepareEthClientData("/sigp/lighthouse", "Lighthouse", curTime)
 
 	ethClients.LastUpdate = curTime
 }
 
 func update() {
 	for true {
-		updateEthClient()
-		time.Sleep(time.Minute * 20)
+		updateEthClient()            // sending 8 requests to github per call
+		time.Sleep(time.Minute * 20) // git api rate-limit 60 per hour : 60/8 = 7.5 minutes minimum
 	}
 }
 
@@ -130,4 +147,11 @@ func GetEthClientData() *types.EthClientServicesPageData {
 	ethClientsMux.Lock()
 	defer ethClientsMux.Unlock()
 	return ethClients
+}
+
+// GetBannerClients returns a string of latest updates of ETH clients
+func GetBannerClients() string {
+	bannerClientsMux.Lock()
+	defer bannerClientsMux.Unlock()
+	return bannerClients
 }

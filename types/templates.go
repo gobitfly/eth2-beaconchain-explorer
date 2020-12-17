@@ -787,6 +787,7 @@ type EthClientServicesPageData struct {
 	Prysm        EthClients
 	Nimbus       EthClients
 	Lighthouse   EthClients
+	Banner       string
 }
 
 type RateLimitError struct {
