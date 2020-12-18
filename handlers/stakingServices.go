@@ -16,7 +16,7 @@ func StakingServices(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "stakingServices", "/stakingServices", "Ethereum 2.0 Staking Services Overview")
+	data := InitPageData(w, r, "services", "/stakingServices", "Ethereum 2.0 Staking Services Overview")
 
 	pageData := &types.StakeWithUsPageData{}
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "stake_flash")
