@@ -4,7 +4,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 3rem auto;
+  margin: 3rem auto 2rem auto;
   font-size: .9rem;
   width: 80%;
 }

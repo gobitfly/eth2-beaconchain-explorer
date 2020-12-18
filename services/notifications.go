@@ -40,6 +40,19 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	if err != nil {
 		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
+
+	// executed Proposals
+	err = collectBlockProposalNotifications(notificationsByUserID, 1, types.ValidatorExecutedProposalEventName)
+	if err != nil {
+		logger.Errorf("error collecting validator_proposal_submitted notifications: %v", err)
+	}
+
+	// Missed proposals
+	err = collectBlockProposalNotifications(notificationsByUserID, 2, types.ValidatorMissedProposalEventName)
+	if err != nil {
+		logger.Errorf("error collecting validator_proposal_missed notifications: %v", err)
+	}
+
 	return notificationsByUserID
 }
 
@@ -54,6 +67,7 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 	for userID := range notificationsByUserID {
 		userIDs = append(userIDs, userID)
 	}
+
 	tokensByUserID, err := db.GetUserPushTokenByIds(userIDs)
 	if err != nil {
 		logger.Errorf("error when sending push-notificaitons: could not get tokens: %v", err)
@@ -274,6 +288,105 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	}
 
 	return nil
+}
+
+func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
+	latestEpoch := LatestEpoch()
+
+	var dbResult []struct {
+		SubscriptionID uint64 `db:"id"`
+		UserID         uint64 `db:"user_id"`
+		ValidatorIndex uint64 `db:"validatorindex"`
+		Epoch          uint64 `db:"epoch"`
+		Status         uint64 `db:"status"`
+	}
+
+	err := db.DB.Select(&dbResult, `
+			SELECT 
+				us.id, 
+				us.user_id, 
+				v.validatorindex, 
+				pa.epoch,
+				pa.status
+			FROM users_subscriptions us
+			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
+			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($2 - 5) 
+			WHERE us.event_name = $1 AND pa.status = $3 AND us.created_epoch <= $2 AND pa.epoch >= ($2 - 5) AND (us.last_sent_epoch < pa.epoch OR us.last_sent_epoch IS NULL)`,
+		eventName, latestEpoch, status)
+	if err != nil {
+		return err
+	}
+
+	for _, r := range dbResult {
+
+		n := &validatorProposalNotification{
+			SubscriptionID: r.SubscriptionID,
+			ValidatorIndex: r.ValidatorIndex,
+			Epoch:          r.Epoch,
+			Status:         r.Status,
+			EventName:      eventName,
+		}
+
+		if _, exists := notificationsByUserID[r.UserID]; !exists {
+			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+		}
+		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+		}
+		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+	}
+
+	return nil
+}
+
+type validatorProposalNotification struct {
+	SubscriptionID     uint64
+	ValidatorIndex     uint64
+	ValidatorPublicKey string
+	Epoch              uint64
+	Status             uint64 // * Can be 0 = scheduled, 1 executed, 2 missed */
+	EventName          types.EventName
+}
+
+func (n *validatorProposalNotification) GetSubscriptionID() uint64 {
+	return n.SubscriptionID
+}
+
+func (n *validatorProposalNotification) GetEpoch() uint64 {
+	return n.Epoch
+}
+
+func (n *validatorProposalNotification) GetEventName() types.EventName {
+	return n.EventName
+}
+
+func (n *validatorProposalNotification) GetInfo(includeUrl bool) string {
+	var generalPart = ""
+	switch n.Status {
+	case 0:
+		generalPart = fmt.Sprintf(`New scheduled block proposal for Validator %[1]v.`, n.ValidatorIndex)
+	case 1:
+		generalPart = fmt.Sprintf(`Validator %[1]v proposed a new block.`, n.ValidatorIndex)
+	case 2:
+		generalPart = fmt.Sprintf(`Validator %[1]v missed a block proposal.`, n.ValidatorIndex)
+	}
+
+	if includeUrl {
+		return generalPart + getUrlPart(n.ValidatorIndex)
+	}
+	return generalPart
+}
+
+func (n *validatorProposalNotification) GetTitle() string {
+	switch n.Status {
+	case 0:
+		return "Block Proposal Scheduled"
+	case 1:
+		return "New Block Proposal"
+	case 2:
+		return "Block Proposal Missed"
+	}
+	return "-"
 }
 
 type validatorGotSlashedNotification struct {

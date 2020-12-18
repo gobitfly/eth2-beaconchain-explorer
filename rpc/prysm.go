@@ -390,31 +390,6 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	}
 	logger.Printf("retrieved data for %v validators for epoch %v", len(data.Validators), epoch)
 
-	// Retrieve the beacon committees for the epoch
-	data.BeaconCommittees = make(map[uint64][]*types.BeaconCommitteItem)
-	beaconCommitteesResponse := &ethpb.BeaconCommittees{}
-	beaconCommitteesRequest := &ethpb.ListCommitteesRequest{QueryFilter: &ethpb.ListCommitteesRequest_Epoch{Epoch: epoch}}
-	if epoch == 0 {
-		beaconCommitteesRequest.QueryFilter = &ethpb.ListCommitteesRequest_Genesis{Genesis: true}
-	}
-	beaconCommitteesResponse, err = pc.client.ListBeaconCommittees(context.Background(), beaconCommitteesRequest)
-	if err != nil {
-		logger.Printf("error retrieving beacon committees response: %v", err)
-	} else {
-		for slot, committee := range beaconCommitteesResponse.Committees {
-			if committee == nil {
-				continue
-			}
-			if data.BeaconCommittees[slot] == nil {
-				data.BeaconCommittees[slot] = make([]*types.BeaconCommitteItem, 0)
-			}
-
-			for _, beaconCommittee := range committee.Committees {
-				data.BeaconCommittees[slot] = append(data.BeaconCommittees[slot], &types.BeaconCommitteItem{ValidatorIndices: beaconCommittee.ValidatorIndices})
-			}
-		}
-	}
-
 	data.EpochParticipationStats, err = pc.GetValidatorParticipation(epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)

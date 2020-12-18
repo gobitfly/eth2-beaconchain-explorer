@@ -22,12 +22,27 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
-var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator.html"))
-var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validatornotfound.html"))
+var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles(
+	"templates/layout.html",
+	"templates/validator/validator.html",
+	"templates/validator/heading.html",
+	"templates/validator/tables.html",
+	"templates/validator/modals.html",
+	"templates/validator/overview.html",
+	"templates/validator/charts.html",
+	"templates/validator/countdown.html",
+
+	"templates/components/flashMessage.html",
+	"templates/components/rocket.html",
+))
+var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validator/validatornotfound.html"))
 var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
+
+	//start := time.Now()
+
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 
@@ -38,6 +53,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "validators", "/validators", "")
 	data.HeaderAd = true
+	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = data.User
 
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
@@ -68,6 +84,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logger.Errorf("error getting validator-deposits from db: %v", err)
 			}
+			validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
 			if err != nil || len(deposits.Eth1Deposits) == 0 {
 				data.Meta.Title = fmt.Sprintf("%v - Validator %x - beaconcha.in - %v", utils.Config.Frontend.SiteName, pubKey, time.Now().Year())
 				data.Meta.Path = fmt.Sprintf("/validator/%v", index)
@@ -86,6 +103,39 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validatorPageData.Status = "deposited"
 			validatorPageData.PublicKey = pubKey
 			validatorPageData.Deposits = deposits
+
+			churnRate, err := db.GetValidatorChurnLimit(services.LatestEpoch())
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+
+			pendingCount, err := db.GetPendingValidatorCount()
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+			validatorPageData.PendingCount = pendingCount
+
+			validatorPageData.InclusionDelay = int64((utils.Config.Chain.Phase0.Eth1FollowDistance*utils.Config.Chain.Phase0.SecondsPerETH1Block+utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch*utils.Config.Chain.Phase0.EpochsPerEth1VotingPeriod)/3600) + 1
+
+			latestDeposit := time.Now().Unix()
+			if len(deposits.Eth1Deposits) > 1 {
+				latestDeposit = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
+			} else if time.Unix(latestDeposit, 0).Before(utils.SlotToTime(0)) {
+				latestDeposit = utils.SlotToTime(0).Unix()
+				validatorPageData.InclusionDelay = 0
+			}
+
+			if churnRate == 0 {
+				churnRate = 4
+				logger.Warning("Churn rate not set in config using 4 as default please set minPerEpochChurnLimit")
+			}
+
+			activationEstimate := (pendingCount/churnRate)*(utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch) + uint64(latestDeposit)
+			validatorPageData.EstimatedActivationTs = int64(activationEstimate)
 
 			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
 				if deposit.ValidSignature {
@@ -122,7 +172,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			validatorPageData.Watchlist = watchlist
-
 			data.Data = validatorPageData
 			if utils.IsApiRequest(r) {
 				w.Header().Set("Content-Type", "application/json")
@@ -148,11 +197,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// GetAvgOptimalInclusionDistance(index)
+
 	data.Meta.Title = fmt.Sprintf("%v - Validator %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
+	//logger.Infof("retrieving data, elapsed: %v", time.Since(start))
+	//start = time.Now()
+
 	err = db.DB.Get(&validatorPageData, `
 		SELECT 
+			validators.pubkey, 
 			validators.validatorindex, 
 			validators.withdrawableepoch, 
 			validators.effectivebalance, 
@@ -162,16 +217,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch, 
 			validators.lastattestationslot, 
 			COALESCE(validator_names.name, '') AS name,
-			COALESCE(validator_balances.balance, 0) AS balance,
+			COALESCE(validators.balance, 0) AS balance,
+			COALESCE(validator_performance.rank7d, 0) AS rank7d,
 		    validators.status
 		FROM validators 
-		LEFT JOIN validator_balances 
-			ON validators.validatorindex = validator_balances.validatorindex 
-			AND validator_balances.epoch = $1 
 		LEFT JOIN validator_names 
 			ON validators.pubkey = validator_names.publickey
-		WHERE validators.validatorindex = $2 
-		LIMIT 1`, services.LatestEpoch(), index)
+		LEFT JOIN validator_performance 
+			ON validators.validatorindex = validator_performance.validatorindex
+		WHERE validators.validatorindex = $1`, index)
 	if err != nil {
 		//logger.Errorf("error retrieving validator page data: %v", err)
 
@@ -185,9 +239,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//logger.Infof("validator page data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
+
 	validatorPageData.Epoch = services.LatestEpoch()
 	validatorPageData.Index = index
-	validatorPageData.PublicKey, err = db.GetValidatorPublicKey(index)
 	if err != nil {
 		logger.Errorf("error retrieving validator public key %v: %v", index, err)
 
@@ -200,6 +256,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	filter := db.WatchlistFilter{
 		UserId:         data.User.UserID,
 		Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
@@ -216,6 +273,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.Watchlist = watchlist
 
+	//logger.Infof("watchlist data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
+
 	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
 	if err != nil {
 		logger.Errorf("error getting validator-deposits from db: %v", err)
@@ -223,6 +283,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	validatorPageData.Deposits = deposits
+	validatorPageData.DepositsCount = uint64(len(deposits.Eth1Deposits))
 
 	for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
 		if deposit.ValidSignature {
@@ -230,6 +291,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+
+	//logger.Infof("deposit data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -256,22 +320,30 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = db.DB.Get(&validatorPageData.ProposedBlocksCount, "SELECT COUNT(*) FROM blocks WHERE proposer = $1", index)
-	if err != nil {
-		logger.Errorf("error retrieving proposed blocks count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
+	validatorPageData.ProposedBlocksCount = uint64(len(proposals))
 
-	err = db.DB.Get(&validatorPageData.AttestationsCount, "SELECT LEAST(COUNT(*), 10000) FROM attestation_assignments WHERE validatorindex = $1", index)
-	if err != nil {
-		logger.Errorf("error retrieving attestation count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+	//logger.Infof("proposals data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
+
+	// Every validator is scheduled to issue an attestation once per epoch
+	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
+	// Special care needs to be take for exited and pending validators
+	validatorPageData.AttestationsCount = validatorPageData.Epoch - validatorPageData.ActivationEpoch + 1
+	if validatorPageData.ActivationEpoch > validatorPageData.Epoch {
+		validatorPageData.AttestationsCount = 0
+	}
+	if validatorPageData.ExitEpoch != 9223372036854775807 {
+		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
 
 	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
+	var epochs []uint64
+	for i := uint64(0); i <= validatorPageData.Epoch; i++ {
+		if i%225 == 0 || i > validatorPageData.Epoch-(225*7) {
+			epochs = append(epochs, i)
+		}
+	}
+	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances WHERE validatorindex = $1 AND epoch = ANY($2) ORDER BY epoch", index, pq.Array(epochs))
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -279,43 +351,31 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
+	validatorPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(balanceHistory))
+
 	for i, balance := range balanceHistory {
 		balanceTs := utils.EpochToTime(balance.Epoch)
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
+		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.EffectiveBalance) / 1000000000}
 	}
+
+	//logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	earnings, err := GetValidatorEarnings([]uint64{index})
 	if err != nil {
-		logger.Errorf("error retrieving validator effective balance history: %v", err)
+		logger.Errorf("error retrieving validator earnings: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	var depositSum = float64(0)
-	db.DB.Get(&depositSum, `
-	SELECT sum(amount)
-	FROM eth1_deposits
-	WHERE valid_signature = true and publickey = $1
-	`, validatorPageData.PublicKey)
+
 	validatorPageData.Income1d = earnings.LastDay
 	validatorPageData.Income7d = earnings.LastWeek
 	validatorPageData.Income31d = earnings.LastMonth
-	validatorPageData.Apr = (((float64(earnings.LastWeek) / 1e9) / (depositSum / 1e9)) * 365) / 7
-	if validatorPageData.Apr < float64(-1) {
-		validatorPageData.Apr = float64(-1)
-	}
+	validatorPageData.Apr = earnings.APR
 
-	var effectiveBalanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&effectiveBalanceHistory, "SELECT epoch, COALESCE(effectivebalance, 0) as balance FROM validator_balances WHERE validatorindex = $1 ORDER BY epoch", index)
-	if err != nil {
-		logger.Errorf("error retrieving validator effective balance history: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	validatorPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(effectiveBalanceHistory))
-	for i, balance := range effectiveBalanceHistory {
-		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.Balance) / 1000000000}
-	}
+	//logger.Infof("income data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	if validatorPageData.Slashed {
 		var slashingInfo struct {
@@ -344,20 +404,16 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.DB.Get(&validatorPageData.SlashingsCount, `
-		select
-			(
-				select count(*) from blocks_attesterslashings a
-				inner join blocks b on b.slot = a.block_slot and b.proposer = $1
-				where attestation1_indices is not null and attestation2_indices is not null
-			) + (
-				select count(*) from blocks_proposerslashings c
-				inner join blocks d on d.slot = c.block_slot and d.proposer = $1
-			)`, index)
+		select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1
+		`, index)
 	if err != nil {
 		logger.Errorf("error retrieving slashings-count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+
+	//logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, `
 	SELECT COALESCE(
@@ -370,7 +426,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	FROM attestation_assignments aa
 	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
 	WHERE aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
-	`, int64(data.CurrentEpoch)-100, index)
+	`, int64(validatorPageData.Epoch)-100, index)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -380,6 +436,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if validatorPageData.AverageAttestationInclusionDistance > 0 {
 		validatorPageData.AttestationInclusionEffectiveness = 1.0 / validatorPageData.AverageAttestationInclusionDistance * 100
 	}
+
+	//logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	data.Data = validatorPageData
 
@@ -869,4 +928,132 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 	}
 
+}
+
+// ValidatorHistory returns a validators history in json
+func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	currency := GetCurrency(r)
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	q := r.URL.Query()
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	if length > 100 {
+		length = 100
+	}
+
+	var activationAndExitEpoch = struct {
+		ActivationEpoch uint64 `db:"activationepoch"`
+		ExitEpoch       uint64 `db:"exitepoch"`
+	}{}
+	err = db.DB.Get(&activationAndExitEpoch, "SELECT activationepoch, exitepoch FROM validators WHERE validatorindex = $1", index)
+	if err != nil {
+		logger.Errorf("error retrieving activationAndExitEpoch for validator-history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	totalCount := uint64(0)
+
+	// Every validator is scheduled to issue an attestation once per epoch
+	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
+	// Special care needs to be take for exited and pending validators
+	if activationAndExitEpoch.ExitEpoch != 9223372036854775807 {
+		totalCount += activationAndExitEpoch.ExitEpoch - activationAndExitEpoch.ActivationEpoch
+	} else {
+		totalCount += services.LatestEpoch() - activationAndExitEpoch.ActivationEpoch + 1
+	}
+
+	if length > 100 {
+		length = 100
+	}
+
+	var validatorHistory []*types.ValidatorHistory
+	err = db.DB.Select(&validatorHistory, `
+			SELECT 
+				vbalance.epoch, 
+				COALESCE(LEAD(vbalance.balance, 2) OVER (ORDER BY vbalance.epoch) - LEAD(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
+				assign.attesterslot AS attestatation_attesterslot,
+				assign.inclusionslot AS attestation_inclusionslot,
+				vblocks.status as proposal_status,
+				vblocks.slot as proposal_slot
+			FROM validator_balances vbalance
+			LEFT JOIN attestation_assignments assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch
+			LEFT JOIN blocks vblocks ON vbalance.validatorindex = vblocks.proposer AND vbalance.epoch = vblocks.epoch
+			WHERE vbalance.validatorindex = $1
+			ORDER BY epoch DESC 
+			LIMIT $2 OFFSET $3
+			`, index, length, start)
+
+	if err != nil {
+		logger.Errorf("error retrieving validator history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(validatorHistory))
+	for _, b := range validatorHistory {
+		if b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
+			b.AttestationStatus = 2
+		}
+
+		if b.InclusionSlot.Valid && b.InclusionSlot.Int64 != 0 && b.AttestationStatus == 0 {
+			b.AttestationStatus = 1
+		}
+
+		events := utils.FormatAttestationStatus(b.AttestationStatus)
+
+		if b.ProposalSlot.Valid {
+			block := utils.FormatBlockStatus(uint64(b.ProposalStatus.Int64))
+			events += " & " + block
+		}
+
+		if b.BalanceChange.Valid {
+			tableData = append(tableData, []interface{}{
+				utils.FormatEpoch(b.Epoch),
+				utils.FormatBalanceChange(&b.BalanceChange.Int64, currency),
+				template.HTML(events),
+			})
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 }
