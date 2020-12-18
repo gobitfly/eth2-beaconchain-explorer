@@ -126,7 +126,7 @@
         <!-- Validator Lifecycle State Diagram -->
         <div class="overview-container d-flex flex-wrap justify-content-center">
             <div style="width: 80px;" class="m-3 position-relative">
-                <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Rank</small></span>
+                <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>{{if gtf .RankPercentage 0.0}}{{if gtf .RankPercentage 0.001}}Rank {{formatPercentageWithPrecision .RankPercentage 2}} %{{else}}Top 0.1%{{end}}{{else}}Rank{{end}}</small></span>
                 <a class="no-highlight" href="/validators/leaderboard">
                     <i class="fas fa-medal"></i>
                     <span id="validatorRank"

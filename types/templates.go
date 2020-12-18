@@ -217,6 +217,7 @@ type ValidatorPageData struct {
 	Income7d                            int64
 	Income31d                           int64
 	Rank7d                              int64 `db:"rank7d"`
+	RankPercentage                      float64
 	Apr                                 float64
 	Proposals                           [][]uint64
 	BalanceHistoryChartData             [][]float64

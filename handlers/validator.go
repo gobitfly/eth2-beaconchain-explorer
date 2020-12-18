@@ -239,6 +239,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if validatorPageData.Rank7d > 0 {
+		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(int64(validatorPageData.NetworkStats.ActiveValidators))
+	}
+
 	//logger.Infof("validator page data retrieved, elapsed: %v", time.Since(start))
 	//start = time.Now()
 
@@ -1037,7 +1041,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		if b.BalanceChange.Valid {
 			tableData = append(tableData, []interface{}{
 				utils.FormatEpoch(b.Epoch),
-				utils.FormatBalanceChange(&b.BalanceChange.Int64, currency),
+				utils.FormatBalanceGwei(&b.BalanceChange.Int64, currency),
 				template.HTML(events),
 			})
 		}
