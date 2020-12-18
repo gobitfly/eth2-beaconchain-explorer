@@ -119,10 +119,10 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 	if len(date) > 0 {
 		rTime, err := getRepoTime(date[0])
 		if err != nil {
-			return client.Name, "N/A"
+			return client.Name, "GitHub"
 		}
-		timeDiff := curTime.Sub(rTime).Hours() / 24
-		if timeDiff < 2 {
+		timeDiff := (curTime.Sub(rTime).Hours() / 24) - 0.5 // -0.5 to round down the days
+		if timeDiff < 1 {                                   // show banner if update was less than 1 day ago
 			bannerClients += name + " " + client.Name + " | "
 			return client.Name, "Recently"
 		}
