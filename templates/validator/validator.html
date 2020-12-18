@@ -102,9 +102,16 @@
 					</div>
 					<div class="col-lg-4 px-lg-2 my-2">
 						<div class="card card-body py-2 px-0 h-100 d-flex align-items-center">
-							{{if $validating }}
-								{{template "validatorIncomeTable" $}}
-							{{else}}
+							{{ if $deposited }}
+								{{ template "validatorNetworkStatsTable" .}}
+							{{end}}
+							{{ if $pending }}
+								{{ template "validatorNetworkStatsTable" .}}
+							{{end}}
+							{{ if $validating }}
+								{{ template "validatorIncomeTable" $}}
+							{{ end }}
+							{{ if $exited }}
 								{{ template "validatorNetworkStatsTable" .}}
 							{{end}}
 						</div>
