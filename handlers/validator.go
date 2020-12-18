@@ -532,6 +532,24 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "epoch",
+		"2": "status",
+		"5": "attestationscount",
+		"6": "depositscount",
+		"8": "voluntaryexitscount",
+		"9": "graffiti",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "epoch"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+
 	var blocks []*types.IndexPageDataBlocks
 	err = db.DB.Select(&blocks, `
 		SELECT 
@@ -549,7 +567,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 			blocks.graffiti 
 		FROM blocks 
 		WHERE blocks.proposer = $1
-		ORDER BY blocks.slot DESC
+		ORDER BY `+orderBy+` `+orderDir+`
 		LIMIT $2 OFFSET $3`, index, length, start)
 
 	if err != nil {

@@ -27,7 +27,8 @@
                 $('#blocks-table').DataTable({
                     processing: true,
                     serverSide: true,
-                    ordering: false,
+                    ordering: true,
+                    order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
                     ajax: '/validator/' + index + '/proposedblocks',
@@ -41,6 +42,28 @@
                             next: ">",
                         }
                     },
+                    columnDefs: [
+                    {
+                        targets: 1,
+                        data: '1',
+                        "orderable": false
+                    },
+                    {
+                        targets: 3,
+                        data: '3',
+                        "orderable": false
+                    },
+                    {
+                        targets: 4,
+                        data: '4',
+                        "orderable": false
+                    },
+                    {
+                        targets: 7,
+                        data: '7',
+                        "orderable": false
+                    },
+                  ],
                     drawCallback: function (settings) {
                         formatTimestamps()
                     },
@@ -75,6 +98,7 @@
                     processing: true,
                     serverSide: true,
                     ordering: true,
+                    order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
                     ajax: '/validator/' + index + '/attestations',
@@ -188,7 +212,7 @@
             </table>
         </div>
     </div>
-    <div class="text-center">
+    <div class="text-center my-3">
         <i class="fas fa-arrow-down"></i>
     </div>
     <div class="table-eth2">
@@ -443,7 +467,16 @@
                     ordering: false,
                     searching: false,
                     ajax: '/validator/' + index + '/history',
-                    pagingType: 'simple',
+                    pagingType: 'input',
+                    pageLength: 10,
+                    language: {
+                        searchPlaceholder: 'Search by Epoch Number',
+                        search: '',
+                        paginate: {
+                            previous: "<",
+                            next: ">",
+                        }
+                    },
                     drawCallback: function (settings) {
                         formatTimestamps()
                     },
