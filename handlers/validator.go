@@ -625,6 +625,23 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "epoch",
+		"2": "status",
+		"4": "committeeindex",
+		"6": "delay",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "epoch"
+	}
+
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+
 	var totalCount uint64
 
 	err = db.DB.Get(&totalCount, "SELECT LEAST(COUNT(*), 10000) FROM attestation_assignments WHERE validatorindex = $1", index)
@@ -651,11 +668,11 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 					WHEN blocks.status = '3' THEN 0
 					ELSE aa.inclusionslot
 				END AS inclusionslot,
-				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > aa.attesterslot AND blocks.status = '1'), 0) AS earliestinclusionslot 
+				COALESCE(inclusionslot - (SELECT MIN(slot) FROM blocks WHERE slot > aa.attesterslot AND blocks.status = '1'), 0) as delay
 			FROM attestation_assignments aa
 			LEFT JOIN blocks on blocks.slot = aa.inclusionslot
 			WHERE validatorindex = $1 
-			ORDER BY attesterslot DESC, epoch DESC
+			ORDER BY `+orderBy+` `+orderDir+`
 			LIMIT $2 OFFSET $3`, index, length, start)
 
 		if err != nil {
@@ -677,7 +694,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 				utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
 				b.CommitteeIndex,
 				utils.FormatAttestationInclusionSlot(b.InclusionSlot),
-				utils.FormatInclusionDelay(b.InclusionSlot, b.InclusionSlot-b.EarliestInclusionSlot),
+				utils.FormatInclusionDelay(b.InclusionSlot, b.Delay),
 			}
 		}
 	}

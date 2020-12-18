@@ -164,7 +164,7 @@ func FormatAttestationInclusionSlot(blockSlot uint64) template.HTML {
 }
 
 // FormatAttestationInclusionSlot will return the block-slot formated as html
-func FormatInclusionDelay(inclusionSlot, delay uint64) template.HTML {
+func FormatInclusionDelay(inclusionSlot uint64, delay int64) template.HTML {
 	if inclusionSlot == 0 {
 		return template.HTML("-")
 	} else if delay > 32 {
@@ -337,6 +337,11 @@ func FormatPercentage(percentage float64) string {
 // FormatPercentageWithPrecision will return a string for a percentage
 func FormatPercentageWithPrecision(percentage float64, precision int) string {
 	return fmt.Sprintf("%."+strconv.Itoa(precision)+"f", percentage*float64(100))
+}
+
+// FormatPercentageWithGPrecision will return a string for a percentage the maximum number of significant digits (trailing zeros are removed).
+func FormatPercentageWithGPrecision(percentage float64, precision int) string {
+	return fmt.Sprintf("%."+strconv.Itoa(precision)+"g", percentage*float64(100))
 }
 
 // FormatPublicKey will return html formatted text for a validator-public-key
