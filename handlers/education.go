@@ -13,16 +13,7 @@ func EducationServices(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "educationServices", "/educationServices", "Ethereum 2.0 Education Services Overview")
-
-	// pageData := &types.StakeWithUsPageData{}
-	// pageData.FlashMessage, err = utils.GetFlash(w, r, "stake_flash")
-	// if err != nil {
-	// 	logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
-	// 	http.Error(w, "Internal server error", 503)
-	// 	return
-	// }
-	// data.Data = pageData
+	data := InitPageData(w, r, "services", "/educationServices", "Ethereum 2.0 Education Services Overview")
 
 	err = educationServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
