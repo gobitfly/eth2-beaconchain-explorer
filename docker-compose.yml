@@ -8,7 +8,7 @@ services:
             - ./private/eth1_node:/root
         network_mode: host
         command: 
-            - --goerli
+            - --goerli # comment this out for mainnet
 
 
     postgres:
@@ -30,13 +30,14 @@ services:
         restart: always
         volumes:
             - ./private/eth2_data:/data
-            - ./private/eth1_node/.ethereum/goerli:$HOME/Goerli
+            - ./private/eth1_node/.ethereum:/eth
         network_mode: host
         command: 
             - --datadir=/data
             - --rpc-host=0.0.0.0
             - --monitoring-host=0.0.0.0
-            - --http-web3provider=$HOME/Goerli/geth.ipc
+            - --http-web3provider=/eth/goerli/geth.ipc
+            # - --http-web3provider=/eth/geth.ipc #use this option for mainnet
             - --accept-terms-of-use
         depends_on:
             - eth1
