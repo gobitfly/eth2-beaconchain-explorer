@@ -260,6 +260,7 @@ func main() {
 			router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
 			router.HandleFunc("/poap", handlers.Poap).Methods("GET")
 			router.HandleFunc("/poap/data", handlers.PoapData).Methods("GET")
+			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
