@@ -49,6 +49,21 @@ ins[data-revive-zoneid] > a > img {
   }
 }
 
+@media (max-width: 768px) {
+  div.dataTables_wrapper div.dataTables_paginate ul.pagination {
+    justify-content: center !important;
+    margin-bottom: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  #slashings-table_wrapper > div:nth-child(2),
+  #blocks-table_wrapper > div:nth-child(2),
+  #attestations-table_wrapper > div:nth-child(2) {
+    margin-bottom: 1.55rem;
+  }
+}
+
 .paginate_input {
     padding: .25rem .5rem;
     font-size: .875rem;
@@ -68,8 +83,14 @@ ins[data-revive-zoneid] > a > img {
     transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
 }
 
+table {
+  table-layout: auto;
+}
+
 .paginate_button, .page-link {
   background-color: var(--bg-color-secondary);
+  cursor: pointer;
+  color: var(--link-color, #2d5986);
 }
 
 .page-item.disabled .page-link {
