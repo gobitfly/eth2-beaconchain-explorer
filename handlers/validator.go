@@ -116,6 +116,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Internal server error", 503)
 				return
 			}
+			validatorPageData.PendingCount = pendingCount
 
 			validatorPageData.InclusionDelay = int64((utils.Config.Chain.Phase0.Eth1FollowDistance*utils.Config.Chain.Phase0.SecondsPerETH1Block+utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch*utils.Config.Chain.Phase0.EpochsPerEth1VotingPeriod)/3600) + 1
 
@@ -133,7 +134,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 
 			activationEstimate := (pendingCount/churnRate)*(utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch) + uint64(latestDeposit)
-
 			validatorPageData.EstimatedActivationTs = int64(activationEstimate)
 
 			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
@@ -237,6 +237,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		return
+	}
+
+	if validatorPageData.Rank7d > 0 {
+		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(int64(validatorPageData.NetworkStats.ActiveValidators))
 	}
 
 	//logger.Infof("validator page data retrieved, elapsed: %v", time.Since(start))
@@ -386,11 +390,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Get(&slashingInfo,
 			`select block_slot as slot, proposer as slasher, 'Attestation Violation' as reason
 				from blocks_attesterslashings a1 left join blocks b1 on b1.slot = a1.block_slot
-				where $1 = ANY(a1.attestation1_indices) and $1 = ANY(a1.attestation2_indices)
+				where b1.status = '1' and $1 = ANY(a1.attestation1_indices) and $1 = ANY(a1.attestation2_indices)
 			union all
 			select block_slot as slot, proposer as slasher, 'Proposer Violation' as reason
 				from blocks_proposerslashings a2 left join blocks b2 on b2.slot = a2.block_slot
-				where a2.proposerindex = $1
+				where b2.status = '1' and a2.proposerindex = $1
 			limit 1`,
 			index)
 		if err != nil {
@@ -404,7 +408,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.DB.Get(&validatorPageData.SlashingsCount, `
-		select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1
+		select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1 and blocks.status = '1'
 		`, index)
 	if err != nil {
 		logger.Errorf("error retrieving slashings-count: %v", err)
@@ -528,6 +532,24 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "epoch",
+		"2": "status",
+		"5": "attestationscount",
+		"6": "depositscount",
+		"8": "voluntaryexitscount",
+		"9": "graffiti",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "epoch"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+
 	var blocks []*types.IndexPageDataBlocks
 	err = db.DB.Select(&blocks, `
 		SELECT 
@@ -545,7 +567,7 @@ func ValidatorProposedBlocks(w http.ResponseWriter, r *http.Request) {
 			blocks.graffiti 
 		FROM blocks 
 		WHERE blocks.proposer = $1
-		ORDER BY blocks.slot DESC
+		ORDER BY `+orderBy+` `+orderDir+`
 		LIMIT $2 OFFSET $3`, index, length, start)
 
 	if err != nil {
@@ -621,6 +643,23 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "epoch",
+		"2": "status",
+		"4": "committeeindex",
+		"6": "delay",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "epoch"
+	}
+
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+
 	var totalCount uint64
 
 	err = db.DB.Get(&totalCount, "SELECT LEAST(COUNT(*), 10000) FROM attestation_assignments WHERE validatorindex = $1", index)
@@ -647,11 +686,11 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 					WHEN blocks.status = '3' THEN 0
 					ELSE aa.inclusionslot
 				END AS inclusionslot,
-				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > aa.attesterslot AND blocks.status = '1'), 0) AS earliestinclusionslot 
+				COALESCE(inclusionslot - (SELECT MIN(slot) FROM blocks WHERE slot > aa.attesterslot AND blocks.status = '1'), 0) as delay
 			FROM attestation_assignments aa
 			LEFT JOIN blocks on blocks.slot = aa.inclusionslot
 			WHERE validatorindex = $1 
-			ORDER BY attesterslot DESC, epoch DESC
+			ORDER BY `+orderBy+` `+orderDir+`
 			LIMIT $2 OFFSET $3`, index, length, start)
 
 		if err != nil {
@@ -673,7 +712,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 				utils.FormatTimestamp(utils.SlotToTime(b.AttesterSlot).Unix()),
 				b.CommitteeIndex,
 				utils.FormatAttestationInclusionSlot(b.InclusionSlot),
-				utils.FormatInclusionDelay(b.InclusionSlot, b.InclusionSlot-b.EarliestInclusionSlot),
+				utils.FormatInclusionDelay(b.InclusionSlot, b.Delay),
 			}
 		}
 	}
@@ -990,16 +1029,16 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		totalCount += services.LatestEpoch() - activationAndExitEpoch.ActivationEpoch + 1
 	}
 
-	if length > 100 {
-		length = 100
+	if start > 90 {
+		start = 90
 	}
 
 	var validatorHistory []*types.ValidatorHistory
 	err = db.DB.Select(&validatorHistory, `
 			SELECT 
 				vbalance.epoch, 
-				COALESCE(LEAD(vbalance.balance, 2) OVER (ORDER BY vbalance.epoch) - LEAD(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
-				assign.attesterslot AS attestatation_attesterslot,
+				COALESCE(vbalance.balance - LAG(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
+				COALESCE(assign.attesterslot, -1) AS attestatation_attesterslot,
 				assign.inclusionslot AS attestation_inclusionslot,
 				vblocks.status as proposal_status,
 				vblocks.slot as proposal_slot
@@ -1019,7 +1058,15 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 	for _, b := range validatorHistory {
-		if b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
+		if b.AttesterSlot.Int64 == -1 && b.BalanceChange.Int64 < 0 {
+			b.AttestationStatus = 4
+		}
+
+		if b.AttesterSlot.Int64 == -1 && b.BalanceChange.Int64 >= 0 {
+			b.AttestationStatus = 5
+		}
+
+		if b.AttesterSlot.Int64 != -1 && b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
 			b.AttestationStatus = 2
 		}
 
@@ -1027,10 +1074,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			b.AttestationStatus = 1
 		}
 
-		events := utils.FormatAttestationStatus(b.AttestationStatus)
+		events := utils.FormatAttestationStatusShort(b.AttestationStatus)
 
 		if b.ProposalSlot.Valid {
-			block := utils.FormatBlockStatus(uint64(b.ProposalStatus.Int64))
+			block := utils.FormatBlockStatusShort(uint64(b.ProposalStatus.Int64))
 			events += " & " + block
 		}
 
@@ -1041,6 +1088,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				template.HTML(events),
 			})
 		}
+	}
+
+	if totalCount > 100 {
+		totalCount = 100
 	}
 
 	data := &types.DataTableResponse{

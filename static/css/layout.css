@@ -49,9 +49,18 @@ ins[data-revive-zoneid] > a > img {
   }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 768px) {
   div.dataTables_wrapper div.dataTables_paginate ul.pagination {
     justify-content: center !important;
+    margin-bottom: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  #slashings-table_wrapper > div:nth-child(2),
+  #blocks-table_wrapper > div:nth-child(2),
+  #attestations-table_wrapper > div:nth-child(2) {
+    margin-bottom: 1.55rem;
   }
 }
 
@@ -72,6 +81,10 @@ ins[data-revive-zoneid] > a > img {
     border-radius: .25rem;
     box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
     transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+}
+
+table {
+  table-layout: auto;
 }
 
 .paginate_button, .page-link {

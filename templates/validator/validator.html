@@ -77,7 +77,7 @@
 		{{ template "validatorHeading" . }}
 				<div class="row align-items-stretch">
 					<div class="col-lg-8 px-lg-2 my-2">
-						<div class="card h-100 py-0 px-0 card-body">
+						<div class="card d-flex flex-column justify-content-center h-100 py-0 px-0 card-body">
 							<div class="row">
 								<div class="col">
 									{{ template "validatorLifeCycleDiagram" .}}
@@ -94,17 +94,24 @@
 										{{ template "validatorOverviewValidating" $}}
 									{{ end }}
 									{{ if $exited }}
-									  {{ template "validatorOverviewExited" .}}
+									  {{ template "validatorOverviewExited" $}}
 									{{end}}
 							</div>
 						</div>
 					</div>
 					<div class="col-lg-4 px-lg-2 my-2">
 						<div class="card card-body py-2 px-0 h-100 d-flex align-items-center">
-							{{if $validating }}
-								{{template "validatorIncomeTable" $}}
-							{{else}}
+							{{ if $deposited }}
 								{{ template "validatorNetworkStatsTable" .}}
+							{{end}}
+							{{ if $pending }}
+								{{ template "validatorNetworkStatsTable" .}}
+							{{end}}
+							{{ if $validating }}
+								{{ template "validatorIncomeTable" $}}
+							{{ end }}
+							{{ if $exited }}
+								{{ template "validatorIncomeTable" $}}
 							{{end}}
 						</div>
 					</div>					
@@ -138,29 +145,29 @@
 									aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span></a>
 								</li>
 							</ul>
-							<div class="tab-content" id="myTabContent">
-								<div id="balanceChart" class="tab-pane fade show active" role="tabpanel" aria-labelledby="balanceChart-tab">
+							<div class="tab-content h-100" id="myTabContent">
+								<div id="balanceChart" class="tab-pane fade h-100 show active" role="tabpanel" aria-labelledby="balanceChart-tab">
 									{{template "validatorBalanceChart"  . }}
 								</div>
-								<div id="proposedChart" class="tab-pane fade" role="tabpanel" aria-labelledby="proposedChart-tab">
+								<div id="proposedChart" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="proposedChart-tab">
 									{{template "validatorProposedChart"  . }}
 								</div>
 								{{if gt .ProposedBlocksCount 0}}
-								<div class="tab-pane fade" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
+								<div class="tab-pane fade h-100" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
 									{{ template "validatorProposedTable"  . }}
 								</div>
 								{{end}}
 								{{ if gt .AttestationsCount 0 }}
-								 <div class="tab-pane fade" id="attestations" role="tabpanel" aria-labelledby="attestations-tab" aria-controls="attestations">
+								 <div class="tab-pane fade h-100" id="attestations" role="tabpanel" aria-labelledby="attestations-tab" aria-controls="attestations">
 									{{template "validatorAttestationsTable" . }}
 								</div>
 								{{end}}
 								{{if gt .SlashingsCount 0}}
-									<div class="tab-pane fade" id="slashings" role="tabpanel" aria-labelledby="slashings-tab" aria-controls="slashings">
+									<div class="tab-pane fade h-100" id="slashings" role="tabpanel" aria-labelledby="slashings-tab" aria-controls="slashings">
 										{{template "validatorSlashingsTable" . }}
 									</div>
 								{{end}}
-								<div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
+								<div class="tab-pane fade h-100" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
 									<div class="px-3">
 										{{template "validatorDepositsTable" $}}
 									</div>
@@ -173,7 +180,7 @@
 							<div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
 								<span class="h4 text-center mb-0">Validator History</span>
 							</div>
-							{{ if $validating }}
+							{{ if or $validating $exited }}
 								{{ template "validatorHistoryTable" $}}
 							{{ else }}
 							<div class="d-flex align-items-center justify-content-center p-5">

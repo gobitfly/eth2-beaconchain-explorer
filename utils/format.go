@@ -37,6 +37,25 @@ func FormatAttestationStatus(status uint64) template.HTML {
 	}
 }
 
+// FormatAttestationStatusShort will return a user-friendly attestation for an attestation status number
+func FormatAttestationStatusShort(status uint64) template.HTML {
+	if status == 0 {
+		return "<span title=\"Scheduled\" data-toggle=\"tooltip\"  class=\"badge bg-light text-dark\">Sche.</span>"
+	} else if status == 1 {
+		return "<span title=\"Attested\" data-toggle=\"tooltip\"   class=\"badge bg-success text-white\">Att.</span>"
+	} else if status == 2 {
+		return "<span title=\"Missed\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Miss.</span>"
+	} else if status == 3 {
+		return "<span title=\"Orphaned\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Orph.</span>"
+	} else if status == 4 {
+		return "<span title=\"Inactivity Leak\" data-toggle=\"tooltip\"  class=\"badge bg-danger text-dark\">Leak</span>"
+	} else if status == 5 {
+		return "<span title=\"Inactive\" data-toggle=\"tooltip\"  class=\"badge bg-light text-dark\">Inac.</span>"
+	} else {
+		return "Unknown"
+	}
+}
+
 // FormatAttestorAssignmentKey will format attestor assignment keys
 func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint64) string {
 	return fmt.Sprintf("%v-%v-%v", AttesterSlot, CommitteeIndex, MemberIndex)
@@ -61,6 +80,23 @@ func FormatBalance(balanceInt uint64, currency string) template.HTML {
 	return template.HTML(string(rb) + " " + currency)
 }
 
+func FormatBalanceGwei(balance *int64, currency string) template.HTML {
+	if currency == "ETH" {
+		balanceF := float64(*balance)
+		if balance == nil {
+			return template.HTML("<span> 0.00000 " + currency + "</span>")
+		} else if *balance == 0 {
+			return template.HTML("0")
+		}
+
+		if balanceF < 0 {
+			return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.0f GWei</span>", balanceF))
+		}
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\">+%.0f GWei</span>", balanceF))
+	}
+	return FormatBalanceChange(balance, currency)
+}
+
 // FormatBalanceChange will return a string for a balance change
 func FormatBalanceChange(balance *int64, currency string) template.HTML {
 	balanceF := float64(*balance) / float64(1e9)
@@ -68,13 +104,13 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 		if balance == nil {
 			return template.HTML("<span> 0.00000 " + currency + "</span>")
 		} else if *balance == 0 {
-			return template.HTML("pending")
+			return template.HTML("0")
 		}
 
 		if balanceF < 0 {
-			return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.5f ETH</span>", balanceF))
+			return template.HTML(fmt.Sprintf("<span title=\"%.0f GWei\" data-toggle=\"tooltip\" class=\"text-danger\">%.5f ETH</span>", float64(*balance), balanceF))
 		}
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\">+%.5f ETH</span>", balanceF))
+		return template.HTML(fmt.Sprintf("<span title=\"%.0f GWei\" data-toggle=\"tooltip\" class=\"text-success\">+%.5f ETH</span>", float64(*balance), balanceF))
 	} else {
 		if balance == nil {
 			return template.HTML("<span> 0.00" + currency + "</span>")
@@ -147,7 +183,7 @@ func FormatAttestationInclusionSlot(blockSlot uint64) template.HTML {
 }
 
 // FormatAttestationInclusionSlot will return the block-slot formated as html
-func FormatInclusionDelay(inclusionSlot, delay uint64) template.HTML {
+func FormatInclusionDelay(inclusionSlot uint64, delay int64) template.HTML {
 	if inclusionSlot == 0 {
 		return template.HTML("-")
 	} else if delay > 32 {
@@ -176,6 +212,22 @@ func FormatBlockStatus(status uint64) template.HTML {
 		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
 	} else if status == 3 {
 		return "<span class=\"badge bg-secondary text-white\">Orphaned</span>"
+	} else {
+		return "Unknown"
+	}
+}
+
+// FormatBlockStatusShort will return an html status for a block.
+func FormatBlockStatusShort(status uint64) template.HTML {
+	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
+	if status == 0 {
+		return "<span title=\"Scheduled\" data-toggle=\"tooltip\" class=\"badge bg-light text-dark\">Sche.</span>"
+	} else if status == 1 {
+		return "<span title=\"Proposed\" data-toggle=\"tooltip\" class=\"badge bg-success text-white\">Prop.</span>"
+	} else if status == 2 {
+		return "<span title=\"Missed\" data-toggle=\"tooltip\" class=\"badge bg-warning text-dark\">Miss.</span>"
+	} else if status == 3 {
+		return "<span title=\"Orphaned\" data-toggle=\"tooltip\" class=\"badge bg-secondary text-white\">Orph.</span>"
 	} else {
 		return "Unknown"
 	}
@@ -268,7 +320,10 @@ func FormatGraffiti(graffiti []byte) template.HTML {
 	if len(s) <= 6 {
 		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, h))
 	}
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:8]))
+	if len(h) >= 8 {
+		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:8]))
+	}
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:]))
 }
 
 // FormatGraffitiAsLink will return the graffiti formated as html-link
@@ -317,6 +372,11 @@ func FormatPercentage(percentage float64) string {
 // FormatPercentageWithPrecision will return a string for a percentage
 func FormatPercentageWithPrecision(percentage float64, precision int) string {
 	return fmt.Sprintf("%."+strconv.Itoa(precision)+"f", percentage*float64(100))
+}
+
+// FormatPercentageWithGPrecision will return a string for a percentage the maximum number of significant digits (trailing zeros are removed).
+func FormatPercentageWithGPrecision(percentage float64, precision int) string {
+	return fmt.Sprintf("%."+strconv.Itoa(precision)+"g", percentage*float64(100))
 }
 
 // FormatPublicKey will return html formatted text for a validator-public-key

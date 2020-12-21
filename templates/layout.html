@@ -247,7 +247,9 @@
 
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                 <ul class="navbar-nav ml-auto">
-                    <li class="nav-item">
+
+                    <!-- <li class="nav-item">
+
                         <a ga-outbound="" class="nav-link text-primary"
                            href="https://gitcoin.co/grants/collections?collection_id=14#">
 							<span class="nav-icon">
@@ -255,7 +257,7 @@
 							</span>
                             <span class="nav-text">Support Eth2</span>
                         </a>
-                    </li>
+                    </li> -->
                     <li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
                         <a class="nav-link" href="/epochs">
 						<span class="nav-icon">
@@ -453,6 +455,47 @@
 							</span>
                         </a>
                     </li>
+                </li>
+                
+
+                <li class="nav-item {{ if eq .Active "services"}}active{{end}} dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                       data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <span class="nav-icon">
+                           <i class="fas fa-tools"></i>                            
+                       </span>
+                        <span class="nav-text">Services</span>
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    </a>
+                    <a class="dropdown-item" href="/stakingServices">
+                        <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
+                        <span class="nav-text">Staking Services</span>
+                    </a>
+                    <a class="dropdown-item" href="/ethClients">
+                        <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span>
+                        <span class="nav-text">Ethereum Clients</span>
+                    </a>
+                    <a class="dropdown-item" href="/education">
+                        <span class="nav-icon"><i class="fa fa-book mr-2"></i></span>
+                        <span class="nav-text">Educational Material</span>
+                    </a>
+                    <hr>
+                    <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
+                        <span class="nav-icon">
+                            <i class="fas fa-laptop-code mr-2"></i>
+                        </span>
+                        <span class="nav-text">API Docs</span>
+                    </a>
+                    <a class="dropdown-item" href="/pricing">
+                        <span class="nav-icon">
+                            <i class="fas fa-laptop-code mr-2"></i>
+                        </span>
+                        <span class="nav-text">API Pricing</span>
+                    </a>
+                    
+                    </div>
+                </li>
                     <li class="nav-item dropdown {{ if eq .Active "more"}}active{{end}}">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -476,34 +519,14 @@
 								</span>
                                 <span class="nav-text">Android App</span>
                             </a>
-                            <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
-								<span class="nav-icon">
-									<i class="fas fa-laptop-code mr-2"></i>
-								</span>
-                                <span class="nav-text">API Docs</span>
-                            </a>
-                            <a class="dropdown-item" href="/pricing">
-								<span class="nav-icon">
-									<i class="fas fa-laptop-code mr-2"></i>
-								</span>
-                                <span class="nav-text">API Pricing</span>
-                            </a>
-                            <a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
-								<span class="nav-icon">
-									<i class="fas fa-external-link-alt mr-2"></i>
-								</span>
-                                <span class="nav-text">Knowledge Base</span>
-                            </a>
-                            <a class="dropdown-item" href="/stakingServices">
-                                <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
-                                <span class="nav-text">Staking Services</span>
-                            </a>
+                            <hr>
+                          
                             <a class="dropdown-item" href="/graffitiwall">
 								<span class="nav-icon">
 									<i class="fas fa-paint-brush mr-1"></i>
 								</span>
                                 <span class="nav-text">
-									Wall
+									Graffiti Wall
 								</span>
                             </a>
                             <a class="dropdown-item" href="/poap">
@@ -513,6 +536,12 @@
                                 <span class="nav-text">
 									POAP
 								</span>
+                            </a>
+                            <a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
+                                <span class="nav-icon">
+                                    <i class="fas fa-external-link-alt mr-2"></i>
+                                </span>
+                                <span class="nav-text">Knowledge Base</span>
                             </a>
                         </div>
                     </li>
@@ -586,27 +615,7 @@
 					</div>
 				</div>
 				{{end}} -->
-                {{if not (or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")))}}
-                {{if len .DepositContract}}
-                <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);"
-                         class="contract text-center p-2">
-                         <i class="fas fa-file-contract mr-2"></i><span class="contract-description mr-2">Deposit Contract:</span><a
-                                href="https://etherchain.org/account/{{.DepositContract}}"
-                                class="text-primary text-monospace">{{.DepositContract}}</a>
-                        <a style="color: #fff" id="copy-deposit" data-toggle="tooltip"
-                        data-original-title="Copy Address" data-clipboard-text="{{.DepositContract}}"
-                        class="btn btn-primary mb-1 btn-icon-inside">
-                        <span class="fa fa-copy icon-inside"></span>
-                    </a>
-                </div>
-                {{else}}
-                <div style="background-color: var(--bg-color-light);" class="contract text-center p-2">
-                    Deposit Contract: <span class="text-primary text-monospace">0x(Pending)</span>
-                </div>
-                {{end}}
-                {{end}}
-        {{if .Mainnet}}
-        {{end}}
+      
         {{ template "content" . }}
     </main>
 

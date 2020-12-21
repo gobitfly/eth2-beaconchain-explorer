@@ -382,20 +382,19 @@ func GetSlashingCount() (uint64, error) {
 	slashings := uint64(0)
 
 	err := DB.Get(&slashings, `
-	SELECT 
-	SUM(count)
-	FROM 
-	(
-		SELECT COUNT(*) 
+		SELECT SUM(count)
 		FROM 
-			blocks_attesterslashings 
-		UNION 
-		SELECT 
-		  COUNT(*) 
-		FROM 
-			blocks_proposerslashings
-	) as tbl
-	`)
+		(
+			SELECT COUNT(*) 
+			FROM 
+				blocks_attesterslashings 
+				INNER JOIN blocks on blocks.slot = blocks_attesterslashings.block_slot and blocks.status = '1'
+			UNION 
+			SELECT COUNT(*) 
+			FROM 
+				blocks_proposerslashings
+				INNER JOIN blocks on blocks.slot = blocks_proposerslashings.block_slot and blocks.status = '1'
+		) as tbl`)
 	if err != nil {
 		return 0, err
 	}
@@ -824,10 +823,13 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 
 	s := time.Now()
 	_, err = tx.Exec(`UPDATE validators SET status = CASE 
+				WHEN exitepoch <= $1 and slashed then 'slashed'
 				WHEN exitepoch <= $1 then 'exited'
 				WHEN activationepoch > $1 then 'pending'
 				WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
 				WHEN slashed then 'slashing_online'
+				WHEN exitepoch < 9223372036854775807 and (lastattestationslot < $2 OR lastattestationslot is null) then 'exiting_offline'
+				WHEN exitepoch < 9223372036854775807 then 'exiting_online'
 				WHEN activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'active_offline' 
 				ELSE 'active_online'
 			END`, latestBlock/32, thresholdSlot)
