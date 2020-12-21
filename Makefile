@@ -18,8 +18,9 @@ explorer:
 	cp -r templates/ bin/
 	cp -r static/ bin/static
 	cp -r locales/ bin/
-	which go
+	ls /usr/local/bin
 	echo $PATH
+	which go
 	go build --ldflags=${LDFLAGS} --tags=blst_enabled -o bin/explorer cmd/explorer/main.go
 	go build --ldflags=${LDFLAGS} --tags=blst_enabled -o bin/chartshotter cmd/chartshotter/main.go
 
