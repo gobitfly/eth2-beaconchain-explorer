@@ -83,9 +83,9 @@
                 <th>Time</th>
                 <th>Committee</th>
                 <th><span data-toggle="tooltip" title="Inclusion Slot">Incl. Slot</span></th>
-                <th data-toggle="tooltip"
+                <th class="text-truncate" data-toggle="tooltip"
                     title="The optimal inclusion distance shows the difference between the inclusion slot and the earliest slot it could have been included. The best case for the optimal inclusion distance is 0.">
-                    Opt. Incl. Distance <i class="far fa-question-circle"></i></th>
+                    Opt.Incl.Dist.
             </tr>
             </thead>
             <tbody></tbody>
@@ -462,6 +462,7 @@
             window.addEventListener('load', function () {
                 $('#validator-history-table').DataTable({
                     processing: true,
+                    details: false,
                     serverSide: true,
                     lengthChange: false,
                     ordering: false,
@@ -481,6 +482,11 @@
                         formatTimestamps()
                     },
                 })
+                $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(1)').removeClass('col-md-5').removeClass('col-sm-12')
+                $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(2)').removeClass('col-md-7').removeClass('col-sm-12')
+                $('#validator-history-table_wrapper > div:nth-child(3)').addClass('justify-content-center')
+                $("#validator-history-table_paginate").attr('style', 'padding-right: 0 !important')
+                $("#validator-history-table_info").attr('style', 'padding-top: 0;')
             })
     </script>
 {{end}}
@@ -513,13 +519,25 @@
             </td>
         </tr>
         <tr>
+            <th scope="row">Eligable since</th>
+            <td>
+                {{if eq .ActivationEligibilityEpoch 9223372036854775807}}
+                    -
+                {{else}}
+                    <a href="/epoch/{{.ActivationEligibilityEpoch}}"><span aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}"></span></a>
+                {{end}}
+            </td>
+
+        </tr>
+        <tr>
             <th scope="row">Active since</th>
             <td>
                 {{if eq .ActivationEpoch 9223372036854775807}}
                     -
                 {{else}}
-                    <span title="{{.ActivationTs}}" data-toggle="tooltip"
-                          aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span>
+                    <a href="/epoch/{{.ActivationEpoch}}">
+                        <span aria-ethereum-date="{{.ActivationTs.Unix}}"></span>
+                    </a>
                 {{end}}
             </td>
 
