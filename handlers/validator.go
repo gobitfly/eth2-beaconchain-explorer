@@ -1029,10 +1029,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		totalCount += services.LatestEpoch() - activationAndExitEpoch.ActivationEpoch + 1
 	}
 
-	if length > 100 {
-		length = 100
-	}
-
 	var validatorHistory []*types.ValidatorHistory
 	err = db.DB.Select(&validatorHistory, `
 			SELECT 
