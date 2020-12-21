@@ -386,11 +386,11 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Get(&slashingInfo,
 			`select block_slot as slot, proposer as slasher, 'Attestation Violation' as reason
 				from blocks_attesterslashings a1 left join blocks b1 on b1.slot = a1.block_slot
-				where $1 = ANY(a1.attestation1_indices) and $1 = ANY(a1.attestation2_indices)
+				where b1.status = '1' and $1 = ANY(a1.attestation1_indices) and $1 = ANY(a1.attestation2_indices)
 			union all
 			select block_slot as slot, proposer as slasher, 'Proposer Violation' as reason
 				from blocks_proposerslashings a2 left join blocks b2 on b2.slot = a2.block_slot
-				where a2.proposerindex = $1
+				where b2.status = '1' and a2.proposerindex = $1
 			limit 1`,
 			index)
 		if err != nil {
@@ -404,7 +404,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.DB.Get(&validatorPageData.SlashingsCount, `
-		select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1
+		select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1 and blocks.status = '1'
 		`, index)
 	if err != nil {
 		logger.Errorf("error retrieving slashings-count: %v", err)

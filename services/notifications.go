@@ -452,6 +452,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 						'Attestation Violation' AS reason
 					FROM blocks_attesterslashings 
 					LEFT JOIN blocks ON blocks_attesterslashings.block_slot = blocks.slot
+					WHERE blocks.status = '1'
 					UNION ALL
 						SELECT
 							blocks.slot, 
@@ -461,6 +462,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 							'Proposer Violation' AS reason 
 						FROM blocks_proposerslashings
 						LEFT JOIN blocks ON blocks_proposerslashings.block_slot = blocks.slot
+						WHERE blocks.status = '1'
 				) a
 				ORDER BY slashedvalidator, slot
 			)

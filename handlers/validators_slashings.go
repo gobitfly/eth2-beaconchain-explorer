@@ -5,10 +5,11 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"github.com/juliangruber/go-intersect"
 	"html/template"
 	"net/http"
 	"strconv"
+
+	"github.com/juliangruber/go-intersect"
 )
 
 var validatorsSlashingsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators_slashings.html"))
@@ -78,7 +79,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 				blocks_attesterslashings.attestation2_indices,
 				'Attestation Violation'::varchar as type
 			FROM blocks_attesterslashings 
-			LEFT JOIN blocks on blocks_attesterslashings.block_slot = blocks.slot
+			INNER JOIN blocks on blocks_attesterslashings.block_slot = blocks.slot AND blocks.status = '1'
 			UNION ALL
 			SELECT
 				blocks.slot, 
@@ -89,7 +90,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 				NULL as attestation2_indices,
 				'Proposer Violation' as type 
 			FROM blocks_proposerslashings
-			LEFT JOIN blocks on blocks_proposerslashings.block_slot = blocks.slot
+			INNER JOIN blocks on blocks_proposerslashings.block_slot = blocks.slot AND blocks.status = '1'
 		) as query
 		ORDER BY slot desc
 		LIMIT $1
