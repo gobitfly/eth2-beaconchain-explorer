@@ -1066,10 +1066,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			b.AttestationStatus = 1
 		}
 
-		events := utils.FormatAttestationStatus(b.AttestationStatus)
+		events := utils.FormatAttestationStatusShort(b.AttestationStatus)
 
 		if b.ProposalSlot.Valid {
-			block := utils.FormatBlockStatus(uint64(b.ProposalStatus.Int64))
+			block := utils.FormatBlockStatusShort(uint64(b.ProposalStatus.Int64))
 			events += " & " + block
 		}
 

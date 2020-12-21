@@ -37,6 +37,21 @@ func FormatAttestationStatus(status uint64) template.HTML {
 	}
 }
 
+// FormatAttestationStatusShort will return a user-friendly attestation for an attestation status number
+func FormatAttestationStatusShort(status uint64) template.HTML {
+	if status == 0 {
+		return "<span title=\"Scheduled\" data-toggle=\"tooltip\"  class=\"badge bg-light text-dark\">Sche.</span>"
+	} else if status == 1 {
+		return "<span title=\"Attested\" data-toggle=\"tooltip\"   class=\"badge bg-success text-white\">Att.</span>"
+	} else if status == 2 {
+		return "<span title=\"Missed\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Miss.</span>"
+	} else if status == 3 {
+		return "<span title=\"Orphaned\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Orph.</span>"
+	} else {
+		return "Unknown"
+	}
+}
+
 // FormatAttestorAssignmentKey will format attestor assignment keys
 func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint64) string {
 	return fmt.Sprintf("%v-%v-%v", AttesterSlot, CommitteeIndex, MemberIndex)
@@ -193,6 +208,22 @@ func FormatBlockStatus(status uint64) template.HTML {
 		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
 	} else if status == 3 {
 		return "<span class=\"badge bg-secondary text-white\">Orphaned</span>"
+	} else {
+		return "Unknown"
+	}
+}
+
+// FormatBlockStatusShort will return an html status for a block.
+func FormatBlockStatusShort(status uint64) template.HTML {
+	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
+	if status == 0 {
+		return "<span title=\"Scheduled\" data-toggle=\"tooltip\" class=\"badge bg-light text-dark\">Sche.</span>"
+	} else if status == 1 {
+		return "<span title=\"Proposed\" data-toggle=\"tooltip\" class=\"badge bg-success text-white\">Prop.</span>"
+	} else if status == 2 {
+		return "<span title=\"Missed\" data-toggle=\"tooltip\" class=\"badge bg-warning text-dark\">Miss.</span>"
+	} else if status == 3 {
+		return "<span title=\"Orphaned\" data-toggle=\"tooltip\" class=\"badge bg-secondary text-white\">Orph.</span>"
 	} else {
 		return "Unknown"
 	}
