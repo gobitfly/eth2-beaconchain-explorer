@@ -1076,7 +1076,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		if b.BalanceChange.Valid {
 			tableData = append(tableData, []interface{}{
 				utils.FormatEpoch(b.Epoch),
-				utils.FormatBalanceGwei(&b.BalanceChange.Int64, currency),
+				utils.FormatBalanceChange(&b.BalanceChange.Int64, currency),
 				template.HTML(events),
 			})
 		}

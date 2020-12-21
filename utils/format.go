@@ -104,9 +104,9 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 		}
 
 		if balanceF < 0 {
-			return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.5f ETH</span>", balanceF))
+			return template.HTML(fmt.Sprintf("<span title=\"%.0f GWei\" data-toggle=\"tooltip\" class=\"text-danger\">%.5f ETH</span>", float64(*balance), balanceF))
 		}
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\">+%.5f ETH</span>", balanceF))
+		return template.HTML(fmt.Sprintf("<span title=\"%.0f GWei\" data-toggle=\"tooltip\" class=\"text-success\">+%.5f ETH</span>", float64(*balance), balanceF))
 	} else {
 		if balance == nil {
 			return template.HTML("<span> 0.00" + currency + "</span>")
