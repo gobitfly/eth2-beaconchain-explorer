@@ -1038,7 +1038,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			SELECT 
 				vbalance.epoch, 
 				COALESCE(vbalance.balance - LAG(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
-				assign.attesterslot AS attestatation_attesterslot,
+				COALESCE(assign.attesterslot, -1) AS attestatation_attesterslot,
 				assign.inclusionslot AS attestation_inclusionslot,
 				vblocks.status as proposal_status,
 				vblocks.slot as proposal_slot
@@ -1058,7 +1058,15 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(validatorHistory))
 	for _, b := range validatorHistory {
-		if b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
+		if b.AttesterSlot.Int64 == -1 && b.BalanceChange.Int64 < 0 {
+			b.AttestationStatus = 4
+		}
+
+		if b.AttesterSlot.Int64 == -1 && b.BalanceChange.Int64 >= 0 {
+			b.AttestationStatus = 5
+		}
+
+		if b.AttesterSlot.Int64 != -1 && b.AttesterSlot.Valid && utils.SlotToTime(uint64(b.AttesterSlot.Int64)).Before(time.Now().Add(time.Minute*-1)) && b.InclusionSlot.Int64 == 0 {
 			b.AttestationStatus = 2
 		}
 

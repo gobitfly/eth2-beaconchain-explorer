@@ -47,6 +47,10 @@ func FormatAttestationStatusShort(status uint64) template.HTML {
 		return "<span title=\"Missed\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Miss.</span>"
 	} else if status == 3 {
 		return "<span title=\"Orphaned\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Orph.</span>"
+	} else if status == 4 {
+		return "<span title=\"Inactivity Leak\" data-toggle=\"tooltip\"  class=\"badge bg-danger text-dark\">Leak</span>"
+	} else if status == 5 {
+		return "<span title=\"Inactive\" data-toggle=\"tooltip\"  class=\"badge bg-light text-dark\">Inac.</span>"
 	} else {
 		return "Unknown"
 	}
@@ -100,7 +104,7 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 		if balance == nil {
 			return template.HTML("<span> 0.00000 " + currency + "</span>")
 		} else if *balance == 0 {
-			return template.HTML("pending")
+			return template.HTML("0")
 		}
 
 		if balanceF < 0 {
