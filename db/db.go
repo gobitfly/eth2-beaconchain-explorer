@@ -382,20 +382,19 @@ func GetSlashingCount() (uint64, error) {
 	slashings := uint64(0)
 
 	err := DB.Get(&slashings, `
-	SELECT 
-	SUM(count)
-	FROM 
-	(
-		SELECT COUNT(*) 
+		SELECT SUM(count)
 		FROM 
-			blocks_attesterslashings 
-		UNION 
-		SELECT 
-		  COUNT(*) 
-		FROM 
-			blocks_proposerslashings
-	) as tbl
-	`)
+		(
+			SELECT COUNT(*) 
+			FROM 
+				blocks_attesterslashings 
+				INNER JOIN blocks on blocks.slot = blocks_attesterslashings.block_slot and blocks.status = '1'
+			UNION 
+			SELECT COUNT(*) 
+			FROM 
+				blocks_proposerslashings
+				INNER JOIN blocks on blocks.slot = blocks_proposerslashings.block_slot and blocks.status = '1'
+		) as tbl`)
 	if err != nil {
 		return 0, err
 	}
