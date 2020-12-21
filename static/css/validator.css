@@ -70,6 +70,22 @@
   opacity: 20%;
 }
 
+.validator__lifecycle-progress-epoch {
+  position: absolute;
+  color: black;
+  transform: translateX(-50%);
+  left: 50%;
+  width: 85%;
+  bottom: -5px;
+  font-size: 85%;
+}
+
+.validator__lifecycle-progress-epoch > div {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
 .validator__lifecycle-container .validator__lifecycle-progress::after {
   content: '';
   position: absolute;
@@ -196,6 +212,10 @@
 
   .validator__lifecycle-container i {
     margin-bottom: 0;
+  }
+
+  .validator__lifecycle-progress-epoch {
+    bottom: -2px;
   }
 
   .validator__lifecycle-node {
