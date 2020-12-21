@@ -82,7 +82,7 @@ func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 		if balance == nil {
 			return template.HTML("<span> 0.00000 " + currency + "</span>")
 		} else if *balance == 0 {
-			return template.HTML("pending")
+			return template.HTML("0")
 		}
 
 		if balanceF < 0 {

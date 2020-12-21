@@ -95,7 +95,7 @@
 										{{ template "validatorOverviewValidating" $}}
 									{{ end }}
 									{{ if $exited }}
-									  {{ template "validatorOverviewExited" .}}
+									  {{ template "validatorOverviewExited" $}}
 									{{end}}
 							</div>
 						</div>
@@ -181,7 +181,7 @@
 							<div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
 								<span class="h4 text-center mb-0">Validator History</span>
 							</div>
-							{{ if $validating }}
+							{{ if or $validating $exited }}
 								{{ template "validatorHistoryTable" $}}
 							{{ else }}
 							<div class="d-flex align-items-center justify-content-center p-5">

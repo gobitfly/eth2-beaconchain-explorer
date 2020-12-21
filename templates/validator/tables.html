@@ -524,7 +524,7 @@
                 {{if eq .ActivationEligibilityEpoch 9223372036854775807}}
                     -
                 {{else}}
-                    <a href="/epoch/{{.ActivationEligibilityEpoch}}"><span aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}"></span></a>
+                    <a href="/epoch/{{.ActivationEligibilityEpoch}}">{{if eq .ActivationEligibilityEpoch 0}}genesis{{else}}<span aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}"></span>{{end}}</a>
                 {{end}}
             </td>
 
@@ -536,12 +536,35 @@
                     -
                 {{else}}
                     <a href="/epoch/{{.ActivationEpoch}}">
-                        <span aria-ethereum-date="{{.ActivationTs.Unix}}"></span>
+                        {{if eq .ActivationEpoch 0}}genesis{{else}}<span aria-ethereum-date="{{.ActivationTs.Unix}}"></span>{{end}}
                     </a>
                 {{end}}
             </td>
-
         </tr>
+        {{if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0))}}
+        <tr>
+            <th scope="row">Exited since</th>
+            <td>
+                    <a href="/epoch/{{.ExitEpoch}}">
+                        <span aria-ethereum-date="{{.ExitTs.Unix}}"></span>
+                    </a>
+                </td>
+            </tr>
+        {{end}}
+        {{if not (eq .WithdrawableEpoch 9223372036854775807)}}
+        <tr>
+            <th scope="row">Withdrawable</th>
+             <td>
+                {{ if gt .NetworkStats.CurrentEpoch .WithdrawableEpoch  }}
+                <a href="/epoch/{{.WithdrawableEpoch}}">
+                    <span title="Epoch: {{.WithdrawableEpoch}}" data-toggle="tooltip" aria-ethereum-date="{{.WithdrawableTs.Unix}}"></span>
+                </a>
+                {{else}}
+                    <span title="Epoch: {{.WithdrawableEpoch}}" data-toggle="tooltip" aria-ethereum-date="{{.WithdrawableTs.Unix}}"></span>
+                {{end}}                
+            </td>
+        </tr>
+        {{end}}
         <!--
          <tr>
             <th scope="row">Avg. optimal inclusion distance</th>

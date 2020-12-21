@@ -1037,7 +1037,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	err = db.DB.Select(&validatorHistory, `
 			SELECT 
 				vbalance.epoch, 
-				COALESCE(LEAD(vbalance.balance, 2) OVER (ORDER BY vbalance.epoch) - LEAD(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
+				COALESCE(vbalance.balance - LAG(vbalance.balance) OVER (ORDER BY vbalance.epoch), 0) AS balancechange,
 				assign.attesterslot AS attestatation_attesterslot,
 				assign.inclusionslot AS attestation_inclusionslot,
 				vblocks.status as proposal_status,
