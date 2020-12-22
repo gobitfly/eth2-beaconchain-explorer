@@ -15,3 +15,4 @@ bootstrap/node_modules
 private/
 run-local
 docker-compose-private.yml
+static/bundle
