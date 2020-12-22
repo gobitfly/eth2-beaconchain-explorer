@@ -54,7 +54,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	}
 
 	// Missed attestations
-	err = collectAttestationNotifications(notificationsByUserID, 2, types.ValidatorMissedAttestationEventName)
+	err = collectAttestationNotifications(notificationsByUserID, 0, types.ValidatorMissedAttestationEventName)
 	if err != nil {
 		logger.Errorf("error collecting validator_attestation_missed notifications: %v", err)
 	}
@@ -397,6 +397,7 @@ func (n *validatorProposalNotification) GetTitle() string {
 
 func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
 	latestEpoch := LatestEpoch()
+	latestSlot := LatestSlot()
 
 	var dbResult []struct {
 		SubscriptionID uint64 `db:"id"`
@@ -416,8 +417,11 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 			INNER JOIN attestation_assignments aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 5) 
-			WHERE us.event_name = $1 AND aa.status = $3 AND us.created_epoch <= $2 AND aa.epoch >= ($2 - 5) AND (us.last_sent_epoch < aa.epoch OR us.last_sent_epoch IS NULL)`,
-		eventName, latestEpoch, status)
+			WHERE us.event_name = $1 AND aa.status = $3 AND us.created_epoch <= $2 AND aa.epoch >= ($2 - 5)
+			AND (us.last_sent_epoch < (aa.epoch + 4) OR us.last_sent_epoch IS NULL)
+			AND aa.inclusionslot = 0 AND aa.attesterslot < ($4 - 32)
+			`,
+		eventName, latestEpoch, status, latestSlot)
 	if err != nil {
 		return err
 	}
