@@ -117,7 +117,7 @@ func ymdTodmy(date string) string{
 		logger.Errorf("error wrong date string %s", date)
 		return ""
 	}
-	return fmt.Sprintf("On %s-%s-%s", dateDays[2], dateDays[1], dateDays[0])
+	return fmt.Sprintf("%s-%s-%s", dateDays[2], dateDays[1], dateDays[0])
 }
 
 func prepareEthClientData(repo string, name string, curTime time.Time) (string, string) {
@@ -138,7 +138,7 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 		}
 		
 		if timeDiff>30{
-			return client.Name, ymdTodmy(date[0])
+			return client.Name, fmt.Sprintf("On %s", ymdTodmy(date[0]))
 		}
 
 		return client.Name, fmt.Sprintf("%.0f days ago", timeDiff)
