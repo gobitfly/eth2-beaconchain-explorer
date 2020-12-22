@@ -4,7 +4,6 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1.0">
-
         <meta name="keywords"
               content="ethereum 2.0 block explorer, eth2 block explorer, beacon chain explorer, ethereum blockchain explorer"/>
         <meta name="description" content={{.Meta.Description}}>
@@ -29,12 +28,12 @@
         <title>{{.Meta.Title}}</title>
         <link rel="shortcut icon" type="image/png" href="/favicon.ico"/>
 
-        <link rel="stylesheet" href="/css/fontawesome.min.css">
+        <link rel="stylesheet" href="/bundle/css/fontawesome.min.css">
 
         <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
-        <link id="app-style" rel="stylesheet" href="/css/layout.css">
-        <link rel="stylesheet" href="/css/layout/toggle.css">
-        <link rel="stylesheet" href="/css/layout/banner.css">
+        <link id="app-style" rel="stylesheet" href="/bundle/css/layout.css">
+        <link rel="stylesheet" href="/bundle/css/layout/toggle.css">
+        <link rel="stylesheet" href="/bundle/css/layout/banner.css">
         <script>
             var mql = window.matchMedia('(prefers-color-scheme: light)');
             var lightScheme = mql.matches;
@@ -686,19 +685,19 @@
     </div>
 
 
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+    <script src="/bundle/js/jquery.min.js"></script>
+    <script src="/bundle/js/popper.min.js"
             integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
             crossorigin="anonymous"></script>
 
     <script src="/theme/js/bootstrap.min.js"></script>
 
-    <script src="/js/luxon.js"></script>
+    <script src="/bundle/js/luxon.min.js"></script>
     <script>luxon.DateTime.local();</script>
 
-    <script src="/js/typeahead.bundle.min.js"></script>
-    <script src="/js/layout.js"></script>
-    <script src="/js/banner.js"></script>
+    <script src="/bundle/js/typeahead.bundle.min.js"></script>
+    <script src="/bundle/js/layout.js"></script>
+    <script src="/bundle/js/banner.js"></script>
     <script>
         var currency = {{.Currency}};
         var exchangeRate = {{.ExchangeRate}};
@@ -736,11 +735,10 @@
         }
 	</script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
+    <script src="/bundle/js/clipboard.min.js"></script>
     {{ template "js" .Data }}
 
-    <script src="//instant.page/5.1.0" type="module"
-            integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script>
+    <script src="/bundle/js/instant.min.js" type="module"></script>
     {{ if ne .Meta.GATag ""}}
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>
@@ -798,7 +796,7 @@
         </script>
     {{end}}
 
-    <script async src="https://ads.bitfly.at/www/delivery/asyncjs.php"></script>
+    <script type="text/javascript" async src="/bundle/js/revive.min.js"></script>
     </body>
     </html>
 {{end}}

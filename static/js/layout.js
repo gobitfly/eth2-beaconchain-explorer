@@ -285,7 +285,7 @@ function formatTimestamps(selStr) {
   sel.find('.timestamp').each(function(){
     var ts = $(this).data('timestamp')
     var tsLuxon = luxon.DateTime.fromMillis(ts * 1000)
-    $(this).attr("data-original-title", tsLuxon.toFormat("LLL"))
+    $(this).attr("data-original-title", tsLuxon.toFormat("ff"))
     $(this).text(tsLuxon.toRelative({ style: "short"}))
   })
   sel.find('[data-toggle="tooltip"]').tooltip()
