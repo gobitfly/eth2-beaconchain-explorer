@@ -214,6 +214,7 @@ func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled bool) (*s
 	rows, err := FrontendDB.Query("UPDATE users_devices SET notify_enabled = $1 WHERE user_id = $2 AND id = $3 RETURNING notify_enabled;",
 		notifyEnabled, userID, deviceID,
 	)
+	defer rows.Close()
 	return rows, err
 }
 
@@ -221,6 +222,7 @@ func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
 	rows, err := FrontendDB.Query("SELECT notify_enabled FROM users_devices WHERE user_id = $1 AND id = $2;",
 		userID, deviceID,
 	)
+	defer rows.Close()
 	return rows, err
 }
 
@@ -230,12 +232,14 @@ func UserClientEntry(userID uint64, clientName string, clientVersion int64, noti
 		updateClientVersion = ", client_version = $3"
 	}
 
-	_, err := FrontendDB.Query(
+	rows, err := FrontendDB.Query(
 		"INSERT INTO users_clients (user_id, client, client_version, notify_enabled, created_ts) VALUES($1, $2, $3, $4, 'NOW()')"+
 			"ON CONFLICT (user_id, client) "+
 			"DO UPDATE SET notify_enabled = $4"+updateClientVersion+";",
 		userID, clientName, clientVersion, notifyEnabled,
 	)
+
+	defer rows.Close()
 
 	return err
 }
