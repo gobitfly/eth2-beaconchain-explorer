@@ -111,6 +111,15 @@ func getRepoTime(date string) (time.Time, error) {
 	return time.Date(int(year), time.Month(int(month)), int(day), 0, 0, 0, 0, time.UTC), nil
 }
 
+func ymdTodmy(date string) string{
+	dateDays := strings.Split(date, "-")
+	if len(dateDays) < 3 {
+		logger.Errorf("error wrong date string %s", date)
+		return ""
+	}
+	return fmt.Sprintf("On %s-%s-%s", dateDays[2], dateDays[1], dateDays[0])
+}
+
 func prepareEthClientData(repo string, name string, curTime time.Time) (string, string) {
 
 	client := fetchClientData(repo)
@@ -126,6 +135,10 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 		if timeDiff < 1 {                                   // show banner if update was less than 1 day ago
 			bannerClients += name + " " + client.Name + " | "
 			return client.Name, "Recently"
+		}
+		
+		if timeDiff>30{
+			return client.Name, ymdTodmy(date[0])
 		}
 
 		return client.Name, fmt.Sprintf("%.0f days ago", timeDiff)
