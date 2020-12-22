@@ -26,6 +26,7 @@ func Start(client rpc.Client) error {
 	go networkLivenessUpdater(client)
 	go eth1DepositsExporter()
 	go genesisDepositsExporter()
+	go statsAggregator()
 
 	// wait until the beacon-node is available
 	for {

@@ -91,6 +91,7 @@ create table attestation_assignments
 create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
 create index idx_attestation_assignments_epoch on attestation_assignments (epoch);
 
+/* validator_balances holds validator-balances of the last 7 days */
 drop table if exists validator_balances;
 create table validator_balances
 (
@@ -101,6 +102,18 @@ create table validator_balances
     primary key (validatorindex, epoch)
 );
 create index idx_validator_balances_epoch on validator_balances (epoch);
+
+/* validator_balances_historical holds validator-balances of all epochs including genesis */
+drop table if exists validator_balances_historical;
+create table validator_balances_historical
+(
+    epoch            int    not null,
+    validatorindex   int    not null,
+    balance          bigint not null,
+    effectivebalance bigint not null,
+    primary key (validatorindex, epoch)
+);
+create index idx_validator_balances_historical_epoch on validator_balances_historical (epoch);
 
 drop table if exists queue;
 create table queue
@@ -423,4 +436,117 @@ create table api_statistics
     call   varchar(64)                 not null,
     count  int                         not null default 0,
     primary key (ts, apikey, call)
+);
+
+
+drop table if exists validator_status_stats;
+create table validator_status_stats (
+    epoch                   int         not null,
+    status                  varchar(40) not null,
+    validators              int         not null,
+    min_balance             bigint      not null,
+    max_balance             bigint      not null,
+    avg_balance             bigint      not null,
+    total_balance           bigint      not null,
+    min_effective_balance   bigint      not null,
+    max_effective_balance   bigint      not null,
+    avg_effective_balance   bigint      not null,
+    total_effective_balance bigint      not null,
+    primary key (epoch, status)
+);
+
+drop table if exists aggregated_validator_status_stats;
+create table aggregated_validator_status_stats (
+    start_epoch                   int         not null,
+    end_epoch                     int         not null,
+    status                        varchar(40) not null,
+    start_validators              int         not null,
+    end_validators                int         not null,
+    min_validators                int         not null,
+    max_validators                int         not null,
+    start_total_balance           bigint      not null,
+    end_total_balance             bigint      not null,
+    min_total_balance             bigint      not null,
+    max_total_balance             bigint      not null,
+    start_total_effective_balance bigint      not null,
+    end_total_effective_balance   bigint      not null,
+    min_total_effective_balance   bigint      not null,
+    max_total_effective_balance   bigint      not null,
+    primary key (start_epoch, end_epoch, status)
+);
+
+drop table if exists aggregated_validator_stats;
+create table aggregated_validator_stats (
+    validatorindex               int    not null,
+    start_epoch                  int    not null,
+    end_epoch                    int    not null,
+    start_balance                bigint not null,
+    end_balance                  bigint not null,
+    min_balance                  bigint not null,
+    max_balance                  bigint not null,
+    avg_optimal_inclusion_delay  float  not null,
+    min_optimal_inclusion_delay  float  not null,
+    max_optimal_inclusion_delay  float  not null,
+    missed_attestations          int    not null,
+    missed_blocks                int    not null,
+    orphaned_blocks              int    not null,
+    attester_slashings           int    not null,
+    proposer_slashings           int    not null,
+    income                       bigint not null,
+    deposits                     int    not null,
+    deposits_amount              bigint not null,
+    primary key(validatorindex, start_epoch, end_epoch)
+);
+
+drop table if exists aggregated_network_stats;
+create table aggregated_network_stats (
+    start_epoch                    int    not null,
+    end_epoch                      int    not null,
+
+    min_balance                    bigint not null,
+    max_balance                    bigint not null,
+    avg_balance                    bigint not null,
+
+    start_total_balance            bigint not null,
+    end_total_balance              bigint not null,
+    min_total_balance              bigint not null,
+    max_total_balance              bigint not null,
+    avg_total_balance              bigint not null,
+
+    start_total_effective_balance  bigint not null,
+    end_total_effective_balance    bigint not null,
+    min_total_effective_balance    bigint not null,
+    max_total_effective_balance    bigint not null,
+    avg_total_effective_balance    bigint not null,
+
+    start_inclusion_delay          float  not null,
+    end_inclusion_delay            float  not null,
+    min_inclusion_delay            float  not null,
+    max_inclusion_delay            float  not null,
+    avg_inclusion_delay            float  not null,
+
+    avg_optimal_inclusion_distance float  not null,
+    min_optimal_inclusion_distance float  not null,
+    max_optimal_inclusion_distance float  not null,
+
+    missed_attestations            int    not null,
+    missed_blocks                  int    not null,
+    orphaned_blocks                int    not null,
+    attester_slashings             int    not null,
+    proposer_slashings             int    not null,
+    voluntary_exits                int    not null,
+    activations                    int    not null,
+
+    total_income                   bigint not null,
+    min_income                     bigint not null,
+    max_income                     bigint not null,
+    avg_income                     bigint not null,
+
+    start_participationrate        float  not null,
+    end_participationrate          float  not null,
+    min_participationrate          float  not null,
+    max_participationrate          float  not null,
+    avg_participationrate          float  not null,
+
+    primary key(start_epoch, end_epoch)
 );
