@@ -406,6 +406,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		Epoch          uint64 `db:"epoch"`
 		Status         uint64 `db:"status"`
 		Slot           uint64 `db:"attesterslot"`
+		InclusionSlot  uint64 `db:"inclusionslot"`
 	}
 
 	err := db.DB.Select(&dbResult, `
@@ -415,12 +416,13 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 				v.validatorindex, 
 				aa.epoch,
 				aa.status,
-				aa.attesterslot
+				aa.attesterslot,
+				aa.inclusionslot
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 			INNER JOIN attestation_assignments aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 5) 
 			WHERE us.event_name = $1 AND aa.status = $3 AND us.created_epoch <= $2 AND aa.epoch >= ($2 - 5)
-			AND (us.last_sent_epoch < (aa.epoch + 4) OR us.last_sent_epoch IS NULL)
+			AND (us.last_sent_epoch < (aa.epoch - 6) OR us.last_sent_epoch IS NULL)
 			AND aa.inclusionslot = 0 AND aa.attesterslot < ($4 - 32)
 			`,
 		eventName, latestEpoch, status, latestSlot)
@@ -437,6 +439,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			Status:         r.Status,
 			EventName:      eventName,
 			Slot:           r.Slot,
+			InclusionSlot:  r.InclusionSlot,
 		}
 
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
@@ -456,9 +459,10 @@ type validatorAttestationNotification struct {
 	ValidatorIndex     uint64
 	ValidatorPublicKey string
 	Epoch              uint64
-	Status             uint64 // * Can be 0 = scheduled, 1 executed, 2 missed */
+	Status             uint64 // * Can be 0 = scheduled | missed, 1 executed
 	EventName          types.EventName
 	Slot               uint64
+	InclusionSlot      uint64
 }
 
 func (n *validatorAttestationNotification) GetSubscriptionID() uint64 {
@@ -477,11 +481,13 @@ func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
 	var generalPart = ""
 	switch n.Status {
 	case 0:
-		generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+		if n.InclusionSlot == 0 {
+			generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+		} else {
+			generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+		}
 	case 1:
 		generalPart = fmt.Sprintf(`Validator %[1]v submitted a successfull attestation for slot %[2]v.`, n.ValidatorIndex, n.Slot)
-	case 2:
-		generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation at slot %[2]v.`, n.ValidatorIndex, n.Slot)
 	}
 
 	if includeUrl {
