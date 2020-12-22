@@ -53,6 +53,12 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting validator_proposal_missed notifications: %v", err)
 	}
 
+	// Missed attestations
+	err = collectAttestationNotifications(notificationsByUserID, 2, types.ValidatorMissedAttestationEventName)
+	if err != nil {
+		logger.Errorf("error collecting validator_attestation_missed notifications: %v", err)
+	}
+
 	return notificationsByUserID
 }
 
@@ -385,6 +391,105 @@ func (n *validatorProposalNotification) GetTitle() string {
 		return "New Block Proposal"
 	case 2:
 		return "Block Proposal Missed"
+	}
+	return "-"
+}
+
+func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, status uint64, eventName types.EventName) error {
+	latestEpoch := LatestEpoch()
+
+	var dbResult []struct {
+		SubscriptionID uint64 `db:"id"`
+		UserID         uint64 `db:"user_id"`
+		ValidatorIndex uint64 `db:"validatorindex"`
+		Epoch          uint64 `db:"epoch"`
+		Status         uint64 `db:"status"`
+	}
+
+	err := db.DB.Select(&dbResult, `
+			SELECT 
+				us.id, 
+				us.user_id, 
+				v.validatorindex, 
+				aa.epoch,
+				aa.status
+			FROM users_subscriptions us
+			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
+			INNER JOIN attestation_assignments aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 5) 
+			WHERE us.event_name = $1 AND aa.status = $3 AND us.created_epoch <= $2 AND aa.epoch >= ($2 - 5) AND (us.last_sent_epoch < aa.epoch OR us.last_sent_epoch IS NULL)`,
+		eventName, latestEpoch, status)
+	if err != nil {
+		return err
+	}
+
+	for _, r := range dbResult {
+
+		n := &validatorAttestationNotification{
+			SubscriptionID: r.SubscriptionID,
+			ValidatorIndex: r.ValidatorIndex,
+			Epoch:          r.Epoch,
+			Status:         r.Status,
+			EventName:      eventName,
+		}
+
+		if _, exists := notificationsByUserID[r.UserID]; !exists {
+			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+		}
+		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+		}
+		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+	}
+
+	return nil
+}
+
+type validatorAttestationNotification struct {
+	SubscriptionID     uint64
+	ValidatorIndex     uint64
+	ValidatorPublicKey string
+	Epoch              uint64
+	Status             uint64 // * Can be 0 = scheduled, 1 executed, 2 missed */
+	EventName          types.EventName
+}
+
+func (n *validatorAttestationNotification) GetSubscriptionID() uint64 {
+	return n.SubscriptionID
+}
+
+func (n *validatorAttestationNotification) GetEpoch() uint64 {
+	return n.Epoch
+}
+
+func (n *validatorAttestationNotification) GetEventName() types.EventName {
+	return n.EventName
+}
+
+func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
+	var generalPart = ""
+	switch n.Status {
+	case 0:
+		generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v.`, n.ValidatorIndex)
+	case 1:
+		generalPart = fmt.Sprintf(`Validator %[1]v submitted a successfull attestation.`, n.ValidatorIndex)
+	case 2:
+		generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation.`, n.ValidatorIndex)
+	}
+
+	if includeUrl {
+		return generalPart + getUrlPart(n.ValidatorIndex)
+	}
+	return generalPart
+}
+
+func (n *validatorAttestationNotification) GetTitle() string {
+	switch n.Status {
+	case 0:
+		return "Attestation Scheduled"
+	case 1:
+		return "Attestation Submitted"
+	case 2:
+		return "Attestation Missed"
 	}
 	return "-"
 }
