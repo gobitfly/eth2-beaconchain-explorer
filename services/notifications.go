@@ -420,9 +420,9 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 				aa.inclusionslot
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
-			INNER JOIN attestation_assignments aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 5) 
-			WHERE us.event_name = $1 AND aa.status = $3 AND us.created_epoch <= $2 AND aa.epoch >= ($2 - 5)
-			AND (us.last_sent_epoch < (aa.epoch - 6) OR us.last_sent_epoch IS NULL)
+			INNER JOIN attestation_assignments aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 3) 
+			WHERE us.event_name = $1 AND aa.status = $3 AND us.created_epoch <= $2 AND aa.epoch >= ($2 - 3)
+			AND (us.last_sent_epoch < ($2 - 6) OR us.last_sent_epoch IS NULL)
 			AND aa.inclusionslot = 0 AND aa.attesterslot < ($4 - 32)
 			`,
 		eventName, latestEpoch, status, latestSlot)
@@ -481,11 +481,8 @@ func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
 	var generalPart = ""
 	switch n.Status {
 	case 0:
-		if n.InclusionSlot == 0 {
-			generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation at slot %[2]v.`, n.ValidatorIndex, n.Slot)
-		} else {
-			generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
-		}
+		generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+		//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
 	case 1:
 		generalPart = fmt.Sprintf(`Validator %[1]v submitted a successfull attestation for slot %[2]v.`, n.ValidatorIndex, n.Slot)
 	}
