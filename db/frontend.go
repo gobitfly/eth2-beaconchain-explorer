@@ -214,7 +214,6 @@ func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled bool) (*s
 	rows, err := FrontendDB.Query("UPDATE users_devices SET notify_enabled = $1 WHERE user_id = $2 AND id = $3 RETURNING notify_enabled;",
 		notifyEnabled, userID, deviceID,
 	)
-	defer rows.Close()
 	return rows, err
 }
 
@@ -222,7 +221,6 @@ func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
 	rows, err := FrontendDB.Query("SELECT notify_enabled FROM users_devices WHERE user_id = $1 AND id = $2;",
 		userID, deviceID,
 	)
-	defer rows.Close()
 	return rows, err
 }
 
