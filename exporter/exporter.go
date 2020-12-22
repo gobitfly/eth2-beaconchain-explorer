@@ -788,6 +788,7 @@ func genesisDepositsExporter() {
 
 		err = tx.Commit()
 		if err != nil {
+			tx.Rollback()
 			logger.Errorf("error committing db-tx when exporting genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)
 			continue
