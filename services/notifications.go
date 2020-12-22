@@ -459,7 +459,7 @@ type validatorAttestationNotification struct {
 	ValidatorIndex     uint64
 	ValidatorPublicKey string
 	Epoch              uint64
-	Status             uint64 // * Can be 0 = scheduled, 1 executed, 2 missed */
+	Status             uint64 // * Can be 0 = scheduled | missed, 1 executed
 	EventName          types.EventName
 	Slot               uint64
 	InclusionSlot      uint64
