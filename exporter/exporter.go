@@ -464,6 +464,7 @@ func updateValidatorPerformance() error {
 	lastWeekEpoch := latestEpoch - 225*7
 	lastMonthEpoch := latestEpoch - 225*31
 
+	logger.Info("retrieving all validator balances")
 	var balances []*types.Validator
 	err = tx.Select(&balances, `
 		SELECT 
