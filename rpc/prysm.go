@@ -394,6 +394,11 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 }
 
 func (pc *PrysmClient) getBalancesForEpoch(epoch uint64) (map[uint64]uint64, error) {
+
+	if epoch > 9023372036854775807 {
+		epoch = 0
+	}
+
 	var err error
 
 	validatorBalances := make(map[uint64]uint64)
