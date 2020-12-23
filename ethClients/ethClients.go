@@ -5,6 +5,7 @@ import (
 	"errors"
 	"eth2-exporter/types"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
@@ -89,12 +90,13 @@ func fetchClientNetworkShare() []ethernodesAPIStruct {
 	return ethernodesAPI
 }
 
-func getRepoTime(date string) (time.Time, error) {
-	var year, month, day int64
+func getRepoTime(date string, dTime string) (time.Time, error) {
+	var year, month, day, hour, min int64
 	var err error
 	dateDays := strings.Split(date, "-")
-	if len(dateDays) < 3 {
-		return time.Now(), errors.New("Invalid date string " + date)
+	dateTimes := strings.Split(dTime, ":")
+	if len(dateDays) < 3 || len(dateTimes) < 3 {
+		return time.Now(), errors.New(fmt.Sprintf("Invalid date string %s %s", date, dTime))
 	}
 	year, err = strconv.ParseInt(dateDays[0], 10, 0)
 	if err != nil {
@@ -108,7 +110,24 @@ func getRepoTime(date string) (time.Time, error) {
 	if err != nil {
 		logger.Errorf("error parsing day: %v", err)
 	}
-	return time.Date(int(year), time.Month(int(month)), int(day), 0, 0, 0, 0, time.UTC), nil
+	hour, err = strconv.ParseInt(dateTimes[0], 10, 0)
+	if err != nil {
+		logger.Errorf("error parsing hour: %v", err)
+	}
+	min, err = strconv.ParseInt(dateTimes[1], 10, 0)
+	if err != nil {
+		logger.Errorf("error parsing min: %v", err)
+	}
+	return time.Date(int(year), time.Month(int(month)), int(day), int(hour), int(min), 0, 0, time.UTC), nil
+}
+
+func ymdTodmy(date string) string {
+	dateDays := strings.Split(date, "-")
+	if len(dateDays) < 3 {
+		logger.Errorf("error wrong date string %s", date)
+		return ""
+	}
+	return fmt.Sprintf("%s-%s-%s", dateDays[2], dateDays[1], dateDays[0])
 }
 
 func prepareEthClientData(repo string, name string, curTime time.Time) (string, string) {
@@ -116,19 +135,23 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 	client := fetchClientData(repo)
 	date := strings.Split(client.PublishedDate, "T")
 
-	if len(date) > 0 {
-		rTime, err := getRepoTime(date[0])
+	if len(date) == 2 {
+		rTime, err := getRepoTime(date[0], date[1])
 		if err != nil {
 			logger.Errorf("error parsing git repo. time: %v", err)
 			return client.Name, "GitHub"
 		}
-		timeDiff := (curTime.Sub(rTime).Hours() / 24) - 0.5 // -0.5 to round down the days
-		if timeDiff < 1 {                                   // show banner if update was less than 1 day ago
-			bannerClients += name + " " + client.Name + " | "
+		timeDiff := (curTime.Sub(rTime).Hours() / 24.0)
+		if timeDiff < 2.0 { // show banner if update was less than 2 days ago
+			bannerClients += fmt.Sprintf("<a href=\"/ethClients#ethClientsServices\" class=\"text-primary\">%s %s</a>\n", name, client.Name)
 			return client.Name, "Recently"
 		}
 
-		return client.Name, fmt.Sprintf("%.0f days ago", timeDiff)
+		if timeDiff > 30 {
+			return client.Name, fmt.Sprintf("On %s", ymdTodmy(date[0]))
+		}
+
+		return client.Name, fmt.Sprintf("%.0f days ago", timeDiff) // can sub. -0.5 to round down the days but github is rounding up
 	}
 	return client.Name, "GitHub" // If API limit is exceeded
 }
@@ -199,8 +222,14 @@ func GetEthClientData() *types.EthClientServicesPageData {
 }
 
 // GetBannerClients returns a string of latest updates of ETH clients
-func GetBannerClients() string {
+func GetBannerClients() *template.HTML {
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
-	return bannerClients
+	if bannerClients == "" {
+		return nil
+	}
+	temp := template.HTML(fmt.Sprintf(`<i class="fab fa-github mr-2" aria-hidden="true"></i>
+									   <span class="mr-2">Latest Client Releases:</span>
+									   %s`, bannerClients))
+	return &temp
 }
