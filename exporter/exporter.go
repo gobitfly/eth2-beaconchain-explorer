@@ -7,7 +7,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"sort"
 	"strings"
 	"time"
@@ -467,16 +466,26 @@ func updateValidatorPerformance() error {
 		return fmt.Errorf("error retrieving latest epoch from validator_balances table: %w", err)
 	}
 
-	logger.Infof("epoch: %v", currentEpoch)
 	lastDayEpoch := currentEpoch - 225
 	lastWeekEpoch := currentEpoch - 225*7
 	lastMonthEpoch := currentEpoch - 225*31
+
+	if lastDayEpoch < 0 {
+		lastDayEpoch = 0
+	}
+	if lastWeekEpoch < 0 {
+		lastWeekEpoch = 0
+	}
+	if lastMonthEpoch < 0 {
+		lastMonthEpoch = 0
+	}
 
 	var balances []types.Validator
 	err = tx.Select(&balances, `
 		SELECT 
 			   validatorindex,
 			   pubkey,
+       		   activationeligibilityepoch,
 		       COALESCE(balance, 0) AS balance, 
 			   COALESCE(balanceactivation, 0) AS balanceactivation, 
 			   COALESCE(balance1d, 0) AS balance1d, 
@@ -520,13 +529,13 @@ func updateValidatorPerformance() error {
 			totalDeposits += deposit
 			earningsTotal -= deposit
 
-			if epoch > lastDayEpoch {
+			if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
 				earningsLastDay -= deposit
 			}
-			if epoch > lastWeekEpoch {
+			if epoch > lastWeekEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
 				earningsLastWeek -= deposit
 			}
-			if epoch > lastMonthEpoch {
+			if epoch > lastMonthEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
 				earningsLastMonth -= deposit
 			}
 		}
@@ -539,15 +548,6 @@ func updateValidatorPerformance() error {
 		}
 		if balance.Balance31d == 0 {
 			balance.Balance31d = balance.BalanceActivation
-		}
-
-		if balance.Index == 102720 {
-			spew.Dump(depositsMap[fmt.Sprintf("%x", balance.PublicKey)])
-			spew.Dump(balance)
-			spew.Dump(earningsTotal)
-			spew.Dump(earningsLastDay)
-			spew.Dump(earningsLastWeek)
-			spew.Dump(earningsLastMonth)
 		}
 
 		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)

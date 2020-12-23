@@ -6,6 +6,8 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lib/pq"
 	"net/http"
 	"regexp"
@@ -45,14 +47,16 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		lastMonthEpoch = 0
 	}
 
-	balances := []types.Validator{}
+	balances := []*types.Validator{}
 
 	err := db.DB.Select(&balances, `SELECT 
 			   COALESCE(balance, 0) AS balance, 
 			   COALESCE(balanceactivation, 0) AS balanceactivation, 
 			   COALESCE(balance1d, 0) AS balance1d, 
 			   COALESCE(balance7d, 0) AS balance7d, 
-			   COALESCE(balance31d , 0) AS balance31d
+			   COALESCE(balance31d , 0) AS balance31d,
+       			activationeligibilityepoch,
+       			pubkey
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		logger.Error(err)
@@ -60,13 +64,22 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}
 
 	deposits := []struct {
-		Epoch   uint64
-		Deposit int64
+		Epoch     int64
+		Amount    int64
+		Publickey []byte
 	}{}
 
-	err = db.DB.Select(&deposits, "SELECT block_slot / 32 AS epoch, SUM(amount) AS deposit FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1)) GROUP BY epoch", validatorsPQArray)
+	err = db.DB.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
 	if err != nil {
 		return nil, err
+	}
+
+	depositsMap := make(map[string]map[int64]int64)
+	for _, d := range deposits {
+		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
+			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
+		}
+		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
 	}
 
 	var earningsTotal int64
@@ -76,22 +89,23 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	var apr float64
 	var totalDeposits int64
 
-	for _, d := range deposits {
-		totalDeposits += d.Deposit
-		earningsTotal -= d.Deposit
-
-		if int64(d.Epoch) > lastDayEpoch {
-			earningsLastDay -= d.Deposit
-		}
-		if int64(d.Epoch) > lastWeekEpoch {
-			earningsLastWeek -= d.Deposit
-		}
-		if int64(d.Epoch) > lastMonthEpoch {
-			earningsLastMonth -= d.Deposit
-		}
-	}
-
 	for _, balance := range balances {
+
+		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
+			totalDeposits += deposit
+			earningsTotal -= deposit
+
+			if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
+				earningsLastDay -= deposit
+			}
+			if epoch > lastWeekEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
+				earningsLastWeek -= deposit
+			}
+			if epoch > lastMonthEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
+				earningsLastMonth -= deposit
+			}
+		}
+
 		if balance.Balance1d == 0 {
 			balance.Balance1d = balance.BalanceActivation
 		}
@@ -106,6 +120,8 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
 		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
 	}
+	spew.Dump(deposits)
+	spew.Dump(balances)
 
 	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
 	if apr < float64(-1) {
