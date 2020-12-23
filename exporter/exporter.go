@@ -466,7 +466,7 @@ func updateValidatorPerformance() error {
 	lastWeekEpoch := latestEpoch - 225*7
 	lastMonthEpoch := latestEpoch - 225*31
 
-	var balances []*types.Validator
+	var balances []types.Validator
 	err = tx.Select(&balances, `
 		SELECT 
 			   validatorindex,
@@ -535,15 +535,15 @@ func updateValidatorPerformance() error {
 			balance.Balance31d = balance.ActivationEpoch
 		}
 
-		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
-		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
-		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
-		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
-
 		if balance.Index == 111480 {
 			spew.Dump(depositsMap[fmt.Sprintf("%x", balance.PublicKey)])
 			spew.Dump(balance)
 		}
+
+		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
+		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
+		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
+		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
 
 		data = append(data, &types.ValidatorPerformance{
 			Rank:            0,
