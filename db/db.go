@@ -737,7 +737,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 		}
 
 		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*12)
+		valueArgs := make([]interface{}, 0, batchSize*13)
 		for i, v := range validators[start:end] {
 
 			if v.WithdrawableEpoch == 18446744073709551615 {
@@ -770,7 +770,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 				}
 			}
 
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*12+1, i*12+2, i*12+3, i*12+4, i*12+5, i*12+6, i*12+7, i*12+8, i*12+9, i*12+10, i*12+11, i*12+12))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*13+1, i*13+2, i*13+3, i*13+4, i*13+5, i*13+6, i*13+7, i*13+8, i*13+9, i*13+10, i*13+11, i*13+12, i*13+13))
 			valueArgs = append(valueArgs, v.Index)
 			valueArgs = append(valueArgs, v.PublicKey)
 			valueArgs = append(valueArgs, v.WithdrawableEpoch)
@@ -781,6 +781,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			valueArgs = append(valueArgs, v.ActivationEligibilityEpoch)
 			valueArgs = append(valueArgs, v.ActivationEpoch)
 			valueArgs = append(valueArgs, v.ExitEpoch)
+			valueArgs = append(valueArgs, v.Balance1d)
 			valueArgs = append(valueArgs, v.Balance7d)
 			valueArgs = append(valueArgs, v.Balance30d)
 		}
@@ -796,6 +797,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			activationeligibilityepoch,
 			activationepoch,
 			exitepoch,
+			balance1d,
 			balance7d,
 			balance30d
 		) 
@@ -810,6 +812,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
 			activationepoch            = EXCLUDED.activationepoch,
 			exitepoch                  = EXCLUDED.exitepoch,
+			balance1d                  = EXCLUDED.balance1d,
 			balance7d                  = EXCLUDED.balance7d,
 			balance30d                 = EXCLUDED.balance30d`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)

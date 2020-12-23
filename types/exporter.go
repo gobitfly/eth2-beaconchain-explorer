@@ -58,6 +58,7 @@ type Validator struct {
 	WithdrawalCredentials      []byte `db:"withdrawalcredentials"`
 
 	BalanceActivation uint64 `db:"balanceactivation"`
+	Balance1d         uint64 `db:"balance1d"`
 	Balance7d         uint64 `db:"balance7d"`
 	Balance30d        uint64 `db:"balance30d"`
 }
