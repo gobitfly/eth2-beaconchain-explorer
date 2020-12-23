@@ -60,7 +60,7 @@ type Validator struct {
 	BalanceActivation uint64 `db:"balanceactivation"`
 	Balance1d         uint64 `db:"balance1d"`
 	Balance7d         uint64 `db:"balance7d"`
-	Balance30d        uint64 `db:"balance30d"`
+	Balance31d        uint64 `db:"balance31d"`
 }
 
 // ValidatorQueue is a struct to hold validator queue data

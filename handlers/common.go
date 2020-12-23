@@ -6,11 +6,9 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"github.com/lib/pq"
 	"net/http"
 	"regexp"
-	"time"
-
-	"github.com/lib/pq"
 )
 
 var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
@@ -32,36 +30,27 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
 func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error) {
 	validatorsPQArray := pq.Array(validators)
-	latestEpoch := services.LatestEpoch()
-	now := utils.EpochToTime(latestEpoch)
-	lastDayEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 1 * -1)))
-	lastWeekEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 7 * -1)))
-	lastMonthEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 31 * -1)))
+	latestEpoch := int64(services.LatestEpoch())
+	lastDayEpoch := latestEpoch - 225
+	lastWeekEpoch := latestEpoch - 225*7
+	lastMonthEpoch := latestEpoch - 225*31
 
-	var activationEpoch uint64
-	err := db.DB.Get(&activationEpoch, "SELECT CAST(MIN(activationepoch) AS BIGINT) FROM validators WHERE validatorindex = ANY($1)", validatorsPQArray)
-	if err != nil {
-		return nil, err
+	if lastDayEpoch < 0 {
+		lastDayEpoch = 0
+	}
+	if lastWeekEpoch < 0 {
+		lastWeekEpoch = 0
+	}
+	if lastMonthEpoch < 0 {
+		lastMonthEpoch = 0
 	}
 
-	if activationEpoch == 9223372036854775807 {
-		activationEpoch = 0
-	}
+	balances := []types.Validator{}
 
-	balances := []struct {
-		Epoch   uint64
-		Balance int64
-	}{}
-
-	err = db.DB.Select(&balances, "SELECT epoch, COALESCE(SUM(balance), 0) AS balance FROM validator_balances WHERE epoch = ANY($1) AND validatorindex = ANY($2) GROUP BY epoch", pq.Array([]uint64{latestEpoch, lastDayEpoch, lastWeekEpoch, lastMonthEpoch, activationEpoch}), validatorsPQArray)
+	err := db.DB.Select(&balances, "SELECT balance, balanceactivation, balance1d, balance7d, balance30d FROM validators WHERE validatorindex = ANY($1)", validatorsPQArray)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
-	}
-
-	balancesEpochMap := make(map[uint64]int64)
-	for _, b := range balances {
-		balancesEpochMap[b.Epoch] = b.Balance
 	}
 
 	deposits := []struct {
@@ -83,53 +72,25 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 
 	for _, d := range deposits {
 		totalDeposits += d.Deposit
-	}
+		earningsTotal -= d.Deposit
 
-	// Calculate earnings
-	start := activationEpoch
-	end := latestEpoch
-	initialBalance := balancesEpochMap[start]
-	endBalance := balancesEpochMap[end]
-	depositSum := int64(0)
-	for _, d := range deposits {
-		if d.Epoch > start && d.Epoch < end {
-			depositSum += d.Deposit
+		if int64(d.Epoch) > lastDayEpoch {
+			earningsLastDay -= d.Deposit
+		}
+		if int64(d.Epoch) > lastWeekEpoch {
+			earningsLastWeek -= d.Deposit
+		}
+		if int64(d.Epoch) > lastMonthEpoch {
+			earningsLastMonth -= d.Deposit
 		}
 	}
-	earningsTotal = endBalance - initialBalance - depositSum
 
-	start = lastMonthEpoch
-	initialBalance = balancesEpochMap[start]
-	endBalance = balancesEpochMap[end]
-	depositSum = int64(0)
-	for _, d := range deposits {
-		if d.Epoch > start && d.Epoch < end {
-			depositSum += d.Deposit
-		}
+	for _, balance := range balances {
+		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
+		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
+		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
+		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
 	}
-	earningsLastMonth = endBalance - initialBalance - depositSum
-
-	start = lastWeekEpoch
-	initialBalance = balancesEpochMap[start]
-	endBalance = balancesEpochMap[end]
-	depositSum = int64(0)
-	for _, d := range deposits {
-		if d.Epoch > start && d.Epoch < end {
-			depositSum += d.Deposit
-		}
-	}
-	earningsLastWeek = endBalance - initialBalance - depositSum
-
-	start = lastDayEpoch
-	initialBalance = balancesEpochMap[start]
-	endBalance = balancesEpochMap[end]
-	depositSum = int64(0)
-	for _, d := range deposits {
-		if d.Epoch > start && d.Epoch < end {
-			depositSum += d.Deposit
-		}
-	}
-	earningsLastDay = endBalance - initialBalance - depositSum
 
 	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
 	if apr < float64(-1) {

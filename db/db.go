@@ -783,7 +783,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			valueArgs = append(valueArgs, v.ExitEpoch)
 			valueArgs = append(valueArgs, v.Balance1d)
 			valueArgs = append(valueArgs, v.Balance7d)
-			valueArgs = append(valueArgs, v.Balance30d)
+			valueArgs = append(valueArgs, v.Balance31d)
 		}
 		stmt := fmt.Sprintf(`
 		INSERT INTO validators (
@@ -799,7 +799,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			exitepoch,
 			balance1d,
 			balance7d,
-			balance30d
+			balance31d
 		) 
 		VALUES %s
 		ON CONFLICT (validatorindex) DO UPDATE SET 
@@ -814,7 +814,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			exitepoch                  = EXCLUDED.exitepoch,
 			balance1d                  = EXCLUDED.balance1d,
 			balance7d                  = EXCLUDED.balance7d,
-			balance30d                 = EXCLUDED.balance30d`, strings.Join(valueStrings, ","))
+			balance31d                 = EXCLUDED.balance31d`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
