@@ -214,16 +214,33 @@
 {{define "validatorOverviewCount"}}
 <div class="row flex-wrap justify-content-center p-3 mb-3">
     <div class="mx-3">
-        <span data-toggle="tooltip" title="Proposal Assignments"><i class="tab-icon fas fa-cubes"></i> {{ .ProposedBlocksCount }}</span>
+        <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Proposal Assignments"><i class="fas fa-cubes poin"></i> {{ .ProposedBlocksCount }}</span>
     </div>
     <div class="mx-3">
-        <span data-toggle="tooltip" title="Attestation Assignments"><i class="tab-icon fas fa-file-signature"></i> <span>{{.AttestationsCount}}</span>
+        <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments"><i class="fas fa-file-signature"></i><span>{{.AttestationsCount}}</span>
     </div>
     <div class="mx-3">
-        <span data-toggle="tooltip" title="Other validators slashed"><i class="tab-icon fas fa-user-slash"></i> {{.SlashingsCount}}</span>
+        <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash"></i> {{.SlashingsCount}}</span>
     </div>
     <div class="mx-3">
-        <span data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="tab-icon fas fa-wallet"></i> {{.DepositsCount}}</span>
+        <span id="depositCount" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet"></i> {{.DepositsCount}}</span>
     </div>
 </div>
+
+<script>
+    window.addEventListener('load', function() {
+        $('#blockCount').on('click', function() {
+            $("#blocks-tab").tab('show')
+        })
+        $('#attestationCount').on('click', function() {
+            $("#attestations-tab").tab('show')
+        })
+        $('#slashingsCount').on('click', function() {
+            $("#slashings-tab").tab('show')
+        })
+        $('#depositCount').on('click', function() {
+            $("#deposits-tab").tab('show')
+        })
+    })
+</script>
 {{end}}
