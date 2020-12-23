@@ -7,7 +7,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lib/pq"
 	"net/http"
 	"regexp"
@@ -122,9 +121,6 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
 		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
 	}
-	spew.Dump(deposits)
-	spew.Dump(balances)
-	spew.Dump(earningsTotal)
 
 	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
 	if apr < float64(-1) {
