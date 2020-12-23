@@ -714,7 +714,7 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) err
 }
 
 func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
-	batchSize := 4000
+	batchSize := 5000
 	var lenActivatedValidators int
 	var lastActivatedValidatorIdx uint64
 
@@ -780,7 +780,6 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			valueArgs = append(valueArgs, v.Slashed)
 			valueArgs = append(valueArgs, v.ActivationEligibilityEpoch)
 			valueArgs = append(valueArgs, v.ActivationEpoch)
-			valueArgs = append(valueArgs, v.ExitEpoch)
 			valueArgs = append(valueArgs, v.ExitEpoch)
 			valueArgs = append(valueArgs, v.Balance7d)
 			valueArgs = append(valueArgs, v.Balance30d)
