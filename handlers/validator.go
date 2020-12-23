@@ -1000,15 +1000,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
-	if err != nil {
-		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	if length > 100 {
-		length = 100
-	}
+
+	//length := 10
+
+	logger.Info(start)
 
 	var activationAndExitEpoch = struct {
 		ActivationEpoch uint64 `db:"activationepoch"`
@@ -1036,6 +1031,8 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		start = 90
 	}
 
+	currentEpoch := services.LatestEpoch()
+
 	var validatorHistory []*types.ValidatorHistory
 	err = db.DB.Select(&validatorHistory, `
 			SELECT 
@@ -1048,10 +1045,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			FROM validator_balances vbalance
 			LEFT JOIN attestation_assignments assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch
 			LEFT JOIN blocks vblocks ON vbalance.validatorindex = vblocks.proposer AND vbalance.epoch = vblocks.epoch
-			WHERE vbalance.validatorindex = $1
-			ORDER BY epoch DESC 
-			LIMIT $2 OFFSET $3
-			`, index, length, start)
+			WHERE vbalance.validatorindex = $1 AND vbalance.epoch >= $2 AND vbalance.epoch <= $3
+			ORDER BY epoch DESC
+			LIMIT 10
+			`, index, currentEpoch-10-start, currentEpoch-start)
 
 	if err != nil {
 		logger.Errorf("error retrieving validator history: %v", err)

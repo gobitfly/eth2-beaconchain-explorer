@@ -770,7 +770,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 				}
 			}
 
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*10+1, i*10+2, i*10+3, i*10+4, i*10+5, i*10+6, i*10+7, i*10+8, i*10+9, i*10+10))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*12+1, i*12+2, i*12+3, i*12+4, i*12+5, i*12+6, i*12+7, i*12+8, i*12+9, i*12+10, i*12+11, i*12+12))
 			valueArgs = append(valueArgs, v.Index)
 			valueArgs = append(valueArgs, v.PublicKey)
 			valueArgs = append(valueArgs, v.WithdrawableEpoch)
@@ -781,6 +781,9 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			valueArgs = append(valueArgs, v.ActivationEligibilityEpoch)
 			valueArgs = append(valueArgs, v.ActivationEpoch)
 			valueArgs = append(valueArgs, v.ExitEpoch)
+			valueArgs = append(valueArgs, v.ExitEpoch)
+			valueArgs = append(valueArgs, v.Balance7d)
+			valueArgs = append(valueArgs, v.Balance30d)
 		}
 		stmt := fmt.Sprintf(`
 		INSERT INTO validators (
@@ -793,7 +796,9 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			slashed,
 			activationeligibilityepoch,
 			activationepoch,
-			exitepoch
+			exitepoch,
+			balance7d,
+			balance30d
 		) 
 		VALUES %s
 		ON CONFLICT (validatorindex) DO UPDATE SET 
@@ -805,7 +810,9 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			slashed                    = EXCLUDED.slashed,
 			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
 			activationepoch            = EXCLUDED.activationepoch,
-			exitepoch                  = EXCLUDED.exitepoch`, strings.Join(valueStrings, ","))
+			exitepoch                  = EXCLUDED.exitepoch,
+			balance7d                  = EXCLUDED.balance7d,
+			balance30d                 = EXCLUDED.balance30d`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
@@ -840,6 +847,13 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 		return err
 	}
 	logger.Infof("saving validator status completed, took %v", time.Since(s))
+
+	s = time.Now()
+	_, err = tx.Exec("update validators set balanceactivation = (select balance from validator_balances where validator_balances.epoch = validators.activationepoch and validator_balances.validatorindex = validators.validatorindex) WHERE balanceactivation IS NULL;")
+	if err != nil {
+		return err
+	}
+	logger.Infof("updating validator activation epoch balance completed, took %v", time.Since(s))
 
 	return nil
 }
