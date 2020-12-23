@@ -94,45 +94,62 @@
     <script>
         var index = {{.Index}}
             window.addEventListener('load', function () {
-                $('#attestations-table').DataTable({
-                    processing: true,
-                    serverSide: true,
-                    ordering: true,
-                    order: [[0, 'desc']],
-                    lengthChange: false,
-                    searching: false,
-                    ajax: '/validator/' + index + '/attestations',
-                    pagingType: 'input',
-                    pageLength: 10,
-                    language: {
-                        searchPlaceholder: 'Search by Epoch Number',
-                        search: '',
-                        paginate: {
-                            previous: "<",
-                            next: ">",
-                        }
-                    },
-                    columnDefs: [
-                    {
-                        targets: 1,
-                        data: '1',
-                        "orderable": false
-                    },
-                    {
-                        targets: 3,
-                        data: '3',
-                        "orderable": false
-                    },
-                    {
-                        targets: 5,
-                        data: '5',
-                        "orderable": false
-                    },
-                  ],
-                    drawCallback: function (settings) {
-                        formatTimestamps()
-                    },
+                var activeTab = $('#chartTabs .active')
+                var initializedAttestationTable = false
+
+                if (activeTab === 'attestations-tab') {
+                    initializedAttestationTable = true
+                    createAttestationTable()
+                }
+                
+                $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                    if (e.target.id === 'attestations-tab' && !initializedAttestationTable) {
+                        initializedAttestationTable = true
+                        createAttestationTable()
+                    }
                 })
+
+                function createAttestationTable() {
+                    $('#attestations-table').DataTable({
+                            processing: true,
+                            serverSide: true,
+                            ordering: true,
+                            order: [[0, 'desc']],
+                            lengthChange: false,
+                            searching: false,
+                            ajax: '/validator/' + index + '/attestations',
+                            pagingType: 'input',
+                            pageLength: 10,
+                            language: {
+                                searchPlaceholder: 'Search by Epoch Number',
+                                search: '',
+                                paginate: {
+                                    previous: "<",
+                                    next: ">",
+                                }
+                            },
+                            columnDefs: [
+                            {
+                                targets: 1,
+                                data: '1',
+                                "orderable": false
+                            },
+                            {
+                                targets: 3,
+                                data: '3',
+                                "orderable": false
+                            },
+                            {
+                                targets: 5,
+                                data: '5',
+                                "orderable": false
+                            },
+                        ],
+                            drawCallback: function (settings) {
+                                formatTimestamps()
+                            },
+                        })
+                }
             })
     </script>
 {{end}}
@@ -218,7 +235,7 @@
     <div class="table-eth2">
         <h4 class="my-3">Eth2 Deposits</h4>
         {{if not .Deposits.Eth2Deposits}}
-            <h6 class="">No beacon chain deposits found for this validator. It takes around 8 hours for a deposit to be
+            <h6 class="">No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a> for a deposit to be
                 processed by the beacon chain.</h6>
             <div class="wip d-flex justify-content-center p-3">
                 <svg style="width: 100%; height: auto; max-height: 200px;" id="a1bb6ffe-8d83-4899-8fa0-fcb3165ea164"
@@ -530,7 +547,11 @@
 
         </tr>
         <tr>
-            <th scope="row">Active since</th>
+            {{ if gt .NetworkStats.CurrentEpoch .ActivationEpoch  }}
+              <th scope="row">Active since</th>
+            {{else}}
+              <th scope="row">Activation</th>
+            {{end}}
             <td>
                 {{if eq .ActivationEpoch 9223372036854775807}}
                     -

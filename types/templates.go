@@ -726,8 +726,9 @@ type EthTwoDepositData struct {
 }
 
 type ValidatorDeposits struct {
-	Eth1Deposits []Eth1Deposit
-	Eth2Deposits []Eth2Deposit
+	Eth1Deposits      []Eth1Deposit
+	LastEth1DepositTs int64
+	Eth2Deposits      []Eth2Deposit
 }
 
 type MyCryptoSignature struct {
