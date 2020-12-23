@@ -256,17 +256,17 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 	// Retrieve the validator balances for the requested epoch
 	start := time.Now()
-	validatorBalances, err := pc.getBalancesForEpoch(epoch)
+	validatorBalances, err := pc.getBalancesForEpoch(int64(epoch))
 	logger.Printf("retrieved data for %v validator balances for epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
-	validatorBalances7d, err := pc.getBalancesForEpoch(epoch - 225*7)
+	validatorBalances7d, err := pc.getBalancesForEpoch(int64(epoch) - 225*7)
 	logger.Printf("retrieved data for %v validator balances for 7d epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
-	validatorBalances30d, err := pc.getBalancesForEpoch(epoch - 225*30)
+	validatorBalances30d, err := pc.getBalancesForEpoch(int64(epoch) - 225*30)
 	logger.Printf("retrieved data for %v validator balances for 30d epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
@@ -393,9 +393,9 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	return data, nil
 }
 
-func (pc *PrysmClient) getBalancesForEpoch(epoch uint64) (map[uint64]uint64, error) {
+func (pc *PrysmClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, error) {
 
-	if epoch > 9023372036854775807 {
+	if epoch < 0 {
 		epoch = 0
 	}
 
@@ -404,7 +404,7 @@ func (pc *PrysmClient) getBalancesForEpoch(epoch uint64) (map[uint64]uint64, err
 	validatorBalances := make(map[uint64]uint64)
 
 	validatorBalancesResponse := &ethpb.ValidatorBalances{}
-	validatorBalancesRequest := &ethpb.ListValidatorBalancesRequest{PageSize: utils.Config.Indexer.Node.PageSize, PageToken: validatorBalancesResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}}
+	validatorBalancesRequest := &ethpb.ListValidatorBalancesRequest{PageSize: utils.Config.Indexer.Node.PageSize, PageToken: validatorBalancesResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: uint64(epoch)}}
 	if epoch == 0 {
 		validatorBalancesRequest.QueryFilter = &ethpb.ListValidatorBalancesRequest_Genesis{Genesis: true}
 	}
