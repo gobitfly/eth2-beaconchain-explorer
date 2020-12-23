@@ -94,16 +94,16 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
 
-			if epoch >= int64(balance.ActivationEligibilityEpoch) {
+			if epoch > int64(balance.ActivationEligibilityEpoch) {
 				earningsTotal -= deposit
 			}
-			if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
+			if epoch > lastDayEpoch && epoch > int64(balance.ActivationEligibilityEpoch) {
 				earningsLastDay -= deposit
 			}
-			if epoch > lastWeekEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
+			if epoch > lastWeekEpoch && epoch > int64(balance.ActivationEligibilityEpoch) {
 				earningsLastWeek -= deposit
 			}
-			if epoch > lastMonthEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
+			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEligibilityEpoch) {
 				earningsLastMonth -= deposit
 			}
 		}
