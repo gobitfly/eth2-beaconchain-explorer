@@ -452,23 +452,6 @@ create table api_statistics
     primary key (ts, apikey, call)
 );
 
-
-drop table if exists validator_status_stats;
-create table validator_status_stats (
-    epoch                   int         not null,
-    status                  varchar(40) not null,
-    validators              int         not null,
-    min_balance             bigint      not null,
-    max_balance             bigint      not null,
-    avg_balance             bigint      not null,
-    total_balance           bigint      not null,
-    min_effective_balance   bigint      not null,
-    max_effective_balance   bigint      not null,
-    avg_effective_balance   bigint      not null,
-    total_effective_balance bigint      not null,
-    primary key (epoch, status)
-);
-
 drop table if exists validator_stats;
 create table validator_stats (
     validatorindex                   int    not null,
@@ -499,7 +482,6 @@ drop table if exists network_stats;
 create table network_stats (
     start_epoch                      int    not null,
     end_epoch                        int    not null,
-
     missed_attestations              int    not null,
     orphaned_attestations            int    not null,
     missed_blocks                    int    not null,
@@ -508,41 +490,34 @@ create table network_stats (
     proposer_slashings               int    not null,
     voluntary_exits                  int    not null,
     activations                      int    not null,
-
     total_income                     bigint not null,
     min_income                       bigint not null,
     max_income                       bigint not null,
     avg_income                       bigint not null,
-
     start_total_balance              bigint not null,
     end_total_balance                bigint not null,
     min_total_balance                bigint not null,
     max_total_balance                bigint not null,
     avg_total_balance                bigint not null,
-
     start_total_effective_balance    bigint not null,
     end_total_effective_balance      bigint not null,
     min_total_effective_balance      bigint not null,
     max_total_effective_balance      bigint not null,
     avg_total_effective_balance      bigint not null,
-
     start_inclusion_delay            float  not null,
     end_inclusion_delay              float  not null,
     min_inclusion_delay              float  not null,
     max_inclusion_delay              float  not null,
     avg_inclusion_delay              float  not null,
-
     start_optimal_inclusion_distance float  not null,
     end_optimal_inclusion_distance   float  not null,
     min_optimal_inclusion_distance   float  not null,
     max_optimal_inclusion_distance   float  not null,
     avg_optimal_inclusion_distance   float  not null,
-
     start_participationrate          float  not null,
     end_participationrate            float  not null,
     min_participationrate            float  not null,
     max_participationrate            float  not null,
     avg_participationrate            float  not null,
-
     primary key(start_epoch, end_epoch)
 );
