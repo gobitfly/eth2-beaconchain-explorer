@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"sort"
 	"strings"
 	"time"
@@ -509,17 +510,21 @@ func updateValidatorPerformance() error {
 		var earningsLastMonth int64
 		var totalDeposits int64
 
+		if balance.Index == 112128 {
+			spew.Dump(depositsMap[fmt.Sprintf("%x", balance.PublicKey)])
+		}
+
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
 			earningsTotal -= deposit
 
-			if epoch > lastDayEpoch {
+			if epoch >= lastDayEpoch {
 				earningsLastDay -= deposit
 			}
-			if epoch > lastWeekEpoch {
+			if epoch >= lastWeekEpoch {
 				earningsLastWeek -= deposit
 			}
-			if epoch > lastMonthEpoch {
+			if epoch >= lastMonthEpoch {
 				earningsLastMonth -= deposit
 			}
 		}
