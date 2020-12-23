@@ -101,6 +101,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			// in this state there is nothing to display but the eth1-deposits
 			validatorPageData.Status = "deposited"
 			validatorPageData.PublicKey = pubKey
+			if deposits != nil && len(deposits.Eth1Deposits) > 0 {
+				deposits.LastEth1DepositTs = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
+			}
 			validatorPageData.Deposits = deposits
 
 			churnRate, err := db.GetValidatorChurnLimit(services.LatestEpoch())
