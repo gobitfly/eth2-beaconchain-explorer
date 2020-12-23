@@ -55,7 +55,7 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 			   COALESCE(balance1d, 0) AS balance1d, 
 			   COALESCE(balance7d, 0) AS balance7d, 
 			   COALESCE(balance31d , 0) AS balance31d,
-       			activationeligibilityepoch,
+       			activationepoch,
        			pubkey
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
@@ -94,16 +94,16 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
 
-			if epoch > int64(balance.ActivationEligibilityEpoch) {
+			if epoch > int64(balance.ActivationEpoch) {
 				earningsTotal -= deposit
 			}
-			if epoch > lastDayEpoch && epoch > int64(balance.ActivationEligibilityEpoch) {
+			if epoch > lastDayEpoch && epoch > int64(balance.ActivationEpoch) {
 				earningsLastDay -= deposit
 			}
-			if epoch > lastWeekEpoch && epoch > int64(balance.ActivationEligibilityEpoch) {
+			if epoch > lastWeekEpoch && epoch > int64(balance.ActivationEpoch) {
 				earningsLastWeek -= deposit
 			}
-			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEligibilityEpoch) {
+			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEpoch) {
 				earningsLastMonth -= deposit
 			}
 		}

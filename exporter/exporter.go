@@ -485,7 +485,7 @@ func updateValidatorPerformance() error {
 		SELECT 
 			   validatorindex,
 			   pubkey,
-       		   activationeligibilityepoch,
+       		   activationepoch,
 		       COALESCE(balance, 0) AS balance, 
 			   COALESCE(balanceactivation, 0) AS balanceactivation, 
 			   COALESCE(balance1d, 0) AS balance1d, 
@@ -528,16 +528,16 @@ func updateValidatorPerformance() error {
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
 
-			if epoch > int64(balance.ActivationEligibilityEpoch) {
+			if epoch > int64(balance.ActivationEpoch) {
 				earningsTotal -= deposit
 			}
-			if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
+			if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEpoch) {
 				earningsLastDay -= deposit
 			}
-			if epoch > lastWeekEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
+			if epoch > lastWeekEpoch && epoch >= int64(balance.ActivationEpoch) {
 				earningsLastWeek -= deposit
 			}
-			if epoch > lastMonthEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
+			if epoch > lastMonthEpoch && epoch >= int64(balance.ActivationEpoch) {
 				earningsLastMonth -= deposit
 			}
 		}
