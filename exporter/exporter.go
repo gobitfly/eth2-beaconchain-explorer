@@ -469,6 +469,7 @@ func updateValidatorPerformance() error {
 	err = tx.Select(&balances, `
 		SELECT 
 			   validatorindex,
+			   pubkey,
 		       COALESCE(balance, 0) AS balance, 
 			   COALESCE(balanceactivation, 0) AS balanceactivation, 
 			   COALESCE(balance1d, 0) AS balance1d, 
@@ -480,32 +481,22 @@ func updateValidatorPerformance() error {
 	}
 
 	deposits := []struct {
-		Validatorindex uint64
-		Epoch          int64
-		Amount         int64
+		Publickey []byte
+		Epoch     int64
+		Amount    int64
 	}{}
 
-	err = tx.Select(&deposits, `
-		SELECT
-			v.validatorindex,
-			(d.block_slot/32) AS epoch,
-			SUM(d.amount) AS amount
-		FROM validators v
-			INNER JOIN blocks_deposits d
-				ON d.publickey = v.pubkey
-				AND (d.block_slot/32) > v.activationepoch
-		GROUP BY (d.block_slot/32), v.validatorindex
-		ORDER BY epoch`)
+	err = tx.Select(&deposits, `SELECT block_slot / 32 AS epoch, SUM(amount) AS deposit, publickey FROM blocks_deposits`)
 	if err != nil {
 		return fmt.Errorf("error retrieving validator deposits data: %w", err)
 	}
 
-	depositsMap := make(map[uint64]map[int64]int64)
+	depositsMap := make(map[string]map[int64]int64)
 	for _, d := range deposits {
-		if _, exists := depositsMap[d.Validatorindex]; !exists {
-			depositsMap[d.Validatorindex] = make(map[int64]int64)
+		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
+			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
 		}
-		depositsMap[d.Validatorindex][d.Epoch] = d.Amount
+		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] = d.Amount
 	}
 
 	data := make([]*types.ValidatorPerformance, 0, len(balances))
@@ -518,7 +509,7 @@ func updateValidatorPerformance() error {
 		var earningsLastMonth int64
 		var totalDeposits int64
 
-		for epoch, deposit := range depositsMap[balance.Index] {
+		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
 			earningsTotal -= deposit
 
