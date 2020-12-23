@@ -497,7 +497,7 @@ func updateValidatorPerformance() error {
 		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
 			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
 		}
-		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] = d.Amount
+		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
 	}
 
 	data := make([]*types.ValidatorPerformance, 0, len(balances))
