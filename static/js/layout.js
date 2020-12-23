@@ -255,6 +255,7 @@ $('[aria-ethereum-date]').each(function(item) {
   if (format === 'FROMNOW') {
     $(this).text(luxon.DateTime.fromMillis(dt * 1000).toRelative({ style: "short"}))
     $(this).attr('title', luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
+    $(this).attr('data-toggle', 'tooltip')
   } else {
     $(this).text(luxon.DateTime.fromMillis(dt * 1000).toFormat(format))
   }
