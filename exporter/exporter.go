@@ -568,9 +568,9 @@ func updateValidatorPerformance() error {
 		return data[i].Performance7d > data[j].Performance7d
 	})
 
-	logger.Info("saving validator performances for %v validators", len(data))
+	logger.Infof("saving validator performances for %v validators", len(data))
 
-	batchSize := 10000
+	batchSize := 5000
 
 	for b := 0; b < len(data); b += batchSize {
 		start := b
