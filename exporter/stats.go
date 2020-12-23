@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"math"
@@ -13,15 +14,28 @@ import (
 
 func statsAggregator() {
 	for {
-		t0 := time.Now()
+		var start time.Time
+		var err error
+
+		start = time.Now()
 		logger.Info("aggregating stats")
-		err := aggregateStats()
+		err = aggregateStats()
 		if err != nil {
-			logger.Errorf("DEBUG error aggregating stats: %v", err)
+			logger.WithError(err).Error("error aggregating stats")
 		} else {
-			logger.WithField("duration", time.Since(t0)).Info("DEBUG aggregating stats completed")
+			logger.WithField("duration", time.Since(start)).Info("aggregating stats completed")
 		}
-		time.Sleep(time.Hour)
+
+		start = time.Now()
+		logger.Info("collecting historical data")
+		err = collectHistorical()
+		if err != nil {
+			logger.WithError(err).Error("error collecting historical data")
+		} else {
+			logger.WithField("duration", time.Since(start)).Info("collecting historical data completed")
+		}
+
+		time.Sleep(time.Second * 10)
 	}
 }
 
@@ -32,43 +46,41 @@ func aggregateStats() error {
 	}
 	defer tx.Rollback()
 
+	epochsPerDay := 3600 * 24 / (utils.Config.Chain.SecondsPerSlot * utils.Config.Chain.SlotsPerEpoch)
+	lastEpochOfFirstDay := uint64(utils.TimeToEpoch(utils.EpochToTime(0).Add(time.Hour * 24).Truncate(time.Hour * 24)))
+
 	var currentEpoch uint64
-	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM epochs")
+	err = tx.Get(&currentEpoch, "SELECT CAST(COALESCE(MAX(epoch),0) AS BIGINT) FROM epochs")
 	if err != nil {
 		return fmt.Errorf("error retrieving latest epoch from epochs table: %w", err)
 	}
 
+	if currentEpoch < lastEpochOfFirstDay {
+		return nil
+	}
+
 	var lastAggregatedEpoch uint64
-	err = tx.Get(&lastAggregatedEpoch, "SELECT COALESCE(MAX(start_epoch),0) FROM aggregated_validator_stats")
+	err = tx.Get(&lastAggregatedEpoch, "SELECT CAST(COALESCE(MAX(end_epoch),0) AS BIGINT) FROM validator_stats")
 	if err != nil {
 		return err
 	}
 
-	lastEpochOfFirstDay := uint64(utils.TimeToEpoch(utils.EpochToTime(0).Add(time.Hour * 24).Truncate(time.Hour * 24)))
-	epochsPerDay := 3600 * 24 / (utils.Config.Chain.SecondsPerSlot * utils.Config.Chain.SlotsPerEpoch)
-	lastStartEpoch := uint64(0)
-	if currentEpoch > lastEpochOfFirstDay {
-		lastStartEpoch = epochsPerDay * (currentEpoch - lastEpochOfFirstDay + 1) / epochsPerDay
+	lastStartEpoch := 1 + lastEpochOfFirstDay + epochsPerDay*((currentEpoch-lastEpochOfFirstDay)/epochsPerDay)
+	if lastAggregatedEpoch != 0 && lastStartEpoch+epochsPerDay <= lastAggregatedEpoch {
+		return nil
 	}
 
-	fmt.Println("DEBUG lastStartEpoch", lastStartEpoch, utils.EpochToTime(lastStartEpoch))
-	fmt.Println("DEBUG lastEpochOfFirstDay", lastEpochOfFirstDay, utils.EpochToTime(lastEpochOfFirstDay))
-	fmt.Println("DEBUG lastAggregatedEpoch", lastAggregatedEpoch, utils.EpochToTime(lastAggregatedEpoch))
-
 	startEpoch := lastAggregatedEpoch
-	for startEpoch <= lastStartEpoch {
+	batchSize := 2
+	for i := 0; startEpoch <= lastStartEpoch && i < batchSize; i++ {
 		endEpoch := startEpoch + epochsPerDay - 1
 		if startEpoch == 0 {
 			endEpoch = lastEpochOfFirstDay
-		} else if startEpoch == lastStartEpoch {
-			endEpoch = currentEpoch
 		}
-		t0 := time.Now()
 		err = aggregateStatsEpochs(tx, startEpoch, endEpoch)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("DEBUG aggregateValidatorStats %v %v %v\n", startEpoch, endEpoch, time.Since(t0))
 		startEpoch = endEpoch + 1
 	}
 
@@ -76,59 +88,32 @@ func aggregateStats() error {
 }
 
 func aggregateStatsEpochs(tx *sqlx.Tx, startEpoch, endEpoch uint64) error {
-	type validatorStats struct {
-		StartEpoch uint64
-		EndEpoch   uint64
-		MinBalance uint64
-		MaxBalance uint64
-		AvgBalance uint64
-	}
-	validatorStatsMap := map[uint64]*validatorStats{}
-	networkStats := struct {
-		StartEpoch uint64
-		EndEpoch   uint64
-		MinBalance uint64
-		MaxBalance uint64
-		AvgBalance uint64
+	logger.WithFields(logrus.Fields{"startEpoch": startEpoch, "endEpoch": endEpoch}).Info("aggregating stats")
 
-		MinInclusionDelay uint64
-		MaxInclusionDelay uint64
-		AvgInclusionDelay float64
+	validatorStatsMap := map[uint64]*types.ValidatorStats{}
 
-		MinOptimalInclusionDistance float64
-		MaxOptimalInclusionDistance float64
-		AvgOptimalInclusionDistance float64
-
-		MissedAttestations uint64
-		MissedBlocks       uint64
-		OrphanedBlocks     uint64
-		AttesterSlashings  uint64
-		ProposerSlashings  uint64
-		VoluntaryExits     uint64
-		Activations        uint64
-
-		TotalIncome int64
-		MinIncome   int64
-		MaxIncome   int64
-		AvgIncome   int64
-
-		StartParticipationRate float64
-		EndParticipationRate   float64
-		MinParticipationRate   float64
-		MaxParticipationRate   float64
-		AvgParticipationRate   float64
-	}{}
+	networkStats := types.NetworkStats{}
 	networkStats.StartEpoch = startEpoch
 	networkStats.EndEpoch = endEpoch
 
+	var err error
+
 	t0 := time.Now()
 	validators := []uint64{}
-	err := db.DB.Select(&validators, "select validatorindex from validators where activationepoch <= $1 and exitepoch > $2", startEpoch, endEpoch)
+	err = tx.Select(&validators, "select validatorindex from validators where withdrawableepoch > $1 and activationepoch <= $2", startEpoch, endEpoch)
 	if err != nil {
 		return fmt.Errorf("error getting validators: %w", err)
 	}
 	for _, v := range validators {
-		validatorStatsMap[v] = &validatorStats{}
+		s := &types.ValidatorStats{}
+		s.ValidatorIndex = v
+		s.StartEpoch = startEpoch
+		s.EndEpoch = endEpoch
+		s.MinBalance = math.MaxUint64
+		s.MaxBalance = 0
+		s.MinEffectiveBalance = math.MaxUint64
+		s.MaxEffectiveBalance = 0
+		validatorStatsMap[v] = s
 	}
 
 	t1 := time.Now()
@@ -137,147 +122,165 @@ func aggregateStatsEpochs(tx *sqlx.Tx, startEpoch, endEpoch uint64) error {
 		Epoch          uint64
 		Amount         uint64
 	}{}
-	err = db.DB.Select(&deposits, "select validators.validatorindex, (block_slot/32)::int as epoch, amount from blocks_deposits inner join validators on validators.pubkey = blocks_deposits.publickey where block_slot/32 >= $1 and block_slot/32 <= $2", startEpoch, endEpoch)
+	err = tx.Select(&deposits, "select validators.validatorindex, (block_slot/32)::int as epoch, amount from blocks_deposits inner join validators on validators.pubkey = blocks_deposits.publickey where block_slot/32 >= $1 and block_slot/32 <= $2", startEpoch, endEpoch-1)
 	if err != nil {
 		return fmt.Errorf("error getting deposits: %w", err)
 	}
-	// map[validator]map[epoch]depositamount
-	depositsMap := map[uint64]map[uint64]uint64{}
 	for _, d := range deposits {
-		if _, exists := depositsMap[d.Validatorindex]; !exists {
-			depositsMap[d.Validatorindex] = map[uint64]uint64{}
+		if _, exists := validatorStatsMap[d.Validatorindex]; !exists {
+			// return fmt.Errorf("error aggregating deposits: no entry in validatorStatsMap for %v", d.Validatorindex)
+			continue
 		}
-		depositsMap[d.Validatorindex][d.Epoch] = d.Amount
+		validatorStatsMap[d.Validatorindex].Deposits++
+		validatorStatsMap[d.Validatorindex].DepositsAmount += d.Amount
 	}
 
 	t2 := time.Now()
-	type aggregatedBalance struct {
-		Validatorindex uint64
-		Min            uint64
-		Max            uint64
-		Avg            uint64
-	}
-	aggregatedBalances := []aggregatedBalance{}
-	err = db.DB.Select(&aggregatedBalances, `
-		select vb.validatorindex, min(vb.balance), max(vb.balance), avg(vb.balance)::bigint as avg 
-		from validators v 
-		left join validator_balances vb on v.validatorindex = vb.validatorindex and (vb.epoch >= $1 or vb.epoch <= $2) 
-		where v.activationepoch <= $1 and v.exitepoch > $2 
-		group by vb.validatorindex`, startEpoch, endEpoch)
+	// check if data is in hot-table, otherwise we need to use the historical-table
+	epochBoundaries := struct {
+		Firstepoch uint64
+		Lastepoch  uint64
+	}{}
+	err = tx.Get(&epochBoundaries, "select min(epoch) as firstepoch, max(epoch) as lastepoch from validator_balances")
 	if err != nil {
-		return fmt.Errorf("error getting aggregatedBalance: %w", err)
+		return err
 	}
-	aggregatedBalancesMap := map[uint64]aggregatedBalance{}
+	validatorBalancesTable := "validator_balances"
+	if epochBoundaries.Firstepoch > startEpoch || epochBoundaries.Lastepoch < endEpoch {
+		validatorBalancesTable = "validator_balances_historical"
+	}
+	type balance struct {
+		Validatorindex   uint64
+		Epoch            uint64
+		Balance          uint64
+		Effectivebalance uint64
+	}
+	balances := []*balance{}
+	err = tx.Select(&balances, "select validatorindex, epoch, balance, effectivebalance from "+validatorBalancesTable+" where epoch >= $1 and epoch <= $2 order by validatorindex, epoch", startEpoch, endEpoch)
+	if err != nil {
+		return fmt.Errorf("error aggregating balance: %w", err)
+	}
 	networkStats.MinBalance = math.MaxUint64
 	networkStats.MaxBalance = 0
-	totalAvgBalance := uint64(0)
-	for _, b := range aggregatedBalances {
-		aggregatedBalancesMap[b.Validatorindex] = b
-		if b.Min < networkStats.MinBalance {
-			networkStats.MinBalance = b.Min
+	firstBalanceMap := map[uint64]*balance{}
+	for _, b := range balances {
+		v, exists := validatorStatsMap[b.Validatorindex]
+		if !exists {
+			// return fmt.Errorf("error aggregating balances: no entry for %v in validatorStatsMap", b.Validatorindex)
+			continue
 		}
-		if b.Max > networkStats.MaxBalance {
-			networkStats.MaxBalance = b.Max
+		if _, exists := firstBalanceMap[b.Validatorindex]; !exists {
+			firstBalanceMap[b.Validatorindex] = b
 		}
-		totalAvgBalance += b.Avg
+		if b.Epoch == startEpoch {
+			v.StartBalance = b.Balance
+			v.StartEffectiveBalance = b.Effectivebalance
+		} else if b.Epoch == endEpoch {
+			v.EndBalance = b.Balance
+			v.EndEffectiveBalance = b.Effectivebalance
+		}
+		if b.Balance < v.MinBalance {
+			v.MinBalance = b.Balance
+		}
+		if b.Balance > v.MaxBalance {
+			v.MaxBalance = b.Balance
+		}
+		if b.Effectivebalance < v.MinEffectiveBalance {
+			v.MinEffectiveBalance = b.Effectivebalance
+		}
+		if b.Effectivebalance > v.MaxEffectiveBalance {
+			v.MaxEffectiveBalance = b.Effectivebalance
+		}
+		if b.Balance < networkStats.MinBalance {
+			networkStats.MinBalance = b.Balance
+		}
+		if b.Balance > networkStats.MaxBalance {
+			networkStats.MaxBalance = b.Balance
+		}
 	}
-	networkStats.AvgBalance = totalAvgBalance / uint64(len(aggregatedBalances))
 
 	t3 := time.Now()
-	startEndBalances := []struct {
-		Validatorindex uint64
-		Balance        uint64
-		Epoch          uint64
-	}{}
-	err = db.DB.Select(&startEndBalances, "select validatorindex, balance, epoch from validator_balances where epoch = $1 or epoch = $2", startEpoch, endEpoch)
-	if err != nil {
-		return fmt.Errorf("error getting startEndBalances: %w", err)
-	}
-	// map[validator]map[epoch]balance
-	startEndBalancesMap := map[uint64]map[uint64]uint64{}
-	for _, b := range startEndBalances {
-		if _, exists := startEndBalancesMap[b.Validatorindex]; !exists {
-			startEndBalancesMap[b.Validatorindex] = map[uint64]uint64{}
+	for v, s := range validatorStatsMap {
+		firstBalance, exists := firstBalanceMap[v]
+		if !exists {
+			return fmt.Errorf("error aggregating incomes: no entry for %v in firstBalanceMap", v)
 		}
-		startEndBalancesMap[b.Validatorindex][b.Epoch] = b.Balance
+		income := int64(s.EndBalance) - int64(firstBalance.Balance) - int64(s.DepositsAmount)
+		if income < networkStats.MinIncome {
+			networkStats.MinIncome = income
+		}
+		if income > networkStats.MaxIncome {
+			networkStats.MaxIncome = income
+		}
+		networkStats.TotalIncome += income
 	}
+	networkStats.AvgIncome = networkStats.TotalIncome / int64(len(validatorStatsMap))
 
 	t4 := time.Now()
-	minIncome := int64(math.MaxInt64)
-	maxIncome := int64(math.MinInt64)
-	totalIncome := int64(0)
-	// map[validator]income
-	incomeMap := map[uint64]int64{}
-	for _, i := range validators {
-		if _, exists := startEndBalancesMap[i]; !exists {
-			return fmt.Errorf("could not find any balance for validator %v (%v-%v)", i, startEpoch, endEpoch)
+	/*
+		err = tx.Get(&epochBoundaries, "select min(epoch) as firstepoch, max(epoch) as lastepoch from attestation_assignments")
+		if err != nil {
+			return err
 		}
-		endBalance, exists := startEndBalancesMap[i][endEpoch]
-		if !exists {
-			return fmt.Errorf("could not find endBalance for validator %v (%v-%v)", i, startEpoch, endEpoch)
+		attestationAssignmentsTable := "attestation_assignments"
+		if epochBoundaries.Firstepoch > startEpoch || epochBoundaries.LastEpoch < endEpoch {
+			attestationAssignmentsTable = "attestation_assignments_historical"
 		}
-		startBalance, exists := startEndBalancesMap[i][startEpoch]
-		if !exists {
-			startBalance = 0
+		logger.Info("DEBUG aggregating attestations")
+		attestations := []struct {
+			Validatorindex        uint64
+			Attesterslot          uint64
+			Inclusionslot         uint64
+			Earliestinclusionslot uint64
+			Status                string
+		}{}
+		err = tx.Select(&attestations, fmt.Sprintf(`
+			with earliestinclusionslots as (
+				select
+					b1.slot,
+					(select min(b2.slot) from blocks b2 where b2.slot > b1.slot and status = '1') as earliestinclusionslot
+				from blocks b1 where slot/32 >= $1 and slot/32 <= $2
+			)
+			select
+				validatorindex,
+				attesterslot,
+				inclusionslot,
+				eis.earliestinclusionslot,
+				status
+			from %v aa
+			left join earliestinclusionslots eis on eis.slot = aa.attesterslot
+			where attesterslot/32 >= $1 and attesterslot/32 <= $2`, attestationAssignmentsTable), startEpoch, endEpoch)
+		if err != nil {
+			return fmt.Errorf("error getting attestations: %w", err)
 		}
-		depositsSum := uint64(0)
-		if _, exists := depositsMap[i]; exists {
-			for _, depositAmount := range depositsMap[i] {
-				depositsSum += depositAmount
+		inclusionDelays := make([]uint64, len(attestations))
+		totalInclusionDelay := uint64(0)
+		totalOptimalInclusionDistance := uint64(0)
+		optimalInclusionDistanceMap := map[uint64][]uint64{}
+		networkStats.MinInclusionDelay = math.MaxUint64
+		networkStats.MaxInclusionDelay = 0
+		networkStats.MinOptimalInclusionDistance = math.MaxUint64
+		networkStats.MaxOptimalInclusionDistance = 0
+		for i, a := range attestations {
+			if a.Earliestinclusionslot == 0 {
+				// return fmt.Errorf("error getting earliestinclusionslot for validator %v at slot %v", a.Validatorindex, a.Attesterslot)
+				continue
+			}
+			inclusionDelays[i] = a.Inclusionslot - a.Attesterslot
+			totalInclusionDelay += a.Inclusionslot - a.Attesterslot
+			optimalInclusionDistance := a.Inclusionslot - a.Earliestinclusionslot
+			totalOptimalInclusionDistance += optimalInclusionDistance
+			if _, exists := optimalInclusionDistanceMap[a.Validatorindex]; exists {
+				optimalInclusionDistanceMap[a.Validatorindex] = []uint64{optimalInclusionDistance}
+			} else {
+				optimalInclusionDistanceMap[a.Validatorindex] = append(optimalInclusionDistanceMap[a.Validatorindex], optimalInclusionDistance)
 			}
 		}
-		income := int64(endBalance) - int64(startBalance) - int64(depositsSum)
-		if income < minIncome {
-			minIncome = income
-		}
-		if income > maxIncome {
-			maxIncome = income
-		}
-		totalIncome += income
-		incomeMap[i] = income
-	}
-	networkStats.AvgIncome = totalIncome / int64(len(incomeMap))
-	networkStats.MinIncome = minIncome
-	networkStats.MaxIncome = maxIncome
-	networkStats.TotalIncome = totalIncome
+		networkStats.AvgInclusionDelay = float64(totalInclusionDelay) / float64(len(attestations))
+		networkStats.AvgOptimalInclusionDistance = float64(totalOptimalInclusionDistance) / float64(len(attestations))
+	*/
 
 	t5 := time.Now()
-	attestations := []struct {
-		Validatorindex uint64
-		Attesterslot   uint64
-		Inclusionslot  uint64
-		Earliestslot   uint64
-		Status         string
-	}{}
-	err = db.DB.Select(&attestations, `
-		select validatorindex, attesterslot, inclusionslot, inclusionslot as earliestslot, status 
-		from attestation_assignments 
-		where attesterslot/32 >= $1 and attesterslot/32 <= $2`, startEpoch, endEpoch)
-	if err != nil {
-		return fmt.Errorf("error getting attestations: %w", err)
-	}
-	inclusionDelays := make([]uint64, len(attestations))
-	totalInclusionDelay := uint64(0)
-	totalOptimalInclusionDistance := uint64(0)
-	optimalInclusionDistanceMap := map[uint64][]uint64{}
-	networkStats.MinInclusionDelay = math.MaxUint64
-	networkStats.MaxInclusionDelay = 0
-	networkStats.MinOptimalInclusionDistance = math.MaxUint64
-	networkStats.MaxOptimalInclusionDistance = 0
-	for i, a := range attestations {
-		inclusionDelays[i] = a.Inclusionslot - a.Attesterslot
-		totalInclusionDelay += a.Inclusionslot - a.Attesterslot
-		totalOptimalInclusionDistance += a.Inclusionslot - a.Earliestslot
-		if _, exists := optimalInclusionDistanceMap[a.Validatorindex]; exists {
-			optimalInclusionDistanceMap[a.Validatorindex] = []uint64{}
-		} else {
-			optimalInclusionDistanceMap[a.Validatorindex] = append(optimalInclusionDistanceMap[a.Validatorindex], a.Inclusionslot-a.Earliestslot)
-		}
-	}
-	networkStats.AvgInclusionDelay = float64(totalInclusionDelay) / float64(len(attestations))
-	networkStats.AvgOptimalInclusionDistance = float64(totalOptimalInclusionDistance) / float64(len(attestations))
-
-	t6 := time.Now()
 	blocks := []struct {
 		Epoch                  uint64
 		Slot                   uint64
@@ -289,9 +292,9 @@ func aggregateStatsEpochs(tx *sqlx.Tx, startEpoch, endEpoch uint64) error {
 		Attesterslashingscount uint64
 		Status                 string
 	}{}
-	err = db.DB.Select(&blocks, "select epoch, slot, proposer, attestationscount, depositscount, voluntaryexitscount, proposerslashingscount, attesterslashingscount, status from blocks where slot/32 >= $1 and slot/32 <= $2", startEpoch, endEpoch)
+	err = tx.Select(&blocks, "select epoch, slot, proposer, attestationscount, depositscount, voluntaryexitscount, proposerslashingscount, attesterslashingscount, status from blocks where slot != 0 and slot/32 >= $1 and slot/32 <= $2", startEpoch, endEpoch)
 	if err != nil {
-		return fmt.Errorf("error getting blocks: %w", err)
+		return fmt.Errorf("error aggregating blocks: %w", err)
 	}
 	for _, b := range blocks {
 		networkStats.AttesterSlashings += b.Attesterslashingscount
@@ -301,16 +304,30 @@ func aggregateStatsEpochs(tx *sqlx.Tx, startEpoch, endEpoch uint64) error {
 		} else if b.Status == "3" {
 			networkStats.OrphanedBlocks += 1
 		}
+		v, exists := validatorStatsMap[b.Proposer]
+		if !exists {
+			// continue
+			return fmt.Errorf("error aggregating blocks: no entry in validatorStatsMap for %v (slot: %v, epoch: %v)", b.Proposer, b.Slot, b.Epoch)
+		}
+		v.AttesterSlashings += b.Attesterslashingscount
+		v.ProposerSlashings += b.Proposerslashingscount
+		if b.Status == "2" {
+			v.MissedBlocks += 1
+		} else if b.Status == "3" {
+			v.OrphanedBlocks += 1
+		} else {
+			v.ProposedBlocks += 1
+		}
 	}
 
-	t7 := time.Now()
+	t6 := time.Now()
 	epochs := []struct {
 		Epoch             uint64
 		Participationrate float64
 	}{}
-	err = db.DB.Select(&epochs, "select epoch, globalparticipationrate as participationrate from epochs where epoch >= $1 and epoch <= $2", startEpoch, endEpoch)
+	err = tx.Select(&epochs, "select epoch, globalparticipationrate as participationrate from epochs where epoch >= $1 and epoch <= $2", startEpoch, endEpoch)
 	if err != nil {
-		return fmt.Errorf("error getting epochs: %w", err)
+		return fmt.Errorf("error aggregating epochs: %w", err)
 	}
 	totalParticipationRate := float64(0)
 	networkStats.MinParticipationRate = float64(1)
@@ -328,20 +345,76 @@ func aggregateStatsEpochs(tx *sqlx.Tx, startEpoch, endEpoch uint64) error {
 	networkStats.EndParticipationRate = epochs[len(epochs)-1].Participationrate
 	networkStats.AvgParticipationRate = totalParticipationRate / float64(len(epochs))
 
-	// insert stats per validator
+	t7 := time.Now()
+	stmtInsertValidatorStats, err := tx.Prepare(`
+		insert into validator_stats (
+			validatorindex         ,
+			start_epoch            ,
+			end_epoch              ,
+			start_balance          ,
+			end_balance            ,
+			min_balance            ,
+			max_balance            ,
+			start_effective_balance,
+			end_effective_balance  ,
+			min_effective_balance  ,
+			max_effective_balance  ,
+			missed_attestations    ,
+			orphaned_attestations  ,
+			proposed_blocks        ,
+			missed_blocks          ,
+			orphaned_blocks        ,
+			attester_slashings     ,
+			proposer_slashings     ,
+			income                 ,
+			deposits               ,
+			deposits_amount
+		)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`)
 
-	// insert stats for the global network
+	for _, v := range validatorStatsMap {
+		_, err = stmtInsertValidatorStats.Exec(
+			v.ValidatorIndex,
+			v.StartEpoch,
+			v.EndEpoch,
+			v.StartBalance,
+			v.EndBalance,
+			v.MinBalance,
+			v.MaxBalance,
+			v.StartEffectiveBalance,
+			v.EndEffectiveBalance,
+			v.MinEffectiveBalance,
+			v.MaxEffectiveBalance,
+			v.MissedAttestations,
+			v.OrphanedAttestations,
+			v.ProposedBlocks,
+			v.MissedBlocks,
+			v.OrphanedBlocks,
+			v.AttesterSlashings,
+			v.ProposerSlashings,
+			v.Income,
+			v.Deposits,
+			v.DepositsAmount,
+		)
+		if err != nil {
+			return err
+		}
+	}
 
 	t8 := time.Now()
 	logger.WithFields(logrus.Fields{
-		"t0": t1.Sub(t0),
-		"t1": t2.Sub(t1),
-		"t2": t3.Sub(t2),
-		"t3": t4.Sub(t3),
-		"t4": t5.Sub(t4),
-		"t5": t6.Sub(t5),
-		"t6": t7.Sub(t6),
-		"t7": t8.Sub(t7),
-	}).Infof("DEBUG aggregate start: %v, end: %v, stats: %+v\n", startEpoch, endEpoch, networkStats)
+		"t0":           t1.Sub(t0),
+		"t1":           t2.Sub(t1),
+		"t2":           t3.Sub(t2),
+		"t3":           t4.Sub(t3),
+		"t4":           t5.Sub(t4),
+		"t5":           t6.Sub(t5),
+		"t6":           t7.Sub(t6),
+		"t7":           t8.Sub(t7),
+		"tTotal":       t8.Sub(t0),
+		"startEpoch":   startEpoch,
+		"endEpoch":     endEpoch,
+		"networkStats": fmt.Sprintf("%+v", networkStats),
+	}).Info("aggregated stats")
 	return nil
 }

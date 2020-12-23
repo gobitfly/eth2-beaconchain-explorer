@@ -354,13 +354,29 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
-	validatorPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(balanceHistory))
+	var balanceHistoryFromStats []*types.ValidatorBalanceHistory
+	err = db.DB.Select(&balanceHistoryFromStats, "SELECT start_epoch as epoch, start_balance as balance, COALESCE(start_effective_balance, 0) AS effectivebalance FROM validator_stats WHERE validatorindex = $1 AND start_epoch < $2 ORDER BY epoch", index, balanceHistory[len(balanceHistory)-1].Epoch)
+	if err != nil {
+		logger.Errorf("error retrieving validator balance history from stats: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
-	for i, balance := range balanceHistory {
+	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory)+len(balanceHistoryFromStats))
+	validatorPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(balanceHistory)+len(balanceHistoryFromStats))
+
+	j := 0
+	for _, balance := range balanceHistory {
 		balanceTs := utils.EpochToTime(balance.Epoch)
-		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
-		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.EffectiveBalance) / 1000000000}
+		validatorPageData.BalanceHistoryChartData[j] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
+		validatorPageData.EffectiveBalanceHistoryChartData[j] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.EffectiveBalance) / 1000000000}
+		j++
+	}
+	for _, balance := range balanceHistoryFromStats {
+		balanceTs := utils.EpochToTime(balance.Epoch)
+		validatorPageData.BalanceHistoryChartData[j] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
+		validatorPageData.EffectiveBalanceHistoryChartData[j] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.EffectiveBalance) / 1000000000}
+		j++
 	}
 
 	//logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))

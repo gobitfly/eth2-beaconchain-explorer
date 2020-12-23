@@ -58,6 +58,58 @@ type Validator struct {
 	WithdrawalCredentials      []byte `db:"withdrawalcredentials"`
 }
 
+// ValidatorStats is a struct to hold validator-stats for a
+type ValidatorStats struct {
+	ValidatorIndex        uint64 `db:"validatorindex"`
+	StartEpoch            uint64 `db:"start_epoch"`
+	EndEpoch              uint64 `db:"end_epoch"`
+	StartBalance          uint64 `db:"start_balance"`
+	EndBalance            uint64 `db:"end_balance"`
+	MinBalance            uint64 `db:"min_balance"`
+	MaxBalance            uint64 `db:"max_balance"`
+	StartEffectiveBalance uint64 `db:"start_effective_balance"`
+	EndEffectiveBalance   uint64 `db:"end_effective_balance"`
+	MinEffectiveBalance   uint64 `db:"min_effective_balance"`
+	MaxEffectiveBalance   uint64 `db:"max_effective_balance"`
+	MissedAttestations    uint64 `db:"missed_attestations"`
+	OrphanedAttestations  uint64 `db:"orphaned_attestations"`
+	ProposedBlocks        uint64 `db:"proposed_blocks"`
+	MissedBlocks          uint64 `db:"missed_blocks"`
+	OrphanedBlocks        uint64 `db:"orphaned_blocks"`
+	AttesterSlashings     uint64 `db:"attester_slashings"`
+	ProposerSlashings     uint64 `db:"proposer_slashings"`
+	Income                int64  `db:"income"`
+	Deposits              uint64 `db:"deposits"`
+	DepositsAmount        uint64 `db:"deposits_amount"`
+}
+
+// Network is a struct to hold network-stats for a specific epoch-range
+type NetworkStats struct {
+	StartEpoch             uint64  `db:"start_epoch"`
+	EndEpoch               uint64  `db:"end_epoch"`
+	MissedAttestations     uint64  `db:"missed_attestations"`
+	OrphanedAttestations   uint64  `db:"orphaned_attestations"`
+	MissedBlocks           uint64  `db:"missed_blocks"`
+	OrphanedBlocks         uint64  `db:"orphaned_blocks"`
+	AttesterSlashings      uint64  `db:"attester_slashings"`
+	ProposerSlashings      uint64  `db:"proposer_slashings"`
+	VoluntaryExits         uint64  `db:"voluntary_exits"`
+	Activations            uint64  `db:"activations"`
+	TotalIncome            int64   `db:"total_income"`
+	MinIncome              int64   `db:"min_income"`
+	MaxIncome              int64   `db:"max_income"`
+	AvgIncome              int64   `db:"avg_income"`
+	StartParticipationRate float64 `db:"start_participationrate"`
+	EndParticipationRate   float64 `db:"end_participationrate"`
+	MinParticipationRate   float64 `db:"min_participationrate"`
+	MaxParticipationRate   float64 `db:"max_participationrate"`
+	AvgParticipationRate   float64 `db:"avg_participationrate"`
+	MinBalance             uint64  `db:"min_balance"`
+	MaxBalance             uint64  `db:"max_balance"`
+	MinEffectiveBalance    uint64  `db:"min_effective_balance"`
+	MaxEffectiveBalance    uint64  `db:"max_effective_balance"`
+}
+
 // ValidatorQueue is a struct to hold validator queue data
 type ValidatorQueue struct {
 	ChurnLimit                 uint64
