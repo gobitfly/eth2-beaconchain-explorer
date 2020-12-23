@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -461,12 +460,17 @@ func updateValidatorPerformance() error {
 		return fmt.Errorf("error truncating validator performance table: %w", err)
 	}
 
-	latestEpoch := int64(services.LatestEpoch())
+	var currentEpoch int64
 
-	logger.Infof("epoch: %v", latestEpoch)
-	lastDayEpoch := latestEpoch - 225
-	lastWeekEpoch := latestEpoch - 225*7
-	lastMonthEpoch := latestEpoch - 225*31
+	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM epochs")
+	if err != nil {
+		return fmt.Errorf("error retrieving latest epoch from validator_balances table: %w", err)
+	}
+
+	logger.Infof("epoch: %v", currentEpoch)
+	lastDayEpoch := currentEpoch - 225
+	lastWeekEpoch := currentEpoch - 225*7
+	lastMonthEpoch := currentEpoch - 225*31
 
 	var balances []types.Validator
 	err = tx.Select(&balances, `
