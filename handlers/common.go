@@ -93,8 +93,10 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
-			earningsTotal -= deposit
 
+			if epoch >= int64(balance.ActivationEligibilityEpoch) {
+				earningsTotal -= deposit
+			}
 			if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
 				earningsLastDay -= deposit
 			}
@@ -122,6 +124,7 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}
 	spew.Dump(deposits)
 	spew.Dump(balances)
+	spew.Dump(earningsTotal)
 
 	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
 	if apr < float64(-1) {

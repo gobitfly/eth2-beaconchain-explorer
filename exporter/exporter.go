@@ -527,8 +527,10 @@ func updateValidatorPerformance() error {
 
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
-			earningsTotal -= deposit
 
+			if epoch >= int64(balance.ActivationEligibilityEpoch) {
+				earningsTotal -= deposit
+			}
 			if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEligibilityEpoch) {
 				earningsLastDay -= deposit
 			}
