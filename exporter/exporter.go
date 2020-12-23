@@ -538,6 +538,10 @@ func updateValidatorPerformance() error {
 		if balance.Index == 111480 {
 			spew.Dump(depositsMap[fmt.Sprintf("%x", balance.PublicKey)])
 			spew.Dump(balance)
+			spew.Dump(earningsTotal)
+			spew.Dump(earningsLastDay)
+			spew.Dump(earningsLastWeek)
+			spew.Dump(earningsLastMonth)
 		}
 
 		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
