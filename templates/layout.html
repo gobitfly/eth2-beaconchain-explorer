@@ -55,7 +55,6 @@
             } else {
                 document.getElementById('app-style-initial').id = 'app-theme'
             }
-
         </script>
 
         <script>
@@ -548,61 +547,7 @@
                             </a>
                         </div>
                     </li>
-                    <!-- <li class="nav-item dropdown " {{ if eq .Active "docs"}}active{{end}}>
-						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-							<span class="nav-icon">
-								<i class="fas fa-book mr-2"></i>
-							</span>
-							<span class="nav-text">
-								Docs
-							</span>
-						</a>
-						<div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-							<a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
-								<span class="nav-icon">
-									<i class="fas fa-external-link-alt mr-2"></i>
-								</span>
-								<span class="nav-text">Knowledge Base</span>
-							</a>
-							<a class="dropdown-item" href="/pricing">
-								<span class="nav-icon">
-									<i class="fas fa-laptop-code mr-2"></i>
-								</span>
-								<span class="nav-text">
-									API
-								</span>
-							</a>
-
-						</div>
-					</li> -->
-
-                    <!-- <li class="nav-item dropdown">
-                      <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="fab fa-ethereum"></i> Onyx
-                      </a>
-                      <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                          <a class="dropdown-item" href="https://beaconcha.in">Medalla</a>
-                          <a class="dropdown-item" href="https://altona.beaconcha.in">Altona</a>
-                          <a class="dropdown-item" href="https://prysm-attack-0.beaconcha.in">Attacknet 0</a>
-                          <a class="dropdown-item" href="https://prysm-attack-1.beaconcha.in">Attacknet 1</a>
-                          <a class="dropdown-item" href="https://topaz.beaconcha.in">Topaz</a>
-                          <a class="dropdown-item" href="https://witti.beaconcha.in">Witti</a>
-                      </div>
-                  </li> -->
                 </ul>
-                <!-- <div>
-                    <span class="fas fa-search search-icon"></span>
-                    <i class="fab fa-github"></i>
-                </div> -->
-                <!-- <div class="search-container">
-                    <form  class="form-inline ml-auto" action="/search" method="POST">
-                        <span>
-                            <input class="form-control typeahead" name="search" type="text"
-                            placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
-                            <span class="fas fa-search"></span>
-                        </span>
-                    </form>
-                </div> -->
             </div>
         </div>
         </div>
@@ -619,8 +564,16 @@
 				</div>
 				{{end}} -->
         {{if .InfoBanner}}
-            <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-flex justify-content-center align-items-center p-2">
-                {{.InfoBanner}}
+            <div id="infoBanner">
+                <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-none d-md-flex justify-content-center align-items-center p-2">
+                    {{.InfoBanner}}
+                    <i id="infoBannerDissBtn" class="far fa-times-circle btn text-primary" data-toggle="tooltip" data-placement="bottom" title="Dismiss"></i>
+                </div>
+                <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-flex d-md-none justify-content-center align-items-center p-2">
+                    <i class="fab fa-github mr-2" aria-hidden="true"></i>
+                    <a class="mr-2 text-primary" href="/ethClients#ethClientsServices"> Get latest client releases</a>
+                    <i id="infoBannerDissBtn" class="far fa-times-circle btn text-primary" data-toggle="tooltip" data-placement="bottom" title="Dismiss"></i>
+                </div>
             </div>
         {{end}}
       
@@ -740,6 +693,10 @@
             var slot = Math.floor((ts / 1000 - gts) / sps)
             if (slot < 0) return 0
             return slot
+        }
+
+        if (localStorage.getItem("infoBannerStatus")==="hide"){
+            hideInfoBanner()
         }
 	</script>
 
