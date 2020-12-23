@@ -510,10 +510,6 @@ func updateValidatorPerformance() error {
 		var earningsLastMonth int64
 		var totalDeposits int64
 
-		if balance.Index == 111480 {
-			spew.Dump(depositsMap[fmt.Sprintf("%x", balance.PublicKey)])
-		}
-
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
 			earningsTotal -= deposit
@@ -538,10 +534,16 @@ func updateValidatorPerformance() error {
 		if balance.Balance31d == 0 {
 			balance.Balance31d = balance.ActivationEpoch
 		}
+
 		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
 		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
 		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
 		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
+
+		if balance.Index == 111480 {
+			spew.Dump(depositsMap[fmt.Sprintf("%x", balance.PublicKey)])
+			spew.Dump(balance)
+		}
 
 		data = append(data, &types.ValidatorPerformance{
 			Rank:            0,
