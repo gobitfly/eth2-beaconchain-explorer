@@ -261,13 +261,15 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
-	validatorBalances7d, err := pc.getBalancesForEpoch(int64(epoch) - 225*7)
-	logger.Printf("retrieved data for %v validator balances for 7d epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
+	epoch7d := int64(epoch) - 225*7
+	validatorBalances7d, err := pc.getBalancesForEpoch(epoch7d)
+	logger.Printf("retrieved data for %v validator balances for 7d epoch %v took %v", len(validatorBalances), epoch7d, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
-	validatorBalances30d, err := pc.getBalancesForEpoch(int64(epoch) - 225*30)
-	logger.Printf("retrieved data for %v validator balances for 30d epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
+	epoch30d := int64(epoch) - 225*30
+	validatorBalances30d, err := pc.getBalancesForEpoch(epoch30d)
+	logger.Printf("retrieved data for %v validator balances for 30d epoch %v took %v", len(validatorBalances), epoch30d, time.Since(start))
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
 	if err != nil {
