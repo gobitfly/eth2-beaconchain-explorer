@@ -530,7 +530,7 @@ func updateValidatorPerformance() error {
 		}
 		if balance.Balance7d == 0 {
 			if balance.Index == 111480 {
-				logger.Info("OK")
+				logger.Info("OK", balance.Balance7d)
 			}
 			balance.Balance7d = balance.ActivationEpoch
 		}
