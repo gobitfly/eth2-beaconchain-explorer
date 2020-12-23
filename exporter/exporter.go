@@ -518,13 +518,13 @@ func updateValidatorPerformance() error {
 			totalDeposits += deposit
 			earningsTotal -= deposit
 
-			if epoch >= lastDayEpoch {
+			if epoch > lastDayEpoch {
 				earningsLastDay -= deposit
 			}
-			if epoch >= lastWeekEpoch {
+			if epoch > lastWeekEpoch {
 				earningsLastWeek -= deposit
 			}
-			if epoch >= lastMonthEpoch {
+			if epoch > lastMonthEpoch {
 				earningsLastMonth -= deposit
 			}
 		}
