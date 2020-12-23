@@ -530,7 +530,11 @@
 
         </tr>
         <tr>
-            <th scope="row">Active since</th>
+            {{ if gt .NetworkStats.CurrentEpoch .ActivationEpoch  }}
+              <th scope="row">Active since</th>
+            {{else}}
+              <th scope="row">Activation</th>
+            {{end}}
             <td>
                 {{if eq .ActivationEpoch 9223372036854775807}}
                     -
