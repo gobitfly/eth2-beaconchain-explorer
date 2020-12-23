@@ -714,7 +714,7 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) err
 }
 
 func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
-	batchSize := 5000
+	batchSize := 4000
 	var lenActivatedValidators int
 	var lastActivatedValidatorIdx uint64
 
@@ -737,7 +737,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 		}
 
 		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*10)
+		valueArgs := make([]interface{}, 0, batchSize*12)
 		for i, v := range validators[start:end] {
 
 			if v.WithdrawableEpoch == 18446744073709551615 {
