@@ -94,45 +94,62 @@
     <script>
         var index = {{.Index}}
             window.addEventListener('load', function () {
-                $('#attestations-table').DataTable({
-                    processing: true,
-                    serverSide: true,
-                    ordering: true,
-                    order: [[0, 'desc']],
-                    lengthChange: false,
-                    searching: false,
-                    ajax: '/validator/' + index + '/attestations',
-                    pagingType: 'input',
-                    pageLength: 10,
-                    language: {
-                        searchPlaceholder: 'Search by Epoch Number',
-                        search: '',
-                        paginate: {
-                            previous: "<",
-                            next: ">",
-                        }
-                    },
-                    columnDefs: [
-                    {
-                        targets: 1,
-                        data: '1',
-                        "orderable": false
-                    },
-                    {
-                        targets: 3,
-                        data: '3',
-                        "orderable": false
-                    },
-                    {
-                        targets: 5,
-                        data: '5',
-                        "orderable": false
-                    },
-                  ],
-                    drawCallback: function (settings) {
-                        formatTimestamps()
-                    },
+                var activeTab = $('#chartTabs .active')
+                var initializedAttestationTable = false
+
+                if (activeTab === 'attestations-tab') {
+                    initializedAttestationTable = true
+                    createAttestationTable()
+                }
+                
+                $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                    if (e.target.id === 'attestations-tab' && !initializedAttestationTable) {
+                        initializedAttestationTable = true
+                        createAttestationTable()
+                    }
                 })
+
+                function createAttestationTable() {
+                    $('#attestations-table').DataTable({
+                            processing: true,
+                            serverSide: true,
+                            ordering: true,
+                            order: [[0, 'desc']],
+                            lengthChange: false,
+                            searching: false,
+                            ajax: '/validator/' + index + '/attestations',
+                            pagingType: 'input',
+                            pageLength: 10,
+                            language: {
+                                searchPlaceholder: 'Search by Epoch Number',
+                                search: '',
+                                paginate: {
+                                    previous: "<",
+                                    next: ">",
+                                }
+                            },
+                            columnDefs: [
+                            {
+                                targets: 1,
+                                data: '1',
+                                "orderable": false
+                            },
+                            {
+                                targets: 3,
+                                data: '3',
+                                "orderable": false
+                            },
+                            {
+                                targets: 5,
+                                data: '5',
+                                "orderable": false
+                            },
+                        ],
+                            drawCallback: function (settings) {
+                                formatTimestamps()
+                            },
+                        })
+                }
             })
     </script>
 {{end}}
