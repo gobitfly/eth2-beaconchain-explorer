@@ -24,7 +24,7 @@ var epochBlacklist = make(map[uint64]uint64)
 
 // Start will start the export of data from rpc into the database
 func Start(client rpc.Client) error {
-	performanceDataUpdater()
+	go performanceDataUpdater()
 	go networkLivenessUpdater(client)
 	go eth1DepositsExporter()
 	go genesisDepositsExporter()
@@ -465,7 +465,6 @@ func updateValidatorPerformance() error {
 	lastWeekEpoch := latestEpoch - 225*7
 	lastMonthEpoch := latestEpoch - 225*31
 
-	logger.Info("retrieving all validator balances")
 	var balances []*types.Validator
 	err = tx.Select(&balances, `
 		SELECT 
@@ -486,7 +485,6 @@ func updateValidatorPerformance() error {
 		Amount         int64
 	}{}
 
-	logger.Info("retrieving all deposits")
 	err = tx.Select(&deposits, `
 		SELECT
 			v.validatorindex,
@@ -509,8 +507,6 @@ func updateValidatorPerformance() error {
 		}
 		depositsMap[d.Validatorindex][d.Epoch] = d.Amount
 	}
-
-	logger.Info("calculating performances")
 
 	data := make([]*types.ValidatorPerformance, 0, len(balances))
 
@@ -567,8 +563,6 @@ func updateValidatorPerformance() error {
 	sort.Slice(data, func(i, j int) bool {
 		return data[i].Performance7d > data[j].Performance7d
 	})
-
-	logger.Infof("saving validator performances for %v validators", len(data))
 
 	batchSize := 5000
 
