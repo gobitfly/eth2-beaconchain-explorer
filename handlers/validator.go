@@ -225,7 +225,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		    validators.status,
 		    COALESCE(validators.balanceactivation, 0) AS balanceactivation,
 		    COALESCE(validators.balance7d, 0) AS balance7d,
-		    COALESCE(validators.balance30d, 0) AS balance30d
+		    COALESCE(validators.balance31d, 0) AS balance31d
 		FROM validators 
 		LEFT JOIN validator_names 
 			ON validators.pubkey = validator_names.publickey

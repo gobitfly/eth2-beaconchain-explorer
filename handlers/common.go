@@ -47,7 +47,13 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 
 	balances := []types.Validator{}
 
-	err := db.DB.Select(&balances, "SELECT balance, balanceactivation, balance1d, balance7d, balance30d FROM validators WHERE validatorindex = ANY($1)", validatorsPQArray)
+	err := db.DB.Select(&balances, `SELECT 
+			   COALESCE(balance, 0) AS balance, 
+			   COALESCE(balanceactivation, 0) AS balanceactivation, 
+			   COALESCE(balance1d, 0) AS balance1d, 
+			   COALESCE(balance7d, 0) AS balance7d, 
+			   COALESCE(balance31d , 0) AS balance31d
+		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -86,6 +92,15 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}
 
 	for _, balance := range balances {
+		if balance.Balance1d == 0 {
+			balance.Balance1d = balance.ActivationEpoch
+		}
+		if balance.Balance7d == 0 {
+			balance.Balance7d = balance.ActivationEpoch
+		}
+		if balance.Balance31d == 0 {
+			balance.Balance31d = balance.ActivationEpoch
+		}
 		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
 		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
 		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
