@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -569,14 +570,36 @@ func updateValidatorPerformance() error {
 
 	logger.Info("saving validator performances for %v validators", len(data))
 
-	for i, d := range data {
-		_, err := tx.Exec(`
-			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-			d.Index, d.Balance, d.Performance1d, d.Performance7d, d.Performance31d, d.Performance365d, i+1)
+	batchSize := 10000
 
+	for b := 0; b < len(data); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(data) < end {
+			end = len(data)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*7)
+
+		for i, d := range data[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*7+1, i*7+2, i*7+3, i*7+4, i*7+5, i*7+6, i*7+7))
+			valueArgs = append(valueArgs, d.Index)
+			valueArgs = append(valueArgs, d.Balance)
+			valueArgs = append(valueArgs, d.Performance1d)
+			valueArgs = append(valueArgs, d.Performance7d)
+			valueArgs = append(valueArgs, d.Performance31d)
+			valueArgs = append(valueArgs, d.Performance365d)
+			valueArgs = append(valueArgs, i+i)
+		}
+
+		stmt := fmt.Sprintf(`		
+			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
+			VALUES %s`, strings.Join(valueStrings, ","))
+
+		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return fmt.Errorf("error saving validator performance data: %w", err)
+			return err
 		}
 	}
 
