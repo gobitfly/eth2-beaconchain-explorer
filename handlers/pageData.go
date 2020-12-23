@@ -1,15 +1,17 @@
 package handlers
 
 import (
+	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"eth2-exporter/version"
 	"fmt"
-	"github.com/gorilla/sessions"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/sessions"
 )
 
 func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string) *types.PageData {
@@ -35,6 +37,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 		Currency:              GetCurrency(r),
+		InfoBanner:            ethclients.GetBannerClients(),
 	}
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
 

@@ -30,6 +30,7 @@ type PageData struct {
 	EthPrice              float64
 	Currency              string
 	ExchangeRate          float64
+	InfoBanner            *template.HTML
 }
 
 // Meta is a struct to hold metadata about the page

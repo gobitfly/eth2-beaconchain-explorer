@@ -618,6 +618,11 @@
 					</div>
 				</div>
 				{{end}} -->
+        {{if .InfoBanner}}
+            <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-flex justify-content-center align-items-center p-2">
+                {{.InfoBanner}}
+            </div>
+        {{end}}
       
         {{ template "content" . }}
     </main>
