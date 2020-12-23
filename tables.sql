@@ -91,6 +91,21 @@ create table attestation_assignments
 create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
 create index idx_attestation_assignments_epoch on attestation_assignments (epoch);
 
+drop table if exists attestation_assignments_historical;
+create table attestation_assignments_historical
+(
+    epoch          int not null,
+    validatorindex int not null,
+    attesterslot   int not null,
+    committeeindex int not null,
+    status         int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
+    inclusionslot  int not null default 0, /* Slot this attestation was included for the first time */
+    primary key (epoch, validatorindex, attesterslot, committeeindex)
+);
+create index idx_attestation_assignments_historical_validatorindex on attestation_assignments_historical (validatorindex);
+create index idx_attestation_assignments_historical_epoch on attestation_assignments_historical (epoch);
+
+/* validator_balances holds validator-balances of the last 7 days */
 drop table if exists validator_balances;
 create table validator_balances
 (
@@ -101,6 +116,18 @@ create table validator_balances
     primary key (validatorindex, epoch)
 );
 create index idx_validator_balances_epoch on validator_balances (epoch);
+
+/* validator_balances_historical holds validator-balances of all epochs including genesis */
+drop table if exists validator_balances_historical;
+create table validator_balances_historical
+(
+    epoch            int    not null,
+    validatorindex   int    not null,
+    balance          bigint not null,
+    effectivebalance bigint not null,
+    primary key (validatorindex, epoch)
+);
+create index idx_validator_balances_historical_epoch on validator_balances_historical (epoch);
 
 drop table if exists queue;
 create table queue
@@ -423,4 +450,74 @@ create table api_statistics
     call   varchar(64)                 not null,
     count  int                         not null default 0,
     primary key (ts, apikey, call)
+);
+
+drop table if exists validator_stats;
+create table validator_stats (
+    validatorindex                   int    not null,
+    start_epoch                      int    not null,
+    end_epoch                        int    not null,
+    start_balance                    bigint not null,
+    end_balance                      bigint not null,
+    min_balance                      bigint not null,
+    max_balance                      bigint not null,
+    start_effective_balance          bigint not null,
+    end_effective_balance            bigint not null,
+    min_effective_balance            bigint not null,
+    max_effective_balance            bigint not null,
+    missed_attestations              int    not null,
+    orphaned_attestations            int    not null,
+    proposed_blocks                  int    not null,
+    missed_blocks                    int    not null,
+    orphaned_blocks                  int    not null,
+    attester_slashings               int    not null,
+    proposer_slashings               int    not null,
+    income                           bigint not null,
+    deposits                         int    not null,
+    deposits_amount                  bigint not null,
+    primary key(validatorindex, start_epoch, end_epoch)
+);
+
+drop table if exists network_stats;
+create table network_stats (
+    start_epoch                      int    not null,
+    end_epoch                        int    not null,
+    missed_attestations              int    not null,
+    orphaned_attestations            int    not null,
+    missed_blocks                    int    not null,
+    orphaned_blocks                  int    not null,
+    attester_slashings               int    not null,
+    proposer_slashings               int    not null,
+    voluntary_exits                  int    not null,
+    activations                      int    not null,
+    total_income                     bigint not null,
+    min_income                       bigint not null,
+    max_income                       bigint not null,
+    avg_income                       bigint not null,
+    start_total_balance              bigint not null,
+    end_total_balance                bigint not null,
+    min_total_balance                bigint not null,
+    max_total_balance                bigint not null,
+    avg_total_balance                bigint not null,
+    start_total_effective_balance    bigint not null,
+    end_total_effective_balance      bigint not null,
+    min_total_effective_balance      bigint not null,
+    max_total_effective_balance      bigint not null,
+    avg_total_effective_balance      bigint not null,
+    start_inclusion_delay            float  not null,
+    end_inclusion_delay              float  not null,
+    min_inclusion_delay              float  not null,
+    max_inclusion_delay              float  not null,
+    avg_inclusion_delay              float  not null,
+    start_optimal_inclusion_distance float  not null,
+    end_optimal_inclusion_distance   float  not null,
+    min_optimal_inclusion_distance   float  not null,
+    max_optimal_inclusion_distance   float  not null,
+    avg_optimal_inclusion_distance   float  not null,
+    start_participationrate          float  not null,
+    end_participationrate            float  not null,
+    min_participationrate            float  not null,
+    max_participationrate            float  not null,
+    avg_participationrate            float  not null,
+    primary key(start_epoch, end_epoch)
 );
