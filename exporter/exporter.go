@@ -462,6 +462,8 @@ func updateValidatorPerformance() error {
 	}
 
 	latestEpoch := int64(services.LatestEpoch())
+
+	logger.Infof("epoch: %v", latestEpoch)
 	lastDayEpoch := latestEpoch - 225
 	lastWeekEpoch := latestEpoch - 225*7
 	lastMonthEpoch := latestEpoch - 225*31
