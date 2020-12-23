@@ -230,7 +230,7 @@ func UserClientEntry(userID uint64, clientName string, clientVersion int64, noti
 		updateClientVersion = ", client_version = $3"
 	}
 
-	_, err := FrontendDB.Query(
+	_, err := FrontendDB.Exec(
 		"INSERT INTO users_clients (user_id, client, client_version, notify_enabled, created_ts) VALUES($1, $2, $3, $4, 'NOW()')"+
 			"ON CONFLICT (user_id, client) "+
 			"DO UPDATE SET notify_enabled = $4"+updateClientVersion+";",
