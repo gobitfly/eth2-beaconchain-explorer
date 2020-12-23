@@ -526,16 +526,13 @@ func updateValidatorPerformance() error {
 		}
 
 		if balance.Balance1d == 0 {
-			balance.Balance1d = balance.ActivationEpoch
+			balance.Balance1d = balance.BalanceActivation
 		}
 		if balance.Balance7d == 0 {
-			if balance.Index == 111480 {
-				logger.Info("OK", balance.Balance7d)
-			}
-			balance.Balance7d = balance.ActivationEpoch
+			balance.Balance7d = balance.BalanceActivation
 		}
 		if balance.Balance31d == 0 {
-			balance.Balance31d = balance.ActivationEpoch
+			balance.Balance31d = balance.BalanceActivation
 		}
 
 		if balance.Index == 111480 {

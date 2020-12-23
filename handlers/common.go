@@ -93,13 +93,13 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 
 	for _, balance := range balances {
 		if balance.Balance1d == 0 {
-			balance.Balance1d = balance.ActivationEpoch
+			balance.Balance1d = balance.BalanceActivation
 		}
 		if balance.Balance7d == 0 {
-			balance.Balance7d = balance.ActivationEpoch
+			balance.Balance7d = balance.BalanceActivation
 		}
 		if balance.Balance31d == 0 {
-			balance.Balance31d = balance.ActivationEpoch
+			balance.Balance31d = balance.BalanceActivation
 		}
 		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
 		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
