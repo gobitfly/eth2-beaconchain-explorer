@@ -49,7 +49,11 @@ func collectHistorical() error {
 	}
 
 	if lastHistoricalEpoch+batchSize < lastHotEpoch {
-		res, err := tx.Exec("insert into validator_balances_historical select * from validator_balances where epoch > $1 and epoch <= $2", lastHistoricalEpoch, lastHistoricalEpoch+batchSize)
+		qry := "insert into validator_balances_historical select * from validator_balances where epoch > $1 and epoch <= $2"
+		if lastHistoricalEpoch == 0 {
+			qry = "insert into validator_balances_historical select * from validator_balances where epoch >= $1 and epoch <= $2"
+		}
+		res, err := tx.Exec(qry, lastHistoricalEpoch, lastHistoricalEpoch+batchSize)
 		if err != nil {
 			return err
 		}
@@ -93,7 +97,11 @@ func collectHistorical() error {
 	}
 
 	if lastHistoricalEpoch+batchSize < lastHotEpoch {
-		res, err := tx.Exec("insert into attestation_assignments_historical select * from attestation_assignments where epoch > $1 and epoch <= $2", lastHistoricalEpoch, lastHistoricalEpoch+batchSize)
+		qry := "insert into attestation_assignments_historical select * from attestation_assignments where epoch > $1 and epoch <= $2"
+		if lastHistoricalEpoch == 0 {
+			qry = "insert into attestation_assignments_historical select * from attestation_assignments where epoch >= $1 and epoch <= $2"
+		}
+		res, err := tx.Exec(qry, lastHistoricalEpoch, lastHistoricalEpoch+batchSize)
 		if err != nil {
 			return err
 		}

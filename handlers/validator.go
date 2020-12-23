@@ -366,13 +366,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(balanceHistory)+len(balanceHistoryFromStats))
 
 	j := 0
-	for _, balance := range balanceHistory {
+	for _, balance := range balanceHistoryFromStats {
 		balanceTs := utils.EpochToTime(balance.Epoch)
 		validatorPageData.BalanceHistoryChartData[j] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
 		validatorPageData.EffectiveBalanceHistoryChartData[j] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.EffectiveBalance) / 1000000000}
 		j++
 	}
-	for _, balance := range balanceHistoryFromStats {
+	for _, balance := range balanceHistory {
 		balanceTs := utils.EpochToTime(balance.Epoch)
 		validatorPageData.BalanceHistoryChartData[j] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
 		validatorPageData.EffectiveBalanceHistoryChartData[j] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.EffectiveBalance) / 1000000000}
