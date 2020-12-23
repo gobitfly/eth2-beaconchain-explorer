@@ -487,7 +487,7 @@ func updateValidatorPerformance() error {
 		Amount    int64
 	}{}
 
-	err = tx.Select(&deposits, `SELECT block_slot / 32 AS epoch, amount AS deposit, publickey FROM blocks_deposits`)
+	err = tx.Select(&deposits, `SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits`)
 	if err != nil {
 		return fmt.Errorf("error retrieving validator deposits data: %w", err)
 	}
