@@ -143,7 +143,7 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 		}
 		timeDiff := (curTime.Sub(rTime).Hours() / 24.0)
 		if timeDiff < 2.0 { // show banner if update was less than 2 days ago
-			bannerClients += fmt.Sprintf("<a href=\"/ethClients#ethClientsServices\" class=\"text-primary\">%s %s</a>\n", name, client.Name)
+			bannerClients += fmt.Sprintf("<a href=\"/ethClients#ethClientsServices\" class=\"text-primary mr-2\">%s %s</a>\n", name, client.Name)
 			return client.Name, "Recently"
 		}
 
