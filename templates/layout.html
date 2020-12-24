@@ -567,12 +567,12 @@
             <div id="infoBanner">
                 <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-none d-md-flex justify-content-center align-items-center p-2">
                     {{.InfoBanner}}
-                    <i id="infoBannerDissBtn" class="far fa-times-circle btn" data-toggle="tooltip" data-placement="bottom" title="Dismiss"></i>
+                    <i id="infoBannerDissBtn" class="far fa-times-circle btn" data-toggle="tooltip" data-placement="bottom" title="Dismiss" onClick="hideInfoBanner({{.InfoBanner}})"></i>
                 </div>
                 <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-flex d-md-none justify-content-center align-items-center p-2">
                     <i class="fab fa-github mr-2" aria-hidden="true"></i>
                     <a class="mr-2 text-primary" href="/ethClients#ethClientsServices"> New client update released</a>
-                    <i id="infoBannerDissBtn" class="far fa-times-circle btn" data-toggle="tooltip" data-placement="bottom" title="Dismiss"></i>
+                    <i id="infoBannerDissBtn" class="far fa-times-circle btn" data-toggle="tooltip" data-placement="bottom" title="Dismiss" onClick="hideInfoBanner({{.InfoBanner}})"></i>
                 </div>
             </div>
         {{end}}
@@ -695,8 +695,8 @@
             return slot
         }
 
-        if (localStorage.getItem("infoBannerStatus")==="hide"){
-            hideInfoBanner()
+        if (localStorage.getItem("infoBannerStatus")==={{.InfoBanner}}){
+            hideInfoBanner({{.InfoBanner}})
         }
 	</script>
 

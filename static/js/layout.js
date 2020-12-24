@@ -58,11 +58,11 @@ function switchTheme(e) {
 }
 $('#toggleSwitch').on('change', switchTheme)
 
-function hideInfoBanner(){
-  localStorage.setItem('infoBannerStatus', "hide")
+function hideInfoBanner(msg){
+  localStorage.setItem('infoBannerStatus', msg)
   $('#infoBanner').attr('class', 'd-none')
 }
-$("#infoBannerDissBtn").on('click', hideInfoBanner)
+// $("#infoBannerDissBtn").on('click', hideInfoBanner)
 
 // typeahead
 $(document).ready(function() {
