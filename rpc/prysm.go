@@ -410,7 +410,7 @@ func (pc *PrysmClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, erro
 
 // GetBlocksBySlot will get blocks by slot from a Prysm client
 func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
-	logger.Infof("Retrieving block at slot %v", slot)
+	logger.Infof("retrieving block at slot %v", slot)
 
 	blocks := make([]*types.Block, 0)
 
