@@ -225,8 +225,6 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	data.ValidatorIndices = make(map[string]uint64)
-
 	// Retrieve the validator balances for the requested epoch
 	start := time.Now()
 	validatorBalances, err := pc.getBalancesForEpoch(int64(epoch))
@@ -331,8 +329,6 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 
 		for _, validator := range validatorResponse.ValidatorList {
-
-			data.ValidatorIndices[fmt.Sprintf("%x", validator.Validator.PublicKey)] = validator.Index
 
 			balance, exists := validatorBalances[validator.Index]
 			if !exists {
