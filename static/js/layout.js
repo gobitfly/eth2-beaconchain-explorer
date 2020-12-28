@@ -58,6 +58,12 @@ function switchTheme(e) {
 }
 $('#toggleSwitch').on('change', switchTheme)
 
+function hideInfoBanner(msg){
+  localStorage.setItem('infoBannerStatus', msg)
+  $('#infoBanner').attr('class', 'd-none')
+}
+// $("#infoBannerDissBtn").on('click', hideInfoBanner)
+
 // typeahead
 $(document).ready(function() {
   formatTimestamps() // make sure this happens before tooltips
