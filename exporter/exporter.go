@@ -525,37 +525,39 @@ func updateValidatorPerformance() error {
 		var earningsLastMonth int64
 		var totalDeposits int64
 
-		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
-			totalDeposits += deposit
+		if int64(balance.ActivationEpoch) < currentEpoch {
+			for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
+				totalDeposits += deposit
 
-			if epoch > int64(balance.ActivationEpoch) {
-				earningsTotal -= deposit
+				if epoch > int64(balance.ActivationEpoch) {
+					earningsTotal -= deposit
+				}
+				if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEpoch) {
+					earningsLastDay -= deposit
+				}
+				if epoch > lastWeekEpoch && epoch >= int64(balance.ActivationEpoch) {
+					earningsLastWeek -= deposit
+				}
+				if epoch > lastMonthEpoch && epoch >= int64(balance.ActivationEpoch) {
+					earningsLastMonth -= deposit
+				}
 			}
-			if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEpoch) {
-				earningsLastDay -= deposit
-			}
-			if epoch > lastWeekEpoch && epoch >= int64(balance.ActivationEpoch) {
-				earningsLastWeek -= deposit
-			}
-			if epoch > lastMonthEpoch && epoch >= int64(balance.ActivationEpoch) {
-				earningsLastMonth -= deposit
-			}
-		}
 
-		if balance.Balance1d == 0 {
-			balance.Balance1d = balance.BalanceActivation
-		}
-		if balance.Balance7d == 0 {
-			balance.Balance7d = balance.BalanceActivation
-		}
-		if balance.Balance31d == 0 {
-			balance.Balance31d = balance.BalanceActivation
-		}
+			if balance.Balance1d == 0 {
+				balance.Balance1d = balance.BalanceActivation
+			}
+			if balance.Balance7d == 0 {
+				balance.Balance7d = balance.BalanceActivation
+			}
+			if balance.Balance31d == 0 {
+				balance.Balance31d = balance.BalanceActivation
+			}
 
-		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
-		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
-		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
-		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
+			earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
+			earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
+			earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
+			earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
+		}
 
 		data = append(data, &types.ValidatorPerformance{
 			Rank:            0,

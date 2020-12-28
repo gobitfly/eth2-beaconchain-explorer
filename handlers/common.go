@@ -90,6 +90,9 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 
 	for _, balance := range balances {
 
+		if int64(balance.ActivationEpoch) > latestEpoch {
+			continue
+		}
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
 
