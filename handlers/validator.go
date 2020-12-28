@@ -348,12 +348,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	var balanceHistory []*types.ValidatorBalanceHistory
 	var epochs []uint64
+	var weeks []uint64
 	for i := uint64(0); i <= validatorPageData.Epoch; i++ {
 		if i%225 == 0 || i > validatorPageData.Epoch-(225*7) {
 			epochs = append(epochs, i)
+			weeks = append(weeks, i/1575)
 		}
 	}
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances WHERE validatorindex = $1 AND epoch = ANY($2) ORDER BY epoch", index, pq.Array(epochs))
+	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances_p WHERE validatorindex = $1 AND epoch = ANY($2) AND week = ANY($3) ORDER BY epoch", index, pq.Array(epochs), pq.Array(weeks))
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -1045,10 +1047,10 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				assign.inclusionslot AS attestation_inclusionslot,
 				vblocks.status as proposal_status,
 				vblocks.slot as proposal_slot
-			FROM validator_balances vbalance
-			LEFT JOIN attestation_assignments assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch
-			LEFT JOIN blocks vblocks ON vbalance.validatorindex = vblocks.proposer AND vbalance.epoch = vblocks.epoch
-			WHERE vbalance.validatorindex = $1 AND vbalance.epoch >= $2 AND vbalance.epoch <= $3
+			FROM validator_balances_p vbalance
+			LEFT JOIN attestation_assignments assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch AND vbalance.week = assign.epoch / 1575
+			LEFT JOIN blocks vblocks ON vbalance.validatorindex = vblocks.proposer AND vbalance.epoch = vblocks.epoch AND vbalance.week = vblocks.epoch / 1575
+			WHERE vbalance.validatorindex = $1 AND vbalance.epoch >= $2 AND vbalance.epoch <= $3 AND vbalance.week >= $2 / 1575 AND vbalance.week <= $3 / 1575
 			ORDER BY epoch DESC
 			LIMIT 10
 			`, index, currentEpoch-10-start, currentEpoch-start)

@@ -106,8 +106,8 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 			COALESCE(SUM(effectivebalance),0) AS effectivebalance,
 			COALESCE(SUM(balance),0) AS balance,
 			COUNT(*) AS validatorcount
-		FROM validator_balances
-		WHERE validatorindex = ANY($1) AND epoch > $2
+		FROM validator_balances_p
+		WHERE validatorindex = ANY($1) AND epoch > $2 AND week >= $2 / 1575
 		GROUP BY epoch
 		ORDER BY epoch ASC`
 

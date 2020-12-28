@@ -851,7 +851,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 	logger.Infof("saving validator status completed, took %v", time.Since(s))
 
 	s = time.Now()
-	_, err = tx.Exec("update validators set balanceactivation = (select balance from validator_balances where validator_balances.epoch = validators.activationepoch and validator_balances.validatorindex = validators.validatorindex) WHERE balanceactivation IS NULL;")
+	_, err = tx.Exec("update validators set balanceactivation = (select balance from validator_balances_p where validator_balances_p.week = validators.activationepoch / 1575 and validator_balances_p.epoch = validators.activationepoch and validator_balances_p.validatorindex = validators.validatorindex) WHERE balanceactivation IS NULL;")
 	if err != nil {
 		return err
 	}

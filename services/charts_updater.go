@@ -568,9 +568,10 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 					vb.epoch,
 					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
 				from validators v
-					left join validator_balances vb
+					left join validator_balances_p vb
 						on vb.validatorindex = v.validatorindex
 						and vb.epoch = v.activationepoch
+						and vb.week = v.activationepoch / 1575
 				order by vb.epoch
 			),
 			extradeposits as (
@@ -663,9 +664,10 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 					vb.epoch,
 					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
 				from validators v
-					left join validator_balances vb
+					left join validator_balances_p vb
 						on vb.validatorindex = v.validatorindex
 						and vb.epoch = v.activationepoch
+						and vb.week = v.activationepoch / 1575
 				order by vb.epoch
 			),
 			extradeposits as (
@@ -936,11 +938,11 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 				select 
 					min(balance) as min,
 					max(balance) as max
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances) 
+				from validators 
 			),
 			balances as (
 				select balance
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances)
+				from validators
 			),
 			histogram as (
 				select 
@@ -1019,11 +1021,11 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 				select 
 					min(effectivebalance) as min,
 					max(effectivebalance) as max
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances) 
+				from validators
 			),
 			balances as (
 				select effectivebalance
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances)
+				from validators
 			),
 			histogram as (
 				select 

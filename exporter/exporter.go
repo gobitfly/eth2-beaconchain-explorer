@@ -463,7 +463,7 @@ func updateValidatorPerformance() error {
 
 	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM epochs")
 	if err != nil {
-		return fmt.Errorf("error retrieving latest epoch from validator_balances table: %w", err)
+		return fmt.Errorf("error retrieving latest epoch: %w", err)
 	}
 
 	lastDayEpoch := currentEpoch - 225
@@ -734,9 +734,10 @@ func genesisDepositsExporter() {
 					b.balance as amount,
 					d.signature as signature
 				FROM validators v
-				LEFT JOIN validator_balances b 
+				LEFT JOIN validator_balances_p b 
 					ON v.validatorindex = b.validatorindex
 					AND b.epoch = 0
+					AND b.week = 0
 				LEFT JOIN ( 
 					SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
 				) d ON d.publickey = v.pubkey
