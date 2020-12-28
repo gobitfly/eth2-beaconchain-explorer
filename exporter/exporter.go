@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -434,7 +435,6 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 
 func performanceDataUpdater() {
 	for true {
-		time.Sleep(time.Hour)
 		logger.Info("updating validator performance data")
 		err := updateValidatorPerformance()
 
@@ -443,6 +443,7 @@ func performanceDataUpdater() {
 		} else {
 			logger.Info("validator performance data update completed")
 		}
+		time.Sleep(time.Hour)
 	}
 }
 
@@ -458,168 +459,114 @@ func updateValidatorPerformance() error {
 		return fmt.Errorf("error truncating validator performance table: %w", err)
 	}
 
-	var currentEpoch uint64
+	var currentEpoch int64
 
-	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM validator_balances")
+	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM epochs")
 	if err != nil {
 		return fmt.Errorf("error retrieving latest epoch from validator_balances table: %w", err)
 	}
 
-	now := utils.EpochToTime(currentEpoch)
-	epoch1d := utils.TimeToEpoch(now.Add(time.Hour * 24 * -1))
-	epoch7d := utils.TimeToEpoch(now.Add(time.Hour * 24 * 7 * -1))
-	epoch31d := utils.TimeToEpoch(now.Add(time.Hour * 24 * 31 * -1))
-	epoch365d := utils.TimeToEpoch(now.Add(time.Hour * 24 * 356 * -1))
+	lastDayEpoch := currentEpoch - 225
+	lastWeekEpoch := currentEpoch - 225*7
+	lastMonthEpoch := currentEpoch - 225*31
 
-	if epoch1d < 0 {
-		epoch1d = 0
+	if lastDayEpoch < 0 {
+		lastDayEpoch = 0
 	}
-	if epoch7d < 0 {
-		epoch7d = 0
+	if lastWeekEpoch < 0 {
+		lastWeekEpoch = 0
 	}
-	if epoch31d < 0 {
-		epoch31d = 0
-	}
-	if epoch365d < 0 {
-		epoch365d = 0
+	if lastMonthEpoch < 0 {
+		lastMonthEpoch = 0
 	}
 
-	var startBalances []struct {
-		Index           uint64
-		Balance         uint64
-		Activationepoch int64
-	}
-	err = tx.Select(&startBalances, `
-		SELECT 
-			validator_balances.validatorindex as index,
-			validator_balances.balance,
-			validators.activationepoch
-		FROM validators
-			LEFT JOIN validator_balances
-				ON validators.activationepoch = validator_balances.epoch
-				AND validators.validatorindex = validator_balances.validatorindex
-		WHERE validator_balances.validatorindex IS NOT NULL`)
-	if err != nil {
-		return fmt.Errorf("error retrieving initial validator balances data: %w", err)
-	}
-
-	startEpochMap := make(map[uint64]int64)
-	startBalanceMap := make(map[uint64]uint64)
-	for _, balance := range startBalances {
-		startEpochMap[balance.Index] = balance.Activationepoch
-		startBalanceMap[balance.Index] = balance.Balance
-	}
-
-	var balances []*types.ValidatorBalance
+	var balances []types.Validator
 	err = tx.Select(&balances, `
-		SELECT
-			validator_balances.epoch,
-			validator_balances.validatorindex,
-			validator_balances.balance
-		FROM validator_balances
-		WHERE validator_balances.epoch IN ($1, $2, $3, $4, $5)`,
-		currentEpoch, epoch1d, epoch7d, epoch31d, epoch365d)
+		SELECT 
+			   validatorindex,
+			   pubkey,
+       		   activationepoch,
+		       COALESCE(balance, 0) AS balance, 
+			   COALESCE(balanceactivation, 0) AS balanceactivation, 
+			   COALESCE(balance1d, 0) AS balance1d, 
+			   COALESCE(balance7d, 0) AS balance7d, 
+			   COALESCE(balance31d , 0) AS balance31d
+		FROM validators`)
 	if err != nil {
 		return fmt.Errorf("error retrieving validator performance data: %w", err)
 	}
 
-	performance := make(map[uint64]map[int64]int64)
-	for _, balance := range balances {
-		if performance[balance.Index] == nil {
-			performance[balance.Index] = make(map[int64]int64)
-		}
-		performance[balance.Index][int64(balance.Epoch)] = int64(balance.Balance)
-	}
-
 	deposits := []struct {
-		Validatorindex uint64
-		Epoch          int64
-		Amount         int64
+		Publickey []byte
+		Epoch     int64
+		Amount    int64
 	}{}
 
-	err = tx.Select(&deposits, `
-		SELECT
-			v.validatorindex,
-			(d.block_slot/32) AS epoch,
-			SUM(d.amount) AS amount
-		FROM validators v
-			INNER JOIN blocks_deposits d
-				ON d.publickey = v.pubkey
-				AND (d.block_slot/32) > v.activationepoch
-		GROUP BY (d.block_slot/32), v.validatorindex
-		ORDER BY epoch`)
+	err = tx.Select(&deposits, `SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits`)
 	if err != nil {
 		return fmt.Errorf("error retrieving validator deposits data: %w", err)
 	}
 
-	depositsMap := make(map[uint64]map[int64]int64)
+	depositsMap := make(map[string]map[int64]int64)
 	for _, d := range deposits {
-		if _, exists := depositsMap[d.Validatorindex]; !exists {
-			depositsMap[d.Validatorindex] = make(map[int64]int64)
+		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
+			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
 		}
-		depositsMap[d.Validatorindex][d.Epoch] = d.Amount
+		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
 	}
 
-	data := make([]*types.ValidatorPerformance, 0, len(performance))
+	data := make([]*types.ValidatorPerformance, 0, len(balances))
 
-	for validator, balances := range performance {
+	for _, balance := range balances {
 
-		currentBalance := balances[int64(currentEpoch)]
-		startBalance := int64(startBalanceMap[validator])
+		var earningsTotal int64
+		var earningsLastDay int64
+		var earningsLastWeek int64
+		var earningsLastMonth int64
+		var totalDeposits int64
 
-		if currentBalance == 0 || startBalance == 0 {
-			continue
-		}
+		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
+			totalDeposits += deposit
 
-		balance1d := balances[epoch1d]
-		if balance1d == 0 || startEpochMap[validator] > epoch1d {
-			balance1d = startBalance
-		}
-		balance7d := balances[epoch7d]
-		if balance7d == 0 || startEpochMap[validator] > epoch7d {
-			balance7d = startBalance
-		}
-		balance31d := balances[epoch31d]
-		if balance31d == 0 || startEpochMap[validator] > epoch31d {
-			balance31d = startBalance
-		}
-		balance365d := balances[epoch365d]
-		if balance365d == 0 || startEpochMap[validator] > epoch365d {
-			balance365d = startBalance
-		}
-
-		performance1d := currentBalance - balance1d
-		performance7d := currentBalance - balance7d
-		performance31d := currentBalance - balance31d
-		performance365d := currentBalance - balance365d
-
-		if depositsMap[validator] != nil {
-			for depositEpoch, depositAmount := range depositsMap[validator] {
-				if depositEpoch > epoch1d {
-					performance1d -= depositAmount
-				}
-				if depositEpoch > epoch7d {
-					performance7d -= depositAmount
-				}
-				if depositEpoch > epoch31d {
-					performance31d -= depositAmount
-				}
-				if depositEpoch > epoch365d {
-					performance365d -= depositAmount
-				}
+			if epoch > int64(balance.ActivationEpoch) {
+				earningsTotal -= deposit
+			}
+			if epoch > lastDayEpoch && epoch >= int64(balance.ActivationEpoch) {
+				earningsLastDay -= deposit
+			}
+			if epoch > lastWeekEpoch && epoch >= int64(balance.ActivationEpoch) {
+				earningsLastWeek -= deposit
+			}
+			if epoch > lastMonthEpoch && epoch >= int64(balance.ActivationEpoch) {
+				earningsLastMonth -= deposit
 			}
 		}
 
+		if balance.Balance1d == 0 {
+			balance.Balance1d = balance.BalanceActivation
+		}
+		if balance.Balance7d == 0 {
+			balance.Balance7d = balance.BalanceActivation
+		}
+		if balance.Balance31d == 0 {
+			balance.Balance31d = balance.BalanceActivation
+		}
+
+		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
+		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
+		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
+		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
+
 		data = append(data, &types.ValidatorPerformance{
 			Rank:            0,
-			Index:           validator,
+			Index:           balance.Index,
 			PublicKey:       nil,
 			Name:            "",
-			Balance:         uint64(currentBalance),
-			Performance1d:   performance1d,
-			Performance7d:   performance7d,
-			Performance31d:  performance31d,
-			Performance365d: performance365d,
+			Balance:         balance.Balance,
+			Performance1d:   earningsLastDay,
+			Performance7d:   earningsLastWeek,
+			Performance31d:  earningsLastMonth,
+			Performance365d: earningsTotal,
 		})
 	}
 
@@ -627,14 +574,36 @@ func updateValidatorPerformance() error {
 		return data[i].Performance7d > data[j].Performance7d
 	})
 
-	for i, d := range data {
-		_, err := tx.Exec(`
-			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-			d.Index, d.Balance, d.Performance1d, d.Performance7d, d.Performance31d, d.Performance365d, i+1)
+	batchSize := 5000
 
+	for b := 0; b < len(data); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(data) < end {
+			end = len(data)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*7)
+
+		for i, d := range data[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*7+1, i*7+2, i*7+3, i*7+4, i*7+5, i*7+6, i*7+7))
+			valueArgs = append(valueArgs, d.Index)
+			valueArgs = append(valueArgs, d.Balance)
+			valueArgs = append(valueArgs, d.Performance1d)
+			valueArgs = append(valueArgs, d.Performance7d)
+			valueArgs = append(valueArgs, d.Performance31d)
+			valueArgs = append(valueArgs, d.Performance365d)
+			valueArgs = append(valueArgs, i+i)
+		}
+
+		stmt := fmt.Sprintf(`		
+			INSERT INTO validator_performance (validatorindex, balance, performance1d, performance7d, performance31d, performance365d, rank7d)
+			VALUES %s`, strings.Join(valueStrings, ","))
+
+		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return fmt.Errorf("error saving validator performance data: %w", err)
+			return err
 		}
 	}
 

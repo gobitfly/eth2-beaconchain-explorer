@@ -139,8 +139,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	}
 
 	stateRootString := strings.Replace(string(stateRoot), "\"", "", -1)
-	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
-	data.ValidatorIndices = make(map[string]uint64)
 	data.Validators = make([]*types.Validator, 0)
 
 	var parsedResponse []*lighthouseValidatorResponse
@@ -159,7 +157,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	for _, validator := range parsedResponse {
 
 		pubKey := utils.MustParseHex(validator.Pubkey)
-		data.ValidatorIndices[fmt.Sprintf("%x", pubKey)] = validator.ValidatorIndex
 
 		data.Validators = append(data.Validators, &types.Validator{
 			Index:                      validator.ValidatorIndex,

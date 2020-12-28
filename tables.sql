@@ -12,6 +12,10 @@ create table validators
     withdrawableepoch          bigint      not null,
     withdrawalcredentials      bytea       not null,
     balance                    bigint      not null,
+    balance1d                  bigint,
+    balance7d                  bigint,
+    balance31d                 bigint,
+    balanceactivation          bigint,
     effectivebalance           bigint      not null,
     slashed                    bool        not null,
     activationeligibilityepoch bigint      not null,
@@ -23,6 +27,7 @@ create table validators
 );
 create index idx_validators_pubkey on validators (pubkey);
 create index idx_validators_status on validators (status);
+create index idx_validators_balanceactivation on validators (balanceactivation);
 
 drop table if exists validator_names;
 create table validator_names
