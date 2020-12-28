@@ -107,6 +107,30 @@ create table validator_balances
 );
 create index idx_validator_balances_epoch on validator_balances (epoch);
 
+drop table if exists validator_balances_p;
+create table validator_balances_p
+(
+    epoch            int    not null,
+    validatorindex   int    not null,
+    balance          bigint not null,
+    effectivebalance bigint not null,
+    week             int    not null,
+    primary key (validatorindex, week, epoch)
+) PARTITION BY LIST (week);
+create index idx_validator_balances_p_epoch on validator_balances_p (epoch);
+create index idx_validator_balances_p_week on validator_balances_p (week);
+
+CREATE TABLE validator_balances_0 PARTITION OF validator_balances_p FOR VALUES IN (0);
+CREATE TABLE validator_balances_1 PARTITION OF validator_balances_p FOR VALUES IN (1);
+CREATE TABLE validator_balances_2 PARTITION OF validator_balances_p FOR VALUES IN (2);
+CREATE TABLE validator_balances_3 PARTITION OF validator_balances_p FOR VALUES IN (3);
+CREATE TABLE validator_balances_4 PARTITION OF validator_balances_p FOR VALUES IN (4);
+CREATE TABLE validator_balances_5 PARTITION OF validator_balances_p FOR VALUES IN (5);
+CREATE TABLE validator_balances_6 PARTITION OF validator_balances_p FOR VALUES IN (6);
+CREATE TABLE validator_balances_7 PARTITION OF validator_balances_p FOR VALUES IN (7);
+CREATE TABLE validator_balances_8 PARTITION OF validator_balances_p FOR VALUES IN (8);
+CREATE TABLE validator_balances_9 PARTITION OF validator_balances_p FOR VALUES IN (9);
+
 drop table if exists queue;
 create table queue
 (

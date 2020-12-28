@@ -946,6 +946,35 @@ func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.
 		}
 	}
 
+	for b := 0; b < len(validators); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(validators) < end {
+			end = len(validators)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*5)
+		for i, v := range validators[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*5+1, i*5+2, i*5+3, i*5+4, i*5+5))
+			valueArgs = append(valueArgs, epoch)
+			valueArgs = append(valueArgs, v.Index)
+			valueArgs = append(valueArgs, v.Balance)
+			valueArgs = append(valueArgs, v.EffectiveBalance)
+			valueArgs = append(valueArgs, epoch/1575)
+		}
+		stmt := fmt.Sprintf(`
+		INSERT INTO validator_balances_p (epoch, validatorindex, balance, effectivebalance, week)
+		VALUES %s
+		ON CONFLICT (epoch, validatorindex, week) DO UPDATE SET
+			balance          = EXCLUDED.balance,
+			effectivebalance = EXCLUDED.effectivebalance`, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
