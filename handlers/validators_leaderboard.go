@@ -86,7 +86,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	var performanceData []*types.ValidatorPerformance
 
 	if search == "" {
-		err = db.DB.Get(&totalCount, `SELECT COUNT(*) FROM validator_performance_old`)
+		err = db.DB.Get(&totalCount, `SELECT COUNT(*) FROM validator_performance`)
 		if err != nil {
 			logger.Errorf("error retrieving proposed blocks count: %v", err)
 			http.Error(w, "Internal server error", 503)
