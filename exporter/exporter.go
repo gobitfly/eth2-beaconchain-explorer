@@ -578,7 +578,9 @@ func updateValidatorPerformance() error {
 
 	batchSize := 5000
 
+	rank7d := 0
 	for b := 0; b < len(data); b += batchSize {
+
 		start := b
 		end := b + batchSize
 		if len(data) < end {
@@ -589,6 +591,8 @@ func updateValidatorPerformance() error {
 		valueArgs := make([]interface{}, 0, batchSize*7)
 
 		for i, d := range data[start:end] {
+			rank7d++
+
 			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*7+1, i*7+2, i*7+3, i*7+4, i*7+5, i*7+6, i*7+7))
 			valueArgs = append(valueArgs, d.Index)
 			valueArgs = append(valueArgs, d.Balance)
@@ -596,7 +600,7 @@ func updateValidatorPerformance() error {
 			valueArgs = append(valueArgs, d.Performance7d)
 			valueArgs = append(valueArgs, d.Performance31d)
 			valueArgs = append(valueArgs, d.Performance365d)
-			valueArgs = append(valueArgs, i+1)
+			valueArgs = append(valueArgs, rank7d)
 		}
 
 		stmt := fmt.Sprintf(`		
