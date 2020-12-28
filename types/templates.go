@@ -30,6 +30,7 @@ type PageData struct {
 	EthPrice              float64
 	Currency              string
 	ExchangeRate          float64
+	InfoBanner            *template.HTML
 }
 
 // Meta is a struct to hold metadata about the page
@@ -190,6 +191,9 @@ type ValidatorPageData struct {
 	PublicKey                           []byte `db:"pubkey"`
 	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
 	CurrentBalance                      uint64 `db:"balance"`
+	BalanceActivation                   uint64 `db:"balanceactivation"`
+	Balance7d                           uint64 `db:"balance7d"`
+	Balance31d                          uint64 `db:"balance31d"`
 	EffectiveBalance                    uint64 `db:"effectivebalance"`
 	Slashed                             bool   `db:"slashed"`
 	SlashedBy                           uint64
@@ -725,8 +729,9 @@ type EthTwoDepositData struct {
 }
 
 type ValidatorDeposits struct {
-	Eth1Deposits []Eth1Deposit
-	Eth2Deposits []Eth2Deposit
+	Eth1Deposits      []Eth1Deposit
+	LastEth1DepositTs int64
+	Eth2Deposits      []Eth2Deposit
 }
 
 type MyCryptoSignature struct {

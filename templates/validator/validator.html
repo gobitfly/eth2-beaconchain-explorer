@@ -105,7 +105,7 @@
 								{{ template "validatorNetworkStatsTable" .}}
 							{{end}}
 							{{ if $pending }}
-								{{ template "validatorNetworkStatsTable" .}}
+								{{ template "validatorIncomeTable" $}}
 							{{end}}
 							{{ if $validating }}
 								{{ template "validatorIncomeTable" $}}

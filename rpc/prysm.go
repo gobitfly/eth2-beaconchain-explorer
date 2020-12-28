@@ -175,33 +175,6 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 		AttestorAssignments: make(map[string]uint64),
 	}
 
-	// Retrieve the currently active validator set in order to map public keys to indexes
-	validators := make(map[string]uint64)
-	validatorsResponse := &ethpb.Validators{}
-	validatorsRequest := &ethpb.ListValidatorsRequest{PageSize: utils.Config.Indexer.Node.PageSize, PageToken: validatorsResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorsRequest_Epoch{Epoch: epoch}}
-	if epoch == 0 {
-		validatorsRequest.QueryFilter = &ethpb.ListValidatorsRequest_Genesis{Genesis: true}
-	}
-	for {
-		validatorsRequest.PageToken = validatorsResponse.NextPageToken
-		validatorsResponse, err = pc.client.ListValidators(context.Background(), validatorsRequest)
-		if err != nil {
-			return nil, fmt.Errorf("error retrieving validator indices for epoch assignments: %v", err)
-		}
-		if validatorsResponse.TotalSize == 0 {
-			break
-		}
-
-		for _, validator := range validatorsResponse.ValidatorList {
-			logger.Debugf("%x - %v", validator.Validator.PublicKey, validator.Index)
-			validators[fmt.Sprintf("%x", validator.Validator.PublicKey)] = validator.Index
-		}
-
-		if validatorsResponse.NextPageToken == "" {
-			break
-		}
-	}
-
 	// Retrieve the validator assignments for the epoch
 	validatorAssignmentes := make([]*ethpb.ValidatorAssignments_CommitteeAssignment, 0)
 	validatorAssignmentResponse := &ethpb.ValidatorAssignments{}
@@ -229,7 +202,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	// Attestation assignments are cached by the slot & committee key
 	for _, assignment := range validatorAssignmentes {
 		for _, slot := range assignment.ProposerSlots {
-			assignments.ProposerAssignments[slot] = validators[fmt.Sprintf("%x", assignment.PublicKey)]
+			assignments.ProposerAssignments[slot] = assignment.ValidatorIndex
 		}
 
 		for memberIndex, validatorIndex := range assignment.BeaconCommittees {
@@ -252,37 +225,28 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	data.ValidatorIndices = make(map[string]uint64)
+	// Retrieve the validator balances for the requested epoch
+	start := time.Now()
+	validatorBalances, err := pc.getBalancesForEpoch(int64(epoch))
+	logger.Printf("retrieved data for %v validator balances for epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
 
-	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
-	validatorBalancesByPubkey := make(map[string]uint64)
+	// Retrieve the validator balances for the n-1d epoch
+	start = time.Now()
+	epoch1d := int64(epoch) - 225
+	validatorBalances1d, err := pc.getBalancesForEpoch(epoch1d)
+	logger.Printf("retrieved data for %v validator balances for 1d epoch %v took %v", len(validatorBalances), epoch1d, time.Since(start))
 
-	validatorBalancesResponse := &ethpb.ValidatorBalances{}
-	validatorBalancesRequest := &ethpb.ListValidatorBalancesRequest{PageSize: utils.Config.Indexer.Node.PageSize, PageToken: validatorBalancesResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: epoch}}
-	if epoch == 0 {
-		validatorBalancesRequest.QueryFilter = &ethpb.ListValidatorBalancesRequest_Genesis{Genesis: true}
-	}
-	for {
-		validatorBalancesRequest.PageToken = validatorBalancesResponse.NextPageToken
-		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), validatorBalancesRequest)
-		if err != nil {
-			logger.Printf("error retrieving validator balances for epoch %v: %v", epoch, err)
-			break
-		}
-		if validatorBalancesResponse.TotalSize == 0 {
-			break
-		}
+	// Retrieve the validator balances for the n-7d epoch
+	start = time.Now()
+	epoch7d := int64(epoch) - 225*7
+	validatorBalances7d, err := pc.getBalancesForEpoch(epoch7d)
+	logger.Printf("retrieved data for %v validator balances for 7d epoch %v took %v", len(validatorBalances), epoch7d, time.Since(start))
 
-		for _, balance := range validatorBalancesResponse.Balances {
-			data.ValidatorIndices[fmt.Sprintf("%x", balance.PublicKey)] = balance.Index
-			validatorBalancesByPubkey[fmt.Sprintf("%x", balance.PublicKey)] = balance.Balance
-		}
-
-		if validatorBalancesResponse.NextPageToken == "" {
-			break
-		}
-	}
-	logger.Printf("retrieved data for %v validator balances for epoch %v", len(validatorBalancesByPubkey), epoch)
+	// Retrieve the validator balances for the n-7d epoch
+	start = time.Now()
+	epoch31d := int64(epoch) - 225*31
+	validatorBalances31d, err := pc.getBalancesForEpoch(epoch31d)
+	logger.Printf("retrieved data for %v validator balances for 31d epoch %v took %v", len(validatorBalances), epoch31d, time.Since(start))
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
 	if err != nil {
@@ -365,12 +329,14 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 		}
 
 		for _, validator := range validatorResponse.ValidatorList {
-			balance, exists := validatorBalancesByPubkey[fmt.Sprintf("%x", validator.Validator.PublicKey)]
+
+			balance, exists := validatorBalances[validator.Index]
 			if !exists {
 				logger.WithField("pubkey", fmt.Sprintf("%x", validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
 				continue
 			}
-			data.Validators = append(data.Validators, &types.Validator{
+
+			val := &types.Validator{
 				Index:                      validator.Index,
 				PublicKey:                  validator.Validator.PublicKey,
 				WithdrawalCredentials:      validator.Validator.WithdrawalCredentials,
@@ -381,7 +347,14 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 				ActivationEpoch:            validator.Validator.ActivationEpoch,
 				ExitEpoch:                  validator.Validator.ExitEpoch,
 				WithdrawableEpoch:          validator.Validator.WithdrawableEpoch,
-			})
+			}
+
+			val.Balance1d = validatorBalances1d[validator.Index]
+			val.Balance7d = validatorBalances7d[validator.Index]
+			val.Balance31d = validatorBalances31d[validator.Index]
+
+			data.Validators = append(data.Validators, val)
+
 		}
 
 		if validatorResponse.NextPageToken == "" {
@@ -398,9 +371,46 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	return data, nil
 }
 
+func (pc *PrysmClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, error) {
+
+	if epoch < 0 {
+		epoch = 0
+	}
+
+	var err error
+
+	validatorBalances := make(map[uint64]uint64)
+
+	validatorBalancesResponse := &ethpb.ValidatorBalances{}
+	validatorBalancesRequest := &ethpb.ListValidatorBalancesRequest{PageSize: utils.Config.Indexer.Node.PageSize, PageToken: validatorBalancesResponse.NextPageToken, QueryFilter: &ethpb.ListValidatorBalancesRequest_Epoch{Epoch: uint64(epoch)}}
+	if epoch == 0 {
+		validatorBalancesRequest.QueryFilter = &ethpb.ListValidatorBalancesRequest_Genesis{Genesis: true}
+	}
+	for {
+		validatorBalancesRequest.PageToken = validatorBalancesResponse.NextPageToken
+		validatorBalancesResponse, err = pc.client.ListValidatorBalances(context.Background(), validatorBalancesRequest)
+		if err != nil {
+			logger.Printf("error retrieving validator balances for epoch %v: %v", epoch, err)
+			break
+		}
+		if validatorBalancesResponse.TotalSize == 0 {
+			break
+		}
+
+		for _, balance := range validatorBalancesResponse.Balances {
+			validatorBalances[balance.Index] = balance.Balance
+		}
+
+		if validatorBalancesResponse.NextPageToken == "" {
+			break
+		}
+	}
+	return validatorBalances, err
+}
+
 // GetBlocksBySlot will get blocks by slot from a Prysm client
 func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
-	logger.Infof("Retrieving block at slot %v", slot)
+	logger.Infof("retrieving block at slot %v", slot)
 
 	blocks := make([]*types.Block, 0)
 
