@@ -596,7 +596,7 @@ func updateValidatorPerformance() error {
 			valueArgs = append(valueArgs, d.Performance7d)
 			valueArgs = append(valueArgs, d.Performance31d)
 			valueArgs = append(valueArgs, d.Performance365d)
-			valueArgs = append(valueArgs, i+i)
+			valueArgs = append(valueArgs, i+1)
 		}
 
 		stmt := fmt.Sprintf(`		
