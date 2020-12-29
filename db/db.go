@@ -714,7 +714,7 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) err
 }
 
 func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
-	batchSize := 50000
+	batchSize := 5000
 	var lenActivatedValidators int
 	var lastActivatedValidatorIdx uint64
 
