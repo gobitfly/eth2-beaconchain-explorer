@@ -945,33 +945,33 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
 	batchSize := 10000
 
-	for b := 0; b < len(validators); b += batchSize {
-		start := b
-		end := b + batchSize
-		if len(validators) < end {
-			end = len(validators)
-		}
-
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*4)
-		for i, v := range validators[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
-			valueArgs = append(valueArgs, epoch)
-			valueArgs = append(valueArgs, v.Index)
-			valueArgs = append(valueArgs, v.Balance)
-			valueArgs = append(valueArgs, v.EffectiveBalance)
-		}
-		stmt := fmt.Sprintf(`
-		INSERT INTO validator_balances (epoch, validatorindex, balance, effectivebalance)
-		VALUES %s
-		ON CONFLICT (epoch, validatorindex) DO UPDATE SET
-			balance          = EXCLUDED.balance,
-			effectivebalance = EXCLUDED.effectivebalance`, strings.Join(valueStrings, ","))
-		_, err := tx.Exec(stmt, valueArgs...)
-		if err != nil {
-			return err
-		}
-	}
+	//for b := 0; b < len(validators); b += batchSize {
+	//	start := b
+	//	end := b + batchSize
+	//	if len(validators) < end {
+	//		end = len(validators)
+	//	}
+	//
+	//	valueStrings := make([]string, 0, batchSize)
+	//	valueArgs := make([]interface{}, 0, batchSize*4)
+	//	for i, v := range validators[start:end] {
+	//		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
+	//		valueArgs = append(valueArgs, epoch)
+	//		valueArgs = append(valueArgs, v.Index)
+	//		valueArgs = append(valueArgs, v.Balance)
+	//		valueArgs = append(valueArgs, v.EffectiveBalance)
+	//	}
+	//	stmt := fmt.Sprintf(`
+	//	INSERT INTO validator_balances (epoch, validatorindex, balance, effectivebalance)
+	//	VALUES %s
+	//	ON CONFLICT (epoch, validatorindex) DO UPDATE SET
+	//		balance          = EXCLUDED.balance,
+	//		effectivebalance = EXCLUDED.effectivebalance`, strings.Join(valueStrings, ","))
+	//	_, err := tx.Exec(stmt, valueArgs...)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 
 	for b := 0; b < len(validators); b += batchSize {
 		start := b
