@@ -819,6 +819,8 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 		if err != nil {
 			return err
 		}
+
+		logger.Infof("saving validator batch %v completed")
 	}
 
 	logger.Infof("saving validator status")
