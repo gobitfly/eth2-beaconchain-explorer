@@ -347,7 +347,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances_p WHERE validatorindex = $1 AND epoch > $2 AND week >= $2 / 1575 ORDER BY epoch", index, validatorPageData.Epoch)
+	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances_p WHERE validatorindex = $1 AND epoch > $2 AND week >= $2 / 1575 ORDER BY epoch", index, validatorPageData.Epoch-1575)
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
