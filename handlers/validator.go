@@ -1051,7 +1051,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 				vblocks.status as proposal_status,
 				vblocks.slot as proposal_slot
 			FROM validator_balances_p vbalance
-			LEFT JOIN attestation_assignments assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch AND vbalance.week = assign.epoch / 1575
+			LEFT JOIN attestation_assignments_p assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch AND vbalance.week = assign.week
 			LEFT JOIN blocks vblocks ON vbalance.validatorindex = vblocks.proposer AND vbalance.epoch = vblocks.epoch AND vbalance.week = vblocks.epoch / 1575
 			WHERE vbalance.validatorindex = $1 AND vbalance.epoch >= $2 AND vbalance.epoch <= $3 AND vbalance.week >= $2 / 1575 AND vbalance.week <= $3 / 1575
 			ORDER BY epoch DESC
