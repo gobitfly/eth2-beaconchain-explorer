@@ -660,13 +660,26 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		orderDir = "desc"
 	}
 
-	var totalCount uint64
+	epoch := services.LatestEpoch()
 
-	err = db.DB.Get(&totalCount, "SELECT LEAST(COUNT(*), 10000) FROM attestation_assignments WHERE validatorindex = $1", index)
+	ae := struct {
+		ActivationEpoch uint64
+		ExitEpoch       uint64
+	}{}
+
+	err = db.DB.Get(&ae, "SELECT activationepoch, exitepoch FROM validators WHERE validatorindex = $1", index)
 	if err != nil {
-		logger.Errorf("error retrieving proposed blocks count: %v", err)
+		logger.Errorf("error retrieving attestations count: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
+	}
+
+	totalCount := epoch - ae.ActivationEpoch + 1
+	if ae.ActivationEpoch > epoch {
+		totalCount = 0
+	}
+	if ae.ExitEpoch != 9223372036854775807 {
+		totalCount = ae.ExitEpoch - ae.ActivationEpoch
 	}
 
 	tableData := [][]interface{}{}
@@ -687,10 +700,10 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 					ELSE aa.inclusionslot
 				END AS inclusionslot,
 				COALESCE(inclusionslot - (SELECT MIN(slot) FROM blocks WHERE slot > aa.attesterslot AND blocks.status = '1'), 0) as delay
-			FROM attestation_assignments aa
+			FROM attestation_assignments_p aa
 			LEFT JOIN blocks on blocks.slot = aa.inclusionslot
 			WHERE validatorindex = $1 
-			ORDER BY `+orderBy+` `+orderDir+`
+			ORDER BY week desc, `+orderBy+` `+orderDir+`
 			LIMIT $2 OFFSET $3`, index, length, start)
 
 		if err != nil {
