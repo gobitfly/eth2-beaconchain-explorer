@@ -883,38 +883,38 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 }
 
 func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sql.Tx) error {
-	args := make([][]interface{}, 0, len(assignments))
+	//args := make([][]interface{}, 0, len(assignments))
 	argsWeek := make([][]interface{}, 0, len(assignments))
 	for key, validator := range assignments {
 		keySplit := strings.Split(key, "-")
-		args = append(args, []interface{}{epoch, validator, keySplit[0], keySplit[1], 0})
+		//args = append(args, []interface{}{epoch, validator, keySplit[0], keySplit[1], 0})
 		argsWeek = append(argsWeek, []interface{}{epoch, validator, keySplit[0], keySplit[1], 0, epoch / 1575})
 	}
 
 	batchSize := 10000
 
-	for b := 0; b < len(args); b += batchSize {
-		start := b
-		end := b + batchSize
-		if len(args) < end {
-			end = len(args)
-		}
-
-		valueStrings := make([]string, 0, batchSize)
-		valueArgs := make([]interface{}, 0, batchSize*5)
-		for i, v := range args[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*5+1, i*5+2, i*5+3, i*5+4, i*5+5))
-			valueArgs = append(valueArgs, v...)
-		}
-		stmt := fmt.Sprintf(`
-		INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
-		VALUES %s
-		ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO NOTHING`, strings.Join(valueStrings, ","))
-		_, err := tx.Exec(stmt, valueArgs...)
-		if err != nil {
-			return fmt.Errorf("error executing save validator attestation assignment statement: %v", err)
-		}
-	}
+	//for b := 0; b < len(args); b += batchSize {
+	//	start := b
+	//	end := b + batchSize
+	//	if len(args) < end {
+	//		end = len(args)
+	//	}
+	//
+	//	valueStrings := make([]string, 0, batchSize)
+	//	valueArgs := make([]interface{}, 0, batchSize*5)
+	//	for i, v := range args[start:end] {
+	//		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i*5+1, i*5+2, i*5+3, i*5+4, i*5+5))
+	//		valueArgs = append(valueArgs, v...)
+	//	}
+	//	stmt := fmt.Sprintf(`
+	//	INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
+	//	VALUES %s
+	//	ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO NOTHING`, strings.Join(valueStrings, ","))
+	//	_, err := tx.Exec(stmt, valueArgs...)
+	//	if err != nil {
+	//		return fmt.Errorf("error executing save validator attestation assignment statement: %v", err)
+	//	}
+	//}
 
 	for b := 0; b < len(argsWeek); b += batchSize {
 		start := b
@@ -1157,40 +1157,40 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 			logger.Tracef("writing attestation data")
 
 			for i, a := range b.Attestations {
-				attestationAssignmentsArgs := make([][]interface{}, 0, 20000)
+				//attestationAssignmentsArgs := make([][]interface{}, 0, 20000)
 				attestationAssignmentsArgsWeek := make([][]interface{}, 0, 20000)
 				attestingValidators := make([]string, 0, 20000)
 
 				for _, validator := range a.Attesters {
-					attestationAssignmentsArgs = append(attestationAssignmentsArgs, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot})
+					//attestationAssignmentsArgs = append(attestationAssignmentsArgs, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot})
 					attestationAssignmentsArgsWeek = append(attestationAssignmentsArgsWeek, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot, a.Data.Slot / utils.Config.Chain.SlotsPerEpoch / 1575})
 					attestingValidators = append(attestingValidators, strconv.FormatUint(validator, 10))
 				}
 
 				batchSize := 10000
 
-				for batch := 0; batch < len(attestationAssignmentsArgs); batch += batchSize {
-					start := batch
-					end := batch + batchSize
-					if len(attestationAssignmentsArgs) < end {
-						end = len(attestationAssignmentsArgs)
-					}
-
-					valueStrings := make([]string, 0, batchSize)
-					valueArgs := make([]interface{}, 0, batchSize*6)
-					for i, v := range attestationAssignmentsArgs[start:end] {
-						valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)", i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6))
-						valueArgs = append(valueArgs, v...)
-					}
-					stmt := fmt.Sprintf(`
-						INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status, inclusionslot)
-						VALUES %s
-						ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status, inclusionslot = LEAST((CASE WHEN attestation_assignments.inclusionslot = 0 THEN null ELSE attestation_assignments.inclusionslot END), excluded.inclusionslot)`, strings.Join(valueStrings, ","))
-					_, err := tx.Exec(stmt, valueArgs...)
-					if err != nil {
-						return fmt.Errorf("error executing stmtAttestationAssignments for block %v: %v", b.Slot, err)
-					}
-				}
+				//for batch := 0; batch < len(attestationAssignmentsArgs); batch += batchSize {
+				//	start := batch
+				//	end := batch + batchSize
+				//	if len(attestationAssignmentsArgs) < end {
+				//		end = len(attestationAssignmentsArgs)
+				//	}
+				//
+				//	valueStrings := make([]string, 0, batchSize)
+				//	valueArgs := make([]interface{}, 0, batchSize*6)
+				//	for i, v := range attestationAssignmentsArgs[start:end] {
+				//		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)", i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6))
+				//		valueArgs = append(valueArgs, v...)
+				//	}
+				//	stmt := fmt.Sprintf(`
+				//		INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status, inclusionslot)
+				//		VALUES %s
+				//		ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status, inclusionslot = LEAST((CASE WHEN attestation_assignments.inclusionslot = 0 THEN null ELSE attestation_assignments.inclusionslot END), excluded.inclusionslot)`, strings.Join(valueStrings, ","))
+				//	_, err := tx.Exec(stmt, valueArgs...)
+				//	if err != nil {
+				//		return fmt.Errorf("error executing stmtAttestationAssignments for block %v: %v", b.Slot, err)
+				//	}
+				//}
 
 				for batch := 0; batch < len(attestationAssignmentsArgsWeek); batch += batchSize {
 					start := batch
