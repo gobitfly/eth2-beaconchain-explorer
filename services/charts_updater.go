@@ -922,7 +922,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 	defer tx.Rollback()
 
 	var currentEpoch uint64
-	err = tx.Get(&currentEpoch, "select max(epoch) from validator_balances")
+	err = tx.Get(&currentEpoch, "select max(epoch) from epochs")
 	if err != nil {
 		return nil, err
 	}
@@ -1005,7 +1005,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 	defer tx.Rollback()
 
 	var currentEpoch uint64
-	err = tx.Get(&currentEpoch, "select max(epoch) from validator_balances")
+	err = tx.Get(&currentEpoch, "select max(epoch) from epochs")
 	if err != nil {
 		return nil, err
 	}

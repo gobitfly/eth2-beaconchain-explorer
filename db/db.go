@@ -882,9 +882,11 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 
 func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sql.Tx) error {
 	args := make([][]interface{}, 0, len(assignments))
+	argsWeek := make([][]interface{}, 0, len(assignments))
 	for key, validator := range assignments {
 		keySplit := strings.Split(key, "-")
 		args = append(args, []interface{}{epoch, validator, keySplit[0], keySplit[1], 0})
+		argsWeek = append(args, []interface{}{epoch, validator, keySplit[0], keySplit[1], 0, epoch / 1575})
 	}
 
 	batchSize := 10000
@@ -906,6 +908,29 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 		INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status)
 		VALUES %s
 		ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO NOTHING`, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return fmt.Errorf("error executing save validator attestation assignment statement: %v", err)
+		}
+	}
+
+	for b := 0; b < len(argsWeek); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(argsWeek) < end {
+			end = len(argsWeek)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*6)
+		for i, v := range argsWeek[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)", i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6))
+			valueArgs = append(valueArgs, v...)
+		}
+		stmt := fmt.Sprintf(`
+		INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status, week)
+		VALUES %s
+		ON CONFLICT (epoch, validatorindex) DO UPDATE SET attesterslot = EXCLUDED.attesterslot, committeeindex = EXCLUDED.committeeindex`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return fmt.Errorf("error executing save validator attestation assignment statement: %v", err)

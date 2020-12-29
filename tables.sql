@@ -96,6 +96,32 @@ create table attestation_assignments
 create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
 create index idx_attestation_assignments_epoch on attestation_assignments (epoch);
 
+drop table if exists attestation_assignments_p;
+create table attestation_assignments_p
+(
+    epoch          int not null,
+    validatorindex int not null,
+    attesterslot   int not null,
+    committeeindex int not null,
+    status         int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
+    inclusionslot  int not null default 0, /* Slot this attestation was included for the first time */
+    week int not null,
+    primary key (validatorindex, week, epoch)
+) PARTITION BY LIST (week);
+
+CREATE TABLE attestation_assignments_0 PARTITION OF attestation_assignments_p FOR VALUES IN (0);
+CREATE TABLE attestation_assignments_1 PARTITION OF attestation_assignments_p FOR VALUES IN (1);
+CREATE TABLE attestation_assignments_2 PARTITION OF attestation_assignments_p FOR VALUES IN (2);
+CREATE TABLE attestation_assignments_3 PARTITION OF attestation_assignments_p FOR VALUES IN (3);
+CREATE TABLE attestation_assignments_4 PARTITION OF attestation_assignments_p FOR VALUES IN (4);
+CREATE TABLE attestation_assignments_5 PARTITION OF attestation_assignments_p FOR VALUES IN (5);
+CREATE TABLE attestation_assignments_6 PARTITION OF attestation_assignments_p FOR VALUES IN (6);
+CREATE TABLE attestation_assignments_7 PARTITION OF attestation_assignments_p FOR VALUES IN (7);
+CREATE TABLE attestation_assignments_8 PARTITION OF attestation_assignments_p FOR VALUES IN (8);
+CREATE TABLE attestation_assignments_9 PARTITION OF attestation_assignments_p FOR VALUES IN (9);
+-- create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
+-- create index idx_attestation_assignments_epoch on attestation_assignments (epoch);
+
 drop table if exists validator_balances;
 create table validator_balances
 (
@@ -117,8 +143,6 @@ create table validator_balances_p
     week             int    not null,
     primary key (validatorindex, week, epoch)
 ) PARTITION BY LIST (week);
-create index idx_validator_balances_p_epoch on validator_balances_p (epoch);
-create index idx_validator_balances_p_week on validator_balances_p (week);
 
 CREATE TABLE validator_balances_0 PARTITION OF validator_balances_p FOR VALUES IN (0);
 CREATE TABLE validator_balances_1 PARTITION OF validator_balances_p FOR VALUES IN (1);

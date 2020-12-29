@@ -354,7 +354,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.ExitingValidators = queueCount.ExitingValidators
 
 	var averageBalance float64
-	err = db.DB.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validator_balances_p WHERE week = $1 / 1575 AND epoch = $1", epoch)
+	err = db.DB.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validators")
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
 	}
