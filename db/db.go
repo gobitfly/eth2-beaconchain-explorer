@@ -729,11 +729,6 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 		lastActivatedValidatorIdx = v.Index
 	}
 
-	_, err := tx.Exec("TRUNCATE validators")
-	if err != nil {
-		return err
-	}
-
 	for b := 0; b < len(validators); b += batchSize {
 		start := b
 		end := b + batchSize
@@ -806,18 +801,31 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			balance7d,
 			balance31d
 		) 
-		VALUES %s`, strings.Join(valueStrings, ","))
+		VALUES %s
+		ON CONFLICT (validatorindex) DO UPDATE SET 
+			pubkey                     = EXCLUDED.pubkey,
+			withdrawableepoch          = EXCLUDED.withdrawableepoch,
+			withdrawalcredentials      = EXCLUDED.withdrawalcredentials,
+			balance                    = EXCLUDED.balance,
+			effectivebalance           = EXCLUDED.effectivebalance,
+			slashed                    = EXCLUDED.slashed,
+			activationeligibilityepoch = EXCLUDED.activationeligibilityepoch,
+			activationepoch            = EXCLUDED.activationepoch,
+			exitepoch                  = EXCLUDED.exitepoch,
+			balance1d                  = EXCLUDED.balance1d,
+			balance7d                  = EXCLUDED.balance7d,
+			balance31d                 = EXCLUDED.balance31d`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
 		}
 
-		logger.Infof("saving validator batch %v completed")
+		logger.Infof("saving validator batch %v completed", b)
 	}
 
 	logger.Infof("saving validator status")
 	var latestBlock uint64
-	err = DB.Get(&latestBlock, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
+	err := DB.Get(&latestBlock, "SELECT COALESCE(MAX(slot), 0) FROM blocks WHERE status = '1'")
 	if err != nil {
 		return err
 	}
