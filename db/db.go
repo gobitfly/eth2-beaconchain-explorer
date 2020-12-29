@@ -886,7 +886,7 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 	for key, validator := range assignments {
 		keySplit := strings.Split(key, "-")
 		args = append(args, []interface{}{epoch, validator, keySplit[0], keySplit[1], 0})
-		argsWeek = append(args, []interface{}{epoch, validator, keySplit[0], keySplit[1], 0, epoch / 1575})
+		argsWeek = append(argsWeek, []interface{}{epoch, validator, keySplit[0], keySplit[1], 0, epoch / 1575})
 	}
 
 	batchSize := 10000
@@ -1155,11 +1155,13 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 			logger.Tracef("writing attestation data")
 
 			for i, a := range b.Attestations {
-				attestationAssignmentsArgs := make([][]interface{}, 0, 10000)
-				attestingValidators := make([]string, 0, 10000)
+				attestationAssignmentsArgs := make([][]interface{}, 0, 20000)
+				attestationAssignmentsArgsWeek := make([][]interface{}, 0, 20000)
+				attestingValidators := make([]string, 0, 20000)
 
 				for _, validator := range a.Attesters {
 					attestationAssignmentsArgs = append(attestationAssignmentsArgs, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot})
+					attestationAssignmentsArgsWeek = append(attestationAssignmentsArgsWeek, []interface{}{a.Data.Slot / utils.Config.Chain.SlotsPerEpoch, validator, a.Data.Slot, a.Data.CommitteeIndex, 1, b.Slot, a.Data.Slot / utils.Config.Chain.SlotsPerEpoch / 1575})
 					attestingValidators = append(attestingValidators, strconv.FormatUint(validator, 10))
 				}
 
@@ -1182,6 +1184,29 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 						INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status, inclusionslot)
 						VALUES %s
 						ON CONFLICT (epoch, validatorindex, attesterslot, committeeindex) DO UPDATE SET status = excluded.status, inclusionslot = LEAST((CASE WHEN attestation_assignments.inclusionslot = 0 THEN null ELSE attestation_assignments.inclusionslot END), excluded.inclusionslot)`, strings.Join(valueStrings, ","))
+					_, err := tx.Exec(stmt, valueArgs...)
+					if err != nil {
+						return fmt.Errorf("error executing stmtAttestationAssignments for block %v: %v", b.Slot, err)
+					}
+				}
+
+				for batch := 0; batch < len(attestationAssignmentsArgsWeek); batch += batchSize {
+					start := batch
+					end := batch + batchSize
+					if len(attestationAssignmentsArgsWeek) < end {
+						end = len(attestationAssignmentsArgsWeek)
+					}
+
+					valueStrings := make([]string, 0, batchSize)
+					valueArgs := make([]interface{}, 0, batchSize*7)
+					for i, v := range attestationAssignmentsArgsWeek[start:end] {
+						valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*7+1, i*7+2, i*7+3, i*7+4, i*7+5, i*7+6, i*7+7))
+						valueArgs = append(valueArgs, v...)
+					}
+					stmt := fmt.Sprintf(`
+						INSERT INTO attestation_assignments_p (epoch, validatorindex, attesterslot, committeeindex, status, inclusionslot, week)
+						VALUES %s
+						ON CONFLICT (epoch, validatorindex) DO UPDATE SET status = excluded.status, inclusionslot = LEAST((CASE WHEN attestation_assignments.inclusionslot = 0 THEN null ELSE attestation_assignments.inclusionslot END), excluded.inclusionslot)`, strings.Join(valueStrings, ","))
 					_, err := tx.Exec(stmt, valueArgs...)
 					if err != nil {
 						return fmt.Errorf("error executing stmtAttestationAssignments for block %v: %v", b.Slot, err)
