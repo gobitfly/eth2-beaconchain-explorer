@@ -420,7 +420,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 				aa.inclusionslot
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
-			INNER JOIN attestation_assignments aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 3) 
+			INNER JOIN attestation_assignments_p aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 3)  AND aa.week >= ($2 - 3) / 1575
 			WHERE us.event_name = $1 AND aa.status = $3 AND us.created_epoch <= $2 AND aa.epoch >= ($2 - 3)
 			AND (us.last_sent_epoch < ($2 - 6) OR us.last_sent_epoch IS NULL)
 			AND aa.inclusionslot = 0 AND aa.attesterslot < ($4 - 32)

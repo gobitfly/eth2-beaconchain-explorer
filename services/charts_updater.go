@@ -459,9 +459,9 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 
 	err := db.DB.Select(&rows, `
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
-		from attestation_assignments a
+		from attestation_assignments_p a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.epoch > $1 and a.inclusionslot > 0
+		where a.week >= $1 / 1575 a.epoch > $1 and a.inclusionslot > 0
 		group by a.epoch
 		order by a.epoch asc`, epochOffset)
 	if err != nil {
@@ -514,9 +514,9 @@ func votingDistributionChartData() (*types.GenericChartData, error) {
 
 	err := db.DB.Select(&rows, `
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
-		from attestation_assignments a
+		from attestation_assignments_p a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.inclusionslot > 0 and a.epoch > $1
+		where a.inclusionslot > 0 and a.epoch > $1and a.week >= $1 / 1575
 		group by a.epoch
 		order by a.epoch asc`, epochOffset)
 	if err != nil {

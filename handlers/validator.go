@@ -427,9 +427,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			WHERE slot > aa.attesterslot AND blocks.status = '1'
 		), 0)
 	), 0)
-	FROM attestation_assignments aa
+	FROM attestation_assignments_p aa
 	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-	WHERE aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
+	WHERE aa.week >= $1 / 1575 aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
 	`, int64(validatorPageData.Epoch)-100, index)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)

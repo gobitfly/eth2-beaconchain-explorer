@@ -928,7 +928,7 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 			valueArgs = append(valueArgs, v...)
 		}
 		stmt := fmt.Sprintf(`
-		INSERT INTO attestation_assignments (epoch, validatorindex, attesterslot, committeeindex, status, week)
+		INSERT INTO attestation_assignments_p (epoch, validatorindex, attesterslot, committeeindex, status, week)
 		VALUES %s
 		ON CONFLICT (epoch, validatorindex) DO UPDATE SET attesterslot = EXCLUDED.attesterslot, committeeindex = EXCLUDED.committeeindex`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
