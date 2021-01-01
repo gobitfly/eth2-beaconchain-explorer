@@ -391,6 +391,26 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 func ExportEpoch(epoch uint64, client rpc.Client) error {
 	start := time.Now()
 
+	// Check if the partition for the validator_balances and attestation_assignments table for this epoch exists
+	logger.Printf("checking partition status for epoch %v", epoch)
+	week := epoch / 1575
+	_, err := db.DB.Exec(fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'attestation_assignments_%v'", week))
+	if err != nil {
+		logger.Infof("creating partition attestation_assignments_%v", week)
+		_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE attestation_assignments_%v PARTITION OF attestation_assignments_p FOR VALUES IN (%v);", week, week))
+		if err != nil {
+			logger.Fatalf("unable to create partition attestation_assignments_%v: %v", week, err)
+		}
+	}
+	_, err = db.DB.Exec(fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'validator_balances_%v'", week))
+	if err != nil {
+		logger.Infof("creating partition validator_balances_%v", week)
+		_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE validator_balances_%v PARTITION OF validator_balances_p FOR VALUES IN (%v);", week, week))
+		if err != nil {
+			logger.Fatalf("unable to create partition validator_balances_%v: %v", week, err)
+		}
+	}
+
 	logger.Printf("retrieving data for epoch %v", epoch)
 	data, err := client.GetEpochData(epoch)
 

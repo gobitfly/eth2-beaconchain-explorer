@@ -50,6 +50,23 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 	}
 	client.assignmentsCache, _ = lru.New(10)
 
+	streamBlockClient, err := chainClient.StreamBlocks(context.Background(), &ptypes.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		for {
+			block, err := streamBlockClient.Recv()
+
+			if err != nil {
+				logger.Errorf("error receiving from block stream: %v", err)
+				continue
+			}
+
+			logger.Infof("received block at slot %v with hash %x via stream", block.Block.Slot, block.Block.StateRoot)
+		}
+	}()
 	return client, nil
 }
 
