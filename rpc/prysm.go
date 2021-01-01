@@ -50,21 +50,30 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 	}
 	client.assignmentsCache, _ = lru.New(10)
 
-	streamBlockClient, err := chainClient.StreamBlocks(context.Background(), &ptypes.Empty{})
+	streamChainHeadClient, err := chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
 	if err != nil {
 		return nil, err
 	}
 
 	go func() {
 		for {
-			block, err := streamBlockClient.Recv()
+			head, err := streamChainHeadClient.Recv()
 
 			if err != nil {
-				logger.Errorf("error receiving from block stream: %v", err)
+				logger.Errorf("error receiving from chain head stream: %v", err)
 				continue
 			}
 
-			logger.Infof("received block at slot %v with hash %x via stream", block.Block.Slot, block.Block.StateRoot)
+			blocks, err := client.GetBlocksBySlot(head.HeadSlot)
+
+			if err != nil {
+				logger.Errorf("error receiving blocks via chain head stream: %v", err)
+				continue
+			}
+
+			if len(blocks) > 0 {
+				logger.Infof("received block at slot %v with hash %x via stream", blocks[0].Slot, blocks[0].BlockRoot)
+			}
 		}
 	}()
 	return client, nil
@@ -455,148 +464,156 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 			}
 		}
 
-		b := &types.Block{
-			Status:       1,
-			BlockRoot:    block.BlockRoot,
-			Slot:         block.Block.Block.Slot,
-			ParentRoot:   block.Block.Block.ParentRoot,
-			StateRoot:    block.Block.Block.StateRoot,
-			Signature:    block.Block.Signature,
-			RandaoReveal: block.Block.Block.Body.RandaoReveal,
-			Graffiti:     block.Block.Block.Body.Graffiti,
-			Eth1Data: &types.Eth1Data{
-				DepositRoot:  block.Block.Block.Body.Eth1Data.DepositRoot,
-				DepositCount: block.Block.Block.Body.Eth1Data.DepositCount,
-				BlockHash:    block.Block.Block.Body.Eth1Data.BlockHash,
-			},
-			ProposerSlashings: make([]*types.ProposerSlashing, len(block.Block.Block.Body.ProposerSlashings)),
-			AttesterSlashings: make([]*types.AttesterSlashing, len(block.Block.Block.Body.AttesterSlashings)),
-			Attestations:      make([]*types.Attestation, len(block.Block.Block.Body.Attestations)),
-			Deposits:          make([]*types.Deposit, len(block.Block.Block.Body.Deposits)),
-			VoluntaryExits:    make([]*types.VoluntaryExit, len(block.Block.Block.Body.VoluntaryExits)),
-			Proposer:          block.Block.Block.ProposerIndex,
-		}
-
-		for i, proposerSlashing := range block.Block.Block.Body.ProposerSlashings {
-			b.ProposerSlashings[i] = &types.ProposerSlashing{
-				ProposerIndex: proposerSlashing.Header_1.Header.ProposerIndex,
-				Header1: &types.Block{
-					Slot:       proposerSlashing.Header_1.Header.Slot,
-					ParentRoot: proposerSlashing.Header_1.Header.ParentRoot,
-					StateRoot:  proposerSlashing.Header_1.Header.StateRoot,
-					Signature:  proposerSlashing.Header_1.Signature,
-					BodyRoot:   proposerSlashing.Header_1.Header.BodyRoot,
-				},
-				Header2: &types.Block{
-					Slot:       proposerSlashing.Header_2.Header.Slot,
-					ParentRoot: proposerSlashing.Header_2.Header.ParentRoot,
-					StateRoot:  proposerSlashing.Header_2.Header.StateRoot,
-					Signature:  proposerSlashing.Header_2.Signature,
-					BodyRoot:   proposerSlashing.Header_2.Header.BodyRoot,
-				},
-			}
-		}
-
-		for i, attesterSlashing := range block.Block.Block.Body.AttesterSlashings {
-			b.AttesterSlashings[i] = &types.AttesterSlashing{
-				Attestation1: &types.IndexedAttestation{
-					Data: &types.AttestationData{
-						Slot:            attesterSlashing.Attestation_1.Data.Slot,
-						CommitteeIndex:  attesterSlashing.Attestation_1.Data.CommitteeIndex,
-						BeaconBlockRoot: attesterSlashing.Attestation_1.Data.BeaconBlockRoot,
-						Source: &types.Checkpoint{
-							Epoch: attesterSlashing.Attestation_1.Data.Source.Epoch,
-							Root:  attesterSlashing.Attestation_1.Data.Source.Root,
-						},
-						Target: &types.Checkpoint{
-							Epoch: attesterSlashing.Attestation_1.Data.Target.Epoch,
-							Root:  attesterSlashing.Attestation_1.Data.Target.Root,
-						},
-					},
-					Signature:        attesterSlashing.Attestation_1.Signature,
-					AttestingIndices: attesterSlashing.Attestation_1.AttestingIndices,
-				},
-				Attestation2: &types.IndexedAttestation{
-					Data: &types.AttestationData{
-						Slot:            attesterSlashing.Attestation_2.Data.Slot,
-						CommitteeIndex:  attesterSlashing.Attestation_2.Data.CommitteeIndex,
-						BeaconBlockRoot: attesterSlashing.Attestation_2.Data.BeaconBlockRoot,
-						Source: &types.Checkpoint{
-							Epoch: attesterSlashing.Attestation_2.Data.Source.Epoch,
-							Root:  attesterSlashing.Attestation_2.Data.Source.Root,
-						},
-						Target: &types.Checkpoint{
-							Epoch: attesterSlashing.Attestation_2.Data.Target.Epoch,
-							Root:  attesterSlashing.Attestation_2.Data.Target.Root,
-						},
-					},
-					Signature:        attesterSlashing.Attestation_2.Signature,
-					AttestingIndices: attesterSlashing.Attestation_2.AttestingIndices,
-				},
-			}
-		}
-
-		for i, attestation := range block.Block.Block.Body.Attestations {
-			a := &types.Attestation{
-				AggregationBits: attestation.AggregationBits,
-				Data: &types.AttestationData{
-					Slot:            attestation.Data.Slot,
-					CommitteeIndex:  attestation.Data.CommitteeIndex,
-					BeaconBlockRoot: attestation.Data.BeaconBlockRoot,
-					Source: &types.Checkpoint{
-						Epoch: attestation.Data.Source.Epoch,
-						Root:  attestation.Data.Source.Root,
-					},
-					Target: &types.Checkpoint{
-						Epoch: attestation.Data.Target.Epoch,
-						Root:  attestation.Data.Target.Root,
-					},
-				},
-				Signature: attestation.Signature,
-			}
-
-			aggregationBits := bitfield.Bitlist(a.AggregationBits)
-			assignments, err := pc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
-			if err != nil {
-				return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
-			}
-
-			a.Attesters = make([]uint64, 0)
-			for i := uint64(0); i < aggregationBits.Len(); i++ {
-				if aggregationBits.BitAt(i) {
-					validator, found := assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(a.Data.Slot, a.Data.CommitteeIndex, i)]
-					if !found { // This should never happen!
-						validator = 0
-						logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v committee index %v member index %v", i, b.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
-					}
-					a.Attesters = append(a.Attesters, validator)
-				}
-			}
-
-			b.Attestations[i] = a
-		}
-		for i, deposit := range block.Block.Block.Body.Deposits {
-			b.Deposits[i] = &types.Deposit{
-				Proof:                 deposit.Proof,
-				PublicKey:             deposit.Data.PublicKey,
-				WithdrawalCredentials: deposit.Data.WithdrawalCredentials,
-				Amount:                deposit.Data.Amount,
-				Signature:             deposit.Data.Signature,
-			}
-		}
-
-		for i, voluntaryExit := range block.Block.Block.Body.VoluntaryExits {
-			b.VoluntaryExits[i] = &types.VoluntaryExit{
-				Epoch:          voluntaryExit.Exit.Epoch,
-				ValidatorIndex: voluntaryExit.Exit.ValidatorIndex,
-				Signature:      voluntaryExit.Signature,
-			}
+		b, err := pc.parseRpcBlock(block)
+		if err != nil {
+			return nil, err
 		}
 
 		blocks = append(blocks, b)
 	}
 
 	return blocks, nil
+}
+
+func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.Block, error) {
+	b := &types.Block{
+		Status:       1,
+		BlockRoot:    block.BlockRoot,
+		Slot:         block.Block.Block.Slot,
+		ParentRoot:   block.Block.Block.ParentRoot,
+		StateRoot:    block.Block.Block.StateRoot,
+		Signature:    block.Block.Signature,
+		RandaoReveal: block.Block.Block.Body.RandaoReveal,
+		Graffiti:     block.Block.Block.Body.Graffiti,
+		Eth1Data: &types.Eth1Data{
+			DepositRoot:  block.Block.Block.Body.Eth1Data.DepositRoot,
+			DepositCount: block.Block.Block.Body.Eth1Data.DepositCount,
+			BlockHash:    block.Block.Block.Body.Eth1Data.BlockHash,
+		},
+		ProposerSlashings: make([]*types.ProposerSlashing, len(block.Block.Block.Body.ProposerSlashings)),
+		AttesterSlashings: make([]*types.AttesterSlashing, len(block.Block.Block.Body.AttesterSlashings)),
+		Attestations:      make([]*types.Attestation, len(block.Block.Block.Body.Attestations)),
+		Deposits:          make([]*types.Deposit, len(block.Block.Block.Body.Deposits)),
+		VoluntaryExits:    make([]*types.VoluntaryExit, len(block.Block.Block.Body.VoluntaryExits)),
+		Proposer:          block.Block.Block.ProposerIndex,
+	}
+
+	for i, proposerSlashing := range block.Block.Block.Body.ProposerSlashings {
+		b.ProposerSlashings[i] = &types.ProposerSlashing{
+			ProposerIndex: proposerSlashing.Header_1.Header.ProposerIndex,
+			Header1: &types.Block{
+				Slot:       proposerSlashing.Header_1.Header.Slot,
+				ParentRoot: proposerSlashing.Header_1.Header.ParentRoot,
+				StateRoot:  proposerSlashing.Header_1.Header.StateRoot,
+				Signature:  proposerSlashing.Header_1.Signature,
+				BodyRoot:   proposerSlashing.Header_1.Header.BodyRoot,
+			},
+			Header2: &types.Block{
+				Slot:       proposerSlashing.Header_2.Header.Slot,
+				ParentRoot: proposerSlashing.Header_2.Header.ParentRoot,
+				StateRoot:  proposerSlashing.Header_2.Header.StateRoot,
+				Signature:  proposerSlashing.Header_2.Signature,
+				BodyRoot:   proposerSlashing.Header_2.Header.BodyRoot,
+			},
+		}
+	}
+
+	for i, attesterSlashing := range block.Block.Block.Body.AttesterSlashings {
+		b.AttesterSlashings[i] = &types.AttesterSlashing{
+			Attestation1: &types.IndexedAttestation{
+				Data: &types.AttestationData{
+					Slot:            attesterSlashing.Attestation_1.Data.Slot,
+					CommitteeIndex:  attesterSlashing.Attestation_1.Data.CommitteeIndex,
+					BeaconBlockRoot: attesterSlashing.Attestation_1.Data.BeaconBlockRoot,
+					Source: &types.Checkpoint{
+						Epoch: attesterSlashing.Attestation_1.Data.Source.Epoch,
+						Root:  attesterSlashing.Attestation_1.Data.Source.Root,
+					},
+					Target: &types.Checkpoint{
+						Epoch: attesterSlashing.Attestation_1.Data.Target.Epoch,
+						Root:  attesterSlashing.Attestation_1.Data.Target.Root,
+					},
+				},
+				Signature:        attesterSlashing.Attestation_1.Signature,
+				AttestingIndices: attesterSlashing.Attestation_1.AttestingIndices,
+			},
+			Attestation2: &types.IndexedAttestation{
+				Data: &types.AttestationData{
+					Slot:            attesterSlashing.Attestation_2.Data.Slot,
+					CommitteeIndex:  attesterSlashing.Attestation_2.Data.CommitteeIndex,
+					BeaconBlockRoot: attesterSlashing.Attestation_2.Data.BeaconBlockRoot,
+					Source: &types.Checkpoint{
+						Epoch: attesterSlashing.Attestation_2.Data.Source.Epoch,
+						Root:  attesterSlashing.Attestation_2.Data.Source.Root,
+					},
+					Target: &types.Checkpoint{
+						Epoch: attesterSlashing.Attestation_2.Data.Target.Epoch,
+						Root:  attesterSlashing.Attestation_2.Data.Target.Root,
+					},
+				},
+				Signature:        attesterSlashing.Attestation_2.Signature,
+				AttestingIndices: attesterSlashing.Attestation_2.AttestingIndices,
+			},
+		}
+	}
+
+	for i, attestation := range block.Block.Block.Body.Attestations {
+		a := &types.Attestation{
+			AggregationBits: attestation.AggregationBits,
+			Data: &types.AttestationData{
+				Slot:            attestation.Data.Slot,
+				CommitteeIndex:  attestation.Data.CommitteeIndex,
+				BeaconBlockRoot: attestation.Data.BeaconBlockRoot,
+				Source: &types.Checkpoint{
+					Epoch: attestation.Data.Source.Epoch,
+					Root:  attestation.Data.Source.Root,
+				},
+				Target: &types.Checkpoint{
+					Epoch: attestation.Data.Target.Epoch,
+					Root:  attestation.Data.Target.Root,
+				},
+			},
+			Signature: attestation.Signature,
+		}
+
+		aggregationBits := bitfield.Bitlist(a.AggregationBits)
+		assignments, err := pc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
+		if err != nil {
+			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
+		}
+
+		a.Attesters = make([]uint64, 0)
+		for i := uint64(0); i < aggregationBits.Len(); i++ {
+			if aggregationBits.BitAt(i) {
+				validator, found := assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(a.Data.Slot, a.Data.CommitteeIndex, i)]
+				if !found { // This should never happen!
+					validator = 0
+					logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v committee index %v member index %v", i, b.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
+				}
+				a.Attesters = append(a.Attesters, validator)
+			}
+		}
+
+		b.Attestations[i] = a
+	}
+	for i, deposit := range block.Block.Block.Body.Deposits {
+		b.Deposits[i] = &types.Deposit{
+			Proof:                 deposit.Proof,
+			PublicKey:             deposit.Data.PublicKey,
+			WithdrawalCredentials: deposit.Data.WithdrawalCredentials,
+			Amount:                deposit.Data.Amount,
+			Signature:             deposit.Data.Signature,
+		}
+	}
+
+	for i, voluntaryExit := range block.Block.Block.Body.VoluntaryExits {
+		b.VoluntaryExits[i] = &types.VoluntaryExit{
+			Epoch:          voluntaryExit.Exit.Epoch,
+			ValidatorIndex: voluntaryExit.Exit.ValidatorIndex,
+			Signature:      voluntaryExit.Signature,
+		}
+	}
+	return b, nil
 }
 
 // GetValidatorParticipation will get the validator participation from Prysm client
