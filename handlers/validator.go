@@ -697,7 +697,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 				COALESCE(inclusionslot - (SELECT MIN(slot) FROM blocks WHERE slot > aa.attesterslot AND blocks.status = '1'), 0) as delay
 			FROM attestation_assignments aa
 			LEFT JOIN blocks on blocks.slot = aa.inclusionslot
-			WHERE validatorindex = $1 AND epoch >= $2 AND epoch >= $3
+			WHERE validatorindex = $1 AND aa.epoch >= $2 AND aa.epoch >= $3
 			ORDER BY `+orderBy+` `+orderDir, index, currentEpoch-start-length, currentEpoch-start)
 
 		if err != nil {
