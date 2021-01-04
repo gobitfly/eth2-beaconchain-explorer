@@ -488,6 +488,56 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiValidatorAttestationEfficiency godoc
+// @Summary Get the current performance of up to 100 validators
+// @Tags Validator
+// @Produce  json
+// @Param  index path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Success 200 {object} string
+// @Router /api/v1/validator/{indexOrPubkey}/attestationefficiency [get]
+func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	epoch := int64(services.LatestEpoch()) - 100
+	if epoch < 0 {
+		epoch = 0
+	}
+
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+
+	rows, err := db.DB.Query(`
+	SELECT aa.validatorindex, validators.pubkey, COALESCE(
+		AVG(1 + inclusionslot - COALESCE((
+			SELECT MIN(slot)
+			FROM blocks
+			WHERE slot > aa.attesterslot AND blocks.status = '1'
+		), 0)
+	), 0)::float AS attestation_efficiency
+	FROM attestation_assignments_p aa
+	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+	INNER JOIN validators ON validators.validatorindex = aa.validatorindex
+	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2) OR validators.pubkey = ANY($3)) AND aa.inclusionslot > 0
+	GROUP BY aa.validatorindex, validators.pubkey
+	ORDER BY aa.validatorindex
+	`, epoch, pq.Array(queryIndices), pq.Array(queryPubkeys))
+	if err != nil {
+		logger.Error(err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 // ApiValidatorLeaderboard godoc
 // @Summary Get the current top 100 performing validators (using the income over the last 7 days)
 // @Tags Validator
@@ -978,7 +1028,7 @@ func parseApiValidatorParam(origParam string) (indices []uint64, pubkeys pq.Byte
 		} else {
 			index, err := strconv.ParseUint(param, 10, 64)
 			if err != nil {
-				return nil, nil, fmt.Errorf("invalid validator-parameter")
+				return nil, nil, fmt.Errorf("invalid validator-parameter: %v", param)
 			}
 			indices = append(indices, index)
 		}
