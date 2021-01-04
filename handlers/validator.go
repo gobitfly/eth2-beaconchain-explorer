@@ -684,6 +684,8 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	tableData := [][]interface{}{}
 
+	currentEpoch := services.LatestEpoch()
+
 	if totalCount > 0 {
 		var blocks []*types.ValidatorAttestation
 		err = db.DB.Select(&blocks, `
@@ -702,9 +704,8 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 				COALESCE(inclusionslot - (SELECT MIN(slot) FROM blocks WHERE slot > aa.attesterslot AND blocks.status = '1'), 0) as delay
 			FROM attestation_assignments_p aa
 			LEFT JOIN blocks on blocks.slot = aa.inclusionslot
-			WHERE validatorindex = $1 
-			ORDER BY week desc, `+orderBy+` `+orderDir+`
-			LIMIT $2 OFFSET $3`, index, length, start)
+			WHERE validatorindex = $1 AND aa.epoch > $2 AND aa.epoch <= $3
+			ORDER BY `+orderBy+` `+orderDir, index, currentEpoch-start-length, currentEpoch-start)
 
 		if err != nil {
 			logger.Errorf("error retrieving validator attestations data: %v", err)
