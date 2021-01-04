@@ -33,6 +33,10 @@ func NewLighthouseClient(endpoint string) (*LighthouseClient, error) {
 	return client, nil
 }
 
+func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
+	return nil
+}
+
 // GetChainHead gets the chain head from Lighthouse
 func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 	resp, err := lc.get(fmt.Sprintf("%v%v", lc.endpoint, "/beacon/head"))

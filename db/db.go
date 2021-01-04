@@ -528,6 +528,35 @@ func SaveValidatorQueue(validators *types.ValidatorQueue) error {
 	return err
 }
 
+func SaveBlock(block *types.Block) error {
+
+	blocksMap := make(map[uint64]map[string]*types.Block)
+	if blocksMap[block.Slot] == nil {
+		blocksMap[block.Slot] = make(map[string]*types.Block)
+	}
+	blocksMap[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
+
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %v", err)
+	}
+	defer tx.Rollback()
+
+	logger.Infof("exporting block data")
+	err = saveBlocks(blocksMap, tx)
+	if err != nil {
+		logger.Fatalf("error saving blocks to db: %v", err)
+		return fmt.Errorf("error saving blocks to db: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error committing db transaction: %v", err)
+	}
+
+	return nil
+}
+
 // SaveEpoch will stave the epoch data into the database
 func SaveEpoch(data *types.EpochData) error {
 	tx, err := DB.Begin()
@@ -540,7 +569,7 @@ func SaveEpoch(data *types.EpochData) error {
 	start := time.Now()
 
 	logger.Infof("exporting block data")
-	err = saveBlocks(data.Epoch, data.Blocks, tx)
+	err = saveBlocks(data.Blocks, tx)
 	if err != nil {
 		logger.Fatalf("error saving blocks to db: %v", err)
 		return fmt.Errorf("error saving blocks to db: %v", err)
@@ -1005,7 +1034,7 @@ func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.
 	return nil
 }
 
-func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
+func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 
 	stmtBlock, err := tx.Prepare(`
 		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, proposer, status)
@@ -1110,7 +1139,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 			n := time.Now()
 
 			logger.Tracef("writing block data: %v", b.Eth1Data.DepositRoot)
-			_, err = stmtBlock.Exec(epoch,
+			_, err = stmtBlock.Exec(b.Slot/utils.Config.Chain.SlotsPerEpoch,
 				b.Slot,
 				b.BlockRoot,
 				b.ParentRoot,
@@ -1250,7 +1279,7 @@ func saveBlocks(epoch uint64, blocks map[uint64]map[string]*types.Block, tx *sql
 			n = time.Now()
 
 			logger.Tracef("writing proposal assignments data")
-			_, err = stmtProposalAssignments.Exec(epoch, b.Proposer, b.Slot, b.Status)
+			_, err = stmtProposalAssignments.Exec(b.Slot/utils.Config.Chain.SlotsPerEpoch, b.Proposer, b.Slot, b.Status)
 			if err != nil {
 				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %v", b.Slot, err)
 			}
