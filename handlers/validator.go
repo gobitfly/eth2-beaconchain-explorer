@@ -627,13 +627,13 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	start, err := strconv.ParseInt(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -684,8 +684,6 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	tableData := [][]interface{}{}
 
-	currentEpoch := services.LatestEpoch()
-
 	if totalCount > 0 {
 		var blocks []*types.ValidatorAttestation
 		err = db.DB.Select(&blocks, `
@@ -705,7 +703,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 			FROM attestation_assignments_p aa
 			LEFT JOIN blocks on blocks.slot = aa.inclusionslot
 			WHERE validatorindex = $1 AND aa.epoch > $2 AND aa.epoch <= $3
-			ORDER BY `+orderBy+` `+orderDir, index, currentEpoch-start-length, currentEpoch-start)
+			ORDER BY `+orderBy+` `+orderDir, index, int64(epoch)-start-length, int64(epoch)-start)
 
 		if err != nil {
 			logger.Errorf("error retrieving validator attestations data: %v", err)
