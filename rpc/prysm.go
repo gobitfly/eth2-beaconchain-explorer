@@ -50,32 +50,32 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 	}
 	client.assignmentsCache, _ = lru.New(10)
 
-	streamChainHeadClient, err := chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
-	if err != nil {
-		return nil, err
-	}
-
-	go func() {
-		for {
-			head, err := streamChainHeadClient.Recv()
-
-			if err != nil {
-				logger.Errorf("error receiving from chain head stream: %v", err)
-				continue
-			}
-
-			blocks, err := client.GetBlocksBySlot(head.HeadSlot)
-
-			if err != nil {
-				logger.Errorf("error receiving blocks via chain head stream: %v", err)
-				continue
-			}
-
-			if len(blocks) > 0 {
-				logger.Infof("received block at slot %v with hash %x via stream", blocks[0].Slot, blocks[0].BlockRoot)
-			}
-		}
-	}()
+	//streamChainHeadClient, err := chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//go func() {
+	//	for {
+	//		head, err := streamChainHeadClient.Recv()
+	//
+	//		if err != nil {
+	//			logger.Errorf("error receiving from chain head stream: %v", err)
+	//			continue
+	//		}
+	//
+	//		blocks, err := client.GetBlocksBySlot(head.HeadSlot)
+	//
+	//		if err != nil {
+	//			logger.Errorf("error receiving blocks via chain head stream: %v", err)
+	//			continue
+	//		}
+	//
+	//		if len(blocks) > 0 {
+	//			logger.Infof("received block at slot %v with hash %x via stream", blocks[0].Slot, blocks[0].BlockRoot)
+	//		}
+	//	}
+	//}()
 	return client, nil
 }
 
