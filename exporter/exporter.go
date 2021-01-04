@@ -183,14 +183,14 @@ func Start(client rpc.Client) error {
 	for {
 		select {
 		case block := <-newBlockChan:
-			err := db.SaveBlock(block)
-			if err != nil {
-				logger.Errorf("error saving block: %v", err)
-			}
-
 			// Do a full check on any epoch transition
-			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) {
+			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
 				doFullCheck(client)
+			} else { // else just save the in epoch block
+				err := db.SaveBlock(block)
+				if err != nil {
+					logger.Errorf("error saving block: %v", err)
+				}
 			}
 			lastExportedSlot = block.Slot
 		}
@@ -203,6 +203,7 @@ func Start(client rpc.Client) error {
 func doFullCheck(client rpc.Client) {
 	logger.Infof("checking for new blocks/epochs to export")
 
+	// Use the chain head as our current point of reference
 	head, err := client.GetChainHead()
 	if err != nil {
 		logger.Errorf("error retrieving chain head: %v", err)
@@ -210,27 +211,36 @@ func doFullCheck(client rpc.Client) {
 	}
 
 	startEpoch := uint64(0)
+	// Set the start epoch to the epoch prior to the last finalized epoch
 	if head.FinalizedEpoch > 1 {
 		startEpoch = head.FinalizedEpoch - 1
 	}
 
+	// If the network is experiencing finality issues limit the export to the last 10 epochs
+	// Once the network reaches finality again all epochs should be exported again
 	if head.HeadEpoch > 10 && head.HeadEpoch-head.FinalizedEpoch > 10 {
 		logger.Infof("no finality since %v epochs, limiting lookback to the last 10 epochs", head.HeadEpoch-head.FinalizedEpoch)
 		startEpoch = head.HeadEpoch - 10
 	}
 
+	// Retrieve the db contents for the epocht that should be exported
 	dbBlocks, err := db.GetLastPendingAndProposedBlocks(startEpoch, head.HeadEpoch)
 	if err != nil {
 		logger.Errorf("error retrieving last pending and proposed blocks from the database: %v", err)
 		return
 	}
 
+	// For the same epochs retrieve all block data from the node
 	nodeBlocks, err := GetLastBlocks(startEpoch, head.HeadEpoch, client)
 	if err != nil {
 		logger.Errorf("error retrieving last blocks from backend node: %v", err)
 		return
 	}
 
+	// Compare the blocks in the db with the blocks in the node
+	// If a block is missing on the node that has been exported in the db
+	// or if a block is missing in the db that is present in the node
+	// export this epoch to the db again
 	blocksMap := make(map[string]*types.BlockComparisonContainer)
 
 	for _, block := range dbBlocks {
