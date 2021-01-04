@@ -175,15 +175,13 @@ func Start(client rpc.Client) error {
 		}
 	}
 
-	doFullCheck(client)
-
 	newBlockChan := client.GetNewBlockChan()
 
 	lastExportedSlot := uint64(0)
 	for {
 		select {
 		case block := <-newBlockChan:
-			// Do a full check on any epoch transition
+			// Do a full check on any epoch transition or after during the first run
 			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
 				doFullCheck(client)
 			} else { // else just save the in epoch block
