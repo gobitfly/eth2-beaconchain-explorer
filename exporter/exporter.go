@@ -391,6 +391,27 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 func ExportEpoch(epoch uint64, client rpc.Client) error {
 	start := time.Now()
 
+	// Check if the partition for the validator_balances and attestation_assignments table for this epoch exists
+	var one int
+	logger.Printf("checking partition status for epoch %v", epoch)
+	week := epoch / 1575
+	err := db.DB.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'attestation_assignments_%v'", week))
+	if err != nil {
+		logger.Infof("creating partition attestation_assignments_%v", week)
+		_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE attestation_assignments_%v PARTITION OF attestation_assignments_p FOR VALUES IN (%v);", week, week))
+		if err != nil {
+			logger.Fatalf("unable to create partition attestation_assignments_%v: %v", week, err)
+		}
+	}
+	err = db.DB.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'validator_balances_%v'", week))
+	if err != nil {
+		logger.Infof("creating partition validator_balances_%v", week)
+		_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE validator_balances_%v PARTITION OF validator_balances_p FOR VALUES IN (%v);", week, week))
+		if err != nil {
+			logger.Fatalf("unable to create partition validator_balances_%v: %v", week, err)
+		}
+	}
+
 	logger.Printf("retrieving data for epoch %v", epoch)
 	data, err := client.GetEpochData(epoch)
 
@@ -463,7 +484,7 @@ func updateValidatorPerformance() error {
 
 	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM epochs")
 	if err != nil {
-		return fmt.Errorf("error retrieving latest epoch from validator_balances table: %w", err)
+		return fmt.Errorf("error retrieving latest epoch: %w", err)
 	}
 
 	lastDayEpoch := currentEpoch - 225
@@ -738,9 +759,10 @@ func genesisDepositsExporter() {
 					b.balance as amount,
 					d.signature as signature
 				FROM validators v
-				LEFT JOIN validator_balances b 
+				LEFT JOIN validator_balances_p b 
 					ON v.validatorindex = b.validatorindex
 					AND b.epoch = 0
+					AND b.week = 0
 				LEFT JOIN ( 
 					SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
 				) d ON d.publickey = v.pubkey
