@@ -63,7 +63,15 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 
 			if err != nil {
 				logger.Errorf("error receiving from chain head stream: %v", err)
+
+				// in order to recover from a stream error we wait for a second and then re-create the stream
 				time.Sleep(time.Second)
+				streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
+				for err != nil {
+					logger.Errorf("error initializing chain head stream: %v. retrying in 1s...", err)
+					time.Sleep(time.Second)
+					streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
+				}
 				continue
 			}
 
