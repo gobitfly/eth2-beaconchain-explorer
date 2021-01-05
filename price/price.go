@@ -2,10 +2,11 @@ package price
 
 import (
 	"encoding/json"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 var logger = logrus.New().WithField("module", "price")
@@ -18,6 +19,7 @@ type EthPrice struct {
 		Jpy float64 `json:"jpy"`
 		Rub float64 `json:"rub"`
 		Usd float64 `json:"usd"`
+		Gbp float64 `json:"gbp"`
 	} `json:"ethereum"`
 }
 
@@ -36,7 +38,7 @@ func updateEthPrice() {
 }
 
 func fetchPrice() {
-	resp, err := http.Get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd%2Ceur%2Crub%2Ccny%2Ccad%2Cjpy")
+	resp, err := http.Get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd%2Ceur%2Crub%2Ccny%2Ccad%2Cjpy%2Cgbp")
 
 	if err != nil {
 		logger.Errorf("error retrieving ETH price: %v", err)
@@ -72,6 +74,8 @@ func GetEthPrice(currency string) float64 {
 		return ethPrice.Ethereum.Cad
 	case "JPY":
 		return ethPrice.Ethereum.Jpy
+	case "GBP":
+		return ethPrice.Ethereum.Gbp
 	default:
 		return 1
 	}
