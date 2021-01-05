@@ -91,7 +91,7 @@ create table attestation_assignments_p
     committeeindex int not null,
     status         int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
     inclusionslot  int not null default 0, /* Slot this attestation was included for the first time */
-    week int not null,
+    week           int not null,
     primary key (validatorindex, week, epoch)
 ) PARTITION BY LIST (week);
 
@@ -127,6 +127,40 @@ CREATE TABLE validator_balances_6 PARTITION OF validator_balances_p FOR VALUES I
 CREATE TABLE validator_balances_7 PARTITION OF validator_balances_p FOR VALUES IN (7);
 CREATE TABLE validator_balances_8 PARTITION OF validator_balances_p FOR VALUES IN (8);
 CREATE TABLE validator_balances_9 PARTITION OF validator_balances_p FOR VALUES IN (9);
+
+drop table if exists validator_stats;
+create table validator_stats
+(
+    validatorindex          int not null,
+    day                     int not null,
+    start_balance           bigint,
+    end_balance             bigint,
+    min_balance             bigint,
+    max_balance             bigint,
+    start_effective_balance bigint,
+    end_effective_balance   bigint,
+    min_effective_balance   bigint,
+    max_effective_balance   bigint,
+    missed_attestations     int,
+    orphaned_attestations   int,
+    proposed_blocks         int,
+    missed_blocks           int,
+    orphaned_blocks         int,
+    attester_slashings      int,
+    proposer_slashings      int,
+    income                  bigint,
+    deposits                int,
+    deposits_amount         bigint,
+    primary key (validatorindex, day)
+);
+
+drop table if exists validator_stats_status;
+create table validator_stats_status
+(
+    day    int     not null,
+    status boolean not null,
+    primary key (day)
+);
 
 drop table if exists queue;
 create table queue
