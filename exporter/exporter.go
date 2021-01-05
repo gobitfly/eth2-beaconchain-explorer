@@ -175,157 +175,184 @@ func Start(client rpc.Client) error {
 		}
 	}
 
-	for true {
-		time.Sleep(time.Second * 10)
-		logger.Infof("checking for new blocks/epochs to export")
+	newBlockChan := client.GetNewBlockChan()
 
-		head, err := client.GetChainHead()
-		if err != nil {
-			logger.Errorf("error retrieving chain head: %v", err)
-			continue
-		}
-
-		startEpoch := uint64(0)
-		if head.FinalizedEpoch > 1 {
-			startEpoch = head.FinalizedEpoch - 1
-		}
-
-		if head.HeadEpoch > 10 && head.HeadEpoch-head.FinalizedEpoch > 10 {
-			logger.Infof("no finality since %v epochs, limiting lookback to the last 10 epochs", head.HeadEpoch-head.FinalizedEpoch)
-			startEpoch = head.HeadEpoch - 10
-		}
-
-		dbBlocks, err := db.GetLastPendingAndProposedBlocks(startEpoch, head.HeadEpoch)
-		if err != nil {
-			logger.Errorf("error retrieving last pending and proposed blocks from the database: %v", err)
-			continue
-		}
-
-		nodeBlocks, err := GetLastBlocks(startEpoch, head.HeadEpoch, client)
-		if err != nil {
-			logger.Errorf("error retrieving last blocks from backend node: %v", err)
-			continue
-		}
-
-		blocksMap := make(map[string]*types.BlockComparisonContainer)
-
-		for _, block := range dbBlocks {
-			key := fmt.Sprintf("%v-%x", block.Slot, block.BlockRoot)
-			_, found := blocksMap[key]
-
-			if !found {
-				blocksMap[key] = &types.BlockComparisonContainer{Epoch: block.Epoch}
-			}
-
-			blocksMap[key].Db = block
-		}
-		for _, block := range nodeBlocks {
-			key := fmt.Sprintf("%v-%x", block.Slot, block.BlockRoot)
-			_, found := blocksMap[key]
-
-			if !found {
-				blocksMap[key] = &types.BlockComparisonContainer{Epoch: block.Epoch}
-			}
-
-			blocksMap[key].Node = block
-		}
-
-		epochsToExport := make(map[uint64]bool)
-
-		for key, block := range blocksMap {
-			if block.Db == nil {
-				logger.Printf("queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
-				epochsToExport[block.Epoch] = true
-			} else if block.Node == nil {
-				logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
-				epochsToExport[block.Epoch] = true
-			} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
-				logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
-				epochsToExport[block.Epoch] = true
-			}
-		}
-
-		// Add any missing epoch to the export set (might happen if the indexer was stopped for a long period of time)
-		epochs, err := db.GetAllEpochs()
-		if err != nil {
-			if err != nil {
-				logger.Errorf("error retrieving all epochs from the db: %v", err)
-				continue
-			}
-		}
-
-		// Add not yet exported epochs to the export set (for example during the initial sync)
-		if len(epochs) > 0 && epochs[len(epochs)-1] < head.HeadEpoch {
-			for i := epochs[len(epochs)-1]; i <= head.HeadEpoch; i++ {
-				epochsToExport[i] = true
-			}
-		} else if len(epochs) > 0 && epochs[0] != 0 { // Export the genesis epoch if not yet present in the db
-			epochsToExport[0] = true
-		} else if len(epochs) == 0 { // No epochs are present int the db
-			for i := uint64(0); i <= head.HeadEpoch; i++ {
-				epochsToExport[i] = true
-			}
-		}
-
-		logger.Printf("exporting %v epochs.", len(epochsToExport))
-
-		keys := make([]uint64, 0)
-		for k := range epochsToExport {
-			keys = append(keys, k)
-		}
-		sort.Slice(keys, func(i, j int) bool {
-			return keys[i] < keys[j]
-		})
-
-		for _, epoch := range keys {
-			if epochBlacklist[epoch] > 3 {
-				logger.Printf("skipping export of epoch %v as it has errored %d times", epoch, epochBlacklist[epoch])
-				continue
-			}
-
-			logger.Printf("exporting epoch %v", epoch)
-
-			err = ExportEpoch(epoch, client)
-
-			if err != nil {
-				logger.Errorf("error exporting epoch: %v", err)
-				if utils.EpochToTime(epoch).Before(time.Now().Add(time.Hour * -24)) {
-					epochBlacklist[epoch]++
+	lastExportedSlot := uint64(0)
+	for {
+		select {
+		case block := <-newBlockChan:
+			// Do a full check on any epoch transition or after during the first run
+			if utils.EpochOfSlot(lastExportedSlot) != utils.EpochOfSlot(block.Slot) || utils.EpochOfSlot(block.Slot) == 0 {
+				doFullCheck(client)
+			} else { // else just save the in epoch block
+				err := db.SaveBlock(block)
+				if err != nil {
+					logger.Errorf("error saving block: %v", err)
 				}
 			}
-			logger.Printf("finished export for epoch %v", epoch)
+			lastExportedSlot = block.Slot
 		}
-
-		logger.Infof("marking orphaned blocks of epochs %v-%v", startEpoch, head.HeadEpoch)
-		err = MarkOrphanedBlocks(startEpoch, head.HeadEpoch, nodeBlocks)
-		if err != nil {
-			logger.Errorf("error marking orphaned blocks: %v", err)
-		}
-
-		// Update epoch statistics up to 10 epochs after the last finalized epoch
-		startEpoch = uint64(0)
-		if head.FinalizedEpoch > 10 {
-			startEpoch = head.FinalizedEpoch - 10
-			if head.HeadEpoch-startEpoch > 10 {
-				startEpoch = head.HeadEpoch - 10
-			}
-		}
-		logger.Infof("updating status of epochs %v-%v", startEpoch, head.HeadEpoch)
-		err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
-		if err != nil {
-			logger.Errorf("error updating epoch stratus: %v", err)
-		}
-
-		logger.Infof("exporting validation queue")
-		err = exportValidatorQueue(client)
-		if err != nil {
-			logger.Errorf("error exporting validator queue data: %v", err)
-		}
-
-		logger.Infof("finished exporting all new blocks/epochs")
 	}
 
 	return nil
+}
+
+// Will ensure the db is fully in sync with the node
+func doFullCheck(client rpc.Client) {
+	logger.Infof("checking for new blocks/epochs to export")
+
+	// Use the chain head as our current point of reference
+	head, err := client.GetChainHead()
+	if err != nil {
+		logger.Errorf("error retrieving chain head: %v", err)
+		return
+	}
+
+	startEpoch := uint64(0)
+	// Set the start epoch to the epoch prior to the last finalized epoch
+	if head.FinalizedEpoch > 1 {
+		startEpoch = head.FinalizedEpoch - 1
+	}
+
+	// If the network is experiencing finality issues limit the export to the last 10 epochs
+	// Once the network reaches finality again all epochs should be exported again
+	if head.HeadEpoch > 10 && head.HeadEpoch-head.FinalizedEpoch > 10 {
+		logger.Infof("no finality since %v epochs, limiting lookback to the last 10 epochs", head.HeadEpoch-head.FinalizedEpoch)
+		startEpoch = head.HeadEpoch - 10
+	}
+
+	// Retrieve the db contents for the epocht that should be exported
+	dbBlocks, err := db.GetLastPendingAndProposedBlocks(startEpoch, head.HeadEpoch)
+	if err != nil {
+		logger.Errorf("error retrieving last pending and proposed blocks from the database: %v", err)
+		return
+	}
+
+	// For the same epochs retrieve all block data from the node
+	nodeBlocks, err := GetLastBlocks(startEpoch, head.HeadEpoch, client)
+	if err != nil {
+		logger.Errorf("error retrieving last blocks from backend node: %v", err)
+		return
+	}
+
+	// Compare the blocks in the db with the blocks in the node
+	// If a block is missing on the node that has been exported in the db
+	// or if a block is missing in the db that is present in the node
+	// export this epoch to the db again
+	blocksMap := make(map[string]*types.BlockComparisonContainer)
+
+	for _, block := range dbBlocks {
+		key := fmt.Sprintf("%v-%x", block.Slot, block.BlockRoot)
+		_, found := blocksMap[key]
+
+		if !found {
+			blocksMap[key] = &types.BlockComparisonContainer{Epoch: block.Epoch}
+		}
+
+		blocksMap[key].Db = block
+	}
+	for _, block := range nodeBlocks {
+		key := fmt.Sprintf("%v-%x", block.Slot, block.BlockRoot)
+		_, found := blocksMap[key]
+
+		if !found {
+			blocksMap[key] = &types.BlockComparisonContainer{Epoch: block.Epoch}
+		}
+
+		blocksMap[key].Node = block
+	}
+
+	epochsToExport := make(map[uint64]bool)
+
+	for key, block := range blocksMap {
+		if block.Db == nil {
+			logger.Printf("queuing epoch %v for export as block %v is present on the node but missing in the db", block.Epoch, key)
+			epochsToExport[block.Epoch] = true
+		} else if block.Node == nil {
+			logger.Printf("queuing epoch %v for export as block %v is present on the db but missing in the node", block.Epoch, key)
+			epochsToExport[block.Epoch] = true
+		} else if bytes.Compare(block.Db.BlockRoot, block.Node.BlockRoot) != 0 {
+			logger.Printf("queuing epoch %v for export as block %v has a different hash in the db as on the node", block.Epoch, key)
+			epochsToExport[block.Epoch] = true
+		}
+	}
+
+	// Add any missing epoch to the export set (might happen if the indexer was stopped for a long period of time)
+	epochs, err := db.GetAllEpochs()
+	if err != nil {
+		logger.Errorf("error retrieving all epochs from the db: %v", err)
+		return
+	}
+
+	// Add not yet exported epochs to the export set (for example during the initial sync)
+	if len(epochs) > 0 && epochs[len(epochs)-1] < head.HeadEpoch {
+		for i := epochs[len(epochs)-1]; i <= head.HeadEpoch; i++ {
+			epochsToExport[i] = true
+		}
+	} else if len(epochs) > 0 && epochs[0] != 0 { // Export the genesis epoch if not yet present in the db
+		epochsToExport[0] = true
+	} else if len(epochs) == 0 { // No epochs are present int the db
+		for i := uint64(0); i <= head.HeadEpoch; i++ {
+			epochsToExport[i] = true
+		}
+	}
+
+	logger.Printf("exporting %v epochs.", len(epochsToExport))
+
+	keys := make([]uint64, 0)
+	for k := range epochsToExport {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	for _, epoch := range keys {
+		if epochBlacklist[epoch] > 3 {
+			logger.Printf("skipping export of epoch %v as it has errored %d times", epoch, epochBlacklist[epoch])
+			continue
+		}
+
+		logger.Printf("exporting epoch %v", epoch)
+
+		err = ExportEpoch(epoch, client)
+
+		if err != nil {
+			logger.Errorf("error exporting epoch: %v", err)
+			if utils.EpochToTime(epoch).Before(time.Now().Add(time.Hour * -24)) {
+				epochBlacklist[epoch]++
+			}
+		}
+		logger.Printf("finished export for epoch %v", epoch)
+	}
+
+	logger.Infof("marking orphaned blocks of epochs %v-%v", startEpoch, head.HeadEpoch)
+	err = MarkOrphanedBlocks(startEpoch, head.HeadEpoch, nodeBlocks)
+	if err != nil {
+		logger.Errorf("error marking orphaned blocks: %v", err)
+	}
+
+	// Update epoch statistics up to 10 epochs after the last finalized epoch
+	startEpoch = uint64(0)
+	if head.FinalizedEpoch > 10 {
+		startEpoch = head.FinalizedEpoch - 10
+		if head.HeadEpoch-startEpoch > 10 {
+			startEpoch = head.HeadEpoch - 10
+		}
+	}
+	logger.Infof("updating status of epochs %v-%v", startEpoch, head.HeadEpoch)
+	err = updateEpochStatus(client, startEpoch, head.HeadEpoch)
+	if err != nil {
+		logger.Errorf("error updating epoch stratus: %v", err)
+	}
+
+	logger.Infof("exporting validation queue")
+	err = exportValidatorQueue(client)
+	if err != nil {
+		logger.Errorf("error exporting validator queue data: %v", err)
+	}
+
+	logger.Infof("finished exporting all new blocks/epochs")
 }
 
 // MarkOrphanedBlocks will mark the orphaned blocks in the database
@@ -390,6 +417,27 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 // ExportEpoch will export an epoch from rpc into the database
 func ExportEpoch(epoch uint64, client rpc.Client) error {
 	start := time.Now()
+
+	// Check if the partition for the validator_balances and attestation_assignments table for this epoch exists
+	var one int
+	logger.Printf("checking partition status for epoch %v", epoch)
+	week := epoch / 1575
+	err := db.DB.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'attestation_assignments_%v'", week))
+	if err != nil {
+		logger.Infof("creating partition attestation_assignments_%v", week)
+		_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE attestation_assignments_%v PARTITION OF attestation_assignments_p FOR VALUES IN (%v);", week, week))
+		if err != nil {
+			logger.Fatalf("unable to create partition attestation_assignments_%v: %v", week, err)
+		}
+	}
+	err = db.DB.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'validator_balances_%v'", week))
+	if err != nil {
+		logger.Infof("creating partition validator_balances_%v", week)
+		_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE validator_balances_%v PARTITION OF validator_balances_p FOR VALUES IN (%v);", week, week))
+		if err != nil {
+			logger.Fatalf("unable to create partition validator_balances_%v: %v", week, err)
+		}
+	}
 
 	logger.Printf("retrieving data for epoch %v", epoch)
 	data, err := client.GetEpochData(epoch)
@@ -463,7 +511,7 @@ func updateValidatorPerformance() error {
 
 	err = tx.Get(&currentEpoch, "SELECT MAX(epoch) FROM epochs")
 	if err != nil {
-		return fmt.Errorf("error retrieving latest epoch from validator_balances table: %w", err)
+		return fmt.Errorf("error retrieving latest epoch: %w", err)
 	}
 
 	lastDayEpoch := currentEpoch - 225
@@ -738,9 +786,10 @@ func genesisDepositsExporter() {
 					b.balance as amount,
 					d.signature as signature
 				FROM validators v
-				LEFT JOIN validator_balances b 
+				LEFT JOIN validator_balances_p b 
 					ON v.validatorindex = b.validatorindex
 					AND b.epoch = 0
+					AND b.week = 0
 				LEFT JOIN ( 
 					SELECT DISTINCT ON (publickey) publickey, signature FROM eth1_deposits 
 				) d ON d.publickey = v.pubkey

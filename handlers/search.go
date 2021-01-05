@@ -109,7 +109,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	case "eth1_addresses":
 		result = &types.SearchAheadEth1Result{}
 		err = db.DB.Select(result, `
-			SELECT ENCODE(from_address::bytea, 'hex') as from_address
+			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
 			FROM eth1_deposits
 			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
 			LIMIT 10`, search+"%")
