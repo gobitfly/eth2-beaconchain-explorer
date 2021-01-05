@@ -21,41 +21,15 @@ func WriteStatisticsForDay(day uint64) error {
 	defer tx.Rollback()
 
 	start := time.Now()
-	logger.Infof("exporting start_balance and start_effective_balance statistics")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, start_balance, start_effective_balance)
-    (select validatorindex, 0, balance, effectivebalance
-     FROM validator_balances_p
-     where week = $1 / 1575
-       and epoch = $1) on conflict do nothing;`, firstEpoch)
-	if err != nil {
-		return err
-	}
-	logger.Infof("export completed, took %v", time.Since(start))
-	start = time.Now()
-
-	logger.Infof("exporting end_balance and end_effective_balance statistics")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, end_balance, end_effective_balance)
-    (select validatorindex, 0, balance, effectivebalance
-     FROM validator_balances_p
-     where week = $1 / 1575
-       and epoch = $1) on conflict (validatorindex, day) do
-	update
-    set end_balance = excluded.end_balance, end_effective_balance = excluded.end_effective_balance;`, lastEpoch)
-	if err != nil {
-		return err
-	}
-	logger.Infof("export completed, took %v", time.Since(start))
-	start = time.Now()
-
-	logger.Infof("exporting min_balance, max_balance, min_effective_balance and max_effective_balance statistics")
+	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, min_balance, max_balance, min_effective_balance,
-                             max_effective_balance)
-    (select validatorindex, 0, min(balance), max(balance), min(effectivebalance), max(effectivebalance)
+                             max_effective_balance, start_balance, start_effective_balance, end_balance, end_effective_balance)
+    (select validatorindex, 0, min(balance), max(balance), min(effectivebalance), max(effectivebalance), , max(case when epoch = $1 then balance else 0 end), max(case when epoch = $1 then effectivebalance else 0 end), max(case when epoch = $2 then balance else 0 end), max(case when epoch = $2 then effectivebalance else 0 end)
      FROM validator_balances_p
      where week >= $1 / 1575 AND week <= $2 / 1575
        and epoch >= $1 and epoch <= $2 group by validatorindex) on conflict (validatorindex, day) do
 update
-    set min_balance = excluded.min_balance, max_balance = excluded.max_balance, min_effective_balance = excluded.min_effective_balance, max_effective_balance = excluded.max_effective_balance;
+    set min_balance = excluded.min_balance, max_balance = excluded.max_balance, min_effective_balance = excluded.min_effective_balance, max_effective_balance = excluded.max_effective_balance, start_balance = excluded.start_balance, start_effective_balance = excluded.start_effective_balance, end_balance = excluded.end_balance, end_effective_balance = excluded.end_effective_balance;
     `, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
