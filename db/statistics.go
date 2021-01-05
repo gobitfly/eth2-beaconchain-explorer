@@ -159,7 +159,7 @@ update set proposer_slashings = excluded.proposer_slashings;`, firstEpoch, lastE
 	logger.Infof("exporting deposits and deposits_amount statistics")
 	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, deposits, deposits_amount) (select validators.validatorindex, 0, count(*), sum(amount)
                                                                               from blocks_deposits
-                                                                                       left join validators on blocks_deposits.publickey = validators.pubkey
+                                                                                       left inner join validators on blocks_deposits.publickey = validators.pubkey
                                                                               where block_slot >= $1 * 32
                                                                                 and block_slot <= $2 * 32
                                                                               group by validators.validatorindex) on conflict (validatorindex, day) do
