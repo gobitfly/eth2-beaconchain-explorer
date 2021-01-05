@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -36,12 +35,17 @@ func main() {
 		previousDay := currentDay - 1
 
 		for day := uint64(0); day <= previousDay; day++ {
-			var status sql.NullBool
+			var status bool
 			err := db.DB.Get(&status, "select status from validator_stats_status where day = $1", day)
-			if err != nil {
-				logrus.Errorf("error retrieving status for day %v: %v", day, err)
-				time.Sleep(time.Second)
-				continue
+			if err != nil && err.Error() == "sql: no rows in result set" {
+				err := db.WriteStatisticsForDay(day)
+				if err != nil {
+					logrus.Errorf("error exporting stats for day %v: %v", day, err)
+				}
+			} else if err != nil {
+				logrus.Errorf("error retrieving stats status for day %v: %v", day, err)
+			} else {
+				logrus.Infof("statistics for day %v are already in the db", day)
 			}
 		}
 

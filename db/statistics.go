@@ -176,6 +176,11 @@ update set deposits = excluded.deposits, deposits_amount = excluded.deposits_amo
 		return err
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
 	logger.Infof("statistics export of day %v completed, took %v", day, time.Since(exportStart))
 	return nil
 }
