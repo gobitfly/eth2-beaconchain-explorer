@@ -35,7 +35,7 @@ func main() {
 		previousDay := currentDay - 1
 
 		var lastExportedDay uint64
-		err = db.DB.Get(&lastExportedDay, "select max(day) from validator_stats_status where status")
+		err = db.DB.Get(&lastExportedDay, "select max(day) + 1 from validator_stats_status where status")
 		if err != nil {
 			logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 		}
