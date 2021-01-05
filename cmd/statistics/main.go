@@ -34,21 +34,21 @@ func main() {
 		currentDay := latestEpoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
 		previousDay := currentDay - 1
 
-		for day := uint64(0); day <= previousDay; day++ {
-			var status bool
-			err := db.DB.Get(&status, "select status from validator_stats_status where day = $1", day)
-			if err != nil && err.Error() == "sql: no rows in result set" {
+		var lastExportedDay uint64
+		err = db.DB.Get(&lastExportedDay, "select max(day) from validator_stats_status where status")
+		if err != nil {
+			logrus.Errorf("error retreiving latest exported day from the db: %v", err)
+		}
+
+		logrus.Infof("previous day is %v, last exported day is %v", previousDay, lastExportedDay)
+		if lastExportedDay < previousDay {
+			for day := lastExportedDay; day <= previousDay; day++ {
 				err := db.WriteStatisticsForDay(day)
 				if err != nil {
 					logrus.Errorf("error exporting stats for day %v: %v", day, err)
 				}
-			} else if err != nil {
-				logrus.Errorf("error retrieving stats status for day %v: %v", day, err)
-			} else {
-				logrus.Infof("statistics for day %v are already in the db", day)
 			}
 		}
-
 		time.Sleep(time.Hour)
 	}
 }
