@@ -21,5 +21,9 @@ explorer:
 	cp -r static/ bin/static
 	cp -r locales/ bin/
 	go build --ldflags=${LDFLAGS} --tags=blst_enabled -o bin/explorer cmd/explorer/main.go
+
+chartshotter
 	go build --ldflags=${LDFLAGS} --tags=blst_enabled -o bin/chartshotter cmd/chartshotter/main.go
+
+stats
 	go build --ldflags=${LDFLAGS} --tags=blst_enabled -o bin/statistics cmd/statistics/main.go
