@@ -24,7 +24,7 @@ func WriteStatisticsForDay(day uint64) error {
 	logger.Infof("exporting min_balance, max_balance, min_effective_balance, max_effective_balance, start_balance, start_effective_balance, end_balance and end_effective_balance statistics")
 	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, min_balance, max_balance, min_effective_balance,
                              max_effective_balance, start_balance, start_effective_balance, end_balance, end_effective_balance)
-    (select validatorindex, 0, min(balance), max(balance), min(effectivebalance), max(effectivebalance), , max(case when epoch = $1 then balance else 0 end), max(case when epoch = $1 then effectivebalance else 0 end), max(case when epoch = $2 then balance else 0 end), max(case when epoch = $2 then effectivebalance else 0 end)
+    (select validatorindex, 0, min(balance), max(balance), min(effectivebalance), max(effectivebalance), max(case when epoch = $1 then balance else 0 end), max(case when epoch = $1 then effectivebalance else 0 end), max(case when epoch = $2 then balance else 0 end), max(case when epoch = $2 then effectivebalance else 0 end)
      FROM validator_balances_p
      where week >= $1 / 1575 AND week <= $2 / 1575
        and epoch >= $1 and epoch <= $2 group by validatorindex) on conflict (validatorindex, day) do
