@@ -8,13 +8,6 @@
 
 {{ define "content"}}
     {{with .Data}}
-        {{if not (eq .Banner "")}}
-            <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-flex justify-content-center align-items-center p-2">
-                <i class="fab fa-github mr-2" aria-hidden="true"></i>
-                <span class="mr-2">Latest Releases:</span>
-                <span>{{.Banner}}</span>
-            </div>
-        {{end}}
         <section style="background: var(--bg-color-light)">
             <div class="container">
                 <div style="padding-top: 2rem;" class="row justify-content-between align-items-center">

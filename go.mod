@@ -14,7 +14,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ethereum/go-ethereum v1.9.14
-	github.com/evanw/esbuild v0.8.23 // indirect
+	github.com/evanw/esbuild v0.8.23
 	github.com/go-openapi/spec v0.19.12 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/google/go-querystring v1.0.0

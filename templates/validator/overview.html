@@ -91,12 +91,12 @@
     <div class="text-justify row justify-content-center mb-2">
         <div class="col">
             <div class="px-2">
-                <div class="px-2" style="max-width: 50rem;">
+                <div class="px-2 mx-auto" style="max-width: 50rem;">
                     <span>
                         {{if eq .InclusionDelay 0}} 
                             An ETH1 genesis deposit has been made, and your validator will be activated once genesis occurs. Please make sure your validator is up and running before genesis. 
                         {{else}} 
-                            An ETH1 deposit has been made, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a>  until your deposit is processed by the beacon chain. If there is a deposit queue then it may take longer for the validator to be activated. 
+                            The last ETH1 deposit was made  <span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{.Deposits.LastEth1DepositTs}}"></span>, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a>  until your deposit is processed by the beacon chain. If there is a deposit queue then it may take longer for the validator to be activated. 
                         {{end}}
                         {{if .PendingCount}}This validator will be activated approximately on <span class="font-weight-bolder">{{.EstimatedActivationTs | formatTsWithoutTooltip}}</span> after being registered by the beacon chain.{{end}}
                     </span>
@@ -104,13 +104,18 @@
             </div>
         </div>
     </div>
+    <script>
+        window.addEventListener('load', function() {
+            $('#deposits-tab').tab("show")
+        })
+    </script>
 {{end}}
 
 {{ define "validatorOverviewPending" }}
     <div class="text-justify row justify-content-center mb-2">
         <div class="col">
             <div class="px-2">
-                <div class="p-2" style="max-width: 50rem;">
+                <div class="p-2 mx-auto" style="max-width: 50rem;">
                     This validator has been processed by the beacon chain and is currently waiting to be activated. It will approximately be activated on <span class="font-weight-bolder" title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> during epoch <span class="font-weight-bolder">{{.ActivationEpoch}}</span>. Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
                 </div>
                 <div class="py-2" style="min-width:300px;">
@@ -119,6 +124,11 @@
             </div>
         </div>
     </div>
+    <script>
+        window.addEventListener('load', function() {
+            $('#deposits-tab').tab("show")
+        })
+    </script>
 {{end}}
 
 {{ define "validatorOverviewValidating"}}
@@ -196,7 +206,7 @@
 
         <div class="p-2 text-justify row justify-content-center">
             <div class="col">
-                <div class="px-2" style="max-width: 50rem;">
+                <div class="px-2 mx-auto" style="max-width: 50rem;">
                     <div class="p-2 text-justify">This validator has exited the system during epoch <a href="/epoch/{{.ExitEpoch}}">{{.ExitEpoch}}</a> and is no longer validating. There is no need to keep the validator running anymore. Funds will be withdrawable after epoch <span><a href="/epoch/{{.WithdrawableEpoch}}">{{.WithdrawableEpoch}}</a></span>.</div>
                     {{if .Slashed}}<div class="p-2">Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}</div>{{end}}
                 </div>
@@ -209,16 +219,33 @@
 {{define "validatorOverviewCount"}}
 <div class="row flex-wrap justify-content-center p-3 mb-3">
     <div class="mx-3">
-        <span data-toggle="tooltip" title="Proposal Assignments"><i class="tab-icon fas fa-cubes"></i> {{ .ProposedBlocksCount }}</span>
+        <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Proposal Assignments"><i class="fas fa-cubes poin"></i> {{ .ProposedBlocksCount }}</span>
     </div>
     <div class="mx-3">
-        <span data-toggle="tooltip" title="Attestation Assignments"><i class="tab-icon fas fa-file-signature"></i> <span>{{.AttestationsCount}}</span>
+        <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments"><i class="fas fa-file-signature"></i><span>{{.AttestationsCount}}</span>
     </div>
     <div class="mx-3">
-        <span data-toggle="tooltip" title="Other validators slashed"><i class="tab-icon fas fa-user-slash"></i> {{.SlashingsCount}}</span>
+        <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash"></i> {{.SlashingsCount}}</span>
     </div>
     <div class="mx-3">
-        <span data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="tab-icon fas fa-wallet"></i> {{.DepositsCount}}</span>
+        <span id="depositCount" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet"></i> {{.DepositsCount}}</span>
     </div>
 </div>
+
+<script>
+    window.addEventListener('load', function() {
+        $('#blockCount').on('click', function() {
+            $("#blocks-tab").tab('show')
+        })
+        $('#attestationCount').on('click', function() {
+            $("#attestations-tab").tab('show')
+        })
+        $('#slashingsCount').on('click', function() {
+            $("#slashings-tab").tab('show')
+        })
+        $('#depositCount').on('click', function() {
+            $("#deposits-tab").tab('show')
+        })
+    })
+</script>
 {{end}}
