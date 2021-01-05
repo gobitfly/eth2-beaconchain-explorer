@@ -63,28 +63,13 @@ update
 	logger.Infof("export completed, took %v", time.Since(start))
 	start = time.Now()
 
-	logger.Infof("exporting missed_attestations statistics")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, missed_attestations) (select validatorindex, 0, count(*)
+	logger.Infof("exporting missed_attestations and orphaned_attestations statistics")
+	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, missed_attestations, orphaned_attestations) (select validatorindex, 0, sum(case when status = 0 then 1 else 0 end), sum(case when status = 3 then 1 else 0 end)
                                                                         from attestation_assignments_p
                                                                         where week >= $1 / 1575 AND week <= $2 / 1575
                                                                           and epoch >= $1 and epoch <= $2
-                                                                          and status = 0
                                                                         group by validatorindex) on conflict (validatorindex, day) do
-update set missed_attestations = excluded.missed_attestations;`, firstEpoch, lastEpoch)
-	if err != nil {
-		return err
-	}
-	logger.Infof("export completed, took %v", time.Since(start))
-	start = time.Now()
-
-	logger.Infof("exporting orphaned_attestations statistics")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, orphaned_attestations) (select validatorindex, 0, count(*)
-                                                                        from attestation_assignments_p
-                                                                        where week >= $1 / 1575 AND week <= $2 / 1575
-                                                                          and epoch >= $1 and epoch <= $2
-                                                                          and status = 3
-                                                                        group by validatorindex) on conflict (validatorindex, day) do
-update set orphaned_attestations = excluded.orphaned_attestations;`, firstEpoch, lastEpoch)
+update set missed_attestations = excluded.missed_attestations, orphaned_attestations = excluded.orphaned_attestations;`, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
@@ -92,64 +77,25 @@ update set orphaned_attestations = excluded.orphaned_attestations;`, firstEpoch,
 	start = time.Now()
 
 	logger.Infof("exporting proposed_blocks statistics")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, proposed_blocks) (select proposer, 0, count(*)
+	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks) (select proposer, 0, sum(case when status = '1' then 1 else 0 end), sum(case when status = '2' then 1 else 0 end), sum(case when status = '3' then 1 else 0 end)
                                                                   from blocks
                                                                         where epoch >= $1 and epoch <= $2
                                                                           and status = '1'
                                                                         group by proposer) on conflict (validatorindex, day) do
-update set proposed_blocks = excluded.proposed_blocks;`, firstEpoch, lastEpoch)
+update set proposed_blocks = excluded.proposed_blocks, missed_blocks = excluded.missed_blocks, orphaned_blocks = excluded.orphaned_blocks;`, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
 	logger.Infof("export completed, took %v", time.Since(start))
 	start = time.Now()
 
-	logger.Infof("exporting missed_blocks statistics")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, missed_blocks) (select proposer, 0, count(*)
-                                                                  from blocks
-                                                                        where epoch >= $1 and epoch <= $2
-                                                                          and status = '2'
-                                                                        group by proposer) on conflict (validatorindex, day) do
-update set missed_blocks = excluded.missed_blocks;`, firstEpoch, lastEpoch)
-	if err != nil {
-		return err
-	}
-	logger.Infof("export completed, took %v", time.Since(start))
-	start = time.Now()
-
-	logger.Infof("exporting orphaned_blocks statistics")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, orphaned_blocks) (select proposer, 0, count(*)
-                                                                  from blocks
-                                                                        where epoch >= $1 and epoch <= $2
-                                                                          and status = '3'
-                                                                        group by proposer) on conflict (validatorindex, day) do
-update set orphaned_blocks = excluded.orphaned_blocks;`, firstEpoch, lastEpoch)
-	if err != nil {
-		return err
-	}
-	logger.Infof("export completed, took %v", time.Since(start))
-	start = time.Now()
-
-	logger.Infof("exporting attester_slashings statistics")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, attester_slashings) (select proposer, 0, sum(attesterslashingscount)
+	logger.Infof("exporting attester_slashings and proposer_slashings statistics")
+	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, attester_slashings, proposer_slashings) (select proposer, 0, sum(attesterslashingscount), sum(proposerslashingscount)
                                                                   from blocks
                                                                         where epoch >= $1 and epoch <= $2
                                                                           and status = '1'
                                                                         group by proposer) on conflict (validatorindex, day) do
-update set attester_slashings = excluded.attester_slashings;`, firstEpoch, lastEpoch)
-	if err != nil {
-		return err
-	}
-	logger.Infof("export completed, took %v", time.Since(start))
-	start = time.Now()
-
-	logger.Infof("exporting proposer_slashings statistics")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, proposer_slashings) (select proposer, 0, sum(proposerslashingscount)
-                                                                  from blocks
-                                                                        where epoch >= $1 and epoch <= $2
-                                                                          and status = '1'
-                                                                        group by proposer) on conflict (validatorindex, day) do
-update set proposer_slashings = excluded.proposer_slashings;`, firstEpoch, lastEpoch)
+update set attester_slashings = excluded.attester_slashings, proposer_slashings = proposer_slashings.attester_slashings;`, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
