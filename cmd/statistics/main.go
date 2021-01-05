@@ -35,13 +35,16 @@ func main() {
 		previousDay := currentDay - 1
 
 		var lastExportedDay uint64
-		err = db.DB.Get(&lastExportedDay, "select max(day) + 1 from validator_stats_status where status")
+		err = db.DB.Get(&lastExportedDay, "select COALESCE(max(day), 0) from validator_stats_status where status")
 		if err != nil {
 			logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 		}
+		if lastExportedDay != 0 {
+			lastExportedDay++
+		}
 
 		logrus.Infof("previous day is %v, last exported day is %v", previousDay, lastExportedDay)
-		if lastExportedDay < previousDay {
+		if lastExportedDay < previousDay || lastExportedDay == 0 {
 			for day := lastExportedDay; day <= previousDay; day++ {
 				err := db.WriteStatisticsForDay(day)
 				if err != nil {
