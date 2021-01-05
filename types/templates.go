@@ -212,6 +212,7 @@ type ValidatorPageData struct {
 	Status                              string `db:"status"`
 	ProposedBlocksCount                 uint64
 	AttestationsCount                   uint64
+	StreakCount                         uint64
 	StatusProposedCount                 uint64
 	StatusMissedCount                   uint64
 	DepositsCount                       uint64

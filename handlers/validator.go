@@ -346,8 +346,30 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
 
+	var attestationStatusHistory []int64
+	err = db.DB.Select(&attestationStatusHistory, "select status from attestation_assignments_p where validatorindex=$1 order by epoch desc;", index)
+	if err != nil {
+		logger.Errorf("error retrieving validator attestation status history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	validatorPageData.StreakCount = 0
+	for _, status := range attestationStatusHistory {
+		if status == 2 { // break if Missed
+			break
+		}
+		if status != 0 { // ignore Scheduled
+			validatorPageData.StreakCount++
+		}
+	}
+
 	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances_p WHERE validatorindex = $1 AND epoch > $2 AND week >= $2 / 1575 ORDER BY epoch", index, validatorPageData.Epoch-1575)
+	limit := validatorPageData.Epoch
+	if limit > 1575 {
+		limit = 1575
+	}
+	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances_p WHERE validatorindex = $1 AND epoch > $2 AND week >= $2 / $3 ORDER BY epoch", index, validatorPageData.Epoch-limit, limit)
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
