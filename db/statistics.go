@@ -69,7 +69,7 @@ update set proposed_blocks = excluded.proposed_blocks, missed_blocks = excluded.
                                                                         where epoch >= $1 and epoch <= $2
                                                                           and status = '1'
                                                                         group by proposer) on conflict (validatorindex, day) do
-update set attester_slashings = excluded.attester_slashings, proposer_slashings = proposer_slashings.attester_slashings;`, firstEpoch, lastEpoch)
+update set attester_slashings = excluded.attester_slashings, proposer_slashings = excluded.proposer_slashings;`, firstEpoch, lastEpoch)
 	if err != nil {
 		return err
 	}
