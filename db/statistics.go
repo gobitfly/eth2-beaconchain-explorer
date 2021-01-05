@@ -8,11 +8,11 @@ import (
 func WriteStatisticsForDay(day uint64) error {
 	exportStart := time.Now()
 
-	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot
+	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot
 	firstEpoch := day * epochsPerDay
 	lastEpoch := (day+1)*epochsPerDay - 1
 
-	logger.Infof("exporting statistics for day %v (epoch %v to %v)", epochsPerDay, firstEpoch, lastEpoch)
+	logger.Infof("exporting statistics for day %v (epoch %v to %v)", day, firstEpoch, lastEpoch)
 
 	tx, err := DB.Begin()
 	if err != nil {
