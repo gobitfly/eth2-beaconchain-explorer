@@ -63,6 +63,7 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 
 			if err != nil {
 				logger.Errorf("error receiving from chain head stream: %v", err)
+				time.Sleep(time.Second)
 				continue
 			}
 
