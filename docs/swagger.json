@@ -295,7 +295,7 @@
                 "tags": [
                     "Eth1"
                 ],
-                "summary": "Get an eth1 deposit by its eth1 transaction hash",
+                "summary": "Get Eth2 validator information with the Eth1 deposit transaction hash",
                 "parameters": [
                     {
                         "type": "string",
@@ -770,7 +770,7 @@
                 "tags": [
                     "Validator"
                 ],
-                "summary": "Get all attestations during the last 100 epochs for up to 100 validators",
+                "summary": "Get all attestations during the last 100 epochs for up to 100 validators (Total of 100 results)",
                 "parameters": [
                     {
                         "type": "string",
@@ -798,7 +798,7 @@
                 "tags": [
                     "Validator"
                 ],
-                "summary": "Get the balance history (last 100 epochs) of up to 100 validators",
+                "summary": "Get the balance history (last 100 epochs) of up to 100 validators (Total of 100 results)",
                 "parameters": [
                     {
                         "type": "string",
