@@ -29,7 +29,12 @@ func main() {
 	defer db.DB.Close()
 
 	if *dayToExport >= 0 {
-		err := db.WriteStatisticsForDay(uint64(*dayToExport))
+		_, err := db.DB.Exec("delete from validator_stats_status where day = $1", *dayToExport)
+		if err != nil {
+			logrus.Fatalf("error resetting status for day %v: %v", *dayToExport, err)
+		}
+
+		err = db.WriteStatisticsForDay(uint64(*dayToExport))
 		if err != nil {
 			logrus.Errorf("error exporting stats for day %v: %v", dayToExport, err)
 		}

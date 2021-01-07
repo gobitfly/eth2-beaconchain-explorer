@@ -346,21 +346,28 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
 
-	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT day, COALESCE(GREATEST(start_balance, end_balance), 0) AS balance, COALESCE(start_effective_balance, 0) AS effectivebalance FROM validator_stats WHERE validatorindex = $1 ORDER BY day", index)
+	var incomeHistory []*types.ValidatorIncomeHistory
+	err = db.DB.Select(&incomeHistory, "select day, start_balance, end_balance, COALESCE(deposits_amount, 0) as deposits_amount from validator_stats where validatorindex = $1 order by day;", index)
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
-	validatorPageData.BalanceHistoryChartData = make([][]float64, len(balanceHistory))
-	validatorPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(balanceHistory))
+	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory))
 
-	for i, balance := range balanceHistory {
+	for i, balance := range incomeHistory {
+
+		income := balance.EndBalance - balance.StartBalance
+		if income > balance.Deposits {
+			income = income - balance.Deposits
+		}
+		color := "#7cb5ec"
+		if income < 0 {
+			color = "#f7a35c"
+		}
 		balanceTs := utils.DayToTime(balance.Day)
-		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
-		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.EffectiveBalance) / 1000000000}
+		validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: float64(income) / 1000000000, Color: color}
 	}
 
 	logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
