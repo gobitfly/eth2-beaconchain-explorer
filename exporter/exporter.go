@@ -605,13 +605,13 @@ func updateValidatorPerformance() error {
 				}
 			}
 
-			if balance.Balance1d == 0 {
+			if int64(balance.ActivationEpoch) > lastDayEpoch {
 				balance.Balance1d = balance.BalanceActivation
 			}
-			if balance.Balance7d == 0 {
+			if int64(balance.ActivationEpoch) > lastWeekEpoch {
 				balance.Balance7d = balance.BalanceActivation
 			}
-			if balance.Balance31d == 0 {
+			if int64(balance.ActivationEpoch) > lastMonthEpoch {
 				balance.Balance31d = balance.BalanceActivation
 			}
 
