@@ -303,7 +303,7 @@ func doFullCheck(client rpc.Client) {
 		nextEpoch := epochs[i+1]
 
 		if currentEpoch != nextEpoch-1 {
-			logger.Infof("epoch gap found between epochs %v and %v")
+			logger.Infof("epoch gap found between epochs %v and %v", currentEpoch, nextEpoch)
 			for j := currentEpoch + 1; j <= nextEpoch-1; j++ {
 				logger.Printf("queuing epoch %v for export", j)
 				epochsToExport[j] = true
