@@ -243,21 +243,20 @@
                                     <i class="fa fa-trash-alt" style="width: 15px;"></i>
                               </button>
                         </span>
-                        <div class="row" style="width:100%;">
-                              <div class="col" style="width:100%;">
-                                    <span class="multiselect-border">
-                                          <input class="dashboard-validator-input typeahead-dashboard" type="text"
-                                                placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
-                                    </span>
-                              </div>
-                              <div class="col-1 p-0">
-                                    <div class="dropdown">
-                                          <button class="btn btn-sm dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <span class="multiselect-border">
+                              <div class="row m-0" style="width:100%;">
+                                    <div class="col">
+                                                <input class="dashboard-validator-input typeahead-dashboard" type="text"
+                                                      placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
+                                    </div>
+                                    <div class="col-1 p-0 dropright d-flex justify-content-end">
+                                          <button id="dashboard-dropdown-btn" class="btn btn-sm dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                                                style="background: var(--bg-color-secondary);">
                                           </button>
                                           <ul id="selected-validators" class="dropdown-menu"></ul>
                                     </div>
                               </div>
-                        </div>
+                        </span>
                         <div style="font-weight:300;font-size:0.9rem;display:flex;justify-content:center">
                               <span id="dashboard-info"></span>
                         </div>

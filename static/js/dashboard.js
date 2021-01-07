@@ -387,6 +387,8 @@ $(document).ready(function() {
   function renderDashboardInfo() {
     var el = document.getElementById('dashboard-info')
     el.innerText = `Found ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online + state.validatorsCount.active_offline} active and ${state.validatorsCount.exited} exited validators`
+    var btn = document.getElementById('dashboard-dropdown-btn')
+    btn.innerText = state.validatorsCount.pending+state.validatorsCount.active_online+state.validatorsCount.active_offline+state.validatorsCount.exited
   }
 
   function setValidatorsFromURL() {
