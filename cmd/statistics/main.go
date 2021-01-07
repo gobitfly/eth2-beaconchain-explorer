@@ -67,6 +67,6 @@ func main() {
 				}
 			}
 		}
-		time.Sleep(time.Hour)
+		time.Sleep(time.Minute)
 	}
 }
