@@ -354,7 +354,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory))
+	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory)+1)
 
 	for i, balance := range incomeHistory {
 
@@ -369,6 +369,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		balanceTs := utils.DayToTime(balance.Day)
 		validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: float64(income) / 1000000000, Color: color}
 	}
+
+	lastDayIncome := int64(validatorPageData.CurrentBalance) - incomeHistory[len(incomeHistory)-1].EndBalance
+	lastDayIncomeColor := "#7cb5ec"
+	if lastDayIncome < 0 {
+		lastDayIncomeColor = "#f7a35c"
+	}
+	currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
+	validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(currentDay).Unix() * 1000), Y: float64(lastDayIncome) / 1000000000, Color: lastDayIncomeColor}
 
 	logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
 	start = time.Now()

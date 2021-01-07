@@ -148,7 +148,6 @@ create table validator_stats
     orphaned_blocks         int,
     attester_slashings      int,
     proposer_slashings      int,
-    income                  bigint,
     deposits                int,
     deposits_amount         bigint,
     primary key (validatorindex, day)
