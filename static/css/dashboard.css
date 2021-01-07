@@ -17,6 +17,7 @@
   background-color: var(--bg-color-secondary);
   border: 1.5px solid var(--light);
   box-shadow: 0 2px 3px rgba(0,0,0,0.06);
+  width: 100%;
 }
 
 
@@ -43,7 +44,7 @@ ul.multiselect {
   padding: .5rem .75rem;
 }
 
-ul.multiselect li.item {
+#selected-validators li.item {
   margin: 3px;
   list-style: none;
   float: left;
@@ -54,29 +55,29 @@ ul.multiselect li.item {
   background-color: lightblue;
 }
 
-ul.multiselect li.item[data-state='active_online'],
-ul.multiselect li.item[data-state='slashing_online'],
-ul.multiselect li.item[data-state='exiting_online'] {
+#selected-validators li.item[data-state='active_online'],
+#selected-validators li.item[data-state='slashing_online'],
+#selected-validators li.item[data-state='exiting_online'] {
   background-color: lightgreen;
 }
-ul.multiselect li.item[data-state='active_offline'],
-ul.multiselect li.item[data-state='slashing_offline'],
-ul.multiselect li.item[data-state='exiting_offline'] {
+#selected-validators li.item[data-state='active_offline'],
+#selected-validators li.item[data-state='slashing_offline'],
+#selected-validators li.item[data-state='exiting_offline'] {
   background-color: lightcoral;
 }
-ul.multiselect li.item[data-state='pending'] {
+#selected-validators li.item[data-state='pending'] {
   background-color: lightyellow;
 }
-ul.multiselect li.item[data-state='exited'],
-ul.multiselect li.item[data-state='slashed'] {
+#selected-validators li.item[data-state='exited'],
+#selected-validators li.item[data-state='slashed'] {
   background-color: lightgray;
 }
 
-ul.multiselect li.item .remove-validator {
+#selected-validators li.item .remove-validator {
   cursor: pointer;
 }
 
-ul.multiselect li.item .remove-validator:hover {
+#selected-validators li.item .remove-validator:hover {
   filter: drop-shadow(1px 2px 3px #888) invert(0.2);
 }
 
@@ -91,7 +92,7 @@ ul.multiselect li.input {
   
 }
 
-ul.multiselect li.input span {
+.dashboard-validator-input span {
   width: 100%;
   border: 1px solid var(--bg-color-secondary);
   border-radius: 5px;
@@ -99,7 +100,7 @@ ul.multiselect li.input span {
 
 }
 
-ul.multiselect li.input input {
+.dashboard-validator-input {
   color: var(--font-color);
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -114,6 +115,10 @@ ul.multiselect li.input input {
   border: none;
   z-index: 1;
   position: relative;
+  width: 100%;
+}
+
+.dashboard-container .twitter-typeahead{
   width: 100%;
 }
 
