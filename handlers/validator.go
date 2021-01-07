@@ -8,7 +8,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"html/template"
 	"net/http"
 	"sort"
