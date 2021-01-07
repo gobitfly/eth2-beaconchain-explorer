@@ -347,7 +347,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var balanceHistory []*types.ValidatorBalanceHistory
-	err = db.DB.Select(&balanceHistory, "SELECT epoch, balance, COALESCE(effectivebalance, 0) AS effectivebalance FROM validator_balances_p WHERE validatorindex = $1 AND epoch > $2 AND week >= $2 / 1575 ORDER BY epoch", index, validatorPageData.Epoch-1575)
+	err = db.DB.Select(&balanceHistory, "SELECT day, COALESCE(start_balance, 0) AS balance, COALESCE(start_effective_balance, 0) AS effectivebalance FROM validator_stats WHERE validatorindex = $1 ORDER BY day", index)
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -358,9 +358,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.EffectiveBalanceHistoryChartData = make([][]float64, len(balanceHistory))
 
 	for i, balance := range balanceHistory {
-		balanceTs := utils.EpochToTime(balance.Epoch)
+		balanceTs := utils.DayToTime(balance.Day)
 		validatorPageData.BalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.Balance) / 1000000000}
-		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(utils.EpochToTime(balance.Epoch).Unix() * 1000), float64(balance.EffectiveBalance) / 1000000000}
+		validatorPageData.EffectiveBalanceHistoryChartData[i] = []float64{float64(balanceTs.Unix() * 1000), float64(balance.EffectiveBalance) / 1000000000}
 	}
 
 	logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))

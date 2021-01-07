@@ -152,6 +152,11 @@ func EpochToTime(epoch uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
 }
 
+// EpochToTime will return a time.Time for an epoch
+func DayToTime(day uint64) time.Time {
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+(day*((60*60*24)/(Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch)))*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
+}
+
 // TimeToEpoch will return an epoch for a given time
 func TimeToEpoch(ts time.Time) int64 {
 	if int64(Config.Chain.GenesisTimestamp) > ts.Unix() {

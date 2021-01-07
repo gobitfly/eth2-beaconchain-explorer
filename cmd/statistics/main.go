@@ -12,6 +12,8 @@ import (
 
 func main() {
 	configPath := flag.String("config", "", "Path to the config file")
+	dayToExport := flag.Int64("day", -1, "Day to export (will export the day independent if it has been already exported or not")
+
 	flag.Parse()
 
 	logrus.Printf("config file path: %v", *configPath)
@@ -25,6 +27,14 @@ func main() {
 
 	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
 	defer db.DB.Close()
+
+	if *dayToExport >= 0 {
+		err := db.WriteStatisticsForDay(uint64(*dayToExport))
+		if err != nil {
+			logrus.Errorf("error exporting stats for day %v: %v", dayToExport, err)
+		}
+		return
+	}
 
 	for true {
 		latestEpoch, err := db.GetLatestEpoch()

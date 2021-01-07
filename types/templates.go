@@ -255,7 +255,7 @@ type DailyProposalCount struct {
 
 // ValidatorBalanceHistory is a struct for the validator balance history data
 type ValidatorBalanceHistory struct {
-	Epoch            uint64 `db:"epoch"`
+	Day              uint64 `db:"day"`
 	Balance          uint64 `db:"balance"`
 	EffectiveBalance uint64 `db:"effectivebalance"`
 }
