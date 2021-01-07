@@ -106,8 +106,8 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 			COALESCE(SUM(effectivebalance),0) AS effectivebalance,
 			COALESCE(SUM(balance),0) AS balance,
 			COUNT(*) AS validatorcount
-		FROM validator_balances
-		WHERE validatorindex = ANY($1) AND epoch > $2
+		FROM validator_balances_p
+		WHERE validatorindex = ANY($1) AND epoch > $2 AND week >= $2 / 1575
 		GROUP BY epoch
 		ORDER BY epoch ASC`
 
@@ -201,11 +201,13 @@ func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
 
 	err = db.DB.Select(&missedAttestations, `
 		SELECT epoch, validatorindex
-		FROM attestation_assignments
+		FROM attestation_assignments_p
 		WHERE 
 			validatorindex = ANY($1) 
 			AND epoch <= $2 
 			AND epoch >= $3 
+			AND week <= $2 / 1575
+			AND week >= $3 / 1575
 			AND status = 0`, filter, maxEpoch, minEpoch)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving daily proposed blocks blocks count")

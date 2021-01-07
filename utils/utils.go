@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -73,6 +74,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorStatus":                   FormatValidatorStatus,
 		"formatPercentage":                        FormatPercentage,
 		"formatPercentageWithPrecision":           FormatPercentageWithPrecision,
+		"formatPercentageWithGPrecision":          FormatPercentageWithGPrecision,
 		"formatPublicKey":                         FormatPublicKey,
 		"formatSlashedValidator":                  FormatSlashedValidator,
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
@@ -388,4 +390,16 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 
 func ExchangeRateForCurrency(currency string) float64 {
 	return price.GetEthPrice(currency)
+}
+
+func Glob(dir string, ext string) ([]string, error) {
+	files := []string{}
+	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
+		if filepath.Ext(path) == ext {
+			files = append(files, path)
+		}
+		return nil
+	})
+
+	return files, err
 }

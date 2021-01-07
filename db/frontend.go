@@ -194,7 +194,7 @@ func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 		ID    uint64 `db:"user_id"`
 		Token string `db:"notification_token"`
 	}
-	err := FrontendDB.Select(&rows, "SELECT user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL", pq.Array(ids))
+	err := FrontendDB.Select(&rows, "SELECT user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL GROUP BY user_id, notification_token ", pq.Array(ids))
 	if err != nil {
 		return nil, err
 	}
@@ -206,6 +206,7 @@ func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 			pushByID[r.ID] = []string{r.Token}
 		}
 	}
+
 	return pushByID, nil
 }
 
@@ -229,7 +230,7 @@ func UserClientEntry(userID uint64, clientName string, clientVersion int64, noti
 		updateClientVersion = ", client_version = $3"
 	}
 
-	_, err := FrontendDB.Query(
+	_, err := FrontendDB.Exec(
 		"INSERT INTO users_clients (user_id, client, client_version, notify_enabled, created_ts) VALUES($1, $2, $3, $4, 'NOW()')"+
 			"ON CONFLICT (user_id, client) "+
 			"DO UPDATE SET notify_enabled = $4"+updateClientVersion+";",

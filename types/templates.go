@@ -30,6 +30,7 @@ type PageData struct {
 	EthPrice              float64
 	Currency              string
 	ExchangeRate          float64
+	InfoBanner            *template.HTML
 }
 
 // Meta is a struct to hold metadata about the page
@@ -190,6 +191,9 @@ type ValidatorPageData struct {
 	PublicKey                           []byte `db:"pubkey"`
 	WithdrawableEpoch                   uint64 `db:"withdrawableepoch"`
 	CurrentBalance                      uint64 `db:"balance"`
+	BalanceActivation                   uint64 `db:"balanceactivation"`
+	Balance7d                           uint64 `db:"balance7d"`
+	Balance31d                          uint64 `db:"balance31d"`
 	EffectiveBalance                    uint64 `db:"effectivebalance"`
 	Slashed                             bool   `db:"slashed"`
 	SlashedBy                           uint64
@@ -212,10 +216,12 @@ type ValidatorPageData struct {
 	StatusMissedCount                   uint64
 	DepositsCount                       uint64
 	SlashingsCount                      uint64
+	PendingCount                        uint64
 	Income1d                            int64
 	Income7d                            int64
 	Income31d                           int64
 	Rank7d                              int64 `db:"rank7d"`
+	RankPercentage                      float64
 	Apr                                 float64
 	Proposals                           [][]uint64
 	BalanceHistoryChartData             [][]float64
@@ -284,12 +290,13 @@ type ValidatorPerformance struct {
 
 // ValidatorAttestation is a struct for the validators attestations data
 type ValidatorAttestation struct {
-	Epoch                 uint64 `db:"epoch"`
-	AttesterSlot          uint64 `db:"attesterslot"`
-	CommitteeIndex        uint64 `db:"committeeindex"`
-	Status                uint64 `db:"status"`
-	InclusionSlot         uint64 `db:"inclusionslot"`
-	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
+	Epoch          uint64 `db:"epoch"`
+	AttesterSlot   uint64 `db:"attesterslot"`
+	CommitteeIndex uint64 `db:"committeeindex"`
+	Status         uint64 `db:"status"`
+	InclusionSlot  uint64 `db:"inclusionslot"`
+	Delay          int64  `db:"delay"`
+	// EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
 }
 
 // type AvgInclusionDistance struct {
@@ -722,8 +729,9 @@ type EthTwoDepositData struct {
 }
 
 type ValidatorDeposits struct {
-	Eth1Deposits []Eth1Deposit
-	Eth2Deposits []Eth2Deposit
+	Eth1Deposits      []Eth1Deposit
+	LastEth1DepositTs int64
+	Eth2Deposits      []Eth2Deposit
 }
 
 type MyCryptoSignature struct {
@@ -798,6 +806,25 @@ type ApiPricing struct {
 
 type StakeWithUsPageData struct {
 	FlashMessage string
+}
+
+type EthClients struct {
+	ClientReleaseVersion string
+	ClientReleaseDate    string
+	NetworkShare         string
+}
+
+type EthClientServicesPageData struct {
+	LastUpdate   time.Time
+	Geth         EthClients
+	Nethermind   EthClients
+	OpenEthereum EthClients
+	Besu         EthClients
+	Teku         EthClients
+	Prysm        EthClients
+	Nimbus       EthClients
+	Lighthouse   EthClients
+	Banner       string
 }
 
 type RateLimitError struct {

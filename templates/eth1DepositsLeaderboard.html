@@ -1,10 +1,10 @@
 {{ define "js"}}
-    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/datatable_input.js"></script>
-    <script src="https://code.highcharts.com/highcharts.js"></script>
-    <script src="https://code.highcharts.com/modules/annotations.js"></script>
-    <script src="https://code.highcharts.com/modules/data.js"></script>
-    <script src="/js/highcharts-global-options.js"></script>
+    <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/datatable_input.js"></script>
+    <script src="/bundle/js/highcharts/highcharts.min.js"></script>
+    <script src="/bundle/js/highcharts/annotations.min.js"></script>
+    <script src="/bundle/js/highcharts/data.min.js"></script>
+    <script src="/bundle/js/highcharts/highcharts-global-options.js"></script>
     <script>
         var debounce = null
         var scatterOptions = {
@@ -73,7 +73,7 @@
                 },
                 offset: 30
             },
-            colors: ['rgb(31, 119, 180)', 'rgb(255, 127, 14)', 'rgb(44, 160, 44)'],
+            colors: ['#003f5c', '#58508d', '#50bc90', '#ff6361', '#ffa600' ],
             legend: {enabled: true},
             navigator: {enabled: false},
             rangeSelector: {enabled: false},
@@ -169,7 +169,7 @@
     </script>
 
 {{end}} {{ define "css"}}
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
+    <link rel="stylesheet" type="text/css" href="/bundle/css/datatables.min.css"/>
     <style>
         .row-highlight {
             background: var(--highlight) !important;

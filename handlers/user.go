@@ -787,6 +787,33 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	proposalSubmitted := FormValueOrJSON(r, "validator_proposal_submitted")
+	if proposalSubmitted == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorExecutedProposalEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+	proposalMissed := FormValueOrJSON(r, "validator_proposal_missed")
+	if proposalMissed == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorMissedProposalEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+	attestationMissed := FormValueOrJSON(r, "validator_attestation_missed")
+	if attestationMissed == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorMissedAttestationEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
 
 	if len(pubKey) != 96 {
 		FlashRedirectOrJSONErrorResponse(w, r,

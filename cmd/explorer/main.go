@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"eth2-exporter/db"
+	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
 	"eth2-exporter/price"
@@ -151,6 +152,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestations", handlers.ApiValidatorAttestations).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/proposals", handlers.ApiValidatorProposals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/deposits", handlers.ApiValidatorDeposits).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestationefficiency", handlers.ApiValidatorAttestationEfficiency).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
@@ -181,6 +183,7 @@ func main() {
 
 		services.Init() // Init frontend services
 		price.Init()
+		ethclients.Init()
 
 		logrus.Infof("frontend services initiated")
 
@@ -261,6 +264,9 @@ func main() {
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
+
+			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
+			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")

@@ -459,9 +459,9 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 
 	err := db.DB.Select(&rows, `
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
-		from attestation_assignments a
+		from attestation_assignments_p a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.epoch > $1 and a.inclusionslot > 0
+		where a.week >= $1 / 1575 a.epoch > $1 and a.inclusionslot > 0
 		group by a.epoch
 		order by a.epoch asc`, epochOffset)
 	if err != nil {
@@ -514,9 +514,9 @@ func votingDistributionChartData() (*types.GenericChartData, error) {
 
 	err := db.DB.Select(&rows, `
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
-		from attestation_assignments a
+		from attestation_assignments_p a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.inclusionslot > 0 and a.epoch > $1
+		where a.inclusionslot > 0 and a.epoch > $1and a.week >= $1 / 1575
 		group by a.epoch
 		order by a.epoch asc`, epochOffset)
 	if err != nil {
@@ -568,9 +568,10 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 					vb.epoch,
 					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
 				from validators v
-					left join validator_balances vb
+					left join validator_balances_p vb
 						on vb.validatorindex = v.validatorindex
 						and vb.epoch = v.activationepoch
+						and vb.week = v.activationepoch / 1575
 				order by vb.epoch
 			),
 			extradeposits as (
@@ -663,9 +664,10 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 					vb.epoch,
 					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
 				from validators v
-					left join validator_balances vb
+					left join validator_balances_p vb
 						on vb.validatorindex = v.validatorindex
 						and vb.epoch = v.activationepoch
+						and vb.week = v.activationepoch / 1575
 				order by vb.epoch
 			),
 			extradeposits as (
@@ -920,7 +922,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 	defer tx.Rollback()
 
 	var currentEpoch uint64
-	err = tx.Get(&currentEpoch, "select max(epoch) from validator_balances")
+	err = tx.Get(&currentEpoch, "select max(epoch) from epochs")
 	if err != nil {
 		return nil, err
 	}
@@ -936,11 +938,11 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 				select 
 					min(balance) as min,
 					max(balance) as max
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances) 
+				from validators 
 			),
 			balances as (
 				select balance
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances)
+				from validators
 			),
 			histogram as (
 				select 
@@ -1003,7 +1005,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 	defer tx.Rollback()
 
 	var currentEpoch uint64
-	err = tx.Get(&currentEpoch, "select max(epoch) from validator_balances")
+	err = tx.Get(&currentEpoch, "select max(epoch) from epochs")
 	if err != nil {
 		return nil, err
 	}
@@ -1019,11 +1021,11 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 				select 
 					min(effectivebalance) as min,
 					max(effectivebalance) as max
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances) 
+				from validators
 			),
 			balances as (
 				select effectivebalance
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances)
+				from validators
 			),
 			histogram as (
 				select 
