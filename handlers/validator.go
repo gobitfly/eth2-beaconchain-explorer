@@ -8,6 +8,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"html/template"
 	"net/http"
 	"sort"
@@ -354,19 +355,18 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory)+1)
+	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory))
 
-	for i, balance := range incomeHistory {
-
-		income := balance.EndBalance - balance.StartBalance
-		if income >= balance.Deposits {
-			income = income - balance.Deposits
+	for i := 0; i < len(incomeHistory)-1; i++ {
+		income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance
+		if income >= incomeHistory[i].Deposits {
+			income = income - incomeHistory[i].Deposits
 		}
 		color := "#7cb5ec"
 		if income < 0 {
 			color = "#f7a35c"
 		}
-		balanceTs := utils.DayToTime(balance.Day)
+		balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
 		validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: float64(income) / 1000000000, Color: color}
 	}
 
