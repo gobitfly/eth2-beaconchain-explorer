@@ -8,7 +8,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"html/template"
 	"net/http"
 	"sort"
@@ -357,7 +356,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory)+1)
 
-	spew.Dump(incomeHistory)
 	for i, balance := range incomeHistory {
 
 		income := balance.EndBalance - balance.StartBalance
