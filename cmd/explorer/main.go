@@ -316,7 +316,10 @@ func main() {
 			authRouter.Use(csrfHandler)
 			initStripe(authRouter)
 
+			legalFs := http.FileServer(http.Dir(utils.Config.Frontend.LegalDir))
+			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", legalFs))
 			router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
+
 		}
 
 		n := negroni.New(negroni.NewRecovery())
