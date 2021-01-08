@@ -10,6 +10,15 @@
                 input.setCustomValidity('');
             }
         }
+               // form validations
+        function tosAccepted(input) {
+            var ipt = document.getElementById('tos-checkbox')
+            if (!ipt.checked) {
+                input.setCustomValidity('Please accept the Terms and Conditions before creating an account');
+            } else {
+                input.setCustomValidity('');
+            }
+        }
     </script>
 
 {{end}}
@@ -52,6 +61,13 @@
                             <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5"
                                    maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm"
                                    name="pw-confirm">
+                        </div>
+                        <div class="custom-control custom-checkbox d-flex align-items-center text-muted mb-2">
+                            <input oninput="tosAccepted(this)" type="checkbox" id="tos-checkbox" class="custom-control-input" required>
+                            <label class="custom-control-label active" for="tos-checkbox">
+                               <span>I agree to the <a class="link-muted" href="/legal/tos.pdf" target="_blank">Terms and Conditions</a>
+                            </span>
+                            </label>
                         </div>
                         <button type="submit" class="btn btn-primary float-right">Register</button>
                     </form>
