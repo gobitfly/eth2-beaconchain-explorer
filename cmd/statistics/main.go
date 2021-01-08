@@ -59,7 +59,7 @@ func main() {
 		}
 
 		logrus.Infof("previous day is %v, last exported day is %v", previousDay, lastExportedDay)
-		if lastExportedDay < previousDay || lastExportedDay == 0 {
+		if lastExportedDay <= previousDay || lastExportedDay == 0 {
 			for day := lastExportedDay; day <= previousDay; day++ {
 				err := db.WriteStatisticsForDay(day)
 				if err != nil {
