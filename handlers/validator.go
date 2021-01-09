@@ -356,26 +356,29 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory))
 
-	for i := 0; i < len(incomeHistory)-1; i++ {
-		income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance
-		if income >= incomeHistory[i].Deposits {
-			income = income - incomeHistory[i].Deposits
+	if len(incomeHistory) > 0 {
+		for i := 0; i < len(incomeHistory)-1; i++ {
+			income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance
+			if income >= incomeHistory[i].Deposits {
+				income = income - incomeHistory[i].Deposits
+			}
+			color := "#7cb5ec"
+			if income < 0 {
+				color = "#f7a35c"
+			}
+			balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
+			validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: float64(income) / 1000000000, Color: color}
 		}
-		color := "#7cb5ec"
-		if income < 0 {
-			color = "#f7a35c"
-		}
-		balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
-		validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: float64(income) / 1000000000, Color: color}
-	}
 
-	lastDayIncome := int64(validatorPageData.CurrentBalance) - incomeHistory[len(incomeHistory)-1].EndBalance
-	lastDayIncomeColor := "#7cb5ec"
-	if lastDayIncome < 0 {
-		lastDayIncomeColor = "#f7a35c"
+		lastDayBalance := incomeHistory[len(incomeHistory)-1].EndBalance
+		lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance
+		lastDayIncomeColor := "#7cb5ec"
+		if lastDayIncome < 0 {
+			lastDayIncomeColor = "#f7a35c"
+		}
+		currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
+		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(currentDay).Unix() * 1000), Y: float64(lastDayIncome) / 1000000000, Color: lastDayIncomeColor}
 	}
-	currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
-	validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(currentDay).Unix() * 1000), Y: float64(lastDayIncome) / 1000000000, Color: lastDayIncomeColor}
 
 	logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
 	start = time.Now()
