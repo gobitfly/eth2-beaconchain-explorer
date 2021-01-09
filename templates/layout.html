@@ -563,7 +563,7 @@
 				</div>
 				{{end}} -->
         {{if .InfoBanner}}
-            <div id="infoBanner">
+            <div id="infoBanner" class="d-none">
                 <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-none d-md-flex justify-content-center align-items-center p-2">
                     {{.InfoBanner}}
                     <i id="infoBannerDissBtn" class="far fa-times-circle btn" data-toggle="tooltip" data-placement="bottom" title="Dismiss" onClick="hideInfoBanner({{.InfoBanner}})"></i>
@@ -575,13 +575,12 @@
                 </div>
             </div>
         {{end}}
-      
         {{ template "content" . }}
-        <div id="cookie-banner" style="position: fixed; display: flex; flex-direction: column; z-index:999; bottom: 3%; width: 100%; justify-content: center; align-items: center">
+        <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index:999; bottom: 3%; width: 100%; justify-content: center; align-items: center">
             <div style="width: 80%; max-width: 600px;" class="card card-body row">
                 <div class="row">
                     <div class="col">
-                        <span>By using our site you agree to our use of cookies to deliver a better user experience.</span>
+                        <span>By using our site you agree to our <a href="/legal/privacy.pdf">use of cookies</a> to deliver a better user experience.</span>
                     </div>
                     <div class="col-3 d-flex justify-content-center align-items-center">
                         <button class="btn btn-primary btn" style="margin-left: 1%" onclick="acceptCookieBanner()">Got it</button>
@@ -714,23 +713,25 @@
             return slot
         }
 
-        if (localStorage.getItem("infoBannerStatus")==={{.InfoBanner}}){
-            hideInfoBanner({{.InfoBanner}})
+        if (localStorage.getItem("infoBannerStatus")!={{.InfoBanner}}){
+            $('#infoBanner').attr('class', '')
         }
     </script>
     
     <script>
-    function hideCookieBanner(){
-        if (document.cookie.indexOf("cookie=accepted")!=-1){
+        function hideCookieBanner(){
             $('#cookie-banner').attr("class", "d-none");
-            return
         }
-    }
-    hideCookieBanner()
-    function acceptCookieBanner() {
-            document.cookie = "cookie=accepted"
-            $('#cookie-banner').attr("class", "d-none");
-    }
+        function acceptCookieBanner() {
+                document.cookie = "cookie=accepted"
+                hideCookieBanner()
+        }
+        
+        if (document.cookie.indexOf("cookie=accepted")!=-1){
+            hideCookieBanner()
+        }else{
+            $('#cookie-banner').attr("class", "");
+        }
     </script>
 
     <script src="/bundle/js/clipboard.min.js"></script>
