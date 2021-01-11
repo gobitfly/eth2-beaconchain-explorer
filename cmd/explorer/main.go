@@ -261,6 +261,7 @@ func main() {
 			router.HandleFunc("/poap", handlers.Poap).Methods("GET")
 			router.HandleFunc("/poap/data", handlers.PoapData).Methods("GET")
 			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
+			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
