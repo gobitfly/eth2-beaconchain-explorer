@@ -55,7 +55,7 @@
             } else {
                 document.getElementById('app-style-initial').id = 'app-theme'
             }
-        </script>
+    </script>
 
         <script>
             function updateLang(lang) {
@@ -563,7 +563,7 @@
 				</div>
 				{{end}} -->
         {{if .InfoBanner}}
-            <div id="infoBanner">
+            <div id="infoBanner" class="d-none">
                 <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-none d-md-flex justify-content-center align-items-center p-2">
                     {{.InfoBanner}}
                     <i id="infoBannerDissBtn" class="far fa-times-circle btn" data-toggle="tooltip" data-placement="bottom" title="Dismiss" onClick="hideInfoBanner({{.InfoBanner}})"></i>
@@ -575,8 +575,19 @@
                 </div>
             </div>
         {{end}}
-      
         {{ template "content" . }}
+        <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index:999; bottom: 3%; width: 100%; justify-content: center; align-items: center">
+            <div style="width: 80%; max-width: 600px;" class="card card-body row">
+                <div class="row">
+                    <div class="col">
+                        <span>By using our site you agree to our <a href="/legal/privacy.pdf">use of cookies</a> to deliver a better user experience.</span>
+                    </div>
+                    <div class="col-3 d-flex justify-content-center align-items-center">
+                        <button class="btn btn-primary btn" style="margin-left: 1%" onclick="acceptCookieBanner()">Got it</button>
+                    <div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <div style="margin-top: 3rem; margin-bottom: 4.2rem;">
@@ -587,6 +598,12 @@
                     <h5>Legal Notices</h5>
                     <div class="d-flex flex-column">
                         <a class="my-1" href="/imprint">Imprint</a>
+                    </div>
+                    <div class="d-flex flex-column">
+                        <a class="my-1" href="/legal/tos.pdf">Terms</a>
+                    </div>
+                    <div class="d-flex flex-column">
+                        <a class="my-1" href="/legal/privacy.pdf">Privacy</a>
                     </div>
                 </div>
                 <div class="col-md-4 mb-2">
@@ -645,6 +662,8 @@
     </div>
 
 
+
+
     <script src="/bundle/js/jquery.min.js"></script>
     <script src="/bundle/js/popper.min.js"
             integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
@@ -694,10 +713,26 @@
             return slot
         }
 
-        if (localStorage.getItem("infoBannerStatus")==={{.InfoBanner}}){
-            hideInfoBanner({{.InfoBanner}})
+        if (localStorage.getItem("infoBannerStatus")!={{.InfoBanner}}){
+            $('#infoBanner').attr('class', '')
         }
-	</script>
+    </script>
+    
+    <script>
+        function hideCookieBanner(){
+            $('#cookie-banner').attr("class", "d-none");
+        }
+        function acceptCookieBanner() {
+                document.cookie = "cookie=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT"
+                hideCookieBanner()
+        }
+        
+        if (document.cookie.indexOf("cookie=accepted")!=-1){
+            hideCookieBanner()
+        }else{
+            $('#cookie-banner').attr("class", "");
+        }
+    </script>
 
     <script src="/bundle/js/clipboard.min.js"></script>
     {{ template "js" .Data }}

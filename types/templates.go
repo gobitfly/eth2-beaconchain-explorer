@@ -224,8 +224,7 @@ type ValidatorPageData struct {
 	RankPercentage                      float64
 	Apr                                 float64
 	Proposals                           [][]uint64
-	BalanceHistoryChartData             [][]float64
-	EffectiveBalanceHistoryChartData    [][]float64
+	IncomeHistoryChartData              []*ChartDataPoint
 	Deposits                            *ValidatorDeposits
 	Eth1DepositAddress                  []byte
 	FlashMessage                        string
@@ -238,6 +237,12 @@ type ValidatorPageData struct {
 	NetworkStats                        *IndexPageData
 	EstimatedActivationTs               int64
 	InclusionDelay                      int64
+}
+
+type ChartDataPoint struct {
+	X     float64 `json:"x"`
+	Y     float64 `json:"y"`
+	Color string  `json:"color"`
 }
 
 //ValidatorRank is a struct for validator rank data
@@ -255,9 +260,18 @@ type DailyProposalCount struct {
 
 // ValidatorBalanceHistory is a struct for the validator balance history data
 type ValidatorBalanceHistory struct {
-	Epoch            uint64 `db:"epoch"`
+	Day              uint64 `db:"day"`
 	Balance          uint64 `db:"balance"`
 	EffectiveBalance uint64 `db:"effectivebalance"`
+}
+
+// ValidatorBalanceHistory is a struct for the validator income history data
+type ValidatorIncomeHistory struct {
+	Day          uint64 `db:"day"`
+	Income       int64
+	StartBalance int64 `db:"start_balance" json:"-"`
+	EndBalance   int64 `db:"end_balance" json:"-"`
+	Deposits     int64 `db:"deposits_amount" json:"-"`
 }
 
 type ValidatorBalanceHistoryChartData struct {
