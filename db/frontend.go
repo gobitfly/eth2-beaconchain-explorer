@@ -176,6 +176,8 @@ func GetUserDevicesByUserID(userID uint64) ([]types.PairedDevice, error) {
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		pairedDevice := types.PairedDevice{}
 		if err := rows.Scan(&pairedDevice.ID, &pairedDevice.AppName, &pairedDevice.DeviceName, &pairedDevice.Active, &pairedDevice.NotifyEnabled, &pairedDevice.CreatedAt); err != nil {
