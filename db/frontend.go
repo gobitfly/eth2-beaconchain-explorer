@@ -164,6 +164,33 @@ func GetByRefreshToken(claimUserID, claimAppID, claimDeviceID uint64, hashedRefr
 	return userID, nil
 }
 
+func GetUserDevicesByUserID(userID uint64) ([]types.PairedDevice, error) {
+	data := []types.PairedDevice{}
+
+	rows, err := FrontendDB.Query(
+		"SELECT users_devices.id, oauth_apps.app_name, users_devices.device_name, users_devices.active, "+
+			"users_devices.notify_enabled, users_devices.created_ts FROM users_devices "+
+			"left join oauth_apps on users_devices.app_id = oauth_apps.id WHERE users_devices.user_id = $1 order by created_ts desc", userID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		pairedDevice := types.PairedDevice{}
+		if err := rows.Scan(&pairedDevice.ID, &pairedDevice.AppName, &pairedDevice.DeviceName, &pairedDevice.Active, &pairedDevice.NotifyEnabled, &pairedDevice.CreatedAt); err != nil {
+			return nil, err
+		}
+
+		data = append(data, pairedDevice)
+	}
+
+	if len(data) > 0 {
+		return data, nil
+	}
+	return nil, errors.New("no rows found")
+}
+
 // InsertUserDevice Insert user device and return device id
 func InsertUserDevice(userID uint64, hashedRefreshToken string, name string, appID uint64) (uint64, error) {
 	var deviceID uint64
@@ -210,11 +237,40 @@ func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 	return pushByID, nil
 }
 
-func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled bool) (*sql.Rows, error) {
-	rows, err := FrontendDB.Query("UPDATE users_devices SET notify_enabled = $1 WHERE user_id = $2 AND id = $3 RETURNING notify_enabled;",
-		notifyEnabled, userID, deviceID,
+func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled, active string) (*sql.Rows, error) {
+	var query = ""
+	var args []interface{}
+
+	args = append(args, userID)
+	args = append(args, deviceID)
+
+	if notifyEnabled != "" {
+		args = append(args, notifyEnabled == "true")
+		query = addParamToQuery(query, fmt.Sprintf("notify_enabled = $%d", len(args)))
+	}
+
+	if active != "" {
+		args = append(args, active == "true")
+		query = addParamToQuery(query, fmt.Sprintf("active = $%d", len(args)))
+	}
+
+	if query == "" {
+		return nil, errors.New("No params for change provided")
+	}
+
+	rows, err := FrontendDB.Query("UPDATE users_devices SET "+query+" WHERE user_id = $1 AND id = $2 RETURNING notify_enabled;",
+		args...,
 	)
 	return rows, err
+}
+
+func addParamToQuery(query, param string) string {
+	var result = query
+	if result != "" {
+		result += ","
+	}
+	result += param
+	return result
 }
 
 func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
