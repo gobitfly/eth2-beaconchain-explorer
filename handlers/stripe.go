@@ -55,8 +55,8 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := &stripe.CheckoutSessionParams{
-		SuccessURL: stripe.String(utils.Config.Frontend.SiteDomain + "/user/settings"),
-		CancelURL:  stripe.String(utils.Config.Frontend.SiteDomain + "/pricing"),
+		SuccessURL: stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings"),
+		CancelURL:  stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/pricing"),
 		// if the customer exists use the existing customer
 		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
 			// DefaultTaxRates: stripe.StringSlice([]string{
