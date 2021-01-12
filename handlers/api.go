@@ -905,12 +905,35 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	j := json.NewEncoder(w)
 
-	notifyEnabled := FormValueOrJSON(r, "notify_enabled") == "true"
+	notifyEnabled := FormValueOrJSON(r, "notify_enabled")
+	active := FormValueOrJSON(r, "active")
 
 	claims := getAuthClaims(r)
+	var userDeviceID uint64
+	var userID uint64
 
-	rows, err2 := db.MobileDeviceSettingsUpdate(claims.UserID, claims.DeviceID, notifyEnabled)
+	if claims == nil {
+		customDeviceID := FormValueOrJSON(r, "id")
+		temp, err := strconv.ParseUint(customDeviceID, 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing id %v | err: %v", customDeviceID, err)
+			sendErrorResponse(j, r.URL.String(), "could not parse id")
+			return
+		}
+		userDeviceID = temp
+		sessionUser := getUser(w, r)
+		if !sessionUser.Authenticated {
+			sendErrorResponse(j, r.URL.String(), "not authenticated")
+		}
+		userID = sessionUser.UserID
+	} else {
+		userDeviceID = claims.DeviceID
+		userID = claims.UserID
+	}
+
+	rows, err2 := db.MobileDeviceSettingsUpdate(userID, userDeviceID, notifyEnabled, active)
 	if err2 != nil {
+		logger.Errorf("could not retrieve db results err: %v", err2)
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -961,7 +984,11 @@ func MobileTagedValidators(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAuthClaims(r *http.Request) *utils.CustomClaims {
-	return context.Get(r, utils.ClaimsContextKey).(*utils.CustomClaims)
+	claims := context.Get(r, utils.ClaimsContextKey)
+	if claims == nil {
+		return nil
+	}
+	return claims.(*utils.CustomClaims)
 }
 
 func returnQueryResults(rows *sql.Rows, j *json.Encoder, r *http.Request) {

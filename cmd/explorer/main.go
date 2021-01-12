@@ -300,6 +300,7 @@ func main() {
 			oauthRouter.Use(csrfHandler)
 
 			authRouter := router.PathPrefix("/user").Subrouter()
+			authRouter.HandleFunc("/mobile/settings", handlers.MobileDeviceSettingsPOST).Methods("POST")
 			authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirmPost).Methods("POST")
 			authRouter.HandleFunc("/settings", handlers.UserSettings).Methods("GET")
 			authRouter.HandleFunc("/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
@@ -316,7 +317,10 @@ func main() {
 			authRouter.Use(csrfHandler)
 			initStripe(authRouter)
 
+			legalFs := http.FileServer(http.Dir(utils.Config.Frontend.LegalDir))
+			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", legalFs))
 			router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
+
 		}
 
 		n := negroni.New(negroni.NewRecovery())
