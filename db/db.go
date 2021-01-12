@@ -868,6 +868,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 	_, err = tx.Exec(`UPDATE validators SET status = CASE 
 				WHEN exitepoch <= $1 and slashed then 'slashed'
 				WHEN exitepoch <= $1 then 'exited'
+				WHEN activationeligibilityepoch = 9223372036854775807 then 'deposited'
 				WHEN activationepoch > $1 then 'pending'
 				WHEN slashed and activationepoch < $1 and (lastattestationslot < $2 OR lastattestationslot is null) then 'slashing_offline'
 				WHEN slashed then 'slashing_online'
