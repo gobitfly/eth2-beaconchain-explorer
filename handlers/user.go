@@ -61,6 +61,14 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var pairedDevices []types.PairedDevice = nil
+	pairedDevices, err = db.GetUserDevicesByUserID(user.UserID)
+	if err != nil {
+		logger.Errorf("Error retrieving the paired devices for user: %v %v", user.UserID, err)
+		pairedDevices = nil
+	}
+
+	userSettingsData.PairedDevices = pairedDevices
 	userSettingsData.Subscription = subscription
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)

@@ -496,11 +496,9 @@ func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
 func (n *validatorAttestationNotification) GetTitle() string {
 	switch n.Status {
 	case 0:
-		return "Attestation Scheduled"
+		return "Attestation Missed"
 	case 1:
 		return "Attestation Submitted"
-	case 2:
-		return "Attestation Missed"
 	}
 	return "-"
 }
