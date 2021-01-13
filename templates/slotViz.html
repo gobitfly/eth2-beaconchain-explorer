@@ -23,6 +23,9 @@
   #checklist > svg {
     overflow: visible;
   }
+  svg rect[slot], svg rect[epoch] {
+    cursor: pointer;
+  }
 </style>
 {{end}}
 {{define "js"}}
@@ -130,17 +133,10 @@
 
 
 
-    var barLinks = svg.append("g")
-      .selectAll("g")
+    var bars = svg.append("g")
+      .selectAll("rect")
       .data(epochs, d => d)
-      .join("a")
-
-    
-    var bars = barLinks
-      .attr('xlink:href', d => {
-              return "/epoch/"+ d.epoch
-        })
-      .append('rect')
+      .join("rect")
       .attr("id", ({ epoch, participation }) => epoch)
       .attr("fill", ({ participation }) => color(participation))
       .attr("y", ({ epoch }) => y(epoch) + (y.bandwidth() / 2) + ((width - margin.right - margin.left) / 48))
@@ -179,17 +175,17 @@
       .attr("transform", ({ epoch }) => `translate(0, ${ y(epoch) })`)
 
 
-    var slots = heatmaps.selectAll('g')
+    var slots = heatmaps.selectAll('rect')
       .data(d => d.slots)
-      .join('a')
+      .join('rect')
       
     slots
-      .attr('xlink:href', d => {
-          if(d && d.Slot) {
-            return "/block/"+ d.Slot
-          }
-        })
-      .append('rect')
+      // .attr('xlink:href', d => {
+      //     if(d && d.Slot) {
+      //       return "/block/"+ d.Slot
+      //     }
+      //   })
+      // .append('rect')
       .attr('x', (d, i) => x(i))
       .attr('y', (d, i) => (y.bandwidth() / 2) - 7.5)
       .attr('class', (s, i) => {
@@ -257,16 +253,15 @@
         bars = bars
         .data(newData, d => d.epoch)
         .join(
-          enter => enter.append("a"),
+          enter => enter.append("rect"),
           update => {
             return update
-            .select(function() {
-              return this.parentNode
+            .attr('epoch', d => d.epoch)
+            .on('click', (d) => {
+              console.log(d.target.getAttribute('epoch'))
+              var epoch = d.target.getAttribute('epoch')
+              window.location = "/epoch/"+epoch
             })
-            .attr('xlink:href', d => {
-                  return "/epoch/"+ d.epoch
-            })
-            .select('rect')
             .call(bar => bar.transition(t)
               .attr("width", ({ participation }) => participationX(participation) - participationX(0))
               .attr("fill", ({ participation }) => color(participation))
@@ -292,22 +287,21 @@
           .data(epochs, d => d.epoch)
           .join('g')
           .attr("transform", ({ epoch }) => `translate(0, ${ y(epoch) })`)
-        
         slots = slots
           .data(d => d.slots)
           .join(
-            enter => enter.append('a'),
+            enter => enter.append('rect'),
             update => {
               return update
-                .attr('xlink:href', d => {
-                    if(d && d.Slot) {
-                      return "/block/"+ d.Slot
-                    }
-                  })
-                .select('rect')
+                .attr('slot', d => d.Slot)
+                .on('click', (d) => {
+                  var slot = d.target.getAttribute('slot')
+                  window.location = "/block/"+slot
+                })
                 .call(rect => rect.transition(t)
                 .attr('stroke', (d) => d.active ? 'var(--body-color)' : 'transparent')
                 .attr("fill", (d) => {
+                  console.log('updating fill', d)
                   if (d.status === "missed") {
                     return "rgba(200,100,100,0.8)"
                   } else if (d.status === "proposed") {
@@ -357,41 +351,12 @@
     function fetchMetrics() {
       fetch('/launchMetrics').then(res => res.json()).then(data => {
         data = data.Epochs
-        // var participationInputs = ["02", "04", "06", "10"]
-        // var firstProposed = ["01", "03", null, null]
-        // var finalized = [null, null, '11', null]
-        // var justified = [null, null, '08', '12']
 
         for (var i = 0; i < data.length; i++) {
-          // if(finalized[i] && i > 0 && data[i - 1].finalized) {
-          //   document.getElementById(finalized[i]).checked = true
-          // }
-          
-          // if(justified[i] && data[i].justified) {
-          //   document.getElementById(justified[i]).checked = true
-          // }
-
           if (data[i].participation <= 1) {
             data[i].participation = Math.round(data[i].participation * 10000) / 100
           }
-
-          // if(data[i].participation >= 66.666) {
-          //   document.getElementById(participationInputs[i]).checked = true
-          // }
           var slots = data[i].slots
-          // for(var j = 0; j < slots.length; j++) {
-          //   if (i === 0 && j === 0) {
-          //     continue
-          //   }
-          //   if(slots[j].status === "proposed") {
-          //     // if(firstProposed[i]) {
-          //       // document.getElementById(firstProposed[i]).checked = true
-          //       // var el = document.querySelector("[for='"+firstProposed[i]+"']")
-          //       // el.innerHTML = "First block proposed in Slot " + j 
-          //       // break
-          //     // }
-          //   }
-          // }
 
           if (epochs[i] === undefined) {
             epochs[i] = {}
@@ -411,7 +376,6 @@
           epochs[i].epoch = data[i].epoch
 
         }
-        console.log('updating data')
         chart.update(data)
       }).catch(error => {
         console.log('error fetching resource', error)
@@ -420,37 +384,6 @@
 
     fetchMetrics()
     setInterval(fetchMetrics, 6000)
-
-  //   setTimeout(function() {
-  //     console.log('first update')
-  //     epochs[0].slots[1].status = 'proposed'
-  //     epochs[0].justified = true
-  //     epochs[0].slots[1].active = false
-  //     epochs[0].slots[2].active = true
-
-  //     epochs[0].participation = 66
-  //     chart.update(epochs)
-  //   }, 2000)
-    
-  //   setTimeout(function() {
-  //     console.log('second update')
-  //     epochs[0].finalized = true
-  //     epochs[0].slots[2].status = 'missed'
-  //     epochs[0].slots[2].active = false
-  //     epochs[0].slots[3].active = true
-
-  //     epochs[0].participation = 67
-  //     chart.update(epochs)
-  //   }, 4000)
-  //   setTimeout(function() {
-  //     console.log('second update')
-  //     epochs[0].slots[3].status = 'orphaned'
-  //     epochs[0].slots[3].active = false
-  //     epochs[0].slots[4].active = true
-
-  //     epochs[0].participation = 80
-  //     chart.update(epochs)
-  //   }, 6000)
 
   })
 
