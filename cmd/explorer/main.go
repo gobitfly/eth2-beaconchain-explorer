@@ -217,7 +217,7 @@ func main() {
 			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")
-			router.HandleFunc("/charts/{chart}", handlers.GenericChart).Methods("GET")
+			router.HandleFunc("/charts/{chart}", handlers.Chart).Methods("GET")
 			router.HandleFunc("/vis/blocks", handlers.VisBlocks).Methods("GET")
 			router.HandleFunc("/vis/votes", handlers.VisVotes).Methods("GET")
 			router.HandleFunc("/epoch/{epoch}", handlers.Epoch).Methods("GET")
