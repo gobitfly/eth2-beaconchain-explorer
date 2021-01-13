@@ -1,6 +1,19 @@
+function setInitialState () {
+  var _state = {}
+  _state.validators = []
+  _state.validatorsCount = {
+    pending: 0,
+    active: 0,
+    ejected: 0,
+    offline: 0
+  }
+  return _state;
+}
+
+var state = setInitialState()
 
 function createBlock(x, y) {
-  use = document.createElementNS("http://www.w3.org/2000/svg","use")
+  var use = document.createElementNS("http://www.w3.org/2000/svg","use")
   // use.setAttributeNS(null, "style", `transform: translate(calc(${x} * var(--disperse-factor)), calc(${y} * var(--disperse-factor)));`)
   use.setAttributeNS(null, "href", "#cube")
   use.setAttributeNS(null, "x", x)
@@ -31,6 +44,406 @@ function appendBlocks(blocks) {
     use.setAttributeNS(null, "y", 56)
     cube.appendChild(use)
   }
+}
+
+function renderSelectedValidators() {
+  var elHolder = document.getElementById('selected-validators')
+  $('#selected-validators .item').remove()
+  var elsItems = []
+  for (var i = 0; i < state.validators.length; i++) {
+    var v = state.validators[i]
+    var elItem = document.createElement('li')
+    elItem.classList = 'item'
+    elItem.dataset.validatorIndex = v
+    elItem.innerHTML = v + ' <i class="fas fa-times-circle remove-validator"></i>'
+    elsItems.push(elItem)
+  }
+  elHolder.prepend(...elsItems)
+}
+
+function renderDashboardInfo() {
+  var el = document.getElementById('dashboard-info')
+  el.innerText = `Found ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online + state.validatorsCount.active_offline} active and ${state.validatorsCount.exited} exited validators`
+  var btn = document.getElementById('dashboard-dropdown-btn')
+  btn.innerText = state.validatorsCount.pending+state.validatorsCount.active_online+state.validatorsCount.active_offline+state.validatorsCount.exited
+}
+
+function setValidatorsFromURL() {
+  var usp = new URLSearchParams(window.location.search)
+  var validatorsStr = usp.get('validators')
+  if (!validatorsStr) {
+    var validatorsStr = localStorage.getItem('dashboard_validators')
+    if (validatorsStr) {
+      state.validators = JSON.parse(validatorsStr)
+      state.validators = state.validators.filter((v, i) => {
+        v = escape(v)
+        if (isNaN(parseInt(v))) return false
+        return state.validators.indexOf(v) === i
+      })
+      state.validators.sort(sortValidators)
+    } else {
+      state.validators = []
+    }
+    return
+  }
+  state.validators = validatorsStr.split(',')
+  state.validators = state.validators.filter((v, i) => {
+    v = escape(v)
+    if (isNaN(parseInt(v))) return false
+    return state.validators.indexOf(v) === i
+  })
+  state.validators.sort(sortValidators)
+  if (state.validators.length > 100) {
+    state.validators = state.validators.slice(0,100)
+    console.log("100 validators limit reached")
+    alert('You can not add more than 100 validators to your dashboard')
+  }
+}
+
+function addValidators(indices) {
+  var limitReached = false
+  indicesLoop:
+  for (var j = 0; j < indices.length; j++) {
+    if (state.validators.length >= 100) {
+      limitReached = true
+      break indicesLoop
+    }
+    var index = indices[j]+"" // make sure index is string
+    for (var i = 0; i < state.validators.length; i++) {
+      if (state.validators[i] === index)
+        continue indicesLoop
+    }
+    state.validators.push(index)
+  }
+  state.validators.sort(sortValidators)
+  renderSelectedValidators()
+  updateState()
+  if (limitReached) {
+    console.log("100 validators limit reached")
+    alert('You can not add more than 100 validators to your dashboard')
+  }
+}
+
+function addValidator(index) {
+  if (state.validators.length > 100) {
+    alert('Too much validators, you can not add more than 100 validators to your dashboard!')
+    return
+  }
+  index = index+"" // make sure index is string
+  for (var i = 0; i < state.validators.length; i++) {
+    if (state.validators[i] === index) return
+  }
+  state.validators.push(index)
+  state.validators.sort(sortValidators)
+  renderSelectedValidators()
+  updateState()
+}
+
+function removeValidator(index) {
+  for (var i = 0; i < state.validators.length; i++) {
+    if (state.validators[i] === index) {
+      state.validators.splice(i, 1)
+      state.validators.sort(sortValidators)
+      //removed last validator
+      if(state.validators.length === 0) {
+        state = setInitialState()
+        localStorage.removeItem('dashboard_validators')
+        window.location = "/dashboard"
+        return
+      } else {
+        renderSelectedValidators()
+        updateState()
+      }
+      return
+    }
+  }
+}
+
+function sortValidators(a, b) {
+  var ai = parseInt(a)
+  var bi = parseInt(b)
+  return ai - bi
+}
+
+function addChange(selector, value) {
+  if(selector !== undefined || selector !== null) {
+    var element = document.querySelector(selector)
+    if(element !== undefined) {
+      // remove old
+      element.classList.remove('decreased')
+      element.classList.remove('increased')
+      if(value < 0) {
+        element.classList.add("decreased")
+      } 
+      if (value > 0) {
+        element.classList.add("increased")
+      }
+    } else {
+      console.error("Could not find element with selector", selector)
+    }
+  } else {
+    console.error("selector is not defined", selector)
+  }
+}
+
+var validatorsDataTable = window.vdt = $('#validators').DataTable({
+  processing: true,
+  serverSide: false,
+  ordering: true,
+  searching: true,
+  paging: false,
+  info: false,
+  preDrawCallback: function() {
+    // this does not always work.. not sure how to solve the staying tooltip
+    try {
+      $('#validators').find('[data-toggle="tooltip"]').tooltip('dispose')
+    } catch (e) {}
+  },
+  drawCallback: function(settings) {
+    $('#validators').find('[data-toggle="tooltip"]').tooltip()
+  },
+  order: [[1,'asc']],
+  columnDefs: [
+    {
+      targets: 0,
+      data: '0',
+      render: function(data, type, row, meta) {
+        if (type == 'sort' || type == 'type') return data
+        return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+      }
+    },
+    {
+      targets: 1,
+      data: '1',
+      render: function(data, type, row, meta) {
+        if (type == 'sort' || type == 'type') return data
+        return '<a href="/validator/' + data + '">' + data + '</a>'
+      }
+    },
+    {
+      targets: 2,
+      data: '2',
+      render: function(data, type, row, meta) {
+        if (type == 'sort' || type == 'type') return data ? data[0] : null
+        return `${data[0]} (${data[1]})`
+      }
+    },
+    {
+      targets: 3,
+      data: '3',
+      render: function(data, type, row, meta) {
+        if (type == 'sort' || type == 'type') return data ? data[0] : -1
+        var d = data.split('_')
+        var s = d[0].charAt(0).toUpperCase() + d[0].slice(1)
+        if (d[1] === 'offline') 
+          return `<span style="display:none">${d[1]}</span><span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
+        if (d[1] === 'online')
+          return `<span style="display:none">${d[1]}</span><span>${s} <i class="fas fa-power-off fa-sm text-success"></i></span>`
+        return `<span>${s}</span>`
+      }
+    },
+    {
+      targets: 4,
+      data: '4',
+      render: function(data, type, row, meta) {
+        if (type == 'sort' || type == 'type') return data ? data[0] : null
+        if (data === null) return '-'
+        return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+      }
+    },
+    {
+      targets: 5,
+      data: '5',
+      render: function(data, type, row, meta) {
+        if (type == 'sort' || type == 'type') return data ? data[0] : null
+        if (data === null) return '-'
+        return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+      }
+    },
+    {
+      targets: 6,
+      data: '6',
+      render: function(data, type, row, meta) {
+        if (type == 'sort' || type == 'type') return data ? data[0] : null
+        if (data === null) return '-'
+        return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+      }
+    },
+    {
+      targets: 7,
+      data: '7',
+      render: function(data, type, row, meta) {
+        if (type == 'sort' || type == 'type') return data ? data[0] : null
+        if (data === null) return 'No Attestation found'
+        return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
+      }
+    },
+    {
+      targets: 8,
+      data: '8',
+      render: function(data, type, row, meta) {
+        if (type == 'sort' || type == 'type') return data ? data[0] + data[1] : null
+        return `<span data-toggle="tooltip" data-placement="top" title="${data[0]} executed / ${data[1]} missed"><span class="text-success">${data[0]}</span> / <span class="text-danger">${data[1]}</span></span>`
+      }
+    }
+  ]
+})
+
+function renderCharts() {
+  var t0 = Date.now()
+  // if (state.validators.length === 0) {
+  //   document.getElementById('chart-holder').style.display = 'none'
+  //   return
+  // }
+  document.getElementById('chart-holder').style.display = 'flex'
+  if (state.validators && state.validators.length) {
+    var qryStr = '?validators=' + state.validators.join(',')
+    $.ajax({
+      url: '/dashboard/data/balance' + qryStr,
+      success: function(result) {
+        var t1 = Date.now()
+        var balance = new Array(result.length)
+        var effectiveBalance = new Array(result.length)
+        var validatorCount = new Array(result.length)
+        var utilization = new Array(result.length)
+        for (var i = 0; i < result.length; i++) {
+          var res = result[i]
+          validatorCount[i] = [res[0], res[1]]
+          balance[i] = [res[0], res[2]]
+          effectiveBalance[i] = [res[0], res[3]]
+          utilization[i] = [res[0], res[3] / (res[1] * (32 * exchangeRate))]
+        }
+
+        var t2 = Date.now()
+        createBalanceChart(effectiveBalance, balance, utilization)
+        var t3 = Date.now()
+        console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
+      }
+    })
+    $.ajax({
+      url: '/dashboard/data/proposals' + qryStr,
+      success: function(result) {
+        var t1 = Date.now()
+        var t2 = Date.now()
+        if (result && result.length) {
+          createProposedChart(result)
+        }
+        var t3 = Date.now()
+        console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t3 - t2}ms`)
+      }
+    })
+
+  }
+}
+
+function updateState() {
+  // if(_range < xBlocks.length + 3 && _range !== -1) {
+
+  //   appendBlocks(xBlocks.slice(_range, _range+3))
+  //   _range = _range + 3;
+  // } else if(_range !== -1) {
+  //   _range = -1;
+  // }
+
+  localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
+  if(state.validators.length) {
+    console.log('length', state.validators)
+    var qryStr = '?validators=' + state.validators.join(',')
+    var newUrl = window.location.pathname + qryStr
+    window.history.replaceState(null, 'Dashboard', newUrl)
+  }
+  var t0 = Date.now()
+  if (state.validators && state.validators.length) {
+    // if(state.validators.length >= 9) {
+    //   appendBlocks(xBlocks)
+    // } else {
+    //   appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
+    // }
+    document.querySelector('#bookmark-button').style.visibility = "visible"
+    document.querySelector('#copy-button').style.visibility = "visible"
+    document.querySelector('#clear-search').style.visibility = "visible"
+
+    $.ajax({
+      url: '/dashboard/data/earnings' + qryStr,
+      success: function(result) {
+        var t1 = Date.now()
+        console.log(`loaded earnings: fetch: ${t1-t0}ms`)
+        if (!result) return
+        // document.getElementById('stats').style.display = 'flex'
+        var lastDay = (result.lastDay / 1e9 * exchangeRate).toFixed(4)
+        var lastWeek = (result.lastWeek / 1e9 * exchangeRate).toFixed(4)
+        var lastMonth = (result.lastMonth / 1e9 * exchangeRate).toFixed(4)
+        var total = (result.total / 1e9 * exchangeRate).toFixed(4)
+
+        console.log(total, exchangeRate, result.total)
+        addChange("#earnings-day-header", lastDay)
+        addChange("#earnings-week-header", lastWeek)
+        addChange("#earnings-month-header", lastMonth)
+        addChange("#earnings-total-header", total)
+
+        document.querySelector('#earnings-day').innerHTML = (lastDay || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+        document.querySelector('#earnings-week').innerHTML = (lastWeek || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+        document.querySelector('#earnings-month').innerHTML = (lastMonth || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+        document.querySelector('#earnings-total').innerHTML = (total || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+      }
+    })
+    $.ajax({
+      url: '/dashboard/data/validators' + qryStr,
+      success: function(result) {
+        var t1 = Date.now()
+        console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1-t0}ms`)
+        if (!result || !result.data.length) {
+          document.getElementById('validators-table-holder').style.display = 'none'
+          return
+        }
+        // pubkey, idx, currbal, effbal, slashed, acteligepoch, actepoch, exitepoch
+        // 0:pubkey, 1:idx, 2:[currbal,effbal], 3:state, 4:[actepoch,acttime], 5:[exit,exittime], 6:[wd,wdt], 7:[lasta,lastat], 8:[exprop,misprop]
+        // console.log(`latestEpoch: ${result.latestEpoch}`)
+        // var latestEpoch = result.latestEpoch
+        state.validatorsCount.pending = 0
+        state.validatorsCount.active_online = 0
+        state.validatorsCount.active_offline = 0
+        state.validatorsCount.slashing_online = 0
+        state.validatorsCount.slashing_offline = 0
+        state.validatorsCount.exiting_online = 0
+        state.validatorsCount.exiting_offline = 0
+        state.validatorsCount.exited = 0
+        state.validatorsCount.slashed = 0
+
+        for (var i=0; i<result.data.length; i++) {
+          var v = result.data[i]
+          var vIndex = v[1]
+          var vState = v[3]
+          if (!state.validatorsCount[vState]) state.validatorsCount[vState] = 0
+          state.validatorsCount[vState]++
+          var el = document.querySelector(`#selected-validators .item[data-validator-index="${vIndex}"]`)
+          if (el) el.dataset.state = vState
+        }
+        validatorsDataTable.clear()
+
+        validatorsDataTable.rows.add(result.data).draw()
+
+        validatorsDataTable.column(6).visible(false)
+
+        requestAnimationFrame(()=>{validatorsDataTable.columns.adjust().responsive.recalc()})
+
+        document.getElementById('validators-table-holder').style.display = 'block'
+
+        renderDashboardInfo()
+      }
+    })
+
+  } else {
+    document.querySelector('#copy-button').style.visibility = "hidden"
+    document.querySelector('#bookmark-button').style.visibility = "hidden"
+    document.querySelector('#clear-search').style.visibility = "hidden"
+    // window.location = "/dashboard"
+  }
+
+  $('#copy-button')
+  .attr('data-clipboard-text', window.location.href)
+
+  renderCharts()
 }
 
 $(document).ready(function() {
@@ -94,109 +507,6 @@ $(document).ready(function() {
     setTimeout(function(){
       clearSearch.empty().append(copyIcon);
     }, 500)
-  })
-
-  var validatorsDataTable = window.vdt = $('#validators').DataTable({
-    processing: true,
-    serverSide: false,
-    ordering: true,
-    searching: true,
-    paging: false,
-    info: false,
-    preDrawCallback: function() {
-      // this does not always work.. not sure how to solve the staying tooltip
-      try {
-        $('#validators').find('[data-toggle="tooltip"]').tooltip('dispose')
-      } catch (e) {}
-    },
-    drawCallback: function(settings) {
-      $('#validators').find('[data-toggle="tooltip"]').tooltip()
-    },
-    order: [[1,'asc']],
-    columnDefs: [
-      {
-        targets: 0,
-        data: '0',
-        render: function(data, type, row, meta) {
-          if (type == 'sort' || type == 'type') return data
-          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-        }
-      },
-      {
-        targets: 1,
-        data: '1',
-        render: function(data, type, row, meta) {
-          if (type == 'sort' || type == 'type') return data
-          return '<a href="/validator/' + data + '">' + data + '</a>'
-        }
-      },
-      {
-        targets: 2,
-        data: '2',
-        render: function(data, type, row, meta) {
-          if (type == 'sort' || type == 'type') return data ? data[0] : null
-          return `${data[0]} (${data[1]})`
-        }
-      },
-      {
-        targets: 3,
-        data: '3',
-        render: function(data, type, row, meta) {
-          if (type == 'sort' || type == 'type') return data ? data[0] : -1
-          var d = data.split('_')
-          var s = d[0].charAt(0).toUpperCase() + d[0].slice(1)
-          if (d[1] === 'offline') 
-            return `<span style="display:none">${d[1]}</span><span data-toggle="tooltip" data-placement="top" title="No attestation in the last 2 epochs">${s} <i class="fas fa-power-off fa-sm text-danger"></i></span>`
-          if (d[1] === 'online')
-            return `<span style="display:none">${d[1]}</span><span>${s} <i class="fas fa-power-off fa-sm text-success"></i></span>`
-          return `<span>${s}</span>`
-        }
-      },
-      {
-        targets: 4,
-        data: '4',
-        render: function(data, type, row, meta) {
-          if (type == 'sort' || type == 'type') return data ? data[0] : null
-          if (data === null) return '-'
-          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
-        }
-      },
-      {
-        targets: 5,
-        data: '5',
-        render: function(data, type, row, meta) {
-          if (type == 'sort' || type == 'type') return data ? data[0] : null
-          if (data === null) return '-'
-          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
-        }
-      },
-      {
-        targets: 6,
-        data: '6',
-        render: function(data, type, row, meta) {
-          if (type == 'sort' || type == 'type') return data ? data[0] : null
-          if (data === null) return '-'
-          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
-        }
-      },
-      {
-        targets: 7,
-        data: '7',
-        render: function(data, type, row, meta) {
-          if (type == 'sort' || type == 'type') return data ? data[0] : null
-          if (data === null) return 'No Attestation found'
-          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
-        }
-      },
-      {
-        targets: 8,
-        data: '8',
-        render: function(data, type, row, meta) {
-          if (type == 'sort' || type == 'type') return data ? data[0] + data[1] : null
-          return `<span data-toggle="tooltip" data-placement="top" title="${data[0]} executed / ${data[1]} missed"><span class="text-success">${data[0]}</span> / <span class="text-danger">${data[1]}</span></span>`
-        }
-      }
-    ]
   })
 
   var bhValidators = new Bloodhound({
@@ -351,273 +661,9 @@ $(document).ready(function() {
     // window.location = "/dashboard"
   })
 
-  function setInitialState () {
-    var _state = {}
-    _state.validators = []
-    _state.validatorsCount = {
-      pending: 0,
-      active: 0,
-      ejected: 0,
-      offline: 0
-    }
-    return _state;
-  }
-
-  var state = setInitialState()
-
   setValidatorsFromURL()
   renderSelectedValidators()
   updateState()
-
-  function renderSelectedValidators() {
-    var elHolder = document.getElementById('selected-validators')
-    $('#selected-validators .item').remove()
-    var elsItems = []
-    for (var i = 0; i < state.validators.length; i++) {
-      var v = state.validators[i]
-      var elItem = document.createElement('li')
-      elItem.classList = 'item'
-      elItem.dataset.validatorIndex = v
-      elItem.innerHTML = v + ' <i class="fas fa-times-circle remove-validator"></i>'
-      elsItems.push(elItem)
-    }
-    elHolder.prepend(...elsItems)
-  }
-
-  function renderDashboardInfo() {
-    var el = document.getElementById('dashboard-info')
-    el.innerText = `Found ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online + state.validatorsCount.active_offline} active and ${state.validatorsCount.exited} exited validators`
-    var btn = document.getElementById('dashboard-dropdown-btn')
-    btn.innerText = state.validatorsCount.pending+state.validatorsCount.active_online+state.validatorsCount.active_offline+state.validatorsCount.exited
-  }
-
-  function setValidatorsFromURL() {
-    var usp = new URLSearchParams(window.location.search)
-    var validatorsStr = usp.get('validators')
-    if (!validatorsStr) {
-      var validatorsStr = localStorage.getItem('dashboard_validators')
-      if (validatorsStr) {
-        state.validators = JSON.parse(validatorsStr)
-        state.validators = state.validators.filter((v, i) => {
-          v = escape(v)
-          if (isNaN(parseInt(v))) return false
-          return state.validators.indexOf(v) === i
-        })
-        state.validators.sort(sortValidators)
-      } else {
-        state.validators = []
-      }
-      return
-    }
-    state.validators = validatorsStr.split(',')
-    state.validators = state.validators.filter((v, i) => {
-      v = escape(v)
-      if (isNaN(parseInt(v))) return false
-      return state.validators.indexOf(v) === i
-    })
-    state.validators.sort(sortValidators)
-    if (state.validators.length > 100) {
-      state.validators = state.validators.slice(0,100)
-      console.log("100 validators limit reached")
-      alert('You can not add more than 100 validators to your dashboard')
-    }
-  }
-
-  function addValidators(indices) {
-    var limitReached = false
-    indicesLoop:
-    for (var j = 0; j < indices.length; j++) {
-      if (state.validators.length >= 100) {
-        limitReached = true
-        break indicesLoop
-      }
-      var index = indices[j]+"" // make sure index is string
-      for (var i = 0; i < state.validators.length; i++) {
-        if (state.validators[i] === index)
-          continue indicesLoop
-      }
-      state.validators.push(index)
-    }
-    state.validators.sort(sortValidators)
-    renderSelectedValidators()
-    updateState()
-    if (limitReached) {
-      console.log("100 validators limit reached")
-      alert('You can not add more than 100 validators to your dashboard')
-    }
-  }
-
-  function addValidator(index) {
-    if (state.validators.length > 100) {
-      alert('Too much validators, you can not add more than 100 validators to your dashboard!')
-      return
-    }
-    index = index+"" // make sure index is string
-    for (var i = 0; i < state.validators.length; i++) {
-      if (state.validators[i] === index) return
-    }
-    state.validators.push(index)
-    state.validators.sort(sortValidators)
-    renderSelectedValidators()
-    updateState()
-  }
-
-  function removeValidator(index) {
-    for (var i = 0; i < state.validators.length; i++) {
-      if (state.validators[i] === index) {
-        state.validators.splice(i, 1)
-        state.validators.sort(sortValidators)
-        //removed last validator
-        if(state.validators.length === 0) {
-          state = setInitialState()
-          localStorage.removeItem('dashboard_validators')
-          window.location = "/dashboard"
-          return
-        } else {
-          renderSelectedValidators()
-          updateState()
-        }
-        return
-      }
-    }
-  }
-
-  function sortValidators(a, b) {
-    var ai = parseInt(a)
-    var bi = parseInt(b)
-    return ai - bi
-  }
-
-  function addChange(selector, value) {
-    if(selector !== undefined || selector !== null) {
-      var element = document.querySelector(selector)
-      if(element !== undefined) {
-        // remove old
-        element.classList.remove('decreased')
-        element.classList.remove('increased')
-        if(value < 0) {
-          element.classList.add("decreased")
-        } 
-        if (value > 0) {
-          element.classList.add("increased")
-        }
-      } else {
-        console.error("Could not find element with selector", selector)
-      }
-    } else {
-      console.error("selector is not defined", selector)
-    }
-  }
-
-  function updateState() {
-    // if(_range < xBlocks.length + 3 && _range !== -1) {
-
-    //   appendBlocks(xBlocks.slice(_range, _range+3))
-    //   _range = _range + 3;
-    // } else if(_range !== -1) {
-    //   _range = -1;
-    // }
-
-    localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
-    if(state.validators.length) {
-      console.log('length', state.validators)
-      var qryStr = '?validators=' + state.validators.join(',')
-      var newUrl = window.location.pathname + qryStr
-      window.history.replaceState(null, 'Dashboard', newUrl)
-    }
-    var t0 = Date.now()
-    if (state.validators && state.validators.length) {
-      // if(state.validators.length >= 9) {
-      //   appendBlocks(xBlocks)
-      // } else {
-      //   appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
-      // }
-      document.querySelector('#bookmark-button').style.visibility = "visible"
-      document.querySelector('#copy-button').style.visibility = "visible"
-      document.querySelector('#clear-search').style.visibility = "visible"
-
-      $.ajax({
-        url: '/dashboard/data/earnings' + qryStr,
-        success: function(result) {
-          var t1 = Date.now()
-          console.log(`loaded earnings: fetch: ${t1-t0}ms`)
-          if (!result) return
-          // document.getElementById('stats').style.display = 'flex'
-          var lastDay = (result.lastDay / 1e9 * exchangeRate).toFixed(4)
-          var lastWeek = (result.lastWeek / 1e9 * exchangeRate).toFixed(4)
-          var lastMonth = (result.lastMonth / 1e9 * exchangeRate).toFixed(4)
-          var total = (result.total / 1e9 * exchangeRate).toFixed(4)
-
-          console.log(total, exchangeRate, result.total)
-          addChange("#earnings-day-header", lastDay)
-          addChange("#earnings-week-header", lastWeek)
-          addChange("#earnings-month-header", lastMonth)
-          addChange("#earnings-total-header", total)
-
-          document.querySelector('#earnings-day').innerHTML = (lastDay || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-week').innerHTML = (lastWeek || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-month').innerHTML = (lastMonth || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-total').innerHTML = (total || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-        }
-      })
-      $.ajax({
-        url: '/dashboard/data/validators' + qryStr,
-        success: function(result) {
-          var t1 = Date.now()
-          console.log(`loaded validators-data: length: ${result.data.length}, fetch: ${t1-t0}ms`)
-          if (!result || !result.data.length) {
-            document.getElementById('validators-table-holder').style.display = 'none'
-            return
-          }
-          // pubkey, idx, currbal, effbal, slashed, acteligepoch, actepoch, exitepoch
-          // 0:pubkey, 1:idx, 2:[currbal,effbal], 3:state, 4:[actepoch,acttime], 5:[exit,exittime], 6:[wd,wdt], 7:[lasta,lastat], 8:[exprop,misprop]
-          // console.log(`latestEpoch: ${result.latestEpoch}`)
-          // var latestEpoch = result.latestEpoch
-          state.validatorsCount.pending = 0
-          state.validatorsCount.active_online = 0
-          state.validatorsCount.active_offline = 0
-          state.validatorsCount.slashing_online = 0
-          state.validatorsCount.slashing_offline = 0
-          state.validatorsCount.exiting_online = 0
-          state.validatorsCount.exiting_offline = 0
-          state.validatorsCount.exited = 0
-          state.validatorsCount.slashed = 0
-  
-          for (var i=0; i<result.data.length; i++) {
-            var v = result.data[i]
-            var vIndex = v[1]
-            var vState = v[3]
-            if (!state.validatorsCount[vState]) state.validatorsCount[vState] = 0
-            state.validatorsCount[vState]++
-            var el = document.querySelector(`#selected-validators .item[data-validator-index="${vIndex}"]`)
-            if (el) el.dataset.state = vState
-          }
-          validatorsDataTable.clear()
-
-          validatorsDataTable.rows.add(result.data).draw()
-  
-          validatorsDataTable.column(6).visible(false)
-
-          requestAnimationFrame(()=>{validatorsDataTable.columns.adjust().responsive.recalc()})
-
-          document.getElementById('validators-table-holder').style.display = 'block'
-
-          renderDashboardInfo()
-        }
-      })
-
-    } else {
-      document.querySelector('#copy-button').style.visibility = "hidden"
-      document.querySelector('#bookmark-button').style.visibility = "hidden"
-      document.querySelector('#clear-search').style.visibility = "hidden"
-      // window.location = "/dashboard"
-    }
-
-    $('#copy-button')
-    .attr('data-clipboard-text', window.location.href)
-
-    renderCharts()
-  }
 
   window.onpopstate = function(event) {
     setValidatorsFromURL()
@@ -639,53 +685,6 @@ $(document).ready(function() {
       renderSelectedValidators()
       updateState()
   })
-
-  function renderCharts() {
-    var t0 = Date.now()
-    // if (state.validators.length === 0) {
-    //   document.getElementById('chart-holder').style.display = 'none'
-    //   return
-    // }
-    document.getElementById('chart-holder').style.display = 'flex'
-    if (state.validators && state.validators.length) {
-      var qryStr = '?validators=' + state.validators.join(',')
-      $.ajax({
-        url: '/dashboard/data/balance' + qryStr,
-        success: function(result) {
-          var t1 = Date.now()
-          var balance = new Array(result.length)
-          var effectiveBalance = new Array(result.length)
-          var validatorCount = new Array(result.length)
-          var utilization = new Array(result.length)
-          for (var i = 0; i < result.length; i++) {
-            var res = result[i]
-            validatorCount[i] = [res[0], res[1]]
-            balance[i] = [res[0], res[2]]
-            effectiveBalance[i] = [res[0], res[3]]
-            utilization[i] = [res[0], res[3] / (res[1] * (32 * exchangeRate))]
-          }
-  
-          var t2 = Date.now()
-          createBalanceChart(effectiveBalance, balance, utilization)
-          var t3 = Date.now()
-          console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
-        }
-      })
-      $.ajax({
-        url: '/dashboard/data/proposals' + qryStr,
-        success: function(result) {
-          var t1 = Date.now()
-          var t2 = Date.now()
-          if (result && result.length) {
-            createProposedChart(result)
-          }
-          var t3 = Date.now()
-          console.log(`loaded proposal-data: length: ${result.length}, fetch: ${t1 - t0}ms, render: ${t3 - t2}ms`)
-        }
-      })
-
-    }
-  }
 })
 
 function createBalanceChart(effective, balance, utilization, missedAttestations) {
