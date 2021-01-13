@@ -348,6 +348,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 
 		// tableData[i] = append(tableData[i], fmt.Sprintf("%.4f ETH", float64(v.Performance7d)/float64(1e9)))
 		tableData[i] = append(tableData[i], utils.FormatIncome(v.Performance7d, currency))
+		tableData[i] = append(tableData[i], template.HTML(fmt.Sprintf(`<button id="validator-remove-btn" class="btn btn-sm"><i class="fas fa-times-circle">%v</i></button>`, v.ValidatorIndex)))
 	}
 
 	type dataType struct {
