@@ -258,7 +258,6 @@
             return update
             .attr('epoch', d => d.epoch)
             .on('click', (d) => {
-              console.log(d.target.getAttribute('epoch'))
               var epoch = d.target.getAttribute('epoch')
               window.location = "/epoch/"+epoch
             })
@@ -301,7 +300,6 @@
                 .call(rect => rect.transition(t)
                 .attr('stroke', (d) => d.active ? 'var(--body-color)' : 'transparent')
                 .attr("fill", (d) => {
-                  console.log('updating fill', d)
                   if (d.status === "missed") {
                     return "rgba(200,100,100,0.8)"
                   } else if (d.status === "proposed") {
