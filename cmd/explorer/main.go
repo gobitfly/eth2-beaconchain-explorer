@@ -217,7 +217,7 @@ func main() {
 			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")
-			router.HandleFunc("/charts/{chart}", handlers.GenericChart).Methods("GET")
+			router.HandleFunc("/charts/{chart}", handlers.Chart).Methods("GET")
 			router.HandleFunc("/vis/blocks", handlers.VisBlocks).Methods("GET")
 			router.HandleFunc("/vis/votes", handlers.VisVotes).Methods("GET")
 			router.HandleFunc("/epoch/{epoch}", handlers.Epoch).Methods("GET")
@@ -261,6 +261,8 @@ func main() {
 			router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
 			router.HandleFunc("/poap", handlers.Poap).Methods("GET")
 			router.HandleFunc("/poap/data", handlers.PoapData).Methods("GET")
+			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
+			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
