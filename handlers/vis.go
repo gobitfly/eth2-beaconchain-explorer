@@ -110,6 +110,8 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		data := &types.VotesVisChartData{}
 		err := rows.Scan(&data.Slot, &data.BlockRoot, &data.ParentRoot, &data.Validators)

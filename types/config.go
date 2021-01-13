@@ -57,11 +57,13 @@ type Config struct {
 		CsrfInsecure  bool   `yaml:"csrfInsecure envconfig:"FRONTEND_CSRF_INSECURE"`
 		DisableCharts bool   `yaml:"disableCharts" envconfig:"disableCharts"`
 		Enabled       bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
-		Imprint       string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
-		SiteDomain    string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
-		SiteName      string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
-		SiteSubtitle  string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
-		Server        struct {
+		// Imprint is deprecated place imprint file into the legal directory
+		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
+		LegalDir     string `yaml:"legalDir" envconfig:"FRONTEND_LEGAL"`
+		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
+		SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
+		SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
+		Server       struct {
 			Port string `yaml:"port" envconfig:"FRONTEND_SERVER_PORT"`
 			Host string `yaml:"host" envconfig:"FRONTEND_SERVER_HOST"`
 		} `yaml:"server"`

@@ -31,6 +31,12 @@ function switchTheme(e) {
 }
 $('#toggleSwitch').on('change', switchTheme)
 
+function hideInfoBanner(msg){
+  localStorage.setItem('infoBannerStatus', msg)
+  $('#infoBanner').attr('class', 'd-none')
+}
+// $("#infoBannerDissBtn").on('click', hideInfoBanner)
+
 // typeahead
 $(document).ready(function() {
   formatTimestamps() // make sure this happens before tooltips
@@ -228,6 +234,7 @@ $('[aria-ethereum-date]').each(function(item) {
   if (format === 'FROMNOW') {
     $(this).text(luxon.DateTime.fromMillis(dt * 1000).toRelative({ style: "short"}))
     $(this).attr('title', luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
+    $(this).attr('data-toggle', 'tooltip')
   } else {
     $(this).text(luxon.DateTime.fromMillis(dt * 1000).toFormat(format))
   }
@@ -285,7 +292,7 @@ function formatTimestamps(selStr) {
   sel.find('.timestamp').each(function(){
     var ts = $(this).data('timestamp')
     var tsLuxon = luxon.DateTime.fromMillis(ts * 1000)
-    $(this).attr("data-original-title", tsLuxon.toFormat("LLL"))
+    $(this).attr("data-original-title", tsLuxon.toFormat("ff"))
     $(this).text(tsLuxon.toRelative({ style: "short"}))
   })
   sel.find('[data-toggle="tooltip"]').tooltip()

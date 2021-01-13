@@ -14,6 +14,7 @@ type Client interface {
 	GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error)
 	GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 	GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error)
+	GetNewBlockChan() chan *types.Block
 }
 
 var logger = logrus.New().WithField("module", "rpc")

@@ -94,6 +94,7 @@ type WatchlistFilter struct {
 	JoinValidators bool
 }
 
+// GetTaggedValidators returns validaters that were tagged by a user
 func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, error) {
 	list := []*types.TaggedValidators{}
 	args := make([]interface{}, 0)

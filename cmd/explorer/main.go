@@ -152,6 +152,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestations", handlers.ApiValidatorAttestations).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/proposals", handlers.ApiValidatorProposals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/deposits", handlers.ApiValidatorDeposits).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestationefficiency", handlers.ApiValidatorAttestationEfficiency).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
@@ -301,6 +302,7 @@ func main() {
 			oauthRouter.Use(csrfHandler)
 
 			authRouter := router.PathPrefix("/user").Subrouter()
+			authRouter.HandleFunc("/mobile/settings", handlers.MobileDeviceSettingsPOST).Methods("POST")
 			authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirmPost).Methods("POST")
 			authRouter.HandleFunc("/settings", handlers.UserSettings).Methods("GET")
 			authRouter.HandleFunc("/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
@@ -317,7 +319,10 @@ func main() {
 			authRouter.Use(csrfHandler)
 			initStripe(authRouter)
 
+			legalFs := http.FileServer(http.Dir(utils.Config.Frontend.LegalDir))
+			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", legalFs))
 			router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
+
 		}
 
 		n := negroni.New(negroni.NewRecovery())

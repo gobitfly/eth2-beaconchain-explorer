@@ -6,17 +6,16 @@
 		})
 	</script>
 </script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
-	<script src="/js/validator.js"></script>
+	<script src="/bundle/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}})</script>
 
     {{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
-		<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
-		<script type="text/javascript" src="/js/datatable_input.js"></script>
-		<script src="https://code.highcharts.com/stock/highstock.js"></script>
-		<script src="https://code.highcharts.com/modules/exporting.js"></script>
-		<script src="https://code.highcharts.com/modules/offline-exporting.js"></script>
-		<script src="/js/highcharts-global-options.js"></script>
+		<script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+		<script type="text/javascript" src="/bundle/js/datatable_input.js"></script>
+		<script src="/bundle/js/highcharts/highstock.min.js"></script>
+		<script src="/bundle/js/highcharts/exporting.min.js"></script>
+		<script src="/bundle/js/highcharts/offline-exporting.min.js"></script>
+		<script src="/bundle/js/highcharts/highcharts-global-options.js"></script>
 		<script>
             setupDashboardButtons({{.Index }}+'')
 		</script>
@@ -24,8 +23,8 @@
 {{end}}
 
 {{ define "css"}}
-	<link rel="stylesheet" href="/css/validator.css">
-	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
+	<link rel="stylesheet" href="/bundle/css/validator.css">
+	<link rel="stylesheet" type="text/css" href="/bundle/css/datatables.min.css"/>
 	<style>
 			/* #TODO:stefan maybe make this prettier somehow? */
 			#slashings-table td:first-child {
@@ -78,7 +77,7 @@
 		{{ template "validatorHeading" . }}
 				<div class="row align-items-stretch">
 					<div class="col-lg-8 px-lg-2 my-2">
-						<div class="card h-100 py-0 px-0 card-body">
+						<div class="card d-flex flex-column justify-content-center h-100 py-0 px-0 card-body">
 							<div class="row">
 								<div class="col">
 									{{ template "validatorLifeCycleDiagram" .}}
@@ -95,17 +94,24 @@
 										{{ template "validatorOverviewValidating" $}}
 									{{ end }}
 									{{ if $exited }}
-									  {{ template "validatorOverviewExited" .}}
+									  {{ template "validatorOverviewExited" $}}
 									{{end}}
 							</div>
 						</div>
 					</div>
 					<div class="col-lg-4 px-lg-2 my-2">
 						<div class="card card-body py-2 px-0 h-100 d-flex align-items-center">
-							{{if $validating }}
-								{{template "validatorIncomeTable" $}}
-							{{else}}
+							{{ if $deposited }}
 								{{ template "validatorNetworkStatsTable" .}}
+							{{end}}
+							{{ if $pending }}
+								{{ template "validatorIncomeTable" $}}
+							{{end}}
+							{{ if $validating }}
+								{{ template "validatorIncomeTable" $}}
+							{{ end }}
+							{{ if $exited }}
+								{{ template "validatorIncomeTable" $}}
 							{{end}}
 						</div>
 					</div>					
@@ -115,7 +121,7 @@
 						<div class="card h-100 px-0 py-0 card-body">
 							<ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="chartTabs" role="tablist">
 								<li class="nav-item">
-									<a class="nav-link active" id="balanceChart-tab" data-toggle="tab" href="#balanceChart" role="tab" aria-controls="balanceChart-tab-content" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-chart-line"></i><span class="tab-text">Balance</span></a>
+									<a class="nav-link active" id="incomeChart-tab" data-toggle="tab" href="#incomeChart" role="tab" aria-controls="incomeChart-tab-content" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-chart-line"></i><span class="tab-text">Income</span></a>
 								</li>
 								<li class="nav-item">
 									<a class="nav-link {{if eq .ProposedBlocksCount 0}}disabled{{end}}" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart-tab-content" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-chart-bar"></i><span class="tab-text">Proposals</span></a>
@@ -139,29 +145,29 @@
 									aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span></a>
 								</li>
 							</ul>
-							<div class="tab-content" id="myTabContent">
-								<div id="balanceChart" class="tab-pane fade show active" role="tabpanel" aria-labelledby="balanceChart-tab">
-									{{template "validatorBalanceChart"  . }}
+							<div class="tab-content h-100" id="myTabContent">
+								<div id="incomeChart" class="tab-pane fade h-100 show active" role="tabpanel" aria-labelledby="incomeChart-tab">
+									{{template "validatorIncomeChart"  . }}
 								</div>
-								<div id="proposedChart" class="tab-pane fade" role="tabpanel" aria-labelledby="proposedChart-tab">
+								<div id="proposedChart" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="proposedChart-tab">
 									{{template "validatorProposedChart"  . }}
 								</div>
 								{{if gt .ProposedBlocksCount 0}}
-								<div class="tab-pane fade" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
+								<div class="tab-pane fade h-100" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
 									{{ template "validatorProposedTable"  . }}
 								</div>
 								{{end}}
 								{{ if gt .AttestationsCount 0 }}
-								 <div class="tab-pane fade" id="attestations" role="tabpanel" aria-labelledby="attestations-tab" aria-controls="attestations">
+								 <div class="tab-pane fade h-100" id="attestations" role="tabpanel" aria-labelledby="attestations-tab" aria-controls="attestations">
 									{{template "validatorAttestationsTable" . }}
 								</div>
 								{{end}}
 								{{if gt .SlashingsCount 0}}
-									<div class="tab-pane fade" id="slashings" role="tabpanel" aria-labelledby="slashings-tab" aria-controls="slashings">
+									<div class="tab-pane fade h-100" id="slashings" role="tabpanel" aria-labelledby="slashings-tab" aria-controls="slashings">
 										{{template "validatorSlashingsTable" . }}
 									</div>
 								{{end}}
-								<div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
+								<div class="tab-pane fade h-100" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
 									<div class="px-3">
 										{{template "validatorDepositsTable" $}}
 									</div>
@@ -174,7 +180,7 @@
 							<div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
 								<span class="h4 text-center mb-0">Validator History</span>
 							</div>
-							{{ if $validating }}
+							{{ if or $validating $exited }}
 								{{ template "validatorHistoryTable" $}}
 							{{ else }}
 							<div class="d-flex align-items-center justify-content-center p-5">

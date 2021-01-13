@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -73,6 +74,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorStatus":                   FormatValidatorStatus,
 		"formatPercentage":                        FormatPercentage,
 		"formatPercentageWithPrecision":           FormatPercentageWithPrecision,
+		"formatPercentageWithGPrecision":          FormatPercentageWithGPrecision,
 		"formatPublicKey":                         FormatPublicKey,
 		"formatSlashedValidator":                  FormatSlashedValidator,
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
@@ -148,6 +150,11 @@ func TimeToSlot(timestamp uint64) uint64 {
 // EpochToTime will return a time.Time for an epoch
 func EpochToTime(epoch uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
+}
+
+// EpochToTime will return a time.Time for an epoch
+func DayToTime(day uint64) time.Time {
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+(day*((60*60*24)/(Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch)))*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0).Add(time.Hour * 24).Add(time.Second * -14)
 }
 
 // TimeToEpoch will return an epoch for a given time
@@ -388,4 +395,16 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 
 func ExchangeRateForCurrency(currency string) float64 {
 	return price.GetEthPrice(currency)
+}
+
+func Glob(dir string, ext string) ([]string, error) {
+	files := []string{}
+	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
+		if filepath.Ext(path) == ext {
+			files = append(files, path)
+		}
+		return nil
+	})
+
+	return files, err
 }
