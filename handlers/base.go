@@ -69,6 +69,9 @@ func FormValueOrJSON(r *http.Request, key string) string {
 		// we convert every param to string. Handling/casting to
 		// correct type is therefore escalated to handler
 		value := jsonBody.(map[string]interface{})[key]
+		if value == nil {
+			return ""
+		}
 		return fmt.Sprintf("%v", value)
 	}
 

@@ -784,7 +784,17 @@ type CsrfData struct {
 type UserSettingsPageData struct {
 	CsrfField template.HTML
 	AuthData
-	Subscription UserSubscription
+	Subscription  UserSubscription
+	PairedDevices []PairedDevice
+}
+
+type PairedDevice struct {
+	ID            uint      `json:"id"`
+	DeviceName    string    `json:"device_name"`
+	NotifyEnabled bool      `json:"notify_enabled"`
+	Active        bool      `json:"active"`
+	AppName       string    `json:"app_name"`
+	CreatedAt     time.Time `json:"created_ts"`
 }
 
 type UserAuthorizeConfirmPageData struct {
