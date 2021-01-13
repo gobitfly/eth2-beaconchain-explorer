@@ -28,7 +28,7 @@ func MobilePage(w http.ResponseWriter, r *http.Request) {
 
 	err2 := mobileTemplate.ExecuteTemplate(w, "layout", data)
 	if err2 != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err2)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
