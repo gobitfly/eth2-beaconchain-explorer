@@ -135,7 +135,7 @@
     {{ with .Data }}
         <!-- Validator Lifecycle State Diagram -->
         <div class="overview-container d-flex flex-wrap justify-content-center">
-            <div style="width: 80px;" class="m-3 position-relative">
+            <div style="width: 90px;" class="m-3 position-relative">
                 <span style="top:-1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>{{if gtf .RankPercentage 0.0}}{{if gtf .RankPercentage 0.001}}Rank {{formatPercentageWithGPrecision .RankPercentage 3}} %{{else}}Top 0.1%{{end}}{{else}}Rank{{end}}</small></span>
                 <a class="no-highlight" href="/validators/leaderboard">
                     <i class="fas fa-medal"></i>
@@ -154,7 +154,7 @@
                                         class="far ml-1 fa-question-circle"></i></a></span></span>
                 </div>
             </div>
-            <div style="width: 80px;" class="m-3 position-relative">
+            <div style="width: 90px;" class="m-3 position-relative">
                 <span style="top:-1.2rem;"
                       class="text-muted font-weight-lighter position-absolute"><small>Status</small></span>
                 {{.Status | formatValidatorStatus}}
@@ -184,9 +184,9 @@
                   class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
             <div style="width: 8.32rem" class="d-flex flex-column">
                 <span style="font-weight: bold; font-size:18px;">{{formatCurrentBalance .CurrentBalance $.Currency }}</span>
-                <span>{{formatEffectiveBalance .EffectiveBalance "ETH" }} <span data-toggle="tooltip"
+                <span>{{formatEffectiveBalance .EffectiveBalance "ETH" }} <span style="font-size:0.8rem; color:gray" data-toggle="tooltip"
                                                                                 title="The effective balance is used to calculate the base rewards of a validator"><a
-                                class="no-highlight" href="https://kb.beaconcha.in/attestation#rewards"><i
+                                class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i
                                     class="far ml-1 fa-question-circle"></i></a></span></span>
             </div>
         </div>
