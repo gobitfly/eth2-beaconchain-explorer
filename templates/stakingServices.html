@@ -1,5 +1,11 @@
 {{ define "js"}}
 <script src="/bundle/js/requestInterval.js"></script>
+<script src="https://www.google.com/recaptcha/api.js" async></script>
+<script>
+    function onSubmit(token) {
+      document.getElementById("contact").submit();
+    }
+  </script>
 {{end}}
 
 {{ define "css"}}
@@ -788,7 +794,7 @@
                                                       name="comments"></textarea>
                                         </div>
                                     </div>
-                                    <button type="submit" class="btn btn-primary text-center">Send Request</button>
+                                    <button data-sitekey="{{.RecaptchaKey}}" data-callback='onSubmit' data-action='submit' type="submit" class="g-recaptcha btn btn-primary text-center">Send Request</button>
                                 </form>
                             </div>
                         </div>

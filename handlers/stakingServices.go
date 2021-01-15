@@ -19,6 +19,7 @@ func StakingServices(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "services", "/stakingServices", "Ethereum 2.0 Staking Services Overview")
 
 	pageData := &types.StakeWithUsPageData{}
+	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "stake_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
@@ -42,6 +43,23 @@ func AddStakingServicePost(w http.ResponseWriter, r *http.Request) {
 		utils.SetFlash(w, r, "stake_flash", "Error: invalid form submitted")
 		http.Redirect(w, r, "/stakingServices", http.StatusSeeOther)
 		return
+	}
+
+	if len(utils.Config.Frontend.RecaptchaSecretKey) > 0 && len(utils.Config.Frontend.RecaptchaSiteKey) > 0 {
+		if len(r.FormValue("g-recaptcha-response")) == 0 {
+			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
+			logger.Errorf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
+			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
+			return
+		}
+
+		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
+		if err != nil || !valid {
+			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
+			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
+			return
+		}
 	}
 
 	name := r.FormValue("name")

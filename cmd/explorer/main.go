@@ -40,8 +40,6 @@ func initStripe(http *mux.Router) error {
 	stripe.Key = utils.Config.Frontend.Stripe.SecretKey
 	http.HandleFunc("/stripe/create-checkout-session", handlers.StripeCreateCheckoutSession).Methods("POST")
 	http.HandleFunc("/stripe/customer-portal", handlers.StripeCustomerPortal).Methods("POST")
-	http.HandleFunc("/stripe/success", handlers.PricingSuccess).Methods("GET")
-	http.HandleFunc("/stripe/cancled", handlers.PricingCancled).Methods("GET")
 	return nil
 }
 

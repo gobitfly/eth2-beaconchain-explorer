@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -407,4 +409,39 @@ func Glob(dir string, ext string) ([]string, error) {
 	})
 
 	return files, err
+}
+
+// ValidateReCAPTCHA validates a ReCaptcha server side
+func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
+	// Check this URL verification details from Google
+	// https://developers.google.com/recaptcha/docs/verify
+	req, err := http.PostForm("https://www.google.com/recaptcha/api/siteverify", url.Values{
+		"secret":   {Config.Frontend.RecaptchaSecretKey},
+		"response": {recaptchaResponse},
+	})
+	if err != nil { // Handle error from HTTP POST to Google reCAPTCHA verify server
+		return false, err
+	}
+	defer req.Body.Close()
+	body, err := ioutil.ReadAll(req.Body) // Read the response from Google
+	if err != nil {
+		return false, err
+	}
+
+	var googleResponse types.GoogleRecaptchaResponse
+	err = json.Unmarshal(body, &googleResponse) // Parse the JSON response from Google
+	if err != nil {
+		return false, err
+	}
+	if len(googleResponse.ErrorCodes) > 0 {
+		err = fmt.Errorf("Error validating ReCaptcha %v", googleResponse.ErrorCodes)
+	} else {
+		err = nil
+	}
+
+	if googleResponse.Score > 0.5 {
+		return true, err
+	}
+
+	return false, fmt.Errorf("Score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
 }

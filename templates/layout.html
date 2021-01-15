@@ -582,6 +582,7 @@
             </div>
         {{end}}
         {{ template "content" . }}
+        {{if not .User.Authenticated}}
         <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index:999; bottom: 3%; width: 100%; justify-content: center; align-items: center">
             <div style="width: 80%; max-width: 600px;" class="card card-body row">
                 <div class="row">
@@ -594,6 +595,7 @@
                 </div>
             </div>
         </div>
+        {{end}}
     </main>
 
     <div style="margin-top: 3rem; margin-bottom: 4.2rem;">
@@ -723,7 +725,7 @@
             $('#infoBanner').attr('class', '')
         }
     </script>
-    
+    {{if not .User.Authenticated}}
     <script>
         function hideCookieBanner(){
             $('#cookie-banner').attr("class", "d-none");
@@ -739,6 +741,7 @@
             $('#cookie-banner').attr("class", "");
         }
     </script>
+    {{end}}
 
     <script src="/bundle/js/clipboard.min.js"></script>
     {{ template "js" .Data }}

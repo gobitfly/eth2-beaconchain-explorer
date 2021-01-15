@@ -1,5 +1,13 @@
 {{ define "js"}}
 $('#carousel').carousel()
+<script src="https://www.google.com/recaptcha/api.js" async></script>
+
+<script>
+    function onSubmit(token) {
+      document.getElementById("contact").submit();
+    }
+  </script>
+
 {{end}}
 
 {{ define "css"}}
@@ -304,7 +312,7 @@ $('#carousel').carousel()
                                         name="text"></textarea>
                                 </div>
                             </div>
-                            <button type="submit" class="btn btn-primary text-center">Send Message</button>
+                            <button data-sitekey="{{.RecaptchaKey}}" data-callback='onSubmit' data-action='submit' type="submit" class="g-recaptcha btn btn-primary text-center">Send Message</button>
                         </form>
                     </div>
                 </div>
