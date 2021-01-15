@@ -117,7 +117,7 @@
                                                     href="https://geth.ethereum.org/">Geth</a></td>
                                         <td data-column="Language">Go</td>
                                         <td data-column="Network share"><a
-                                                    href="https://ethernodes.org">{{.Geth.NetworkShare}}</a></td>
+                                                    href="https://ethernodes.org">{{ if .Geth.NetworkShare}}{{.Geth.NetworkShare}}{{else}}N/a{{end}}</a></td>
                                         <td data-column="Latest update"><a
                                                     href="https://github.com/ethereum/go-ethereum/releases">{{.Geth.ClientReleaseVersion}}</a> - {{.Geth.ClientReleaseDate}} </td>
                                         <td data-column="Social media">
@@ -132,7 +132,7 @@
                                                     href="https://nethermind.io/">Nethermind</a></td>
                                         <td data-column="Language">.NET</td>
                                         <td data-column="Network share"><a
-                                                    href="https://ethernodes.org">{{.Nethermind.NetworkShare}}</a></td>
+                                                    href="https://ethernodes.org">{{ if .Nethermind.NetworkShare}}{{.Nethermind.NetworkShare}}{{else}}N/a{{end}}</a></td>
                                         <td data-column="Latest update"><a
                                                     href="https://github.com/NethermindEth/nethermind/releases">{{.Nethermind.ClientReleaseVersion}}</a> - {{.Nethermind.ClientReleaseDate}}</td>
                                         <td data-column="Social media">
@@ -149,7 +149,7 @@
                                                     href="https://openethereum.org/">Open Ethereum </a></td>
                                         <td data-column="Language">Rust</td>
                                         <td data-column="Network share"><a
-                                                    href="https://ethernodes.org">{{.OpenEthereum.NetworkShare}}</a></td>
+                                                    href="https://ethernodes.org">{{ if .OpenEthereum.NetworkShare}}{{.OpenEthereum.NetworkShare}}{{else}}N/a{{end}}</a></td>
                                         <td data-column="Latest update"><a
                                                     href="https://github.com/openethereum/openethereum/releases">{{.OpenEthereum.ClientReleaseVersion}}</a> - {{.OpenEthereum.ClientReleaseDate}}</td>
                                         <td data-column="Social media">
@@ -166,7 +166,7 @@
                                                     href="https://besu.hyperledger.org/en/stable/">Besu </a></td>
                                         <td data-column="Language">Java</td>
                                         <td data-column="Network share"><a
-                                                    href="https://ethernodes.org">{{.Besu.NetworkShare}}</a></td>
+                                                    href="https://ethernodes.org">{{ if .Besu.NetworkShare}}{{.Besu.NetworkShare}}{{else}}N/a{{end}}</a></td>
                                         <td data-column="Latest update"><a
                                                     href="https://github.com/hyperledger/besu/releases">{{.Besu.ClientReleaseVersion}}</a> - {{.Besu.ClientReleaseDate}}</td>
                                         <td data-column="Social media">
