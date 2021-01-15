@@ -660,7 +660,9 @@ $(document).ready(function() {
     }
     // window.location = "/dashboard"
   })
-
+  $('#selected-validators').on('click', function(event){
+    event.stopPropagation();
+  })
   setValidatorsFromURL()
   renderSelectedValidators()
   updateState()
