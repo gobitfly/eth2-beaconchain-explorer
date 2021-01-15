@@ -2,7 +2,6 @@ package ethclients
 
 import (
 	"encoding/json"
-	"errors"
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
@@ -58,6 +57,7 @@ func fetchClientData(repo string) *gitAPIResponse {
 
 	if err != nil {
 		logger.Errorf("error retrieving ETH Client Data: %v", err)
+		return gitAPI
 	}
 
 	defer resp.Body.Close()
@@ -77,6 +77,7 @@ func fetchClientNetworkShare() []ethernodesAPIStruct {
 
 	if err != nil {
 		logger.Errorf("error retrieving ETH Clients Network Share Data: %v", err)
+		return ethernodesAPI
 	}
 
 	defer resp.Body.Close()
@@ -96,27 +97,27 @@ func getRepoTime(date string, dTime string) (time.Time, error) {
 	dateDays := strings.Split(date, "-")
 	dateTimes := strings.Split(dTime, ":")
 	if len(dateDays) < 3 || len(dateTimes) < 3 {
-		return time.Now(), errors.New(fmt.Sprintf("Invalid date string %s %s", date, dTime))
+		return time.Now(), fmt.Errorf("Invalid date string %s %s", date, dTime)
 	}
 	year, err = strconv.ParseInt(dateDays[0], 10, 0)
 	if err != nil {
-		logger.Errorf("error parsing year: %v", err)
+		return time.Now(), fmt.Errorf("error parsing year: %v", err)
 	}
 	month, err = strconv.ParseInt(dateDays[1], 10, 0)
 	if err != nil {
-		logger.Errorf("error parsing month: %v", err)
+		return time.Now(), fmt.Errorf("error parsing month: %v", err)
 	}
 	day, err = strconv.ParseInt(dateDays[2], 10, 0)
 	if err != nil {
-		logger.Errorf("error parsing day: %v", err)
+		return time.Now(), fmt.Errorf("error parsing day: %v", err)
 	}
 	hour, err = strconv.ParseInt(dateTimes[0], 10, 0)
 	if err != nil {
-		logger.Errorf("error parsing hour: %v", err)
+		return time.Now(), fmt.Errorf("error parsing hour: %v", err)
 	}
 	min, err = strconv.ParseInt(dateTimes[1], 10, 0)
 	if err != nil {
-		logger.Errorf("error parsing min: %v", err)
+		return time.Now(), fmt.Errorf("error parsing min: %v", err)
 	}
 	return time.Date(int(year), time.Month(int(month)), int(day), int(hour), int(min), 0, 0, time.UTC), nil
 }
