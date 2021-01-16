@@ -43,7 +43,7 @@ type gitAPIResponse struct {
 
 var ethClients = new(types.EthClientServicesPageData)
 var ethClientsMux = &sync.RWMutex{}
-var bannerClients = ""
+var bannerClients = 0
 var bannerClientsMux = &sync.RWMutex{}
 
 // Init starts a go routine to update the ETH Clients Info
@@ -144,7 +144,8 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 		}
 		timeDiff := (curTime.Sub(rTime).Hours() / 24.0)
 		if timeDiff < 2.0 { // show banner if update was less than 2 days ago
-			bannerClients += fmt.Sprintf("<a href=\"/ethClients#ethClientsServices\" class=\"text-primary mr-2\">%s %s</a>\n", name, client.Name)
+			// bannerClients += fmt.Sprintf("<a href=\"/ethClients#ethClientsServices\" class=\"text-primary mr-2\">%s %s</a>\n", name, client.Name)
+			bannerClients+=1
 			return client.Name, "Recently"
 		}
 
@@ -193,7 +194,7 @@ func updateEthClient() {
 	defer ethClientsMux.Unlock()
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
-	bannerClients = ""
+	bannerClients = 0
 	updateEthClientNetShare()
 	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Go-Ethereum", curTime)
 	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
@@ -223,14 +224,14 @@ func GetEthClientData() *types.EthClientServicesPageData {
 }
 
 // GetBannerClients returns a string of latest updates of ETH clients
-func GetBannerClients() *template.HTML {
+func GetClientsUpdate() bool {
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
-	if bannerClients == "" {
-		return nil
+	if bannerClients == 0 {
+		return true
 	}
-	temp := template.HTML(fmt.Sprintf(`<i class="fab fa-github mr-2" aria-hidden="true"></i>
-									   <span class="mr-2">Latest Client Releases:</span>
-									   %s`, bannerClients))
-	return &temp
+	// temp := template.HTML(fmt.Sprintf(`<i class="fab fa-github mr-2" aria-hidden="true"></i>
+	// 								   <span class="mr-2">Latest Client Releases:</span>
+	// 								   %s`, bannerClients))
+	return true
 }

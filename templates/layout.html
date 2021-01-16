@@ -461,21 +461,30 @@
 
                 <li class="nav-item {{ if eq .Active "services"}}active{{end}} dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
-                       data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> 
+                        {{if .NewClientsUpdate}}   
+                            <i id="clients-update-notifier-nav" class="d-none" style="font-size: 8px"></i>
+                        {{end}}
                         <span class="nav-icon">
-                           <i class="fas fa-tools"></i>                            
-                       </span>
+                            <i class="fas fa-tools"></i>                            
+                        </span>
                         <span class="nav-text">Services</span>
                     </a>
+
                     <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                     </a>
                     <a class="dropdown-item" href="/stakingServices">
                         <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
                         <span class="nav-text">Staking Services</span>
                     </a>
-                    <a class="dropdown-item" href="/ethClients">
+                    <a class="dropdown-item" href="/ethClients" onclick="setClientsUpdateTime()">
                         <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span>
                         <span class="nav-text">Ethereum Clients</span>
+                        {{if .NewClientsUpdate}} 
+                            <div id="clients-update-notifier-item" class="d-none">
+                                <span class="text-danger m-0 p-0" style="font-size: 8px;">update</span>
+                            </div>
+                        {{end}}
                     </a>
                     <a class="dropdown-item" href="/education">
                         <span class="nav-icon"><i class="fa fa-book mr-2"></i></span>
@@ -568,19 +577,6 @@
 					</div>
 				</div>
 				{{end}} -->
-        {{if .InfoBanner}}
-            <div id="infoBanner" class="d-none">
-                <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-none d-md-flex justify-content-center align-items-center p-2">
-                    {{.InfoBanner}}
-                    <i id="infoBannerDissBtn" class="far fa-times-circle btn" data-toggle="tooltip" data-placement="bottom" title="Dismiss" onClick="hideInfoBanner({{.InfoBanner}})"></i>
-                </div>
-                <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-flex d-md-none justify-content-center align-items-center p-2">
-                    <i class="fab fa-github mr-2" aria-hidden="true"></i>
-                    <a class="mr-2 text-primary" href="/ethClients#ethClientsServices"> New client update released</a>
-                    <i id="infoBannerDissBtn" class="far fa-times-circle btn" data-toggle="tooltip" data-placement="bottom" title="Dismiss" onClick="hideInfoBanner({{.InfoBanner}})"></i>
-                </div>
-            </div>
-        {{end}}
         {{ template "content" . }}
         {{if not .User.Authenticated}}
         <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index:999; bottom: 3%; width: 100%; justify-content: center; align-items: center">
@@ -720,11 +716,27 @@
             if (slot < 0) return 0
             return slot
         }
-
-        if (localStorage.getItem("infoBannerStatus")!={{.InfoBanner}}){
-            $('#infoBanner').attr('class', '')
-        }
     </script>
+    
+    <script>
+        function checkClientsUpdateTime(){
+            if ({{.NewClientsUpdate}}){
+                let prevDate = new Date(localStorage.getItem("clientsUpdateDate"));
+                console.log(prevDate, prevDate && (new Date().getDate()-prevDate.getDate())>=1)
+                if (prevDate && (new Date().getDate()-prevDate.getDate())>=1){
+                    $('#clients-update-notifier-nav').attr('class', 'fas fa-circle fa-sm text-danger nav-text');
+                    $('#clients-update-notifier-item').attr('class', 'd-flex justify-content-start m-0');
+                }
+            }
+        }
+
+        function setClientsUpdateTime(){
+            localStorage.setItem("clientsUpdateDate", new Date());
+            checkClientsUpdateTime();
+        } 
+        checkClientsUpdateTime();
+    </script>
+
     {{if not .User.Authenticated}}
     <script>
         function hideCookieBanner(){
