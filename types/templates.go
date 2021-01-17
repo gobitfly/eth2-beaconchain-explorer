@@ -31,7 +31,7 @@ type PageData struct {
 	Currency              string
 	ExchangeRate          float64
 	InfoBanner            *template.HTML
-	NewClientsUpdate      bool
+	ClientsUpdated        bool
 }
 
 // Meta is a struct to hold metadata about the page

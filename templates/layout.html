@@ -462,7 +462,7 @@
                 <li class="nav-item {{ if eq .Active "services"}}active{{end}} dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> 
-                        {{if .NewClientsUpdate}}   
+                        {{if .ClientsUpdated}}   
                             <i id="clients-update-notifier-nav" class="d-none" style="font-size: 8px"></i>
                         {{end}}
                         <span class="nav-icon">
@@ -480,7 +480,7 @@
                     <a class="dropdown-item" href="/ethClients" onclick="setClientsUpdateTime()">
                         <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span>
                         <span class="nav-text">Ethereum Clients</span>
-                        {{if .NewClientsUpdate}} 
+                        {{if .ClientsUpdated}} 
                             <div id="clients-update-notifier-item" class="d-none">
                                 <span class="text-danger m-0 p-0" style="font-size: 8px;">update</span>
                             </div>
@@ -720,19 +720,20 @@
     
     <script>
         function checkClientsUpdateTime(){
-            if ({{.NewClientsUpdate}}){
-                let prevDate = new Date(localStorage.getItem("clientsUpdateDate"));
-                console.log(prevDate, prevDate && (new Date().getDate()-prevDate.getDate())>=1)
-                if (prevDate && (new Date().getDate()-prevDate.getDate())>=1){
-                    $('#clients-update-notifier-nav').attr('class', 'fas fa-circle fa-sm text-danger nav-text');
+            if ({{.ClientsUpdated}}){
+                let prevDate = new Date(localStorage.getItem("clientsUpdateDate")); // if given null returns year 1970
+                if (prevDate && (new Date().getDate()-prevDate.getDate())>=2){ // if last update was 2 days ago
+                    $('#clients-update-notifier-nav').attr('class', 'fas fa-circle fa-sm text-danger');
                     $('#clients-update-notifier-item').attr('class', 'd-flex justify-content-start m-0');
                 }
             }
         }
 
         function setClientsUpdateTime(){
-            localStorage.setItem("clientsUpdateDate", new Date());
-            checkClientsUpdateTime();
+            if ({{.ClientsUpdated}}){
+                localStorage.setItem("clientsUpdateDate", new Date());
+                checkClientsUpdateTime();
+            }
         } 
         checkClientsUpdateTime();
     </script>

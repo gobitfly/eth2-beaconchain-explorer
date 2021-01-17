@@ -50,8 +50,9 @@ func Init() {
 	go update()
 }
 
+var gitAPI = new(gitAPIResponse)
+
 func fetchClientData(repo string) *gitAPIResponse {
-	gitAPI := new(gitAPIResponse)
 	resp, err := http.Get("https://api.github.com/repos" + repo + "/releases/latest")
 
 	if err != nil {
@@ -70,8 +71,9 @@ func fetchClientData(repo string) *gitAPIResponse {
 	return gitAPI
 }
 
+var ethernodesAPI []ethernodesAPIStruct
+
 func fetchClientNetworkShare() []ethernodesAPIStruct {
-	var ethernodesAPI []ethernodesAPIStruct
 	resp, err := http.Get("https://ethernodes.org/api/clients")
 
 	if err != nil {
@@ -143,7 +145,6 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 		}
 		timeDiff := (curTime.Sub(rTime).Hours() / 24.0)
 		if timeDiff < 2.0 { // show banner if update was less than 2 days ago
-			// bannerClients += fmt.Sprintf("<a href=\"/ethClients#ethClientsServices\" class=\"text-primary mr-2\">%s %s</a>\n", name, client.Name)
 			bannerClients += 1
 			return client.Name, "Recently"
 		}
@@ -222,15 +223,12 @@ func GetEthClientData() *types.EthClientServicesPageData {
 	return ethClients
 }
 
-// GetBannerClients returns a string of latest updates of ETH clients
-func GetClientsUpdate() bool {
+// ClientsUpdated returns a boolean indicating if clients are updated
+func ClientsUpdated() bool {
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
 	if bannerClients == 0 {
-		return true
+		return false
 	}
-	// temp := template.HTML(fmt.Sprintf(`<i class="fab fa-github mr-2" aria-hidden="true"></i>
-	// 								   <span class="mr-2">Latest Client Releases:</span>
-	// 								   %s`, bannerClients))
 	return true
 }
