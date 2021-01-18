@@ -390,7 +390,11 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	key := apiKey[:15]
+	key := apiKey
+	if len(apiKey) > 30 {
+		key = apiKey[8:28]
+	}
+
 	apiKeyBase64 := base64.StdEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
 }
