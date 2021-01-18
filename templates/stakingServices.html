@@ -3,7 +3,10 @@
 <script src="https://www.google.com/recaptcha/api.js" async></script>
 <script>
     function onSubmit(token) {
-      document.getElementById("contact").submit();
+        var form = document.getElementById('contact')
+        if(form.reportValidity()) {
+            form.submit();
+        }
     }
   </script>
 {{end}}
