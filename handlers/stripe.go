@@ -22,8 +22,8 @@ import (
 
 // StripeCreateCheckoutSession creates a session to checkout api pricing subscription
 func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
+	log.Println("creating checkout session!!!")
 	user := getUser(w, r)
-
 	// check if a subscription exists
 	subscription, err := db.GetUserSubscription(user.UserID)
 	if err != nil {
@@ -54,25 +54,29 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		log.Printf("json.NewDecoder.Decode: %v", err)
 		return
 	}
+	rq := "required"
 	params := &stripe.CheckoutSessionParams{
-		SuccessURL: stripe.String(utils.Config.Frontend.SiteDomain + "/user/settings"),
-		CancelURL:  stripe.String(utils.Config.Frontend.SiteDomain + "/pricing"),
+		SuccessURL: stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings"),
+		CancelURL:  stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/pricing"),
 		// if the customer exists use the existing customer
 		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
+
 			// DefaultTaxRates: stripe.StringSlice([]string{
 			// "txr_1HqcFcBiORp9oTlKnyNWVp4r",
 			// "txr_1HqdWaBiORp9oTlKkij8L6dU",
 			// }),
 		},
-		CustomerEmail: &subscription.Email,
+		BillingAddressCollection: &rq,
+		CustomerEmail:            &subscription.Email,
 		PaymentMethodTypes: stripe.StringSlice([]string{
 			"card",
 		}),
 		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			&stripe.CheckoutSessionLineItemParams{
-				Price:    stripe.String(req.Price),
-				Quantity: stripe.Int64(1),
+				Price:           stripe.String(req.Price),
+				Quantity:        stripe.Int64(1),
+				DynamicTaxRates: utils.StripeDynamicRates,
 			},
 		},
 	}

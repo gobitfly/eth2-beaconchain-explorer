@@ -43,7 +43,7 @@ require (
 	github.com/prysmaticlabs/go-ssz v0.0.0-20200612203617-6d5c9aa213ae
 	github.com/prysmaticlabs/prysm v1.0.0-alpha.25.0.20200917185001-3db678499074
 	github.com/sirupsen/logrus v1.6.0
-	github.com/stripe/stripe-go/v72 v72.24.0
+	github.com/stripe/stripe-go/v72 v72.30.0
 	github.com/swaggo/http-swagger v0.0.0-20200308142732-58ac5e232fba
 	github.com/swaggo/swag v1.6.9
 	github.com/tdewolff/parse v2.3.4+incompatible // indirect
