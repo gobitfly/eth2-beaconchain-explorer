@@ -815,12 +815,14 @@ type UserNotificationsPageData struct {
 type AdvertiseWithUsPageData struct {
 	FlashMessage string
 	CsrfField    template.HTML
+	RecaptchaKey string
 }
 
 type ApiPricing struct {
 	FlashMessage string
 	User         *User
 	CsrfField    template.HTML
+	RecaptchaKey string
 	Subscription UserSubscription
 	StripePK     string
 	Sapphire     string
@@ -830,6 +832,7 @@ type ApiPricing struct {
 
 type StakeWithUsPageData struct {
 	FlashMessage string
+	RecaptchaKey string
 }
 
 type EthClients struct {
@@ -860,4 +863,14 @@ func (e *RateLimitError) Error() string {
 }
 
 type Empty struct {
+}
+
+// GoogleRecaptchaResponse ...
+type GoogleRecaptchaResponse struct {
+	Success            bool     `json:"success"`
+	ChallengeTimestamp string   `json:"challenge_ts"`
+	Hostname           string   `json:"hostname"`
+	ErrorCodes         []string `json:"error-codes"`
+	Score              float32  `json:"score,omitempty"`
+	Action             string   `json:"action,omitempty"`
 }

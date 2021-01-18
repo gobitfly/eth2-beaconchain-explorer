@@ -1,6 +1,13 @@
 {{ define "js" }}
     <script src="https://js.stripe.com/v3/"></script>
     <script src="/bundle/js/payment.js" defer></script>
+    <script src="https://www.google.com/recaptcha/api.js" async></script>
+    <script>
+        function onSubmit(token) {
+          document.getElementById("contact").submit();
+        }
+      </script>
+     
 
     <script>
         // If a fetch error occurs, log it to the console
@@ -365,7 +372,7 @@
                                                       name="comments"></textarea>
                                         </div>
                                     </div>
-                                    <button type="submit" class="btn btn-primary text-center">Send Message</button>
+                                    <button data-sitekey="{{.RecaptchaKey}}" data-callback='onSubmit' data-action='submit' type="submit" class="g-recaptcha btn btn-primary text-center">Send Message</button>
                                 </form>
                             </div>
                         </div>
