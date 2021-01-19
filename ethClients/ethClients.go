@@ -42,7 +42,7 @@ type gitAPIResponse struct {
 
 var ethClients = new(types.EthClientServicesPageData)
 var ethClientsMux = &sync.RWMutex{}
-var bannerClients = 0
+var bannerClients = []string{}
 var bannerClientsMux = &sync.RWMutex{}
 
 // Init starts a go routine to update the ETH Clients Info
@@ -141,11 +141,11 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 		rTime, err := getRepoTime(date[0], date[1])
 		if err != nil {
 			logger.Errorf("error parsing git repo. time: %v", err)
-			return client.Name, "GitHub"
+			return client.Name, "GitHub" // client.Name is client version from github api
 		}
 		timeDiff := (curTime.Sub(rTime).Hours() / 24.0)
 		if timeDiff < 2.0 { // show banner if update was less than 2 days ago
-			bannerClients += 1
+			bannerClients = append(bannerClients, name)
 			return client.Name, "Recently"
 		}
 
@@ -194,16 +194,16 @@ func updateEthClient() {
 	defer ethClientsMux.Unlock()
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
-	bannerClients = 0
+	bannerClients = []string{}
 	updateEthClientNetShare()
-	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Go-Ethereum", curTime)
+	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Geth", curTime)
 	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
-	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", "OpenEthereum", curTime)
+	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", "Open Ethereum", curTime)
 	ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = prepareEthClientData("/hyperledger/besu", "Besu", curTime)
 
 	ethClients.Teku.ClientReleaseVersion, ethClients.Teku.ClientReleaseDate = prepareEthClientData("/ConsenSys/teku", "Teku", curTime)
 	ethClients.Prysm.ClientReleaseVersion, ethClients.Prysm.ClientReleaseDate = prepareEthClientData("/prysmaticlabs/prysm", "Prysm", curTime)
-	ethClients.Nimbus.ClientReleaseVersion, ethClients.Nimbus.ClientReleaseDate = prepareEthClientData("/status-im/nimbus-eth2", "Nimbus-ETH2", curTime)
+	ethClients.Nimbus.ClientReleaseVersion, ethClients.Nimbus.ClientReleaseDate = prepareEthClientData("/status-im/nimbus-eth2", "Nimbus", curTime)
 	ethClients.Lighthouse.ClientReleaseVersion, ethClients.Lighthouse.ClientReleaseDate = prepareEthClientData("/sigp/lighthouse", "Lighthouse", curTime)
 
 	ethClients.LastUpdate = curTime
@@ -227,8 +227,18 @@ func GetEthClientData() *types.EthClientServicesPageData {
 func ClientsUpdated() bool {
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
-	if bannerClients == 0 {
+	if len(bannerClients) == 0 {
 		return false
 	}
 	return true
+}
+
+//GetUpdatedClients returns a slice of latest updated clients or empty slice if no updates
+func GetUpdatedClients() []string {
+	bannerClientsMux.Lock()
+	defer bannerClientsMux.Unlock()
+	// if len(bannerClients) > 0 {
+	// return bannerClients
+	return []string{"Prysm", "Teku"}
+	// }
 }

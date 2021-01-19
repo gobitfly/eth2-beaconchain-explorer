@@ -452,6 +452,7 @@ create table users_subscriptions
 drop table if exists users_notifications;
 create table users_notifications
 (
+    id              serial                      not null,
     user_id         int                         not null,
     event_name      character varying(100)      not null,
     event_filter    text                        not null default '',

@@ -70,7 +70,7 @@ type Notification interface {
 	GetEpoch() uint64
 	GetInfo(includeUrl bool) string
 	GetTitle() string
-	GetPublicKey() string
+	GetEventFilter() string
 }
 
 type Subscription struct {
