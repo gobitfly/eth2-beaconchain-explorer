@@ -449,6 +449,17 @@ create table users_subscriptions
     primary key (user_id, event_name, event_filter)
 );
 
+drop table if exists users_notifications;
+create table users_notifications
+(
+    user_id         int                         not null,
+    event_name      character varying(100)      not null,
+    event_filter    text                        not null default '',
+    sent_ts         timestamp without time zone,
+    epoch           int                         not null,
+    primary key(user_id, event_name, event_filter, sent_ts)
+);
+
 drop table if exists users_validators_tags;
 create table users_validators_tags
 (
