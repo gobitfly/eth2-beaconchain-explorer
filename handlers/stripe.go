@@ -363,7 +363,6 @@ func emailCustomerAboutFailedPayment(email string) {
 	}
 }
 
-
 func emailCustomerAboutPlanChange(email, plan string) {
 	p := "Sapphire"
 	if plan == utils.Config.Frontend.Stripe.Emerald {
