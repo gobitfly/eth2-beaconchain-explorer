@@ -295,7 +295,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if currPriceID != nil && *currPriceID != priceID {
-			EmailCustomerAboutPlanChange(subscription.Customer.Email, priceID)
+			emailCustomerAboutPlanChange(subscription.Customer.Email, priceID)
 		}
 
 	case "customer.subscription.deleted":
@@ -345,14 +345,14 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "error parsing stripe webhook JSON", 503)
 			return
 		}
-		EmailCustomerAboutFailedPayment(invoice.CustomerEmail)
+		emailCustomerAboutFailedPayment(invoice.CustomerEmail)
 	default:
 		return
 		// unhandled event type
 	}
 }
 
-func EmailCustomerAboutFailedPayment(email string) {
+func emailCustomerAboutFailedPayment(email string) {
 	msg := fmt.Sprintf("Payment processing failed. Could not provision your API key. Please contact support at support@beaconcha.in. Manage Subscription: https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
@@ -363,7 +363,7 @@ func EmailCustomerAboutFailedPayment(email string) {
 	}
 }
 
-func EmailCustomerAboutPlanChange(email, plan string) {
+func emailCustomerAboutPlanChange(email, plan string) {
 	p := "Sapphire"
 	if plan == utils.Config.Frontend.Stripe.Emerald {
 		p = "Emerald"
