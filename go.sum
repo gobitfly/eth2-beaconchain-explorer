@@ -1112,6 +1112,8 @@ github.com/stripe/stripe-go/v71 v71.48.0 h1:xSmbjHB1fdt6ieIf9yCGggafbzbXHPIhQj+R
 github.com/stripe/stripe-go/v71 v71.48.0/go.mod h1:BXYwMQe+xjYomcy5/qaTGyoyVMTP3wDCHa7DVFvg8+Y=
 github.com/stripe/stripe-go/v72 v72.24.0 h1:pPvU2B6Y/TniQgY8UmrVvJJFPvtbF/CjFvZCKPMQ/iM=
 github.com/stripe/stripe-go/v72 v72.24.0/go.mod h1:QwqJQtduHubZht9mek5sds9CtQcKFdsykV9ZepRWwo0=
+github.com/stripe/stripe-go/v72 v72.30.0 h1:RuOlNGVOP7hAwYjT2iQLj4T+3JB6KjIOEKZxMsghTXE=
+github.com/stripe/stripe-go/v72 v72.30.0/go.mod h1:QwqJQtduHubZht9mek5sds9CtQcKFdsykV9ZepRWwo0=
 github.com/supranational/blst v0.1.2-alpha.1.0.20200828152217-d75dab4fb87d h1:+SGrEOwpPjlaMcSDLI5p/nLCiEZegXK8aKoELNtCcZE=
 github.com/supranational/blst v0.1.2-alpha.1.0.20200828152217-d75dab4fb87d/go.mod h1:jZJtfjgudtNl4en1tzwPIV3KjUnQUvG3/j+w+fVonLw=
 github.com/swaggo/files v0.0.0-20190704085106-630677cd5c14 h1:PyYN9JH5jY9j6av01SpfRMb+1DWg/i3MbGOKPxJ2wjM=

@@ -122,12 +122,26 @@
                 <div class="card my-3">
                     <div class="card-header justify-content-between d-flex align-items-center">
                         <h3 class="h5">
-                            Api Key
+                            <span>Api Key</span> <span class="mx-1">|</span>
+                            <span style="font-size: 80%; color: lightgrey;" class="font-weight-light">
+                                {{if not .Subscription.Active}}
+                                Free Tier {{if .Subscription.SubscriptionID}}(waiting on payment){{end}}
+                                {{else}} 
+                                    {{if eqsp .Subscription.PriceID .Sapphire}} Sapphire <i style="color: #0f52ba"  class="fas fa-gem"></i> 
+                                    {{else}} 
+                                        {{if eqsp .Subscription.PriceID .Emerald}} Emerald <i style="color: #50c878;" class="fas fa-gem"></i> 
+                                        {{else}}
+                                            {{if eqsp .Subscription.PriceID .Diamond}} Diamond <i style="color: #b9f2ff" class="fas fa-gem"></i> {{end}}
+
+                                        {{end}}
+                                    {{end}}
+                                {{end}}
+                            </span>
                         </h3>
                         {{if .Subscription.SubscriptionID}}
                         <form class="manage-billing-form">
                             {{ .CsrfField }}
-                            <button class="btn btn-outline-primary">Manage Billing</button>
+                            <button class="btn btn-outline-primary">Manage Subscription</button>
                         </form>
                         {{else}}
                         <a href="/pricing" class="btn btn-outline-primary">Upgrade Plan</a>

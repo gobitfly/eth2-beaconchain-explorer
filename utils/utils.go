@@ -104,6 +104,12 @@ func GetTemplateFuncs() template.FuncMap {
 		"derefString":      DerefString,
 		"trLang":           TrLang,
 		"firstCharToUpper": func(s string) string { return strings.Title(s) },
+		"eqsp": func(a, b *string) bool {
+			if a != nil && b != nil {
+				return *a == *b
+			}
+			return false
+		},
 	}
 }
 
@@ -390,7 +396,11 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	key := apiKey[:15]
+	key := apiKey
+	if len(apiKey) > 30 {
+		key = apiKey[8:28]
+	}
+
 	apiKeyBase64 := base64.StdEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
 }
