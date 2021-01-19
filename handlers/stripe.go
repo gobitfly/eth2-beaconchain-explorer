@@ -11,7 +11,6 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 
 	"github.com/stripe/stripe-go/v72"
@@ -22,7 +21,6 @@ import (
 
 // StripeCreateCheckoutSession creates a session to checkout api pricing subscription
 func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
-	log.Println("creating checkout session!!!")
 	user := getUser(w, r)
 	// check if a subscription exists
 	subscription, err := db.GetUserSubscription(user.UserID)
@@ -51,7 +49,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("json.NewDecoder.Decode: %v", err)
+		logger.Errorf("error decoding json.NewDecoder.Decode: %v", err)
 		return
 	}
 	rq := "required"
@@ -180,13 +178,13 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		if customer.Email != "" {
 			err = db.UpdateStripeCustomer(customer.Email, customer.ID)
 			if err != nil {
-				logger.WithError(err).Error("error could not update user with a stripe customerID")
-				http.Error(w, "Internal server error", 503)
+				logger.WithError(err).Error("error could not update user with a stripe customerID ", customer.ID)
+				http.Error(w, "error could not update user with a stripe customerID "+customer.ID+" err: "+err.Error(), 503)
 				return
 			}
 		} else {
-			logger.Error("error no email provided when creating stripe customer")
-			http.Error(w, "Internal server error", 503)
+			logger.Error("error no email provided when creating stripe customer ", customer.ID)
+			http.Error(w, "error no email provided when creating stripe customer "+customer.ID, 503)
 			return
 		}
 
@@ -194,15 +192,15 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		var customer stripe.Customer
 		err := json.Unmarshal(event.Data.Raw, &customer)
 		if err != nil {
-			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "Internal server error", 503)
+			logger.WithError(err).Error("error parsing stripe webhook JSON", err)
+			http.Error(w, "error parsing stripe webhook JSON", 503)
 			return
 		}
 
 		err = db.UpdateRemoveStripeCustomer(customer.ID)
 		if err != nil {
-			logger.WithError(err).Error("error could not update user with a stripe customerID")
-			http.Error(w, "Internal server error", 503)
+			logger.WithError(err).Error("error could not delete user with customer ID: " + customer.ID + "err: ")
+			http.Error(w, "error could not delete user with customer ID: "+customer.ID+"err: "+err.Error(), 503)
 			return
 		}
 
@@ -214,7 +212,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &session)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error parsing stripe webhook JSON", 503)
 			return
 		}
 
@@ -236,26 +234,26 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &subscription)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error parsing stripe webhook JSON", 503)
 			return
 		}
 
 		if subscription.Items == nil {
 			logger.WithError(err).Error("error creating subscription no items found", subscription)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error creating subscription no items found", 503)
 			return
 		}
 
 		if len(subscription.Items.Data) == 0 {
 			logger.WithError(err).Error("error creating subscription no items found", subscription)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error creating subscription no items found", 503)
 			return
 		}
 
 		err = db.UpdateAddSubscription(subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID)
 		if err != nil {
 			logger.WithError(err).Error("error updating user with subscription", event.Data.Object)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error updating user with subscription, customer: "+subscription.Customer.ID, 503)
 			return
 		}
 
@@ -264,19 +262,19 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &subscription)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error parsing stripe webhook JSON", 503)
 			return
 		}
 
 		if subscription.Items == nil {
 			logger.WithError(err).Error("error creating subscription no items found", subscription)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error creating subscription no items found", 503)
 			return
 		}
 
 		if len(subscription.Items.Data) == 0 {
 			logger.WithError(err).Error("error creating subscription no items found", subscription)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error creating subscription no items found", 503)
 			return
 		}
 
@@ -285,19 +283,19 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		currPriceID, err := db.GetUserPriceID(subscription.Customer.ID)
 		if err != nil && err != sql.ErrNoRows {
 			logger.WithError(err).Error("error retrieving customers priceID ", subscription.Customer.ID)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error retrieving customers priceID, customer: "+subscription.Customer.ID, 503)
 			return
 		}
 
 		err = db.UpdateAddSubscription(subscription.Customer.ID, priceID, subscription.ID)
 		if err != nil {
 			logger.WithError(err).Error("error updating user with subscription", event.Data.Object)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error updating user with subscription, customer: "+subscription.Customer.ID, 503)
 			return
 		}
 
 		if currPriceID != nil && *currPriceID != priceID {
-			EmailCustomerAboutPlanChange(subscription.Customer.Email)
+			EmailCustomerAboutPlanChange(subscription.Customer.Email, priceID)
 		}
 
 	case "customer.subscription.deleted":
@@ -306,14 +304,14 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &subscription)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error parsing stripe webhook JSON", 503)
 			return
 		}
 
 		err = db.UpdateRemoveSubscription(subscription.Customer.ID)
 		if err != nil {
-			logger.WithError(err).Error("error updating user to remove subscription", event.Data.Object)
-			http.Error(w, "Internal server error", 503)
+			logger.WithError(err).Error("error while deleting user and removing subscription", event.Data.Object)
+			http.Error(w, "error while deleting user and removing subscription, customer:"+subscription.Customer.ID, 503)
 			return
 		}
 
@@ -332,7 +330,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err = db.UpdateActivateSubsciption(invoice.Customer.ID)
 		if err != nil {
 			logger.WithError(err).Error("error failed to activate subscription for customer", invoice.Customer.ID)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error failed to activate subscription for customer", 503)
 			return
 		}
 
@@ -344,7 +342,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		err := json.Unmarshal(event.Data.Raw, &invoice)
 		if err != nil {
 			logger.WithError(err).Error("error parsing stripe webhook JSON")
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "error parsing stripe webhook JSON", 503)
 			return
 		}
 		EmailCustomerAboutFailedPayment(invoice.CustomerEmail)
@@ -355,7 +353,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func EmailCustomerAboutFailedPayment(email string) {
-	msg := fmt.Sprintf("Payment processing failed. Could not provision your API key. Please contact support at support@beaconcha.in.")
+	msg := fmt.Sprintf("Payment processing failed. Could not provision your API key. Please contact support at support@beaconcha.in. Manage Subscription: https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 	err := mail.SendMail(email, "Failed Payment", msg)
@@ -365,8 +363,14 @@ func EmailCustomerAboutFailedPayment(email string) {
 	}
 }
 
-func EmailCustomerAboutPlanChange(email string) {
-	msg := fmt.Sprintf("You have successfully changed your payment plan")
+func EmailCustomerAboutPlanChange(email, plan string) {
+	p := "Sapphire"
+	if plan == utils.Config.Frontend.Stripe.Emerald {
+		p = "Emerald"
+	} else if plan == utils.Config.Frontend.Stripe.Diamond {
+		p = "Diamond"
+	}
+	msg := fmt.Sprintf("You have successfully changed your payment plan to " + p + " to manage your subscription go to https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 	err := mail.SendMail(email, "Payment Plan Change", msg)

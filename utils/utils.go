@@ -104,6 +104,12 @@ func GetTemplateFuncs() template.FuncMap {
 		"derefString":      DerefString,
 		"trLang":           TrLang,
 		"firstCharToUpper": func(s string) string { return strings.Title(s) },
+		"eqsp": func(a, b *string) bool {
+			if a != nil && b != nil {
+				return *a == *b
+			}
+			return false
+		},
 	}
 }
 
