@@ -763,7 +763,7 @@ type User struct {
 type UserSubscription struct {
 	UserID         uint64  `db:"id"`
 	Email          string  `db:"email"`
-	Active         bool    `db:"active"`
+	Active         *bool   `db:"active"`
 	CustomerID     *string `db:"stripe_customerid"`
 	SubscriptionID *string `db:"subscription_id"`
 	PriceID        *string `db:"price_id"`
