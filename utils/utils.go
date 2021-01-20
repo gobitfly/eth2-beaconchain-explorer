@@ -102,10 +102,7 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
-    
-		"isUserClientUpdated":       ethclients.IsUserClientUpdated,
-		"dismissClientNotification": ethclients.DismissClientNotification,
-		"isUserSubscribed":          ethclients.IsUserSubscribed,
+
 		"derefString":      DerefString,
 		"trLang":           TrLang,
 		"firstCharToUpper": func(s string) string { return strings.Title(s) },
@@ -115,6 +112,9 @@ func GetTemplateFuncs() template.FuncMap {
 			}
 			return false
 		},
+		"isUserClientUpdated":       ethclients.IsUserClientUpdated,
+		"dismissClientNotification": ethclients.DismissClientNotification,
+		"isUserSubscribed":          ethclients.IsUserSubscribed,
 	}
 }
 
