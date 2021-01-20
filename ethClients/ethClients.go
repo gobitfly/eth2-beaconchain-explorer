@@ -239,10 +239,8 @@ func ClientsUpdated() bool {
 func GetUpdatedClients() []string {
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
-	// if len(bannerClients) > 0 {
-	// return bannerClients
-	return []string{"Prysm", "Teku"}
-	// }
+	return bannerClients
+	// return []string{"Prysm", "Teku"}
 }
 
 func SetUsersToNotify(uids map[uint64][]types.Notification) {
