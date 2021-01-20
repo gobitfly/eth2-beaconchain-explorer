@@ -32,7 +32,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// don't let the user checkout another subscription
-	if subscription.Active || subscription.SubscriptionID != nil {
+	if subscription.Active != nil {
 		logger.Errorf("error there is an active subscription cannot create another one %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		writeJSON(w, struct {
