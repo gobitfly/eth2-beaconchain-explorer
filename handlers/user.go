@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -53,8 +54,8 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	subscription, err := db.StripeGetUserAPISubscription(user.UserID)
-	if err != nil {
-		logger.Errorf("Error retrieving the email for user: %v %v", user.UserID, err)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("Error retrieving the subscriptions for user: %v %v", user.UserID, err)
 		session.Flashes("Error: Something went wrong.")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
