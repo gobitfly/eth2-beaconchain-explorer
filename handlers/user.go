@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -61,6 +62,8 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
+
+	log.Println("SUBSCRIPTION", subscription)
 
 	var pairedDevices []types.PairedDevice = nil
 	pairedDevices, err = db.GetUserDevicesByUserID(user.UserID)
