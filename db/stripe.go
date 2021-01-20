@@ -87,7 +87,7 @@ func StripeUpdateSubscriptionStatus(id string, status bool) error {
 func StripeGetUserAPISubscription(id uint64) (types.UserSubscription, error) {
 	userSub := types.UserSubscription{}
 	priceIds := pq.StringArray{utils.Config.Frontend.Stripe.Sapphire, utils.Config.Frontend.Stripe.Emerald, utils.Config.Frontend.Stripe.Diamond}
-	err := FrontendDB.Get(&userSub, "SELECT id, email, stripe_customerid, subscription_id, price_id, active, api_key FROM users INNER JOIN users_stripe_subscriptions ON users.stripe_customerid = users_stripe_subscriptions.customer_id WHERE users.id = $1 AND price_id IN $2 ORDER BY active desc LIMIT 1", id, priceIds)
+	err := FrontendDB.Get(&userSub, "SELECT id, email, stripe_customerid, subscription_id, price_id, active, api_key FROM users INNER JOIN users_stripe_subscriptions ON users.stripe_customerid = users_stripe_subscriptions.customer_id WHERE users.id = $1 AND price_id IN ANY($2) ORDER BY active desc LIMIT 1", id, priceIds)
 	return userSub, err
 }
 
