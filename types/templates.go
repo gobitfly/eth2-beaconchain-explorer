@@ -788,6 +788,9 @@ type UserSettingsPageData struct {
 	AuthData
 	Subscription  UserSubscription
 	PairedDevices []PairedDevice
+	Sapphire      *string
+	Emerald       *string
+	Diamond       *string
 }
 
 type PairedDevice struct {

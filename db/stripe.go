@@ -96,6 +96,12 @@ func UpdateStripeCustomer(email, customerID string) error {
 	row := tx.QueryRow("SELECT stripe_customerID FROM users WHERE email = $1", email)
 	row.Scan(&currID)
 
+	// customer already exists
+	if currID == customerID {
+		return nil
+	}
+
+	// user already has a customer id
 	if currID != "" && customerID != currID {
 		return fmt.Errorf("error updating stripe customer id, the user already has an id: %v failed to overwrite with: %v", currID, customerID)
 	}

@@ -70,6 +70,9 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 
 	userSettingsData.PairedDevices = pairedDevices
 	userSettingsData.Subscription = subscription
+	userSettingsData.Sapphire = &utils.Config.Frontend.Stripe.Sapphire
+	userSettingsData.Emerald = &utils.Config.Frontend.Stripe.Emerald
+	userSettingsData.Diamond = &utils.Config.Frontend.Stripe.Diamond
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
