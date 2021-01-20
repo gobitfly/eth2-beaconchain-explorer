@@ -763,11 +763,23 @@ type User struct {
 type UserSubscription struct {
 	UserID         uint64  `db:"id"`
 	Email          string  `db:"email"`
-	Active         bool    `db:"stripe_active"`
+	Active         bool    `db:"active"`
 	CustomerID     *string `db:"stripe_customerid"`
-	SubscriptionID *string `db:"stripe_subscriptionid"`
-	PriceID        *string `db:"stripe_priceid"`
+	SubscriptionID *string `db:"subscription_id"`
+	PriceID        *string `db:"price_id"`
 	ApiKey         *string `db:"api_key"`
+}
+
+type StripeSubscription struct {
+	CustomerID     *string `db:"customer_id"`
+	SubscriptionID *string `db:"subscription_id"`
+	PriceID        *string `db:"price_id"`
+	Active         bool    `db:"active"`
+}
+
+type FilterSubscription struct {
+	User     uint64
+	PriceIds []string
 }
 
 type AuthData struct {

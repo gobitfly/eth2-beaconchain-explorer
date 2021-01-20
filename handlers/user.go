@@ -52,7 +52,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subscription, err := db.GetUserSubscription(user.UserID)
+	subscription, err := db.StripeGetUserAPISubscription(user.UserID)
 	if err != nil {
 		logger.Errorf("Error retrieving the email for user: %v %v", user.UserID, err)
 		session.Flashes("Error: Something went wrong.")
