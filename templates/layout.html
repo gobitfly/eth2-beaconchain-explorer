@@ -462,8 +462,10 @@
                 <li class="nav-item {{ if eq .Active "services"}}active{{end}} dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">  
-                        {{if .ClientsUpdated}}   
-                            <span id="clients-update-notifier-nav" class="d-none" style="font-size: 5px; position: absolute; top: 18px; left: 0px;"></span>
+                        {{if .User.Authenticated}}
+                            {{if isUserClientUpdated .User.UserID}}   
+                                <span id="clients-update-notifier-nav" class="fas fa-circle fa-sm text-primary" style="font-size: 5px; position: absolute; top: 18px; left: 0px;"></span>
+                            {{end}}
                         {{end}}
                         <span class="nav-icon">
                             <i class="fas fa-tools"></i>                            
@@ -477,13 +479,15 @@
                         <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
                         <span class="nav-text">Staking Services</span>
                     </a>
-                    <a class="dropdown-item" href="/ethClients" onclick="setClientsUpdateTime()">
+                    <a class="dropdown-item" href="/ethClients">
                         <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span>
                         <span class="nav-text">Ethereum Clients</span>
-                        {{if .ClientsUpdated}} 
-                            <div id="clients-update-notifier-item" class="d-none">
+                        {{if .User.Authenticated}}
+                            {{if isUserClientUpdated .User.UserID}} 
+                            <div id="clients-update-notifier-item" class="d-flex justify-content-start m-0">
                                 <span class="text-primary m-0 p-0" style="font-size: 8px;">update</span>
                             </div>
+                            {{end}}
                         {{end}}
                     </a>
                     <a class="dropdown-item" href="/education">
@@ -566,7 +570,7 @@
         </div>
         </div>
     </nav>
-
+    
     {{ template "css" .Data }}
 
     <main>
@@ -716,26 +720,6 @@
             if (slot < 0) return 0
             return slot
         }
-    </script>
-    
-    <script>
-        function checkClientsUpdateTime(){
-            if ({{.ClientsUpdated}}){
-                let prevDate = new Date(localStorage.getItem("clientsUpdateDate")); // if given null returns year 1970
-                if (prevDate && (new Date().getDate()-prevDate.getDate())>=2){ // if last update was 2 days ago
-                    $('#clients-update-notifier-nav').attr('class', 'fas fa-circle fa-sm text-primary');
-                    $('#clients-update-notifier-item').attr('class', 'd-flex justify-content-start m-0');
-                }
-            }
-        }
-
-        function setClientsUpdateTime(){
-            if ({{.ClientsUpdated}}){
-                localStorage.setItem("clientsUpdateDate", new Date());
-                checkClientsUpdateTime();
-            }
-        } 
-        checkClientsUpdateTime();
     </script>
 
     {{if not .User.Authenticated}}

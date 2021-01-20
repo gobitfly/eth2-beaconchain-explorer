@@ -7,6 +7,10 @@
 {{end}}
 
 {{ define "content"}}
+        {{if .User.Authenticated}}
+            {{if dismissClientNotification .User.UserID}}
+            {{end}} 
+        {{end}}
     {{with .Data}}
         <section style="background: var(--bg-color-light)">
             <div class="container">

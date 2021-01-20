@@ -12,7 +12,7 @@ import (
 	"strconv"
 )
 
-var epochsTemplate = template.Must(template.New("epochs").ParseFiles("templates/layout.html", "templates/epochs.html"))
+var epochsTemplate = template.Must(template.New("epochs").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochs.html"))
 
 // Epochs will return the epochs using a go template
 func Epochs(w http.ResponseWriter, r *http.Request) {

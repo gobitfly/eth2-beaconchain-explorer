@@ -44,6 +44,8 @@ var ethClients = new(types.EthClientServicesPageData)
 var ethClientsMux = &sync.RWMutex{}
 var bannerClients = []string{}
 var bannerClientsMux = &sync.RWMutex{}
+var usersToNotify = map[uint64][]types.Notification{}
+var usersToNotifyMux = &sync.RWMutex{}
 
 // Init starts a go routine to update the ETH Clients Info
 func Init() {
@@ -241,4 +243,42 @@ func GetUpdatedClients() []string {
 	// return bannerClients
 	return []string{"Prysm", "Teku"}
 	// }
+}
+
+func SetUsersToNotify(uids map[uint64][]types.Notification) {
+	usersToNotifyMux.Lock()
+	defer usersToNotifyMux.Unlock()
+	for uid, n := range uids {
+		if _, exists := usersToNotify[uid]; !exists {
+			usersToNotify[uid] = n
+			continue
+		}
+
+		if len(usersToNotify[uid]) != 0 {
+			continue
+		}
+
+		usersToNotify[uid] = n
+	}
+}
+
+func DismissClientNotification(uid uint64) bool {
+	usersToNotifyMux.Lock()
+	defer usersToNotifyMux.Unlock()
+	if _, exists := usersToNotify[uid]; exists {
+		usersToNotify[uid] = []types.Notification{}
+		return true
+	}
+	return false
+}
+
+func IsUserClientUpdated(uid uint64) bool {
+	usersToNotifyMux.Lock()
+	defer usersToNotifyMux.Unlock()
+	if _, exists := usersToNotify[uid]; exists {
+		if len(usersToNotify[uid]) > 0 {
+			return true
+		}
+	}
+	return false
 }

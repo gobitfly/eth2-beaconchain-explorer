@@ -32,6 +32,7 @@ type PageData struct {
 	ExchangeRate          float64
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
+	IsUserClientUpdated   func(uint64) bool
 }
 
 // Meta is a struct to hold metadata about the page

@@ -73,6 +73,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 func sendNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
 	sendEmailNotifications(notificationsByUserID)
 	sendPushNotifications(notificationsByUserID)
+	sendFrontEndEthClientNotifications(notificationsByUserID)
 	saveNotifications(notificationsByUserID)
 	// sendWebhookNotifications(notificationsByUserID)
 }
@@ -96,7 +97,15 @@ func saveNotifications(notificationsByUserID map[uint64]map[types.EventName][]ty
 }
 
 func sendFrontEndEthClientNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
-
+	uids := map[uint64][]types.Notification{}
+	for userID, userNotifications := range notificationsByUserID {
+		for eventName, ns := range userNotifications {
+			if eventName == types.EthClientUpdateEventName {
+				uids[userID] = ns
+			}
+		}
+	}
+	ethclients.SetUsersToNotify(uids)
 }
 
 func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
@@ -705,11 +714,7 @@ func (n *ethClientNotification) GetEventFilter() string {
 }
 
 func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
-	if !ethclients.ClientsUpdated() {
-		return nil
-	}
-
-	updatedClients := ethclients.GetUpdatedClients()
+	updatedClients := ethclients.GetUpdatedClients() //only check if there are new updates
 
 	for _, client := range updatedClients {
 		var dbResult []struct {
@@ -719,13 +724,14 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 			EventFilter    string `db:"event_filter"`
 		}
 
-		client = strings.ToLower(client)
 		err := db.DB.Select(&dbResult, `
-				SELECT id, user_id, created_epoch, event_filter
-				FROM users_subscriptions
-				WHERE event_name=$1 AND event_filter=$2 
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter
+			FROM users_subscriptions AS us
+			LEFT JOIN users_notifications un ON un.event_filter=us.event_filter
+			WHERE us.event_name=$1 AND us.event_filter=$2 AND (un.sent_ts IS NULL OR un.sent_ts < TO_TIMESTAMP($3))
 			`,
-			eventName, client)
+			eventName, strings.ToLower(client), time.Now().AddDate(0, 0, -2).Unix()) // was last notification sent 2 days ago for this client
+
 		if err != nil {
 			return err
 		}
