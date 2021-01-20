@@ -64,7 +64,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 
 	var pairedDevices []types.PairedDevice = nil
 	pairedDevices, err = db.GetUserDevicesByUserID(user.UserID)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("Error retrieving the paired devices for user: %v %v", user.UserID, err)
 		pairedDevices = nil
 	}
