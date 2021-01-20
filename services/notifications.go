@@ -18,11 +18,11 @@ func notificationsSender() {
 	for {
 		// check if the explorer is not too far behind, if we set this value to close (10m) it could potentially never send any notifications
 		// if IsSyncing() {
-		// if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(LatestEpoch())) {
-		// 	logger.Info("skipping notifications because the explorer is syncing")
-		// 	time.Sleep(time.Second * 60)
-		// 	continue
-		// }
+		if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(LatestEpoch())) {
+			logger.Info("skipping notifications because the explorer is syncing")
+			time.Sleep(time.Second * 60)
+			continue
+		}
 		start := time.Now()
 		notifications := collectNotifications()
 		sendNotifications(notifications)

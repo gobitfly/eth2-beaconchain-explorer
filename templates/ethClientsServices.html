@@ -1,5 +1,6 @@
 {{ define "js"}}
 <script src="/bundle/js/requestInterval.js"></script>
+{{ .CsrfField }}
 {{end}}
 
 {{ define "css"}}
@@ -113,6 +114,9 @@
                                     <th>Latest update</th>
                                     <th>Social media</th>
                                     <th>Support</th>
+                                    {{if $.User.Authenticated}}
+                                    <th>Subscribe</th>
+                                    {{end}}
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -130,6 +134,9 @@
                                         <a href="https://twitter.com/go_ethereum" target="_blank"><i
                                                 class="fab fa-twitter ml-1 mr-1"></i></a></td>
                                         <td data-column="Support">N/A</td>
+                                        {{if $.User.Authenticated}}
+                                        <td><input id="geth-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "geth"}} checked {{end}} onchange="updateUserSubscription('geth-checkbox', 'eth_client_update', 'geth')"/></td>
+                                        {{end}}
                                     </tr>
                                     <tr>
                                         <td data-column="Name"><a
@@ -147,6 +154,9 @@
                                         </td>
                                         <td data-column="Support"><a
                                                     href="https://gitcoin.co/grants/142/nethermind">Gitcoin</a></td>
+                                        {{if $.User.Authenticated}}
+                                        <td><input id="nethermind-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "nethermind"}} checked {{end}} onchange="updateUserSubscription('nethermind-checkbox', 'eth_client_update', 'nethermind')"/></td>
+                                        {{end}}
                                     </tr>
                                     <tr>
                                         <td data-column="Name"><a
@@ -164,6 +174,9 @@
                                         </td>
                                         <td data-column="Support"><a
                                                     href="https://gitcoin.co/grants/1415/openethereum-ex-parity-client">Gitcoin</a></td>
+                                        {{if $.User.Authenticated}}
+                                        <td><input id="openethereum-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "openethereum"}} checked {{end}} onchange="updateUserSubscription('openethereum-checkbox', 'eth_client_update', 'openethereum')"/></td>
+                                        {{end}}
                                     </tr>
                                     <tr>
                                         <td data-column="Name"><a
@@ -180,6 +193,9 @@
                                                 class="fab fa-twitter ml-1 mr-1"></i></a>
                                         </td>
                                         <td data-column="Support">N/A</td>
+                                        {{if $.User.Authenticated}}
+                                        <td><input id="besu-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "besu"}} checked {{end}} onchange="updateUserSubscription('besu-checkbox', 'eth_client_update', 'besu')"/></td>
+                                        {{end}}
                                     </tr>
                                 </tbody>
                             </table>
@@ -202,6 +218,9 @@
                                     <th>Latest update</th>
                                     <th>Social media</th>
                                     <th>Support</th>
+                                    {{if $.User.Authenticated}}
+                                    <th>Subscribe</th>
+                                    {{end}}
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -218,6 +237,9 @@
                                                             class="fab fa-twitter ml-1 mr-1"></i></a>
                                                                 </td>
                                         <td data-column="Support">N/A</td>
+                                        {{if $.User.Authenticated}}
+                                        <td><input id="teku-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "teku"}} checked {{end}} onchange="updateUserSubscription('teku-checkbox', 'eth_client_update', 'teku')"/></td>
+                                        {{end}}
                                     </tr>
                                     <tr>
                                         <td data-column="Name"><a
@@ -233,6 +255,9 @@
                                                         </td>
                                         <td data-column="Support"><a
                                                     href="https://gitcoin.co/grants/24/prysm-by-prysmatic-labs">Gitcoin</a></td>
+                                        {{if $.User.Authenticated}}
+                                        <td><input id="prysm-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "prysm"}} checked {{end}} onchange="updateUserSubscription('prysm-checkbox', 'eth_client_update', 'prysm')"/></td>
+                                        {{end}}
                                     </tr>
                                     <tr>
                                         <td data-column="Name"><a
@@ -248,6 +273,9 @@
                                                         </td>
                                         <td data-column="Support"><a
                                                     href="https://gitcoin.co/grants/137/nimbus">Gitcoin</a></td>
+                                        {{if $.User.Authenticated}}
+                                        <td><input id="nimbus-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "nimbus"}} checked {{end}} onchange="updateUserSubscription('nimbus-checkbox', 'eth_client_update', 'nimbus')"/></td>
+                                        {{end}}
                                     </tr>
                                     <tr>
                                         <td data-column="Name"><a
@@ -263,6 +291,9 @@
                                                         </td>
                                         <td data-column="Support"><a
                                                     href="https://gitcoin.co/grants/25/lighthouse-ethereum-20-client">Gitcoin</a></td>
+                                        {{if $.User.Authenticated}}
+                                        <td><input id="lighthouse-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "lighthouse"}} checked {{end}} onchange="updateUserSubscription('lighthouse-checkbox', 'eth_client_update', 'lighthouse')"/></td>
+                                        {{end}}
                                     </tr>
                                 </tbody>
                             </table>
@@ -288,4 +319,47 @@
             </section>
         </div>
     {{end}}
+    <script src="/bundle/js/jquery.min.js"></script>
+    <script>
+        {{if .User.Authenticated}}
+            if (window.location.pathname!="/user/ethClients"){
+                window.location.replace("/user/ethClients");
+            }
+        {{end}}
+    </script>
+    <script>
+        function updateUserSubscription(checkboxID, event_name, event_filter){
+            let csrfToken = document.getElementsByName("CsrfField")[0].value
+
+            if ($('#'+checkboxID).prop("checked")){
+                fetch('/user/notifications/subscribe?filter=' + event_filter + '&event=' + event_name, {
+                    method: 'POST',
+                    headers: {"X-CSRF-Token": csrfToken},
+                    credentials: 'include'
+                }).then(function (response) {
+                    if (response.status === 200) {
+                        $('#'+checkboxID).prop("checked", true)
+                    //alert("You Just Subscribed to "+event_filter+" notifications")
+                    } else {$('#'+checkboxID).prop("checked", false)}
+                }).catch(function (err) {
+                    
+                    console.log(err)
+                })
+            } else {
+                // unsubscribe
+                fetch('/user/notifications/unsubscribe?filter=' + event_filter + '&event=' + event_name, {
+                    method: 'POST',
+                    headers: {"X-CSRF-Token": csrfToken},
+                    credentials: 'include'
+                }).then(function (response) {
+                    if (response.status === 200) {
+                        $('#'+checkboxID).prop("checked", false)
+                    //alert("You Just Unsubscribed from "+event_filter+" notifications")
+                    } else {$('#'+checkboxID).prop("checked", true)}
+                }).catch(function (err) {
+                    console.log(err)
+                })
+            }
+        }
+    </script>
 {{end}}

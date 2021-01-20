@@ -282,3 +282,19 @@ func IsUserClientUpdated(uid uint64) bool {
 	}
 	return false
 }
+
+var isUserSubscribedCallback func(uint64, string) bool
+
+// can't import 'db' in this package
+// because this pkg is imported in 'utils' and 'utils'  is imported in 'db'
+// so a function from a db is set here via callback
+func SetIsUserSubscribedCallback(callback func(uint64, string) bool) {
+	isUserSubscribedCallback = callback
+}
+
+func IsUserSubscribed(uid uint64, client string) bool {
+	if isUserSubscribedCallback == nil {
+		return false
+	}
+	return isUserSubscribedCallback(uid, client)
+}

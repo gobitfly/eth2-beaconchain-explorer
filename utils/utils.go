@@ -107,6 +107,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"firstCharToUpper":          func(s string) string { return strings.Title(s) },
 		"isUserClientUpdated":       ethclients.IsUserClientUpdated,
 		"dismissClientNotification": ethclients.DismissClientNotification,
+		"isUserSubscribed":          ethclients.IsUserSubscribed,
 	}
 }
 

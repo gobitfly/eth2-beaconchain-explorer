@@ -854,6 +854,7 @@ type EthClientServicesPageData struct {
 	Nimbus       EthClients
 	Lighthouse   EthClients
 	Banner       string
+	CsrfField    template.HTML
 }
 
 type RateLimitError struct {
