@@ -377,7 +377,7 @@ create table users
     password_reset_ts       timestamp without time zone,
     register_ts             timestamp without time zone,
     api_key                 character varying(256) unique,
-    stripe_customerID       character varying(256) unique,
+    stripe_customer_id      character varying(256) unique,
     primary key (id, email)
 );
 
@@ -388,6 +388,7 @@ create table users_stripe_subscriptions
     customer_id     character varying(256)        not null,
     price_id        character varying(256)        not null,
     active          bool not null default 'f',
+    payload         json                          not null,
     primary key (customer_id, subscription_id, price_id)
 );
 

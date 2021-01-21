@@ -119,7 +119,7 @@ func StripeCustomerPortal(w http.ResponseWriter, r *http.Request) {
 	var customerID string
 	err := db.FrontendDB.Get(&customerID, `
 	SELECT
-		stripe_customerID
+		stripe_customer_id
 	FROM
 		users
 	WHERE
@@ -250,7 +250,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = db.StripeCreateSubscription(subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID)
+		err = db.StripeCreateSubscription(subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID, event.Data.Raw)
 		if err != nil {
 			logger.WithError(err).Error("error updating user with subscription", event.Data.Object)
 			http.Error(w, "error updating user with subscription, customer: "+subscription.Customer.ID, 503)
@@ -282,7 +282,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		currSub, err := db.StripeGetSubscription(subscription.ID)
 		if err == sql.ErrNoRows {
 			// subscription does not exist, create it
-			err = db.StripeCreateSubscription(subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID)
+			err = db.StripeCreateSubscription(subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID, event.Data.Raw)
 			if err != nil {
 				logger.WithError(err).Error("error updating user with subscription", event.Data.Object)
 				http.Error(w, "error updating user with subscription, customer: "+subscription.Customer.ID, 503)
@@ -299,13 +299,14 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "error updating subscription could not get current subscription err:"+err.Error(), 503)
 		}
 
+		err = db.StripeUpdateSubscription(priceID, subscription.ID, event.Data.Raw)
+		if err != nil {
+			logger.WithError(err).Error("error updating user subscription", subscription.ID)
+			http.Error(w, "error updating user subscription, customer: "+subscription.Customer.ID, 503)
+			return
+		}
+
 		if currSub.PriceID != nil && *currSub.PriceID != priceID {
-			err = db.StripeUpdateSubscription(priceID, subscription.ID)
-			if err != nil {
-				logger.WithError(err).Error("error updating user subscription", subscription.ID)
-				http.Error(w, "error updating user subscription, customer: "+subscription.Customer.ID, 503)
-				return
-			}
 			emailCustomerAboutPlanChange(subscription.Customer.Email, priceID)
 		}
 
@@ -319,7 +320,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = db.StripeUpdateSubscriptionStatus(subscription.ID, false)
+		err = db.StripeUpdateSubscriptionStatus(subscription.ID, false, &event.Data.Raw)
 		if err != nil {
 			logger.WithError(err).Error("error while deactivating subscription", event.Data.Object)
 			http.Error(w, "error while deactivating subscription, customer:"+subscription.Customer.ID, 503)
@@ -357,7 +358,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = db.StripeUpdateSubscriptionStatus(invoice.Lines.Data[0].Subscription, true)
+		err = db.StripeUpdateSubscriptionStatus(invoice.Lines.Data[0].Subscription, true, nil)
 		if err != nil {
 			logger.WithError(err).Error("error processing invoice failed to activate subscription for customer", invoice.Customer.ID)
 			http.Error(w, "error proccesing invoice failed to activate subscription for customer", 503)
