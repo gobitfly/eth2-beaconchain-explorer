@@ -95,7 +95,7 @@ func StripeUpdateSubscriptionStatus(id string, status bool, payload *json.RawMes
 func StripeGetUserAPISubscription(id uint64) (types.UserSubscription, error) {
 	userSub := types.UserSubscription{}
 	priceIds := pq.StringArray{utils.Config.Frontend.Stripe.Sapphire, utils.Config.Frontend.Stripe.Emerald, utils.Config.Frontend.Stripe.Diamond}
-	err := FrontendDB.Get(&userSub, "SELECT id, email, stripe_customer_id, subscription_id, price_id, active, api_key FROM users LEFT JOIN (SELECT * FROM users_stripe_subscriptions WHERE price_id = ANY($2)) as us ON users.stripe_customer_id = us.customer_id WHERE users.id = $1 ORDER BY active desc LIMIT 1", id, priceIds)
+	err := FrontendDB.Get(&userSub, "SELECT id, email, stripe_customer_id, subscription_id, price_id, active, api_key FROM users LEFT JOIN (SELECT * FROM users_stripe_subscriptions WHERE price_id = ANY($2) and (payload->'ended_at')::text = 'null') as us ON users.stripe_customer_id = us.customer_id WHERE users.id = $1 ORDER BY active desc LIMIT 1", id, priceIds)
 	return userSub, err
 }
 
