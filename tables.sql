@@ -377,11 +377,19 @@ create table users
     password_reset_ts       timestamp without time zone,
     register_ts             timestamp without time zone,
     api_key                 character varying(256) unique,
-    stripe_customerID       character varying(256) unique,
-    stripe_subscriptionID   character varying(256) unique,
-    stripe_priceID          character varying(256) unique,
-    stripe_active           bool                   not null default 'f',
+    stripe_customer_id      character varying(256) unique,
     primary key (id, email)
+);
+
+drop table if exists users_stripe_subscriptions;
+create table users_stripe_subscriptions
+(
+    subscription_id character varying(256) unique not null,
+    customer_id     character varying(256)        not null,
+    price_id        character varying(256)        not null,
+    active          bool not null default 'f',
+    payload         json                          not null,
+    primary key (customer_id, subscription_id, price_id)
 );
 
 drop table if exists oauth_apps;

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -52,9 +53,9 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subscription, err := db.GetUserSubscription(user.UserID)
-	if err != nil {
-		logger.Errorf("Error retrieving the email for user: %v %v", user.UserID, err)
+	subscription, err := db.StripeGetUserAPISubscription(user.UserID)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("Error retrieving the subscriptions for user: %v %v", user.UserID, err)
 		session.Flashes("Error: Something went wrong.")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
@@ -63,7 +64,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 
 	var pairedDevices []types.PairedDevice = nil
 	pairedDevices, err = db.GetUserDevicesByUserID(user.UserID)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("Error retrieving the paired devices for user: %v %v", user.UserID, err)
 		pairedDevices = nil
 	}
