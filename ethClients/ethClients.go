@@ -52,14 +52,13 @@ func Init() {
 	go update()
 }
 
-var gitAPI = new(gitAPIResponse)
-
 func fetchClientData(repo string) *gitAPIResponse {
+	var gitAPI = new(gitAPIResponse)
 	resp, err := http.Get("https://api.github.com/repos" + repo + "/releases/latest")
 
 	if err != nil {
 		logger.Errorf("error retrieving ETH Client Data: %v", err)
-		return gitAPI
+		return nil
 	}
 
 	defer resp.Body.Close()
@@ -68,6 +67,7 @@ func fetchClientData(repo string) *gitAPIResponse {
 
 	if err != nil {
 		logger.Errorf("error decoding ETH Clients json response to struct: %v", err)
+		return nil
 	}
 
 	return gitAPI
@@ -137,6 +137,9 @@ func ymdTodmy(date string) string {
 func prepareEthClientData(repo string, name string, curTime time.Time) (string, string) {
 
 	client := fetchClientData(repo)
+	if client == nil {
+		return "Github", "searching"
+	}
 	date := strings.Split(client.PublishedDate, "T")
 
 	if len(date) == 2 {
@@ -157,7 +160,7 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 
 		return client.Name, fmt.Sprintf("%.0f days ago", timeDiff) // can sub. -0.5 to round down the days but github is rounding up
 	}
-	return client.Name, "GitHub" // If API limit is exceeded
+	return "Github", "searching" // If API limit is exceeded
 }
 
 func updateEthClientNetShare() {
@@ -200,7 +203,7 @@ func updateEthClient() {
 	updateEthClientNetShare()
 	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Geth", curTime)
 	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
-	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", "Open Ethereum", curTime)
+	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", "OpenEthereum", curTime)
 	ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = prepareEthClientData("/hyperledger/besu", "Besu", curTime)
 
 	ethClients.Teku.ClientReleaseVersion, ethClients.Teku.ClientReleaseDate = prepareEthClientData("/ConsenSys/teku", "Teku", curTime)
