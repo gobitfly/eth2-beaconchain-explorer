@@ -33,7 +33,7 @@ var Rates map[string]int = map[string]int{
 }
 
 // A map of the european tax rates according to https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/vat/how_vat_works/rates/vat_rates_en.pdf
-var StripeRates map[string]string = map[string]string{
+var StripeRatesTest map[string]string = map[string]string{
 	"AT": "txr_1HqcFcBiORp9oTlKnyNWVp4r", // Austria
 	"BE": "txr_1I9pNwBiORp9oTlKxTmOz7a1", // Belgium
 	"BG": "txr_1I9pOKBiORp9oTlKfMcVou1L", // Bulgaria
@@ -64,11 +64,42 @@ var StripeRates map[string]string = map[string]string{
 	"SK": "txr_1I9pX9BiORp9oTlKDtkJ8A09", // Slovak Republic
 }
 
+var StripeRatesLive map[string]string = map[string]string{
+	"AT": "txr_1IBMDaBiORp9oTlKp8EWwp8j", // Austria
+	"BE": "txr_1IBMDXBiORp9oTlKlZ1VbEqY", // Belgium
+	"BG": "txr_1IBMDVBiORp9oTlKeV6FwBnA", // Bulgaria
+	"CY": "txr_1IBMDUBiORp9oTlK6p8C6qK9", // Cyprus
+	"CZ": "txr_1IBMDSBiORp9oTlKMj0KwTwm", // Czech Republic
+	"DE": "txr_1IBMDYBiORp9oTlKdcfgMZX3", // Germany
+	"DK": "txr_1IBMDQBiORp9oTlKDnYFmsv3", // Denmark
+	"EE": "txr_1IBMDPBiORp9oTlKfaPyr9il", // Estonia
+	"EL": "txr_1IBMDNBiORp9oTlKcZfiSttV", // Greece
+	"ES": "txr_1IBMDLBiORp9oTlKnKCLXOF8", // Spain
+	"FI": "txr_1IBMDJBiORp9oTlKtDR2w3uh", // Finland
+	"FR": "txr_1IBMDIBiORp9oTlKIlPuDNmy", // France
+	"GB": "txr_1IBMDHBiORp9oTlKgJaePWff", // United Kingdom
+	"HR": "txr_1IBMDFBiORp9oTlK2JDAsvYn", // Croatia
+	"HU": "txr_1IBMDEBiORp9oTlKfhwkiebt", // Hungary
+	"IE": "txr_1IBMDDBiORp9oTlKtWxmZyAT", // Ireland
+	"IT": "txr_1IBMDABiORp9oTlK25TCgczQ", // Italy
+	"LT": "txr_1IBMD8BiORp9oTlKsB9QPkUG", // Lithuania
+	"LU": "txr_1IBMD7BiORp9oTlKwtw2fxpe", // Luxembourg
+	"LV": "txr_1IBMD6BiORp9oTlKMsgBKyMe", // Latvia
+	"MT": "txr_1IBMD4BiORp9oTlKVIN2jYCU", // Malta
+	"NL": "txr_1IBMD3BiORp9oTlKU1vYxvH5", // Netherlands
+	"PL": "txr_1IBMD2BiORp9oTlKKLV4yE2z", // Poland
+	"PT": "txr_1IBMD0BiORp9oTlKHcW9KHQ7", // Portugal
+	"RO": "txr_1IBMCzBiORp9oTlKFp9CLAND", // Romania
+	"SE": "txr_1IBMCxBiORp9oTlK0lc5PZgI", // Sweden
+	"SI": "txr_1IBMCuBiORp9oTlKIQmX5NaZ", // Slovenia
+	"SK": "txr_1IBMBfBiORp9oTlKsxI0Css0", // Slovak Republic
+}
+
 func strToPointer(st string) *string {
 	return &st
 }
 
-var StripeDynamicRates = []*string{
+var StripeDynamicRatesTest = []*string{
 	strToPointer("txr_1HqcFcBiORp9oTlKnyNWVp4r"),
 	strToPointer("txr_1I9pNwBiORp9oTlKxTmOz7a1"),
 	strToPointer("txr_1I9pOKBiORp9oTlKfMcVou1L"),
@@ -97,4 +128,35 @@ var StripeDynamicRates = []*string{
 	strToPointer("txr_1I9pWbBiORp9oTlKqGEvmQ0H"),
 	strToPointer("txr_1I9pWrBiORp9oTlKljnvpOqI"),
 	strToPointer("txr_1I9pX9BiORp9oTlKDtkJ8A09"),
+}
+
+var StripeDynamicRatesLive = []*string{
+	strToPointer("txr_1IBMDaBiORp9oTlKp8EWwp8j"),
+	strToPointer("txr_1IBMDYBiORp9oTlKdcfgMZX3"),
+	strToPointer("txr_1IBMDXBiORp9oTlKlZ1VbEqY"),
+	strToPointer("txr_1IBMDVBiORp9oTlKeV6FwBnA"),
+	strToPointer("txr_1IBMDUBiORp9oTlK6p8C6qK9"),
+	strToPointer("txr_1IBMDSBiORp9oTlKMj0KwTwm"),
+	strToPointer("txr_1IBMDQBiORp9oTlKDnYFmsv3"),
+	strToPointer("txr_1IBMDPBiORp9oTlKfaPyr9il"),
+	strToPointer("txr_1IBMDNBiORp9oTlKcZfiSttV"),
+	strToPointer("txr_1IBMDLBiORp9oTlKnKCLXOF8"),
+	strToPointer("txr_1IBMDJBiORp9oTlKtDR2w3uh"),
+	strToPointer("txr_1IBMDIBiORp9oTlKIlPuDNmy"),
+	strToPointer("txr_1IBMDHBiORp9oTlKgJaePWff"),
+	strToPointer("txr_1IBMDFBiORp9oTlK2JDAsvYn"),
+	strToPointer("txr_1IBMDEBiORp9oTlKfhwkiebt"),
+	strToPointer("txr_1IBMDDBiORp9oTlKtWxmZyAT"),
+	strToPointer("txr_1IBMDABiORp9oTlK25TCgczQ"),
+	strToPointer("txr_1IBMD8BiORp9oTlKsB9QPkUG"),
+	strToPointer("txr_1IBMD7BiORp9oTlKwtw2fxpe"),
+	strToPointer("txr_1IBMD6BiORp9oTlKMsgBKyMe"),
+	strToPointer("txr_1IBMD4BiORp9oTlKVIN2jYCU"),
+	strToPointer("txr_1IBMD3BiORp9oTlKU1vYxvH5"),
+	strToPointer("txr_1IBMD2BiORp9oTlKKLV4yE2z"),
+	strToPointer("txr_1IBMD0BiORp9oTlKHcW9KHQ7"),
+	strToPointer("txr_1IBMCzBiORp9oTlKFp9CLAND"),
+	strToPointer("txr_1IBMCxBiORp9oTlK0lc5PZgI"),
+	strToPointer("txr_1IBMCuBiORp9oTlKIQmX5NaZ"),
+	strToPointer("txr_1IBMBfBiORp9oTlKsxI0Css0"),
 }
