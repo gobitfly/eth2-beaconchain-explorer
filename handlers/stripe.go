@@ -75,7 +75,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 			&stripe.CheckoutSessionLineItemParams{
 				Price:           stripe.String(req.Price),
 				Quantity:        stripe.Int64(1),
-				DynamicTaxRates: utils.StripeDynamicRates,
+				DynamicTaxRates: utils.StripeDynamicRatesLive,
 			},
 		},
 	}
