@@ -48,7 +48,7 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if data.User.Authenticated {
-		subscription, err := db.GetUserSubscription(data.User.UserID)
+		subscription, err := db.StripeGetUserAPISubscription(data.User.UserID)
 		if err != nil {
 			logger.Errorf("error retrieving user subscriptions %v", err)
 			http.Error(w, "Internal server error", 503)
