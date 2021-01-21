@@ -702,7 +702,7 @@ func (n *ethClientNotification) GetEventName() types.EventName {
 }
 
 func (n *ethClientNotification) GetInfo(includeUrl bool) string {
-	return fmt.Sprintf(`New update for ETH client %s \nhttps://beaconcha.in/ethClients`, n.EthClient)
+	return fmt.Sprintf(`New update for ETH client %s https://beaconcha.in/ethClients`, n.EthClient)
 }
 
 func (n *ethClientNotification) GetTitle() string {
