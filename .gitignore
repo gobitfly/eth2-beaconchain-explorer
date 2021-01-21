@@ -16,3 +16,4 @@ private/
 run-local
 docker-compose-private.yml
 static/bundle
+.vscode
