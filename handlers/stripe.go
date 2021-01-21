@@ -23,6 +23,7 @@ import (
 // StripeCreateCheckoutSession creates a session to checkout api pricing subscription
 func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
+
 	// check if a subscription exists
 	subscription, err := db.StripeGetUserAPISubscription(user.UserID)
 	if err != nil {
@@ -32,7 +33,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// don't let the user checkout another subscription
-	if subscription.Active != nil {
+	if subscription.Active != nil && *subscription.Active {
 		logger.Errorf("error there is an active subscription cannot create another one %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		writeJSON(w, struct {
@@ -58,12 +59,12 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		CancelURL:  stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/pricing"),
 		// if the customer exists use the existing customer
 		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
-
 			// DefaultTaxRates: stripe.StringSlice([]string{
 			// "txr_1HqcFcBiORp9oTlKnyNWVp4r",
 			// "txr_1HqdWaBiORp9oTlKkij8L6dU",
 			// }),
 		},
+
 		BillingAddressCollection: &rq,
 		CustomerEmail:            &subscription.Email,
 		PaymentMethodTypes: stripe.StringSlice([]string{
