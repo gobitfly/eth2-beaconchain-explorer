@@ -137,3 +137,10 @@ func StripeUpdateCustomerID(email, customerID string) error {
 	err = tx.Commit()
 	return err
 }
+
+// StripeGetCustomerEmail returns a customers email given their customerID
+func StripeGetCustomerEmail(customerID string) (string, error) {
+	email := ""
+	err := FrontendDB.Get(&email, "SELECT email FROM users WHERE stripe_customer_id = $1", customerID)
+	return email, err
+}

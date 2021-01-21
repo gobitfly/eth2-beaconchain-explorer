@@ -307,7 +307,12 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if currSub.PriceID != nil && *currSub.PriceID != priceID {
-			emailCustomerAboutPlanChange(subscription.Customer.Email, priceID)
+			email, err := db.StripeGetCustomerEmail(subscription.Customer.ID)
+			if err != nil {
+				logger.WithError(err).Error("error retrieving customer email for subscription ", subscription.ID)
+				http.Error(w, "error retrieving customer email for subscription err:"+err.Error(), 503)
+			}
+			emailCustomerAboutPlanChange(email, priceID)
 		}
 
 	case "customer.subscription.deleted":
