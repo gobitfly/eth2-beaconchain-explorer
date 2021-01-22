@@ -4,7 +4,6 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1.0">
-
         <meta name="keywords"
               content="ethereum 2.0 block explorer, eth2 block explorer, beacon chain explorer, ethereum blockchain explorer"/>
         <meta name="description" content={{.Meta.Description}}>
@@ -29,12 +28,12 @@
         <title>{{.Meta.Title}}</title>
         <link rel="shortcut icon" type="image/png" href="/favicon.ico"/>
 
-        <link rel="stylesheet" href="/css/fontawesome.min.css">
+        <link rel="stylesheet" href="/bundle/css/fontawesome.min.css">
 
         <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
-        <link id="app-style" rel="stylesheet" href="/css/layout.css">
-        <link rel="stylesheet" href="/css/layout/toggle.css">
-        <link rel="stylesheet" href="/css/layout/banner.css">
+        <link id="app-style" rel="stylesheet" href="/bundle/css/layout.css">
+        <link rel="stylesheet" href="/bundle/css/layout/toggle.css">
+        <link rel="stylesheet" href="/bundle/css/layout/banner.css">
         <script>
             var mql = window.matchMedia('(prefers-color-scheme: light)');
             var lightScheme = mql.matches;
@@ -56,7 +55,7 @@
             } else {
                 document.getElementById('app-style-initial').id = 'app-theme'
             }
-        </script>
+    </script>
 
         <script>
             function updateLang(lang) {
@@ -180,11 +179,14 @@
                         <a class="dropdown-item" onClick="updateCurrency('ETH')">ETH</a>
                         <a class="dropdown-item" onClick="updateCurrency('USD')">USD</a>
                         <a class="dropdown-item" onClick="updateCurrency('EUR')">EUR</a>
+                        <a class="dropdown-item" onClick="updateCurrency('GBP')">GBP</a>
                         <a class="dropdown-item" onClick="updateCurrency('CNY')">CNY</a>
                         <a class="dropdown-item" onClick="updateCurrency('RUB')">RUB</a>
+                        <a class="dropdown-item" onClick="updateCurrency('CAD')">CAD</a>
+                        <a class="dropdown-item" onClick="updateCurrency('JPY')">JPY</a>
                     </div>
                 </div>
-                <div class="dropdown">
+                <!--<div class="dropdown">
                     <a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown"
                        aira-haspopup="true" aria-expanded="false">
                         <i class="fas fa-globe m-0 p-0"></i>
@@ -193,7 +195,7 @@
                         <a class="dropdown-item" onClick="updateLang('en-US')">English</a>
                         <a class="dropdown-item" onClick="updateLang('ru-RU')">Russian</a>
                     </div>
-                </div>
+                </div> -->
                 {{if .User.Authenticated}}
                     <div class="dropdown">
                         <a class="btn btn-transparent btn-sm dropdown-toggle" id="userDropdown" data-toggle="dropdown"
@@ -246,7 +248,9 @@
 
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                 <ul class="navbar-nav ml-auto">
-                    <li class="nav-item">
+
+                    <!-- <li class="nav-item">
+
                         <a ga-outbound="" class="nav-link text-primary"
                            href="https://gitcoin.co/grants/collections?collection_id=14#">
 							<span class="nav-icon">
@@ -254,7 +258,7 @@
 							</span>
                             <span class="nav-text">Support Eth2</span>
                         </a>
-                    </li>
+                    </li> -->
                     <li class="nav-item {{ if eq .Active "epochs"}}active{{end}}">
                         <a class="nav-link" href="/epochs">
 						<span class="nav-icon">
@@ -283,10 +287,6 @@
                             <a class="dropdown-item" href="/validators">
                                 <span class="nav-icon"><i class="fas fa-table mr-2"></i></span>
                                 <span class="nav-text">Overview</span>
-                            </a>
-                            <a class="dropdown-item" href="/validators/leaderboard">
-                                <span class="nav-icon"><i class="fas fa-medal mr-2"></i></span>
-                                <span class="nav-text">Leaderboard</span>
                             </a>
                             <a class="dropdown-item" href="/validators/slashings">
                                 <span class="nav-icon"><i class="fas fa-user-slash mr-2"></i></span>
@@ -456,6 +456,47 @@
 							</span>
                         </a>
                     </li>
+                </li>
+                
+
+                <li class="nav-item {{ if eq .Active "services"}}active{{end}} dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                       data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <span class="nav-icon">
+                           <i class="fas fa-tools"></i>                            
+                       </span>
+                        <span class="nav-text">Services</span>
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                    </a>
+                    <a class="dropdown-item" href="/stakingServices">
+                        <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
+                        <span class="nav-text">Staking Services</span>
+                    </a>
+                    <a class="dropdown-item" href="/ethClients">
+                        <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span>
+                        <span class="nav-text">Ethereum Clients</span>
+                    </a>
+                    <a class="dropdown-item" href="/education">
+                        <span class="nav-icon"><i class="fa fa-book mr-2"></i></span>
+                        <span class="nav-text">Educational Material</span>
+                    </a>
+                    <hr>
+                    <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
+                        <span class="nav-icon">
+                            <i class="fas fa-laptop-code mr-2"></i>
+                        </span>
+                        <span class="nav-text">API Docs</span>
+                    </a>
+                    <a class="dropdown-item" href="/pricing">
+                        <span class="nav-icon">
+                            <i class="fas fa-laptop-code mr-2"></i>
+                        </span>
+                        <span class="nav-text">API Pricing</span>
+                    </a>
+                    
+                    </div>
+                </li>
                     <li class="nav-item dropdown {{ if eq .Active "more"}}active{{end}}">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -467,34 +508,32 @@
 							</span>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                            <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
+                            <!--<a class="dropdown-item" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121">
 								<span class="nav-icon">
-									<i class="fas fa-laptop-code mr-2"></i>
+									<i class="fab fa-apple mr-2"></i>
 								</span>
-                                <span class="nav-text">API Docs</span>
+                                <span class="nav-text">iOS App</span>
                             </a>
-                            <a class="dropdown-item" href="/pricing">
+                            <a class="dropdown-item" href="https://play.google.com/store/apps/details?id=in.beaconcha.mobile">
 								<span class="nav-icon">
-									<i class="fas fa-laptop-code mr-2"></i>
+									<i class="fab fa-android mr-2"></i>
 								</span>
-                                <span class="nav-text">API Pricing</span>
-                            </a>
-                            <a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
+                                <span class="nav-text">Android App</span>
+                            </a>-->
+                            <a class="dropdown-item" href="/mobile">
 								<span class="nav-icon">
-									<i class="fas fa-external-link-alt mr-2"></i>
+									<i class="fas fa-mobile-alt mr-2"></i>
 								</span>
-                                <span class="nav-text">Knowledge Base</span>
+                                <span class="nav-text">Beaconchain App (iOS/Android)</span>
                             </a>
-                            <a class="dropdown-item" href="/stakingServices">
-                                <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
-                                <span class="nav-text">Staking Services</span>
-                            </a>
+                            <hr>
+                          
                             <a class="dropdown-item" href="/graffitiwall">
 								<span class="nav-icon">
 									<i class="fas fa-paint-brush mr-1"></i>
 								</span>
                                 <span class="nav-text">
-									Wall
+									Graffiti Wall
 								</span>
                             </a>
                             <a class="dropdown-item" href="/poap">
@@ -505,63 +544,15 @@
 									POAP
 								</span>
                             </a>
+                            <a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
+                                <span class="nav-icon">
+                                    <i class="fas fa-external-link-alt mr-2"></i>
+                                </span>
+                                <span class="nav-text">Knowledge Base</span>
+                            </a>
                         </div>
                     </li>
-                    <!-- <li class="nav-item dropdown " {{ if eq .Active "docs"}}active{{end}}>
-						<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-							<span class="nav-icon">
-								<i class="fas fa-book mr-2"></i>
-							</span>
-							<span class="nav-text">
-								Docs
-							</span>
-						</a>
-						<div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-							<a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
-								<span class="nav-icon">
-									<i class="fas fa-external-link-alt mr-2"></i>
-								</span>
-								<span class="nav-text">Knowledge Base</span>
-							</a>
-							<a class="dropdown-item" href="/pricing">
-								<span class="nav-icon">
-									<i class="fas fa-laptop-code mr-2"></i>
-								</span>
-								<span class="nav-text">
-									API
-								</span>
-							</a>
-
-						</div>
-					</li> -->
-
-                    <!-- <li class="nav-item dropdown">
-                      <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="fab fa-ethereum"></i> Onyx
-                      </a>
-                      <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                          <a class="dropdown-item" href="https://beaconcha.in">Medalla</a>
-                          <a class="dropdown-item" href="https://altona.beaconcha.in">Altona</a>
-                          <a class="dropdown-item" href="https://prysm-attack-0.beaconcha.in">Attacknet 0</a>
-                          <a class="dropdown-item" href="https://prysm-attack-1.beaconcha.in">Attacknet 1</a>
-                          <a class="dropdown-item" href="https://topaz.beaconcha.in">Topaz</a>
-                          <a class="dropdown-item" href="https://witti.beaconcha.in">Witti</a>
-                      </div>
-                  </li> -->
                 </ul>
-                <!-- <div>
-                    <span class="fas fa-search search-icon"></span>
-                    <i class="fab fa-github"></i>
-                </div> -->
-                <!-- <div class="search-container">
-                    <form  class="form-inline ml-auto" action="/search" method="POST">
-                        <span>
-                            <input class="form-control typeahead" name="search" type="text"
-                            placeholder="Public Key / Block Number / Block Hash / Graffiti" aria-label="Search">
-                            <span class="fas fa-search"></span>
-                        </span>
-                    </form>
-                </div> -->
             </div>
         </div>
         </div>
@@ -577,28 +568,34 @@
 					</div>
 				</div>
 				{{end}} -->
-        {{if .Mainnet}}
-            {{if not (or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register")))}}
-                {{if len .DepositContract}}
-                    <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);"
-                         class="contract text-center p-2">
-                        <i class="fas fa-file-contract mr-2"></i><span class="contract-description mr-2">Deposit Contract:</span><a
-                                href="https://etherchain.org/account/{{.DepositContract}}"
-                                class="text-primary text-monospace">{{.DepositContract}}</a>
-                        <a style="color: #fff" id="copy-deposit" data-toggle="tooltip"
-                           data-original-title="Copy Address" data-clipboard-text="{{.DepositContract}}"
-                           class="btn btn-primary mb-1 btn-icon-inside">
-                            <span class="fa fa-copy icon-inside"></span>
-                        </a>
-                    </div>
-                {{else}}
-                    <div style="background-color: var(--bg-color-light);" class="contract text-center p-2">
-                        Deposit Contract: <span class="text-primary text-monospace">0x(Pending)</span>
-                    </div>
-                {{end}}
-            {{end}}
+        {{if .InfoBanner}}
+            <div id="infoBanner" class="d-none">
+                <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-none d-md-flex justify-content-center align-items-center p-2">
+                    {{.InfoBanner}}
+                    <i id="infoBannerDissBtn" class="far fa-times-circle btn" data-toggle="tooltip" data-placement="bottom" title="Dismiss" onClick="hideInfoBanner({{.InfoBanner}})"></i>
+                </div>
+                <div style="overflow-wrap: break-word;background-color: var(--bg-color-light);" class="d-flex d-md-none justify-content-center align-items-center p-2">
+                    <i class="fab fa-github mr-2" aria-hidden="true"></i>
+                    <a class="mr-2 text-primary" href="/ethClients#ethClientsServices"> New client update released</a>
+                    <i id="infoBannerDissBtn" class="far fa-times-circle btn" data-toggle="tooltip" data-placement="bottom" title="Dismiss" onClick="hideInfoBanner({{.InfoBanner}})"></i>
+                </div>
+            </div>
         {{end}}
         {{ template "content" . }}
+        {{if not .User.Authenticated}}
+        <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index:999; bottom: 3%; width: 100%; justify-content: center; align-items: center">
+            <div style="width: 80%; max-width: 600px;" class="card card-body row">
+                <div class="row">
+                    <div class="col">
+                        <span>By using our site you agree to our <a href="/legal/privacy.pdf">use of cookies</a> to deliver a better user experience.</span>
+                    </div>
+                    <div class="col-3 d-flex justify-content-center align-items-center">
+                        <button class="btn btn-primary btn" style="margin-left: 1%" onclick="acceptCookieBanner()">Got it</button>
+                    <div>
+                </div>
+            </div>
+        </div>
+        {{end}}
     </main>
 
     <div style="margin-top: 3rem; margin-bottom: 4.2rem;">
@@ -609,6 +606,12 @@
                     <h5>Legal Notices</h5>
                     <div class="d-flex flex-column">
                         <a class="my-1" href="/imprint">Imprint</a>
+                    </div>
+                    <div class="d-flex flex-column">
+                        <a class="my-1" href="/legal/tos.pdf">Terms</a>
+                    </div>
+                    <div class="d-flex flex-column">
+                        <a class="my-1" href="/legal/privacy.pdf">Privacy</a>
                     </div>
                 </div>
                 <div class="col-md-4 mb-2">
@@ -627,14 +630,14 @@
                     <div class="d-flex flex-column">
                         <a class="my-1" href="https://twitter.com/etherchain_org"><i class="fab fa-twitter mr-2"></i>Twitter</a>
                         <a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a>
-                        <a class="my-1" href="https://gitter.im/gobitfly/beaconchain-explorer"><i
-                                    class="fab fa-gitter"></i> Gitter Channel</a>
+                        <!-- <a class="my-1" href="https://gitter.im/gobitfly/beaconchain-explorer"><i
+                                    class="fab fa-gitter"></i> Gitter Channel</a> -->
                     </div>
                 </div>
             </div>
             <div class="text-center row justify-content-center">
                 <div class="col-12">
-                    <span>© bitfly gmbh 2020 | {{.Version}} |</span>
+                    <span>© bitfly gmbh 2021 | {{.Version}} |</span>
                     <div class="theme-switch-wrapper">
                         <label class="theme-switch" for="toggleSwitch">
                             <input type="checkbox" id="toggleSwitch"/>
@@ -667,16 +670,21 @@
     </div>
 
 
-    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+
+
+    <script src="/bundle/js/jquery.min.js"></script>
+    <script src="/bundle/js/popper.min.js"
             integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
             crossorigin="anonymous"></script>
 
     <script src="/theme/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
-    <script src="/js/typeahead.bundle.min.js"></script>
-    <script src="/js/layout.js"></script>
-    <script src="/js/banner.js"></script>
+
+    <script src="/bundle/js/luxon.min.js"></script>
+    <script>luxon.DateTime.local();</script>
+
+    <script src="/bundle/js/typeahead.bundle.min.js"></script>
+    <script src="/bundle/js/layout.js"></script>
+    <script src="/bundle/js/banner.js"></script>
     <script>
         var currency = {{.Currency}};
         var exchangeRate = {{.ExchangeRate}};
@@ -711,34 +719,34 @@
             var slot = Math.floor((ts / 1000 - gts) / sps)
             if (slot < 0) return 0
             return slot
-				}
+        }
 
-		moment.updateLocale('en', {
-			relativeTime: {
-					future : 'in %s',
-					past   : '%s ago',
-					s  : function (number, withoutSuffix) {
-						return withoutSuffix ? 'now' : 'a few secs';
-					},
-					m  : ' 1 min',
-					mm : '%d mins',
-					h  : ' 1 h',
-					hh : '%d hrs',
-					d  : ' 1 day',
-					dd : '%d days',
-					M  : ' 1 mth',
-					MM : '%d mths',
-					y  : ' 1 year',
-					yy : '%d years'
-				}
-			});
-	</script>
+        if (localStorage.getItem("infoBannerStatus")!={{.InfoBanner}}){
+            $('#infoBanner').attr('class', '')
+        }
+    </script>
+    {{if not .User.Authenticated}}
+    <script>
+        function hideCookieBanner(){
+            $('#cookie-banner').attr("class", "d-none");
+        }
+        function acceptCookieBanner() {
+                document.cookie = "cookie=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+                hideCookieBanner()
+        }
+        
+        if (document.cookie.indexOf("cookie=accepted")!=-1){
+            hideCookieBanner()
+        }else{
+            $('#cookie-banner').attr("class", "");
+        }
+    </script>
+    {{end}}
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
+    <script src="/bundle/js/clipboard.min.js"></script>
     {{ template "js" .Data }}
 
-    <script src="//instant.page/5.1.0" type="module"
-            integrity="sha384-by67kQnR+pyfy8yWP4kPO12fHKRLHZPfEsiSXR8u2IKcTdxD805MGUXBzVPnkLHw"></script>
+    <script src="/bundle/js/instant.min.js" type="module"></script>
     {{ if ne .Meta.GATag ""}}
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>
@@ -796,7 +804,7 @@
         </script>
     {{end}}
 
-    <script async src="https://ads.bitfly.at/www/delivery/asyncjs.php"></script>
+    <script type="text/javascript" async src="/bundle/js/revive.min.js"></script>
     </body>
     </html>
 {{end}}

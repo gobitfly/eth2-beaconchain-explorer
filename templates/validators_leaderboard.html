@@ -1,6 +1,6 @@
 {{ define "js"}}
-    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/datatable_input.js"></script>
+    <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/datatable_input.js"></script>
     <script>
         $(document).ready(function () {
             var tblOpts = {
@@ -62,7 +62,7 @@
 
 {{ define "css"}}
     <link rel="stylesheet" type="text/css"
-          href="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.css"/>
+          href="/bundle/css/datatables.min.css"/>
 
 {{end}}
 
@@ -72,6 +72,7 @@
             <div class="my-3">
                 <div class="d-md-flex py-2 justify-content-md-between">
                     <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-medal"></i> Validator Staking Leaderboard</h1>
+                    
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
                             <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
@@ -80,6 +81,7 @@
                         </ol>
                     </nav>
                 </div>
+                The Validator Leaderboard is ordered by the 7 day income by default.
             </div>
             <div class="card">
                 <div class="card-body px-0 py-2">

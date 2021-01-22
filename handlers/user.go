@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -52,16 +53,27 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subscription, err := db.GetUserSubscription(user.UserID)
-	if err != nil {
-		logger.Errorf("Error retrieving the email for user: %v %v", user.UserID, err)
+	subscription, err := db.StripeGetUserAPISubscription(user.UserID)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("Error retrieving the subscriptions for user: %v %v", user.UserID, err)
 		session.Flashes("Error: Something went wrong.")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
+	var pairedDevices []types.PairedDevice = nil
+	pairedDevices, err = db.GetUserDevicesByUserID(user.UserID)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("Error retrieving the paired devices for user: %v %v", user.UserID, err)
+		pairedDevices = nil
+	}
+
+	userSettingsData.PairedDevices = pairedDevices
 	userSettingsData.Subscription = subscription
+	userSettingsData.Sapphire = &utils.Config.Frontend.Stripe.Sapphire
+	userSettingsData.Emerald = &utils.Config.Frontend.Stripe.Emerald
+	userSettingsData.Diamond = &utils.Config.Frontend.Stripe.Diamond
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
@@ -781,6 +793,33 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	slashed := FormValueOrJSON(r, "validator_slashed")
 	if slashed == "on" {
 		err := db.AddSubscription(user.UserID, types.ValidatorGotSlashedEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+	proposalSubmitted := FormValueOrJSON(r, "validator_proposal_submitted")
+	if proposalSubmitted == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorExecutedProposalEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+	proposalMissed := FormValueOrJSON(r, "validator_proposal_missed")
+	if proposalMissed == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorMissedProposalEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+	attestationMissed := FormValueOrJSON(r, "validator_attestation_missed")
+	if attestationMissed == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorMissedAttestationEventName, pubKey)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)

@@ -24,9 +24,7 @@ type ChainHead struct {
 type EpochData struct {
 	Epoch                   uint64
 	Validators              []*Validator
-	ValidatorIndices        map[string]uint64
 	ValidatorAssignmentes   *EpochAssignments
-	BeaconCommittees        map[uint64][]*BeaconCommitteItem
 	Blocks                  map[uint64]map[string]*Block
 	EpochParticipationStats *ValidatorParticipation
 }
@@ -57,6 +55,11 @@ type Validator struct {
 	ExitEpoch                  uint64 `db:"exitepoch"`
 	WithdrawableEpoch          uint64 `db:"withdrawableepoch"`
 	WithdrawalCredentials      []byte `db:"withdrawalcredentials"`
+
+	BalanceActivation uint64 `db:"balanceactivation"`
+	Balance1d         uint64 `db:"balance1d"`
+	Balance7d         uint64 `db:"balance7d"`
+	Balance31d        uint64 `db:"balance31d"`
 }
 
 // ValidatorQueue is a struct to hold validator queue data

@@ -158,7 +158,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
           if (data === null) return '-'
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
       {
@@ -167,7 +167,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
           if (data === null) return '-'
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
       {
@@ -176,7 +176,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
           if (data === null) return '-'
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
         }
       },
       {
@@ -185,7 +185,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
           if (data === null) return 'No Attestation found'
-          return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
+          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
         }
       },
       {
@@ -541,20 +541,21 @@ $(document).ready(function() {
           console.log(`loaded earnings: fetch: ${t1-t0}ms`)
           if (!result) return
           // document.getElementById('stats').style.display = 'flex'
-          var lastDay = (result.lastDay/1e9).toFixed(4) 
-          var lastWeek = (result.lastWeek/1e9).toFixed(4)
-          var lastMonth = (result.lastMonth/1e9).toFixed(4)
-          var total = (result.total/1e9).toFixed(4)
-  
+          var lastDay = (result.lastDay / 1e9 * exchangeRate).toFixed(4)
+          var lastWeek = (result.lastWeek / 1e9 * exchangeRate).toFixed(4)
+          var lastMonth = (result.lastMonth / 1e9 * exchangeRate).toFixed(4)
+          var total = (result.total / 1e9 * exchangeRate).toFixed(4)
+
+          console.log(total, exchangeRate, result.total)
           addChange("#earnings-day-header", lastDay)
           addChange("#earnings-week-header", lastWeek)
           addChange("#earnings-month-header", lastMonth)
           addChange("#earnings-total-header", total)
 
-          document.querySelector('#earnings-day').innerText = lastDay || '0.000'
-          document.querySelector('#earnings-week').innerText = lastWeek || '0.000'
-          document.querySelector('#earnings-month').innerText = lastMonth || '0.000'
-          document.querySelector('#earnings-total').innerText = total || '0.000'
+          document.querySelector('#earnings-day').innerHTML = (lastDay || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-week').innerHTML = (lastWeek || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-month').innerHTML = (lastMonth || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-total').innerHTML = (total || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
         }
       })
       $.ajax({

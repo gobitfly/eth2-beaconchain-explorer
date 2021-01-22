@@ -72,14 +72,20 @@ func UpdatePassword(userId uint64, hash []byte) error {
 
 // AddAuthorizeCode registers a code that can be used in exchange for an access token
 func AddAuthorizeCode(userId uint64, code string, appId uint64) error {
-	_, err := FrontendDB.Exec("INSERT INTO oauth_codes (user_id, code, app_id, created_ts) VALUES($1, $2, $3, 'now')", userId, code, appId)
+	now := time.Now()
+	nowTs := now.Unix()
+	_, err := FrontendDB.Exec("INSERT INTO oauth_codes (user_id, code, app_id, created_ts) VALUES($1, $2, $3, TO_TIMESTAMP($4))", userId, code, appId, nowTs)
 	return err
 }
 
 // GetAppNameFromRedirectUri receives an oauth redirect_url and returns the registered app name, if exists
 func GetAppDataFromRedirectUri(callback string) (*types.OAuthAppData, error) {
 	data := []*types.OAuthAppData{}
-	FrontendDB.Select(&data, "SELECT id, app_name, redirect_uri, active, owner_id FROM oauth_apps WHERE active = true AND redirect_uri = $1", callback)
+	err := FrontendDB.Select(&data, "SELECT id, app_name, redirect_uri, active, owner_id FROM oauth_apps WHERE active = true AND redirect_uri = $1", callback)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(data) > 0 {
 		return data[0], nil
 	}
@@ -126,29 +132,19 @@ func CreateAPIKey(userID uint64) error {
 
 // GetUserAuthDataByAuthorizationCode checks an oauth code for validity, consumes the code and returns the userId on success
 func GetUserAuthDataByAuthorizationCode(code string) (*types.OAuthCodeData, error) {
-	data := types.OAuthCodeData{
-		UserID: 0,
-		AppID:  0,
-	}
-	rows, err := FrontendDB.Query("UPDATE oauth_codes SET consumed = true WHERE code = $1 AND "+
-		"consumed = false AND created_ts + INTERVAL '5 minutes' > NOW() "+
+	var rows []*types.OAuthCodeData
+	err := FrontendDB.Select(&rows, "UPDATE oauth_codes SET consumed = true WHERE code = $1 AND "+
+		"consumed = false AND created_ts + INTERVAL '35 minutes' > NOW() "+
 		"RETURNING user_id, app_id;", code)
-
-	defer rows.Close()
 
 	if err != nil {
 		return nil, err
 	}
 
-	for rows.Next() {
-		err := rows.Scan(&data.UserID, &data.AppID)
-		if err != nil {
-			return nil, err
+	for _, r := range rows {
+		if r.UserID > 0 {
+			return r, nil
 		}
-	}
-
-	if data.UserID > 0 {
-		return &data, nil
 	}
 
 	return nil, errors.New("no rows found")
@@ -168,10 +164,39 @@ func GetByRefreshToken(claimUserID, claimAppID, claimDeviceID uint64, hashedRefr
 	return userID, nil
 }
 
+func GetUserDevicesByUserID(userID uint64) ([]types.PairedDevice, error) {
+	data := []types.PairedDevice{}
+
+	rows, err := FrontendDB.Query(
+		"SELECT users_devices.id, oauth_apps.app_name, users_devices.device_name, users_devices.active, "+
+			"users_devices.notify_enabled, users_devices.created_ts FROM users_devices "+
+			"left join oauth_apps on users_devices.app_id = oauth_apps.id WHERE users_devices.user_id = $1 order by created_ts desc", userID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		pairedDevice := types.PairedDevice{}
+		if err := rows.Scan(&pairedDevice.ID, &pairedDevice.AppName, &pairedDevice.DeviceName, &pairedDevice.Active, &pairedDevice.NotifyEnabled, &pairedDevice.CreatedAt); err != nil {
+			return nil, err
+		}
+
+		data = append(data, pairedDevice)
+	}
+
+	if len(data) > 0 {
+		return data, nil
+	}
+	return nil, errors.New("no rows found")
+}
+
 // InsertUserDevice Insert user device and return device id
 func InsertUserDevice(userID uint64, hashedRefreshToken string, name string, appID uint64) (uint64, error) {
 	var deviceID uint64
-	err := FrontendDB.Get(&deviceID, "INSERT INTO users_devices (user_id, refresh_token, device_name, app_id, created_ts) VALUES($1, $2, $3, $4, 'now') RETURNING id",
+	err := FrontendDB.Get(&deviceID, "INSERT INTO users_devices (user_id, refresh_token, device_name, app_id, created_ts) VALUES($1, $2, $3, $4, 'NOW()') RETURNING id",
 		userID, hashedRefreshToken, name, appID,
 	)
 
@@ -198,7 +223,7 @@ func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 		ID    uint64 `db:"user_id"`
 		Token string `db:"notification_token"`
 	}
-	err := FrontendDB.Select(&rows, "SELECT user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL", pq.Array(ids))
+	err := FrontendDB.Select(&rows, "SELECT user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL GROUP BY user_id, notification_token ", pq.Array(ids))
 	if err != nil {
 		return nil, err
 	}
@@ -210,14 +235,44 @@ func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 			pushByID[r.ID] = []string{r.Token}
 		}
 	}
+
 	return pushByID, nil
 }
 
-func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled bool) (*sql.Rows, error) {
-	rows, err := FrontendDB.Query("UPDATE users_devices SET notify_enabled = $1 WHERE user_id = $2 AND id = $3 RETURNING notify_enabled;",
-		notifyEnabled, userID, deviceID,
+func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled, active string) (*sql.Rows, error) {
+	var query = ""
+	var args []interface{}
+
+	args = append(args, userID)
+	args = append(args, deviceID)
+
+	if notifyEnabled != "" {
+		args = append(args, notifyEnabled == "true")
+		query = addParamToQuery(query, fmt.Sprintf("notify_enabled = $%d", len(args)))
+	}
+
+	if active != "" {
+		args = append(args, active == "true")
+		query = addParamToQuery(query, fmt.Sprintf("active = $%d", len(args)))
+	}
+
+	if query == "" {
+		return nil, errors.New("No params for change provided")
+	}
+
+	rows, err := FrontendDB.Query("UPDATE users_devices SET "+query+" WHERE user_id = $1 AND id = $2 RETURNING notify_enabled;",
+		args...,
 	)
 	return rows, err
+}
+
+func addParamToQuery(query, param string) string {
+	var result = query
+	if result != "" {
+		result += ","
+	}
+	result += param
+	return result
 }
 
 func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
@@ -233,8 +288,8 @@ func UserClientEntry(userID uint64, clientName string, clientVersion int64, noti
 		updateClientVersion = ", client_version = $3"
 	}
 
-	_, err := FrontendDB.Query(
-		"INSERT INTO users_clients (user_id, client, client_version, notify_enabled, created_ts) VALUES($1, $2, $3, $4, 'now')"+
+	_, err := FrontendDB.Exec(
+		"INSERT INTO users_clients (user_id, client, client_version, notify_enabled, created_ts) VALUES($1, $2, $3, $4, 'NOW()')"+
 			"ON CONFLICT (user_id, client) "+
 			"DO UPDATE SET notify_enabled = $4"+updateClientVersion+";",
 		userID, clientName, clientVersion, notifyEnabled,

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
@@ -15,8 +16,10 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -73,6 +76,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorStatus":                   FormatValidatorStatus,
 		"formatPercentage":                        FormatPercentage,
 		"formatPercentageWithPrecision":           FormatPercentageWithPrecision,
+		"formatPercentageWithGPrecision":          FormatPercentageWithGPrecision,
 		"formatPublicKey":                         FormatPublicKey,
 		"formatSlashedValidator":                  FormatSlashedValidator,
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
@@ -86,6 +90,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"mod":                                     func(i, j int) bool { return i%j == 0 },
 		"sub":                                     func(i, j int) int { return i - j },
 		"add":                                     func(i, j int) int { return i + j },
+		"addI64":                                  func(i, j int64) int64 { return i + j },
 		"div":                                     func(i, j float64) float64 { return i / j },
 		"gtf":                                     func(i, j float64) bool { return i > j },
 		"round": func(i float64, n int) float64 {
@@ -96,8 +101,15 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
-		"derefString": DerefString,
-		"trLang":      TrLang,
+		"derefString":      DerefString,
+		"trLang":           TrLang,
+		"firstCharToUpper": func(s string) string { return strings.Title(s) },
+		"eqsp": func(a, b *string) bool {
+			if a != nil && b != nil {
+				return *a == *b
+			}
+			return false
+		},
 	}
 }
 
@@ -146,6 +158,11 @@ func TimeToSlot(timestamp uint64) uint64 {
 // EpochToTime will return a time.Time for an epoch
 func EpochToTime(epoch uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
+}
+
+// EpochToTime will return a time.Time for an epoch
+func DayToTime(day uint64) time.Time {
+	return time.Unix(int64(Config.Chain.GenesisTimestamp+(day*((60*60*24)/(Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch)))*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0).Add(time.Hour * 24).Add(time.Second * -14)
 }
 
 // TimeToEpoch will return an epoch for a given time
@@ -379,11 +396,62 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	key := apiKey[:15]
+	key := apiKey
+	if len(apiKey) > 30 {
+		key = apiKey[8:28]
+	}
+
 	apiKeyBase64 := base64.StdEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
 }
 
 func ExchangeRateForCurrency(currency string) float64 {
 	return price.GetEthPrice(currency)
+}
+
+func Glob(dir string, ext string) ([]string, error) {
+	files := []string{}
+	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
+		if filepath.Ext(path) == ext {
+			files = append(files, path)
+		}
+		return nil
+	})
+
+	return files, err
+}
+
+// ValidateReCAPTCHA validates a ReCaptcha server side
+func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
+	// Check this URL verification details from Google
+	// https://developers.google.com/recaptcha/docs/verify
+	req, err := http.PostForm("https://www.google.com/recaptcha/api/siteverify", url.Values{
+		"secret":   {Config.Frontend.RecaptchaSecretKey},
+		"response": {recaptchaResponse},
+	})
+	if err != nil { // Handle error from HTTP POST to Google reCAPTCHA verify server
+		return false, err
+	}
+	defer req.Body.Close()
+	body, err := ioutil.ReadAll(req.Body) // Read the response from Google
+	if err != nil {
+		return false, err
+	}
+
+	var googleResponse types.GoogleRecaptchaResponse
+	err = json.Unmarshal(body, &googleResponse) // Parse the JSON response from Google
+	if err != nil {
+		return false, err
+	}
+	if len(googleResponse.ErrorCodes) > 0 {
+		err = fmt.Errorf("Error validating ReCaptcha %v", googleResponse.ErrorCodes)
+	} else {
+		err = nil
+	}
+
+	if googleResponse.Score > 0.5 {
+		return true, err
+	}
+
+	return false, fmt.Errorf("Score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
 }

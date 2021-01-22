@@ -1,6 +1,6 @@
 {{ define "js"}}
-    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/datatable_input.js"></script>
+    <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/datatable_input.js"></script>
     <script>
         var validatorsDataTable;
         var stateFilterDropDownHtml = `<div><label>
@@ -152,9 +152,9 @@
                         targets: 4,
                         data: '4',
                         render: function (data, type, row, meta) {
-                            if (data === null)
+                            if (data === null || data[0] === 9223372036854775807)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
                         }
                     },
                     {
@@ -163,7 +163,7 @@
                         render: function (data, type, row, meta) {
                             if (data === null)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
                         }
                     },
                     {
@@ -172,7 +172,7 @@
                         render: function (data, type, row, meta) {
                             if (data === null)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
                         }
                     },
                     {
@@ -181,7 +181,7 @@
                         render: function (data, type, row, meta) {
                             if (data === null)
                                 return 'No Attestation found';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
                         }
                     },
                     {
@@ -197,7 +197,7 @@
     </script>
 {{end}} {{ define "css"}}
     <link rel="stylesheet" type="text/css"
-          href="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.css"/>
+          href="/bundle/css//datatables.min.css"/>
     <style>
         .dataTables_wrapper {
             min-height: 400px; /* this is needed to make the bootstrap-dropdown work when the table is empty */

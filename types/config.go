@@ -51,12 +51,17 @@ type Config struct {
 		} `yaml:"onetimeexport"`
 	} `yaml:"indexer"`
 	Frontend struct {
-		Kong         string `yaml:"kong" envconfig:"FRONTEND_KONG"`
-		OnlyAPI      bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
-		CsrfAuthKey  string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY"`
-		CsrfInsecure bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`
-		Enabled      bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
+		Kong               string `yaml:"kong" envconfig:"FRONTEND_KONG"`
+		OnlyAPI            bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
+		CsrfAuthKey        string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY`
+		CsrfInsecure       bool   `yaml:"csrfInsecure envconfig:"FRONTEND_CSRF_INSECURE"`
+		DisableCharts      bool   `yaml:"disableCharts" envconfig:"disableCharts"`
+		RecaptchaSiteKey   string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
+		RecaptchaSecretKey string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
+		Enabled            bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
+		// Imprint is deprecated place imprint file into the legal directory
 		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
+		LegalDir     string `yaml:"legalDir" envconfig:"FRONTEND_LEGAL"`
 		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
 		SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
 		SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
@@ -72,7 +77,8 @@ type Config struct {
 			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
 		} `yaml:"database"`
 		Notifications struct {
-			Enabled bool `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+			Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+			FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
 		} `yaml:"notifications"`
 		Stripe struct {
 			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`

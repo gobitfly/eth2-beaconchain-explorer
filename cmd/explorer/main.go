@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"eth2-exporter/db"
+	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
 	"eth2-exporter/price"
@@ -39,8 +40,6 @@ func initStripe(http *mux.Router) error {
 	stripe.Key = utils.Config.Frontend.Stripe.SecretKey
 	http.HandleFunc("/stripe/create-checkout-session", handlers.StripeCreateCheckoutSession).Methods("POST")
 	http.HandleFunc("/stripe/customer-portal", handlers.StripeCustomerPortal).Methods("POST")
-	http.HandleFunc("/stripe/success", handlers.PricingSuccess).Methods("GET")
-	http.HandleFunc("/stripe/cancled", handlers.PricingCancled).Methods("GET")
 	return nil
 }
 
@@ -151,10 +150,12 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestations", handlers.ApiValidatorAttestations).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/proposals", handlers.ApiValidatorProposals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/deposits", handlers.ApiValidatorDeposits).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestationefficiency", handlers.ApiValidatorAttestationEfficiency).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
 		apiV1Router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/stripe/webhook", handlers.StripeWebhook).Methods("POST")
 		apiV1Router.Use(utils.CORSMiddleware)
 
@@ -180,6 +181,7 @@ func main() {
 
 		services.Init() // Init frontend services
 		price.Init()
+		ethclients.Init()
 
 		logrus.Infof("frontend services initiated")
 
@@ -213,7 +215,7 @@ func main() {
 			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
 			router.HandleFunc("/charts", handlers.Charts).Methods("GET")
-			router.HandleFunc("/charts/{chart}", handlers.GenericChart).Methods("GET")
+			router.HandleFunc("/charts/{chart}", handlers.Chart).Methods("GET")
 			router.HandleFunc("/vis/blocks", handlers.VisBlocks).Methods("GET")
 			router.HandleFunc("/vis/votes", handlers.VisVotes).Methods("GET")
 			router.HandleFunc("/epoch/{epoch}", handlers.Epoch).Methods("GET")
@@ -223,6 +225,7 @@ func main() {
 			router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")
 			router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
 			router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
+			router.HandleFunc("/validator/{index}/history", handlers.ValidatorHistory).Methods("GET")
 			router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
 			router.HandleFunc("/validator/{index}/slashings", handlers.ValidatorSlashings).Methods("GET")
 			router.HandleFunc("/validator/{pubkey}/save", handlers.ValidatorSave).Methods("POST")
@@ -256,9 +259,14 @@ func main() {
 			router.HandleFunc("/imprint", handlers.Imprint).Methods("GET")
 			router.HandleFunc("/poap", handlers.Poap).Methods("GET")
 			router.HandleFunc("/poap/data", handlers.PoapData).Methods("GET")
+			router.HandleFunc("/mobile", handlers.MobilePage).Methods("GET")
+			router.HandleFunc("/mobile", handlers.MobilePagePost).Methods("POST")
 
 			router.HandleFunc("/stakingServices", handlers.StakingServices).Methods("GET")
 			router.HandleFunc("/stakingServices", handlers.AddStakingServicePost).Methods("POST")
+
+			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
+			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
@@ -292,6 +300,7 @@ func main() {
 			oauthRouter.Use(csrfHandler)
 
 			authRouter := router.PathPrefix("/user").Subrouter()
+			authRouter.HandleFunc("/mobile/settings", handlers.MobileDeviceSettingsPOST).Methods("POST")
 			authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirmPost).Methods("POST")
 			authRouter.HandleFunc("/settings", handlers.UserSettings).Methods("GET")
 			authRouter.HandleFunc("/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
@@ -303,12 +312,18 @@ func main() {
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
+			err = initStripe(authRouter)
+			if err != nil {
+				logrus.Errorf("error could not init stripe, %v", err)
+			}
 
 			authRouter.Use(handlers.UserAuthMiddleware)
 			authRouter.Use(csrfHandler)
-			initStripe(authRouter)
 
+			legalFs := http.FileServer(http.Dir(utils.Config.Frontend.LegalDir))
+			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", legalFs))
 			router.PathPrefix("/").Handler(http.FileServer(http.Dir("static")))
+
 		}
 
 		n := negroni.New(negroni.NewRecovery())

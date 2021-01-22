@@ -1,31 +1,36 @@
 {{ define "js"}}
 
-    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/bootstrap4-toggle.min.js"></script>
     {{ .CsrfField }}
     <script>
         var events = {
             //<span class="d-flex align-item-center"><input class="mr-2" checked data-target="validator_balance_decreased" type="checkbox"> <span style="height: 1rem;" class="mb-1">balance decreases</span></span>
             validator_balance_decreased: 'balance decreases',
-            validator_missed_proposal: 'proposals missed',
-            validator_missed_attestation: 'attestations missed',
+            validator_attestation_missed: 'attestations missed',
             validator_got_slashed: 'validator slashed',
+            validator_proposal_missed: 'missed proposals',
+            validator_proposal_submitted: 'submitted proposals',
+
         }
         var evetnsArr = [
             ['validator_balance_decreased', 'balance decreases'],
-            // ['validator_missed_proposal', 'proposals missed'],
-            // ['validator_missed_attestation', 'attestations missed'],
-            ['validator_got_slashed', 'validator slashed']
+            // ['validator_proposal_missed', 'proposals missed'],
+            ['validator_got_slashed', 'validator slashed'],
+            ['validator_proposal_submitted', 'submitted proposals'],
+            ['validator_proposal_missed', 'missed proposals'],
+            ['validator_attestation_missed', 'attestations missed'],
         ]
 
         function createCheckbox(filter, event, checked, text) {
-            return '<span class="d-flex align-item-center"><div class="mr-2 spinner-border d-none spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div><input onchange="ToggleEvent(this)" data-filter="' + filter + '" data-event="' + event + '" class="mr-2" ' + checked + ' data-target="validator_balance_decreased" type="checkbox"> <span style="height: 1rem;" class="mb-1">' + text + '</span></span>'
+            return '<span class="d-flex" style="margin:8px;"><div class="mr-2 spinner-border d-none spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div><input id="'+event+filter+'" onchange="ToggleEvent(this)" data-filter="' + filter + '" data-event="' + event + '" class="mr-2" ' + checked + ' data-target="validator_balance_decreased" type="checkbox" data-toggle="toggle" data-on="&shy;" data-off="&shy;" data-size="xs"> <span style="height: 1rem;margin-left: 7px;" class="mb-1">' + text + '</span></span>'
         }
 
         var debounceTimeouts = {}
 
         function ToggleEvent(box) {
             box.classList.add('d-none')
-            box.previousSibling.classList.remove('d-none')
+            if(box.previousSibling) box.previousSibling.classList.remove('d-none')
 
 
             if (debounceTimeouts[box.id]) {
@@ -50,7 +55,7 @@
                             credentials: 'include'
                         }).then(function (response) {
                             box.classList.remove('d-none')
-                            box.previousSibling.classList.add('d-none')
+                            if(box.previousSibling) box.previousSibling.classList.add('d-none')
 
                             if (response.status === 200) {
                                 // $('#subscriptions').DataTable().ajax.reload()
@@ -61,7 +66,7 @@
                             }
                         }).catch(function (err) {
                             box.classList.remove('d-none')
-                            box.previousSibling.classList.add('d-none')
+                            if(box.previousSibling) box.previousSibling.classList.add('d-none')
 
                             console.log(err)
                             box.checked = false
@@ -74,7 +79,7 @@
                             credentials: 'include'
                         }).then(function (response) {
                             box.classList.remove('d-none')
-                            box.previousSibling.classList.add('d-none')
+                            if(box.previousSibling) box.previousSibling.classList.add('d-none')
 
                             if (response.status === 200) {
                                 $('#subscriptions').DataTable().ajax.reload()
@@ -84,7 +89,7 @@
                             }
                         }).catch(function (err) {
                             box.classList.remove('d-none')
-                            box.previousSibling.classList.add('d-none')
+                            if(box.previousSibling) box.previousSibling.classList.add('d-none')
 
                             console.log(err)
                             box.checked = true
@@ -166,6 +171,9 @@
                                                 checked = 'checked'
                                             }
                                         })
+                                        $(function() {
+                                            $('input[type=checkbox][data-toggle^=toggle]').bootstrapToggle()
+                                        })
                                         return createCheckbox(address, type, checked, text)
                                     })
                                     return checkboxes.reduce(function (acc, curr) {
@@ -226,7 +234,8 @@
         })
     </script>
 {{end}} {{ define "css"}}
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
+    <link rel="stylesheet" type="text/css" href="/bundle/css/bootstrap4-toggle.min.css"/>
+    <link rel="stylesheet" type="text/css" href="/bundle/css/datatables.min.css"/>
     <style>
         input[type="checkbox"] {
             width: 1rem;
@@ -238,11 +247,12 @@
             flex-wrap: wrap;
             flex-direction: row;
             justify-content: flex-start;
-            align-items: center;
+            align-items: left;
         }
 
         #notifications > tbody > tr > td:nth-child(3) > span {
-            flex: 1 1 160px;
+            flex: 1 1 200px;
+            max-width: 210px;
         }
     </style>
 

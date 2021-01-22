@@ -1,4 +1,4 @@
-version: '3.5'
+version: '2.4'
 services:
     eth1:
         image: ethereum/client-go:latest
@@ -7,8 +7,14 @@ services:
         volumes:
             - ./private/eth1_node:/root
         network_mode: host
-        command: 
-            - --goerli
+        # healthcheck:
+        #     test: sleep 5
+        #     interval: 1s
+        #     timeout: 1s
+        #     retries: 1
+
+        command: # comment this out for mainnet
+            - --goerli # comment this out for mainnet
 
 
     postgres:
@@ -30,19 +36,22 @@ services:
         restart: always
         volumes:
             - ./private/eth2_data:/data
-            - ./private/eth1_node/.ethereum/goerli:$HOME/Goerli
+            # - ./private/eth2_data/main:/data # use this for mainnet
+            - ./private/eth1_node/.ethereum:/eth
         network_mode: host
         command: 
             - --datadir=/data
             - --rpc-host=0.0.0.0
             - --monitoring-host=0.0.0.0
-            - --http-web3provider=$HOME/Goerli/geth.ipc
+            - --http-web3provider=/eth/goerli/geth.ipc
+            # - --http-web3provider=/eth/geth.ipc #use this option for mainnet
             - --accept-terms-of-use
         depends_on:
             - eth1
+                # condition: service_healthy
 
     go:
-        image: golang:1.14
+        image: golang:1.15
         container_name: golang 
         restart: always
         volumes:
