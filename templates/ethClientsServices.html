@@ -96,6 +96,12 @@
                                 transform="translate(-139.94562 -244.02393)" fill="#2f2e41" /></svg>
                     </div>
                 </div>
+                {{if not $.User.Authenticated}}
+                <div class="d-flex align-items-center justify-content-center pb-2">
+                    <button class="btn btn-sm bg-primary mr-3" type="button" onclick='window.location.replace("/register")'>SignUp</button>
+                    <div>to receive notifications about your favorite ETH clients </div>
+                </div>
+                {{end}}
             </div>
         </section>
         <div class="container mt-2">
