@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"eth2-exporter/types"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
@@ -43,8 +42,10 @@ type gitAPIResponse struct {
 
 var ethClients = new(types.EthClientServicesPageData)
 var ethClientsMux = &sync.RWMutex{}
-var bannerClients = ""
+var bannerClients = []string{}
 var bannerClientsMux = &sync.RWMutex{}
+var usersToNotify = map[uint64][]types.Notification{}
+var usersToNotifyMux = &sync.RWMutex{}
 
 // Init starts a go routine to update the ETH Clients Info
 func Init() {
@@ -52,12 +53,12 @@ func Init() {
 }
 
 func fetchClientData(repo string) *gitAPIResponse {
-	gitAPI := new(gitAPIResponse)
+	var gitAPI = new(gitAPIResponse)
 	resp, err := http.Get("https://api.github.com/repos" + repo + "/releases/latest")
 
 	if err != nil {
 		logger.Errorf("error retrieving ETH Client Data: %v", err)
-		return gitAPI
+		return nil
 	}
 
 	defer resp.Body.Close()
@@ -66,13 +67,15 @@ func fetchClientData(repo string) *gitAPIResponse {
 
 	if err != nil {
 		logger.Errorf("error decoding ETH Clients json response to struct: %v", err)
+		return nil
 	}
 
 	return gitAPI
 }
 
+var ethernodesAPI []ethernodesAPIStruct
+
 func fetchClientNetworkShare() []ethernodesAPIStruct {
-	var ethernodesAPI []ethernodesAPIStruct
 	resp, err := http.Get("https://ethernodes.org/api/clients")
 
 	if err != nil {
@@ -134,17 +137,20 @@ func ymdTodmy(date string) string {
 func prepareEthClientData(repo string, name string, curTime time.Time) (string, string) {
 
 	client := fetchClientData(repo)
+	if client == nil {
+		return "Github", "searching"
+	}
 	date := strings.Split(client.PublishedDate, "T")
 
 	if len(date) == 2 {
 		rTime, err := getRepoTime(date[0], date[1])
 		if err != nil {
 			logger.Errorf("error parsing git repo. time: %v", err)
-			return client.Name, "GitHub"
+			return client.Name, "GitHub" // client.Name is client version from github api
 		}
 		timeDiff := (curTime.Sub(rTime).Hours() / 24.0)
 		if timeDiff < 2.0 { // show banner if update was less than 2 days ago
-			bannerClients += fmt.Sprintf("<a href=\"/ethClients#ethClientsServices\" class=\"text-primary mr-2\">%s %s</a>\n", name, client.Name)
+			bannerClients = append(bannerClients, name)
 			return client.Name, "Recently"
 		}
 
@@ -154,7 +160,7 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 
 		return client.Name, fmt.Sprintf("%.0f days ago", timeDiff) // can sub. -0.5 to round down the days but github is rounding up
 	}
-	return client.Name, "GitHub" // If API limit is exceeded
+	return "Github", "searching" // If API limit is exceeded
 }
 
 func updateEthClientNetShare() {
@@ -193,16 +199,16 @@ func updateEthClient() {
 	defer ethClientsMux.Unlock()
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
-	bannerClients = ""
+	bannerClients = []string{}
 	updateEthClientNetShare()
-	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Go-Ethereum", curTime)
+	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Geth", curTime)
 	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
 	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", "OpenEthereum", curTime)
 	ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = prepareEthClientData("/hyperledger/besu", "Besu", curTime)
 
 	ethClients.Teku.ClientReleaseVersion, ethClients.Teku.ClientReleaseDate = prepareEthClientData("/ConsenSys/teku", "Teku", curTime)
 	ethClients.Prysm.ClientReleaseVersion, ethClients.Prysm.ClientReleaseDate = prepareEthClientData("/prysmaticlabs/prysm", "Prysm", curTime)
-	ethClients.Nimbus.ClientReleaseVersion, ethClients.Nimbus.ClientReleaseDate = prepareEthClientData("/status-im/nimbus-eth2", "Nimbus-ETH2", curTime)
+	ethClients.Nimbus.ClientReleaseVersion, ethClients.Nimbus.ClientReleaseDate = prepareEthClientData("/status-im/nimbus-eth2", "Nimbus", curTime)
 	ethClients.Lighthouse.ClientReleaseVersion, ethClients.Lighthouse.ClientReleaseDate = prepareEthClientData("/sigp/lighthouse", "Lighthouse", curTime)
 
 	ethClients.LastUpdate = curTime
@@ -222,15 +228,74 @@ func GetEthClientData() *types.EthClientServicesPageData {
 	return ethClients
 }
 
-// GetBannerClients returns a string of latest updates of ETH clients
-func GetBannerClients() *template.HTML {
+// ClientsUpdated returns a boolean indicating if clients are updated
+func ClientsUpdated() bool {
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
-	if bannerClients == "" {
-		return nil
+	if len(bannerClients) == 0 {
+		return false
 	}
-	temp := template.HTML(fmt.Sprintf(`<i class="fab fa-github mr-2" aria-hidden="true"></i>
-									   <span class="mr-2">Latest Client Releases:</span>
-									   %s`, bannerClients))
-	return &temp
+	return true
+}
+
+//GetUpdatedClients returns a slice of latest updated clients or empty slice if no updates
+func GetUpdatedClients() []string {
+	bannerClientsMux.Lock()
+	defer bannerClientsMux.Unlock()
+	return bannerClients
+	// return []string{"Prysm", "Teku"}
+}
+
+func SetUsersToNotify(uids map[uint64][]types.Notification) {
+	usersToNotifyMux.Lock()
+	defer usersToNotifyMux.Unlock()
+	for uid, n := range uids {
+		if _, exists := usersToNotify[uid]; !exists {
+			usersToNotify[uid] = n
+			continue
+		}
+
+		if len(usersToNotify[uid]) != 0 {
+			continue
+		}
+
+		usersToNotify[uid] = n
+	}
+}
+
+func DismissClientNotification(uid uint64) bool {
+	usersToNotifyMux.Lock()
+	defer usersToNotifyMux.Unlock()
+	if _, exists := usersToNotify[uid]; exists {
+		usersToNotify[uid] = []types.Notification{}
+		return true
+	}
+	return false
+}
+
+func IsUserClientUpdated(uid uint64) bool {
+	usersToNotifyMux.Lock()
+	defer usersToNotifyMux.Unlock()
+	if _, exists := usersToNotify[uid]; exists {
+		if len(usersToNotify[uid]) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+var isUserSubscribedCallback func(uint64, string) bool
+
+// can't import 'db' in this package
+// because this pkg is imported in 'utils' and 'utils'  is imported in 'db'
+// so a function from a db is set here via callback
+func SetIsUserSubscribedCallback(callback func(uint64, string) bool) {
+	isUserSubscribedCallback = callback
+}
+
+func IsUserSubscribed(uid uint64, client string) bool {
+	if isUserSubscribedCallback == nil {
+		return false
+	}
+	return isUserSubscribedCallback(uid, client)
 }

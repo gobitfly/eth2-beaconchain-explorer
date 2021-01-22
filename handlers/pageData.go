@@ -37,7 +37,8 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 		Currency:              GetCurrency(r),
-		InfoBanner:            ethclients.GetBannerClients(),
+		ClientsUpdated:        ethclients.ClientsUpdated(),
+		// InfoBanner:            ethclients.GetBannerClients(),
 	}
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
 

@@ -44,6 +44,7 @@ func initStripe(http *mux.Router) error {
 }
 
 func main() {
+	ethclients.SetIsUserSubscribedCallback(db.IsUserSubscribed)
 	configPath := flag.String("config", "config.yml", "Path to the config file")
 	flag.Parse()
 
@@ -312,6 +313,7 @@ func main() {
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
+			authRouter.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			err = initStripe(authRouter)
 			if err != nil {
 				logrus.Errorf("error could not init stripe, %v", err)

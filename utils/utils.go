@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
@@ -101,6 +102,7 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
+
 		"derefString":      DerefString,
 		"trLang":           TrLang,
 		"firstCharToUpper": func(s string) string { return strings.Title(s) },
@@ -110,6 +112,9 @@ func GetTemplateFuncs() template.FuncMap {
 			}
 			return false
 		},
+		"isUserClientUpdated":       ethclients.IsUserClientUpdated,
+		"dismissClientNotification": ethclients.DismissClientNotification,
+		"isUserSubscribed":          ethclients.IsUserSubscribed,
 	}
 }
 

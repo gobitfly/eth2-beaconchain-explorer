@@ -31,6 +31,8 @@ type PageData struct {
 	Currency              string
 	ExchangeRate          float64
 	InfoBanner            *template.HTML
+	ClientsUpdated        bool
+	IsUserClientUpdated   func(uint64) bool
 }
 
 // Meta is a struct to hold metadata about the page
@@ -867,6 +869,7 @@ type EthClientServicesPageData struct {
 	Nimbus       EthClients
 	Lighthouse   EthClients
 	Banner       string
+	CsrfField    template.HTML
 }
 
 type RateLimitError struct {
