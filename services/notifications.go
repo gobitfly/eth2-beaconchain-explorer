@@ -415,7 +415,7 @@ func (n *validatorProposalNotification) GetEpoch() uint64 {
 }
 
 func (n *validatorProposalNotification) GetEventName() types.EventName {
-	return n.EventName
+	return types.ValidatorExecutedProposalEventName
 }
 
 func (n *validatorProposalNotification) GetInfo(includeUrl bool) string {
@@ -534,7 +534,7 @@ func (n *validatorAttestationNotification) GetEpoch() uint64 {
 }
 
 func (n *validatorAttestationNotification) GetEventName() types.EventName {
-	return n.EventName
+	return types.ValidatorMissedAttestationEventName
 }
 
 func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
