@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"firebase.google.com/go/messaging"
 )
@@ -82,14 +83,25 @@ func saveNotifications(notificationsByUserID map[uint64]map[types.EventName][]ty
 	for userID, userNotifications := range notificationsByUserID {
 		for _, ns := range userNotifications {
 			for _, n := range ns {
+				event := fmt.Sprintf("%s", n.GetEventName())
+				filter := n.GetEventFilter()
+
+				if !utf8.ValidString(event) {
+					logger.Errorf("skipping ... received string with invalid encoding %s", event)
+					continue // if one piece of data fails, continue for other data types that may not fail
+				}
+
+				if !utf8.ValidString(filter) {
+					logger.Errorf("skipping ... received string with invalid encoding %s", filter)
+					continue
+				}
 				_, err := db.DB.Exec(`
 					INSERT INTO users_notifications (user_id, event_name, event_filter, sent_ts, epoch)
 					VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5)`,
-					userID, n.GetEventName(), n.GetEventFilter(), time.Now().Unix(), n.GetEpoch())
+					userID, event, filter, time.Now().Unix(), n.GetEpoch())
 
 				if err != nil {
 					logger.Errorf("error when Inserting data to 'users_notifications' table: %v", err)
-					continue // if one piece of data fails, continue for other data types that may not fail
 				}
 			}
 		}
@@ -299,7 +311,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 				us.id, 
 				us.user_id, 
 				v.validatorindex,
-				v.pubkey AS pubkey, 
+				ENCODE(v.pubkey::bytea, 'hex') AS pubkey, 
 				vb0.balance AS endbalance, 
 				vb3.balance AS startbalance, 
 				us.last_sent_epoch,
@@ -363,7 +375,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 				v.validatorindex, 
 				pa.epoch,
 				pa.status,
-				v.pubkey
+				ENCODE(v.pubkey::bytea, 'hex') AS pubkey
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($2 - 5) 
@@ -475,7 +487,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 				aa.status,
 				aa.attesterslot,
 				aa.inclusionslot,
-				v.pubkey
+				ENCODE(v.pubkey::bytea, 'hex') AS pubkey
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 			INNER JOIN attestation_assignments_p aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 3)  AND aa.week >= ($2 - 3) / 1575
@@ -650,7 +662,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 				) a
 				ORDER BY slashedvalidator, slot
 			)
-		SELECT us.id, us.user_id, v.validatorindex, s.slasher, s.epoch, s.reason, v.pubkey
+		SELECT us.id, us.user_id, v.validatorindex, s.slasher, s.epoch, s.reason, ENCODE(v.pubkey::bytea, 'hex') AS pubkey
 		FROM users_subscriptions us
 		INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 		INNER JOIN slashings s ON s.slashedvalidator = v.validatorindex
