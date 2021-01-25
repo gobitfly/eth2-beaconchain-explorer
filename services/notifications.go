@@ -306,12 +306,12 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	}
 
 	err := db.DB.Select(&dbResult, `
-		SELECT id, user_id, validatorindex, startbalance, endbalance, pubkey FROM (
+		SELECT id, user_id, validatorindex, startbalance, endbalance, ENCODE(a.pubkey::bytea, 'hex') AS pubkey FROM (
 			SELECT 
 				us.id, 
 				us.user_id, 
 				v.validatorindex,
-				ENCODE(v.pubkey::bytea, 'hex') AS pubkey, 
+				v.pubkey, 
 				vb0.balance AS endbalance, 
 				vb3.balance AS startbalance, 
 				us.last_sent_epoch,
