@@ -311,7 +311,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 				us.id, 
 				us.user_id, 
 				v.validatorindex,
-				v.pubkey, 
+				v.pubkey AS pubkey, 
 				vb0.balance AS endbalance, 
 				vb3.balance AS startbalance, 
 				us.last_sent_epoch,
