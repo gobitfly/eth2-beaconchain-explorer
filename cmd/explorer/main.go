@@ -204,6 +204,7 @@ func main() {
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
 				csrf.Secure(!cfg.Frontend.CsrfInsecure),
+				csrf.Path("/"),
 			)
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
