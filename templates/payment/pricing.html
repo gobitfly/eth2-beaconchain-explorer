@@ -15,7 +15,6 @@
     <script>
         // If a fetch error occurs, log it to the console
         var handleFetchResult = function (result) {
-            console.log('fetch result', result)
             if (!result.ok) {
                 return result.json().then(function (json) {
                     if (json.error && json.error.message) {
@@ -29,12 +28,10 @@
 
         // Create a Checkout Session with the selected plan ID
         var createCheckoutSession = function (priceId) {
-            console.log('Creating session', priceId)
             var csrfToken = ""
             if (document.getElementsByName("CsrfField").length) {
                 csrfToken = document.getElementsByName("CsrfField")[0].value
             }
-            console.log('csrf toekn', csrfToken)
             return fetch("/user/stripe/create-checkout-session", {
                 method: "POST",
                 headers: {
