@@ -403,10 +403,10 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 	}
 	key := apiKey
 	if len(apiKey) > 30 {
-		key = apiKey[8:28]
+		key = apiKey[8:29]
 	}
 
-	apiKeyBase64 := base64.StdEncoding.EncodeToString(key)
+	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
 }
 
