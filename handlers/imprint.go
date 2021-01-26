@@ -15,9 +15,9 @@ func Imprint(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if utils.Config.Frontend.LegalDir == "" {
-		imprintTemplate, err = template.ParseFiles("templates/layout.html", utils.Config.Frontend.Imprint)
+		imprintTemplate = template.Must(template.New("imprint").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", utils.Config.Frontend.Imprint))
 	} else {
-		imprintTemplate, err = template.ParseFiles("templates/layout.html", path.Join(utils.Config.Frontend.LegalDir, "index.html"))
+		imprintTemplate = template.Must(template.New("imprint").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", path.Join(utils.Config.Frontend.LegalDir, "index.html")))
 	}
 
 	if err != nil {
