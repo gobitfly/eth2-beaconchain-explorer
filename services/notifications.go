@@ -83,6 +83,10 @@ func saveNotifications(notificationsByUserID map[uint64]map[types.EventName][]ty
 	for userID, userNotifications := range notificationsByUserID {
 		for _, ns := range userNotifications {
 			for _, n := range ns {
+				if n.GetEventName() != types.EthClientUpdateEventName {
+					continue // only store eth client notifications
+				}
+
 				event := fmt.Sprintf("%s", n.GetEventName())
 				filter := n.GetEventFilter()
 
