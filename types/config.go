@@ -108,6 +108,10 @@ type Config struct {
 		} `yaml:"mail"`
 		GATag string `yaml:"gatag"  envconfig:"GATAG"`
 	} `yaml:"frontend"`
+	Metrics struct {
+		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
+		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
+	} `yaml:"metrics"`
 }
 
 // Phase0 is the config for beacon chain phase0
