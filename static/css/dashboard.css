@@ -270,14 +270,14 @@ ul.multiselect input:focus {
   -webkit-box-pack: center;
 }
 
-.increased:after {
+.increased:before {
   content: "\2191";
   color: var(--success);
   padding: 0 .1rem;
   font-weight: 500;
 }
 
-.decreased:after {
+.decreased:before {
   content: "\2193";
   color: var(--danger);
   padding: 0 .1rem;

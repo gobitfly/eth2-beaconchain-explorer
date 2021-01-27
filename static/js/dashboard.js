@@ -127,7 +127,17 @@ $(document).ready(function() {
         data: '1',
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data
-          return '<a href="/validator/' + data + '">' + data + '</a>'
+          // return '<a href="/validator/' + data + '">' + data + '</a>'
+          return `<div class="dropdown">
+                    <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="dropdownMenuButton${data}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                      ${data}
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton${data}">
+                      <a class="dropdown-item" href="/validator/${data}">Open validator page</a>
+                      <a class="dropdown-item btn btn-sm" onclick="showValidatorHist('${data}')">Show History</a>
+                    </div>
+                  </div>
+        `
         }
       },
       {
@@ -135,7 +145,7 @@ $(document).ready(function() {
         data: '2',
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
-          return `${data[0]} (${data[1]})`
+          return `${data[0]}`
         }
       },
       {
@@ -154,6 +164,7 @@ $(document).ready(function() {
       },
       {
         targets: 4,
+        visible : false,
         data: '4',
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
@@ -163,6 +174,7 @@ $(document).ready(function() {
       },
       {
         targets: 5,
+        visible : false,
         data: '5',
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
@@ -547,10 +559,10 @@ $(document).ready(function() {
           var total = (result.total / 1e9 * exchangeRate).toFixed(4)
 
           console.log(total, exchangeRate, result.total)
-          addChange("#earnings-day-header", lastDay)
-          addChange("#earnings-week-header", lastWeek)
-          addChange("#earnings-month-header", lastMonth)
-          addChange("#earnings-total-header", total)
+          addChange("#earnings-day", lastDay)
+          addChange("#earnings-week", lastWeek)
+          addChange("#earnings-month", lastMonth)
+          addChange("#earnings-total", total)
 
           document.querySelector('#earnings-day').innerHTML = (lastDay || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
           document.querySelector('#earnings-week').innerHTML = (lastWeek || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
@@ -644,7 +656,7 @@ $(document).ready(function() {
     //   document.getElementById('chart-holder').style.display = 'none'
     //   return
     // }
-    document.getElementById('chart-holder').style.display = 'flex'
+    // document.getElementById('chart-holder').style.display = 'flex'
     if (state.validators && state.validators.length) {
       var qryStr = '?validators=' + state.validators.join(',')
       $.ajax({
