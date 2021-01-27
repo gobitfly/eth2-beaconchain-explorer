@@ -96,8 +96,8 @@
             window.addEventListener('load', function () {
                 var activeTab = $('#chartTabs .active')
                 var initializedAttestationTable = false
-
-                if (activeTab === 'attestations-tab') {
+                
+                if (activeTab.attr('id') === 'attestations-tab') {
                     initializedAttestationTable = true
                     createAttestationTable()
                 }
