@@ -90,7 +90,7 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 			defer wg.Done()
 			start := time.Now()
 			data, err := ch.DataFunc()
-			logger.WithField("chart", i).WithField("duration", time.Since(start)).WithField("error", err).Info("generated chart")
+			logger.WithField("chart", i).WithField("duration", time.Since(start)).WithField("error", err).Debug("generated chart")
 			chartHandlerResChan <- &chartHandlerRes{ch.Order, i, data, err}
 		}(i, ch)
 	}
