@@ -33,6 +33,7 @@ function appendBlocks(blocks) {
   }
 }
 
+var selectedBTNid = null
 function showValidatorHist (index) {
   if ($.fn.dataTable.isDataTable('#dash-validator-history-table')){
         $('#dash-validator-history-table').DataTable().destroy();
@@ -69,22 +70,33 @@ function showValidatorHist (index) {
   $('#dash-validator-history-table').removeClass('d-none')
   $('#dash-validator-history-art').attr('class', 'd-none')
   $('#dash-validator-history-index').text('('+index+')')
+  if (selectedBTNid != null){
+    $('#'+selectedBTNid).removeClass('bg-primary')
+  }
+  selectedBTNid='dropdownMenuButton'+index
+  $('#'+selectedBTNid).addClass('bg-primary')
 }
 
 function toggleFirstrow(){
-  $("#dashChartTabs a:last").tab("show")
-  let id = $("#validators tbody>tr:nth-child(1)>td>div>button").attr('id')
+  $("#dashChartTabs a:first").tab("show")
+  let id = $("#validators tbody>tr:nth-child(1)>td>button").attr('id')
   setTimeout(function (){
-        $('#'+id).dropdown("toggle")
-  }, 500)
+        $('#'+id).focus()
+  }, 200)
+}
+
+function addValidatorUpdateUI(){
+  $('#validators-tab').removeClass('disabled')
+  $('#validator-art').attr('class', "d-none")
+  $('#dash-validator-history-info').removeClass('d-none')
 }
 
 $(document).ready(function() {
   $("#dashChartTabs a:first").tab("show")
   $('.card').hover(function () {
-    $(this).addClass('shadow');
+    $(this).addClass('shadow-sm');
     }, function () {
-    $(this).removeClass('shadow');
+    $(this).removeClass('shadow-sm');
   });
   //bookmark button adds all validators in the dashboard to the watchlist
   $('#bookmark-button').on("click", function(event) {
@@ -180,16 +192,10 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data
           // return '<a href="/validator/' + data + '">' + data + '</a>'
-          return `<div class="dropdown">
-                    <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="dropdownMenuButton${data}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          return `<button class="btn btn-sm m-0 p-0" type="button" id="dropdownMenuButton${data}" onclick="showValidatorHist('${data}')">
                       ${data}
-                    </button>
-                    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton${data}">
-                      <a class="dropdown-item" href="/validator/${data}">Open validator page</a>
-                      <a class="dropdown-item btn btn-sm" onclick="showValidatorHist('${data}')">Show History</a>
-                    </div>
-                  </div>
-        `
+                  </button>
+                 `
         }
       },
       {
@@ -381,8 +387,7 @@ $(document).ready(function() {
     } else {
       addValidator(sug.index)
     }
-    $('#validators-tab').removeClass('disabled')
-    $('#dash-validator-history-info').removeClass('d-none')
+    addValidatorUpdateUI()
     $('.typeahead-dashboard').typeahead('val', '')
   })
   $('#pending').on('click', 'button', function() {
@@ -469,8 +474,7 @@ $(document).ready(function() {
         })
         state.validators.sort(sortValidators)
         if (state.validators.length > 0) {
-          $('#validators-tab').removeClass('disabled')
-          $('#dash-validator-history-info').removeClass('d-none')
+          addValidatorUpdateUI()
         }
       } else {
         state.validators = []
@@ -485,8 +489,7 @@ $(document).ready(function() {
     })
     state.validators.sort(sortValidators)
     if (state.validators.length > 0) {
-      $('#validators-tab').removeClass('disabled')
-      $('#dash-validator-history-info').removeClass('d-none')
+      addValidatorUpdateUI()
     }
     if (state.validators.length > 100) {
       state.validators = state.validators.slice(0,100)
@@ -736,6 +739,16 @@ $(document).ready(function() {
             effectiveBalance[i] = [res[0], res[3]]
             utilization[i] = [res[0], res[3] / (res[1] * (32 * exchangeRate))]
           }
+          let eff = utilization[utilization.length-1][1]*100;
+          if (eff >= 100) {
+            $('#validator-eff-total').html(`<span class="text-success"> ${eff}% - Perfect <i class="fas fa-grin-stars"></i>`)
+          } else if (eff > 80) {
+            $('#validator-eff-total').html(`<span class="text-success"> ${eff}% - Good <i class="fas fa-smile"></i></span>`)
+          } else if (eff > 60) {
+            $('#validator-eff-total').html(`<span class="text-warning"> ${eff}% - Fair <i class="fas fa-meh"></i></span>`)
+          } else {
+            $('#validator-eff-total').html(`<span class="text-danger"> ${eff}% - Bad <i class="fas fa-frown"></i></span>`)
+          }
   
           var t2 = Date.now()
           createBalanceChart(effectiveBalance, balance, utilization)
@@ -761,6 +774,7 @@ $(document).ready(function() {
 })
 
 function createBalanceChart(effective, balance, utilization, missedAttestations) {
+  console.log(utilization, "uu")
   Highcharts.stockChart('balance-chart', {
     exporting: {
       scale: 1
