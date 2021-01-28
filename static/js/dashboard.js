@@ -33,8 +33,59 @@ function appendBlocks(blocks) {
   }
 }
 
-$(document).ready(function() {
+function showValidatorHist (index) {
+  if ($.fn.dataTable.isDataTable('#dash-validator-history-table')){
+        $('#dash-validator-history-table').DataTable().destroy();
+  }
 
+  $('#dash-validator-history-table').DataTable({
+        processing: true,
+        serverSide: true,
+        lengthChange: false,
+        ordering: false,
+        searching: false,
+        details: false,
+        //pagingType: 'input', //not working
+        pagingType: 'simple',
+        pageLength: 10,
+        ajax: '/validator/' + index + '/history',
+        language: {
+              searchPlaceholder: 'Search by Epoch Number',
+              search: '',
+              paginate: {
+                  previous: "<",
+                  next: ">",
+              }
+        },
+        drawCallback: function (settings) {
+              formatTimestamps()
+        },
+  })
+  $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(1)').removeClass('col-md-5').removeClass('col-sm-12')
+  $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(2)').removeClass('col-md-7').removeClass('col-sm-12')
+  $('#validator-history-table_wrapper > div:nth-child(3)').addClass('justify-content-center')
+  $("#validator-history-table_paginate").attr('style', 'padding-right: 0 !important')
+  $("#validator-history-table_info").attr('style', 'padding-top: 0;')
+  $('#dash-validator-history-table').removeClass('d-none')
+  $('#dash-validator-history-art').attr('class', 'd-none')
+  $('#dash-validator-history-index').text('('+index+')')
+}
+
+function toggleFirstrow(){
+  $("#dashChartTabs a:last").tab("show")
+  let id = $("#validators tbody>tr:nth-child(1)>td>div>button").attr('id')
+  setTimeout(function (){
+        $('#'+id).dropdown("toggle")
+  }, 500)
+}
+
+$(document).ready(function() {
+  $("#dashChartTabs a:first").tab("show")
+  $('.card').hover(function () {
+    $(this).addClass('shadow');
+    }, function () {
+    $(this).removeClass('shadow');
+  });
   //bookmark button adds all validators in the dashboard to the watchlist
   $('#bookmark-button').on("click", function(event) {
     var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
@@ -101,7 +152,8 @@ $(document).ready(function() {
     serverSide: false,
     ordering: true,
     searching: true,
-    paging: false,
+    pagingType: 'full_numbers',
+    pageLength: 7,
     info: false,
     preDrawCallback: function() {
       // this does not always work.. not sure how to solve the staying tooltip
@@ -329,6 +381,8 @@ $(document).ready(function() {
     } else {
       addValidator(sug.index)
     }
+    $('#validators-tab').removeClass('disabled')
+    $('#dash-validator-history-info').removeClass('d-none')
     $('.typeahead-dashboard').typeahead('val', '')
   })
   $('#pending').on('click', 'button', function() {
@@ -414,6 +468,10 @@ $(document).ready(function() {
           return state.validators.indexOf(v) === i
         })
         state.validators.sort(sortValidators)
+        if (state.validators.length > 0) {
+          $('#validators-tab').removeClass('disabled')
+          $('#dash-validator-history-info').removeClass('d-none')
+        }
       } else {
         state.validators = []
       }
@@ -426,6 +484,10 @@ $(document).ready(function() {
       return state.validators.indexOf(v) === i
     })
     state.validators.sort(sortValidators)
+    if (state.validators.length > 0) {
+      $('#validators-tab').removeClass('disabled')
+      $('#dash-validator-history-info').removeClass('d-none')
+    }
     if (state.validators.length > 100) {
       state.validators = state.validators.slice(0,100)
       console.log("100 validators limit reached")
