@@ -103,16 +103,13 @@ function showSelectedValidator(){
 
 $(document).ready(function() {
   $("#dashChartTabs a:first").tab("show")
-  $('.card').hover(function () {
-    $(this).addClass('shadow-sm');
-    }, function () {
-    $(this).removeClass('shadow-sm');
-  });
+  
   $('#validators').on("page.dt", function(){
     setTimeout(function(){
       showSelectedValidator()
     }, 150) //if deselected index is not clearing increase the time
   })
+
   //bookmark button adds all validators in the dashboard to the watchlist
   $('#bookmark-button').on("click", function(event) {
     var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
@@ -161,6 +158,7 @@ $(document).ready(function() {
       console.log(err)
     })
   })
+
   var clearSearch = $('#clear-search')
   //'<i class="fa fa-copy"></i>'
   var copyIcon = $("<i class='fa fa-copy' style='width:15px'></i>")
@@ -789,7 +787,6 @@ $(document).ready(function() {
 })
 
 function createBalanceChart(effective, balance, utilization, missedAttestations) {
-  console.log(utilization, "uu")
   Highcharts.stockChart('balance-chart', {
     exporting: {
       scale: 1
