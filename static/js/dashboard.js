@@ -192,7 +192,7 @@ $(document).ready(function() {
     ordering: true,
     searching: true,
     pagingType: 'full_numbers',
-    pageLength: 7,
+    pageLength: 8,
     info: false,
     preDrawCallback: function() {
       // this does not always work.. not sure how to solve the staying tooltip
