@@ -69,12 +69,9 @@ function showValidatorHist (index) {
   $("#validator-history-table_info").attr('style', 'padding-top: 0;')
   $('#dash-validator-history-table').removeClass('d-none')
   $('#dash-validator-history-art').attr('class', 'd-none')
-  $('#dash-validator-history-index').text('('+index+')')
-  if (selectedBTNid != null){
-    $('#'+selectedBTNid).removeClass('bg-primary')
-  }
+  $('#dash-validator-history-index').text('('+index+')')  
   selectedBTNid='dropdownMenuButton'+index
-  $('#'+selectedBTNid).addClass('bg-primary')
+  showSelectedValidator()
 }
 
 function toggleFirstrow(){
@@ -91,6 +88,19 @@ function addValidatorUpdateUI(){
   $('#dash-validator-history-info').removeClass('d-none')
 }
 
+function showSelectedValidator(){
+  $( 'button[id^=dropdownMenuButton]' ).each(function(el, item){
+    console.log($(item).attr('id')===selectedBTNid, $(item).attr('id'), selectedBTNid)
+    if ($(item).attr('id')===selectedBTNid){
+      $(item).addClass('bg-primary')
+    }else{
+      if (selectedBTNid != null){
+        $(item).removeClass('bg-primary')
+      }
+    }
+  })
+}
+
 $(document).ready(function() {
   $("#dashChartTabs a:first").tab("show")
   $('.card').hover(function () {
@@ -98,6 +108,11 @@ $(document).ready(function() {
     }, function () {
     $(this).removeClass('shadow-sm');
   });
+  $('#validators').on("page.dt", function(){
+    setTimeout(function(){
+      showSelectedValidator()
+    }, 150) //if deselected index is not clearing increase the time
+  })
   //bookmark button adds all validators in the dashboard to the watchlist
   $('#bookmark-button').on("click", function(event) {
     var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
