@@ -108,7 +108,7 @@ function showFirstValidatorsInSearch(qty){
     $('#selected-validators-input li:not(:last)').remove()
     $('#selected-validators.val-modal li').each(function(el, item){
       if (i===qty) {return}
-      $('#selected-validators-input').prepend(item)
+      $('#selected-validators-input').prepend($(item).clone())
       i++
     })
   }, 200)
@@ -481,15 +481,17 @@ $(document).ready(function() {
     elHolder.prepend(...elsItems)
 
     if (state.validators.length>0){
+      addValidatorUpdateUI()
       showValidatorHist(state.validators[0])
       showFirstValidatorsInSearch(3)
+    }else{
+      $('#validatorModal').modal('hide')
     }
 
     if (state.validators.length>3){
       $('#selected-validators-input-button').removeClass('d-none')
     }else{
       $('#selected-validators-input-button').addClass('d-none')
-      $('#validatorModal').modal('hide')
     }
   }
 
@@ -511,9 +513,6 @@ $(document).ready(function() {
           return state.validators.indexOf(v) === i
         })
         state.validators.sort(sortValidators)
-        if (state.validators.length > 0) {
-          addValidatorUpdateUI()
-        }
       } else {
         state.validators = []
       }
@@ -526,9 +525,7 @@ $(document).ready(function() {
       return state.validators.indexOf(v) === i
     })
     state.validators.sort(sortValidators)
-    if (state.validators.length > 0) {
-      addValidatorUpdateUI()
-    }
+
     if (state.validators.length > 100) {
       state.validators = state.validators.slice(0,100)
       console.log("100 validators limit reached")
@@ -551,13 +548,14 @@ $(document).ready(function() {
       }
       state.validators.push(index)
     }
-    state.validators.sort(sortValidators)
-    renderSelectedValidators()
-    updateState()
+
     if (limitReached) {
       console.log("100 validators limit reached")
       alert('You can not add more than 100 validators to your dashboard')
     }
+    state.validators.sort(sortValidators)
+    renderSelectedValidators()
+    updateState()
   }
 
   function addValidator(index) {
