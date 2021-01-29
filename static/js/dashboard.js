@@ -103,7 +103,7 @@ function showSelectedValidator(){
 }
 
 function showValidatorsInSearch(qty){
-  setTimeout(function(){
+  // setTimeout(function(){
     let i=0
     let l=[]
     $('#selected-validators-input li:not(:last)').remove()
@@ -115,7 +115,7 @@ function showValidatorsInSearch(qty){
     for (let i=0; i<l.length; i++){
       $('#selected-validators-input').prepend(l[l.length-(i+1)])
     }
-  }, 200)
+  // }, 100)
 }
 
 $(document).ready(function() {
@@ -488,6 +488,21 @@ $(document).ready(function() {
   function renderDashboardInfo() {
     var el = document.getElementById('dashboard-info')
     el.innerText = `Found ${state.validatorsCount.pending} pending, ${state.validatorsCount.active_online + state.validatorsCount.active_offline} active and ${state.validatorsCount.exited} exited validators`
+    
+    if (state.validators.length>0){
+      showSelectedValidator()
+      addValidatorUpdateUI()
+      showValidatorHist(state.validators[0])
+      showValidatorsInSearch(3)
+    }else{
+      $('#validatorModal').modal('hide')
+    }
+
+    if (state.validators.length>3){
+      $('#selected-validators-input-button').removeClass('d-none')
+    }else{
+      $('#selected-validators-input-button').addClass('d-none')
+    }
   }
 
   function setValidatorsFromURL() {
@@ -718,20 +733,6 @@ $(document).ready(function() {
     .attr('data-clipboard-text', window.location.href)
 
     renderCharts()
-
-    if (state.validators.length>0){
-      addValidatorUpdateUI()
-      showValidatorHist(state.validators[0])
-      showValidatorsInSearch(3)
-    }else{
-      $('#validatorModal').modal('hide')
-    }
-
-    if (state.validators.length>3){
-      $('#selected-validators-input-button').removeClass('d-none')
-    }else{
-      $('#selected-validators-input-button').addClass('d-none')
-    }
   }
 
   window.onpopstate = function(event) {
