@@ -111,7 +111,7 @@ function showFirstValidatorsInSearch(qty){
       $('#selected-validators-input').prepend($(item).clone())
       i++
     })
-  }, 200)
+  }, 500)
 }
 
 $(document).ready(function() {
