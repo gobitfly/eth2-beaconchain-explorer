@@ -229,14 +229,14 @@
                                     </button>
                               </span>
                               <span class="multiselect-border">
-                                    <ul class="multiselect">
+                                    <ul id="selected-validators-input" class="multiselect">
                                           <li class="input">
                                           <input class="typeahead-dashboard" type="text"
                                                 placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
                                           </li>
                                     </ul>
-                                    <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#validatorModal">
-                                    See all
+                                    <button id="selected-validators-input-button" type="button" class="btn btn-sm d-none" style="background-color: var(--bg-color-secondary);" data-toggle="modal" data-target="#validatorModal">
+                                          <i class="fas fa-box-open"></i>
                                     </button>
                               </span>
                               <div style="font-weight:300;font-size:0.9rem;display:flex;justify-content:center" class="pb-2">
@@ -263,7 +263,7 @@
                                     <td> <div id="earnings-month" class="stat">0.000</div></td>
                               </tr>
                               <tr>
-                                    <th scope="row"><div id="earnings-total-header" class="title">Total</div></th>
+                                    <th scope="row"><div id="earnings-total-header" class="title">Total Balance</div></th>
                                     <td><div id="earnings-total" class="stat">0.000</div></td>
                               </tr>
                               <tr>
@@ -827,7 +827,7 @@
         </button>
       </div>
       <div class="modal-body" style="background-color: var(--bg-color-secondary);">
-        <ul id="selected-validators" class="multiselect">
+        <ul id="selected-validators" class="multiselect val-modal">
         </ul>
       </div>
       <div class="modal-footer" style="background-color: var(--bg-color-secondary);">

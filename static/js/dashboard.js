@@ -89,27 +89,37 @@ function addValidatorUpdateUI(){
 }
 
 function showSelectedValidator(){
-  $( 'button[id^=dropdownMenuButton]' ).each(function(el, item){
-    console.log($(item).attr('id')===selectedBTNid, $(item).attr('id'), selectedBTNid)
-    if ($(item).attr('id')===selectedBTNid){
-      $(item).addClass('bg-primary')
-    }else{
-      if (selectedBTNid != null){
-        $(item).removeClass('bg-primary')
+  setTimeout(function(){
+    $( 'button[id^=dropdownMenuButton]' ).each(function(el, item){
+      if ($(item).attr('id')===selectedBTNid){
+        $(item).addClass('bg-primary')
+      }else{
+        if (selectedBTNid != null){
+          $(item).removeClass('bg-primary')
+        }
       }
-    }
-  })
+    })
+  }, 100)//if deselected index is not clearing increase the time
+}
+
+function showFirstValidatorsInSearch(qty){
+  setTimeout(function(){
+    let i=0
+    $('#selected-validators-input li:not(:last)').remove()
+    $('#selected-validators.val-modal li').each(function(el, item){
+      if (i===qty) {return}
+      $('#selected-validators-input').prepend(item)
+      i++
+    })
+  }, 200)
 }
 
 $(document).ready(function() {
   $("#dashChartTabs a:first").tab("show")
-  
-  $('#validators').on("page.dt", function(){
-    setTimeout(function(){
-      showSelectedValidator()
-    }, 150) //if deselected index is not clearing increase the time
-  })
 
+  $('#validators').on("page.dt", function(){
+    showSelectedValidator()
+  })
   //bookmark button adds all validators in the dashboard to the watchlist
   $('#bookmark-button').on("click", function(event) {
     var tickIcon = $("<i class='fas fa-check' style='width:15px;'></i>")
@@ -418,6 +428,9 @@ $(document).ready(function() {
   $('#selected-validators').on('click', '.remove-validator', function() {
     removeValidator(this.parentElement.dataset.validatorIndex)
   })
+  $('#selected-validators-input').on('click', '.remove-validator', function() {
+    removeValidator(this.parentElement.dataset.validatorIndex)
+  })
 
   $('.multiselect-border input').on('focus', function(event) {
     $('.multiselect-border').addClass('focused')
@@ -466,6 +479,18 @@ $(document).ready(function() {
       elsItems.push(elItem)
     }
     elHolder.prepend(...elsItems)
+
+    if (state.validators.length>0){
+      showValidatorHist(state.validators[0])
+      showFirstValidatorsInSearch(3)
+    }
+
+    if (state.validators.length>3){
+      $('#selected-validators-input-button').removeClass('d-none')
+    }else{
+      $('#selected-validators-input-button').addClass('d-none')
+      $('#validatorModal').modal('hide')
+    }
   }
 
   function renderDashboardInfo() {
