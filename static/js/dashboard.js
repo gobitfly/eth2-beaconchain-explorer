@@ -105,12 +105,16 @@ function showSelectedValidator(){
 function showFirstValidatorsInSearch(qty){
   setTimeout(function(){
     let i=0
+    let l=[]
     $('#selected-validators-input li:not(:last)').remove()
     $('#selected-validators.val-modal li').each(function(el, item){
       if (i===qty) {return}
-      $('#selected-validators-input').prepend($(item).clone())
+      l.push($(item).clone())
       i++
     })
+    for (let i=0; i<l.length; i++){
+      $('#selected-validators-input').prepend(l[l.length-(i+1)])
+    }
   }, 500)
 }
 
