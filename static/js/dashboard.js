@@ -102,7 +102,7 @@ function showSelectedValidator(){
   }, 100)//if deselected index is not clearing increase the time
 }
 
-function showFirstValidatorsInSearch(qty){
+function showValidatorsInSearch(qty){
   setTimeout(function(){
     let i=0
     let l=[]
@@ -115,7 +115,7 @@ function showFirstValidatorsInSearch(qty){
     for (let i=0; i<l.length; i++){
       $('#selected-validators-input').prepend(l[l.length-(i+1)])
     }
-  }, 500)
+  }, 200)
 }
 
 $(document).ready(function() {
@@ -483,20 +483,6 @@ $(document).ready(function() {
       elsItems.push(elItem)
     }
     elHolder.prepend(...elsItems)
-
-    if (state.validators.length>0){
-      addValidatorUpdateUI()
-      showValidatorHist(state.validators[0])
-      showFirstValidatorsInSearch(3)
-    }else{
-      $('#validatorModal').modal('hide')
-    }
-
-    if (state.validators.length>3){
-      $('#selected-validators-input-button').removeClass('d-none')
-    }else{
-      $('#selected-validators-input-button').addClass('d-none')
-    }
   }
 
   function renderDashboardInfo() {
@@ -732,6 +718,20 @@ $(document).ready(function() {
     .attr('data-clipboard-text', window.location.href)
 
     renderCharts()
+
+    if (state.validators.length>0){
+      addValidatorUpdateUI()
+      showValidatorHist(state.validators[0])
+      showValidatorsInSearch(3)
+    }else{
+      $('#validatorModal').modal('hide')
+    }
+
+    if (state.validators.length>3){
+      $('#selected-validators-input-button').removeClass('d-none')
+    }else{
+      $('#selected-validators-input-button').addClass('d-none')
+    }
   }
 
   window.onpopstate = function(event) {
