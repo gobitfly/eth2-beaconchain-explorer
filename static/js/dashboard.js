@@ -33,7 +33,7 @@ function appendBlocks(blocks) {
   }
 }
 
-var selectedBTNid = null
+var selectedBTNindex = null
 function showValidatorHist (index) {
   if ($.fn.dataTable.isDataTable('#dash-validator-history-table')){
         $('#dash-validator-history-table').DataTable().destroy();
@@ -70,7 +70,7 @@ function showValidatorHist (index) {
   $('#dash-validator-history-table').removeClass('d-none')
   $('#dash-validator-history-art').attr('class', 'd-none')
   $('#dash-validator-history-index').text('('+index+')')  
-  selectedBTNid='dropdownMenuButton'+index
+  selectedBTNindex=index
   showSelectedValidator()
 }
 
@@ -91,15 +91,21 @@ function addValidatorUpdateUI(){
 function showSelectedValidator(){
   setTimeout(function(){
     $( 'button[id^=dropdownMenuButton]' ).each(function(el, item){
-      if ($(item).attr('id')===selectedBTNid){
+      if ($(item).attr('id')==="dropdownMenuButton"+selectedBTNindex){
         $(item).addClass('bg-primary')
       }else{
-        if (selectedBTNid != null){
+        if (selectedBTNindex != null){
           $(item).removeClass('bg-primary')
         }
       }
     })
   }, 100)//if deselected index is not clearing increase the time
+
+  $('.hbtn').hover(function () {
+    $(this).addClass('shadow');
+    }, function () {
+    $(this).removeClass('shadow');
+  });
 }
 
 function showValidatorsInSearch(qty){
@@ -219,7 +225,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data
           // return '<a href="/validator/' + data + '">' + data + '</a>'
-          return `<button class="btn btn-sm m-0 p-0" type="button" id="dropdownMenuButton${data}" onclick="showValidatorHist('${data}')">
+          return `<button class="btn btn-sm m-0 p-1 hbtn" type="button" id="dropdownMenuButton${data}" onclick="showValidatorHist('${data}')">
                       ${data}
                   </button>
                  `
@@ -448,6 +454,7 @@ $(document).ready(function() {
       state = setInitialState()
       localStorage.removeItem('dashboard_validators')
       window.location = "/dashboard"
+      selectedBTNindex=null
     }
     // window.location = "/dashboard"
   })
@@ -492,7 +499,9 @@ $(document).ready(function() {
     if (state.validators.length>0){
       showSelectedValidator()
       addValidatorUpdateUI()
-      showValidatorHist(state.validators[0])
+      if (selectedBTNindex!=state.validators[0]){ // don't query if not necessary
+        showValidatorHist(state.validators[0])
+      }
       showValidatorsInSearch(3)
     }else{
       $('#validatorModal').modal('hide')
@@ -823,7 +832,8 @@ function createBalanceChart(effective, balance, utilization, missedAttestations)
       enabled: false
     },
     chart: {
-      type: 'line',
+      type: 'column',
+      height: '500px'
     },
     legend: {
       enabled: true
@@ -833,7 +843,7 @@ function createBalanceChart(effective, balance, utilization, missedAttestations)
     },
     xAxis: {
       type: 'datetime',
-      range: 7 * 24 * 60 * 60 * 1000,
+      range: 0.5 * 24 * 60 * 60 * 1000,
       labels: {
         formatter: function(){
           var epoch = timeToEpoch(this.value)
@@ -862,42 +872,42 @@ function createBalanceChart(effective, balance, utilization, missedAttestations)
           },
           
         }
-      },
-      {
-        title: {
-          text: 'Validator Effectiveness'
-        },
-        labels: {
-          formatter: function() {
-            return (this.value * 100).toFixed(2) + '%'
-          },
-
-        },
-        opposite: true
       }
+      // {
+      //   title: {
+      //     text: 'Validator Effectiveness'
+      //   },
+      //   labels: {
+      //     formatter: function() {
+      //       return (this.value * 100).toFixed(2) + '%'
+      //     },
+
+      //   },
+      //   opposite: true
+      // }
     ],
     series: [
       {
         name: 'Balance',
-        yAxis: 0,
+        // yAxis: 0,
         data: balance
-      },
-      {
-        name: 'Effective Balance',
-        yAxis: 0,
-        step: true,
-        data: effective
-      },
-      {
-        name: 'Validator Effectiveness',
-        yAxis: 1,
-        data: utilization,
-        tooltip: {
-          pointFormatter: function() {
-            return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${(this.y * 100).toFixed(2)}%</b><br/>`
-          }
-        }
       }
+      // {
+      //   name: 'Effective Balance',
+      //   yAxis: 0,
+      //   step: true,
+      //   data: effective
+      // },
+      // {
+      //   name: 'Validator Effectiveness',
+      //   yAxis: 1,
+      //   data: utilization,
+      //   tooltip: {
+      //     pointFormatter: function() {
+      //       return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${(this.y * 100).toFixed(2)}%</b><br/>`
+      //     }
+      //   }
+      // }
     ]
   })
 }

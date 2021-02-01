@@ -39,12 +39,7 @@ function hideInfoBanner(msg){
 
 // typeahead
 $(document).ready(function() {
-  // $('.card').hover(function () {
-  //   $(this).addClass('shadow-sm');
-  //   }, function () {
-  //   $(this).removeClass('shadow-sm');
-  // });
-
+  
   formatTimestamps() // make sure this happens before tooltips
   $('[data-toggle="tooltip"]').tooltip()
 
