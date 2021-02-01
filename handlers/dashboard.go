@@ -28,8 +28,8 @@ func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 	strSplit := strings.Split(str, ",")
 	strSplitLen := len(strSplit)
 
-	// we only support up to 100 validators
-	if strSplitLen > 100 {
+	// we only support up to 200 validators
+	if strSplitLen > 200 {
 		return []uint64{}, fmt.Errorf("Too much validators")
 	}
 
@@ -280,7 +280,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN proposals p2 ON validators.validatorindex = p2.validatorindex AND p2.status = 2
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = ANY($1)
-		LIMIT 100`, filter)
+		LIMIT 200`, filter)
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator data")

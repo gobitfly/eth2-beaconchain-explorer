@@ -34,6 +34,7 @@ function appendBlocks(blocks) {
 }
 
 var selectedBTNindex = null
+const VALLIMIT = 200
 function showValidatorHist (index) {
   if ($.fn.dataTable.isDataTable('#dash-validator-history-table')){
         $('#dash-validator-history-table').DataTable().destroy();
@@ -478,6 +479,7 @@ $(document).ready(function() {
   updateState()
 
   function renderSelectedValidators() {
+    if(state.validators.length>VALLIMIT) return
     var elHolder = document.getElementById('selected-validators')
     $('#selected-validators .item').remove()
     var elsItems = []
@@ -515,6 +517,10 @@ $(document).ready(function() {
   }
 
   function setValidatorsFromURL() {
+    // if (state.validators.length >= VALLIMIT) {
+    //   alert(`You can not add more than ${VALLIMIT} validators to your dashboard`)
+    //   return
+    // }
     var usp = new URLSearchParams(window.location.search)
     var validatorsStr = usp.get('validators')
     if (!validatorsStr) {
@@ -540,10 +546,10 @@ $(document).ready(function() {
     })
     state.validators.sort(sortValidators)
 
-    if (state.validators.length > 100) {
-      state.validators = state.validators.slice(0,100)
-      console.log("100 validators limit reached")
-      alert('You can not add more than 100 validators to your dashboard')
+    if (state.validators.length > VALLIMIT) {
+      state.validators = state.validators.slice(0,VALLIMIT)
+      console.log(`${VALLIMIT} validators limit reached`)
+      alert(`You can not add more than ${VALLIMIT} validators to your dashboard`)
     }
   }
 
@@ -551,7 +557,7 @@ $(document).ready(function() {
     var limitReached = false
     indicesLoop:
     for (var j = 0; j < indices.length; j++) {
-      if (state.validators.length >= 100) {
+      if (state.validators.length >= VALLIMIT) {
         limitReached = true
         break indicesLoop
       }
@@ -564,8 +570,8 @@ $(document).ready(function() {
     }
 
     if (limitReached) {
-      console.log("100 validators limit reached")
-      alert('You can not add more than 100 validators to your dashboard')
+      console.log(`${VALLIMIT} validators limit reached`)
+      alert(`You can not add more than ${VALLIMIT} validators to your dashboard`)
     }
     state.validators.sort(sortValidators)
     renderSelectedValidators()
@@ -573,8 +579,8 @@ $(document).ready(function() {
   }
 
   function addValidator(index) {
-    if (state.validators.length > 100) {
-      alert('Too much validators, you can not add more than 100 validators to your dashboard!')
+    if (state.validators.length >= VALLIMIT) {
+      alert(`Too many validators, you can not add more than ${VALLIMIT} validators to your dashboard!`)
       return
     }
     index = index+"" // make sure index is string
@@ -642,7 +648,10 @@ $(document).ready(function() {
     // } else if(_range !== -1) {
     //   _range = -1;
     // }
-
+    if (state.validators.length > VALLIMIT) {
+      // alert(`Too many validators, you can not add more than ${VALLIMIT} validators to your dashboard!`)
+      return
+    }
     localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
     if(state.validators.length) {
       console.log('length', state.validators)
