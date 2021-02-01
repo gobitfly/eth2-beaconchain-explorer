@@ -111,7 +111,8 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				OR proposer IN (
 					SELECT validatorindex
 					FROM validators
-					WHERE LOWER(name) LIKE LOWER($2)
+					INNER JOIN validator_names ON validators.pubkey = validator_names.publickey
+					WHERE validator_names.name IS NOT NULL AND LOWER(validator_names.name) LIKE LOWER($2)
 				)`, search+"%", "%"+search+"%", fmt.Sprintf("%%%x%%", search))
 		if err != nil {
 			logger.Errorf("error retrieving max slot number: %v", err)

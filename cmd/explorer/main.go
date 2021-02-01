@@ -6,6 +6,7 @@ import (
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
+	"eth2-exporter/metrics"
 	"eth2-exporter/price"
 	"eth2-exporter/rpc"
 	"eth2-exporter/services"
@@ -133,7 +134,7 @@ func main() {
 
 		router := mux.NewRouter()
 
-		apiV1Router := mux.NewRouter().PathPrefix("/api/v1").Subrouter()
+		apiV1Router := router.PathPrefix("/api/v1").Subrouter()
 		router.PathPrefix("/api/v1/docs/").Handler(httpSwagger.WrapHandler)
 		apiV1Router.HandleFunc("/epoch/{epoch}", handlers.ApiEpoch).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/epoch/{epoch}/blocks", handlers.ApiEpochBlocks).Methods("GET", "OPTIONS")
@@ -176,8 +177,6 @@ func main() {
 		apiV1AuthRouter.Use(utils.CORSMiddleware)
 		apiV1AuthRouter.Use(utils.AuthorizedAPIMiddleware)
 
-		router.PathPrefix("/api/v1").Handler(apiV1Router)
-
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 
 		services.Init() // Init frontend services
@@ -204,6 +203,7 @@ func main() {
 				csrfBytes,
 				csrf.FieldName("CsrfField"),
 				csrf.Secure(!cfg.Frontend.CsrfInsecure),
+				csrf.Path("/"),
 			)
 
 			router.HandleFunc("/", handlers.Index).Methods("GET")
@@ -328,6 +328,10 @@ func main() {
 
 		}
 
+		if utils.Config.Metrics.Enabled {
+			router.Use(metrics.HttpMiddleware)
+		}
+
 		n := negroni.New(negroni.NewRecovery())
 
 		// Customize the logging middleware to include a proper module entry for the frontend
@@ -361,9 +365,18 @@ func main() {
 		logrus.Printf("http server listening on %v", srv.Addr)
 		go func() {
 			if err := srv.ListenAndServe(); err != nil {
-				logrus.Println(err)
+				logrus.WithError(err).Fatal("Error serving frontend")
 			}
 		}()
+	}
+
+	if utils.Config.Metrics.Enabled {
+		go func(addr string) {
+			logrus.Infof("Serving metrics on %v", addr)
+			if err := metrics.Serve(addr); err != nil {
+				logrus.WithError(err).Fatal("Error serving metrics")
+			}
+		}(utils.Config.Metrics.Address)
 	}
 
 	utils.WaitForCtrlC()
