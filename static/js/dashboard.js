@@ -511,7 +511,10 @@ $(document).ready(function() {
 
     if (state.validators.length>3){
       $('#selected-validators-input-button').removeClass('d-none')
+      $('#selected-validators-input-button').addClass('d-flex')
+      $('#selected-validators-input-button span').html(state.validators.length)
     }else{
+      $('#selected-validators-input-button').removeClass('d-flex')
       $('#selected-validators-input-button').addClass('d-none')
     }
   }
