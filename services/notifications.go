@@ -127,7 +127,7 @@ func sendFrontEndEthClientNotifications(notificationsByUserID map[uint64]map[typ
 func getNetwork() string {
 	domainParts := strings.Split(utils.Config.Frontend.SiteDomain, ".")
 	if len(domainParts) >= 3 {
-		return fmt.Sprintf("(%s) ", strings.Title(domainParts[0]))
+		return fmt.Sprintf("%s: ", strings.Title(domainParts[0]))
 	}
 	return ""
 }
@@ -159,7 +159,7 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 					for _, userToken := range userTokens {
 
 						notification := new(messaging.Notification)
-						notification.Title = fmt.Sprintf("%s %s", getNetwork(), n.GetTitle())
+						notification.Title = fmt.Sprintf("%s%s", getNetwork(), n.GetTitle())
 						notification.Body = n.GetInfo(false)
 
 						message := new(messaging.Message)
