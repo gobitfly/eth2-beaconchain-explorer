@@ -235,13 +235,14 @@
                                                 placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
                                           </li>
                                     </ul>
-                                    <button id="selected-validators-input-button" type="button" class="btn btn-sm hbtn d-none flex-column justify-content-center align-items-center" style="background-color: var(--bg-color-secondary);" data-toggle="modal" data-target="#validatorModal">
+                                    <button id="selected-validators-input-button" type="button" class="btn btn-sm hbtn d-none flex-column justify-content-center align-items-center shadow-sm" 
+                                                style="background-color: var(--bg-color-secondary); z-index: 998;" data-toggle="modal" data-target="#validatorModal">
                                           <span style="font-size: 8px;"></span>
-                                          <i class="fas fa-box-open text-primary"></i>
+                                          <i class="fas fa-box-open text-primary" style="z-index: 999;"></i>
                                     </button>
                               </span>
                               <div style="font-weight:300;font-size:0.9rem;display:flex;justify-content:center" class="pb-2">
-                                    <span id="dashboard-info"></span>
+                                    <span id="dashboard-info">Found 0 pending, 0 active and 0 exited validators</span>
                               </div>          
                         </div>  
                   </div>
