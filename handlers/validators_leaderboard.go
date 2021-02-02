@@ -86,66 +86,63 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	var performanceData []*types.ValidatorPerformance
 
 	if search == "" {
-		err = db.DB.Get(&totalCount, `SELECT COUNT(*) FROM validator_performance`)
+		err = db.DB.Select(&performanceData, `
+			SELECT 
+				a.*,
+				validators.pubkey,
+				COALESCE(validator_names.name, '') AS name,
+				cnt.total_count
+			FROM (
+					SELECT
+						ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
+						validator_performance.*
+					FROM validator_performance
+					ORDER BY `+orderBy+` `+orderDir+`
+					LIMIT $1 OFFSET $2
+			) AS a
+			LEFT JOIN validators ON validators.validatorindex = a.validatorindex
+			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+			LEFT JOIN (SELECT COUNT(*) FROM validator_performance) cnt(total_count) ON true`, length, start)
 		if err != nil {
-			logger.Errorf("error retrieving proposed blocks count: %v", err)
+			logger.Errorf("error retrieving performanceData data with search: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-
-		err = db.DB.Select(&performanceData, `
-			SELECT * FROM (
-				SELECT 
-					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
-					validator_performance.*,
-					validators.pubkey, 
-					COALESCE(validator_names.name, '') AS name
-				FROM validator_performance 
-					LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
-					LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-				ORDER BY `+orderBy+` `+orderDir+`
-			) AS a
-			LIMIT $1 OFFSET $2`, length, start)
-		if err != nil {
-			logger.Errorf("error retrieving validator attestations data: %v", err)
-			http.Error(w, "Internal server error", 503)
-			return
+		if len(performanceData) > 0 {
+			totalCount = performanceData[0].TotalCount
 		}
 	} else {
-		err = db.DB.Get(&totalCount, `
-			SELECT COUNT(*)
-			FROM validator_performance
-				LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
-				LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE (encode(validators.pubkey::bytea, 'hex') LIKE $1
-				OR CAST(validators.validatorindex AS text) LIKE $1)
-				OR LOWER(validator_names.name) LIKE LOWER($1)`, "%"+search+"%")
+		err = db.DB.Select(&performanceData, `
+			WITH 
+				matched_validators AS (
+					SELECT v.validatorindex, v.pubkey, COALESCE(vn.name,'') as name
+					FROM validators v
+					LEFT JOIN validator_names vn ON vn.publickey = v.pubkey
+					WHERE (encode(v.pubkey::bytea, 'hex') LIKE $3
+						OR CAST(v.validatorindex AS text) LIKE $3)
+						OR LOWER(vn.name) LIKE LOWER($3)
+				)
+			SELECT 
+				mv.*, 
+				perf.rank, perf.balance, perf.performance1d, perf.performance7d, perf.performance31d, perf.performance365d, 
+				cnt.total_count
+			FROM matched_validators mv
+			LEFT JOIN (SELECT COUNT(*) FROM matched_validators) cnt(total_count) ON true
+			LEFT JOIN (
+				SELECT
+					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
+					validator_performance.*
+				FROM validator_performance
+				ORDER BY `+orderBy+` `+orderDir+`
+			) perf ON perf.validatorindex = mv.validatorindex
+			limit $1 OFFSET $2`, length, start, "%"+search+"%")
 		if err != nil {
-			logger.Errorf("error retrieving proposed blocks count with search: %v", err)
+			logger.Errorf("error retrieving performanceData data with search: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-
-		err = db.DB.Select(&performanceData, `
-			SELECT * FROM (
-				SELECT 
-					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
-					validator_performance.*,
-					validators.pubkey, 
-					COALESCE(validator_names.name, '') AS name
-				FROM validator_performance 
-					LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex
-					LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-				ORDER BY `+orderBy+` `+orderDir+`
-			) AS a
-			WHERE (encode(a.pubkey::bytea, 'hex') LIKE $3
-				OR CAST(a.validatorindex AS text) LIKE $3)
-				OR LOWER(a.name) LIKE LOWER($3)
-			LIMIT $1 OFFSET $2`, length, start, "%"+search+"%")
-		if err != nil {
-			logger.Errorf("error retrieving validator attestations data with search: %v", err)
-			http.Error(w, "Internal server error", 503)
-			return
+		if len(performanceData) > 0 {
+			totalCount = performanceData[0].TotalCount
 		}
 	}
 

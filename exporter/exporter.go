@@ -3,6 +3,7 @@ package exporter
 import (
 	"bytes"
 	"eth2-exporter/db"
+	"eth2-exporter/metrics"
 	"eth2-exporter/rpc"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -431,6 +432,9 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 // ExportEpoch will export an epoch from rpc into the database
 func ExportEpoch(epoch uint64, client rpc.Client) error {
 	start := time.Now()
+	defer func() {
+		metrics.ExporterExportEpochDuration.Observe(time.Since(start).Seconds())
+	}()
 
 	// Check if the partition for the validator_balances and attestation_assignments table for this epoch exists
 	var one int
