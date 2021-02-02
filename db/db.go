@@ -599,6 +599,15 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving validator balances to db: %v", err)
 	}
 
+	// only export recent validator balances if the epoch is within the threshold
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+5 {
+		logger.Infof("exporting recent validator balance data")
+		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
+		if err != nil {
+			return fmt.Errorf("error saving recent validator balances to db: %v", err)
+		}
+	}
+
 	logger.Infof("exporting epoch statistics data")
 	proposerSlashingsCount := 0
 	attesterSlashingsCount := 0
@@ -975,34 +984,6 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
 	batchSize := 10000
 
-	//for b := 0; b < len(validators); b += batchSize {
-	//	start := b
-	//	end := b + batchSize
-	//	if len(validators) < end {
-	//		end = len(validators)
-	//	}
-	//
-	//	valueStrings := make([]string, 0, batchSize)
-	//	valueArgs := make([]interface{}, 0, batchSize*4)
-	//	for i, v := range validators[start:end] {
-	//		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*4+1, i*4+2, i*4+3, i*4+4))
-	//		valueArgs = append(valueArgs, epoch)
-	//		valueArgs = append(valueArgs, v.Index)
-	//		valueArgs = append(valueArgs, v.Balance)
-	//		valueArgs = append(valueArgs, v.EffectiveBalance)
-	//	}
-	//	stmt := fmt.Sprintf(`
-	//	INSERT INTO validator_balances (epoch, validatorindex, balance, effectivebalance)
-	//	VALUES %s
-	//	ON CONFLICT (epoch, validatorindex) DO UPDATE SET
-	//		balance          = EXCLUDED.balance,
-	//		effectivebalance = EXCLUDED.effectivebalance`, strings.Join(valueStrings, ","))
-	//	_, err := tx.Exec(stmt, valueArgs...)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
-
 	for b := 0; b < len(validators); b += batchSize {
 		start := b
 		end := b + batchSize
@@ -1021,12 +1002,53 @@ func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.
 			valueArgs = append(valueArgs, epoch/1575)
 		}
 		stmt := fmt.Sprintf(`
-		INSERT INTO validator_balances_p (epoch, validatorindex, balance, effectivebalance, week)
-		VALUES %s
-		ON CONFLICT (epoch, validatorindex, week) DO UPDATE SET
-			balance          = EXCLUDED.balance,
-			effectivebalance = EXCLUDED.effectivebalance`, strings.Join(valueStrings, ","))
+			INSERT INTO validator_balances_p (epoch, validatorindex, balance, effectivebalance, week)
+			VALUES %s
+			ON CONFLICT (epoch, validatorindex, week) DO UPDATE SET
+				balance          = EXCLUDED.balance,
+				effectivebalance = EXCLUDED.effectivebalance`, strings.Join(valueStrings, ","))
+
 		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
+	batchSize := 10000
+
+	for b := 0; b < len(validators); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(validators) < end {
+			end = len(validators)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*3)
+		for i, v := range validators[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+			valueArgs = append(valueArgs, epoch)
+			valueArgs = append(valueArgs, v.Index)
+			valueArgs = append(valueArgs, v.Balance)
+		}
+		stmt := fmt.Sprintf(`
+			INSERT INTO validator_balances_recent (epoch, validatorindex, balance)
+			VALUES %s
+			ON CONFLICT (epoch, validatorindex) DO UPDATE SET
+				balance = EXCLUDED.balance`, strings.Join(valueStrings, ","))
+
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+	}
+
+	if epoch > 4 {
+		_, err := tx.Exec("DELETE FROM validator_balances_recent WHERE epoch < $1", epoch-4)
 		if err != nil {
 			return err
 		}

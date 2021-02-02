@@ -329,15 +329,15 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 				us.last_sent_epoch,
 				(SELECT MAX(epoch) FROM (
 					SELECT epoch, balance-LAG(balance) OVER (ORDER BY epoch) AS diff
-					FROM validator_balances_p 
-					WHERE validatorindex = v.validatorindex AND week >= us.last_sent_epoch / 1575 AND week >= ($2 - 10) / 1575 AND epoch > us.last_sent_epoch AND epoch > $2 - 10
+					FROM validator_balances_recent 
+					WHERE validatorindex = v.validatorindex AND epoch > us.last_sent_epoch AND epoch > $2 - 10
 				) b WHERE diff > 0) AS lastbalanceincreaseepoch
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
-			INNER JOIN validator_balances_p vb0 ON v.validatorindex = vb0.validatorindex AND vb0.week = $2 / 1575 AND vb0.epoch = $2
-			INNER JOIN validator_balances_p vb1 ON v.validatorindex = vb1.validatorindex AND vb1.week = ($2 - 1) / 1575 AND vb1.epoch = $2 - 1 AND vb1.balance > vb0.balance
-			INNER JOIN validator_balances_p vb2 ON v.validatorindex = vb2.validatorindex AND vb2.week = ($2 - 2) / 1575 AND vb2.epoch = $2 - 2 AND vb2.balance > vb1.balance
-			INNER JOIN validator_balances_p vb3 ON v.validatorindex = vb3.validatorindex AND vb3.week = ($2 - 3) / 1575 AND vb3.epoch = $2 - 3 AND vb3.balance > vb2.balance
+			INNER JOIN validator_balances_recent vb0 ON v.validatorindex = vb0.validatorindex AND vb0.epoch = $2
+			INNER JOIN validator_balances_recent vb1 ON v.validatorindex = vb1.validatorindex AND vb1.epoch = $2 - 1 AND vb1.balance > vb0.balance
+			INNER JOIN validator_balances_recent vb2 ON v.validatorindex = vb2.validatorindex AND vb2.epoch = $2 - 2 AND vb2.balance > vb1.balance
+			INNER JOIN validator_balances_recent vb3 ON v.validatorindex = vb3.validatorindex AND vb3.epoch = $2 - 3 AND vb3.balance > vb2.balance
 			WHERE us.event_name = $1 AND us.created_epoch <= $2
 		) a WHERE lastbalanceincreaseepoch IS NOT NULL OR last_sent_epoch IS NULL`,
 		types.ValidatorBalanceDecreasedEventName, latestEpoch)
