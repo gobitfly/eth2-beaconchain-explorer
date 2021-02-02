@@ -30,28 +30,28 @@
                 validatorsDataTable.column(5).visible(true);
                 validatorsDataTable.column(6).visible(true);
                 validatorsDataTable.column(7).visible(true);
-                validatorsDataTable.column(8).visible(true)
+                validatorsDataTable.column(8).visible(false);
             } else if (state === "pending") {
                 validatorsDataTable.column(3).visible(true);
                 validatorsDataTable.column(4).visible(true);
                 validatorsDataTable.column(5).visible(false);
                 validatorsDataTable.column(6).visible(false);
                 validatorsDataTable.column(7).visible(false);
-                validatorsDataTable.column(8).visible(false)
+                validatorsDataTable.column(8).visible(false);
             } else if (state === "active" || state === "slashing" || state === "exiting") {
                 validatorsDataTable.column(3).visible(true);
                 validatorsDataTable.column(4).visible(true);
                 validatorsDataTable.column(5).visible(false);
                 validatorsDataTable.column(6).visible(false);
                 validatorsDataTable.column(7).visible(true);
-                validatorsDataTable.column(8).visible(true)
+                validatorsDataTable.column(8).visible(false);
             } else if (state === "exited") {
                 validatorsDataTable.column(3).visible(false);
                 validatorsDataTable.column(4).visible(true);
                 validatorsDataTable.column(5).visible(true);
                 validatorsDataTable.column(6).visible(true);
                 validatorsDataTable.column(7).visible(false);
-                validatorsDataTable.column(8).visible(true)
+                validatorsDataTable.column(8).visible(true);
             }
         }
 
@@ -188,9 +188,12 @@
                         targets: 8,
                         data: '8',
                         render: function (data, type, row, meta) {
-                            return `<span data-toggle="tooltip" data-placement="top" title="${data[0]} executed / ${data[1]} missed"><span class="text-success">${data[0]}</span> / <span class="text-danger">${data[1]}</span></span>`
+                            if (data === true) {
+                               return `<span data-toggle="tooltip" data-placement="top" title="slashed" class="text-danger">true</span>`
+                            }
+                            return `<span data-toggle="tooltip" data-placement="top" title="unslashed" class="text-success">false</span>`
                         }
-                    }
+                    },
                 ]
             })
         })
@@ -288,7 +291,7 @@
                                 <th>Exit</th>
                                 <th title="Withdrawable epoch number">W/able</th>
                                 <th>Last Attestation</th>
-                                <th>Proposals</th>
+                                <th>Slashed</th>
                             </tr>
                             </thead>
                             <tbody></tbody>
