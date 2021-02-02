@@ -94,7 +94,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				cnt.total_count
 			FROM (
 					SELECT
-						ROW_NUMBER() OVER (ORDER BY performance7d DESC) AS rank,
+						ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
 						validator_performance.*
 					FROM validator_performance
 					ORDER BY `+orderBy+` `+orderDir+`
@@ -130,7 +130,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN (SELECT COUNT(*) FROM matched_validators) cnt(total_count) ON true
 			LEFT JOIN (
 				SELECT
-					ROW_NUMBER() OVER (ORDER BY performance7d DESC) AS rank,
+					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
 					validator_performance.*
 				FROM validator_performance
 				ORDER BY `+orderBy+` `+orderDir+`
