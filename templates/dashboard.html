@@ -235,10 +235,12 @@
                                                 placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
                                           </li>
                                     </ul>
+                                    
                                     <button id="selected-validators-input-button" type="button" class="btn btn-sm hbtn d-none flex-column justify-content-center align-items-center shadow-sm" 
                                                 style="background-color: var(--bg-color-secondary); z-index: 998;" data-toggle="modal" data-target="#validatorModal">
+                                          <i id="selected-validators-input-button-val" class="fas fa-male"></i>
                                           <span style="font-size: 8px;"></span>
-                                          <i class="fas fa-box-open text-primary" style="z-index: 999;"></i>
+                                          <i id="selected-validators-input-button-box" class="fas fa-box-open text-primary" style="z-index: 999;"></i>
                                     </button>
                               </span>
                               <div style="font-weight:300;font-size:0.9rem;display:flex;justify-content:center" class="pb-2">
@@ -724,9 +726,9 @@
                   </div>
             </div>
             <div class="col-lg-4 px-lg-2 d-flex align-items-center my-2">
-                  <div class="card h-100 px-0 pt-0 card-body">
-                        <div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
-                              <span class="h4 text-center p-2">Validator History <span id="dash-validator-history-index"></span></span>
+                  <div class="card h-100 py-1 px-0 pt-0 card-body">
+                        <div class="d-flex justify-content-center align-items-center border-bottom">
+                              <span class="h4">Validator History</span>
                         </div>
                         <div id="dash-validator-history-art" class="d-flex align-items-center justify-content-center flex-column pt-4">
                               <svg style="width:60%; height: auto;" id="abc204e0-0cf0-4263-912e-9567c41f6205" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 790.44317 653.66142">
@@ -800,7 +802,11 @@
                               <span id="dash-validator-history-info" class="d-none p-3">Watch your <a class="text-primary" class="nav-link" id="validators-tab" data-toggle="tab" href="#validators-table" role="tab"
                                     aria-controls="validators" aria-selected="false" onclick='toggleFirstrow()'>validator</a> history right in the dashboard</span>
                         </div>
-                        <div class="table-responsive px-0 py-0 pt-5 mt-1">
+                        <div class="d-flex justify-content-center align-items-center">
+                              <i class="fas fa-male fa-lg mr-1"></i>
+                              <span id="dash-validator-history-index" style="font-size: 24px;"></span>
+                        </div>
+                        <div class="table-responsive px-0 py-0">
                               <table style="margin-top: 0px !important;" class="table d-none" id="dash-validator-history-table" width="100%">
                                     <thead>
                                           <tr>

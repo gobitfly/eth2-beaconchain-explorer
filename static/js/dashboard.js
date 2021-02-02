@@ -70,7 +70,7 @@ function showValidatorHist (index) {
   $("#validator-history-table_info").attr('style', 'padding-top: 0;')
   $('#dash-validator-history-table').removeClass('d-none')
   $('#dash-validator-history-art').attr('class', 'd-none')
-  $('#dash-validator-history-index').text('('+index+')')  
+  $('#dash-validator-history-index').text(index)  
   selectedBTNindex=index
   showSelectedValidator()
 }
@@ -87,6 +87,16 @@ function addValidatorUpdateUI(){
   $('#validators-tab').removeClass('disabled')
   $('#validator-art').attr('class', "d-none")
   $('#dash-validator-history-info').removeClass('d-none')
+  // $('#selected-validators-input-button-val').removeClass('d-none')
+ 
+  $('#selected-validators-input-button-box').addClass('zoomanim')
+  $('#selected-validators-input-button-val').addClass('goinboxanim')
+  setTimeout(()=>{
+    // $('#selected-validators-input-button-val').addClass('d-none')
+    $('#selected-validators-input-button-box').removeClass('zoomanim')
+    $('#selected-validators-input-button-val').removeClass('goinboxanim')
+  }, 2000)
+ 
 }
 
 function showSelectedValidator(){
@@ -421,7 +431,7 @@ $(document).ready(function() {
     } else {
       addValidator(sug.index)
     }
-    addValidatorUpdateUI()
+    // addValidatorUpdateUI()
     $('.typeahead-dashboard').typeahead('val', '')
   })
   $('#pending').on('click', 'button', function() {

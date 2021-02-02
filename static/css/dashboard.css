@@ -360,4 +360,41 @@ ul.multiselect input:focus {
   }
 }
 
+.zoomanim{
+  animation: zoom 2s 1;
+}
+
+#selected-validators-input-button-val{
+  position: absolute;
+  visibility: hidden;
+  top: 0%;
+  /* font-size: 15px;
+  z-index: 100;
+  bottom: 20px; */
+}
+
+.goinboxanim{
+  visibility: visible;
+  animation: goInBox 1s 1;
+}
+
+@keyframes zoom {
+  0% {}
+  25%{}
+  50%{font-size: 25px; z-index: 9999;}
+  100%{font-size: 15px; z-index: 9999;}
+}
+
+@keyframes goInBox {
+  0% {
+      visibility: visible;
+      font-size: 15px;
+      z-index: 100;
+      /* bottom: 0%; */
+    }
+  75%{visibility: visible; font-size: 0px; z-index: 100; top: 0%;}
+  100%{visibility: hidden; font-size: 0px; z-index: 100; top: 0%;}
+  /* 55%{position: absolute;font-size: 0px; z-index: 100;} */
+}
+
 
