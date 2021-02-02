@@ -95,7 +95,7 @@ function addValidatorUpdateUI(){
     // $('#selected-validators-input-button-val').addClass('d-none')
     $('#selected-validators-input-button-box').removeClass('zoomanim')
     $('#selected-validators-input-button-val').removeClass('goinboxanim')
-  }, 2000)
+  }, 1100)
  
 }
 

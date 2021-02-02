@@ -361,7 +361,7 @@ ul.multiselect input:focus {
 }
 
 .zoomanim{
-  animation: zoom 2s 1;
+  animation: zoom 1s 1;
 }
 
 #selected-validators-input-button-val{
