@@ -83,18 +83,22 @@ function toggleFirstrow(){
   }, 200)
 }
 
+var boxAnimationDirection=""
+
 function addValidatorUpdateUI(){
   $('#validators-tab').removeClass('disabled')
   $('#validator-art').attr('class', "d-none")
   $('#dash-validator-history-info').removeClass('d-none')
   // $('#selected-validators-input-button-val').removeClass('d-none')
- 
+  let anim = "goinboxanim"
+  if (boxAnimationDirection==="out") anim="gooutboxanim"
+
   $('#selected-validators-input-button-box').addClass('zoomanim')
-  $('#selected-validators-input-button-val').addClass('goinboxanim')
+  $('#selected-validators-input-button-val').addClass(anim)
   setTimeout(()=>{
     // $('#selected-validators-input-button-val').addClass('d-none')
     $('#selected-validators-input-button-box').removeClass('zoomanim')
-    $('#selected-validators-input-button-val').removeClass('goinboxanim')
+    $('#selected-validators-input-button-val').removeClass(anim)
   }, 1100)
  
 }
@@ -431,6 +435,7 @@ $(document).ready(function() {
     } else {
       addValidator(sug.index)
     }
+    boxAnimationDirection="in"
     // addValidatorUpdateUI()
     $('.typeahead-dashboard').typeahead('val', '')
   })
@@ -607,6 +612,7 @@ $(document).ready(function() {
   }
 
   function removeValidator(index) {
+    boxAnimationDirection="out"
     for (var i = 0; i < state.validators.length; i++) {
       if (state.validators[i] === index) {
         state.validators.splice(i, 1)
