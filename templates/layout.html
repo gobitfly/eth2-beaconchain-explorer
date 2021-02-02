@@ -64,7 +64,8 @@
             }
             function updateCurrency(currency) {
                 document.cookie = "currency=" + currency + ";samesite=strict;path=/"
-                window.location.reload();
+                document.getElementById('#currencyDropdown').innerHTML = currency
+                window.location.reload(true);
             }
         </script>
 
@@ -171,19 +172,19 @@
             </div>
             <div class="info-banner-right">
                 <div class="dropdown">
-                    <a class="btn btn-transparent btn-sm dropdown-toggle" id="langDropdown" data-toggle="dropdown"
+                    <a class="btn btn-transparent btn-sm dropdown-toggle" id="currencyDropdown" data-toggle="dropdown"
                        aira-haspopup="true" aria-expanded="false">
                         {{.Currency}}
                     </a>
-                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="langDropdown">
-                        <a href="#" class="dropdown-item" onClick="updateCurrency('ETH')">ETH</a>
-                        <a href="#" class="dropdown-item" onClick="updateCurrency('USD')">USD</a>
-                        <a href="#" class="dropdown-item" onClick="updateCurrency('EUR')">EUR</a>
-                        <a href="#" class="dropdown-item" onClick="updateCurrency('GBP')">GBP</a>
-                        <a href="#" class="dropdown-item" onClick="updateCurrency('CNY')">CNY</a>
-                        <a href="#" class="dropdown-item" onClick="updateCurrency('RUB')">RUB</a>
-                        <a href="#" class="dropdown-item" onClick="updateCurrency('CAD')">CAD</a>
-                        <a href="#" class="dropdown-item" onClick="updateCurrency('JPY')">JPY</a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">ETH</a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')">USD</a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')">EUR</a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')">GBP</a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')">CNY</a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')">RUB</a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')">CAD</a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')">JPY</a>
                     </div>
                 </div>
                 <!--<div class="dropdown">
