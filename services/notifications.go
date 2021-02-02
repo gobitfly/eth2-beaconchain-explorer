@@ -750,11 +750,18 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 
 		err := db.DB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter
-			FROM users_subscriptions AS us
-			LEFT JOIN users_notifications un ON un.event_filter=us.event_filter
-			WHERE us.event_name=$1 AND us.event_filter=$2 AND (un.sent_ts IS NULL OR un.sent_ts < TO_TIMESTAMP($3))
+			FROM 
+			users_subscriptions AS us
+			WHERE 
+				us.event_name=$1 
+			AND 
+				us.event_filter=$2 
+			AND 
+				us.user_id 
+			NOT IN 
+				(SELECT user_id FROM users_notifications as un WHERE un.event_name=$1 AND un.event_filter=$2 AND NOW() - INTERVAL '2 DAYS' <= un.sent_ts)
 			`,
-			eventName, strings.ToLower(client), time.Now().AddDate(0, 0, -2).Unix()) // was last notification sent 2 days ago for this client
+			eventName, strings.ToLower(client)) // was last notification sent 2 days ago for this client
 
 		if err != nil {
 			return err
