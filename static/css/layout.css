@@ -25,6 +25,10 @@ ins[data-revive-zoneid] > a > img {
 
 }
 
+.cursor-pointer {
+  cursor: pointer;
+}
+
 
 
 @media (max-width: 1140px) {
