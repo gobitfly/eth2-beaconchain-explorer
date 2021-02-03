@@ -288,8 +288,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	var scheduledCount uint8
 	err = db.DB.Get(&scheduledCount, `
-		select count(*) from blocks where status = '0' and epoch = (select max(epoch) from blocks limit 1);
-	`)
+		select count(*) from blocks where status = '0' and epoch = $1;
+	`, epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
 	}
