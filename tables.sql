@@ -129,6 +129,16 @@ CREATE TABLE validator_balances_7 PARTITION OF validator_balances_p FOR VALUES I
 CREATE TABLE validator_balances_8 PARTITION OF validator_balances_p FOR VALUES IN (8);
 CREATE TABLE validator_balances_9 PARTITION OF validator_balances_p FOR VALUES IN (9);
 
+drop table if exists validator_balances_recent;
+create table validator_balances_recent
+(
+    epoch          int    not null,
+    validatorindex int    not null,
+    balance        bigint not null,
+    primary key (epoch, validatorindex)
+);
+create index idx_validator_balances_recent_epoch on validator_balances_recent (epoch);
+
 drop table if exists validator_stats;
 create table validator_stats
 (

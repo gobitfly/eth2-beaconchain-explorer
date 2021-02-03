@@ -599,6 +599,15 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving validator balances to db: %v", err)
 	}
 
+	// only export recent validator balances if the epoch is within the threshold
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+5 {
+		logger.Infof("exporting recent validator balance data")
+		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
+		if err != nil {
+			return fmt.Errorf("error saving recent validator balances to db: %v", err)
+		}
+	}
+
 	logger.Infof("exporting epoch statistics data")
 	proposerSlashingsCount := 0
 	attesterSlashingsCount := 0
@@ -1027,6 +1036,46 @@ func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.
 			balance          = EXCLUDED.balance,
 			effectivebalance = EXCLUDED.effectivebalance`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
+	batchSize := 10000
+
+	for b := 0; b < len(validators); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(validators) < end {
+			end = len(validators)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*3)
+		for i, v := range validators[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3))
+			valueArgs = append(valueArgs, epoch)
+			valueArgs = append(valueArgs, v.Index)
+			valueArgs = append(valueArgs, v.Balance)
+		}
+		stmt := fmt.Sprintf(`
+			INSERT INTO validator_balances_recent (epoch, validatorindex, balance)
+			VALUES %s
+			ON CONFLICT (epoch, validatorindex) DO UPDATE SET
+				balance = EXCLUDED.balance`, strings.Join(valueStrings, ","))
+
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+	}
+
+	if epoch > 4 {
+		_, err := tx.Exec("DELETE FROM validator_balances_recent WHERE epoch < $1", epoch-4)
 		if err != nil {
 			return err
 		}
