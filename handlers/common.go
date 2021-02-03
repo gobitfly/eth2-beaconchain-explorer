@@ -132,11 +132,12 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}
 
 	return &types.ValidatorEarnings{
-		Total:     earningsTotal,
-		LastDay:   earningsLastDay,
-		LastWeek:  earningsLastWeek,
-		LastMonth: earningsLastMonth,
-		APR:       apr,
+		Total:         earningsTotal,
+		LastDay:       earningsLastDay,
+		LastWeek:      earningsLastWeek,
+		LastMonth:     earningsLastMonth,
+		APR:           apr,
+		TotalDeposits: totalDeposits,
 	}, nil
 }
 

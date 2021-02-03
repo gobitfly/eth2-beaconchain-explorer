@@ -73,6 +73,7 @@ function showValidatorHist (index) {
   $('#dash-validator-history-index').text(index)  
   selectedBTNindex=index
   showSelectedValidator()
+  updateValidatorInfo(index)
 }
 
 function toggleFirstrow(){
@@ -81,6 +82,37 @@ function toggleFirstrow(){
   setTimeout(function (){
         $('#'+id).focus()
   }, 200)
+}
+
+function updateValidatorInfo(index){
+  fetch(`/validator/${index}/proposedblocks?draw=1&start=1&length=1`,{
+    method: "GET"
+  }).then((res)=>{
+    res.json().then((data)=>{
+      $('#blockCount span').text(data.recordsTotal)
+    })
+  })
+  fetch(`/validator/${index}/attestations?draw=1&start=1&length=1`,{
+    method: "GET"
+  }).then((res)=>{
+    res.json().then((data)=>{
+      $('#attestationCount span').text(data.recordsTotal)
+    })
+  })
+  fetch(`/validator/${index}/slashings?draw=1&start=1&length=1`,{
+    method: "GET"
+  }).then((res)=>{
+    res.json().then((data)=>{
+      $('#slashingsCount span').text(data.recordsTotal)
+    })
+  })
+  fetch(`/validator/${index}/effectiveness`,{
+    method: "GET"
+  }).then((res)=>{
+    res.json().then((data)=>{
+      setValidatorEffectiveness('effectiveness', data.effectiveness)
+    })
+  })
 }
 
 var boxAnimationDirection=""
@@ -101,8 +133,7 @@ function addValidatorUpdateUI(){
     // $('#selected-validators-input-button-val').addClass('d-none')
     $('#selected-validators-input-button-box').removeClass('zoomanim')
     $('#selected-validators-input-button-val').removeClass(anim)
-  }, 1100)
- 
+  }, 1100) 
 }
 
 function showSelectedValidator(){
@@ -126,19 +157,34 @@ function showSelectedValidator(){
 }
 
 function showValidatorsInSearch(qty){
+  qty = parseInt(qty)
   // setTimeout(function(){
-    let i=0
-    let l=[]
-    $('#selected-validators-input li:not(:last)').remove()
-    $('#selected-validators.val-modal li').each(function(el, item){
-      if (i===qty) {return}
-      l.push($(item).clone())
-      i++
-    })
-    for (let i=0; i<l.length; i++){
-      $('#selected-validators-input').prepend(l[l.length-(i+1)])
-    }
+  let i=0
+  let l=[]
+  $('#selected-validators-input li:not(:last)').remove()
+  $('#selected-validators.val-modal li').each(function(el, item){
+    if (i===qty) {return}
+    l.push($(item).clone())
+    i++
+  })
+  for (let i=0; i<l.length; i++){
+    $('#selected-validators-input').prepend(l[l.length-(i+1)])
+  }
   // }, 100)
+}
+
+function setValidatorEffectiveness(elem, eff){
+  if (elem===undefined) return
+  eff=parseInt(eff)
+  if (eff >= 100) {
+    $('#'+elem).html(`<span class="text-success"> ${eff}% - Perfect <i class="fas fa-grin-stars"></i>`)
+  } else if (eff > 80) {
+    $('#'+elem).html(`<span class="text-success"> ${eff}% - Good <i class="fas fa-smile"></i></span>`)
+  } else if (eff > 60) {
+    $('#'+elem).html(`<span class="text-warning"> ${eff}% - Fair <i class="fas fa-meh"></i></span>`)
+  } else {
+    $('#'+elem).html(`<span class="text-danger"> ${eff}% - Bad <i class="fas fa-frown"></i></span>`)
+  }
 }
 
 $(document).ready(function() {
@@ -701,18 +747,21 @@ $(document).ready(function() {
           var lastDay = (result.lastDay / 1e9 * exchangeRate).toFixed(4)
           var lastWeek = (result.lastWeek / 1e9 * exchangeRate).toFixed(4)
           var lastMonth = (result.lastMonth / 1e9 * exchangeRate).toFixed(4)
-          var total = (result.total / 1e9 * exchangeRate).toFixed(4)
+          var total = (result.total / 1e9 * exchangeRate)
+          var totalDeposits = (result.totalDeposits / 1e9 * exchangeRate)
+          var totalChange = total-totalDeposits
 
           console.log(total, exchangeRate, result.total)
           addChange("#earnings-day", lastDay)
           addChange("#earnings-week", lastWeek)
           addChange("#earnings-month", lastMonth)
-          addChange("#earnings-total", total)
 
           document.querySelector('#earnings-day').innerHTML = (lastDay || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
           document.querySelector('#earnings-week').innerHTML = (lastWeek || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
           document.querySelector('#earnings-month').innerHTML = (lastMonth || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-total').innerHTML = (total || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-total').innerHTML = (total.toFixed(2) || '0.000') + `<span id="earnings-total-change">${totalChange.toFixed(4)}</span>` + " <span class='small text-muted'>" + currency + "</span>"
+          
+          addChange("#earnings-total-change", totalChange)
         }
       })
       $.ajax({
@@ -820,15 +869,7 @@ $(document).ready(function() {
             utilization[i] = [res[0], res[3] / (res[1] * (32 * exchangeRate))]
           }
           let eff = utilization[utilization.length-1][1]*100;
-          if (eff >= 100) {
-            $('#validator-eff-total').html(`<span class="text-success"> ${eff}% - Perfect <i class="fas fa-grin-stars"></i>`)
-          } else if (eff > 80) {
-            $('#validator-eff-total').html(`<span class="text-success"> ${eff}% - Good <i class="fas fa-smile"></i></span>`)
-          } else if (eff > 60) {
-            $('#validator-eff-total').html(`<span class="text-warning"> ${eff}% - Fair <i class="fas fa-meh"></i></span>`)
-          } else {
-            $('#validator-eff-total').html(`<span class="text-danger"> ${eff}% - Bad <i class="fas fa-frown"></i></span>`)
-          }
+          setValidatorEffectiveness('validator-eff-total', eff)
   
           var t2 = Date.now()
           createBalanceChart(effectiveBalance, balance, utilization)
@@ -854,6 +895,7 @@ $(document).ready(function() {
 })
 
 function createBalanceChart(effective, balance, utilization, missedAttestations) {
+  // console.log("u", utilization)
   Highcharts.stockChart('balance-chart', {
     exporting: {
       scale: 1

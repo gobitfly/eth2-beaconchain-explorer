@@ -271,7 +271,7 @@
                                     <td><div id="earnings-total" class="stat">0.000</div></td>
                               </tr>
                               <tr>
-                                    <th scope="row"><div id="validator-eff-header" class="title" data-toggle="tooltip" data-placement="top" title="Average Attestation Effectiveness">Effectiveness</div></th>
+                                    <th scope="row"><div id="validator-eff-header" class="title" data-toggle="tooltip" data-placement="top" title="Average Attestation Effectiveness">Avg. Effectiveness</div></th>
                                     <td><div id="validator-eff-total" class="stat">0.000</div></td>
                               </tr>
                               </tbody>
@@ -728,11 +728,21 @@
             <div class="col-lg-4 px-lg-2 d-flex align-items-center my-2">
                   <div class="card h-100 py-1 px-0 pt-0 card-body">
                         <div class="d-flex justify-content-center align-items-center border-bottom">
-                              <span class="h4">Validator History</span>
+                              <span class="h4">History <span id="dash-validator-history-index" style="font-size: 24px;"></span></span>
                         </div>
-                        <div id="dash-validator-history-index-div" class="justify-content-center align-items-center p-2 d-none">
-                              <i class="fas fa-male fa-lg mr-1"></i>
-                              <span id="dash-validator-history-index" style="font-size: 24px;"></span>
+                        <div id="dash-validator-history-index-div" class="justify-content-center align-items-center p-2 d-none" style="height: 53px;">
+                              <!--<i class="fas fa-male fa-lg mr-1"></i>-->
+                              <div class="mx-2">
+                                    <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Proposal Assignments"><i class="fas fa-cubes poin pr-1"></i><span></span></span>
+                              </div>
+                              <div class="mx-2">
+                                    <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments"><i class="fas fa-file-signature pr-1"></i><span></span></span>
+                              </div>
+                              <div class="mx-2">
+                                    <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash pr-1"></i><span></span></span>
+                              </div>
+                              <div id="effectiveness" class="mx-2">
+                              </div>   
                         </div>
                         <div id="dash-validator-history-art" class="d-flex align-items-center justify-content-center flex-column pt-4">
                               <svg style="width: 80%; height: auto;" id="f795efda-d52b-464f-8ed0-c83c27181fc6" data-name="Layer 1"
