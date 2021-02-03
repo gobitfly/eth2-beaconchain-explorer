@@ -118,7 +118,7 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	case "exiting_offline":
 		qryStateFilter = "AND validators.status = 'exiting_offline'"
 	case "exited":
-		qryStateFilter = "AND validators.status = 'exited'"
+		qryStateFilter = "AND (validators.status = 'exited' OR validators.status = 'slashed')"
 	default:
 		qryStateFilter = ""
 	}
@@ -133,7 +133,7 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 		"5": "exitepoch",
 		"6": "withdrawableepoch",
 		"7": "lastattestationslot",
-		"8": "executedproposals",
+		"8": "slashed",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -211,13 +211,6 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	qry := fmt.Sprintf(`
-		WITH
-			proposals AS (
-				SELECT validatorindex, pa.status, count(*)
-				FROM proposal_assignments pa
-				INNER JOIN blocks b ON pa.proposerslot = b.slot AND b.status <> '3'
-				GROUP BY validatorindex, pa.status
-			)
 		SELECT
 			validators.validatorindex,
 			validators.pubkey,
@@ -229,13 +222,9 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			validators.exitepoch,
 			validators.lastattestationslot,
 			COALESCE(validator_names.name, '') AS name,
-			validators.status AS state,
-			COALESCE(p1.count,0) AS executedproposals,
-			COALESCE(p2.count,0) AS missedproposals
+			validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		LEFT JOIN proposals p1 ON validators.validatorindex = p1.validatorindex AND p1.status = 1
-		LEFT JOIN proposals p2 ON validators.validatorindex = p2.validatorindex AND p2.status = 2
 		WHERE (ENCODE(validators.pubkey::bytea, 'hex') LIKE $1
 			OR CAST(validators.validatorindex AS text) LIKE $1)
 		%s
@@ -293,10 +282,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			tableData[i] = append(tableData[i], nil)
 		}
 
-		tableData[i] = append(tableData[i], []interface{}{
-			v.ExecutedProposals,
-			v.MissedProposals,
-		})
+		tableData[i] = append(tableData[i], v.Slashed)
 
 		tableData[i] = append(tableData[i], html.EscapeString(v.Name))
 	}
