@@ -600,12 +600,14 @@ func SaveEpoch(data *types.EpochData) error {
 	}
 
 	// only export recent validator balances if the epoch is within the threshold
-	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+5 {
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch-5 {
 		logger.Infof("exporting recent validator balance data")
 		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
 		if err != nil {
 			return fmt.Errorf("error saving recent validator balances to db: %v", err)
 		}
+	} else {
+		logger.Infof("skipping export of recent validator balance data")
 	}
 
 	logger.Infof("exporting epoch statistics data")
