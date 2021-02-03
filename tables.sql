@@ -9,6 +9,7 @@ create table validators
 (
     validatorindex             int         not null,
     pubkey                     bytea       not null,
+    pubkeyhex                  text        not null default '',
     withdrawableepoch          bigint      not null,
     withdrawalcredentials      bytea       not null,
     balance                    bigint      not null,
@@ -26,6 +27,7 @@ create table validators
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
+create index idx_validators_pubkeyhex on validators (pubkeyhex);
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 
@@ -138,6 +140,7 @@ create table validator_balances_recent
     primary key (epoch, validatorindex)
 );
 create index idx_validator_balances_recent_epoch on validator_balances_recent (epoch);
+create index idx_validator_balances_recent_validatorindex on validator_balances_recent (validatorindex);
 
 drop table if exists validator_stats;
 create table validator_stats

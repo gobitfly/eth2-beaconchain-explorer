@@ -1079,8 +1079,8 @@ func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx
 		}
 	}
 
-	if epoch > 4 {
-		_, err := tx.Exec("DELETE FROM validator_balances_recent WHERE epoch < $1", epoch-4)
+	if epoch > 10 {
+		_, err := tx.Exec("DELETE FROM validator_balances_recent WHERE epoch < $1", epoch-10)
 		if err != nil {
 			return err
 		}
