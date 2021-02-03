@@ -89,6 +89,8 @@ function addValidatorUpdateUI(){
   $('#validators-tab').removeClass('disabled')
   $('#validator-art').attr('class', "d-none")
   $('#dash-validator-history-info').removeClass('d-none')
+  $('#dash-validator-history-index-div').removeClass('d-none')
+  $('#dash-validator-history-index-div').addClass('d-flex')
   // $('#selected-validators-input-button-val').removeClass('d-none')
   let anim = "goinboxanim"
   if (boxAnimationDirection==="out") anim="gooutboxanim"
