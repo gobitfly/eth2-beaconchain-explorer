@@ -9,7 +9,6 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -359,7 +358,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	if len(incomeHistory) > 0 {
 		for i := 0; i < len(incomeHistory)-1; i++ {
-			log.Println("income history", incomeHistory[i].Day)
 			income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance
 			if income >= incomeHistory[i].Deposits {
 				income = income - incomeHistory[i].Deposits
