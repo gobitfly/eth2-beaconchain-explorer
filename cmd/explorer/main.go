@@ -249,6 +249,7 @@ func main() {
 			router.HandleFunc("/dashboard", handlers.Dashboard).Methods("GET")
 			router.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST")
 
+			router.HandleFunc("/dashboard/data/income", handlers.DashboardDataIncome).Methods("GET")
 			router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET")
 			router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
 			router.HandleFunc("/dashboard/data/validators", handlers.DashboardDataValidators).Methods("GET")

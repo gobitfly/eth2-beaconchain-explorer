@@ -868,30 +868,33 @@ $(document).ready(function() {
         url: '/dashboard/data/balance' + qryStr,
         success: function(result) {
           var t1 = Date.now()
-          var balance = new Array(result.length)
-          var effectiveBalance = new Array(result.length)
-          var validatorCount = new Array(result.length)
-          var utilization = new Array(result.length)
+          var income = []
+          // var effectiveBalance = new Array(result.length)
+          // var validatorCount = new Array(result.length)
+          // var utilization = new Array(result.length)
 
-          let prevBalance = 0
+          let prevDayIncome = 0
+          let prevDay = null
+          let prevIncome = 0
           for (var i = 0; i < result.length; i++) {
             var res = result[i]
-            validatorCount[i] = [res[0], res[1]]
-            balance[i] = [res[0], res[2]-(i===0 ? res[2] : prevBalance)]
-            prevBalance = res[2]
-            effectiveBalance[i] = [res[0], res[3]]
-            utilization[i] = [res[0], res[3] / (res[1] * (32 * exchangeRate))]
+
+            let day = new Date(res[0])
+            if (prevDay===null) prevDay=day
+            // balance[i] = [res[0], res[2]-(i===0 ? res[2] : prevBalance)]
+            prevDayIncome+=res[2]-(i===0 ? res[2] : prevIncome)
+            prevIncome = res[2]
+            // console.log(day!==prevDay, day, prevDay, res[0])
+            if (day.getDay()!==prevDay.getDay()){
+              income.push([prevDay.getTime(), prevDayIncome])
+              prevDayIncome = 0
+              prevDay=day
+            }
           }
-          // let eff = 0;
-          // for (let j of utilization){
-          //   eff+=parseFloat(j[1])
-          //   console.log(eff, j[1])
-          // }
-          // eff = (eff/utilization.length)*100
-          // setValidatorEffectiveness('validator-eff-total', eff)
+          income.push([prevDay.getTime(), prevDayIncome])
   
           var t2 = Date.now()
-          createBalanceChart(effectiveBalance, balance, utilization)
+          createBalanceChart(income)
           var t3 = Date.now()
           console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
         }
@@ -913,7 +916,7 @@ $(document).ready(function() {
   }
 })
 
-function createBalanceChart(effective, balance, utilization, missedAttestations) {
+function createBalanceChart(income) {
   // console.log("u", utilization)
   Highcharts.stockChart('balance-chart', {
     exporting: {
@@ -964,41 +967,12 @@ function createBalanceChart(effective, balance, utilization, missedAttestations)
           
         }
       }
-      // {
-      //   title: {
-      //     text: 'Validator Effectiveness'
-      //   },
-      //   labels: {
-      //     formatter: function() {
-      //       return (this.value * 100).toFixed(2) + '%'
-      //     },
-
-      //   },
-      //   opposite: true
-      // }
     ],
     series: [
       {
-        name: 'Balance',
-        // yAxis: 0,
-        data: balance
+        name: 'income',
+        data: income
       }
-      // {
-      //   name: 'Effective Balance',
-      //   yAxis: 0,
-      //   step: true,
-      //   data: effective
-      // },
-      // {
-      //   name: 'Validator Effectiveness',
-      //   yAxis: 1,
-      //   data: utilization,
-      //   tooltip: {
-      //     pointFormatter: function() {
-      //       return `<span style="color:${this.color}">●</span> ${this.series.name}: <b>${(this.y * 100).toFixed(2)}%</b><br/>`
-      //     }
-      //   }
-      // }
     ]
   })
 }

@@ -94,7 +94,7 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 
 	// get data from one week before latest epoch
 	latestEpoch := services.LatestEpoch()
-	oneWeekEpochs := uint64(3600 * 24 * 7 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
+	oneWeekEpochs := uint64(3600 * 24 * 21 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
 	queryOffsetEpoch := uint64(0)
 	if latestEpoch > oneWeekEpochs {
 		queryOffsetEpoch = latestEpoch - oneWeekEpochs
@@ -439,6 +439,77 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(resp{Effectiveness: avgIncDistance})
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+func DashboardDataIncome(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+
+	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"))
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	if len(queryValidators) < 1 {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	queryValidatorsArr := pq.Array(queryValidators)
+
+	// get data from one week before latest epoch
+	// latestEpoch := services.LatestEpoch()
+	// oneWeekEpochs := uint64(3600 * 24 * 7 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
+	// queryOffsetEpoch := uint64(0)
+	// if latestEpoch > oneWeekEpochs {
+	// 	queryOffsetEpoch = latestEpoch - oneWeekEpochs
+	// }
+
+	query := `
+		SELECT
+			day, 
+			start_balance, 
+			end_balance, 
+			COALESCE(deposits_amount, 0) as deposits_amount
+		FROM validator_stats
+		WHERE validatorindex = ANY($1) 
+		ORDER by day
+		Limit 14`
+
+	data := []*types.ValidatorIncomeHistory{}
+	err = db.DB.Select(&data, query, queryValidatorsArr)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	incomeHistoryChartData := make([][2]float64, len(data))
+
+	if len(data) > 0 {
+		for i := 0; i < len(data)-1; i++ {
+			income := data[i+1].StartBalance - data[i].StartBalance
+			if income >= data[i].Deposits {
+				income = income - data[i].Deposits
+			}
+			incomeHistoryChartData[i][0] = float64(utils.DayToTime(data[i].Day).Unix() * 1000)
+			incomeHistoryChartData[i][1] = float64(income/1e9) * price.GetEthPrice(currency)
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(incomeHistoryChartData)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
