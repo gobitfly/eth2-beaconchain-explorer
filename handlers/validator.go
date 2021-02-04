@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -358,6 +359,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	if len(incomeHistory) > 0 {
 		for i := 0; i < len(incomeHistory)-1; i++ {
+			log.Println("income history", incomeHistory[i].Day)
 			income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance
 			if income >= incomeHistory[i].Deposits {
 				income = income - incomeHistory[i].Deposits
@@ -376,7 +378,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if lastDayIncome < 0 {
 			lastDayIncomeColor = "#f7a35c"
 		}
-		currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
+		currentDay := incomeHistory[len(incomeHistory)-1].Day + 1
+
 		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(currentDay).Unix() * 1000), Y: float64(lastDayIncome) / 1000000000, Color: lastDayIncomeColor}
 	}
 
