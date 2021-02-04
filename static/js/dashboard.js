@@ -376,6 +376,7 @@ $(document).ready(function() {
     ]
   })
 
+
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
@@ -869,9 +870,6 @@ $(document).ready(function() {
         success: function(result) {
           var t1 = Date.now()
           var income = []
-          // var effectiveBalance = new Array(result.length)
-          // var validatorCount = new Array(result.length)
-          // var utilization = new Array(result.length)
 
           let prevDayIncome = 0
           let prevDay = null
@@ -886,12 +884,11 @@ $(document).ready(function() {
             prevIncome = res[2]
             // console.log(day!==prevDay, day, prevDay, res[0])
             if (day.getDay()!==prevDay.getDay()){
-              income.push([prevDay.getTime(), prevDayIncome])
+              income.push([day.getTime(), prevDayIncome])
               prevDayIncome = 0
               prevDay=day
             }
           }
-          income.push([prevDay.getTime(), prevDayIncome])
   
           var t2 = Date.now()
           createBalanceChart(income)
