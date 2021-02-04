@@ -761,9 +761,9 @@ $(document).ready(function() {
           var lastMonth = (result.lastMonth / 1e9 * exchangeRate).toFixed(4)
           var total = (result.total / 1e9 * exchangeRate)
           var totalDeposits = (result.totalDeposits / 1e9 * exchangeRate)
-          var totalChange = total-totalDeposits
+          var totalChange = total+totalDeposits
 
-          console.log(total, exchangeRate, result.total)
+          // console.log(totalChange, total, exchangeRate, "\n", result.total, result.totalDeposits)
           addChange("#earnings-day", lastDay)
           addChange("#earnings-week", lastWeek)
           addChange("#earnings-month", lastMonth)
@@ -771,9 +771,9 @@ $(document).ready(function() {
           document.querySelector('#earnings-day').innerHTML = (lastDay || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
           document.querySelector('#earnings-week').innerHTML = (lastWeek || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
           document.querySelector('#earnings-month').innerHTML = (lastMonth || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-total').innerHTML = (total.toFixed(2) || '0.000') + `<span id="earnings-total-change">${totalChange.toFixed(4)}</span>` + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-total').innerHTML = (totalChange.toFixed(2) || '0.000') + `<span id="earnings-total-change">${total.toFixed(4)}</span>` + " <span class='small text-muted'>" + currency + "</span>"
           
-          addChange("#earnings-total-change", totalChange)
+          addChange("#earnings-total-change", total)
         }
       })
       $.ajax({
