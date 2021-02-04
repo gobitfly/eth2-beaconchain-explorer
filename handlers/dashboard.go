@@ -391,3 +391,55 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	if err != nil {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	filter := pq.Array(filterArr)
+
+	var avgIncDistance float64
+
+	err = db.DB.Get(&avgIncDistance, `
+	SELECT COALESCE( AVG( (1.0 / avgincdist) * 100 ), 0)
+	FROM (
+		SELECT COALESCE(
+			AVG(1 + inclusionslot - COALESCE((
+				SELECT MIN(slot)
+				FROM blocks
+				WHERE slot > aa.attesterslot AND blocks.status = '1'
+			), 0)
+		), 0) as avgincdist
+		FROM attestation_assignments_p aa
+		INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = ANY($2) AND aa.inclusionslot > 0 
+	) as inc
+	`, int64(services.LatestEpoch())-100, filter)
+	if err != nil {
+		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	// var attestationInclusionEffectiveness float64
+
+	// if avgIncDistance > 0 {
+	// 	attestationInclusionEffectiveness = 1.0 / avgIncDistance * 100
+	// }
+
+	type resp struct {
+		Effectiveness float64 `json:"effectiveness"`
+	}
+	err = json.NewEncoder(w).Encode(resp{Effectiveness: avgIncDistance})
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}

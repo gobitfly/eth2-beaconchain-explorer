@@ -252,6 +252,7 @@ func main() {
 			router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET")
 			router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET")
 			router.HandleFunc("/dashboard/data/validators", handlers.DashboardDataValidators).Methods("GET")
+			router.HandleFunc("/dashboard/data/effectiveness", handlers.DashboardDataEffectiveness).Methods("GET")
 			router.HandleFunc("/dashboard/data/earnings", handlers.DashboardDataEarnings).Methods("GET")
 			router.HandleFunc("/graffitiwall", handlers.Graffitiwall).Methods("GET")
 			router.HandleFunc("/calculator", handlers.StakingCalculator).Methods("GET")

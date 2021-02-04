@@ -424,4 +424,7 @@ ul.multiselect input:focus {
   border-width: 2px;
 }
 
+.high-contrast{
+  filter: drop-shadow(1px 1px var(--body-color));
+}
 

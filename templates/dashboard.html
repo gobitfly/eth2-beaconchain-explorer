@@ -289,7 +289,7 @@
                               </li>
                               <li class="nav-item">
                                     <a class="nav-link" id="balances-tab" data-toggle="tab" href="#balances" role="tab"
-                                    aria-controls="balances" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Balances</span></a>
+                                    aria-controls="balances" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Income</span></a>
                               </li>
                               <li class="nav-item">
                                     <a class="nav-link" id="proposals-tab" data-toggle="tab" href="#proposals" role="tab"
@@ -407,7 +407,7 @@
                                     </div>
                                     <div class="dashboard-table px-0 mx-2" id="validators-table-holder">
                                           <div class="table-responsive pt-2 pb-2">
-                                                <table class="table" id="validators" width="100%">
+                                                <table class="table" id="validators" width="100%" style="min-height: 460px;">
                                                       <thead>
                                                       <tr>
                                                             <th>Public Key</th>
@@ -726,12 +726,11 @@
                   </div>
             </div>
             <div class="col-lg-4 px-lg-2 d-flex align-items-center my-2">
-                  <div class="card h-100 py-1 px-0 pt-0 card-body">
+                  <div class="card h-100 py-1 px-0 pt-0 card-body" style="min-height: 460px;">
                         <div class="d-flex justify-content-center align-items-center border-bottom">
-                              <span class="h4">History <span id="dash-validator-history-index" style="font-size: 24px;"></span></span>
+                              <span class="h4">History <i class="fas fa-male fa-sm mr-1"></i><span id="dash-validator-history-index" style="font-size: 24px;"></span></span>
                         </div>
                         <div id="dash-validator-history-index-div" class="justify-content-center align-items-center p-2 d-none" style="height: 53px;">
-                              <!--<i class="fas fa-male fa-lg mr-1"></i>-->
                               <div class="mx-2">
                                     <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Proposal Assignments"><i class="fas fa-cubes poin pr-1"></i><span></span></span>
                               </div>

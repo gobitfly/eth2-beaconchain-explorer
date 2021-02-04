@@ -134,6 +134,17 @@ function addValidatorUpdateUI(){
     $('#selected-validators-input-button-box').removeClass('zoomanim')
     $('#selected-validators-input-button-val').removeClass(anim)
   }, 1100) 
+
+  let validators_path = window.location.href
+  validators_path = validators_path.slice(validators_path.indexOf("?"), validators_path.length)
+  fetch(`/dashboard/data/effectiveness${validators_path}`,{
+    method: "GET"
+  }).then((res)=>{
+    res.json().then((data)=>{
+      // let eff = (1.0/data.effectiveness)*100
+      setValidatorEffectiveness('validator-eff-total', data.effectiveness)
+    })
+  })
 }
 
 function showSelectedValidator(){
@@ -425,7 +436,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Validators</h3>',
         suggestion: function(data) {
-          return `<div class="text-monospace text-truncate">${data.index}: ${data.pubkey}</div>`
+          return `<div class="text-monospace text-truncate high-contrast">${data.index}: ${data.pubkey}</div>`
         }
       }
     },
@@ -438,7 +449,7 @@ $(document).ready(function() {
         header: '<h3>Validators by ETH1 Addresses</h3>',
         suggestion: function(data) {
           var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
-          return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+          return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         }
       }
     },
@@ -451,7 +462,7 @@ $(document).ready(function() {
         header: '<h3>Validators by Graffiti</h3>',
         suggestion: function(data) {
           var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
-          return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.graffiti}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+          return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.graffiti}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         }
       }
     },
@@ -464,7 +475,7 @@ $(document).ready(function() {
         header: '<h3>Validators by Name</h3>',
         suggestion: function(data) {
           var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
-          return `<div class="text-monospace" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.name}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+          return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.name}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         }
       }
     }
@@ -861,15 +872,23 @@ $(document).ready(function() {
           var effectiveBalance = new Array(result.length)
           var validatorCount = new Array(result.length)
           var utilization = new Array(result.length)
+
+          let prevBalance = 0
           for (var i = 0; i < result.length; i++) {
             var res = result[i]
             validatorCount[i] = [res[0], res[1]]
-            balance[i] = [res[0], res[2]]
+            balance[i] = [res[0], res[2]-(i===0 ? res[2] : prevBalance)]
+            prevBalance = res[2]
             effectiveBalance[i] = [res[0], res[3]]
             utilization[i] = [res[0], res[3] / (res[1] * (32 * exchangeRate))]
           }
-          let eff = utilization[utilization.length-1][1]*100;
-          setValidatorEffectiveness('validator-eff-total', eff)
+          // let eff = 0;
+          // for (let j of utilization){
+          //   eff+=parseFloat(j[1])
+          //   console.log(eff, j[1])
+          // }
+          // eff = (eff/utilization.length)*100
+          // setValidatorEffectiveness('validator-eff-total', eff)
   
           var t2 = Date.now()
           createBalanceChart(effectiveBalance, balance, utilization)
@@ -911,7 +930,7 @@ function createBalanceChart(effective, balance, utilization, missedAttestations)
       enabled: true
     },
     title: {
-      text: 'Balance History for all Validators'
+      text: 'Income History for all Validators'
     },
     xAxis: {
       type: 'datetime',
@@ -935,12 +954,12 @@ function createBalanceChart(effective, balance, utilization, missedAttestations)
     yAxis: [
       {
         title: {
-          text: 'Balance [' + currency + ']'
+          text: 'Income [' + currency + ']'
         },
         opposite: false,
         labels: {
           formatter: function() {
-            return this.value.toFixed(0)
+            return this.value.toFixed(5)
           },
           
         }
