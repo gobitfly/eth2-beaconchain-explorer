@@ -261,6 +261,11 @@
                                 var epoch = timeToEpoch(this.x)
                                 orig[0] = `${orig[0]}<span style="font-size:10px">Epoch ${epoch}</span>`
                                 return orig
+                            },
+                            dateTimeLabelFormats: {
+                              day: "%A, %b %e, %Y",
+                              minute: "%A, %b %e",
+                              hour: "%A, %b %e",
                             }
                         }
                     });
