@@ -5,9 +5,10 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
+	"time"
+
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 func main() {
@@ -54,12 +55,9 @@ func main() {
 		if err != nil {
 			logrus.Errorf("error retreiving latest exported day from the db: %v", err)
 		}
-		if lastExportedDay != 0 {
-			lastExportedDay++
-		}
 
 		logrus.Infof("previous day is %v, last exported day is %v", previousDay, lastExportedDay)
-		if lastExportedDay <= previousDay || lastExportedDay == 0 {
+		if (lastExportedDay <= previousDay) || (lastExportedDay == 0) {
 			for day := lastExportedDay; day <= previousDay; day++ {
 				err := db.WriteStatisticsForDay(day)
 				if err != nil {
