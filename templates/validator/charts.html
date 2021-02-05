@@ -212,6 +212,7 @@
     {{ if .IncomeHistoryChartData }}
         <script>
             var incomeHistory = {{.IncomeHistoryChartData}}
+            var currency = {{$.Currency}}
                 window.addEventListener('load', function () {
                     Highcharts.stockChart('income-chart', {
                         colors: ["#7cb5ec", "#90ed7d", "#f7a35c", "#8085e9", "#f15c80", "#e4d354", "#2b908f", "#f45b5b", "#91e8e1"],
@@ -241,9 +242,18 @@
                         },
                         yAxis: [{
                             title: {
-                                text: 'Daily Income [ETH]'
+                                text: 'Daily Income [' + currency + ']'
                             },
-                            opposite: false
+                            opposite: false,
+                            labels: {
+                            formatter: function() {
+                                    if (currency !== "ETH") {
+                                    return this.value.toFixed(2)
+                                    }
+                                    return this.value.toFixed(5)
+                              },
+                              
+                            }
                         }],
                         series: [{
                             name: "Daily Income",
@@ -260,6 +270,9 @@
                                 var orig = tooltip.defaultFormatter.call(this, tooltip)
                                 var epoch = timeToEpoch(this.x)
                                 orig[0] = `${orig[0]}<span style="font-size:10px">Epoch ${epoch}</span>`
+                                if(currency !== "ETH") {
+                                   orig[1] = `<span style=\"color:${this.points[0].color}\">●</span> Daily Income: <b>${this.y.toFixed(2)}</b><br/>`
+                                }
                                 return orig
                             },
                             dateTimeLabelFormats: {
