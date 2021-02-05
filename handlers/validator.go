@@ -376,7 +376,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		if lastDayIncome < 0 {
 			lastDayIncomeColor = "#f7a35c"
 		}
-		currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
+		currentDay := incomeHistory[len(incomeHistory)-1].Day + 1
+
 		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(currentDay).Unix() * 1000), Y: float64(lastDayIncome) / 1000000000, Color: lastDayIncomeColor}
 	}
 

@@ -7,7 +7,7 @@ import (
 )
 
 func statsUpdater() {
-	sleepDuration := time.Duration(time.Minute)
+	sleepDuration := time.Minute
 
 	for {
 		latestEpoch := LatestEpoch()
