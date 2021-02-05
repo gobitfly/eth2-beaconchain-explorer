@@ -45,6 +45,8 @@ func main() {
 		latestEpoch, err := db.GetLatestEpoch()
 		if err != nil {
 			logrus.Errorf("error retreiving latest epoch from the db: %v", err)
+			time.Sleep(time.Minute)
+			continue
 		}
 		currentDay := latestEpoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
 		previousDay := currentDay - 1
