@@ -433,7 +433,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 					WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = a.validatorindex AND aa.inclusionslot > 0 
 				) * 100), 0) AS incavg
 	FROM attestation_assignments_p a
-	WHERE a.validatorindex = ANY($2)
+	WHERE a.week >= $1 / 1575 AND a.epoch > $1 AND a.validatorindex = ANY($2) AND a.inclusionslot > 0
 	`, int64(services.LatestEpoch())-100, filter)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
