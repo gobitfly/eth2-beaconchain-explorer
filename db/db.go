@@ -1379,7 +1379,7 @@ func GetValidatorChurnLimit(currentEpoch uint64) (uint64, error) {
 	return adaptable, nil
 }
 
-func GetTotalEligableEther() (uint64, error) {
+func GetTotalEligibleEther() (uint64, error) {
 	var total uint64
 
 	err := DB.Get(&total, `

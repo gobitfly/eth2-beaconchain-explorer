@@ -5,9 +5,10 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"flag"
+	"time"
+
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 func main() {
