@@ -49,6 +49,10 @@ func main() {
 		currentDay := latestEpoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
 		previousDay := currentDay - 1
 
+		if previousDay > currentDay {
+			previousDay = currentDay
+		}
+
 		var lastExportedDay uint64
 		err = db.DB.Get(&lastExportedDay, "select COALESCE(max(day), 0) from validator_stats_status where status")
 		if err != nil {
