@@ -407,19 +407,20 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	var avgIncDistance float64
 
 	err = db.DB.Get(&avgIncDistance, `
-	SELECT COALESCE( AVG( (1 / avgincdist) * 100 ), 0)
-	FROM (
-		SELECT COALESCE(
-			AVG(1 + inclusionslot - COALESCE((
-				SELECT MIN(slot)
-				FROM blocks
-				WHERE slot > aa.attesterslot AND blocks.status = '1'
-			), 0)
-		), 0) as avgincdist
-		FROM attestation_assignments_p aa
-		INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = ANY($2) AND aa.inclusionslot > 0 
-	) as inc
+	SELECT COALESCE( AVG (1 / 
+					(SELECT COALESCE(
+						AVG(1 + inclusionslot - COALESCE((
+							SELECT MIN(slot)
+							FROM blocks
+							WHERE slot > aa.attesterslot AND blocks.status = '1'
+						), 0)
+					), 0)
+					FROM attestation_assignments_p aa
+					INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+					WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = a.validatorindex AND aa.inclusionslot > 0 
+				) * 100), 0) AS incavg
+	FROM attestation_assignments_p a
+	WHERE a.validatorindex = ANY($2)
 	`, int64(services.LatestEpoch())-100, filter)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
