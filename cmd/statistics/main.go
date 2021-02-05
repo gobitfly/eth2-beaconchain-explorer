@@ -46,14 +46,16 @@ func main() {
 		latestEpoch, err := db.GetLatestEpoch()
 		if err != nil {
 			logrus.Errorf("error retreiving latest epoch from the db: %v", err)
+			continue
 		}
-		currentDay := latestEpoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
+		currentDay := (latestEpoch * utils.Config.Chain.SlotsPerEpoch * utils.Config.Chain.SecondsPerSlot) / (24 * 60 * 60)
 		previousDay := currentDay - 1
 
 		var lastExportedDay uint64
 		err = db.DB.Get(&lastExportedDay, "select COALESCE(max(day), 0) from validator_stats_status where status")
 		if err != nil {
 			logrus.Errorf("error retreiving latest exported day from the db: %v", err)
+			continue
 		}
 
 		logrus.Infof("previous day is %v, last exported day is %v", previousDay, lastExportedDay)
