@@ -869,29 +869,27 @@ $(document).ready(function() {
         url: '/dashboard/data/balance' + qryStr,
         success: function(result) {
           var t1 = Date.now()
-          var income = []
+          // let prevDayIncome = 0
+          // let prevDay = null
+          // let prevIncome = 0
+          // for (var i = 0; i < result.length; i++) {
+          //   var res = result[i]
 
-          let prevDayIncome = 0
-          let prevDay = null
-          let prevIncome = 0
-          for (var i = 0; i < result.length; i++) {
-            var res = result[i]
-
-            let day = new Date(res[0])
-            if (prevDay===null) prevDay=day
-            // balance[i] = [res[0], res[2]-(i===0 ? res[2] : prevBalance)]
-            prevDayIncome+=res[2]-(i===0 ? res[2] : prevIncome)
-            prevIncome = res[2]
-            // console.log(day!==prevDay, day, prevDay, res[0])
-            if (day.getDay()!==prevDay.getDay()){
-              income.push([day.getTime(), prevDayIncome])
-              prevDayIncome = 0
-              prevDay=day
-            }
-          }
+          //   let day = new Date(res[0])
+          //   if (prevDay===null) prevDay=day
+          //   // balance[i] = [res[0], res[2]-(i===0 ? res[2] : prevBalance)]
+          //   prevDayIncome+=res[2]-(i===0 ? res[2] : prevIncome)
+          //   prevIncome = res[2]
+          //   // console.log(day!==prevDay, day, prevDay, res[0])
+          //   if (day.getDay()!==prevDay.getDay()){
+          //     income.push([day.getTime(), prevDayIncome])
+          //     prevDayIncome = 0
+          //     prevDay=day
+          //   }
+          // }
   
           var t2 = Date.now()
-          createBalanceChart(income)
+          createBalanceChart(result)
           var t3 = Date.now()
           console.log(`loaded balance-data: length: ${result.length}, fetch: ${t1 - t0}ms, aggregate: ${t2 - t1}ms, render: ${t3 - t2}ms`)
         }
@@ -930,11 +928,11 @@ function createBalanceChart(income) {
       enabled: true
     },
     title: {
-      text: 'Income History for all Validators'
+      text: 'Daily Income for all Validators'
     },
     xAxis: {
       type: 'datetime',
-      range: 0.5 * 24 * 60 * 60 * 1000,
+      range: 31 * 24 * 60 * 60 * 1000,
       labels: {
         formatter: function(){
           var epoch = timeToEpoch(this.value)
@@ -948,7 +946,15 @@ function createBalanceChart(income) {
         var orig = tooltip.defaultFormatter.call(this, tooltip)
         var epoch = timeToEpoch(this.x)
         orig[0] = `${orig[0]}<span style="font-size:10px">Epoch ${epoch}</span>`
+        if(currency !== "ETH") {
+          orig[1] = `<span style=\"color:${this.points[0].color}\">●</span> Daily Income: <b>${this.y.toFixed(2)}</b><br/>`
+        }
         return orig
+      },
+      dateTimeLabelFormats: {
+        day: "%A, %b %e, %Y",
+        minute: "%A, %b %e",
+        hour: "%A, %b %e",
       }
     },
     yAxis: [
@@ -959,6 +965,9 @@ function createBalanceChart(income) {
         opposite: false,
         labels: {
           formatter: function() {
+            if (currency !== "ETH") {
+              return this.value.toFixed(2)
+            }
             return this.value.toFixed(5)
           },
           
@@ -967,7 +976,7 @@ function createBalanceChart(income) {
     ],
     series: [
       {
-        name: 'income',
+        name: 'Daily Income',
         data: income
       }
     ]
