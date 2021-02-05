@@ -141,6 +141,7 @@
 {{ end }}
 
 {{ define "validatorIncomeChart" }}
+{{with .Data}}
     <div id="income-chart" style="height: 100%;">
         <div class="d-flex p-5 justify-content-center align-items-center">
             <svg style="width: 100%; height: auto;" id="ed352ff4-7a14-4498-84af-0dc7b5b1bcd0" data-name="Layer 1"
@@ -248,7 +249,7 @@
                             labels: {
                             formatter: function() {
                                     if (currency !== "ETH") {
-                                    return this.value.toFixed(2)
+                                          return this.value.toFixed(2)
                                     }
                                     return this.value.toFixed(5)
                               },
@@ -286,4 +287,5 @@
 
         </script>
     {{end}}
+  {{end}}
 {{end}}
