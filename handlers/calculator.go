@@ -15,7 +15,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 
 	calculatorPageData := types.StakingCalculatorPageData{}
 
-	total, err := db.GetTotalEligableEther()
+	total, err := db.GetTotalEligibleEther()
 	if err != nil {
 		logger.WithError(err).Error("error getting total staked ether")
 		http.Error(w, "Internal server error", 503)
