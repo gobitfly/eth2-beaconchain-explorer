@@ -40,7 +40,7 @@ var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
-
+	currency := GetCurrency(r)
 	start := time.Now()
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
@@ -367,7 +367,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				color = "#f7a35c"
 			}
 			balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
-			validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: float64(income) / 1000000000, Color: color}
+			validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(income) / 1000000000), Color: color}
 		}
 
 		lastDayBalance := incomeHistory[len(incomeHistory)-1].EndBalance
@@ -378,7 +378,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
 
-		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(currentDay).Unix() * 1000), Y: float64(lastDayIncome) / 1000000000, Color: lastDayIncomeColor}
+		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(currentDay).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor}
 	}
 
 	logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
@@ -500,6 +500,55 @@ func ValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(deposits)
 	if err != nil {
 		logger.Errorf("error encoding validator-deposits for %v: %v", vars["pubkey"], err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+// ValidatorAttestationInclusionEffectiveness returns a validator's effectiveness in json
+func ValidatorAttestationInclusionEffectiveness(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var avgIncDistance float64
+
+	err = db.DB.Get(&avgIncDistance, `
+	SELECT COALESCE(
+		AVG(1 + inclusionslot - COALESCE((
+			SELECT MIN(slot)
+			FROM blocks
+			WHERE slot > aa.attesterslot AND blocks.status = '1'
+		), 0)
+	), 0)
+	FROM attestation_assignments_p aa
+	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
+	`, int64(services.LatestEpoch())-100, index)
+	if err != nil {
+		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var attestationInclusionEffectiveness float64
+
+	if avgIncDistance > 0 {
+		attestationInclusionEffectiveness = 1.0 / avgIncDistance * 100
+	}
+
+	type resp struct {
+		Effectiveness float64 `json:"effectiveness"`
+	}
+	err = json.NewEncoder(w).Encode(resp{Effectiveness: attestationInclusionEffectiveness})
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
