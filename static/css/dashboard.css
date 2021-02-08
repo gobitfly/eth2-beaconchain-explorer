@@ -424,8 +424,3 @@ ul.multiselect input:focus {
   border-style: solid;
   border-width: 2px;
 }
-
-.high-contrast{
-  filter: contrast(.7);
-}
-
