@@ -141,8 +141,15 @@ function addValidatorUpdateUI(){
     method: "GET"
   }).then((res)=>{
     res.json().then((data)=>{
-      // let eff = (1.0/data.effectiveness)*100
-      setValidatorEffectiveness('validator-eff-total', data.effectiveness)
+      let eff = 0.0
+      for (let incDistance of data){
+        if (incDistance===0.0){
+          continue
+        }
+        eff+=(1.0/incDistance)*100.0
+      }
+      eff=eff/data.length
+      setValidatorEffectiveness('validator-eff-total', eff)
     })
   })
 }
@@ -733,7 +740,7 @@ $(document).ready(function() {
     }
     localStorage.setItem('dashboard_validators', JSON.stringify(state.validators))
     if(state.validators.length) {
-      console.log('length', state.validators)
+      // console.log('length', state.validators)
       var qryStr = '?validators=' + state.validators.join(',')
       var newUrl = window.location.pathname + qryStr
       window.history.replaceState(null, 'Dashboard', newUrl)

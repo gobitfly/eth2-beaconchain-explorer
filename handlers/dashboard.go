@@ -417,21 +417,21 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
-	var avgIncDistance float64
+	var avgIncDistance []float64
 
-	err = db.DB.Get(&avgIncDistance, `
-	SELECT AVG(1/ 
+	err = db.DB.Select(&avgIncDistance, `
+	SELECT
 		(SELECT COALESCE(
 			AVG(1 + inclusionslot - COALESCE((
 				SELECT MIN(slot)
 				FROM blocks
 				WHERE slot > aa.attesterslot AND blocks.status = '1'
-			), 10000)
+			), 0)
 		), 0)
 		FROM attestation_assignments_p aa
 		INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
 		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = index AND aa.inclusionslot > 0
-		)* 100 ) as incavg
+		) as incd
 	FROM unnest($2::int[]) AS index;
 	`, int64(services.LatestEpoch())-100, filter)
 	if err != nil {
@@ -440,10 +440,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type resp struct {
-		Effectiveness float64 `json:"effectiveness"`
-	}
-	err = json.NewEncoder(w).Encode(resp{Effectiveness: avgIncDistance})
+	err = json.NewEncoder(w).Encode(avgIncDistance)
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
