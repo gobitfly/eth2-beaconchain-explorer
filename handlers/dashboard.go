@@ -426,8 +426,8 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 				SELECT MIN(slot)
 				FROM blocks
 				WHERE slot > aa.attesterslot AND blocks.status = '1'
-			), 10000)
-		), 0)
+			), 0)
+		), 10000)
 		FROM attestation_assignments_p aa
 		INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
 		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = index AND aa.inclusionslot > 0
