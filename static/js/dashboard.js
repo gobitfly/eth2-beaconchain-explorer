@@ -103,7 +103,11 @@ function updateValidatorInfo(index){
     method: "GET"
   }).then((res)=>{
     res.json().then((data)=>{
-      $('#slashingsCount span').text(data.recordsTotal)
+      var total = parseInt(data.recordsTotal)
+      if (total>0){
+        $('#slashingsCount').removeClass('d-none')
+        $('#slashingsCount span').text(data.recordsTotal)
+      }
     })
   })
   fetch(`/validator/${index}/effectiveness`,{
@@ -152,6 +156,8 @@ function addValidatorUpdateUI(){
       setValidatorEffectiveness('validator-eff-total', eff)
     })
   })
+
+  // $('#validators').find("select").last().attr("selected","selected");
 }
 
 function showSelectedValidator(){
@@ -279,7 +285,7 @@ $(document).ready(function() {
     ordering: true,
     searching: true,
     pagingType: 'full_numbers',
-    pageLength: 8,
+    lengthMenu: [8, 10, 25, 50],
     info: false,
     preDrawCallback: function() {
       // this does not always work.. not sure how to solve the staying tooltip
