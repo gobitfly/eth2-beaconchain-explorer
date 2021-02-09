@@ -105,8 +105,10 @@ function updateValidatorInfo(index){
     res.json().then((data)=>{
       var total = parseInt(data.recordsTotal)
       if (total>0){
-        $('#slashingsCount').removeClass('d-none')
-        $('#slashingsCount span').text(data.recordsTotal)
+        $('#slashingsCountDiv').removeClass('d-none')
+        $('#slashingsCount span').text(total)
+      }else {
+        $('#slashingsCountDiv').addClass('d-none')
       }
     })
   })
@@ -156,8 +158,6 @@ function addValidatorUpdateUI(){
       setValidatorEffectiveness('validator-eff-total', eff)
     })
   })
-
-  // $('#validators').find("select").last().attr("selected","selected");
 }
 
 function showSelectedValidator(){
