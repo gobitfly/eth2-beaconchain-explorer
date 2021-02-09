@@ -397,6 +397,10 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 	}
 
+	if earnings == nil {
+		earnings = &types.ValidatorEarnings{}
+	}
+
 	err = json.NewEncoder(w).Encode(earnings)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error enconding json response")

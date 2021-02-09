@@ -235,11 +235,14 @@
                                                 placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
                                           </li>
                                     </ul>
-                                    
+                                    <div id="selected-validators-overview" class="d-none" style="position:absolute; overflow-y: auto; left: .5rem; right: calc(92px + .5rem); top: 100%; margin-top: .5rem; max-height: 280px;min-width: 240px; border-radius: 5px;" class="dropdown-selected-validators">
+                                          <ul id="selected-validators" class="multiselect val-modal">
+                                          </ul>
+                                    </div>
                                     <button id="selected-validators-input-button" type="button" class="btn btn-sm hbtn d-none flex-column justify-content-center align-items-center shadow-sm" 
                                                 style="background-color: var(--bg-color-secondary); z-index: 998;" data-toggle="modal" data-target="#validatorModal">
                                           <i id="selected-validators-input-button-val" class="fas fa-male"></i>
-                                          <span style="font-size: 8px;"></span>
+                                          <span style="font-size: .8rem;"></span>
                                           <i id="selected-validators-input-button-box" class="fas fa-box-open text-primary" style="z-index: 999;"></i>
                                     </button>
                               </span>
@@ -863,25 +866,6 @@
       </div>
 </div>
 
-<!-- Modal -->
-<div class="modal fade" id="validatorModal" tabindex="-1" role="dialog" aria-labelledby="validatorModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg" role="document">
-    <div class="modal-content">
-      <div class="modal-header" style="background-color: var(--bg-color-secondary);">
-        <h5 class="modal-title" id="validatorModalLabel">Selcted Validators</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body" style="background-color: var(--bg-color-secondary);">
-        <ul id="selected-validators" class="multiselect val-modal">
-        </ul>
-      </div>
-      <div class="modal-footer" style="background-color: var(--bg-color-secondary);">
-        <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
+
 {{end}}
 {{end}}
