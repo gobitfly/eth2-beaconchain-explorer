@@ -146,7 +146,7 @@ window.addEventListener('load', function() {
     let match = false;
     do {
       count++;
-      if(trgt.matches('.tt-suggestion') || trgt.matches('.tt-menu') || trgt.matches('#selected-validators-overview') || trgt.matches('#selected-validators-input input.typeahead-dashboard') || trgt.matches('#selected-validators-input-button')) {
+      if(trgt.matches('li[data-validator-index]') || trgt.matches('.tt-suggestion') || trgt.matches('.tt-menu') || trgt.matches('#selected-validators-overview') || trgt.matches('#selected-validators-input input.typeahead-dashboard') || trgt.matches('#selected-validators-input-button')) {
         match = true
         break
       }
@@ -611,6 +611,7 @@ $(document).ready(function() {
     if(state.validators.length>VALLIMIT) return
     var elHolder = document.getElementById('selected-validators')
     $('#selected-validators .item').remove()
+    $('#selected-validators hr').remove()
     var elsItems = []
     for (var i = 0; i < state.validators.length; i++) {
       if(i % 25 === 0 && i !== 0) {

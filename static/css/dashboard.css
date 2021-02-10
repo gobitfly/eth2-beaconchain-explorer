@@ -388,8 +388,12 @@ ul.multiselect input:focus {
 @keyframes zoom {
   0% {}
   25%{}
-  50%{font-size: 25px; z-index: 9999;}
-  100%{font-size: 15px; z-index: 9999;}
+  50% {
+    font-size: 25px; z-index: 9999;
+  }
+  100% {
+    font-size: 15px; z-index: 9999;
+  }
 }
 
 @keyframes goInBox {

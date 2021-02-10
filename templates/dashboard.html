@@ -235,16 +235,18 @@
                                                 placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
                                           </li>
                                     </ul>
-                                    <div id="selected-validators-overview" class="d-none" style="position:absolute; overflow-y: auto; left: .5rem; right: calc(92px + .5rem); top: 100%; margin-top: .5rem; max-height: 280px;min-width: 240px; border-radius: 5px;" class="dropdown-selected-validators">
+                                    <div id="selected-validators-overview" class="d-none" style="position:absolute; overflow-y: auto; left: .5rem; right: calc(92px + .5rem); top: 100%; margin-top: .3rem; max-height: 280px;min-width: 240px; border-radius: 5px;" class="dropdown-selected-validators">
                                           <ul id="selected-validators" class="multiselect val-modal">
                                           </ul>
                                     </div>
-                                    <button id="selected-validators-input-button" type="button" class="btn btn-sm hbtn d-none flex-column justify-content-center align-items-center shadow-sm" 
+                                    <div style="width:2.2rem;" class="position-relative shadow-sm">
+                                    <button style="top:0; bottom:0; right:0; z-index: 999;" id="selected-validators-input-button" type="button" class="position-absolute flex-column justify-content-center align-items-center btn btn-sm hbtn d-none" 
                                                 style="background-color: var(--bg-color-secondary); z-index: 998;" data-toggle="modal" data-target="#validatorModal">
-                                          <i id="selected-validators-input-button-val" class="fas fa-male"></i>
-                                          <span style="font-size: .8rem;"></span>
-                                          <i id="selected-validators-input-button-box" class="fas fa-box-open text-primary" style="z-index: 999;"></i>
-                                    </button>
+                                                <i id="selected-validators-input-button-val" class="fas fa-male"></i>
+                                                <span style="font-size: .8rem;"></span>
+                                                <i id="selected-validators-input-button-box" class="fas fa-box-open text-primary" ></i>
+                                          </button>
+                                    </div>
                               </span>
                               <div style="font-weight:300;font-size:0.9rem;display:flex;justify-content:center" class="pb-2">
                                     <span id="dashboard-info">Found 0 pending, 0 active and 0 exited validators</span>
