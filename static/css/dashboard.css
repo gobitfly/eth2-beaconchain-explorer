@@ -424,13 +424,12 @@ ul.multiselect input:focus {
 
 .tt-open::-webkit-scrollbar{
   width: 5px;
-  background-color: var(--bg-color-secondary);
+  /* background-color: var(--bg-color-secondary); */
 }
 
 .tt-open::-webkit-scrollbar-thumb{
-  background-color: var(--body-color); 
+  background-color: var(--banner-text);
   border-radius: 12px;
   border-style: solid;
   border-width: 2px;
 }
-

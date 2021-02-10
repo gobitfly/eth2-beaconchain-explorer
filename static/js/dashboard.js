@@ -103,7 +103,13 @@ function updateValidatorInfo(index){
     method: "GET"
   }).then((res)=>{
     res.json().then((data)=>{
-      $('#slashingsCount span').text(data.recordsTotal)
+      var total = parseInt(data.recordsTotal)
+      if (total>0){
+        $('#slashingsCountDiv').removeClass('d-none')
+        $('#slashingsCount span').text(total)
+      }else {
+        $('#slashingsCountDiv').addClass('d-none')
+      }
     })
   })
   fetch(`/validator/${index}/effectiveness`,{
@@ -322,7 +328,7 @@ $(document).ready(function() {
     lengthChange: false,
     searching: true,
     pagingType: 'full_numbers',
-    pageLength: 8,
+    lengthMenu: [8, 10, 25, 50],
     info: false,
     preDrawCallback: function() {
       // this does not always work.. not sure how to solve the staying tooltip
@@ -412,7 +418,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
           if (data === null) return 'No Attestation found'
-          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
+          return `<span>${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}</span>`
         }
       },
       {
