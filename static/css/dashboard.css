@@ -286,7 +286,7 @@ ul.multiselect input:focus {
 
 .dashboard-container .tt-menu {
   margin-top: 4px;
-  /* background-color: var(--banner-background); */
+  background-color: var(--banner-background);
   border: 1px solid var(--banner-background);
   -webkit-border-radius: 4px;
   -moz-border-radius: 4px;
@@ -415,17 +415,12 @@ ul.multiselect input:focus {
 
 .tt-open::-webkit-scrollbar{
   width: 5px;
-  background-color: var(--bg-color-secondary);
+  /* background-color: var(--bg-color-secondary); */
 }
 
 .tt-open::-webkit-scrollbar-thumb{
-  background-color: var(--body-color); 
+  background-color: var(--banner-text);
   border-radius: 12px;
   border-style: solid;
   border-width: 2px;
 }
-
-.high-contrast{
-  filter: contrast(.7);
-}
-
