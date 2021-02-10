@@ -221,12 +221,13 @@ function renderProposedHistoryTable(data){
     processing: false,
     ordering: false,
     paginate: false,
+    searching:false,
     columnDefs: [
       {
         targets: 0,
         data: '0',
         render: function(data, type, row, meta) {
-          return '<a href="/validator/' + data + '">0' + data +'</a>'
+          return '<a href="/validator/' + data + '"><i class="fas fa-male fa-sm mr-1">' + data +'</i></a>'
         }
       },
       {
@@ -234,6 +235,27 @@ function renderProposedHistoryTable(data){
         data: '1',
         render: function(data, type, row, meta) {
           return '<a>' + luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "short"}) +'</a>'
+        }
+      },
+      {
+        targets: 2,
+        data: '2',
+        render: function(data, type, row, meta) {
+          return '<a class="text-success">' + data +'</a>'
+        }
+      },
+      {
+        targets: 3,
+        data: '3',
+        render: function(data, type, row, meta) {
+          return '<a class="text-danger">' + data +'</a>'
+        }
+      },
+      {
+        targets: 4,
+        data: '4',
+        render: function(data, type, row, meta) {
+          return '<a class="text-info">' + data +'</a>'
         }
       }
     ]

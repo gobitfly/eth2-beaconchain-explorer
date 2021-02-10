@@ -424,3 +424,18 @@ ul.multiselect input:focus {
   border-style: solid;
   border-width: 2px;
 }
+
+.proposal-switch{
+  border-radius: 12px;
+  border-style: none;
+  border-color: gray;
+  background-color: gray;
+  cursor:pointer;
+  
+}
+
+.proposal-switch-selected{
+  border-radius: 12px;
+  border-style: none;
+  background-color: var(--primary);
+}
