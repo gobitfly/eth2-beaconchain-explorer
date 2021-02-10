@@ -123,6 +123,48 @@ function updateValidatorInfo(index){
 
 var boxAnimationDirection=""
 
+
+
+window.addEventListener('load', function() {
+  var searchInput = document.querySelector('#selected-validators-input input.typeahead-dashboard')
+  
+  $('#selected-validators-input-button').on('click', function(ev) {
+    var overview = document.getElementById('selected-validators-overview')
+    overview.classList.toggle('d-none')
+  })
+
+  searchInput.addEventListener('focus', function(ev) {
+    var overview = document.getElementById('selected-validators-overview')
+    if (document.querySelector('#selected-validators-input-button > span').textContent) {
+      overview.classList.remove('d-none')
+    }
+  })
+
+  // searchInput.addEventListener('blur', function(ev) {
+  //   var overview = document.getElementById('selected-validators-overview')
+  //   // overview.classList.add('d-none')
+  // })
+
+  document.addEventListener('click', function(event) {
+    var overview = document.getElementById('selected-validators-overview')
+    var trgt = event.target
+    let count = 0;
+    let match = false;
+    do {
+      count++;
+      if(trgt.matches('li[data-validator-index]') || trgt.matches('.tt-suggestion') || trgt.matches('.tt-menu') || trgt.matches('#selected-validators-overview') || trgt.matches('#selected-validators-input input.typeahead-dashboard') || trgt.matches('#selected-validators-input-button')) {
+        match = true
+        break
+      }
+      if (count > 15) break;
+      trgt = trgt.parentNode
+    } while (trgt && trgt.matches)
+    if(!match) {
+      overview.classList.add('d-none')
+    }
+  })
+})
+
 function addValidatorUpdateUI(){
   $('#validators-tab').removeClass('disabled')
   $('#validator-art').attr('class', "d-none")
@@ -283,6 +325,7 @@ $(document).ready(function() {
     processing: true,
     serverSide: false,
     ordering: true,
+    lengthChange: false,
     searching: true,
     pagingType: 'full_numbers',
     lengthMenu: [8, 10, 25, 50],
@@ -502,6 +545,10 @@ $(document).ready(function() {
   $('.typeahead-dashboard').on('input', function() {
     $('.tt-suggestion').first().addClass('tt-cursor')
   })
+  $('.typeahead-dashboard').on('blur', function() {
+    $(this).val('')
+    $('.typeahead-dashboard').typeahead('val', '')
+  })
   $('.typeahead-dashboard').on('typeahead:select', function(ev, sug) {
     if (sug.validator_indices) {
       addValidators(sug.validator_indices)
@@ -512,6 +559,7 @@ $(document).ready(function() {
     // addValidatorUpdateUI()
     $('.typeahead-dashboard').typeahead('val', '')
   })
+
   $('#pending').on('click', 'button', function() {
     var data = pendingTable.row($(this).parents('tr')).data()
     removeValidator(data[1])
@@ -570,13 +618,20 @@ $(document).ready(function() {
     if(state.validators.length>VALLIMIT) return
     var elHolder = document.getElementById('selected-validators')
     $('#selected-validators .item').remove()
+    $('#selected-validators hr').remove()
     var elsItems = []
     for (var i = 0; i < state.validators.length; i++) {
+      if(i % 25 === 0 && i !== 0) {
+        var hr = document.createElement('hr')
+        hr.classList.add('w-100')
+        hr.classList.add('my-1')
+        elsItems.push(hr)
+      }
       var v = state.validators[i]
       var elItem = document.createElement('li')
       elItem.classList = 'item'
       elItem.dataset.validatorIndex = v
-      elItem.innerHTML = v + ' <i class="fas fa-times-circle remove-validator"></i>'
+      elItem.innerHTML = '<i class="fas fa-times-circle remove-validator"></i> <span>' + v + '</span>'
       elsItems.push(elItem)
     }
     elHolder.prepend(...elsItems)
@@ -592,12 +647,12 @@ $(document).ready(function() {
       if (selectedBTNindex!=state.validators[0]){ // don't query if not necessary
         showValidatorHist(state.validators[0])
       }
-      showValidatorsInSearch(3)
+      // showValidatorsInSearch(3)
     }else{
       $('#validatorModal').modal('hide')
     }
 
-    if (state.validators.length>3){
+    if (state.validators.length>0){
       $('#selected-validators-input-button').removeClass('d-none')
       $('#selected-validators-input-button').addClass('d-flex')
       $('#selected-validators-input-button span').html(state.validators.length)
@@ -645,6 +700,10 @@ $(document).ready(function() {
   }
 
   function addValidators(indices) {
+    var overview = document.getElementById('selected-validators-overview')
+    if(state.validators.length === 0) {
+      overview.classList.remove('d-none')
+    }
     var limitReached = false
     indicesLoop:
     for (var j = 0; j < indices.length; j++) {
@@ -670,6 +729,10 @@ $(document).ready(function() {
   }
 
   function addValidator(index) {
+    var overview = document.getElementById('selected-validators-overview')
+    if(state.validators.length === 0) {
+      overview.classList.remove('d-none')
+    }
     if (state.validators.length >= VALLIMIT) {
       alert(`Too many validators, you can not add more than ${VALLIMIT} validators to your dashboard!`)
       return
