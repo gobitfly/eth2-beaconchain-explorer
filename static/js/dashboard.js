@@ -375,7 +375,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data ? data[0] : null
           if (data === null) return 'No Attestation found'
-          return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
+          return `<span>${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})}</span>`
         }
       },
       {
