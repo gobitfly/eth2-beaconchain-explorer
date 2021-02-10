@@ -121,6 +121,10 @@ function updateValidatorInfo(index){
   })
 }
 
+function getValidatorQueryString(){
+  return window.location.href.slice(window.location.href.indexOf("?"), window.location.href.length)
+}
+
 var boxAnimationDirection=""
 
 function addValidatorUpdateUI(){
@@ -141,9 +145,7 @@ function addValidatorUpdateUI(){
     $('#selected-validators-input-button-val').removeClass(anim)
   }, 1100) 
 
-  let validators_path = window.location.href
-  validators_path = validators_path.slice(validators_path.indexOf("?"), validators_path.length)
-  fetch(`/dashboard/data/effectiveness${validators_path}`,{
+  fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`,{
     method: "GET"
   }).then((res)=>{
     res.json().then((data)=>{
@@ -211,7 +213,51 @@ function setValidatorEffectiveness(elem, eff){
   }
 }
 
+function renderProposedHistoryTable(data){
+  console.log("dd", data, data[0])
+  $('#proposals-table').DataTable({
+    serverSide: false,
+    data:data,
+    processing: false,
+    ordering: false,
+    paginate: false,
+    columnDefs: [
+      {
+        targets: 0,
+        data: '0',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '">0' + data +'</a>'
+        }
+      },
+      {
+        targets: 1,
+        data: '1',
+        render: function(data, type, row, meta) {
+          return '<a>' + luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "short"}) +'</a>'
+        }
+      }
+    ]
+  })
+}
+
+var proposedHistTableData = []
+function showProposedHistoryTable(){
+  if (proposedHistTableData.length===0){
+    fetch('/dashboard/data/proposalshistory'+getValidatorQueryString(), {
+      method: "GET",
+    }).then((res)=>{
+        res.json().then(function(data){
+        proposedHistTableData=data
+        renderProposedHistoryTable(proposedHistTableData)
+      })
+    })
+  }else{
+    renderProposedHistoryTable(proposedHistTableData)
+  }
+}
+
 $(document).ready(function() {
+  showProposedHistoryTable()
   $("#dashChartTabs a:first").tab("show")
 
   $('#validators').on("page.dt", function(){
