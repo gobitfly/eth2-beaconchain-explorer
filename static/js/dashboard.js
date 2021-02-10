@@ -319,6 +319,7 @@ $(document).ready(function() {
     processing: true,
     serverSide: false,
     ordering: true,
+    lengthChange: false,
     searching: true,
     pagingType: 'full_numbers',
     pageLength: 8,

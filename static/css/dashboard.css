@@ -291,7 +291,7 @@ ul.multiselect input:focus {
 
 .dashboard-container .tt-menu {
   margin-top: 4px;
-  /* background-color: var(--banner-background); */
+  background-color: var(--banner-background);
   border: 1px solid var(--banner-background);
   -webkit-border-radius: 4px;
   -moz-border-radius: 4px;
@@ -433,3 +433,4 @@ ul.multiselect input:focus {
   border-style: solid;
   border-width: 2px;
 }
+
