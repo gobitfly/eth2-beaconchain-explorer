@@ -164,7 +164,7 @@ function addValidatorUpdateUI(){
 
 function showSelectedValidator(){
   setTimeout(function(){
-    $( 'button[id^=dropdownMenuButton]' ).each(function(el, item){
+    $( 'span[id^=dropdownMenuButton]' ).each(function(el, item){
       if ($(item).attr('id')==="dropdownMenuButton"+selectedBTNindex){
         $(item).addClass('bg-primary')
       }else{
@@ -214,7 +214,10 @@ function setValidatorEffectiveness(elem, eff){
 }
 
 function renderProposedHistoryTable(data){
-  console.log("dd", data, data[0])
+  if ($.fn.dataTable.isDataTable('#proposals-table')){
+    $('#proposals-table').DataTable().destroy();
+  }
+  // console.log("dd", data, data[0])
   $('#proposals-table').DataTable({
     serverSide: false,
     data:data,
@@ -278,8 +281,22 @@ function showProposedHistoryTable(){
   }
 }
 
+function switchFrom(el1, el2, el3, el4){
+  $(el1).removeClass("proposal-switch-selected")
+  $(el2).addClass("proposal-switch-selected")
+  $(el3).addClass("d-none")
+  $(el4).removeClass("d-none")
+}
+
 $(document).ready(function() {
-  showProposedHistoryTable()
+  $('.proposal-switch').on('click', ()=>{
+    if ($('.switch-chart').hasClass("proposal-switch-selected")){
+      showProposedHistoryTable()
+      switchFrom(".switch-chart", ".switch-table", "#proposed-chart", "#proposed-table-div")
+    }else if ($('.switch-table').hasClass("proposal-switch-selected")){
+      switchFrom(".switch-table", ".switch-chart", "#proposed-table-div", "#proposed-chart")
+    }
+  })
   $("#dashChartTabs a:first").tab("show")
 
   $('#validators').on("page.dt", function(){
@@ -380,9 +397,9 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data
           // return '<a href="/validator/' + data + '">' + data + '</a>'
-          return `<button class="btn btn-sm m-0 p-1 hbtn" type="button" id="dropdownMenuButton${data}" onclick="showValidatorHist('${data}')">
+          return `<span class="m-0 p-1 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">
                       ${data}
-                  </button>
+                  </span>
                  `
         }
       },

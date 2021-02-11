@@ -428,8 +428,8 @@ ul.multiselect input:focus {
 .proposal-switch{
   border-radius: 12px;
   border-style: none;
-  border-color: gray;
-  background-color: gray;
+  border-color:  rgba(159, 162, 177, 0.4);
+  background-color:rgba(159, 162, 177, 0.4);
   cursor:pointer;
   
 }
@@ -438,4 +438,5 @@ ul.multiselect input:focus {
   border-radius: 12px;
   border-style: none;
   background-color: var(--primary);
+  color: var(--white);
 }

@@ -461,11 +461,11 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	filter := pq.Array(filterArr)
 
 	proposals := []struct {
-		ValidatorIndex uint64 `db:"validatorindex"`
-		Day uint64	`db:"day"`
-		Proposed *uint64	`db:"proposed_blocks"`
-		Missed *uint64	`db:"missed_blocks"`
-		Orphaned *uint64	`db:"orphaned_blocks"`
+		ValidatorIndex uint64  `db:"validatorindex"`
+		Day            uint64  `db:"day"`
+		Proposed       *uint64 `db:"proposed_blocks"`
+		Missed         *uint64 `db:"missed_blocks"`
+		Orphaned       *uint64 `db:"orphaned_blocks"`
 	}{}
 
 	err = db.DB.Select(&proposals, `
@@ -482,15 +482,15 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 
 	proposalsHistResult := make([][]uint64, len(proposals))
 	for i, b := range proposals {
-		var proposed, missed, orphaned uint64 = 0,0,0
-		if b.Proposed != nil{
-			proposed=*b.Proposed
+		var proposed, missed, orphaned uint64 = 0, 0, 0
+		if b.Proposed != nil {
+			proposed = *b.Proposed
 		}
-		if b.Missed != nil{
-			missed=*b.Missed
+		if b.Missed != nil {
+			missed = *b.Missed
 		}
-		if b.Orphaned != nil{
-			orphaned=*b.Orphaned
+		if b.Orphaned != nil {
+			orphaned = *b.Orphaned
 		}
 		proposalsHistResult[i] = []uint64{
 			b.ValidatorIndex,

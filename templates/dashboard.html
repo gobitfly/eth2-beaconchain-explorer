@@ -529,8 +529,8 @@
                               <div id="proposals" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="proposals-tab">
                                     <div class="d-flex align-items-start justify-content-start p-1">
                                           <div class="proposal-switch">
-                                                <i class="fas fa-chart-line fa-sm mr-1 p-1 proposal-switch-selected"></i>
-                                                <i class="fas fa-table fs-sm p-1"></i>
+                                                <i class="fas fa-chart-line fa-sm switch-chart p-2 proposal-switch-selected"></i>
+                                                <i class="fas fa-table fa-sm switch-table p-2"></i>
                                           </div>
                                     </div>
                                     <div id="proposed-chart">
@@ -727,7 +727,10 @@
                                                 </svg>
                                           </div>
                                     </div>
-                                    <div id="proposed-table-div" class="dashboard-table px-0 mx-0 d-none" id="proposals-table-holder">
+                                    <div id="proposed-table-div" class="dashboard-table px-0 mx-0 d-none flex-column" id="proposals-table-holder">
+                                          <div class="d-flex justify-content-center align-items-center">
+                                                <span class="h4">Latest Proposal History</span>
+                                          </div>
                                           <div class="table-responsive pt-2 pb-2">
                                                 <table class="table" id="proposals-table" width="100%">
                                                       <thead>
