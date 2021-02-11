@@ -237,14 +237,14 @@ function renderProposedHistoryTable(data){
         targets: 1,
         data: '1',
         render: function(data, type, row, meta) {
-          return '<a>' + luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "short"}) +'</a>'
+          return '<span>' + luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "short"}) +'</span>'
         }
       },
       {
         targets: 2,
         data: '2',
         render: function(data, type, row, meta) {
-          return '<a class="text-success">'+data[0]+'</a>/'+'<a class="text-danger">'+data[1]+'</a>/'+'<a class="text-info">'+data[2]+'</a>'
+          return '<span class="text-success p-1">'+data[0]+'</span>/'+'<span class="text-danger p-1">'+data[1]+'</span>/'+'<span class="text-info p-1">'+data[2]+'</span>'
         }
       }
       // {
@@ -292,6 +292,7 @@ function switchFrom(el1, el2, el3, el4){
 }
 
 $(document).ready(function() {
+  
   $('.proposal-switch').on('click', ()=>{
     if ($('.switch-chart').hasClass("proposal-switch-selected")){
       showProposedHistoryTable()
