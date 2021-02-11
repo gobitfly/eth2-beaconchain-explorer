@@ -13,7 +13,7 @@ import (
 var logger = logrus.New().WithField("module", "notify").WithField("service", "firebase")
 
 func SendPushBatch(messages []*messaging.Message) (*messaging.BatchResponse, error) {
-	credentialsPath := utils.Config.Frontend.Notifications.FirebaseCredentialsPath
+	credentialsPath := utils.Config.Notifications.FirebaseCredentialsPath
 	if credentialsPath == "" {
 		logger.Errorf("firebase credentials path not provided, disabling push notifications")
 		return nil, nil
