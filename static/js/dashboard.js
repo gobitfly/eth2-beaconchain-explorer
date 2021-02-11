@@ -244,41 +244,44 @@ function renderProposedHistoryTable(data){
         targets: 2,
         data: '2',
         render: function(data, type, row, meta) {
-          return '<a class="text-success">' + data +'</a>'
-        }
-      },
-      {
-        targets: 3,
-        data: '3',
-        render: function(data, type, row, meta) {
-          return '<a class="text-danger">' + data +'</a>'
-        }
-      },
-      {
-        targets: 4,
-        data: '4',
-        render: function(data, type, row, meta) {
-          return '<a class="text-info">' + data +'</a>'
+          return '<a class="text-success">'+data[0]+'</a>/'+'<a class="text-danger">'+data[1]+'</a>/'+'<a class="text-info">'+data[2]+'</a>'
         }
       }
+      // {
+      //   targets: 3,
+      //   data: '3',
+      //   render: function(data, type, row, meta) {
+      //     return '<a class="text-danger">' + data +'</a>'
+      //   }
+      // },
+      // {
+      //   targets: 4,
+      //   data: '4',
+      //   render: function(data, type, row, meta) {
+      //     return '<a class="text-info">' + data +'</a>'
+      //   }
+      // }
     ]
   })
 }
 
-var proposedHistTableData = []
+// var proposedHistTableData = []
 function showProposedHistoryTable(){
-  if (proposedHistTableData.length===0){
+  // if (proposedHistTableData.length===0){
     fetch('/dashboard/data/proposalshistory'+getValidatorQueryString(), {
       method: "GET",
     }).then((res)=>{
         res.json().then(function(data){
-        proposedHistTableData=data
+        let proposedHistTableData=[]
+        for (let item of data){
+          proposedHistTableData.push([item[0], item[1], [item[2], item[3], item[4]]])
+        }
         renderProposedHistoryTable(proposedHistTableData)
       })
     })
-  }else{
-    renderProposedHistoryTable(proposedHistTableData)
-  }
+  // }else{
+  //   renderProposedHistoryTable(proposedHistTableData)
+  // }
 }
 
 function switchFrom(el1, el2, el3, el4){
