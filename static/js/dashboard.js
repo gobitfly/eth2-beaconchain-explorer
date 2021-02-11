@@ -230,7 +230,7 @@ function renderProposedHistoryTable(data){
         targets: 0,
         data: '0',
         render: function(data, type, row, meta) {
-          return '<a href="/validator/' + data + '"><i class="fas fa-male fa-sm mr-1">' + data +'</i></a>'
+          return '<a href="/validator/' + data + '"><i class="fas fa-male fa-sm mr-1"></i>'+ data +'</a>'
         }
       },
       {
@@ -370,7 +370,7 @@ $(document).ready(function() {
     ordering: true,
     searching: true,
     pagingType: 'full_numbers',
-    lengthMenu: [8, 10, 25, 50],
+    lengthMenu: [10, 25, 50],
     info: false,
     preDrawCallback: function() {
       // this does not always work.. not sure how to solve the staying tooltip
