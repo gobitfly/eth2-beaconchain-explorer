@@ -161,7 +161,7 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 			return client.Name, "Recently"
 		}
 
-		if timeDiff < 2.0 && timeDiff > 1.0 {
+		if timeDiff <= 1.5 && timeDiff >= 1.0 {
 			return client.Name, fmt.Sprintf("1 day ago")
 		}
 
