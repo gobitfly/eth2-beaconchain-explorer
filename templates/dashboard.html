@@ -725,17 +725,20 @@
                                                 </svg>
                                           </div>
                                     </div>
-                                    <div id="proposed-table-div" class="dashboard-table px-0 mx-0 d-none flex-column" id="proposals-table-holder">
-                                          <div class="d-flex justify-content-center align-items-center p-1 mt-2">
+                                    <div class="d-flex justify-content-center align-items-center p-1 mt-2">
                                                 <span>Proposal History</span>
-                                          </div>
+                                    </div>
+                                    <div id="proposed-table-div" class="dashboard-table px-0 mx-0 d-none flex-column" id="proposals-table-holder">
+                                          
                                           <div class="table-responsive pt-2 pb-2">
                                                 <table class="table" id="proposals-table" width="100%">
                                                       <thead>
                                                       <tr>
                                                             <th>Validator</th>
                                                             <th>Date</th>
-                                                            <th><span data-toggle="tooltip" data-placement="top" title="Proposed/Missed/Orphaned">P<span class="d-none d-md-inline">roposed</span>/M<span class="d-none d-md-inline">issed</span>/O<span class="d-none d-md-inline">rphaned</span></span></th>
+                                                            <th data-toggle="tooltip" data-placement="top" title="Proposed/Missed/Orphaned" style="max-width: 150px;">
+                                                                  P<span class="d-none d-md-inline">roposed</span>/M<span class="d-none d-md-inline">issed</span>/O<span class="d-none d-md-inline">rphaned</span>
+                                                            </th>
                                                       </tr>
                                                       </thead>
                                                       <tbody></tbody>
