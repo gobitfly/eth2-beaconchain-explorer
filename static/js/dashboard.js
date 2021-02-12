@@ -184,7 +184,6 @@ function showSelectedValidator(){
 
 function showValidatorsInSearch(qty){
   qty = parseInt(qty)
-  // setTimeout(function(){
   let i=0
   let l=[]
   $('#selected-validators-input li:not(:last)').remove()
@@ -196,7 +195,6 @@ function showValidatorsInSearch(qty){
   for (let i=0; i<l.length; i++){
     $('#selected-validators-input').prepend(l[l.length-(i+1)])
   }
-  // }, 100)
 }
 
 function setValidatorEffectiveness(elem, eff){
@@ -217,7 +215,7 @@ function renderProposedHistoryTable(data){
   if ($.fn.dataTable.isDataTable('#proposals-table')){
     $('#proposals-table').DataTable().destroy();
   }
-  // console.log("dd", data, data[0])
+
   $('#proposals-table').DataTable({
     serverSide: false,
     data:data,
@@ -287,8 +285,6 @@ $(document).ready(function() {
       switchFrom(".switch-table", ".switch-chart", "#proposed-table-div", "#proposed-chart")
     }
   })
-
-  // $("#dashChartTabs a:first").tab("show")
 
   $('#validators').on("page.dt", function(){
     showSelectedValidator()
