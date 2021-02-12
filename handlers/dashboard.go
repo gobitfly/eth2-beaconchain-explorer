@@ -397,6 +397,10 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 	}
 
+	if earnings == nil {
+		earnings = &types.ValidatorEarnings{}
+	}
+
 	err = json.NewEncoder(w).Encode(earnings)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error enconding json response")
@@ -417,6 +421,14 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	}
 	filter := pq.Array(filterArr)
 
+	var activeValidators pq.Int64Array
+	err = db.DB.Select(&activeValidators, `
+		SELECT validatorindex FROM validators where validatorindex = ANY($1) and activationepoch < $2 AND exitepoch > $2
+	`, filter, services.LatestEpoch())
+	if err != nil {
+		logger.Errorf("error retrieving active validators")
+	}
+
 	var avgIncDistance []float64
 
 	err = db.DB.Select(&avgIncDistance, `
@@ -433,7 +445,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = index AND aa.inclusionslot > 0
 		) as incd
 	FROM unnest($2::int[]) AS index;
-	`, int64(services.LatestEpoch())-100, filter)
+	`, int64(services.LatestEpoch())-100, activeValidators)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
 		http.Error(w, "Internal server error", 503)
