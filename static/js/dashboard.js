@@ -247,20 +247,6 @@ function renderProposedHistoryTable(data){
           return '<span class="text-success p-1">'+data[0]+'</span>/'+'<span class="text-danger p-1">'+data[1]+'</span>/'+'<span class="text-info p-1">'+data[2]+'</span>'
         }
       }
-      // {
-      //   targets: 3,
-      //   data: '3',
-      //   render: function(data, type, row, meta) {
-      //     return '<a class="text-danger">' + data +'</a>'
-      //   }
-      // },
-      // {
-      //   targets: 4,
-      //   data: '4',
-      //   render: function(data, type, row, meta) {
-      //     return '<a class="text-info">' + data +'</a>'
-      //   }
-      // }
     ]
   })
 }
@@ -301,7 +287,8 @@ $(document).ready(function() {
       switchFrom(".switch-table", ".switch-chart", "#proposed-table-div", "#proposed-chart")
     }
   })
-  $("#dashChartTabs a:first").tab("show")
+
+  // $("#dashChartTabs a:first").tab("show")
 
   $('#validators').on("page.dt", function(){
     showSelectedValidator()
