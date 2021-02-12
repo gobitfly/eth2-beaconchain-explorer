@@ -237,7 +237,7 @@ function renderProposedHistoryTable(data){
         targets: 1,
         data: '1',
         render: function(data, type, row, meta) {
-          return '<span>' + luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "short"}) +'</span>'
+          return '<span>' + luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long"}) +'</span>'
         }
       },
       {
