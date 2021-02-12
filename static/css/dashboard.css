@@ -435,22 +435,24 @@ ul.multiselect input:focus {
 }
 
 .proposal-switch{
-  border-radius: 10px;
+  border-radius: 12px;
   border-style: none;
   border-color:  rgba(159, 162, 177, 0.4);
   background-color:rgba(159, 162, 177, 0.4);
   cursor:pointer;
-  /* position: absolute; */
-  /* top: 8%;
-  justify-self: center;
-  align-self: center; */
-  /* left: 1%; */
-  /* z-index: 999; */
+  position: absolute;
+  top: 8%;
+  left: 1%;
+  z-index: 999;
 }
 
 .proposal-switch-selected{
-  border-radius: 10px;
+  border-radius: 12px;
   border-style: none;
   background-color: var(--primary);
   color: var(--white);
+}
+
+#proposals-table_length, #proposals-table_info{
+  display: none;
 }

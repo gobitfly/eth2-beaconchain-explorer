@@ -267,6 +267,15 @@ function renderProposedHistoryTable(data){
     searching: true,
     pagingType: 'full_numbers',
     lengthMenu: [10, 25, 50],
+    preDrawCallback: function() {
+      // this does not always work.. not sure how to solve the staying tooltip
+      try {
+        $('#validators').find('[data-toggle="tooltip"]').tooltip('dispose')
+      } catch (e) {}
+    },
+    drawCallback: function(settings) {
+      $('#validators').find('[data-toggle="tooltip"]').tooltip()
+    },
     columnDefs: [
       {
         targets: 0,
