@@ -484,8 +484,7 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 		SELECT validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks
 		FROM validator_stats
 		WHERE validatorindex = ANY($1) AND (proposed_blocks IS NOT NULL OR missed_blocks IS NOT NULL OR orphaned_blocks IS NOT NULL)
-		ORDER BY day DESC
-      	LIMIT 10`, filter)
+		ORDER BY day DESC`, filter)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving validator_stats")
 		http.Error(w, "Internal server error", 503)

@@ -264,8 +264,9 @@ function renderProposedHistoryTable(data){
     data:data,
     processing: false,
     ordering: false,
-    paginate: false,
-    searching:false,
+    searching: true,
+    pagingType: 'full_numbers',
+    lengthMenu: [10, 25, 50],
     columnDefs: [
       {
         targets: 0,
