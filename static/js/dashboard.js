@@ -318,11 +318,16 @@ function switchFrom(el1, el2, el3, el4){
   $(el4).removeClass("d-none")
 }
 
+var firstSwitch=true
+
 $(document).ready(function() {
   
   $('.proposal-switch').on('click', ()=>{
     if ($('.switch-chart').hasClass("proposal-switch-selected")){
-      // showProposedHistoryTable()
+      if (firstSwitch){
+        showProposedHistoryTable()
+        firstSwitch=false
+      }
       switchFrom(".switch-chart", ".switch-table", "#proposed-chart", "#proposed-table-div")
     }else if ($('.switch-table').hasClass("proposal-switch-selected")){
       switchFrom(".switch-table", ".switch-chart", "#proposed-table-div", "#proposed-chart")
