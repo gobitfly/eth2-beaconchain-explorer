@@ -160,6 +160,7 @@ function addValidatorUpdateUI(){
       setValidatorEffectiveness('validator-eff-total', eff)
     })
   })
+  showProposedHistoryTable()
 }
 
 function showSelectedValidator(){
@@ -279,7 +280,7 @@ $(document).ready(function() {
   
   $('.proposal-switch').on('click', ()=>{
     if ($('.switch-chart').hasClass("proposal-switch-selected")){
-      showProposedHistoryTable()
+      // showProposedHistoryTable()
       switchFrom(".switch-chart", ".switch-table", "#proposed-chart", "#proposed-table-div")
     }else if ($('.switch-table').hasClass("proposal-switch-selected")){
       switchFrom(".switch-table", ".switch-chart", "#proposed-table-div", "#proposed-chart")
