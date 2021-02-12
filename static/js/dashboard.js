@@ -270,11 +270,11 @@ function renderProposedHistoryTable(data){
     preDrawCallback: function() {
       // this does not always work.. not sure how to solve the staying tooltip
       try {
-        $('#validators').find('[data-toggle="tooltip"]').tooltip('dispose')
+        $('#proposals-table').find('[data-toggle="tooltip"]').tooltip('dispose')
       } catch (e) {}
     },
     drawCallback: function(settings) {
-      $('#validators').find('[data-toggle="tooltip"]').tooltip()
+      $('#proposals-table').find('[data-toggle="tooltip"]').tooltip()
     },
     columnDefs: [
       {
