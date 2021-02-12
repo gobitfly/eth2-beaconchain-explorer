@@ -281,7 +281,7 @@
                   <div class="card h-100 px-0 py-0 card-body" style="min-height: 600px;">
                         <ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="dashChartTabs" role="tablist">
                               <li class="nav-item">
-                                    <a class="nav-link" id="validators-tab" data-toggle="tab" href="#validators-table" role="tab"
+                                    <a class="nav-link show active" id="validators-tab" data-toggle="tab" href="#validators-table" role="tab"
                                     aria-controls="validators" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-male"></i><span class="tab-text">Validators</span></a>
                               </li>
                               <li class="nav-item">
@@ -524,7 +524,8 @@
                                     </div>
                               </div>
                               <div id="proposals" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="proposals-tab">
-                                    <div id="proposed-chart">
+                                   
+                                    <div id="proposed-chart" class="mt-5">
                                           <div class="d-flex align-items-center justify-content-center p-5">
                                                 <svg style="width:60%; height: auto;" id="b8be6891-8c6c-471d-9cef-5646484caaf2"
                                                       data-name="Layer 1"
@@ -716,6 +717,27 @@
                                                       <path d="M930.13,480.74s21,29.14,19.45,36.9-7.76,3.61-7.76,3.61l-8.29-11.37-7.44-21.27S926.81,479.43,930.13,480.74Z"
                                                             transform="translate(-77.94 -33.72)" fill="#474463"/>
                                                 </svg>
+                                          </div>
+                                    </div>
+                                    <div class="proposal-switch">
+                                          <i class="fas fa-chart-line fa-sm switch-chart p-2 proposal-switch-selected"></i>
+                                          <i class="fas fa-table fa-sm switch-table p-2"></i>
+                                    </div>
+                                    <div id="proposed-table-div" class="dashboard-table px-0 mx-0 d-none flex-column" id="proposals-table-holder">
+                                          <!--<div class="d-flex justify-content-center align-items-center p-1 mt-2">
+                                                      <span>Proposal History</span>
+                                          </div>-->
+                                          <div class="table-responsive pt-2 pb-2">
+                                                <table class="table" id="proposals-table" width="100%">
+                                                      <thead>
+                                                      <tr>
+                                                            <th>Validator</th>
+                                                            <th>Date</th>
+                                                            <th style="min-width: 100px;"><span data-toggle="tooltip" data-placement="top" title="Proposed/Missed/Orphaned">P / M / O</span></th>
+                                                      </tr>
+                                                      </thead>
+                                                      <tbody></tbody>
+                                                </table>
                                           </div>
                                     </div>
                               </div>     

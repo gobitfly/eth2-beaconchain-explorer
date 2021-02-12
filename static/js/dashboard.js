@@ -121,6 +121,10 @@ function updateValidatorInfo(index){
   })
 }
 
+function getValidatorQueryString(){
+  return window.location.href.slice(window.location.href.indexOf("?"), window.location.href.length)
+}
+
 var boxAnimationDirection=""
 
 
@@ -183,9 +187,7 @@ function addValidatorUpdateUI(){
     $('#selected-validators-input-button-val').removeClass(anim)
   }, 1100) 
 
-  let validators_path = window.location.href
-  validators_path = validators_path.slice(validators_path.indexOf("?"), validators_path.length)
-  fetch(`/dashboard/data/effectiveness${validators_path}`,{
+  fetch(`/dashboard/data/effectiveness${getValidatorQueryString()}`,{
     method: "GET"
   }).then((res)=>{
     res.json().then((data)=>{
@@ -200,11 +202,12 @@ function addValidatorUpdateUI(){
       setValidatorEffectiveness('validator-eff-total', eff)
     })
   })
+  showProposedHistoryTable()
 }
 
 function showSelectedValidator(){
   setTimeout(function(){
-    $( 'button[id^=dropdownMenuButton]' ).each(function(el, item){
+    $( 'span[id^=dropdownMenuButton]' ).each(function(el, item){
       if ($(item).attr('id')==="dropdownMenuButton"+selectedBTNindex){
         $(item).addClass('bg-primary')
       }else{
@@ -224,7 +227,6 @@ function showSelectedValidator(){
 
 function showValidatorsInSearch(qty){
   qty = parseInt(qty)
-  // setTimeout(function(){
   let i=0
   let l=[]
   $('#selected-validators-input li:not(:last)').remove()
@@ -236,7 +238,6 @@ function showValidatorsInSearch(qty){
   for (let i=0; i<l.length; i++){
     $('#selected-validators-input').prepend(l[l.length-(i+1)])
   }
-  // }, 100)
 }
 
 function setValidatorEffectiveness(elem, eff){
@@ -253,8 +254,95 @@ function setValidatorEffectiveness(elem, eff){
   }
 }
 
+function renderProposedHistoryTable(data){
+  if ($.fn.dataTable.isDataTable('#proposals-table')){
+    $('#proposals-table').DataTable().destroy();
+  }
+
+  $('#proposals-table').DataTable({
+    serverSide: false,
+    data:data,
+    processing: false,
+    ordering: false,
+    searching: true,
+    pagingType: 'full_numbers',
+    lengthMenu: [10, 25, 50],
+    preDrawCallback: function() {
+      // this does not always work.. not sure how to solve the staying tooltip
+      try {
+        $('#proposals-table').find('[data-toggle="tooltip"]').tooltip('dispose')
+      } catch (e) {}
+    },
+    drawCallback: function(settings) {
+      $('#proposals-table').find('[data-toggle="tooltip"]').tooltip()
+    },
+    columnDefs: [
+      {
+        targets: 0,
+        data: '0',
+        render: function(data, type, row, meta) {
+          return '<a href="/validator/' + data + '"><i class="fas fa-male fa-sm mr-1"></i>'+ data +'</a>'
+        }
+      },
+      {
+        targets: 1,
+        data: '1',
+        render: function(data, type, row, meta) {
+          return '<span>' + luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long"}) +'</span>'
+        }
+      },
+      {
+        targets: 2,
+        data: '2',
+        render: function(data, type, row, meta) {
+          return '<span class="text-success p-1">'+data[0]+'</span>/'+'<span class="text-danger p-1">'+data[1]+'</span>/'+'<span class="text-info p-1">'+data[2]+'</span>'
+        }
+      }
+    ]
+  })
+}
+
+// var proposedHistTableData = []
+function showProposedHistoryTable(){
+  // if (proposedHistTableData.length===0){
+    fetch('/dashboard/data/proposalshistory'+getValidatorQueryString(), {
+      method: "GET",
+    }).then((res)=>{
+        res.json().then(function(data){
+        let proposedHistTableData=[]
+        for (let item of data){
+          proposedHistTableData.push([item[0], item[1], [item[2], item[3], item[4]]])
+        }
+        renderProposedHistoryTable(proposedHistTableData)
+      })
+    })
+  // }else{
+  //   renderProposedHistoryTable(proposedHistTableData)
+  // }
+}
+
+function switchFrom(el1, el2, el3, el4){
+  $(el1).removeClass("proposal-switch-selected")
+  $(el2).addClass("proposal-switch-selected")
+  $(el3).addClass("d-none")
+  $(el4).removeClass("d-none")
+}
+
+var firstSwitch=true
+
 $(document).ready(function() {
-  $("#dashChartTabs a:first").tab("show")
+  
+  $('.proposal-switch').on('click', ()=>{
+    if ($('.switch-chart').hasClass("proposal-switch-selected")){
+      if (firstSwitch){
+        showProposedHistoryTable()
+        firstSwitch=false
+      }
+      switchFrom(".switch-chart", ".switch-table", "#proposed-chart", "#proposed-table-div")
+    }else if ($('.switch-table').hasClass("proposal-switch-selected")){
+      switchFrom(".switch-table", ".switch-chart", "#proposed-table-div", "#proposed-chart")
+    }
+  })
 
   $('#validators').on("page.dt", function(){
     showSelectedValidator()
@@ -328,7 +416,7 @@ $(document).ready(function() {
     lengthChange: false,
     searching: true,
     pagingType: 'full_numbers',
-    lengthMenu: [8, 10, 25, 50],
+    lengthMenu: [10, 25, 50],
     info: false,
     preDrawCallback: function() {
       // this does not always work.. not sure how to solve the staying tooltip
@@ -355,9 +443,9 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data
           // return '<a href="/validator/' + data + '">' + data + '</a>'
-          return `<button class="btn btn-sm m-0 p-1 hbtn" type="button" id="dropdownMenuButton${data}" onclick="showValidatorHist('${data}')">
+          return `<span class="m-0 p-1 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">
                       ${data}
-                  </button>
+                  </span>
                  `
         }
       },
