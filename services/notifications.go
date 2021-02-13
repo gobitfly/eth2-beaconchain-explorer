@@ -295,7 +295,7 @@ func (n *validatorBalanceDecreasedNotification) GetEventFilter() string {
 }
 
 func getUrlPart(validatorIndex uint64) string {
-	return fmt.Sprintf(` For more information visit: https://%[2]s/validator/%[1]v.`, validatorIndex, utils.Config.Frontend.SiteDomain)
+	return fmt.Sprintf(` For more information visit: https://%[2]s/validator/%[1]v`, validatorIndex, utils.Config.Frontend.SiteDomain)
 }
 
 // collectValidatorBalanceDecreasedNotifications finds all validators whose balance decreased for 3 consecutive epochs
@@ -319,17 +319,17 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 
 	err := db.DB.Select(&dbResult, `
 		SELECT id, user_id, validatorindex, startbalance, endbalance, ENCODE(a.pubkey::bytea, 'hex') AS pubkey FROM (
-			SELECT 
-				us.id, 
-				us.user_id, 
+			SELECT
+				us.id,
+				us.user_id,
 				v.validatorindex,
-				v.pubkey AS pubkey, 
-				vb0.balance AS endbalance, 
-				vb3.balance AS startbalance, 
+				v.pubkey AS pubkey,
+				vb0.balance AS endbalance,
+				vb3.balance AS startbalance,
 				us.last_sent_epoch,
 				(SELECT MAX(epoch) FROM (
 					SELECT epoch, balance-LAG(balance) OVER (ORDER BY epoch) AS diff
-					FROM validator_balances_p 
+					FROM validator_balances_p
 					WHERE validatorindex = v.validatorindex AND week >= us.last_sent_epoch / 1575 AND week >= ($2 - 10) / 1575 AND epoch > us.last_sent_epoch AND epoch > $2 - 10
 				) b WHERE diff > 0) AS lastbalanceincreaseepoch
 			FROM users_subscriptions us
@@ -381,16 +381,16 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 	}
 
 	err := db.DB.Select(&dbResult, `
-			SELECT 
-				us.id, 
-				us.user_id, 
-				v.validatorindex, 
+			SELECT
+				us.id,
+				us.user_id,
+				v.validatorindex,
 				pa.epoch,
 				pa.status,
 				ENCODE(v.pubkey::bytea, 'hex') AS pubkey
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
-			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($2 - 5) 
+			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($2 - 5)
 			WHERE us.event_name = $1 AND pa.status = $3 AND us.created_epoch <= $2 AND pa.epoch >= ($2 - 5) AND (us.last_sent_epoch < pa.epoch OR us.last_sent_epoch IS NULL)`,
 		eventName, latestEpoch, status)
 	if err != nil {
@@ -491,10 +491,10 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 	}
 
 	err := db.DB.Select(&dbResult, `
-			SELECT 
-				us.id, 
-				us.user_id, 
-				v.validatorindex, 
+			SELECT
+				us.id,
+				us.user_id,
+				v.validatorindex,
 				aa.epoch,
 				aa.status,
 				aa.attesterslot,
@@ -649,25 +649,25 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 			slashings AS (
 				SELECT DISTINCT ON (slashedvalidator) * FROM (
 					SELECT
-						blocks.slot, 
-						blocks.epoch, 
-						blocks.proposer AS slasher, 
+						blocks.slot,
+						blocks.epoch,
+						blocks.proposer AS slasher,
 						UNNEST(ARRAY(
 							SELECT UNNEST(attestation1_indices)
 								INTERSECT
 							SELECT UNNEST(attestation2_indices)
-						)) AS slashedvalidator, 
+						)) AS slashedvalidator,
 						'Attestation Violation' AS reason
-					FROM blocks_attesterslashings 
+					FROM blocks_attesterslashings
 					LEFT JOIN blocks ON blocks_attesterslashings.block_slot = blocks.slot
 					WHERE blocks.status = '1'
 					UNION ALL
 						SELECT
-							blocks.slot, 
-							blocks.epoch, 
-							blocks.proposer AS slasher, 
+							blocks.slot,
+							blocks.epoch,
+							blocks.proposer AS slasher,
 							blocks_proposerslashings.proposerindex AS slashedvalidator,
-							'Proposer Violation' AS reason 
+							'Proposer Violation' AS reason
 						FROM blocks_proposerslashings
 						LEFT JOIN blocks ON blocks_proposerslashings.block_slot = blocks.slot
 						WHERE blocks.status = '1'
@@ -750,13 +750,13 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 		err := db.DB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter
 			FROM users_subscriptions AS us
-			WHERE 
-				us.event_name=$1 
-			AND 
-				us.event_filter=$2 
-			AND 
-				us.user_id 
-			NOT IN 
+			WHERE
+				us.event_name=$1
+			AND
+				us.event_filter=$2
+			AND
+				us.user_id
+			NOT IN
 				(SELECT user_id FROM users_notifications as un WHERE un.event_name=$1 AND un.event_filter=$2 AND TO_TIMESTAMP($3) <= un.sent_ts AND un.sent_ts <= NOW() + INTERVAL '2 DAYS')
 			`,
 			eventName, strings.ToLower(client.Name), client.Date.Unix()) // was last notification sent 2 days ago for this client
