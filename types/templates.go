@@ -623,9 +623,10 @@ type ChartsPageData []*ChartsPageDataChart
 
 // ChartsPageDataChart is a struct to hold a chart for the charts-page
 type ChartsPageDataChart struct {
-	Order int
-	Path  string
-	Data  *GenericChartData
+	Order  int
+	Path   string
+	Data   *GenericChartData
+	Height int
 }
 
 // DashboardData is a struct to hold data for the dashboard-page

@@ -31,6 +31,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	}
 	var pieChart chart
 	pieChart.DepositDistribution.Data = chartData
+	pieChart.DepositDistribution.Height = 500
 	pieChart.DepositDistribution.Path = "deposits_distribution"
 	data.Data = pieChart
 
