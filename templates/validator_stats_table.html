@@ -1,10 +1,10 @@
 {{ define "js"}}
     <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.5/js/dataTables.buttons.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/buttons/1.6.5/js/buttons.html5.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/dataTables.buttons.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/jszip.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/pdfmake.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/vfs_fonts.js"></script>
+    <script type="text/javascript" src="/bundle/js/buttons.html5.min.js"></script>
     <script>
         $('#stats-table').DataTable({
             pageLength: 400,
@@ -22,7 +22,7 @@
 
 {{ define "css"}}
     <link rel="stylesheet" type="text/css" href="/bundle/css/datatables.min.css"/>
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/1.6.5/css/buttons.dataTables.min.css"/>
+    <link rel="stylesheet" type="text/css" href="/bundle/css/buttons.dataTables.min.css"/>
     <style>
     </style>
 {{end}}
@@ -52,7 +52,7 @@
                 <thead>
                 <tr>
                     <th>Day</th>
-                    <th colspan="4">Balance</th>
+                    <th colspan="3">Balance</th>
                     <th colspan="2">Attestations</th>
                     <th colspan="3">Blocks</th>
                     <th colspan="2">Slashings</th>
@@ -60,10 +60,9 @@
                 </tr>
                 <tr>
                     <th></th>
+                    <th title="Income of the day" data-toggle="tooltip">Income</th>
                     <th title="Balance at the start of the day" data-toggle="tooltip">Start</th>
                     <th title="Balance at the end of the day" data-toggle="tooltip">End</th>
-                    <th title="Maximum balance reached during the day" data-toggle="tooltip">Min</th>
-                    <th title="Minimum balance reached during the day" data-toggle="tooltip">Max</th>
                     <th title="Amount of missed attestations" data-toggle="tooltip">M</th>
                     <th title="Amount of orphaned attestations" data-toggle="tooltip">O</th>
                     <th title="Amount of proposed blocks" data-toggle="tooltip">P</th>
@@ -79,10 +78,9 @@
                     {{range .Rows}}
                         <tr>
                             <td data-order="{{.Day}}">{{(dayToTime .Day).Format "02 Jan 2006"}}</td>
+                            <td>{{formatIncome .Income $.Currency}}</td>
                             <td>{{formatIncomeSql .StartBalance $.Currency}}</td>
                             <td>{{formatIncomeSql .EndBalance $.Currency}}</td>
-                            <td>{{formatIncomeSql .MinBalance $.Currency}}</td>
-                            <td>{{formatIncomeSql .MaxBalance $.Currency}}</td>
                             <td>{{formatSqlInt64 .MissedAttestations}}</td>
                             <td>{{formatSqlInt64 .OrphanedAttestations}}</td>
                             <td>{{formatSqlInt64 .ProposedBlocks}}</td>

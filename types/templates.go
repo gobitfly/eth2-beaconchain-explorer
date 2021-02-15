@@ -251,6 +251,7 @@ type ValidatorStatsTableRow struct {
 	Day                   uint64
 	StartBalance          sql.NullInt64 `db:"start_balance"`
 	EndBalance            sql.NullInt64 `db:"end_balance"`
+	Income                int64         `db:"-"`
 	MinBalance            sql.NullInt64 `db:"min_balance"`
 	MaxBalance            sql.NullInt64 `db:"max_balance"`
 	StartEffectiveBalance sql.NullInt64 `db:"start_effective_balance"`
