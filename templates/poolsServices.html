@@ -1,0 +1,24 @@
+{{ define "js"}}
+    <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+    <script src="/bundle/js/highcharts/highstock.min.js"></script>
+    <script src="/bundle/js/highcharts/exporting.min.js"></script>
+    <script src="/bundle/js/highcharts/offline-exporting.min.js"></script>
+    <script src="/bundle/js/highcharts/highcharts-global-options.js"></script>
+{{end}}
+
+{{ define "css"}}
+	
+{{end}}
+
+{{ define "content"}}
+<section>
+    <div class="container">
+        <div style="padding-top: 2rem;" class="row-5 justify-content-center align-items-center">
+            <div class="col p-1">
+                {{template "depositDistributionChart" .Data}}
+            </div>
+        </div>
+    </div>
+</section>
+	
+{{end}}
