@@ -367,6 +367,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				color = "#f7a35c"
 			}
 			balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
+			logger.Infof("%v %v", balanceTs, incomeHistory[i+1].Day)
 			validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(income) / 1000000000), Color: color}
 		}
 
@@ -1181,4 +1182,64 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+}
+
+var validatorStatsTableTemplate = template.Must(template.New("validator_stats").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator_stats_table.html"))
+
+// Validator returns validator data using a go template
+func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	vars := mux.Vars(r)
+
+	var index uint64
+	var err error
+
+	data := InitPageData(w, r, "validators", "/validators", "")
+	data.HeaderAd = true
+
+	// Request came with a hash
+	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
+		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
+		if err != nil {
+			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		index, err = db.GetValidatorIndex(pubKey)
+		if err != nil {
+			logger.Errorf("error parsing validator pubkey: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	} else {
+		// Request came with a validator index number
+		index, err = strconv.ParseUint(vars["index"], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing validator index: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	}
+	validatorStatsTablePageData := &types.ValidatorStatsTablePageData{
+		ValidatorIndex: index,
+		Rows:           make([]*types.ValidatorStatsTableRow, 0),
+	}
+
+	err = db.DB.Select(&validatorStatsTablePageData.Rows, "SELECT * FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC", index)
+
+	if err != nil {
+		logger.Errorf("error retrieving validator stats history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	data.Data = validatorStatsTablePageData
+	err = validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)
+
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 }
