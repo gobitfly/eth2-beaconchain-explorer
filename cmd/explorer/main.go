@@ -373,6 +373,10 @@ func main() {
 		}()
 	}
 
+	if utils.Config.Notifications.Enabled {
+		services.InitNotifications()
+	}
+
 	if utils.Config.Metrics.Enabled {
 		go func(addr string) {
 			logrus.Infof("Serving metrics on %v", addr)
