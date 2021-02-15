@@ -80,8 +80,8 @@
                         <tr>
                             <td data-order="{{.Day}}">{{(dayToTime .Day).Format "02 Jan 2006"}}</td>
                             <td>{{formatIncome .Income $.Currency}}</td>
-                            <td>{{formatIncomeSql .StartBalance $.Currency}}</td>
-                            <td>{{formatIncomeSql .EndBalance $.Currency}}</td>
+                            <td>{{formatBalanceSql .StartBalance $.Currency}}</td>
+                            <td>{{formatBalanceSql .EndBalance $.Currency}}</td>
                             <td>{{formatSqlInt64 .MissedAttestations}}</td>
                             <td>{{formatSqlInt64 .OrphanedAttestations}}</td>
                             <td>{{formatSqlInt64 .ProposedBlocks}}</td>

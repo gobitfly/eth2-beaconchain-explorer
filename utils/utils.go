@@ -58,6 +58,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"includeHTML":                             IncludeHTML,
 		"formatHTML":                              FormatMessageToHtml,
 		"formatBalance":                           FormatBalance,
+		"formatBalanceSql":                        FormatBalanceSql,
 		"formatCurrentBalance":                    FormatCurrentBalance,
 		"formatEffectiveBalance":                  FormatEffectiveBalance,
 		"formatBlockStatus":                       FormatBlockStatus,

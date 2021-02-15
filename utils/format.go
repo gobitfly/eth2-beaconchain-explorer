@@ -81,6 +81,27 @@ func FormatBalance(balanceInt uint64, currency string) template.HTML {
 	return template.HTML(string(rb) + " " + currency)
 }
 
+func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
+	if !balanceInt.Valid {
+		return template.HTML("0 " + currency)
+	}
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt.Int64) / float64(1e9)
+
+	p := message.NewPrinter(language.English)
+	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
+	// remove trailing zeros
+	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+		for rb[len(rb)-1] == '0' {
+			rb = rb[:len(rb)-1]
+		}
+		if rb[len(rb)-1] == '.' {
+			rb = rb[:len(rb)-1]
+		}
+	}
+	return template.HTML(string(rb) + " " + currency)
+}
+
 func FormatBalanceGwei(balance *int64, currency string) template.HTML {
 	if currency == "ETH" {
 		balanceF := float64(*balance)
