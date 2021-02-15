@@ -726,11 +726,15 @@ func (n *ethClientNotification) GetEventName() types.EventName {
 }
 
 func (n *ethClientNotification) GetInfo(includeUrl bool) string {
-	return fmt.Sprintf(`New update for ETH client %s https://beaconcha.in/ethClients`, n.EthClient)
+	generalPart := fmt.Sprintf(`A new version for %s is available.`, n.EthClient)
+	if includeUrl {
+		return generalPart + " https://beaconcha.in/ethClients"
+	}
+	return generalPart
 }
 
 func (n *ethClientNotification) GetTitle() string {
-	return "ETH Client is updated"
+	return fmt.Sprintf("New %s update", n.EthClient)
 }
 
 func (n *ethClientNotification) GetEventFilter() string {
