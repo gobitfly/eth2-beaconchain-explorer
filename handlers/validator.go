@@ -367,7 +367,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				color = "#f7a35c"
 			}
 			balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
-			logger.Infof("%v %v", balanceTs, incomeHistory[i+1].Day)
 			validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(income) / 1000000000), Color: color}
 		}
 
