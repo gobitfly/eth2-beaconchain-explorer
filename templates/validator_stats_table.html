@@ -1,4 +1,11 @@
 {{ define "js"}}
+    <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+    <script>
+        $('#stats-table').DataTable({
+            pageLength: 400,
+            lengthChange: false
+        });
+    </script>
 {{end}}
 
 {{ define "css"}}
@@ -28,7 +35,7 @@
                     </nav>
                 </div>
             </div>
-            <table class="table table-sm table-striped">
+            <table class="table table-sm table-striped" id="stats-table">
                 <thead>
                 <tr>
                     <th>Day</th>
@@ -58,7 +65,7 @@
                 <tbod>
                     {{range .Rows}}
                         <tr>
-                            <td>{{(dayToTime .Day).Format "02 Jan 2006"}}</td>
+                            <td data-order="{{.Day}}">{{(dayToTime .Day).Format "02 Jan 2006"}}</td>
                             <td>{{formatIncomeSql .StartBalance $.Currency}}</td>
                             <td>{{formatIncomeSql .EndBalance $.Currency}}</td>
                             <td>{{formatIncomeSql .MinBalance $.Currency}}</td>
