@@ -1233,6 +1233,27 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for i := len(validatorStatsTablePageData.Rows) - 1; i > 0; i-- {
+		validatorStatsTablePageData.Rows[i].EndBalance = validatorStatsTablePageData.Rows[i-1].StartBalance
+		if validatorStatsTablePageData.Rows[i].EndBalance.Valid && validatorStatsTablePageData.Rows[i].StartBalance.Valid {
+			validatorStatsTablePageData.Rows[i].Income = validatorStatsTablePageData.Rows[i].EndBalance.Int64 - validatorStatsTablePageData.Rows[i].StartBalance.Int64
+		}
+
+		if validatorStatsTablePageData.Rows[i].DepositsAmount.Valid {
+			validatorStatsTablePageData.Rows[i].Income -= validatorStatsTablePageData.Rows[i].DepositsAmount.Int64
+		}
+	}
+
+	if len(validatorStatsTablePageData.Rows) > 0 {
+		if validatorStatsTablePageData.Rows[0].EndBalance.Valid && validatorStatsTablePageData.Rows[0].StartBalance.Valid {
+			validatorStatsTablePageData.Rows[0].Income = validatorStatsTablePageData.Rows[0].EndBalance.Int64 - validatorStatsTablePageData.Rows[0].StartBalance.Int64
+		}
+
+		if validatorStatsTablePageData.Rows[0].DepositsAmount.Valid {
+			validatorStatsTablePageData.Rows[0].Income -= validatorStatsTablePageData.Rows[0].DepositsAmount.Int64
+		}
+	}
+
 	data.Data = validatorStatsTablePageData
 	err = validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)
 
