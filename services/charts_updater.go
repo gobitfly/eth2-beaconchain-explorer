@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/prysmaticlabs/prysm/shared/mathutil"
+	"strings"
 )
 
 type chartHandler struct {
@@ -1460,6 +1461,17 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
 	}
 
+	type pools struct {
+		Address string
+		Name    string
+	}
+
+	var stakePools []pools
+	err = db.DB.Select(&stakePools, "select address, name from stake_pools_stats;")
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving stake pools stats: %v", err)
+	}
+
 	type seriesDataItem struct {
 		Name string `json:"name"`
 		Y    uint64 `json:"y"`
@@ -1474,8 +1486,19 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			othersItem.Y += rows[i].Count
 			continue
 		}
+
+		var poolName string
+		for _, pool := range stakePools{
+			if strings.ToLower(string(utils.FormatEth1AddressString(rows[i].Address)))==strings.ToLower("0x"+pool.Address){
+				poolName=pool.Name
+				break
+			}
+		}
+		if poolName=="" {
+			continue
+		}
 		seriesData = append(seriesData, seriesDataItem{
-			Name: string(utils.FormatEth1AddressString(rows[i].Address)),
+			Name: poolName,
 			Y:    rows[i].Count,
 		})
 	}

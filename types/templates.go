@@ -609,6 +609,11 @@ type GenericChartData struct {
 	Series                          []*GenericChartDataSeries `json:"series"`
 }
 
+type SeriesDataItem struct {
+	Name string `json:"name"`
+	Y    uint64 `json:"y"`
+}
+
 // GenericChartDataSeries is a struct to hold chart series data
 type GenericChartDataSeries struct {
 	Name  string      `json:"name"`

@@ -504,3 +504,13 @@ create table api_statistics
     count  int                         not null default 0,
     primary key (ts, apikey, call)
 );
+
+drop table if exists stake_pools_stats;
+create table stake_pools_stats
+(
+    id serial not null, 
+    address text not null, 
+    deposit int, 
+    name text not null,  
+    PRIMARY KEY(id, address, deposit, name)
+);
