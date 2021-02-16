@@ -1488,13 +1488,13 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		}
 
 		var poolName string
-		for _, pool := range stakePools{
-			if strings.ToLower(string(utils.FormatEth1AddressString(rows[i].Address)))==strings.ToLower("0x"+pool.Address){
-				poolName=pool.Name
+		for _, pool := range stakePools {
+			if strings.ToLower(string(utils.FormatEth1AddressString(rows[i].Address))) == strings.ToLower("0x"+pool.Address) {
+				poolName = pool.Name
 				break
 			}
 		}
-		if poolName=="" {
+		if poolName == "" {
 			continue
 		}
 		seriesData = append(seriesData, seriesDataItem{
@@ -1518,8 +1518,8 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			dataLabels: { 
 				enabled:true, 
 				formatter: function() { 
-					var name = this.point.name.length > 8 ? this.point.name.substring(0,8) : this.point.name;
-					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'…</b><span style="stroke:none; fill: var(--font-color)">: '+this.point.y+' ('+this.point.percentage.toFixed(2)+'%)</span></span>' 
+					var name = this.point.name.length > 20 ? this.point.name.substring(0,20)+'...' : this.point.name;
+					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'</b></span>' 
 				} 
 			} 
 		}`,
