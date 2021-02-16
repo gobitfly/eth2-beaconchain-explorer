@@ -726,11 +726,15 @@ func (n *ethClientNotification) GetEventName() types.EventName {
 }
 
 func (n *ethClientNotification) GetInfo(includeUrl bool) string {
-	return fmt.Sprintf(`New update for ETH client %s https://beaconcha.in/ethClients`, n.EthClient)
+	generalPart := fmt.Sprintf(`A new version for %s is available.`, n.EthClient)
+	if includeUrl {
+		return generalPart + " https://beaconcha.in/ethClients"
+	}
+	return generalPart
 }
 
 func (n *ethClientNotification) GetTitle() string {
-	return "ETH Client is updated"
+	return fmt.Sprintf("New %s update", n.EthClient)
 }
 
 func (n *ethClientNotification) GetEventFilter() string {
@@ -739,7 +743,6 @@ func (n *ethClientNotification) GetEventFilter() string {
 
 func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 	updatedClients := ethclients.GetUpdatedClients() //only check if there are new updates
-
 	for _, client := range updatedClients {
 		var dbResult []struct {
 			SubscriptionID uint64 `db:"id"`
@@ -750,8 +753,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 
 		err := db.DB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter
-			FROM 
-			users_subscriptions AS us
+			FROM users_subscriptions AS us
 			WHERE 
 				us.event_name=$1 
 			AND 
@@ -759,9 +761,9 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 			AND 
 				us.user_id 
 			NOT IN 
-				(SELECT user_id FROM users_notifications as un WHERE un.event_name=$1 AND un.event_filter=$2 AND NOW() - INTERVAL '2 DAYS' <= un.sent_ts)
+				(SELECT user_id FROM users_notifications as un WHERE un.event_name=$1 AND un.event_filter=$2 AND TO_TIMESTAMP($3) <= un.sent_ts AND un.sent_ts <= NOW() + INTERVAL '2 DAYS')
 			`,
-			eventName, strings.ToLower(client)) // was last notification sent 2 days ago for this client
+			eventName, strings.ToLower(client.Name), client.Date.Unix()) // was last notification sent 2 days ago for this client
 
 		if err != nil {
 			return err
@@ -773,7 +775,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 				UserID:         r.UserID,
 				Epoch:          r.Epoch,
 				EventFilter:    r.EventFilter,
-				EthClient:      client,
+				EthClient:      client.Name,
 			}
 			if _, exists := notificationsByUserID[r.UserID]; !exists {
 				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}

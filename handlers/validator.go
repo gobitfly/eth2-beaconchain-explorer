@@ -41,7 +41,7 @@ var validatorEditFlash = "edit_validator_flash"
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
-	start := time.Now()
+	//start := time.Now()
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 
@@ -205,8 +205,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Title = fmt.Sprintf("%v - Validator %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
-	logger.Infof("retrieving data, elapsed: %v", time.Since(start))
-	start = time.Now()
+	//logger.Infof("retrieving data, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	err = db.DB.Get(&validatorPageData, `
 		SELECT 
@@ -249,8 +249,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(int64(validatorPageData.NetworkStats.ActiveValidators))
 	}
 
-	logger.Infof("validator page data retrieved, elapsed: %v", time.Since(start))
-	start = time.Now()
+	//logger.Infof("validator page data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	validatorPageData.Epoch = services.LatestEpoch()
 	validatorPageData.Index = index
@@ -283,8 +283,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.Watchlist = watchlist
 
-	logger.Infof("watchlist data retrieved, elapsed: %v", time.Since(start))
-	start = time.Now()
+	//logger.Infof("watchlist data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
 	if err != nil {
@@ -302,8 +302,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	logger.Infof("deposit data retrieved, elapsed: %v", time.Since(start))
-	start = time.Now()
+	//logger.Infof("deposit data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -332,8 +332,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.ProposedBlocksCount = uint64(len(proposals))
 
-	logger.Infof("proposals data retrieved, elapsed: %v", time.Since(start))
-	start = time.Now()
+	//logger.Infof("proposals data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
@@ -381,8 +381,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(currentDay).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor}
 	}
 
-	logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
-	start = time.Now()
+	//logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	earnings, err := GetValidatorEarnings([]uint64{index})
 	if err != nil {
@@ -396,8 +396,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.Income31d = earnings.LastMonth
 	validatorPageData.Apr = earnings.APR
 
-	logger.Infof("income data retrieved, elapsed: %v", time.Since(start))
-	start = time.Now()
+	//logger.Infof("income data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	if validatorPageData.Slashed {
 		var slashingInfo struct {
@@ -434,8 +434,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
-	start = time.Now()
+	//logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, `
 	SELECT COALESCE(
@@ -459,8 +459,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationInclusionEffectiveness = 1.0 / validatorPageData.AverageAttestationInclusionDistance * 100
 	}
 
-	logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
-	start = time.Now()
+	//logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
+	//start = time.Now()
 
 	data.Data = validatorPageData
 
@@ -1181,4 +1181,90 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+}
+
+var validatorStatsTableTemplate = template.Must(template.New("validator_stats").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator_stats_table.html"))
+
+// Validator returns validator data using a go template
+func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	vars := mux.Vars(r)
+
+	var index uint64
+	var err error
+
+	data := InitPageData(w, r, "validators", "/validators", "")
+	data.HeaderAd = true
+
+	// Request came with a hash
+	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
+		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))
+		if err != nil {
+			logger.Errorf("error parsing validator public key %v: %v", vars["index"], err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		index, err = db.GetValidatorIndex(pubKey)
+		if err != nil {
+			logger.Errorf("error parsing validator pubkey: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	} else {
+		// Request came with a validator index number
+		index, err = strconv.ParseUint(vars["index"], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing validator index: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	}
+
+	data.Meta.Title = fmt.Sprintf("%v - Daily Validator Statistics %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
+	data.Meta.Path = fmt.Sprintf("/validator/%v/stats", index)
+
+	validatorStatsTablePageData := &types.ValidatorStatsTablePageData{
+		ValidatorIndex: index,
+		Rows:           make([]*types.ValidatorStatsTableRow, 0),
+	}
+
+	err = db.DB.Select(&validatorStatsTablePageData.Rows, "SELECT * FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC", index)
+
+	if err != nil {
+		logger.Errorf("error retrieving validator stats history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	for i := len(validatorStatsTablePageData.Rows) - 1; i > 0; i-- {
+		validatorStatsTablePageData.Rows[i].EndBalance = validatorStatsTablePageData.Rows[i-1].StartBalance
+		if validatorStatsTablePageData.Rows[i].EndBalance.Valid && validatorStatsTablePageData.Rows[i].StartBalance.Valid {
+
+			validatorStatsTablePageData.Rows[i].Income = validatorStatsTablePageData.Rows[i].EndBalance.Int64 - validatorStatsTablePageData.Rows[i].StartBalance.Int64
+
+			if validatorStatsTablePageData.Rows[i].DepositsAmount.Valid && validatorStatsTablePageData.Rows[i].Income >= validatorStatsTablePageData.Rows[i].DepositsAmount.Int64 {
+				validatorStatsTablePageData.Rows[i].Income -= validatorStatsTablePageData.Rows[i].DepositsAmount.Int64
+			}
+		}
+	}
+
+	if len(validatorStatsTablePageData.Rows) > 0 {
+		if validatorStatsTablePageData.Rows[0].EndBalance.Valid && validatorStatsTablePageData.Rows[0].StartBalance.Valid {
+			validatorStatsTablePageData.Rows[0].Income = validatorStatsTablePageData.Rows[0].EndBalance.Int64 - validatorStatsTablePageData.Rows[0].StartBalance.Int64
+		}
+
+		if validatorStatsTablePageData.Rows[0].DepositsAmount.Valid {
+			validatorStatsTablePageData.Rows[0].Income -= validatorStatsTablePageData.Rows[0].DepositsAmount.Int64
+		}
+	}
+
+	data.Data = validatorStatsTablePageData
+	err = validatorStatsTableTemplate.ExecuteTemplate(w, "layout", data)
+
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 }

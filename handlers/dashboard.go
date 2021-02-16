@@ -459,3 +459,63 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	if err != nil {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	filter := pq.Array(filterArr)
+
+	proposals := []struct {
+		ValidatorIndex uint64  `db:"validatorindex"`
+		Day            uint64  `db:"day"`
+		Proposed       *uint64 `db:"proposed_blocks"`
+		Missed         *uint64 `db:"missed_blocks"`
+		Orphaned       *uint64 `db:"orphaned_blocks"`
+	}{}
+
+	err = db.DB.Select(&proposals, `
+		SELECT validatorindex, day, proposed_blocks, missed_blocks, orphaned_blocks
+		FROM validator_stats
+		WHERE validatorindex = ANY($1) AND (proposed_blocks IS NOT NULL OR missed_blocks IS NOT NULL OR orphaned_blocks IS NOT NULL)
+		ORDER BY day DESC`, filter)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error retrieving validator_stats")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	proposalsHistResult := make([][]uint64, len(proposals))
+	for i, b := range proposals {
+		var proposed, missed, orphaned uint64 = 0, 0, 0
+		if b.Proposed != nil {
+			proposed = *b.Proposed
+		}
+		if b.Missed != nil {
+			missed = *b.Missed
+		}
+		if b.Orphaned != nil {
+			orphaned = *b.Orphaned
+		}
+		proposalsHistResult[i] = []uint64{
+			b.ValidatorIndex,
+			uint64(utils.DayToTime(b.Day).Unix()),
+			proposed,
+			missed,
+			orphaned,
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(proposalsHistResult)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
