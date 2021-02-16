@@ -251,6 +251,7 @@ create table blocks_proposerslashings
 (
     block_slot         int    not null,
     block_index        int    not null,
+    block_root         bytea  not null default '',
     proposerindex      int    not null,
     header1_slot       bigint not null,
     header1_parentroot bytea  not null,
@@ -270,6 +271,7 @@ create table blocks_attesterslashings
 (
     block_slot                   int       not null,
     block_index                  int       not null,
+    block_root                   bytea     not null default '',
     attestation1_indices         integer[] not null,
     attestation1_signature       bytea     not null,
     attestation1_slot            bigint    not null,
@@ -296,6 +298,7 @@ create table blocks_attestations
 (
     block_slot      int   not null,
     block_index     int   not null,
+    block_root      bytea not null default '',
     aggregationbits bytea not null,
     validators      int[] not null,
     signature       bytea not null,
@@ -317,6 +320,7 @@ create table blocks_deposits
 (
     block_slot            int    not null,
     block_index           int    not null,
+    block_root            bytea  not null default '',
     proof                 bytea[],
     publickey             bytea  not null,
     withdrawalcredentials bytea  not null,
@@ -330,6 +334,7 @@ create table blocks_voluntaryexits
 (
     block_slot     int   not null,
     block_index    int   not null,
+    block_root     bytea not null default '',
     epoch          int   not null,
     validatorindex int   not null,
     signature      bytea not null,
