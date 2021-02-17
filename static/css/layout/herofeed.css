@@ -28,13 +28,14 @@
     width: 100%;
     border-bottom: var(--primary);
     border-bottom-style: solid;
+    border-bottom-width: 1px;
     padding-top: 3%;
 }
 
 .donate-btn{
     position: absolute;
-    bottom: 5px;
-    right: 5px;
+    bottom: 10px;
+    right: 15px;
     background-color: var(--primary);
     color: #ffff;
     border-radius: 5px;
