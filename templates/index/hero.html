@@ -2,7 +2,7 @@
 <div class="hero-container">
   <div class="hero-image">
     <div id="hero-feed">
-
+      <ul id="hero-feed-ul"></ul>
     </div>
     <svg id="b1dfe96f-fe37-4185-8264-ce8c2a4cb4b9" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg"
       xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1073 741.95">
@@ -158,6 +158,45 @@
     </h6>
   </div>
 </div>
+
+<script src="/bundle/js/jquery.min.js"></script>
+<script>
+  function showDoner(addr, name, icon, msg) {
+    $("#hero-feed ul").prepend(`<li class="p-1 fade-in">
+      <div class="d-flex flex-row">
+        <img width="50px" src=${icon} class="m-1"/> 
+        <div>
+          <span>${name}</span> 
+          <p class="pkey">${addr}</p>
+        </div>
+      </div>
+      <p class="m-1">${msg}</p>
+      <hr>
+      </li>`)
+  }
+  $(document).ready(function () {
+    $.ajax({
+      url: "/gitcoinfeed",
+      success: (data) => {
+        let i = 0
+        showDoner(data[i][0], data[i][1], data[i][2], data[i][3])
+        i++
+        setInterval(() => {
+          console.log(i, data.length)
+          if (i >= data.length) {
+            $("#hero-feed ul").html("")
+            i = 0
+          }
+          showDoner(data[i][0], data[i][1], data[i][2], data[i][3])
+          i++
+          if (i > 10) {
+            $("#hero-feed ul>li:last").remove()
+          }
+        }, 4000)
+      }
+    })
+  })
+</script>
 {{ end }}
 
 <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag
