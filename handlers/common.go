@@ -7,9 +7,10 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/lib/pq"
 	"net/http"
 	"regexp"
+
+	"github.com/lib/pq"
 )
 
 var pkeyRegex = regexp.MustCompile("[^0-9A-Fa-f]+")
@@ -131,11 +132,12 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}
 
 	return &types.ValidatorEarnings{
-		Total:     earningsTotal,
-		LastDay:   earningsLastDay,
-		LastWeek:  earningsLastWeek,
-		LastMonth: earningsLastMonth,
-		APR:       apr,
+		Total:         earningsTotal,
+		LastDay:       earningsLastDay,
+		LastWeek:      earningsLastWeek,
+		LastMonth:     earningsLastMonth,
+		APR:           apr,
+		TotalDeposits: totalDeposits,
 	}, nil
 }
 
@@ -153,8 +155,9 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetCurrency(r *http.Request) string {
-	if langCookie, err := r.Cookie("currency"); err == nil {
-		return langCookie.Value
+
+	if cookie, err := r.Cookie("currency"); err == nil {
+		return cookie.Value
 	}
 
 	return "ETH"

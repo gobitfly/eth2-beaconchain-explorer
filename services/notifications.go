@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"firebase.google.com/go/messaging"
 )
@@ -82,14 +83,29 @@ func saveNotifications(notificationsByUserID map[uint64]map[types.EventName][]ty
 	for userID, userNotifications := range notificationsByUserID {
 		for _, ns := range userNotifications {
 			for _, n := range ns {
+				if n.GetEventName() != types.EthClientUpdateEventName {
+					continue // only store eth client notifications
+				}
+
+				event := fmt.Sprintf("%s", n.GetEventName())
+				filter := n.GetEventFilter()
+
+				if !utf8.ValidString(event) {
+					logger.Errorf("skipping ... received string with invalid encoding %s", event)
+					continue // if one piece of data fails, continue for other data types that may not fail
+				}
+
+				if !utf8.ValidString(filter) {
+					logger.Errorf("skipping ... received string with invalid encoding %s", filter)
+					continue
+				}
 				_, err := db.DB.Exec(`
 					INSERT INTO users_notifications (user_id, event_name, event_filter, sent_ts, epoch)
 					VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5)`,
-					userID, n.GetEventName(), n.GetEventFilter(), time.Now().Unix(), n.GetEpoch())
+					userID, event, filter, time.Now().Unix(), n.GetEpoch())
 
 				if err != nil {
 					logger.Errorf("error when Inserting data to 'users_notifications' table: %v", err)
-					continue // if one piece of data fails, continue for other data types that may not fail
 				}
 			}
 		}
@@ -106,6 +122,14 @@ func sendFrontEndEthClientNotifications(notificationsByUserID map[uint64]map[typ
 		}
 	}
 	ethclients.SetUsersToNotify(uids)
+}
+
+func getNetwork() string {
+	domainParts := strings.Split(utils.Config.Frontend.SiteDomain, ".")
+	if len(domainParts) >= 3 {
+		return fmt.Sprintf("%s: ", strings.Title(domainParts[0]))
+	}
+	return ""
 }
 
 func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
@@ -135,7 +159,7 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 					for _, userToken := range userTokens {
 
 						notification := new(messaging.Notification)
-						notification.Title = n.GetTitle()
+						notification.Title = fmt.Sprintf("%s%s", getNetwork(), n.GetTitle())
 						notification.Body = n.GetInfo(false)
 
 						message := new(messaging.Message)
@@ -294,26 +318,26 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	}
 
 	err := db.DB.Select(&dbResult, `
-		SELECT id, user_id, validatorindex, startbalance, endbalance, pubkey FROM (
+		SELECT id, user_id, validatorindex, startbalance, endbalance, a.pubkey AS pubkey FROM (
 			SELECT 
 				us.id, 
 				us.user_id, 
 				v.validatorindex,
-				v.pubkey AS pubkey, 
+				v.pubkeyhex AS pubkey, 
 				vb0.balance AS endbalance, 
 				vb3.balance AS startbalance, 
 				us.last_sent_epoch,
 				(SELECT MAX(epoch) FROM (
 					SELECT epoch, balance-LAG(balance) OVER (ORDER BY epoch) AS diff
-					FROM validator_balances_p 
-					WHERE validatorindex = v.validatorindex AND week >= us.last_sent_epoch / 1575 AND week >= ($2 - 10) / 1575 AND epoch > us.last_sent_epoch AND epoch > $2 - 10
+					FROM validator_balances_recent 
+					WHERE validatorindex = v.validatorindex AND epoch > us.last_sent_epoch AND epoch > $2 - 10
 				) b WHERE diff > 0) AS lastbalanceincreaseepoch
 			FROM users_subscriptions us
-			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
-			INNER JOIN validator_balances_p vb0 ON v.validatorindex = vb0.validatorindex AND vb0.week = $2 / 1575 AND vb0.epoch = $2
-			INNER JOIN validator_balances_p vb1 ON v.validatorindex = vb1.validatorindex AND vb1.week = ($2 - 1) / 1575 AND vb1.epoch = $2 - 1 AND vb1.balance > vb0.balance
-			INNER JOIN validator_balances_p vb2 ON v.validatorindex = vb2.validatorindex AND vb2.week = ($2 - 2) / 1575 AND vb2.epoch = $2 - 2 AND vb2.balance > vb1.balance
-			INNER JOIN validator_balances_p vb3 ON v.validatorindex = vb3.validatorindex AND vb3.week = ($2 - 3) / 1575 AND vb3.epoch = $2 - 3 AND vb3.balance > vb2.balance
+			INNER JOIN validators v ON v.pubkeyhex = us.event_filter
+			INNER JOIN validator_balances_recent vb0 ON v.validatorindex = vb0.validatorindex AND vb0.epoch = $2
+			INNER JOIN validator_balances_recent vb1 ON v.validatorindex = vb1.validatorindex AND vb1.epoch = $2 - 1 AND vb1.balance > vb0.balance
+			INNER JOIN validator_balances_recent vb2 ON v.validatorindex = vb2.validatorindex AND vb2.epoch = $2 - 2 AND vb2.balance > vb1.balance
+			INNER JOIN validator_balances_recent vb3 ON v.validatorindex = vb3.validatorindex AND vb3.epoch = $2 - 3 AND vb3.balance > vb2.balance
 			WHERE us.event_name = $1 AND us.created_epoch <= $2
 		) a WHERE lastbalanceincreaseepoch IS NOT NULL OR last_sent_epoch IS NULL`,
 		types.ValidatorBalanceDecreasedEventName, latestEpoch)
@@ -363,7 +387,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 				v.validatorindex, 
 				pa.epoch,
 				pa.status,
-				v.pubkey
+				ENCODE(v.pubkey::bytea, 'hex') AS pubkey
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($2 - 5) 
@@ -475,7 +499,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 				aa.status,
 				aa.attesterslot,
 				aa.inclusionslot,
-				v.pubkey
+				ENCODE(v.pubkey::bytea, 'hex') AS pubkey
 			FROM users_subscriptions us
 			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 			INNER JOIN attestation_assignments_p aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 3)  AND aa.week >= ($2 - 3) / 1575
@@ -650,7 +674,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 				) a
 				ORDER BY slashedvalidator, slot
 			)
-		SELECT us.id, us.user_id, v.validatorindex, s.slasher, s.epoch, s.reason, v.pubkey
+		SELECT us.id, us.user_id, v.validatorindex, s.slasher, s.epoch, s.reason, ENCODE(v.pubkey::bytea, 'hex') AS pubkey
 		FROM users_subscriptions us
 		INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
 		INNER JOIN slashings s ON s.slashedvalidator = v.validatorindex
@@ -702,11 +726,15 @@ func (n *ethClientNotification) GetEventName() types.EventName {
 }
 
 func (n *ethClientNotification) GetInfo(includeUrl bool) string {
-	return fmt.Sprintf(`New update for ETH client %s https://beaconcha.in/ethClients`, n.EthClient)
+	generalPart := fmt.Sprintf(`A new version for %s is available.`, n.EthClient)
+	if includeUrl {
+		return generalPart + " https://beaconcha.in/ethClients"
+	}
+	return generalPart
 }
 
 func (n *ethClientNotification) GetTitle() string {
-	return "ETH Client is updated"
+	return fmt.Sprintf("New %s update", n.EthClient)
 }
 
 func (n *ethClientNotification) GetEventFilter() string {
@@ -715,7 +743,6 @@ func (n *ethClientNotification) GetEventFilter() string {
 
 func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 	updatedClients := ethclients.GetUpdatedClients() //only check if there are new updates
-
 	for _, client := range updatedClients {
 		var dbResult []struct {
 			SubscriptionID uint64 `db:"id"`
@@ -727,10 +754,16 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 		err := db.DB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter
 			FROM users_subscriptions AS us
-			LEFT JOIN users_notifications un ON un.event_filter=us.event_filter
-			WHERE us.event_name=$1 AND us.event_filter=$2 AND (un.sent_ts IS NULL OR un.sent_ts < TO_TIMESTAMP($3))
+			WHERE 
+				us.event_name=$1 
+			AND 
+				us.event_filter=$2 
+			AND 
+				us.user_id 
+			NOT IN 
+				(SELECT user_id FROM users_notifications as un WHERE un.event_name=$1 AND un.event_filter=$2 AND TO_TIMESTAMP($3) <= un.sent_ts AND un.sent_ts <= NOW() + INTERVAL '2 DAYS')
 			`,
-			eventName, strings.ToLower(client), time.Now().AddDate(0, 0, -2).Unix()) // was last notification sent 2 days ago for this client
+			eventName, strings.ToLower(client.Name), client.Date.Unix()) // was last notification sent 2 days ago for this client
 
 		if err != nil {
 			return err
@@ -742,7 +775,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 				UserID:         r.UserID,
 				Epoch:          r.Epoch,
 				EventFilter:    r.EventFilter,
-				EthClient:      client,
+				EthClient:      client.Name,
 			}
 			if _, exists := notificationsByUserID[r.UserID]; !exists {
 				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}

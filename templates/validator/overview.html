@@ -19,7 +19,7 @@
             </div>
             <div class="validator__lifecycle-progress validator__lifecycle-deposited text-white">
                 <div class="validator__lifecycle-progress-epoch">
-                    {{if not $deposited}}<div data-toggle="tooltip" title="The eligable epoch is when your validator is registerd by the beacon chain and joins the queue to be activated."><a href="/epoch/{{.ActivationEligibilityEpoch}}">{{if eq .ActivationEligibilityEpoch 0}}genesis {{else}}{{.ActivationEligibilityEpoch}}{{end}}</a></div>{{end}}
+                    {{if not $deposited}}<div data-toggle="tooltip" title="The eligible epoch is when your validator is registerd by the beacon chain and joins the queue to be activated."><a href="/epoch/{{.ActivationEligibilityEpoch}}">{{if eq .ActivationEligibilityEpoch 0}}genesis {{else}}{{.ActivationEligibilityEpoch}}{{end}}</a></div>{{end}}
                 </div>
             </div>            
             <div id="lifecycle-pending" class="validator__lifecycle-node-container validator__lifecycle-pending">
@@ -148,9 +148,9 @@
                       class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
                 <div style="width: 8.32rem" class="d-flex flex-column">
                     <span style="font-weight: bold; font-size:18px;">{{formatCurrentBalance .CurrentBalance $.Currency }}</span>
-                    <span>{{formatEffectiveBalance .EffectiveBalance "ETH" }} <span data-toggle="tooltip"
+                    <span style="font-size: 0.8rem; color: gray">{{formatEffectiveBalance .EffectiveBalance "ETH" }} <span data-toggle="tooltip"
                                                                                     title="The effective balance is used to calculate the base rewards of a validator"><a
-                                    class="no-highlight" href="https://kb.beaconcha.in/attestation#rewards"><i
+                                    class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i
                                         class="far ml-1 fa-question-circle"></i></a></span></span>
                 </div>
             </div>

@@ -58,6 +58,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"includeHTML":                             IncludeHTML,
 		"formatHTML":                              FormatMessageToHtml,
 		"formatBalance":                           FormatBalance,
+		"formatBalanceSql":                        FormatBalanceSql,
 		"formatCurrentBalance":                    FormatCurrentBalance,
 		"formatEffectiveBalance":                  FormatEffectiveBalance,
 		"formatBlockStatus":                       FormatBlockStatus,
@@ -71,6 +72,8 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
 		"formatIncome":                            FormatIncome,
+		"formatIncomeSql":                         FormatIncomeSql,
+		"formatSqlInt64":                          FormatSqlInt64,
 		"formatValidator":                         FormatValidator,
 		"formatValidatorWithName":                 FormatValidatorWithName,
 		"formatValidatorInt64":                    FormatValidatorInt64,
@@ -87,6 +90,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
 		"epochOfSlot":                             EpochOfSlot,
+		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
 		"mod":                                     func(i, j int) bool { return i%j == 0 },
 		"sub":                                     func(i, j int) int { return i - j },
@@ -167,7 +171,7 @@ func EpochToTime(epoch uint64) time.Time {
 
 // EpochToTime will return a time.Time for an epoch
 func DayToTime(day uint64) time.Time {
-	return time.Unix(int64(Config.Chain.GenesisTimestamp+(day*((60*60*24)/(Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch)))*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0).Add(time.Hour * 24).Add(time.Second * -14)
+	return time.Unix(int64(Config.Chain.GenesisTimestamp), 0).Add(time.Hour * time.Duration(24*int(day)))
 }
 
 // TimeToEpoch will return an epoch for a given time
@@ -403,10 +407,10 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 	}
 	key := apiKey
 	if len(apiKey) > 30 {
-		key = apiKey[8:28]
+		key = apiKey[8:29]
 	}
 
-	apiKeyBase64 := base64.StdEncoding.EncodeToString(key)
+	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
 }
 

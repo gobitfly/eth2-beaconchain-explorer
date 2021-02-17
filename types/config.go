@@ -54,7 +54,7 @@ type Config struct {
 		Kong               string `yaml:"kong" envconfig:"FRONTEND_KONG"`
 		OnlyAPI            bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
 		CsrfAuthKey        string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY`
-		CsrfInsecure       bool   `yaml:"csrfInsecure envconfig:"FRONTEND_CSRF_INSECURE"`
+		CsrfInsecure       bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`
 		DisableCharts      bool   `yaml:"disableCharts" envconfig:"disableCharts"`
 		RecaptchaSiteKey   string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
 		RecaptchaSecretKey string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
@@ -76,10 +76,6 @@ type Config struct {
 			Host     string `yaml:"host" envconfig:"FRONTEND_DB_HOST"`
 			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
 		} `yaml:"database"`
-		Notifications struct {
-			Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
-			FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
-		} `yaml:"notifications"`
 		Stripe struct {
 			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
 			PublicKey string `yaml:"publicKey" envconfig:"FRONTEND_STRIPE_PUBLIC_KEY"`
@@ -108,6 +104,14 @@ type Config struct {
 		} `yaml:"mail"`
 		GATag string `yaml:"gatag"  envconfig:"GATAG"`
 	} `yaml:"frontend"`
+	Metrics struct {
+		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
+		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
+	} `yaml:"metrics"`
+	Notifications struct {
+		Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+		FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
+	} `yaml:"notifications"`
 }
 
 // Phase0 is the config for beacon chain phase0
