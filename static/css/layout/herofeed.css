@@ -8,18 +8,40 @@
     top: 70px;
     right: 0px;
     border-radius: 12px;
-    border-style: solid;
-    border-color: rgba(255,255,255,0.2);
+    border-style: none;
 }
 
 #hero-feed ul{
-    min-width: 440px;
+    min-width: 100%;
     min-height: 240px;
-    max-width: 440px;
+    max-width: 100%;
     max-height: 240px;
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: none;
     list-style: none;
+    padding: 0%;
+    margin: 0%;
+}
+
+#hero-feed ul li{
+    min-height: 80px;
+    width: 100%;
+    border-bottom: var(--primary);
+    border-bottom-style: solid;
+    padding-top: 3%;
+}
+
+.donate-btn{
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background-color: var(--primary);
+    color: #ffff;
+    border-radius: 5px;
+    border-style: none;
+    cursor: pointer;
+    padding: 2%;
+    z-index: 9999;
 }
 
 #hero-feed ul li img{
@@ -27,16 +49,18 @@
     height: auto;
     border-radius: 5px;
     border-style: none;
+    margin-left: 2%;
 }
 
-#hero-feed ul li .pkey{
-    font-size: 14px;
+.pkey{
+    margin-left: 1%;
     color: var(--primary);
 }
 
-#hero-feed ul li{
-    height: 110px;
+.usrdiv{
+    padding-left: 2%;
 }
+
 
 #hero-feed ul::-webkit-scrollbar{
     width: 5px;
@@ -48,6 +72,10 @@
     border-radius: 12px;
     border-style: solid;
     border-width: 2px;
+}
+
+.umsg{
+    font-size: 12px;
 }
 
 .fade-in{
@@ -65,6 +93,6 @@
       /* font-size: 18px; */
       /* position: relative; */
       /* color: #ffff; */
-      opacity: 0.9;
+      opacity: 1;
     }
   }

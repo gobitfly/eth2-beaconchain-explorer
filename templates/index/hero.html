@@ -1,8 +1,9 @@
 {{ define "hero" }}
 <div class="hero-container">
   <div class="hero-image">
-    <div id="hero-feed">
-      <ul id="hero-feed-ul"></ul>
+    <div id="hero-feed" class="d-none d-lg-flex">
+      <ul class="d-flex flex-column align-items-center"></ul>
+      <span class="donate-btn">Donate</span>
     </div>
     <svg id="b1dfe96f-fe37-4185-8264-ce8c2a4cb4b9" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg"
       xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1073 741.95">
@@ -162,16 +163,17 @@
 <script src="/bundle/js/jquery.min.js"></script>
 <script>
   function showDoner(addr, name, icon, msg) {
-    $("#hero-feed ul").prepend(`<li class="p-1 fade-in">
+    $("#hero-feed ul").prepend(`<li class="fade-in">
       <div class="d-flex flex-row">
-        <img width="50px" src=${icon} class="m-1"/> 
-        <div>
-          <span>${name}</span> 
-          <p class="pkey">${addr}</p>
+        <img src=${icon}"/> 
+        <div class="d-flex flex-column usrdiv">
+          <div class="d-flex flex-row">
+            <span>${name}</span>
+            <!--(<span class="pkey">${addr}</span>)-->
+          </div>
+          <span class="umsg">${msg}</span>
         </div>
       </div>
-      <p class="m-1">${msg}</p>
-      <hr>
       </li>`)
   }
   $(document).ready(function () {
@@ -182,7 +184,7 @@
         showDoner(data[i][0], data[i][1], data[i][2], data[i][3])
         i++
         setInterval(() => {
-          console.log(i, data.length)
+          // console.log(i, data.length)
           if (i >= data.length) {
             $("#hero-feed ul").html("")
             i = 0
@@ -195,6 +197,12 @@
         }, 4000)
       }
     })
+
+    $(".donate-btn").on("click", () => {
+      // window.location.replace("https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer")
+      window.open("https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer")
+    })
+
   })
 </script>
 {{ end }}
