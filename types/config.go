@@ -104,7 +104,8 @@ type Config struct {
 		} `yaml:"mail"`
 		GATag string `yaml:"gatag"  envconfig:"GATAG"`
 	} `yaml:"frontend"`
-	Metrics struct {
+	ShowDonors bool `yaml:"showDonors" envconfig:"FRONTEND_SHOW_DONORS"`
+	Metrics    struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
 		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
 	} `yaml:"metrics"`

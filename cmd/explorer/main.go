@@ -388,6 +388,11 @@ func main() {
 		}(utils.Config.Metrics.Address)
 	}
 
+	logrus.Errorln("9555hbjbggg", utils.Config.ShowDonors, cfg)
+	if utils.Config.ShowDonors {
+		services.InitGitCoinFeed()
+	}
+
 	utils.WaitForCtrlC()
 
 	logrus.Println("exiting...")
