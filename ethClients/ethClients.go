@@ -40,9 +40,14 @@ type gitAPIResponse struct {
 	Body          string        `json:"body"`
 }
 
+type clientUpdateInfo struct {
+	Name string
+	Date time.Time
+}
+
 var ethClients = new(types.EthClientServicesPageData)
 var ethClientsMux = &sync.RWMutex{}
-var bannerClients = []string{}
+var bannerClients = []clientUpdateInfo{}
 var bannerClientsMux = &sync.RWMutex{}
 var usersToNotify = map[uint64][]types.Notification{}
 var usersToNotifyMux = &sync.RWMutex{}
@@ -55,6 +60,7 @@ func Init() {
 func fetchClientData(repo string) *gitAPIResponse {
 	var gitAPI = new(gitAPIResponse)
 	resp, err := http.Get("https://api.github.com/repos" + repo + "/releases/latest")
+	// resp, err := http.Get("http://localhost:5000/repos" + repo)
 
 	if err != nil {
 		logger.Errorf("error retrieving ETH Client Data: %v", err)
@@ -149,9 +155,14 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 			return client.Name, "GitHub" // client.Name is client version from github api
 		}
 		timeDiff := (curTime.Sub(rTime).Hours() / 24.0)
-		if timeDiff < 2.0 { // show banner if update was less than 2 days ago
-			bannerClients = append(bannerClients, name)
+		if timeDiff < 1.0 { // show banner if update was less than 2 days ago
+			update := clientUpdateInfo{Name: name, Date: rTime}
+			bannerClients = append(bannerClients, update)
 			return client.Name, "Recently"
+		}
+
+		if timeDiff <= 1.5 && timeDiff >= 1.0 {
+			return client.Name, fmt.Sprintf("1 day ago")
 		}
 
 		if timeDiff > 30 {
@@ -199,7 +210,7 @@ func updateEthClient() {
 	defer ethClientsMux.Unlock()
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
-	bannerClients = []string{}
+	bannerClients = []clientUpdateInfo{}
 	updateEthClientNetShare()
 	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Geth", curTime)
 	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
@@ -239,7 +250,7 @@ func ClientsUpdated() bool {
 }
 
 //GetUpdatedClients returns a slice of latest updated clients or empty slice if no updates
-func GetUpdatedClients() []string {
+func GetUpdatedClients() []clientUpdateInfo {
 	bannerClientsMux.Lock()
 	defer bannerClientsMux.Unlock()
 	return bannerClients
@@ -255,11 +266,10 @@ func SetUsersToNotify(uids map[uint64][]types.Notification) {
 			continue
 		}
 
-		if len(usersToNotify[uid]) != 0 {
-			continue
+		if len(usersToNotify[uid]) == 0 {
+			usersToNotify[uid] = n
 		}
 
-		usersToNotify[uid] = n
 	}
 }
 

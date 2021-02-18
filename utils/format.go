@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"database/sql"
 	"eth2-exporter/price"
 	"fmt"
 	"html"
@@ -65,6 +66,27 @@ func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint6
 func FormatBalance(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
 	balance := float64(balanceInt) / float64(1e9)
+
+	p := message.NewPrinter(language.English)
+	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
+	// remove trailing zeros
+	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+		for rb[len(rb)-1] == '0' {
+			rb = rb[:len(rb)-1]
+		}
+		if rb[len(rb)-1] == '.' {
+			rb = rb[:len(rb)-1]
+		}
+	}
+	return template.HTML(string(rb) + " " + currency)
+}
+
+func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
+	if !balanceInt.Valid {
+		return template.HTML("0 " + currency)
+	}
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt.Int64) / float64(1e9)
 
 	p := message.NewPrinter(language.English)
 	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
@@ -358,6 +380,32 @@ func FormatIncome(balanceInt int64, currency string) template.HTML {
 		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f %v</b></span>`, balance*exchangeRate, currency))
 	} else {
 		return template.HTML(fmt.Sprintf(`<b>%.4f %v</b>`, balance*exchangeRate, currency))
+	}
+}
+
+func FormatIncomeSql(balanceInt sql.NullInt64, currency string) template.HTML {
+
+	if !balanceInt.Valid {
+		return template.HTML(fmt.Sprintf(`<b>0 %v</b>`, currency))
+	}
+
+	exchangeRate := ExchangeRateForCurrency(currency)
+	balance := float64(balanceInt.Int64) / float64(1e9)
+
+	if balance > 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f %v</b></span>`, balance*exchangeRate, currency))
+	} else if balance < 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f %v</b></span>`, balance*exchangeRate, currency))
+	} else {
+		return template.HTML(fmt.Sprintf(`<b>%.4f %v</b>`, balance*exchangeRate, currency))
+	}
+}
+
+func FormatSqlInt64(i sql.NullInt64) template.HTML {
+	if !i.Valid {
+		return "-"
+	} else {
+		return template.HTML(fmt.Sprintf(`%v`, i.Int64))
 	}
 }
 

@@ -9,6 +9,7 @@ create table validators
 (
     validatorindex             int         not null,
     pubkey                     bytea       not null,
+    pubkeyhex                  text        not null default '',
     withdrawableepoch          bigint      not null,
     withdrawalcredentials      bytea       not null,
     balance                    bigint      not null,
@@ -26,6 +27,7 @@ create table validators
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
+create index idx_validators_pubkeyhex on validators (pubkeyhex);
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 
@@ -128,6 +130,17 @@ CREATE TABLE validator_balances_6 PARTITION OF validator_balances_p FOR VALUES I
 CREATE TABLE validator_balances_7 PARTITION OF validator_balances_p FOR VALUES IN (7);
 CREATE TABLE validator_balances_8 PARTITION OF validator_balances_p FOR VALUES IN (8);
 CREATE TABLE validator_balances_9 PARTITION OF validator_balances_p FOR VALUES IN (9);
+
+drop table if exists validator_balances_recent;
+create table validator_balances_recent
+(
+    epoch          int    not null,
+    validatorindex int    not null,
+    balance        bigint not null,
+    primary key (epoch, validatorindex)
+);
+create index idx_validator_balances_recent_epoch on validator_balances_recent (epoch);
+create index idx_validator_balances_recent_validatorindex on validator_balances_recent (validatorindex);
 
 drop table if exists validator_stats;
 create table validator_stats
@@ -238,6 +251,7 @@ create table blocks_proposerslashings
 (
     block_slot         int    not null,
     block_index        int    not null,
+    block_root         bytea  not null default '',
     proposerindex      int    not null,
     header1_slot       bigint not null,
     header1_parentroot bytea  not null,
@@ -257,6 +271,7 @@ create table blocks_attesterslashings
 (
     block_slot                   int       not null,
     block_index                  int       not null,
+    block_root                   bytea     not null default '',
     attestation1_indices         integer[] not null,
     attestation1_signature       bytea     not null,
     attestation1_slot            bigint    not null,
@@ -283,6 +298,7 @@ create table blocks_attestations
 (
     block_slot      int   not null,
     block_index     int   not null,
+    block_root      bytea not null default '',
     aggregationbits bytea not null,
     validators      int[] not null,
     signature       bytea not null,
@@ -304,6 +320,7 @@ create table blocks_deposits
 (
     block_slot            int    not null,
     block_index           int    not null,
+    block_root            bytea  not null default '',
     proof                 bytea[],
     publickey             bytea  not null,
     withdrawalcredentials bytea  not null,
@@ -317,6 +334,7 @@ create table blocks_voluntaryexits
 (
     block_slot     int   not null,
     block_index    int   not null,
+    block_root     bytea not null default '',
     epoch          int   not null,
     validatorindex int   not null,
     signature      bytea not null,
