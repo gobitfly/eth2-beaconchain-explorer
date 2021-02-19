@@ -1,19 +1,20 @@
 let number_of_doners = 0
 
 function showDoner(addr, name, icon, msg) {
-    if (msg === "" || msg === null) {
+    if (msg === "" || msg === null || msg.includes("<") || msg.includes(">")) {
         msg = `<span style="font-style: italic;">Donated to beaconcha.in \u2764</span>`
     }
     if (msg.length > 120) {
         msg = msg.slice(0, 120) + "..."
     }
+    // msg = msg.replace("<", "^").replace("<", "^")
+    name = name.replace("<", "").replace(">", "")
     $("#hero-feed ul").prepend(`<li class="fade-in">
         <div class="d-flex flex-row">
         <img src=${icon}"/> 
         <div class="d-flex flex-column usrdiv">
             <div class="d-flex flex-row">
             <span>${name}</span>
-            <!--(<span class="pkey">${addr}</span>)-->
             </div>
             <span class="umsg">${msg}</span>
         </div>
