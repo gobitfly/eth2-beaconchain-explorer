@@ -23,11 +23,11 @@ function showDoner(addr, name, icon, msg) {
 
 function showLocallyStoredDoners() {
     let donors = JSON.parse(localStorage.getItem("donors"))
-    console.log(donors)
+    // console.log(donors)
     if (donors !== null) {
         for (let i = 1; i < donors.length; i++) {
             let index = donors.length - i
-            console.log(index, donors[index], donors[0])
+            // console.log(index, donors[index], donors[0])
             showDoner(donors[index][0], donors[index][1], donors[index][2], donors[index][3])
             number_of_doners++
         }
