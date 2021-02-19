@@ -161,50 +161,7 @@
 </div>
 
 <script src="/bundle/js/jquery.min.js"></script>
-<script>
-  function showDoner(addr, name, icon, msg) {
-    $("#hero-feed ul").prepend(`<li class="fade-in">
-      <div class="d-flex flex-row">
-        <img src=${icon}"/> 
-        <div class="d-flex flex-column usrdiv">
-          <div class="d-flex flex-row">
-            <span>${name}</span>
-            <!--(<span class="pkey">${addr}</span>)-->
-          </div>
-          <span class="umsg">${msg}</span>
-        </div>
-      </div>
-      </li>`)
-  }
-  $(document).ready(function () {
-    $.ajax({
-      url: "/gitcoinfeed",
-      success: (data) => {
-        let i = 0
-        showDoner(data[i][0], data[i][1], data[i][2], data[i][3])
-        i++
-        setInterval(() => {
-          // console.log(i, data.length)
-          if (i >= data.length) {
-            $("#hero-feed ul").html("")
-            i = 0
-          }
-          showDoner(data[i][0], data[i][1], data[i][2], data[i][3])
-          i++
-          if (i > 10) {
-            $("#hero-feed ul>li:last").remove()
-          }
-        }, 4000)
-      }
-    })
-
-    $(".donate-btn").on("click", () => {
-      // window.location.replace("https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer")
-      window.open("https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer")
-    })
-
-  })
-</script>
+<script src="/bundle/js/herofeed.js"></script>
 {{ end }}
 
 <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag
