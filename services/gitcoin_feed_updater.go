@@ -18,8 +18,8 @@ var feedMux = &sync.RWMutex{}
 
 func fetchFeedData() *gitcoinfeed {
 	var api = new(gitcoinfeed)
-	// resp, err := http.Get("https://api.github.com/repos" + repo + "/releases/latest")
-	resp, err := http.Get("http://localhost:5000/addrs")
+	// resp, err := http.Get("https://gitcoin.co/grants/v1/api/export_info/grant258_round8.json")
+	resp, err := http.Get("http://localhost:5000/addrs") // use this for mock script
 
 	if err != nil {
 		logger.Errorf("error retrieving gitcoin feed Data: %v", err)
@@ -54,7 +54,7 @@ func InitGitCoinFeed() {
 	go func() {
 		for true {
 			updateFeed()
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Second * 20)
 		}
 	}()
 }
