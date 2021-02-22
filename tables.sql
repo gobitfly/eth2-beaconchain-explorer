@@ -23,6 +23,7 @@ create table validators
     activationepoch            bigint      not null,
     exitepoch                  bigint      not null,
     lastattestationslot        bigint,
+    lastmissedattestationslot  bigint,
     status                     varchar(20) not null default '',
     primary key (validatorindex)
 );
@@ -173,6 +174,22 @@ create table validator_stats_status
     day    int     not null,
     status boolean not null,
     primary key (day)
+);
+
+drop table if exists validator_attestation_streaks;
+create table validator_attestation_streaks
+(
+    validatorindex int not null,
+    start          int not null,
+    length         int not null,
+    primary key (validatorindex, start)
+);
+
+drop table if exists validator_attestation_streaks_status;
+create table validator_attestation_streaks_status
+(
+    epoch int not null,
+    primary key (epoch)
 );
 
 drop table if exists queue;

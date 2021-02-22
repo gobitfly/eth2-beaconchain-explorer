@@ -28,6 +28,7 @@ func Start(client rpc.Client) error {
 	go networkLivenessUpdater(client)
 	go eth1DepositsExporter()
 	go genesisDepositsExporter()
+	go attestationStreaksUpdater()
 
 	// wait until the beacon-node is available
 	for {
@@ -839,4 +840,25 @@ func genesisDepositsExporter() {
 		logger.Infof("exported genesis-deposits for %v genesis-validators", genesisValidatorsCount)
 		return
 	}
+}
+
+func attestationStreaksUpdater() {
+	for {
+		start := time.Now()
+		err := updateAttestationStreaks()
+		if err != nil {
+			logger.WithField("duration", time.Since(start)).WithError(err).Error("Error updating attesation_streaks")
+		} else {
+			logger.WithField("duration", time.Since(start)).Info("updated attestation_streaks")
+		}
+		time.Sleep(time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
+	}
+}
+
+func updateAttestationStreaks() error {
+	// select day from validator_stats where missed_attestations > 0 order by day
+	// select epoch from attestation_assignments where validatorindex = 1 and status = missed and epoch > day - 1
+	db.DB.Select(`
+		select validatorindex, day from validator_stats where missed_attestations > 0 order by day`)
+	return nil
 }
