@@ -1,14 +1,14 @@
 {{ define "js"}}
-    <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
-    <script src="/bundle/js/highcharts/highstock.min.js"></script>
-    <script src="/bundle/js/highcharts/exporting.min.js"></script>
-    <script src="/bundle/js/highcharts/offline-exporting.min.js"></script>
-    <script src="/bundle/js/highcharts/highcharts-global-options.js"></script>
-    <script src="/static/js/pools.js"></script>
+<script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+<script src="/bundle/js/highcharts/highstock.min.js"></script>
+<script src="/bundle/js/highcharts/exporting.min.js"></script>
+<script src="/bundle/js/highcharts/offline-exporting.min.js"></script>
+<script src="/bundle/js/highcharts/highcharts-global-options.js"></script>
+<script src="/bundle/js/pools.js"></script>
 {{end}}
 
 {{ define "css"}}
-	
+
 {{end}}
 
 {{ define "content"}}
@@ -19,8 +19,89 @@
                 {{template "depositDistributionChart" .Data}}
             </div>
         </div>
+        <div class="row">
+            <div class="col-md-12">
+                <span data-toggle="tooltip" data-placement="top" title="Staked Eth">{{.Data.StakedEther}}</span> / <span id="ethCsupply" data-toggle="tooltip" data-placement="top" title="Circulating Eth">114,788,539 ETH</span>
+                <div class="progress">
+                    <div class="progress-bar progress-bar-success staked-progress" role="progressbar" aria-valuenow="40"
+                        aria-valuemin="0" aria-valuemax="100" style="width:100%">
+                        0%
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="table-responsive" style="overflow: auto; overflow-y: hidden;">
+                    <table class="table" id="staking-pool-table">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th>Type</th>
+                                <th>ETH1 Addr</th>
+                                <th>Deposit</th>
+                                <!--<th>State</th>
+                                <th>Total Income</th>
+                                <th>Act/Slashed Val.</th>
+                                <th>Avg. Att. Eff.</th>
+                                <th>Total Streak</th>
+                                <th>Tslfu</th> -->
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
-	
+
 <div id="tempcont" class=""></div>
+<script src="/bundle/js/jquery.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $.ajax({
+            url: "https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=", //not working
+            success: (data)=>{
+                console.log(data)
+                let circulatingETH = parseFloat(data);
+                let stakedEth =  {{.Data.StakedEther}};
+                let eth = parseFloat(stakedEth.split(" ")[0].replace(",", "").replace(",", ""));
+                let progress = ((eth/circulatingETH)*100).toFixed(0);
+                $(".staked-progress").width(progress);
+                $(".staked-progress").html(`${progress}%`);
+                $("#ethCsupply").html(circulatingETH+" ETH")
+            }
+        })
+        
+        let tableData = []
+        for (let el of {{.Data.PoolInfo}}){
+            tableData.push([el.name, el.category, el.address, el.deposit])
+        }
+
+        $('#staking-pool-table').DataTable({
+            processing: true,
+            serverSide: false,
+            ordering: true,
+            lengthChange: true,
+            searching: false,
+            pagingType: 'full_numbers',
+            lengthMenu: [10, 25, 50],
+            info: true,
+            data: tableData,
+            preDrawCallback: function() {
+            try {
+                $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip('dispose')
+            } catch (e) {}
+            },
+            drawCallback: function(settings) {
+            $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip()
+            },
+            order: [[3,'desc']],
+            columnDefs: []
+        })
+    })
+</script>
 {{end}}

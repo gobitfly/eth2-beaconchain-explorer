@@ -2,6 +2,7 @@ package handlers
 
 import (
 	// "eth2-exporter/db"
+	"eth2-exporter/db"
 	"eth2-exporter/services"
 	types "eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -52,13 +53,34 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	// 	}
 	// 	logger.Errorln("")
 	// }
+	type pools struct {
+		Address  string  `db:"address" json:"address"`
+		Name     string  `db:"name" json:"name"`
+		Deposit  int64   `db:"deposit" json:"deposit"`
+		Category *string `db:"category" json:"category"`
+	}
+
 	type chart struct {
 		DepositDistribution types.ChartsPageDataChart
+		StakedEther         string
+		PoolInfo            []pools
 	}
+
 	var pieChart chart
+
+	stats := services.LatestIndexPageData()
+
+	var stakePools []pools
+	err = db.DB.Select(&stakePools, "select address, name, deposit, category from stake_pools_stats;")
+	if err != nil {
+		logger.Errorf("error retrieving stake pools stats for %v route: %v", r.URL.String(), err)
+	}
+
 	pieChart.DepositDistribution.Data = chartData
 	pieChart.DepositDistribution.Height = 500
 	pieChart.DepositDistribution.Path = "deposits_distribution"
+	pieChart.StakedEther = stats.StakedEther
+	pieChart.PoolInfo = stakePools
 
 	data.Data = pieChart
 

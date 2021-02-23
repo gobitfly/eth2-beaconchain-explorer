@@ -511,6 +511,7 @@ create table stake_pools_stats
     id serial not null, 
     address text not null, 
     deposit int, 
-    name text not null,  
+    name text not null, 
+    category text, 
     PRIMARY KEY(id, address, deposit, name)
 );
