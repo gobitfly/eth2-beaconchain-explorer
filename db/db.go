@@ -529,19 +529,29 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 	}
 	defer tx.Rollback()
 
+	canonBlocks := make([][]byte, 0)
+	orphanedBlocks := make([][]byte, 0)
 	for _, block := range blocks {
-		status := "1"
 		if !block.Canonical {
-			status = "3"
 			logger.Printf("marking block %x at slot %v as orphaned", block.BlockRoot, block.Slot)
+			orphanedBlocks = append(orphanedBlocks, block.BlockRoot)
 		} else {
 			logger.Printf("marking block %x at slot %v as canonical", block.BlockRoot, block.Slot)
+			canonBlocks = append(canonBlocks, block.BlockRoot)
 		}
-		_, err = tx.Exec("UPDATE blocks SET status = $1 WHERE blockroot = $2", status, block.BlockRoot)
-		if err != nil {
-			return err
-		}
+
 	}
+
+	_, err = tx.Exec("UPDATE blocks SET status = '1' WHERE blockroot = ANY($2)", pq.Array(canonBlocks))
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = ANY($2)", pq.Array(orphanedBlocks))
+	if err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
