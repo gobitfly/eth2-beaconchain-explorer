@@ -530,9 +530,9 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 	defer tx.Rollback()
 
 	for _, block := range blocks {
-		status := 1
+		status := "1"
 		if !block.Canonical {
-			status = 3
+			status = "3"
 			logger.Printf("marking block %x at slot %v as orphaned", block.BlockRoot, block.Slot)
 		} else {
 			logger.Printf("marking block %x at slot %v as canonical", block.BlockRoot, block.Slot)
