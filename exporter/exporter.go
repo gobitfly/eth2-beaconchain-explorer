@@ -62,7 +62,7 @@ func Start(client rpc.Client) error {
 			logger.Fatal(err)
 		}
 
-		for epoch := uint64(0); epoch <= head.HeadEpoch; epoch++ {
+		for epoch := head.HeadEpoch - 1; epoch >= 0; epoch-- {
 			blocks, err := client.GetBlockStatusByEpoch(epoch)
 			if err != nil {
 				logger.Errorf("error retrieving block status: %v", err)
