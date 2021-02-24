@@ -55,6 +55,27 @@ func Start(client rpc.Client) error {
 		}
 	}
 
+	if utils.Config.Indexer.FixCanonOnStartup {
+		logger.Printf("performing one time full canon check")
+		head, err := client.GetChainHead()
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		for slot := uint64(0); slot <= head.HeadSlot; slot++ {
+			blocks, err := client.GetBlockStatusBySlot(slot)
+			if err != nil {
+				logger.Errorf("error retrieving block status: %v", err)
+				continue
+			}
+			err = db.SetBlockStatus(blocks)
+			if err != nil {
+				logger.Errorf("error saving block status: %v", err)
+				continue
+			}
+		}
+	}
+
 	if utils.Config.Indexer.IndexMissingEpochsOnStartup {
 		// Add any missing epoch to the export set (might happen if the indexer was stopped for a long period of time)
 		epochs, err := db.GetAllEpochs()

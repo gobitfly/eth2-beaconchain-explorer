@@ -492,6 +492,36 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 	return blocks, nil
 }
 
+// GetBlockStatusBySlot will get blocks by slot from a Prysm client
+func (pc *PrysmClient) GetBlockStatusBySlot(slot uint64) ([]*types.CanonBlock, error) {
+	logger.Infof("retrieving block at slot %v", slot)
+
+	blocks := make([]*types.CanonBlock, 0)
+
+	blocksRequest := &ethpb.ListBlocksRequest{PageSize: utils.Config.Indexer.Node.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: eth2types.Slot(slot)}}
+	if slot == 0 {
+		blocksRequest.QueryFilter = &ethpb.ListBlocksRequest_Genesis{Genesis: true}
+	}
+	blocksResponse, err := pc.client.ListBlocks(context.Background(), blocksRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	if blocksResponse.TotalSize == 0 {
+		return blocks, nil
+	}
+
+	for _, block := range blocksResponse.BlockContainers {
+		blocks = append(blocks, &types.CanonBlock{
+			BlockRoot: block.BlockRoot,
+			Slot:      uint64(block.Block.Block.Slot),
+			Canonical: block.Canonical,
+		})
+	}
+
+	return blocks, nil
+}
+
 func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.Block, error) {
 	b := &types.Block{
 		Status:       1,

@@ -504,3 +504,8 @@ type lighthouseValidatorResponse struct {
 	} `json:"validator"`
 	ValidatorIndex uint64 `json:"validator_index"`
 }
+
+func (pc *LighthouseClient) GetBlockStatusBySlot(slot uint64) ([]*types.CanonBlock, error) {
+	blocks := make([]*types.CanonBlock, 0)
+	return blocks, nil
+}

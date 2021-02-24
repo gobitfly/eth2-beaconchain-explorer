@@ -518,6 +518,33 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalB
 	return tx.Commit()
 }
 
+func SetBlockStatus(blocks []*types.CanonBlock) error {
+	if len(blocks) == 0 {
+		return nil
+	}
+
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %v", err)
+	}
+	defer tx.Rollback()
+
+	for _, block := range blocks {
+		status := 1
+		if !block.Canonical {
+			status = 3
+			logger.Printf("marking block %x at slot %v as orphaned", block.BlockRoot, block.Slot)
+		} else {
+			logger.Printf("marking block %x at slot %v as canonical", block.BlockRoot, block.Slot)
+		}
+		_, err = tx.Exec("UPDATE blocks SET status = $1 WHERE blockroot = $2", status, block.BlockRoot)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 // SaveValidatorQueue will save the validator queue into the database
 func SaveValidatorQueue(validators *types.ValidatorQueue) error {
 	enteringValidatorsCount := len(validators.ActivationPublicKeys)

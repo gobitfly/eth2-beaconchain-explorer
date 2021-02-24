@@ -175,6 +175,13 @@ type MinimalBlock struct {
 	Canonical  bool   `db:"-"`
 }
 
+// CanonBlock is a struct to hold canon block data
+type CanonBlock struct {
+	BlockRoot []byte `db:"blockroot"`
+	Slot      uint64 `db:"slot"`
+	Canonical bool   `db:"-"`
+}
+
 // BlockComparisonContainer is a struct to hold block comparison data
 type BlockComparisonContainer struct {
 	Epoch uint64
