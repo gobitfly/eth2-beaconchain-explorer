@@ -529,8 +529,8 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 	}
 	defer tx.Rollback()
 
-	canonBlocks := make([][]byte, 0)
-	orphanedBlocks := make([][]byte, 0)
+	canonBlocks := make(pq.ByteaArray, 0)
+	orphanedBlocks := make(pq.ByteaArray, 0)
 	for _, block := range blocks {
 		if !block.Canonical {
 			logger.Printf("marking block %x at slot %v as orphaned", block.BlockRoot, block.Slot)
