@@ -542,12 +542,12 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 
 	}
 
-	_, err = tx.Exec("UPDATE blocks SET status = '1' WHERE blockroot = ANY($1)", pq.Array(canonBlocks))
+	_, err = tx.Exec("UPDATE blocks SET status = '1' WHERE blockroot = ANY($1)", canonBlocks)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = ANY($1)", pq.Array(orphanedBlocks))
+	_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = ANY($1)", orphanedBlocks)
 	if err != nil {
 		return err
 	}
