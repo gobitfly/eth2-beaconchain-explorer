@@ -1236,21 +1236,6 @@ func insertStats(userID uint64, machine string, j *json.Encoder, r *http.Request
 	return true
 }
 
-func getJSONValue(jsonBody map[string]interface{}, key string) string {
-	result := jsonBody[key]
-	if result == nil {
-		return ""
-	}
-
-	switch result.(type) {
-	case float64:
-		return fmt.Sprintf("%.0f", result)
-	default:
-
-		return fmt.Sprintf("%v", result)
-	}
-}
-
 func getAuthClaims(r *http.Request) *utils.CustomClaims {
 	claims := context.Get(r, utils.ClaimsContextKey)
 	if claims == nil {
