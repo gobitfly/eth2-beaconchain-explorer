@@ -397,6 +397,31 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiValidatorDailyStats godoc
+// @Summary Get the daily validator stats by the validator index
+// @Tags Validator
+// @Produce  json
+// @Param  index path string true "Validator index"
+// @Success 200 {object} string
+// @Router /api/v1/validator/stats/{index} [get]
+func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	index := vars["index"]
+
+	rows, err := db.DB.Query("SELECT * FROM validator_stats WHERE validatorindex = $1 ORDER BY day DESC", index)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 // ApiValidatorByEth1Address godoc
 // @Summary Get all validators that belong to an eth1 address
 // @Tags Validator

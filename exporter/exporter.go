@@ -372,32 +372,7 @@ func doFullCheck(client rpc.Client) {
 
 // MarkOrphanedBlocks will mark the orphaned blocks in the database
 func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBlock) error {
-	blocksMap := make(map[string]bool)
-
-	for _, block := range blocks {
-		blocksMap[fmt.Sprintf("%x", block.BlockRoot)] = false
-	}
-
-	orphanedBlocks := make([][]byte, 0)
-	parentRoot := ""
-	for i := len(blocks) - 1; i >= 0; i-- {
-		blockRoot := fmt.Sprintf("%x", blocks[i].BlockRoot)
-
-		if i == len(blocks)-1 { // First block is always canon
-			parentRoot = fmt.Sprintf("%x", blocks[i].ParentRoot)
-			blocksMap[blockRoot] = true
-			continue
-		}
-		if parentRoot != blockRoot { // Block is not part of the canonical chain
-			logger.Errorf("block %x at slot %v in epoch %v has been orphaned", blocks[i].BlockRoot, blocks[i].Slot, blocks[i].Epoch)
-			orphanedBlocks = append(orphanedBlocks, blocks[i].BlockRoot)
-			continue
-		}
-		blocksMap[blockRoot] = true
-		parentRoot = fmt.Sprintf("%x", blocks[i].ParentRoot)
-	}
-
-	return db.UpdateCanonicalBlocks(startEpoch, endEpoch, orphanedBlocks)
+	return db.UpdateCanonicalBlocks(startEpoch, endEpoch, blocks)
 }
 
 // GetLastBlocks will get all blocks for a range of epochs
@@ -419,6 +394,7 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 					Slot:       block.Slot,
 					BlockRoot:  block.BlockRoot,
 					ParentRoot: block.ParentRoot,
+					Canonical:  block.Canonical,
 				})
 			}
 		}
