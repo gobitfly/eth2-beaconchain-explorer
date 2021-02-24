@@ -493,15 +493,13 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 }
 
 // GetBlockStatusBySlot will get blocks by slot from a Prysm client
-func (pc *PrysmClient) GetBlockStatusBySlot(slot uint64) ([]*types.CanonBlock, error) {
-	logger.Infof("retrieving block at slot %v", slot)
+func (pc *PrysmClient) GetBlockStatusByEpoch(epoch uint64) ([]*types.CanonBlock, error) {
+	logger.Infof("retrieving blocks for epoch %v", epoch)
 
 	blocks := make([]*types.CanonBlock, 0)
 
-	blocksRequest := &ethpb.ListBlocksRequest{PageSize: utils.Config.Indexer.Node.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Slot{Slot: eth2types.Slot(slot)}}
-	if slot == 0 {
-		blocksRequest.QueryFilter = &ethpb.ListBlocksRequest_Genesis{Genesis: true}
-	}
+	blocksRequest := &ethpb.ListBlocksRequest{PageSize: utils.Config.Indexer.Node.PageSize, QueryFilter: &ethpb.ListBlocksRequest_Epoch{Epoch: eth2types.Epoch(epoch)}}
+
 	blocksResponse, err := pc.client.ListBlocks(context.Background(), blocksRequest)
 	if err != nil {
 		return nil, err
