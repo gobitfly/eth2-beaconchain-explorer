@@ -309,21 +309,20 @@ func UserClientDelete(userID uint64, clientName string) error {
 	return err
 }
 
-func InsertStatsMeta(tx *sql.Tx, userID, version uint64, machine, timestamp, process string) (uint64, error) {
+func InsertStatsMeta(tx *sql.Tx, userID uint64, data types.StatsMeta) (uint64, error) {
+	now := time.Now()
+	nowTs := now.Unix()
+
 	var id uint64
 	row := tx.QueryRow(
-		"INSERT INTO stats_meta (user_id, machine, ts, version, process) VALUES($1, $2, TO_TIMESTAMP($3), $4, $5) RETURNING id",
-		userID, machine, timestamp, version, process,
+		"INSERT INTO stats_meta (user_id, machine, ts, version, process, created_trunc) VALUES($1, $2, TO_TIMESTAMP($3), $4, $5, date_trunc('minute', TO_TIMESTAMP($6))) RETURNING id",
+		userID, data.Machine, data.Timestamp, data.Version, data.Process, nowTs,
 	)
 	err := row.Scan(&id)
 	return id, err
 }
 
-func InsertStatsSystem(tx *sql.Tx, meta_id uint64, cpu_cores, cpu_threads, cpu_node_system_seconds_total, cpu_node_user_seconds_total,
-	cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total, memory_node_bytes_total, memory_node_bytes_free,
-	memory_node_bytes_cached, memory_node_bytes_buffers, disk_node_bytes_total, disk_node_bytes_free,
-	disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total, network_node_bytes_total_receive,
-	network_node_bytes_total_transmit, misc_node_boot_ts_seconds, misc_os string) (uint64, error) {
+func InsertStatsSystem(tx *sql.Tx, meta_id uint64, data types.StatsSystem) (uint64, error) {
 	var id uint64
 	row := tx.QueryRow(
 		"INSERT INTO stats_system (meta_id, cpu_cores, cpu_threads, cpu_node_system_seconds_total, "+
@@ -333,18 +332,17 @@ func InsertStatsSystem(tx *sql.Tx, meta_id uint64, cpu_cores, cpu_threads, cpu_n
 			"network_node_bytes_total_receive, network_node_bytes_total_transmit, misc_node_boot_ts_seconds, misc_os"+
 			") "+
 			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id",
-		meta_id, cpu_cores, cpu_threads, cpu_node_system_seconds_total, cpu_node_user_seconds_total,
-		cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total, memory_node_bytes_total, memory_node_bytes_free,
-		memory_node_bytes_cached, memory_node_bytes_buffers, disk_node_bytes_total, disk_node_bytes_free,
-		disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total, network_node_bytes_total_receive,
-		network_node_bytes_total_transmit, misc_node_boot_ts_seconds, misc_os,
+		meta_id, data.CPUCores, data.CPUThreads, data.CPUNodeSystemSecondsTotal, data.CPUNodeUserSecondsTotal,
+		data.CPUNodeIowaitSecondsTotal, data.CPUNodeIdleSecondsTotal, data.MemoryNodeBytesTotal, data.MemoryNodeBytesFree,
+		data.MemoryNodeBytesCached, data.MemoryNodeBytesBuffers, data.DiskNodeBytesTotal, data.DiskNodeBytesFree,
+		data.DiskNodeIoSeconds, data.DiskNodeReadsTotal, data.DiskNodeWritesTotal, data.NetworkNodeBytesTotalReceive,
+		data.NetworkNodeBytesTotalTransmit, data.MiscNodeBootTsSeconds, data.MiscOS,
 	)
 	err := row.Scan(&id)
 	return id, err
 }
 
-func InsertStatsProcessGeneral(tx *sql.Tx, meta_id uint64, cpu_process_seconds_total, memory_process_bytes, client_name, client_version, client_build,
-	sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected string) (uint64, error) {
+func InsertStatsProcessGeneral(tx *sql.Tx, meta_id uint64, data types.StatsProcess) (uint64, error) {
 	var id uint64
 	row := tx.QueryRow(
 		"INSERT INTO stats_process (meta_id, cpu_process_seconds_total, memory_process_bytes, client_name, client_version,"+
@@ -352,27 +350,25 @@ func InsertStatsProcessGeneral(tx *sql.Tx, meta_id uint64, cpu_process_seconds_t
 			"sync_eth2_fallback_connected"+
 			") "+
 			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
-		meta_id, cpu_process_seconds_total, memory_process_bytes, client_name, client_version, client_build,
-		sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected,
+		meta_id, data.CPUProcessSecondsTotal, data.MemoryProcessBytes, data.ClientName, data.ClientVersion, data.ClientBuild,
+		data.SyncEth1FallbackConfigured, data.SyncEth1FallbackConnected, data.SyncEth2FallbackConfigured, data.SyncEth2FallbackConnected,
 	)
 	err := row.Scan(&id)
 	return id, err
 }
 
-func InsertStatsValidator(tx *sql.Tx, general_id uint64, validator_total, validator_active string) (uint64, error) {
+func InsertStatsValidator(tx *sql.Tx, general_id uint64, data types.StatsAdditionalsValidator) (uint64, error) {
 	var id uint64
 	row := tx.QueryRow(
 		"INSERT INTO stats_add_validator (general_id, validator_total, validator_active) "+
 			"VALUES($1, $2, $3) RETURNING id",
-		general_id, validator_total, validator_active,
+		general_id, data.ValidatorTotal, data.ValidatorActive,
 	)
 	err := row.Scan(&id)
 	return id, err
 }
 
-func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive,
-	network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected,
-	sync_eth2_synced, sync_beacon_head_slot string) (uint64, error) {
+func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, data types.StatsAdditionalsBeaconnode) (uint64, error) {
 	var id uint64
 	row := tx.QueryRow(
 		"INSERT INTO stats_add_beaconnode (general_id, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive,"+
@@ -380,8 +376,8 @@ func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, disk_beaconchain_bytes
 			"sync_beacon_head_slot"+
 			") "+
 			"VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
-		general_id, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive, network_libp2p_bytes_total_transmit,
-		network_peers_connected, sync_eth1_connected, sync_eth2_synced, sync_beacon_head_slot,
+		general_id, data.DiskBeaconchainBytesTotal, data.NetworkLibp2pBytesTotalReceive, data.NetworkLibp2pBytesTotalTransmit,
+		data.NetworkPeersConnected, data.SyncEth1Connected, data.SyncEth2Synced, data.SyncBeaconHeadSlot,
 	)
 	err := row.Scan(&id)
 	return id, err

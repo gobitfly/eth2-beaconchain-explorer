@@ -530,9 +530,11 @@ CREATE TABLE stats_meta (
 	ts 				timestamp  			not null,
 	process 			character varying(20) 		not null,
 	machine 		 	character varying(50),
+    created_trunc       timestamp   not null,
 	
 	user_id 		 	bigint	 	 		not null,
-	foreign key(user_id) references users(id)
+    foreign key(user_id) references users(id),
+    UNIQUE (user_id, created_trunc, process)
 );
 
 create index idx_stats_machine on stats_meta (machine);

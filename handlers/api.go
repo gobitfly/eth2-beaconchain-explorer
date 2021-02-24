@@ -1099,135 +1099,129 @@ func insertStats(userID uint64, machine string, j *json.Encoder, r *http.Request
 		return false
 	}
 
-	jsonBody := make(map[string]interface{})
-	errParsing := json.Unmarshal(body, &jsonBody)
-	if errParsing != nil {
-		logger.Errorf("error parsing body | err: %v", errParsing)
-		sendErrorResponse(j, r.URL.String(), "could not parse body")
+	var parsedMeta types.StatsMeta
+	err = json.Unmarshal(body, &parsedMeta)
+	parsedMeta.Machine = machine
+
+	if err != nil {
+		logger.Errorf("Could not parse stats (meta stats) | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not parse meta")
 		return false
 	}
 
-	versionString := getJSONValue(jsonBody, "version")
-	version, err := strconv.ParseUint(versionString, 10, 64)
-	if err != nil {
-		logger.Errorf("error parsing version %v | err: %v", versionString, err)
-		sendErrorResponse(j, r.URL.String(), "could not parse version")
-		return false
-	}
-	if version != 1 {
+	if parsedMeta.Version != 1 {
 		sendErrorResponse(j, r.URL.String(), "this version is not supported")
 		return false
 	}
 
-	ts := getJSONValue(jsonBody, "timestamp")
-	process := getJSONValue(jsonBody, "process")
-
-	if process != "validator" && process != "beaconnode" && process != "slasher" && process != "system" {
+	if parsedMeta.Process != "validator" && parsedMeta.Process != "beaconnode" && parsedMeta.Process != "slasher" && parsedMeta.Process != "system" {
 		sendErrorResponse(j, r.URL.String(), "unknown process")
 		return false
 	}
 
 	tx, err := db.NewTransaction()
 	if err != nil {
-		logger.Errorf("Could not transact | %v %v", versionString, err)
+		logger.Errorf("Could not transact | %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not store")
 		return false
 	}
 	defer tx.Rollback()
 
-	id, err := db.InsertStatsMeta(tx, userID, version, machine, ts, process)
+	id, err := db.InsertStatsMeta(tx, userID, parsedMeta)
 	if err != nil {
-		logger.Errorf("Could not store stats (meta stats) | %v %v", versionString, err)
+		logger.Errorf("Could not store stats (meta stats) | %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not store meta")
 		return false
 	}
 
 	// Special case for system
-	if process == "system" {
+	if parsedMeta.Process == "system" {
+		var parsedResponse types.StatsSystem
+		err = json.Unmarshal(body, &parsedResponse)
+
+		if err != nil {
+			logger.Errorf("Could not parse stats (system stats) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not parse system")
+			return false
+		}
 		_, err := db.InsertStatsSystem(
 			tx,
 			id,
-			getJSONValue(jsonBody, "cpu_cores"),
-			getJSONValue(jsonBody, "cpu_threads"),
-			getJSONValue(jsonBody, "cpu_node_system_seconds_total"),
-			getJSONValue(jsonBody, "cpu_node_user_seconds_total"),
-			getJSONValue(jsonBody, "cpu_node_iowait_seconds_total"),
-			getJSONValue(jsonBody, "cpu_node_idle_seconds_total"),
-			getJSONValue(jsonBody, "memory_node_bytes_total"),
-			getJSONValue(jsonBody, "memory_node_bytes_free"),
-			getJSONValue(jsonBody, "memory_node_bytes_cached"),
-			getJSONValue(jsonBody, "memory_node_bytes_buffers"),
-			getJSONValue(jsonBody, "disk_node_bytes_total"),
-			getJSONValue(jsonBody, "disk_node_bytes_free"),
-			getJSONValue(jsonBody, "disk_node_io_seconds"),
-			getJSONValue(jsonBody, "disk_node_reads_total"),
-			getJSONValue(jsonBody, "disk_node_writes_total"),
-			getJSONValue(jsonBody, "network_node_bytes_total_receive"),
-			getJSONValue(jsonBody, "network_node_bytes_total_transmit"),
-			getJSONValue(jsonBody, "misc_node_boot_ts_seconds"),
-			getJSONValue(jsonBody, "misc_os"),
+			parsedResponse,
 		)
 		if err != nil {
-			logger.Errorf("Could not store stats (system stats) | %v %v", versionString, err)
+			logger.Errorf("Could not store stats (system stats) | %v", err)
 			sendErrorResponse(j, r.URL.String(), "could not store system")
 			return false
 		}
 
 		err = tx.Commit()
 		if err != nil {
-			logger.Errorf("Could not store (tx commit) | %v %v", versionString, err)
+			logger.Errorf("Could not store (tx commit) | %v", err)
 			sendErrorResponse(j, r.URL.String(), "could not store")
 			return false
 		}
 		return true
 	}
 
+	var parsedGeneral types.StatsProcess
+	err = json.Unmarshal(body, &parsedGeneral)
+
+	if err != nil {
+		logger.Errorf("Could not parse stats (process stats) | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not parse process")
+		return false
+	}
+
 	processGeneralID, err := db.InsertStatsProcessGeneral(
 		tx,
 		id,
-		getJSONValue(jsonBody, "cpu_process_seconds_total"),
-		getJSONValue(jsonBody, "memory_process_bytes"),
-		getJSONValue(jsonBody, "client_name"),
-		getJSONValue(jsonBody, "client_version"),
-		getJSONValue(jsonBody, "client_build"),
-		getJSONValue(jsonBody, "sync_eth1_fallback_configured"),
-		getJSONValue(jsonBody, "sync_eth1_fallback_connected"),
-		getJSONValue(jsonBody, "sync_eth2_fallback_configured"),
-		getJSONValue(jsonBody, "sync_eth2_fallback_connected"),
+		parsedGeneral,
 	)
 	if err != nil {
-		logger.Errorf("Could not store stats (global process stats) | %v %v", versionString, err)
+		logger.Errorf("Could not store stats (global process stats) | %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not store global process")
 		return false
 	}
 
-	if process == "validator" {
+	if parsedMeta.Process == "validator" {
+		var parsedValidator types.StatsAdditionalsValidator
+		err = json.Unmarshal(body, &parsedValidator)
+
+		if err != nil {
+			logger.Errorf("Could not parse stats (validator stats) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not parse validator")
+			return false
+		}
+
 		_, err := db.InsertStatsValidator(
 			tx,
 			processGeneralID,
-			getJSONValue(jsonBody, "validator_total"),
-			getJSONValue(jsonBody, "validator_active"),
+			parsedValidator,
 		)
 		if err != nil {
-			logger.Errorf("Could not store stats (validatorstats) | %v %v", versionString, err)
+			logger.Errorf("Could not store stats (validatorstats) | %v", err)
 			sendErrorResponse(j, r.URL.String(), "could not store validator")
 			return false
 		}
 
-	} else if process == "beaconnode" {
+	} else if parsedMeta.Process == "beaconnode" {
+		var parsedNode types.StatsAdditionalsBeaconnode
+		err = json.Unmarshal(body, &parsedNode)
+
+		if err != nil {
+			logger.Errorf("Could not parse stats (node stats) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not parse node")
+			return false
+		}
+
 		_, err := db.InsertStatsBeaconnode(
 			tx,
 			processGeneralID,
-			getJSONValue(jsonBody, "disk_beaconchain_bytes_total"),
-			getJSONValue(jsonBody, "network_libp2p_bytes_total_receive"),
-			getJSONValue(jsonBody, "network_libp2p_bytes_total_transmit"),
-			getJSONValue(jsonBody, "network_peers_connected"),
-			getJSONValue(jsonBody, "sync_eth1_connected"),
-			getJSONValue(jsonBody, "sync_eth2_synced"),
-			getJSONValue(jsonBody, "sync_beacon_head_slot"),
+			parsedNode,
 		)
 		if err != nil {
-			logger.Errorf("Could not store stats (beaconnode) | %v %v", versionString, err)
+			logger.Errorf("Could not store stats (beaconnode) | %v", err)
 			sendErrorResponse(j, r.URL.String(), "could not store beaconnode")
 			return false
 		}
@@ -1235,7 +1229,7 @@ func insertStats(userID uint64, machine string, j *json.Encoder, r *http.Request
 
 	err = tx.Commit()
 	if err != nil {
-		logger.Errorf("Could not store (tx commit) | %v %v", versionString, err)
+		logger.Errorf("Could not store (tx commit) | %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not store")
 		return false
 	}
