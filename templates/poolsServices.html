@@ -32,7 +32,7 @@
         </div>
         <div class="row">
             <div class="col-md-12">
-                <div class="table-responsive" style="overflow: auto; overflow-y: hidden;">
+                <div class="table-responsive">
                     <table class="table" id="staking-pool-table">
                         <thead>
                             <tr>
@@ -62,19 +62,21 @@
 <script src="/bundle/js/jquery.min.js"></script>
 <script>
     $(document).ready(function () {
-        $.ajax({
-            url: "https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=", //not working
-            success: (data)=>{
+        fetch("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
+        .then(res => res.json())
+        .then(data => {
                 console.log(data)
-                let circulatingETH = parseFloat(data);
+                let circulatingETH = parseInt(data.result / 1e18);
                 let stakedEth =  {{.Data.StakedEther}};
                 let eth = parseFloat(stakedEth.split(" ")[0].replace(",", "").replace(",", ""));
                 let progress = ((eth/circulatingETH)*100).toFixed(0);
                 $(".staked-progress").width(progress);
                 $(".staked-progress").html(`${progress}%`);
-                $("#ethCsupply").html(circulatingETH+" ETH")
-            }
-        })
+                $("#ethCsupply").html(circulatingETH.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",") +" ETH")
+            })
+        .catch((error) => {
+            alert("Site may not function properly if you are using adblock or other types of communication blocking software")
+        });
         
         let tableData = []
         for (let el of {{.Data.PoolInfo}}){
