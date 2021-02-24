@@ -58,6 +58,12 @@ func GetUserApiKeyById(id uint64) (string, error) {
 	return apiKey, err
 }
 
+func GetUserIdByApiKey(apiKey string) (uint64, error) {
+	var userID uint64
+	err := FrontendDB.Get(&userID, "SELECT id FROM users WHERE api_key = $1", apiKey)
+	return userID, err
+}
+
 // DeleteUserById deletes a user.
 func DeleteUserById(id uint64) error {
 	_, err := FrontendDB.Exec("DELETE FROM users WHERE id = $1", id)
@@ -301,4 +307,122 @@ func UserClientEntry(userID uint64, clientName string, clientVersion int64, noti
 func UserClientDelete(userID uint64, clientName string) error {
 	_, err := FrontendDB.Exec("DELETE FROM users_clients WHERE user_id = $1 AND client = $2 ", userID, clientName)
 	return err
+}
+
+func InsertStatsMeta(tx *sql.Tx, userID, version uint64, machine, timestamp, process string) (uint64, error) {
+	var id uint64
+	row := tx.QueryRow(
+		"INSERT INTO stats_meta (user_id, machine, ts, version, process) VALUES($1, $2, TO_TIMESTAMP($3), $4, $5) RETURNING id",
+		userID, machine, timestamp, version, process,
+	)
+	err := row.Scan(&id)
+	return id, err
+}
+
+func InsertStatsSystem(tx *sql.Tx, meta_id uint64, cpu_cores, cpu_threads, cpu_node_system_seconds_total, cpu_node_user_seconds_total,
+	cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total, memory_node_bytes_total, memory_node_bytes_free,
+	memory_node_bytes_cached, memory_node_bytes_buffers, disk_node_bytes_total, disk_node_bytes_free,
+	disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total, network_node_bytes_total_receive,
+	network_node_bytes_total_transmit, misc_node_boot_ts_seconds, misc_os string) (uint64, error) {
+	var id uint64
+	row := tx.QueryRow(
+		"INSERT INTO stats_system (meta_id, cpu_cores, cpu_threads, cpu_node_system_seconds_total, "+
+			"cpu_node_user_seconds_total, cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total,"+
+			"memory_node_bytes_total, memory_node_bytes_free, memory_node_bytes_cached, memory_node_bytes_buffers,"+
+			"disk_node_bytes_total, disk_node_bytes_free, disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total,"+
+			"network_node_bytes_total_receive, network_node_bytes_total_transmit, misc_node_boot_ts_seconds, misc_os"+
+			") "+
+			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id",
+		meta_id, cpu_cores, cpu_threads, cpu_node_system_seconds_total, cpu_node_user_seconds_total,
+		cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total, memory_node_bytes_total, memory_node_bytes_free,
+		memory_node_bytes_cached, memory_node_bytes_buffers, disk_node_bytes_total, disk_node_bytes_free,
+		disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total, network_node_bytes_total_receive,
+		network_node_bytes_total_transmit, misc_node_boot_ts_seconds, misc_os,
+	)
+	err := row.Scan(&id)
+	return id, err
+}
+
+func InsertStatsProcessGeneral(tx *sql.Tx, meta_id uint64, cpu_process_seconds_total, memory_process_bytes, client_name, client_version, client_build,
+	sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected string) (uint64, error) {
+	var id uint64
+	row := tx.QueryRow(
+		"INSERT INTO stats_process (meta_id, cpu_process_seconds_total, memory_process_bytes, client_name, client_version,"+
+			"client_build, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured,"+
+			"sync_eth2_fallback_connected"+
+			") "+
+			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
+		meta_id, cpu_process_seconds_total, memory_process_bytes, client_name, client_version, client_build,
+		sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected,
+	)
+	err := row.Scan(&id)
+	return id, err
+}
+
+func InsertStatsValidator(tx *sql.Tx, general_id uint64, validator_total, validator_active string) (uint64, error) {
+	var id uint64
+	row := tx.QueryRow(
+		"INSERT INTO stats_add_validator (general_id, validator_total, validator_active) "+
+			"VALUES($1, $2, $3) RETURNING id",
+		general_id, validator_total, validator_active,
+	)
+	err := row.Scan(&id)
+	return id, err
+}
+
+func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive,
+	network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected,
+	sync_eth2_synced, sync_beacon_head_slot string) (uint64, error) {
+	var id uint64
+	row := tx.QueryRow(
+		"INSERT INTO stats_add_beaconnode (general_id, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive,"+
+			"network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected, sync_eth2_synced,"+
+			"sync_beacon_head_slot"+
+			") "+
+			"VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+		general_id, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive, network_libp2p_bytes_total_transmit,
+		network_peers_connected, sync_eth1_connected, sync_eth2_synced, sync_beacon_head_slot,
+	)
+	err := row.Scan(&id)
+	return id, err
+}
+
+func NewTransaction() (*sql.Tx, error) {
+	return FrontendDB.Begin()
+}
+
+func GetStatsValidator(userID, limit, offset uint64) (*sql.Rows, error) {
+	row, err := FrontendDB.Query(
+		"SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, validator_active, validator_total FROM stats_add_validator LEFT JOIN stats_process ON stats_add_validator.general_id = stats_process.id "+
+			" LEFT JOIN stats_meta on stats_process.meta_id = stats_meta.id "+
+			"WHERE user_id = $1 AND process = 'validator' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
+	)
+	return row, err
+}
+
+func GetStatsSlasher(userID, limit, offset uint64) (*sql.Rows, error) {
+	row, err := FrontendDB.Query(
+		"SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp FROM stats_process  "+
+			" LEFT JOIN stats_meta on stats_process.meta_id = stats_meta.id "+
+			"WHERE user_id = $1 AND process = 'slasher' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
+	)
+	return row, err
+}
+
+func GetStatsNode(userID, limit, offset uint64) (*sql.Rows, error) {
+	row, err := FrontendDB.Query(
+		"SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive, network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected, sync_eth2_synced, sync_beacon_head_slot FROM stats_add_beaconnode left join stats_process on stats_process.id = stats_add_beaconnode.general_id "+
+			" LEFT JOIN stats_meta on stats_process.meta_id = stats_meta.id "+
+			"WHERE user_id = $1 AND process = 'beaconnode' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
+	)
+	return row, err
+}
+
+func GetStatsSystem(userID, limit, offset uint64) (*sql.Rows, error) {
+	row, err := FrontendDB.Query(
+		"SELECT  cpu_cores, cpu_threads, cpu_node_system_seconds_total, cpu_node_user_seconds_total, cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total, memory_node_bytes_total, memory_node_bytes_free, memory_node_bytes_cached, memory_node_bytes_buffers, disk_node_bytes_total, disk_node_bytes_free, disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total, network_node_bytes_total_receive, network_node_bytes_total_transmit, misc_os, misc_node_boot_ts_seconds, ts as timestamp, machine from stats_system"+
+			" LEFT JOIN stats_meta on stats_system.meta_id = stats_meta.id "+
+			"WHERE user_id = $1 AND process = 'system' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
+	)
+	return row, err
 }

@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -981,6 +982,279 @@ func MobileTagedValidators(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendOKResponse(j, r.URL.String(), data)
+}
+
+func parseUintWithDefault(input string, defaultValue uint64) uint64 {
+	result, error := strconv.ParseUint(input, 10, 64)
+	if error != nil {
+		return defaultValue
+	}
+	return result
+}
+
+func ClientStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+	claims := getAuthClaims(r)
+
+	vars := mux.Vars(r)
+	offset := parseUintWithDefault(vars["offset"], 0)
+	limit := parseUintWithDefault(vars["limit"], 100)
+	if limit > 1000 {
+		limit = 1000
+	}
+
+	validator, err := db.GetStatsValidator(claims.UserID, limit, offset)
+	if err != nil {
+		logger.Errorf("validator stat error : %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve validator stats from db")
+		return
+	}
+
+	slasher, err := db.GetStatsSlasher(claims.UserID, limit, offset)
+	if err != nil {
+		logger.Errorf("slasher stat error : %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve slasher stats from db")
+		return
+	}
+
+	node, err := db.GetStatsNode(claims.UserID, limit, offset)
+	if err != nil {
+		logger.Errorf("node stat error : %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve beaconnode stats from db")
+		return
+	}
+
+	system, err := db.GetStatsSystem(claims.UserID, limit, offset)
+	if err != nil {
+		logger.Errorf("system stat error : %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve system stats from db")
+		return
+	}
+
+	type dataStruct struct {
+		Validator []interface{} `json:"validator"`
+		Slasher   []interface{} `json:"slasher"`
+		Node      []interface{} `json:"node"`
+		System    []interface{} `json:"system"`
+	}
+
+	dataValidator, err := utils.SqlRowsToJSON(validator)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results for validator stats")
+		return
+	}
+	dataSlasher, err := utils.SqlRowsToJSON(slasher)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results for slasher stats")
+		return
+	}
+
+	dataNode, err := utils.SqlRowsToJSON(node)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results for beaconnode stats")
+		return
+	}
+
+	dataSystem, err := utils.SqlRowsToJSON(system)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results for system stats")
+		return
+	}
+
+	data := &dataStruct{
+		Validator: dataValidator,
+		Slasher:   dataSlasher,
+		Node:      dataNode,
+		System:    dataSystem,
+	}
+
+	sendOKResponse(j, r.URL.String(), []interface{}{data})
+}
+
+func ClientStatsPost(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	userID, err := db.GetUserIdByApiKey(vars["apiKey"])
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "no user found with api key")
+		return
+	}
+
+	machine := vars["machine"]
+
+	if insertStats(userID, machine, j, r) {
+		OKResponse(w, r)
+	}
+}
+
+func insertStats(userID uint64, machine string, j *json.Encoder, r *http.Request) bool {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body | err: %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not read body")
+		return false
+	}
+
+	jsonBody := make(map[string]interface{})
+	errParsing := json.Unmarshal(body, &jsonBody)
+	if errParsing != nil {
+		logger.Errorf("error parsing body | err: %v", errParsing)
+		sendErrorResponse(j, r.URL.String(), "could not parse body")
+		return false
+	}
+
+	versionString := getJSONValue(jsonBody, "version")
+	version, err := strconv.ParseUint(versionString, 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing version %v | err: %v", versionString, err)
+		sendErrorResponse(j, r.URL.String(), "could not parse version")
+		return false
+	}
+	if version != 1 {
+		sendErrorResponse(j, r.URL.String(), "this version is not supported")
+		return false
+	}
+
+	ts := getJSONValue(jsonBody, "timestamp")
+	process := getJSONValue(jsonBody, "process")
+
+	if process != "validator" && process != "beaconnode" && process != "slasher" && process != "system" {
+		sendErrorResponse(j, r.URL.String(), "unknown process")
+		return false
+	}
+
+	tx, err := db.NewTransaction()
+	if err != nil {
+		logger.Errorf("Could not transact | %v %v", versionString, err)
+		sendErrorResponse(j, r.URL.String(), "could not store")
+		return false
+	}
+	defer tx.Rollback()
+
+	id, err := db.InsertStatsMeta(tx, userID, version, machine, ts, process)
+	if err != nil {
+		logger.Errorf("Could not store stats (meta stats) | %v %v", versionString, err)
+		sendErrorResponse(j, r.URL.String(), "could not store meta")
+		return false
+	}
+
+	// Special case for system
+	if process == "system" {
+		_, err := db.InsertStatsSystem(
+			tx,
+			id,
+			getJSONValue(jsonBody, "cpu_cores"),
+			getJSONValue(jsonBody, "cpu_threads"),
+			getJSONValue(jsonBody, "cpu_node_system_seconds_total"),
+			getJSONValue(jsonBody, "cpu_node_user_seconds_total"),
+			getJSONValue(jsonBody, "cpu_node_iowait_seconds_total"),
+			getJSONValue(jsonBody, "cpu_node_idle_seconds_total"),
+			getJSONValue(jsonBody, "memory_node_bytes_total"),
+			getJSONValue(jsonBody, "memory_node_bytes_free"),
+			getJSONValue(jsonBody, "memory_node_bytes_cached"),
+			getJSONValue(jsonBody, "memory_node_bytes_buffers"),
+			getJSONValue(jsonBody, "disk_node_bytes_total"),
+			getJSONValue(jsonBody, "disk_node_bytes_free"),
+			getJSONValue(jsonBody, "disk_node_io_seconds"),
+			getJSONValue(jsonBody, "disk_node_reads_total"),
+			getJSONValue(jsonBody, "disk_node_writes_total"),
+			getJSONValue(jsonBody, "network_node_bytes_total_receive"),
+			getJSONValue(jsonBody, "network_node_bytes_total_transmit"),
+			getJSONValue(jsonBody, "misc_node_boot_ts_seconds"),
+			getJSONValue(jsonBody, "misc_os"),
+		)
+		if err != nil {
+			logger.Errorf("Could not store stats (system stats) | %v %v", versionString, err)
+			sendErrorResponse(j, r.URL.String(), "could not store system")
+			return false
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			logger.Errorf("Could not store (tx commit) | %v %v", versionString, err)
+			sendErrorResponse(j, r.URL.String(), "could not store")
+			return false
+		}
+		return true
+	}
+
+	processGeneralID, err := db.InsertStatsProcessGeneral(
+		tx,
+		id,
+		getJSONValue(jsonBody, "cpu_process_seconds_total"),
+		getJSONValue(jsonBody, "memory_process_bytes"),
+		getJSONValue(jsonBody, "client_name"),
+		getJSONValue(jsonBody, "client_version"),
+		getJSONValue(jsonBody, "client_build"),
+		getJSONValue(jsonBody, "sync_eth1_fallback_configured"),
+		getJSONValue(jsonBody, "sync_eth1_fallback_connected"),
+		getJSONValue(jsonBody, "sync_eth2_fallback_configured"),
+		getJSONValue(jsonBody, "sync_eth2_fallback_connected"),
+	)
+	if err != nil {
+		logger.Errorf("Could not store stats (global process stats) | %v %v", versionString, err)
+		sendErrorResponse(j, r.URL.String(), "could not store global process")
+		return false
+	}
+
+	if process == "validator" {
+		_, err := db.InsertStatsValidator(
+			tx,
+			processGeneralID,
+			getJSONValue(jsonBody, "validator_total"),
+			getJSONValue(jsonBody, "validator_active"),
+		)
+		if err != nil {
+			logger.Errorf("Could not store stats (validatorstats) | %v %v", versionString, err)
+			sendErrorResponse(j, r.URL.String(), "could not store validator")
+			return false
+		}
+
+	} else if process == "beaconnode" {
+		_, err := db.InsertStatsBeaconnode(
+			tx,
+			processGeneralID,
+			getJSONValue(jsonBody, "disk_beaconchain_bytes_total"),
+			getJSONValue(jsonBody, "network_libp2p_bytes_total_receive"),
+			getJSONValue(jsonBody, "network_libp2p_bytes_total_transmit"),
+			getJSONValue(jsonBody, "network_peers_connected"),
+			getJSONValue(jsonBody, "sync_eth1_connected"),
+			getJSONValue(jsonBody, "sync_eth2_synced"),
+			getJSONValue(jsonBody, "sync_beacon_head_slot"),
+		)
+		if err != nil {
+			logger.Errorf("Could not store stats (beaconnode) | %v %v", versionString, err)
+			sendErrorResponse(j, r.URL.String(), "could not store beaconnode")
+			return false
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.Errorf("Could not store (tx commit) | %v %v", versionString, err)
+		sendErrorResponse(j, r.URL.String(), "could not store")
+		return false
+	}
+	return true
+}
+
+func getJSONValue(jsonBody map[string]interface{}, key string) string {
+	result := jsonBody[key]
+	if result == nil {
+		return ""
+	}
+
+	switch result.(type) {
+	case float64:
+		return fmt.Sprintf("%.0f", result)
+	default:
+
+		return fmt.Sprintf("%v", result)
+	}
 }
 
 func getAuthClaims(r *http.Request) *utils.CustomClaims {

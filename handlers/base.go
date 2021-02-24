@@ -61,9 +61,6 @@ func ErrorOrJSONResponse(w http.ResponseWriter, r *http.Request, errorText strin
 func FormValueOrJSON(r *http.Request, key string) string {
 	if IsMobileAuth(r) {
 		jsonBody := context.Get(r, utils.JsonBodyKey)
-		if jsonBody == nil {
-			return ""
-		}
 		// In order to be consistent with FormValues string only return
 		// (and to be able to pass non string values in json)
 		// we convert every param to string. Handling/casting to
