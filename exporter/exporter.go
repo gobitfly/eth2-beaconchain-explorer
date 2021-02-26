@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/metrics"
 	"eth2-exporter/rpc"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -858,7 +859,79 @@ func attestationStreaksUpdater() {
 func updateAttestationStreaks() error {
 	// select day from validator_stats where missed_attestations > 0 order by day
 	// select epoch from attestation_assignments where validatorindex = 1 and status = missed and epoch > day - 1
-	db.DB.Select(`
-		select validatorindex, day from validator_stats where missed_attestations > 0 order by day`)
+
+	latestEpoch := services.LatestEpoch()
+
+	var lastMaxStreakLength uint64
+	err := db.DB.Get(&lastMaxStreakLength, `select coalesce(max(streakend),0) from validator_streaks`)
+	if err != nil {
+		return err
+	}
+
+	if latestEpoch <= lastMaxStreakLength {
+		return nil
+	}
+
+	// var currStreaks []struct {
+	// 	Validatorindex int
+	// 	Status         int
+	// 	Streakstart    int
+	// 	Streakend      int
+	// 	Streaklength   int
+	// }
+	// err = db.DB.Select(&currStreaks, `select validatorindex, status, streakstart, streakend, streaklength from validator_streaks`)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// var currStreaksMaxEpoch int
+	// for _, s := range currStreaks {
+	// 	if s.Streakstart+s.Streaklength > currStreaksMaxEpoch {
+	// 		currStreaksMaxEpoch = s.Streakstart + s.Streaklength
+	// 	}
+	// }
+
+	_, err = db.DB.Exec(`
+		with
+			-- limit search-space
+			aa as (
+				select validatorindex, epoch, status from attestation_assignments_p 
+				where week  >= $1/1575
+				  and week  <= ($1+225)/1575 
+				  and epoch >= $1
+				  and epoch <= $1+225
+			),
+			-- find boundings
+			boundings as (
+				select aa2.validatorindex, aa2.epoch, aa1.status
+				from aa aa1 inner join aa aa2 on aa1.validatorindex = aa2.validatorindex and aa2.epoch = aa1.epoch+1
+				where aa1.status != aa2.status or aa2.epoch = $1+225-1
+			),
+			-- calculate streaklengths
+			streaks as (
+				select 
+					boundings.validatorindex, 
+					boundings.status,
+					coalesce(lag(epoch) over (partition by boundings.validatorindex order by epoch),validators.activationepoch) as streakstart,
+					epoch -1 as streakend, 
+					epoch - coalesce(lag(epoch) over (partition by boundings.validatorindex order by epoch),validators.activationepoch) as streaklength
+				from boundings
+					inner join validators on validators.validatorindex = boundings.validatorindex
+			),
+			-- rank by validator and status
+			rankedstreaks as (
+				select *, 
+					rank() over (partition by validatorindex, status order by streaklength desc, streakstart desc) as r
+				from streaks
+			)
+		insert into validator_streaks
+			(validatorindex, status, streakstart, streakend, streaklength)
+		select 
+			validatorindex, status, streakstart, streakend, streaklength
+		from rankedstreaks where r = 1 or streakend = (select max(streakend) from validator_streaks)-1`, lastMaxStreakLength)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

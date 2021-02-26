@@ -180,9 +180,10 @@ drop table if exists validator_attestation_streaks;
 create table validator_attestation_streaks
 (
     validatorindex int not null,
+    status         int not null,
     start          int not null,
     length         int not null,
-    primary key (validatorindex, start)
+    primary key (validatorindex, status, start)
 );
 
 drop table if exists validator_attestation_streaks_status;
