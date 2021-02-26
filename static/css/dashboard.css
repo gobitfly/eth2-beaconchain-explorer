@@ -420,17 +420,25 @@ ul.multiselect input:focus {
 
 .tt-open{
   background-color: var(--bg-color-secondary);
+  scrollbar-color: var(--primary) rgba(0,0,0,0.2);
+  scrollbar-width: thin;
 }
 
-.tt-open::-webkit-scrollbar{
+#selected-validators-overview{
+  scrollbar-color: var(--primary) rgba(0,0,0,0.2);
+  scrollbar-width: thin;
+}
+
+.tt-open::-webkit-scrollbar, #selected-validators-overview::-webkit-scrollbar{
   width: 5px;
   /* background-color: var(--bg-color-secondary); */
 }
 
-.tt-open::-webkit-scrollbar-thumb{
-  background-color: var(--banner-text);
+.tt-open::-webkit-scrollbar-thumb, #selected-validators-overview::-webkit-scrollbar-thumb{
+  background-color: var(--primary);
   border-radius: 12px;
   border-style: solid;
+  color: var(--primary);
   border-width: 2px;
 }
 
