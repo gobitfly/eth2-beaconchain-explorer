@@ -65,7 +65,6 @@
         fetch("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
         .then(res => res.json())
         .then(data => {
-                console.log(data)
                 let circulatingETH = parseInt(data.result / 1e18);
                 let stakedEth =  {{.Data.StakedEther}};
                 let eth = parseFloat(stakedEth.split(" ")[0].replace(",", "").replace(",", ""));
