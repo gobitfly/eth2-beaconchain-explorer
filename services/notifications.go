@@ -318,26 +318,26 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	}
 
 	err := db.DB.Select(&dbResult, `
-		SELECT id, user_id, validatorindex, startbalance, endbalance, ENCODE(a.pubkey::bytea, 'hex') AS pubkey FROM (
+		SELECT id, user_id, validatorindex, startbalance, endbalance, a.pubkey AS pubkey FROM (
 			SELECT 
 				us.id, 
 				us.user_id, 
 				v.validatorindex,
-				v.pubkey AS pubkey, 
+				v.pubkeyhex AS pubkey, 
 				vb0.balance AS endbalance, 
 				vb3.balance AS startbalance, 
 				us.last_sent_epoch,
 				(SELECT MAX(epoch) FROM (
 					SELECT epoch, balance-LAG(balance) OVER (ORDER BY epoch) AS diff
-					FROM validator_balances_p 
-					WHERE validatorindex = v.validatorindex AND week >= us.last_sent_epoch / 1575 AND week >= ($2 - 10) / 1575 AND epoch > us.last_sent_epoch AND epoch > $2 - 10
+					FROM validator_balances_recent 
+					WHERE validatorindex = v.validatorindex AND epoch > us.last_sent_epoch AND epoch > $2 - 10
 				) b WHERE diff > 0) AS lastbalanceincreaseepoch
 			FROM users_subscriptions us
-			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
-			INNER JOIN validator_balances_p vb0 ON v.validatorindex = vb0.validatorindex AND vb0.week = $2 / 1575 AND vb0.epoch = $2
-			INNER JOIN validator_balances_p vb1 ON v.validatorindex = vb1.validatorindex AND vb1.week = ($2 - 1) / 1575 AND vb1.epoch = $2 - 1 AND vb1.balance > vb0.balance
-			INNER JOIN validator_balances_p vb2 ON v.validatorindex = vb2.validatorindex AND vb2.week = ($2 - 2) / 1575 AND vb2.epoch = $2 - 2 AND vb2.balance > vb1.balance
-			INNER JOIN validator_balances_p vb3 ON v.validatorindex = vb3.validatorindex AND vb3.week = ($2 - 3) / 1575 AND vb3.epoch = $2 - 3 AND vb3.balance > vb2.balance
+			INNER JOIN validators v ON v.pubkeyhex = us.event_filter
+			INNER JOIN validator_balances_recent vb0 ON v.validatorindex = vb0.validatorindex AND vb0.epoch = $2
+			INNER JOIN validator_balances_recent vb1 ON v.validatorindex = vb1.validatorindex AND vb1.epoch = $2 - 1 AND vb1.balance > vb0.balance
+			INNER JOIN validator_balances_recent vb2 ON v.validatorindex = vb2.validatorindex AND vb2.epoch = $2 - 2 AND vb2.balance > vb1.balance
+			INNER JOIN validator_balances_recent vb3 ON v.validatorindex = vb3.validatorindex AND vb3.epoch = $2 - 3 AND vb3.balance > vb2.balance
 			WHERE us.event_name = $1 AND us.created_epoch <= $2
 		) a WHERE lastbalanceincreaseepoch IS NOT NULL OR last_sent_epoch IS NULL`,
 		types.ValidatorBalanceDecreasedEventName, latestEpoch)
@@ -726,11 +726,35 @@ func (n *ethClientNotification) GetEventName() types.EventName {
 }
 
 func (n *ethClientNotification) GetInfo(includeUrl bool) string {
-	return fmt.Sprintf(`New update for ETH client %s https://beaconcha.in/ethClients`, n.EthClient)
+	generalPart := fmt.Sprintf(`A new version for %s is available.`, n.EthClient)
+	if includeUrl {
+		url := ""
+		switch n.EthClient {
+		case "Geth":
+			url = "https://github.com/ethereum/go-ethereum/releases"
+		case "Nethermind":
+			url = "https://github.com/NethermindEth/nethermind/releases"
+		case "OpenEthereum":
+			url = "https://github.com/openethereum/openethereum/releases"
+		case "Teku":
+			url = "https://github.com/ConsenSys/teku/releases"
+		case "Prysm":
+			url = "https://github.com/prysmaticlabs/prysm/releases"
+		case "Nimbus":
+			url = "https://github.com/status-im/nimbus-eth2/releases"
+		case "Lighthouse":
+			url = "https://github.com/sigp/lighthouse/releases"
+		default:
+			url = "https://beaconcha.in/ethClients"
+		}
+
+		return generalPart + " " + url
+	}
+	return generalPart
 }
 
 func (n *ethClientNotification) GetTitle() string {
-	return "ETH Client is updated"
+	return fmt.Sprintf("New %s update", n.EthClient)
 }
 
 func (n *ethClientNotification) GetEventFilter() string {
@@ -739,7 +763,6 @@ func (n *ethClientNotification) GetEventFilter() string {
 
 func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 	updatedClients := ethclients.GetUpdatedClients() //only check if there are new updates
-
 	for _, client := range updatedClients {
 		var dbResult []struct {
 			SubscriptionID uint64 `db:"id"`
@@ -750,8 +773,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 
 		err := db.DB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter
-			FROM 
-			users_subscriptions AS us
+			FROM users_subscriptions AS us
 			WHERE 
 				us.event_name=$1 
 			AND 
@@ -759,9 +781,9 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 			AND 
 				us.user_id 
 			NOT IN 
-				(SELECT user_id FROM users_notifications as un WHERE un.event_name=$1 AND un.event_filter=$2 AND NOW() - INTERVAL '2 DAYS' <= un.sent_ts)
+				(SELECT user_id FROM users_notifications as un WHERE un.event_name=$1 AND un.event_filter=$2 AND TO_TIMESTAMP($3) <= un.sent_ts AND un.sent_ts <= NOW() + INTERVAL '2 DAYS')
 			`,
-			eventName, strings.ToLower(client)) // was last notification sent 2 days ago for this client
+			eventName, strings.ToLower(client.Name), client.Date.Unix()) // was last notification sent 2 days ago for this client
 
 		if err != nil {
 			return err
@@ -773,7 +795,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 				UserID:         r.UserID,
 				Epoch:          r.Epoch,
 				EventFilter:    r.EventFilter,
-				EthClient:      client,
+				EthClient:      client.Name,
 			}
 			if _, exists := notificationsByUserID[r.UserID]; !exists {
 				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}

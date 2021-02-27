@@ -207,6 +207,7 @@ type Eth1Deposit struct {
 type Eth2Deposit struct {
 	BlockSlot             uint64 `db:"block_slot"`
 	BlockIndex            uint64 `db:"block_index"`
+	BlockRoot             []byte `db:"block_root"`
 	Proof                 []byte `db:"proof"`
 	Publickey             []byte `db:"publickey"`
 	Withdrawalcredentials []byte `db:"withdrawalcredentials"`

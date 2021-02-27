@@ -39,6 +39,7 @@ function hideInfoBanner(msg){
 
 // typeahead
 $(document).ready(function() {
+  
   formatTimestamps() // make sure this happens before tooltips
   $('[data-toggle="tooltip"]').tooltip()
 
