@@ -466,7 +466,7 @@ ul.multiselect input:focus {
   display: none;
 }
 
-@media screen and (min-width: 300px) and (max-width: 500px) {
+@media screen and (max-width: 500px) {
   .proposal-switch{
     position: relative;
   }
