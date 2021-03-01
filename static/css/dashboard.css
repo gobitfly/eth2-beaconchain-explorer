@@ -441,6 +441,7 @@ ul.multiselect input:focus {
   color: var(--primary);
   border-width: 2px;
 }
+
 @media screen and (min-width: 500px){
   .proposal-switch{
     border-radius: 12px;
@@ -454,6 +455,7 @@ ul.multiselect input:focus {
     left: 1%;
     z-index: 999;
   }
+
 }
 .proposal-switch-selected{
   border-radius: 12px;
