@@ -465,3 +465,9 @@ ul.multiselect input:focus {
 #proposals-table_length, #proposals-table_info{
   display: none;
 }
+
+@media screen and (max-width: 500px) {
+  .proposal-switch{
+    position: relative;
+  }
+}
