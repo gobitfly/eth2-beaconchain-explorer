@@ -442,21 +442,19 @@ ul.multiselect input:focus {
   border-width: 2px;
 }
 
-@media screen and (min-width: 500px){
-  .proposal-switch{
-    border-radius: 12px;
-    border-style: none;
-    border-color:  rgba(159, 162, 177, 0.4);
-    background-color:rgba(159, 162, 177, 0.4);
-    cursor:pointer;
-    width: 65px;
-    position: absolute;
-    top: 0%;	
-    left: 1%;
-    z-index: 999;
-  }
-
+.proposal-switch{
+  border-radius: 12px;
+  border-style: none;
+  border-color:  rgba(159, 162, 177, 0.4);
+  background-color:rgba(159, 162, 177, 0.4);
+  cursor:pointer;
+  width: 65px;
+  position: absolute;
+  top: 0%;	
+  left: 1%;
+  z-index: 999;
 }
+
 .proposal-switch-selected{
   border-radius: 12px;
   border-style: none;
@@ -470,15 +468,6 @@ ul.multiselect input:focus {
 
 @media screen and (min-width: 300px) and (max-width: 500px) {
   .proposal-switch{
-    border-radius: 12px;
-    border-style: none;
-    border-color:  rgba(159, 162, 177, 0.4);
-    background-color:rgba(159, 162, 177, 0.4);
-    cursor:pointer;
-    width: 65px;
     position: relative;
-    top: 0%;	
-    left: 1%;
-    z-index: 999;
   }
 }
