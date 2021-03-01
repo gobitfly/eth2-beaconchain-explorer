@@ -449,6 +449,10 @@ ul.multiselect input:focus {
   background-color:rgba(159, 162, 177, 0.4);
   cursor:pointer;
   width: 65px;
+  position: absolute;
+  top: 0%;	
+  left: 1%;
+  z-index: 999;
 }
 
 .proposal-switch-selected{
