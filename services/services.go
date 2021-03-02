@@ -33,15 +33,20 @@ var logger = logrus.New().WithField("module", "services")
 // Init will initialize the services
 func Init() {
 	ready.Add(4)
+	logger.Infof("a")
 	go epochUpdater()
+	logger.Infof("b")
 	go slotUpdater()
+	logger.Infof("c")
 	go latestProposedSlotUpdater()
+	logger.Infof("d")
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()
 	} else {
 		go indexPageDataUpdater()
 	}
 	ready.Wait()
+	logger.Infof("e")
 
 	if utils.Config.Frontend.OnlyAPI {
 		return
@@ -77,6 +82,7 @@ func epochUpdater() {
 		} else {
 			atomic.StoreUint64(&latestEpoch, epoch)
 			if firstRun {
+				logger.Infof("epochUpdater done")
 				ready.Done()
 				firstRun = false
 			}
@@ -97,6 +103,7 @@ func slotUpdater() {
 		} else {
 			atomic.StoreUint64(&latestSlot, slot)
 			if firstRun {
+				logger.Infof("slotUpdater done")
 				ready.Done()
 				firstRun = false
 			}
@@ -117,6 +124,7 @@ func latestProposedSlotUpdater() {
 		} else {
 			atomic.StoreUint64(&latestProposedSlot, slot)
 			if firstRun {
+				logger.Infof("latestProposedSlotUpdater done")
 				ready.Done()
 				firstRun = false
 			}
@@ -137,6 +145,7 @@ func indexPageDataUpdater() {
 		}
 		indexPageData.Store(data)
 		if firstRun {
+			logger.Infof("indexPageDataUpdater done")
 			ready.Done()
 			firstRun = false
 		}

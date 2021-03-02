@@ -132,6 +132,8 @@ func main() {
 
 	if cfg.Frontend.Enabled {
 
+		logrus.Infof("frontend is enabled")
+
 		router := mux.NewRouter()
 
 		apiV1Router := router.PathPrefix("/api/v1").Subrouter()
@@ -179,9 +181,14 @@ func main() {
 
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
 
+		logrus.Infof("waiting for frontend services initiated")
+
 		services.Init() // Init frontend services
+		logrus.Infof("waiting for frontend services initiated a")
 		price.Init()
+		logrus.Infof("waiting for frontend services initiated b")
 		ethclients.Init()
+		logrus.Infof("waiting for frontend services initiated c")
 
 		logrus.Infof("frontend services initiated")
 
