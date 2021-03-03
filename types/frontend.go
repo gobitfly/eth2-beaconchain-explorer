@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -111,4 +112,34 @@ type OAuthCodeData struct {
 
 type MobileSettingsData struct {
 	NotifyToken string `json:"notify_token"`
+}
+
+type MobileSubscription struct {
+	ProductID   string          `json:"id"`
+	PriceMicros uint64          `json:"priceMicros"`
+	Currency    string          `json:"currency"`
+	Transaction json.RawMessage `json:"transaction"`
+	Valid       bool            `json:"valid"`
+}
+
+type MobileSubscriptionTransactionGeneric struct {
+	Type string `json:"type"`
+}
+
+type MobileSubscriptionTransactionApple struct {
+	Receipt string `json:"appStoreReceipt"`
+	ID      string `json:"id"`
+}
+
+type MobileSubscriptionTransactionGoogle struct {
+	Receipt string `json:"purchaseToken"`
+	ID      string `json:"id"`
+}
+
+type PremiumData struct {
+	ID        uint64 `db:"id"`
+	Receipt   string `db:"receipt"`
+	Store     string `db:"store"`
+	Active    bool   `db:"active"`
+	ProductID string `db:"product_id"`
 }

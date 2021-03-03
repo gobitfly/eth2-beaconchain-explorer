@@ -411,6 +411,23 @@ create table users_stripe_subscriptions
     primary key (customer_id, subscription_id, price_id)
 );
 
+drop table if exists users_app_subscriptions;
+create table users_app_subscriptions
+(
+    id              serial                        not null,
+    user_id         int                           not null,
+    product_id      character varying(256)        not null,
+    price_micros    int                           not null,
+    currency        character varying(10)         not null,
+    created_at      timestamp without time zone   not null,
+    updated_at      timestamp without time zone   not null,
+    validate_remotely boolean not null default 't',
+    active          bool not null default 'f',
+    store           character varying(50)         not null,
+    receipt         character varying(1024)       not null unique
+);
+create index idx_user_app_subscriptions on users_app_subscriptions (user_id);
+
 drop table if exists oauth_apps;
 create table oauth_apps
 (

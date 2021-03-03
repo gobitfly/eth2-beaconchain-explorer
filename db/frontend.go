@@ -214,6 +214,45 @@ func MobileNotificatonTokenUpdate(userID, deviceID uint64, notifyToken string) e
 	return err
 }
 
+func InsertMobileSubscription(userID uint64, paymentDetails types.MobileSubscription, store, receipt string) error {
+	now := time.Now()
+	nowTs := now.Unix()
+	_, err := FrontendDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt) VALUES("+
+		"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10);",
+		userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, true, paymentDetails.Valid, store, receipt,
+	)
+	return err
+}
+
+func GetUserPremiumPackage(userID uint64) (string, error) {
+	var pkg string
+	row := FrontendDB.QueryRow(
+		"SELECT product_id from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
+		userID,
+	)
+	err := row.Scan(&pkg)
+	return pkg, err
+}
+
+func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
+	data := []*types.PremiumData{}
+
+	err := FrontendDB.Select(&data,
+		"SELECT id, receipt, store, active from users_app_subscriptions WHERE validate_remotely = true order by id desc",
+	)
+
+	return data, err
+}
+
+func UpdateUserSubscription(userID uint64, valid bool) error {
+	now := time.Now()
+	nowTs := now.Unix()
+	_, err := FrontendDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = $2 WHERE user_id = $3;",
+		userID, valid, nowTs,
+	)
+	return err
+}
+
 func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 	pushByID := map[uint64][]string{}
 	if len(ids) == 0 {
