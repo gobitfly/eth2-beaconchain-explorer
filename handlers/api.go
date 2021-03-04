@@ -895,43 +895,11 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var parsedTransactionGeneric types.MobileSubscriptionTransactionGeneric
-	err = json.Unmarshal([]byte(parsedBase.Transaction), &parsedTransactionGeneric)
-
-	if err != nil {
-		logger.Errorf("error parsing body tx | err: %v", err)
-		sendErrorResponse(j, r.URL.String(), "could not parse body tx")
-		return
-	}
-
-	var receipt string = ""
-	if parsedTransactionGeneric.Type == "ios-appstore" {
-		var parsedTransactionApple types.MobileSubscriptionTransactionApple
-		err = json.Unmarshal([]byte(parsedBase.Transaction), &parsedTransactionApple)
-
-		if err != nil {
-			logger.Errorf("error parsing body tx apple | err: %v", err)
-			sendErrorResponse(j, r.URL.String(), "could not parse body tx apple")
-			return
-		}
-		receipt = parsedTransactionApple.Receipt
-	} else {
-		var parsedTransactionGoogle types.MobileSubscriptionTransactionGoogle
-		err = json.Unmarshal([]byte(parsedBase.Transaction), &parsedTransactionGoogle)
-
-		if err != nil {
-			logger.Errorf("error parsing body tx google | err: %v", err)
-			sendErrorResponse(j, r.URL.String(), "could not parse body tx google")
-			return
-		}
-		receipt = parsedTransactionGoogle.Receipt
-	}
-
 	// Verify subscription with apple/google
 	verifyPackage := &types.PremiumData{
 		ID:        0,
-		Receipt:   receipt,
-		Store:     parsedTransactionGeneric.Type,
+		Receipt:   parsedBase.Transaction.Receipt,
+		Store:     parsedBase.Transaction.Type,
 		Active:    false,
 		ProductID: parsedBase.ProductID,
 	}
@@ -939,13 +907,12 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	validationResult, err := services.VerifyReceipt(nil, verifyPackage)
 	if err != nil {
 		logger.Errorf("remote validation error %v", err)
-		//validationResult = false
 	}
 	parsedBase.Valid = validationResult
 
 	claims := getAuthClaims(r)
 
-	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedTransactionGeneric.Type, receipt)
+	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt)
 	if err != nil {
 		logger.Errorf("could not save subscription data %v", err)
 		sendErrorResponse(j, r.URL.String(), "Can not save subscription data")
