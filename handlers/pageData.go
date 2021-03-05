@@ -34,6 +34,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
 		EthPrice:              price.GetEthPrice("USD"),
+		EthTruncPrice:         0,
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 		Currency:              GetCurrency(r),
@@ -41,6 +42,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		// InfoBanner:            ethclients.GetBannerClients(),
 	}
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
+	data.EthTruncPrice = price.GetEthTruncPrice(data.EthPrice)
 
 	return data
 }
