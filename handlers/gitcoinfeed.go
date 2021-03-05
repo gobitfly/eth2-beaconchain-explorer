@@ -8,12 +8,21 @@ import (
 
 func GitcoinFeed(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	type feedResp struct {
+		Donors [][4]string `json:"donors"`
+		IsLive bool        `json:"isLive"`
+	}
+
+	resp := feedResp{}
+
 	feed := services.GetFeed()
-	var resp [][4]string = feed
+	resp.IsLive = services.IsFeedOn()
+	
 	if len(feed) > 10 {
-		resp = feed[:10]
+		resp.Donors = feed[:10]
 	} else {
-		resp = feed
+		resp.Donors = feed
 	}
 
 	err := json.NewEncoder(w).Encode(resp)

@@ -49,12 +49,17 @@ function isDonerNew(donner) {
 
 $(document).ready(function () {
     showLocallyStoredDoners()
-    setInterval(() => {
+    let feedInterval = setInterval(() => {
         $.ajax({
             url: "/gitcoinfeed",
             success: (data) => {
+                let isLive = data.isLive
+                if (!isLive){
+                    clearInterval(feedInterval)
+                }
+                data = data.donors
                 if (data.length > 0) {
-                    $("#hero-feed").addClass("d-lg-flex")
+                    $("#hero-feed").addClass("d-lg-flex fade-in")
                     for (let item of data) {
                         if (isDonerNew(item)) {
                             showDoner(item[0], item[1], item[2], item[3])

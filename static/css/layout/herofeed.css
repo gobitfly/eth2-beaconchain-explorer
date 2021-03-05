@@ -86,7 +86,7 @@
 }
 
 .fade-in{
-    animation: fade 3s 1;
+    animation: fade 2s 1;
 }
 
 @keyframes fade {

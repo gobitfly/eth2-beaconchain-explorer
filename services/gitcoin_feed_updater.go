@@ -15,11 +15,14 @@ type gitcoinfeed struct {
 
 var feed *gitcoinfeed
 var feedMux = &sync.RWMutex{}
+var feedOn = false
+var feedOnMux = &sync.RWMutex{}
 
 func fetchFeedData() *gitcoinfeed {
-	var api = new(gitcoinfeed)
-	// resp, err := http.Get("https://gitcoin.co/grants/v1/api/export_info/grant258_round8.json")
-	resp, err := http.Get("http://localhost:5000/addrs") // use this for mock script
+	var api gitcoinfeed
+	resp, err := http.Get("https://gitcoin.co/grants/v1/api/export_info/grant258_round9.json")
+	// resp, err := http.Get("http://localhost:5000/addrs") // use this for mock script
+	logger.Errorln(resp)
 
 	if err != nil {
 		logger.Errorf("error retrieving gitcoin feed Data: %v", err)
@@ -35,7 +38,7 @@ func fetchFeedData() *gitcoinfeed {
 		return nil
 	}
 
-	return api
+	return &api
 }
 
 func updateFeed() {
@@ -50,11 +53,14 @@ func updateFeed() {
 }
 
 func InitGitCoinFeed() {
-	logger.Infoln("Started GitcoinFeed service")
+	feedOnMux.Lock()
+	defer feedOnMux.Unlock()
+	feedOn = true
 	go func() {
+		logger.Infoln("Started GitcoinFeed service")
 		for true {
 			updateFeed()
-			time.Sleep(time.Second * 20)
+			time.Sleep(time.Second * 5)
 		}
 	}()
 }
@@ -68,4 +74,10 @@ func GetFeed() [][4]string {
 	}
 
 	return feed.Addresses
+}
+
+func IsFeedOn() bool {
+	feedOnMux.Lock()
+	defer feedOnMux.Unlock()
+	return feedOn
 }
