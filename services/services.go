@@ -436,6 +436,7 @@ func LatestState() *types.LatestState {
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
 	data.EthPrice = price.GetEthPrice("USD")
+	data.EthTruncPrice = price.GetEthTruncPrice(data.EthPrice)
 	return data
 }
 

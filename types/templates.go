@@ -28,6 +28,7 @@ type PageData struct {
 	Mainnet               bool
 	DepositContract       string
 	EthPrice              float64
+	EthTruncPrice         int
 	Currency              string
 	ExchangeRate          float64
 	InfoBanner            *template.HTML
@@ -58,6 +59,7 @@ type LatestState struct {
 	FinalityDelay         uint64  `json:"finalityDelay"`
 	IsSyncing             bool    `json:"syncing"`
 	EthPrice              float64 `json:"ethPrice"`
+	EthTruncPrice         int     `json:"ethTruncPrice"`
 }
 
 type Stats struct {

@@ -81,3 +81,9 @@ func GetEthPrice(currency string) float64 {
 		return 1
 	}
 }
+
+func GetEthTruncPrice(currency float64) int {
+	ethTruncPrice := int(currency)
+
+	return ethTruncPrice
+}
