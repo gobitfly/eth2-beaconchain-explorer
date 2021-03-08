@@ -1,5 +1,6 @@
 let number_of_doners = 0
 let feedInterval = null
+let loadedLocals = false
 
 function showDoner(addr, name, icon, msg) {
     if (msg === "" || msg === null || msg.includes("<") || msg.includes(">")) {
@@ -34,6 +35,7 @@ function showLocallyStoredDoners() {
             number_of_doners++
         }
     }
+    loadedLocals = true
 }
 
 function isDonerNew(donner) {
@@ -58,6 +60,7 @@ function updateFeed() {
             }
             data = data.donors
             if (data.length > 0) {
+                if (!loadedLocals) showLocallyStoredDoners()
                 $(".hero-image svg").addClass("hero-bg-blur")
                 $("#hero-feed").addClass("d-lg-flex fade-in-top")
                 for (let item of data) {
@@ -77,7 +80,6 @@ function updateFeed() {
 }
 
 $(document).ready(function () {
-    showLocallyStoredDoners()
     updateFeed()
     feedInterval = setInterval(() => {
         updateFeed()
