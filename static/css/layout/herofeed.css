@@ -1,5 +1,4 @@
 #hero-feed{
-    background-color: rgba(0,0,0,0.3);
     min-width: 450px;
     min-height: 250px;
     max-width: 450px;
@@ -12,11 +11,10 @@
     z-index: 1;
     padding-top: 2%;
     padding-bottom: 2%;
-}
-
-.hero-bg-blur{
-    animation: blur 2s 1;
-    filter: blur(3px);
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    
 }
 
 #hero-feed ul{
@@ -65,7 +63,7 @@
     max-height: 50px;
     border-radius: 25px;
     border-style: solid;
-    border-color: rgba(255,255,255,1.0);
+    border-color: var(--primary);
     margin-left: 2%;
     animation: color-shift 4s 2;
 }
@@ -103,17 +101,21 @@
 }
 
 .fade-in-top{
-    animation: fade-top 2s 1;
+    animation: fade-top 3s 1;
 }
 
 @keyframes fade-top {
     0% {
         opacity: 0;
         top: 0px;
+        backdrop-filter: blur(0px);
+        -webkit-backdrop-filter: blur(0px);
     }
     100% {
         opacity: 1;
         top: 70px;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
     }
 }
 
@@ -129,14 +131,6 @@
     }
 }
 
-@keyframes blur {
-    0% {
-        filter: blur(0px);
-    }
-    100% {
-        filter: blur(3px);
-    }
-}
 
 @keyframes color-shift {
     0% {

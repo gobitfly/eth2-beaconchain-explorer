@@ -15,12 +15,12 @@ function showDoner(addr, name, icon, msg) {
     name = name.replace("<", "").replace(">", "")
     $("#hero-feed ul").prepend(`<li class="fade-in">
         <div class="d-flex flex-row">
-        <img src="${icon}" lowsrc="/img/logo.png"/> 
+        <img src="${icon}"/> 
         <div class="d-flex flex-column usrdiv">
             <div class="d-flex flex-row">
-            <span style="color: white;">${name}</span>
+            <span>${name}</span>
             </div>
-            <span class="umsg" style="color: white;" data-toggle="tooltip" title="${fullmsg}" >${msg}</span>
+            <span class="umsg" data-toggle="tooltip" title="${fullmsg}" >${msg}</span>
         </div>
         </div>
         </li>`)
@@ -63,7 +63,6 @@ function updateFeed() {
             data = data.donors
             if (data.length > 0) {
                 if (!loadedLocals) showLocallyStoredDoners()
-                $(".hero-image svg").addClass("hero-bg-blur")
                 $("#hero-feed").addClass("d-lg-flex fade-in-top")
                 for (let item of data) {
                     if (isDonerNew(item)) {
