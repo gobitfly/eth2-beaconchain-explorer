@@ -247,6 +247,8 @@ func main() {
 			router.HandleFunc("/validators/slashings/data", handlers.ValidatorsSlashingsData).Methods("GET")
 			router.HandleFunc("/validators/leaderboard", handlers.ValidatorsLeaderboard).Methods("GET")
 			router.HandleFunc("/validators/leaderboard/data", handlers.ValidatorsLeaderboardData).Methods("GET")
+			router.HandleFunc("/validator/streaksleaderboard", handlers.ValidatorsStreaksLeaderboard).Methods("GET")
+			router.HandleFunc("/validator/streaksleaderboard/data", handlers.ValidatorsStreaksLeaderboardData).Methods("GET")
 			router.HandleFunc("/validators/eth1deposits", handlers.Eth1Deposits).Methods("GET")
 			router.HandleFunc("/validators/eth1deposits/data", handlers.Eth1DepositsData).Methods("GET")
 			router.HandleFunc("/validators/eth1leaderboard", handlers.Eth1DepositsLeaderboard).Methods("GET")
