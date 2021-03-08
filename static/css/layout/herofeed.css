@@ -67,7 +67,7 @@
     border-style: solid;
     border-color: rgba(255,255,255,1.0);
     margin-left: 2%;
-    animation: color-shift 1s 3;
+    animation: color-shift 4s 2;
 }
 
 .pkey{

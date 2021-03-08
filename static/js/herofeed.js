@@ -6,7 +6,9 @@ function showDoner(addr, name, icon, msg) {
     if (msg === "" || msg === null || msg.includes("<") || msg.includes(">")) {
         msg = `<span style="font-style: italic;">Donated to beaconcha.in \u2764</span>`
     }
+    let fullmsg = ""
     if (msg.length > 120) {
+        fullmsg = msg
         msg = msg.slice(0, 120) + "..."
     }
     // msg = msg.replace("<", "^").replace("<", "^")
@@ -18,7 +20,7 @@ function showDoner(addr, name, icon, msg) {
             <div class="d-flex flex-row">
             <span style="color: white;">${name}</span>
             </div>
-            <span class="umsg" style="color: white;">${msg}</span>
+            <span class="umsg" style="color: white;" data-toggle="tooltip" title="${fullmsg}" >${msg}</span>
         </div>
         </div>
         </li>`)
