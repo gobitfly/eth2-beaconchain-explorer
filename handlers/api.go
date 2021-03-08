@@ -895,6 +895,14 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	claims := getAuthClaims(r)
+
+	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
+	if err != nil || subscriptionCount >= 4 {
+		sendErrorResponse(j, r.URL.String(), "reached max subscription limit")
+		return
+	}
+
 	// Verify subscription with apple/google
 	verifyPackage := &types.PremiumData{
 		ID:        0,
@@ -904,18 +912,20 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 		ProductID: parsedBase.ProductID,
 	}
 
-	validationResult, err := services.VerifyReceipt(nil, verifyPackage)
-	if err != nil {
-		logger.Errorf("remote validation error %v", err)
-	}
-	parsedBase.Valid = validationResult
+	// we can ignore this error since it always returns a result object and err
+	// case is not needed on receipt insert
+	validationResult, _ := services.VerifyReceipt(nil, verifyPackage)
+	parsedBase.Valid = validationResult.Valid
 
-	claims := getAuthClaims(r)
-
-	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt)
+	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason)
 	if err != nil {
 		logger.Errorf("could not save subscription data %v", err)
 		sendErrorResponse(j, r.URL.String(), "Can not save subscription data")
+		return
+	}
+
+	if parsedBase.Valid == false {
+		sendErrorResponse(j, r.URL.String(), "receipt is not valid")
 		return
 	}
 

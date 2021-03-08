@@ -424,6 +424,8 @@ create table users_app_subscriptions
     validate_remotely boolean not null default 't',
     active          bool not null default 'f',
     store           character varying(50)         not null,
+    expires_at      timestamp without time zone   not null,
+    reject_reason   character varying(50),
     receipt         character varying(1024)       not null unique
 );
 create index idx_user_app_subscriptions on users_app_subscriptions (user_id);

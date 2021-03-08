@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"time"
@@ -46,13 +47,17 @@ func checkSubscriptions() {
 	}
 }
 
-func VerifyReceipt(googleClient *playstore.Client, receipt *types.PremiumData) (bool, error) {
+func VerifyReceipt(googleClient *playstore.Client, receipt *types.PremiumData) (*VerifyResponse, error) {
 	if receipt.Store == "ios-appstore" {
 		return VerifyApple(receipt)
 	} else if receipt.Store == "android-playstore" {
 		return VerifyGoogle(googleClient, receipt)
 	} else {
-		return false, nil
+		return &VerifyResponse{
+			Valid:          false,
+			ExpirationDate: 0,
+			RejectReason:   "invalid_store",
+		}, nil
 	}
 }
 
@@ -66,11 +71,15 @@ func initGoogle() *playstore.Client {
 	return client
 }
 
-func VerifyGoogle(client *playstore.Client, receipt *types.PremiumData) (bool, error) {
+func VerifyGoogle(client *playstore.Client, receipt *types.PremiumData) (*VerifyResponse, error) {
 	if client == nil {
 		client = initGoogle()
 		if client == nil {
-			return false, errors.New("Google client can't be initialized")
+			return &VerifyResponse{
+				Valid:          false,
+				ExpirationDate: 0,
+				RejectReason:   "gclient_init_exception",
+			}, errors.New("Google client can't be initialized")
 		}
 	}
 
@@ -78,14 +87,32 @@ func VerifyGoogle(client *playstore.Client, receipt *types.PremiumData) (bool, e
 	defer cancel()
 	resp, err := client.VerifySubscription(ctx, "in.beaconcha.mobile", receipt.ProductID, receipt.Receipt)
 	if err != nil || resp == nil {
-		// todo check wheter we always get an expirytime or if an invalid subscription also throws an error
-		return false, nil // err
+		return &VerifyResponse{
+			Valid:          false,
+			ExpirationDate: 0,
+			RejectReason:   "invalid_state",
+		}, err
 	}
 
-	return resp.ExpiryTimeMillis > time.Now().Unix(), nil
+	now := time.Now().Unix() * 1000
+	valid := resp.ExpiryTimeMillis > now
+
+	return &VerifyResponse{
+		Valid:          valid,
+		ExpirationDate: resp.ExpiryTimeMillis / 1000,
+		RejectReason:   rejectReason(valid),
+	}, nil
 }
 
-func VerifyApple(receipt *types.PremiumData) (bool, error) {
+func rejectReason(valid bool) string {
+	if valid {
+		return ""
+	} else {
+		return "expired"
+	}
+}
+
+func VerifyApple(receipt *types.PremiumData) (*VerifyResponse, error) {
 	appStoreSecret := utils.Config.Frontend.AppSubsAppleSecret
 	client := storekit.NewVerificationClient().OnSandboxEnv() // TODO switch to production
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -97,15 +124,27 @@ func VerifyApple(receipt *types.PremiumData) (bool, error) {
 	})
 
 	if err != nil {
-		return false, err
+		return &VerifyResponse{
+			Valid:          false,
+			ExpirationDate: 0,
+			RejectReason:   "exception",
+		}, err
 	}
 
 	if resp.Status != 0 {
-		return false, nil
+		return &VerifyResponse{
+			Valid:          false,
+			ExpirationDate: 0,
+			RejectReason:   "invalid_state",
+		}, nil
 	}
 
 	if len(resp.LatestReceiptInfo) == 0 {
-		return false, nil
+		return &VerifyResponse{
+			Valid:          false,
+			ExpirationDate: 0,
+			RejectReason:   "possible_jailbreak",
+		}, nil
 	}
 
 	for _, latestReceiptInfo := range resp.LatestReceiptInfo {
@@ -114,16 +153,39 @@ func VerifyApple(receipt *types.PremiumData) (bool, error) {
 		if receipt.ProductID == productID {
 			expiresAtMs := latestReceiptInfo.ExpiresDateMs
 			if expiresAtMs == 0 {
-				return false, nil
+				return &VerifyResponse{
+					Valid:          false,
+					ExpirationDate: 0,
+					RejectReason:   "expires_0",
+				}, nil
 			}
 
-			return expiresAtMs > time.Now().Unix(), nil
+			valid := expiresAtMs > time.Now().Unix()*1000
+
+			return &VerifyResponse{
+				Valid:          valid,
+				ExpirationDate: expiresAtMs / 1000,
+				RejectReason:   rejectReason(valid),
+			}, nil
 		}
 	}
 
-	return false, nil
+	return &VerifyResponse{
+		Valid:          false,
+		ExpirationDate: 0,
+		RejectReason:   "unknown",
+	}, nil
 }
 
-func updateValidationState(receipt *types.PremiumData, valid bool) {
-	db.UpdateUserSubscription(receipt.ID, valid)
+func updateValidationState(receipt *types.PremiumData, validation *VerifyResponse) {
+	err := db.UpdateUserSubscription(receipt.ID, validation.Valid, validation.ExpirationDate, validation.RejectReason)
+	if err != nil {
+		fmt.Printf("error updating subscription state %v", err)
+	}
+}
+
+type VerifyResponse struct {
+	Valid          bool
+	ExpirationDate int64
+	RejectReason   string
 }
