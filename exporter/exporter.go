@@ -5,7 +5,6 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/metrics"
 	"eth2-exporter/rpc"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -857,81 +856,136 @@ func attestationStreaksUpdater() {
 }
 
 func updateAttestationStreaks() error {
-	// select day from validator_stats where missed_attestations > 0 order by day
-	// select epoch from attestation_assignments where validatorindex = 1 and status = missed and epoch > day - 1
+	var err error
 
-	latestEpoch := services.LatestEpoch()
+	t0 := time.Now()
+	day := 0
 
-	var lastMaxStreakLength uint64
-	err := db.DB.Get(&lastMaxStreakLength, `select coalesce(max(streakend),0) from validator_streaks`)
+	lastStreaksEpoch := 0
+	err = db.DB.Get(&lastStreaksEpoch, `select coalesce(max(start+length),0) from validator_attestation_streaks`)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error getting lastStreaksEpoch: %w", err)
 	}
 
-	if latestEpoch <= lastMaxStreakLength {
+	if lastStreaksEpoch == 0 {
+		day = 0
+	} else {
+		day = int(lastStreaksEpoch/225) + 1
+	}
+
+	if day >= 96 {
 		return nil
 	}
 
-	// var currStreaks []struct {
-	// 	Validatorindex int
-	// 	Status         int
-	// 	Streakstart    int
-	// 	Streakend      int
-	// 	Streaklength   int
-	// }
-	// err = db.DB.Select(&currStreaks, `select validatorindex, status, streakstart, streakend, streaklength from validator_streaks`)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// var currStreaksMaxEpoch int
-	// for _, s := range currStreaks {
-	// 	if s.Streakstart+s.Streaklength > currStreaksMaxEpoch {
-	// 		currStreaksMaxEpoch = s.Streakstart + s.Streaklength
-	// 	}
-	// }
+	logrus.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch}).Infof("updating streaks")
 
-	_, err = db.DB.Exec(`
+	var streaks []struct {
+		Validatorindex int
+		Status         int
+		Start          int
+		Length         int
+	}
+
+	err = db.DB.Select(&streaks, `
 		with
 			-- limit search-space
+			nomisses as (select validatorindex, ($1+1)*225-1 as epoch, 1 as status from validator_stats where missed_attestations = 0 and day = $1),
 			aa as (
 				select validatorindex, epoch, status from attestation_assignments_p 
-				where week  >= $1/1575
-				  and week  <= ($1+225)/1575 
-				  and epoch >= $1
-				  and epoch <= $1+225
+				where 
+					week = $1/7 
+					and epoch >= $1*225 
+					and epoch < ($1+1)*225 
+					and validatorindex not in (select validatorindex from nomisses)
 			),
 			-- find boundings
 			boundings as (
 				select aa2.validatorindex, aa2.epoch, aa1.status
 				from aa aa1 inner join aa aa2 on aa1.validatorindex = aa2.validatorindex and aa2.epoch = aa1.epoch+1
-				where aa1.status != aa2.status or aa2.epoch = $1+225-1
+				where aa1.status != aa2.status or aa2.epoch = ($1+1)*225-1
+				union (select * from nomisses)
 			),
 			-- calculate streaklengths
 			streaks as (
 				select 
-					boundings.validatorindex, 
-					boundings.status,
-					coalesce(lag(epoch) over (partition by boundings.validatorindex order by epoch),validators.activationepoch) as streakstart,
-					epoch -1 as streakend, 
-					epoch - coalesce(lag(epoch) over (partition by boundings.validatorindex order by epoch),validators.activationepoch) as streaklength
-				from boundings
-					inner join validators on validators.validatorindex = boundings.validatorindex
+					b1.validatorindex, 
+					b1.status,
+					coalesce(lag(epoch) over (partition by b1.validatorindex order by epoch), coalesce(vas.start,  coalesce(vasunmatched.start, $1*225))) as start,
+					b1.epoch as end,
+					b1.epoch - coalesce(lag(epoch) over (partition by b1.validatorindex order by epoch), coalesce(vas.start,  coalesce(vasunmatched.start, $1*225))) as length
+				from boundings b1
+					left join validator_attestation_streaks vas on 
+						vas.validatorindex = b1.validatorindex 
+						and vas.status = b1.status
+						and vas.start+vas.length = $1*225-1
+					left join validator_attestation_streaks vasunmatched on 
+						vasunmatched.validatorindex = b1.validatorindex 
+						and vasunmatched.status != b1.status
+						and vasunmatched.start+vasunmatched.length = $1*225-1
 			),
-			-- rank by validator and status
-			rankedstreaks as (
-				select *, 
-					rank() over (partition by validatorindex, status order by streaklength desc, streakstart desc) as r
+			-- consider validator-activation, extra-step for performance-reasons
+			fixedstreaks as (
+				select streaks.validatorindex, streaks.status, 
+					coalesce(a.activationepoch, streaks.start) as start,
+					coalesce(streaks.end - a.activationepoch, streaks.length) as length
 				from streaks
+				-- left join validators on validators.validatorindex = streaks.validatorindex and validators.activationepoch > streaks.start
+				left join (select validatorindex, activationepoch from validators where activationepoch > $1*225) a on a.validatorindex = streaks.validatorindex and a.activationepoch > streaks.start
+			),
+			-- rank by validator and status (we only save current and longest streaks (missed and executed))
+			rankedstreaks as (
+				select *, rank() over (partition by validatorindex, status order by length desc, start desc) as r
+				from (
+					select validatorindex, status, start, length from fixedstreaks 
+					union 
+					select validatorindex, status, start, length from validator_attestation_streaks
+				) a
 			)
-		insert into validator_streaks
-			(validatorindex, status, streakstart, streakend, streaklength)
-		select 
-			validatorindex, status, streakstart, streakend, streaklength
-		from rankedstreaks where r = 1 or streakend = (select max(streakend) from validator_streaks)-1`, lastMaxStreakLength)
+		select validatorindex, status, start, length
+		from rankedstreaks where r = 1 or start+length = ($1+1)*225-1 order by validatorindex, start`, day)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error getting streaks %w", err)
 	}
 
-	return nil
+	t1 := time.Now()
+
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return fmt.Errorf("error starting db transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("truncate validator_attestation_streaks")
+	if err != nil {
+		return fmt.Errorf("error truncating validator performance table: %w", err)
+	}
+
+	batchSize := 5000
+	for b := 0; b < len(streaks); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(streaks) < end {
+			end = len(streaks)
+		}
+		n := 4
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*n)
+		for i, d := range streaks[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*n+1, i*n+2, i*n+3, i*n+4))
+			valueArgs = append(valueArgs, d.Validatorindex)
+			valueArgs = append(valueArgs, d.Status)
+			valueArgs = append(valueArgs, d.Start)
+			valueArgs = append(valueArgs, d.Length)
+		}
+		stmt := fmt.Sprintf(`insert into validator_attestation_streaks (validatorindex, status, start, length) values %s`, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return fmt.Errorf("Error inserting streaks %w", err)
+		}
+	}
+
+	t2 := time.Now()
+	logrus.WithFields(logrus.Fields{"day": day, "calculate": t1.Sub(t0), "save": t2.Sub(t1), "all": t2.Sub(t0), "count": len(streaks)}).Info("updating streaks completed")
+
+	return tx.Commit()
 }

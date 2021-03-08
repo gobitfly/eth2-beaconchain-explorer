@@ -15,7 +15,7 @@ import (
 var validatorsStreakLeaderboardTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators_streakleaderboard.html"))
 
 // ValidatorsStreaksLeaderboard returns the attestation-streak-leaderboard using a go template
-func ValidatorsStreaksLeaderboard(w http.ResponseWriter, r *http.Request) {
+func ValidatorsStreakLeaderboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "validators", "/validators/streaksleaderboard", "Validator Streaks Leaderboard")
