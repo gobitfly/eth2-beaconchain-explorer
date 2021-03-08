@@ -16,14 +16,8 @@ func GitcoinFeed(w http.ResponseWriter, r *http.Request) {
 
 	resp := feedResp{}
 
-	feed := services.GetFeed()
+	resp.Donors = services.GetFeed()
 	resp.IsLive = services.IsFeedOn()
-
-	if len(feed) > 10 {
-		resp.Donors = feed[:10]
-	} else {
-		resp.Donors = feed
-	}
 
 	err := json.NewEncoder(w).Encode(resp)
 	if err != nil {

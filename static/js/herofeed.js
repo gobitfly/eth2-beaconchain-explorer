@@ -1,6 +1,8 @@
 let number_of_doners = 0
 let feedInterval = null
 let loadedLocals = false
+let donors = null
+const numEtries = 16
 
 function showDoner(addr, name, icon, msg) {
     if (msg === "" || msg === null || msg.includes("<") || msg.includes(">")) {
@@ -11,7 +13,7 @@ function showDoner(addr, name, icon, msg) {
         fullmsg = msg
         msg = msg.slice(0, 120) + "..."
     }
-    // msg = msg.replace("<", "^").replace("<", "^")
+
     name = name.replace("<", "").replace(">", "")
     $("#hero-feed ul").prepend(`<li class="fade-in">
         <div class="d-flex flex-row">
@@ -26,22 +28,7 @@ function showDoner(addr, name, icon, msg) {
         </li>`)
 }
 
-function showLocallyStoredDoners() {
-    let donors = JSON.parse(localStorage.getItem("donors"))
-    // console.log(donors)
-    if (donors !== null) {
-        for (let i = 1; i < donors.length; i++) {
-            let index = donors.length - i
-            // console.log(index, donors[index], donors[0])
-            showDoner(donors[index][0], donors[index][1], donors[index][2], donors[index][3])
-            number_of_doners++
-        }
-    }
-    loadedLocals = true
-}
-
 function isDonerNew(donner) {
-    let donors = JSON.parse(localStorage.getItem("donors"))
     if (donors !== null) {
         for (let oldItem of donors) {
             if (donner[0] === oldItem[0] && donner[1] === oldItem[1] && donner[2] === oldItem[2] && donner[3] === oldItem[3]) {
@@ -50,6 +37,24 @@ function isDonerNew(donner) {
         }
     }
     return true
+}
+
+function findNewDoner(data) {
+    if (data.length > numEtries) {
+        data = data.slice(0, numEtries)
+    }
+
+    for (let i = data.length - 1; i >= 0; i--) {
+        if (isDonerNew(data[i])) {
+            showDoner(data[i][0], data[i][1], data[i][2], data[i][3])
+            number_of_doners++
+            if (number_of_doners > numEtries) {
+                $("#hero-feed ul>li:last").remove()
+            }
+        }
+    }
+
+    return data
 }
 
 function updateFeed() {
@@ -62,19 +67,8 @@ function updateFeed() {
             }
             data = data.donors
             if (data.length > 0) {
-                if (!loadedLocals) showLocallyStoredDoners()
                 $("#hero-feed").addClass("d-lg-flex fade-in-top")
-                for (let item of data) {
-                    if (isDonerNew(item)) {
-                        showDoner(item[0], item[1], item[2], item[3])
-                        number_of_doners++
-                        if (number_of_doners > 10) {
-                            $("#hero-feed ul>li:last").remove()
-                        }
-                    }
-                }
-
-                localStorage.setItem("donors", JSON.stringify(data))
+                donors = findNewDoner(data)
             }
         }
     })
