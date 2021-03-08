@@ -104,8 +104,12 @@ type Config struct {
 		} `yaml:"mail"`
 		GATag string `yaml:"gatag"  envconfig:"GATAG"`
 	} `yaml:"frontend"`
-	ShowDonors bool `yaml:"showDonors" envconfig:"FRONTEND_SHOW_DONORS"`
-	Metrics    struct {
+	ShowDonors struct {
+		Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
+		Key     string `yaml:"gitcoinKey" envconfig:"FRONTEND_GITCOIN_Key"`
+		Secret  string `yaml:"gitcoinSecret" envconfig:"FRONTEND_GITCOIN_SECRET"`
+	} `yaml:"showDonors"`
+	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
 		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
 	} `yaml:"metrics"`

@@ -1,4 +1,5 @@
 let number_of_doners = 0
+let feedInterval = null
 
 function showDoner(addr, name, icon, msg) {
     if (msg === "" || msg === null || msg.includes("<") || msg.includes(">")) {
@@ -11,12 +12,12 @@ function showDoner(addr, name, icon, msg) {
     name = name.replace("<", "").replace(">", "")
     $("#hero-feed ul").prepend(`<li class="fade-in">
         <div class="d-flex flex-row">
-        <img src=${icon}"/> 
+        <img src="${icon}" lowsrc="/img/logo.png"/> 
         <div class="d-flex flex-column usrdiv">
             <div class="d-flex flex-row">
-            <span>${name}</span>
+            <span style="color: white;">${name}</span>
             </div>
-            <span class="umsg">${msg}</span>
+            <span class="umsg" style="color: white;">${msg}</span>
         </div>
         </div>
         </li>`)
@@ -47,33 +48,39 @@ function isDonerNew(donner) {
     return true
 }
 
-$(document).ready(function () {
-    showLocallyStoredDoners()
-    let feedInterval = setInterval(() => {
-        $.ajax({
-            url: "/gitcoinfeed",
-            success: (data) => {
-                let isLive = data.isLive
-                if (!isLive){
-                    clearInterval(feedInterval)
-                }
-                data = data.donors
-                if (data.length > 0) {
-                    $("#hero-feed").addClass("d-lg-flex fade-in")
-                    for (let item of data) {
-                        if (isDonerNew(item)) {
-                            showDoner(item[0], item[1], item[2], item[3])
-                            number_of_doners++
-                            if (number_of_doners > 10) {
-                                $("#hero-feed ul>li:last").remove()
-                            }
+function updateFeed() {
+    $.ajax({
+        url: "/gitcoinfeed",
+        success: (data) => {
+            let isLive = data.isLive
+            if (!isLive && feedInterval !== null) {
+                clearInterval(feedInterval)
+            }
+            data = data.donors
+            if (data.length > 0) {
+                $(".hero-image svg").addClass("hero-bg-blur")
+                $("#hero-feed").addClass("d-lg-flex fade-in-top")
+                for (let item of data) {
+                    if (isDonerNew(item)) {
+                        showDoner(item[0], item[1], item[2], item[3])
+                        number_of_doners++
+                        if (number_of_doners > 10) {
+                            $("#hero-feed ul>li:last").remove()
                         }
                     }
-
-                    localStorage.setItem("donors", JSON.stringify(data))
                 }
+
+                localStorage.setItem("donors", JSON.stringify(data))
             }
-        })
+        }
+    })
+}
+
+$(document).ready(function () {
+    showLocallyStoredDoners()
+    updateFeed()
+    feedInterval = setInterval(() => {
+        updateFeed()
     }, 2000)
 
     $(".donate-btn").on("click", () => {
