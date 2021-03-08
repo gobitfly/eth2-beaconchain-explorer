@@ -459,6 +459,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationInclusionEffectiveness = 1.0 / validatorPageData.AverageAttestationInclusionDistance * 100
 	}
 
+	var attestationStreaks []struct {
+		Length uint64
+	}
+	err = db.DB.Select(&attestationStreaks, `select length from validator_attestation_streaks where validatorindex = $1 and status = 1 order by start desc`, index)
+	if err != nil {
+		logger.Errorf("error retrieving AttestationStreaks: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	if len(attestationStreaks) > 1 {
+		validatorPageData.CurrentAttestationStreak = attestationStreaks[0].Length
+		validatorPageData.LongestAttestationStreak = attestationStreaks[1].Length
+	} else if len(attestationStreaks) > 0 {
+		validatorPageData.CurrentAttestationStreak = attestationStreaks[0].Length
+		validatorPageData.LongestAttestationStreak = attestationStreaks[0].Length
+	}
+
 	//logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	//start = time.Now()
 

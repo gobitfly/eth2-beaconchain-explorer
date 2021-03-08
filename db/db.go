@@ -292,8 +292,9 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 					slashed,
 					exitepoch,
 					activationepoch,
-					name
+					COALESCE(validator_names.name, '') AS name
 				FROM validators
+				LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			) as v
 		ON
 			v.pubkey = eth1.publickey
