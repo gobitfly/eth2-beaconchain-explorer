@@ -73,18 +73,18 @@ func ValidatorsStreaksLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
-		orderBy = "performance7d"
+		orderBy = "lrank"
 	}
 
 	orderDir := q.Get("order[0][dir]")
 	if orderDir != "desc" && orderDir != "asc" {
-		orderDir = "desc"
+		orderDir = "asc"
 	}
 
 	var totalCount uint64
 
 	var sqlData []struct {
-		Totalcount     int
+		Totalcount     uint64
 		Validatorindex uint64
 		Name           string
 		Lrank          int
@@ -99,16 +99,17 @@ func ValidatorsStreaksLeaderboardData(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Select(&sqlData, `
 			with 
 				longeststreaks as (
-					select validatorindex, start, length, rank() over (order by length)
+					select validatorindex, start, length, rank() over (order by length desc)
 					from validator_attestation_streaks
 					where status = 1
 				),
 				currentstreaks as (
-					select validatorindex, start, length, rank() over (order by length)
+					select validatorindex, start, length, rank() over (order by length desc)
 					from validator_attestation_streaks
 					where status = 1 and start+length = (select max(start+length) from validator_attestation_streaks)
 				)
 			select 
+				ls.validatorindex,
 				COALESCE(validator_names.name, '') AS name,
 				cnt.totalcount,
 				ls.rank lrank, 
@@ -116,17 +117,20 @@ func ValidatorsStreaksLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				ls.length llength, 
 				cs.rank crank, 
 				cs.start cstart, 
-				cs.length clength, 
-			from higheststreaks ls
-			left join validators on higheststreaks.validatorindex = validators.validatorindex
+				cs.length clength 
+			from longeststreaks ls
+			left join validators on ls.validatorindex = validators.validatorindex
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			LEFT JOIN (SELECT COUNT(*) FROM higheststreaks) cnt(totlacount) ON true
-			left join currentstreaks cs on cs.valdiatorindex = hs.validatorindex
-			order by `+orderBy+` `+orderDir+`limit $1 offset $2`, length, start)
+			LEFT JOIN (SELECT COUNT(*) FROM longeststreaks) cnt(totalcount) ON true
+			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
+			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start)
 		if err != nil {
 			logger.Errorf("error retrieving streaksData data without search: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
+		}
+		if len(sqlData) > 0 {
+			totalCount = sqlData[0].Totalcount
 		}
 	} else {
 		http.Error(w, "not implemented yet", 503)

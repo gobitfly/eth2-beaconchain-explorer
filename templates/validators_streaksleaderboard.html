@@ -10,6 +10,7 @@
                 searching: true,
                 ajax: '/validators/streaksleaderboard/data',
                 pagingType: 'input',
+                pageLength: 50,
                 language: {
                     searchPlaceholder: 'Search by Public Key / Index / Name',
                     search: '',
@@ -37,19 +38,19 @@
                         "orderable": false
                     }, {
                         targets: 4,
-                        data: '2',
+                        data: '4',
                         "orderable": true
                     }, {
                         targets: 5,
-                        data: '2',
+                        data: '5',
                         "orderable": false
                     }, {
                         targets: 6,
-                        data: '2',
+                        data: '6',
                         "orderable": false
                     },
                 ],
-                order: [[5, "desc"]]
+                order: [[1, "asc"]]
             }
             var usp = new URLSearchParams(window.location.search)
             var q = usp.get('q')
@@ -90,7 +91,6 @@
                         </ol>
                     </nav>
                 </div>
-                The Validator Leaderboard is ordered by the 7 day income by default.
             </div>
             <div class="card">
                 <div class="card-body px-0 py-2">
@@ -99,7 +99,6 @@
                             <thead>
                             <tr>
                                 <th rowspan="2">Index</th>
-                                <th>Longest Rank</th>
                                 <th colspan="3">Longest Streak</th>
                                 <th colspan="3">Current Streak</th>
                             </tr>

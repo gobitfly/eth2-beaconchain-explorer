@@ -42,7 +42,6 @@ func Init() {
 		go indexPageDataUpdater()
 	}
 	ready.Wait()
-	logger.Infof("e")
 
 	if utils.Config.Frontend.OnlyAPI {
 		return
@@ -349,12 +348,10 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		EnteringValidators uint64 `db:"entering_validators_count"`
 		ExitingValidators  uint64 `db:"exiting_validators_count"`
 	}{}
-
 	err = db.DB.Get(&queueCount, "SELECT entering_validators_count, exiting_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("error retrieving validator queue count: %v", err)
 	}
-
 	data.EnteringValidators = queueCount.EnteringValidators
 	data.ExitingValidators = queueCount.ExitingValidators
 
