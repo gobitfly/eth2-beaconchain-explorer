@@ -113,9 +113,9 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				ls.rank lrank, 
 				ls.start lstart, 
 				ls.length llength, 
-				cs.rank crank, 
-				cs.start cstart, 
-				cs.length clength 
+				coalesce(cs.rank,0) crank, 
+				coalesce(cs.start,0) cstart, 
+				coalesce(cs.length,0) clength 
 			from longeststreaks ls
 			left join validators on ls.validatorindex = validators.validatorindex
 			left join validator_names on validators.pubkey = validator_names.publickey
@@ -145,6 +145,12 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			fmt.Sprintf("%v", d.Crank),
 			utils.FormatEpoch(d.Cstart),
 			fmt.Sprintf("%v", d.Clength),
+		}
+		// current streak is missed
+		if d.Crank == 0 {
+			tableData[i][4] = "-"
+			tableData[i][5] = "-"
+			tableData[i][6] = "-"
 		}
 	}
 
