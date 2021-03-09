@@ -23,7 +23,6 @@ create table validators
     activationepoch            bigint      not null,
     exitepoch                  bigint      not null,
     lastattestationslot        bigint,
-    lastmissedattestationslot  bigint,
     status                     varchar(20) not null default '',
     primary key (validatorindex)
 );
