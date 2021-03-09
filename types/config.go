@@ -106,8 +106,7 @@ type Config struct {
 	} `yaml:"frontend"`
 	ShowDonors struct {
 		Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
-		Key     string `yaml:"gitcoinKey" envconfig:"FRONTEND_GITCOIN_Key"`
-		Secret  string `yaml:"gitcoinSecret" envconfig:"FRONTEND_GITCOIN_SECRET"`
+		URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
 	} `yaml:"showDonors"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`

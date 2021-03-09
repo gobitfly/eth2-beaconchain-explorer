@@ -3,7 +3,6 @@ package services
 import (
 	"encoding/json"
 	"eth2-exporter/utils"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -22,9 +21,7 @@ var feedOnMux = &sync.RWMutex{}
 
 func fetchFeedData() *gitcoinfeed {
 	var api gitcoinfeed
-	resp, err := http.Get(fmt.Sprintf("https://gitcoin.co/grants/v1/api/export_info/grant258_round9.json?_key=%s&_secret=%s", utils.Config.ShowDonors.Key, utils.Config.ShowDonors.Secret))
-	// resp, err := http.Get("http://localhost:5000/addrs") // use this for mock script
-	// logger.Errorln(resp)
+	resp, err := http.Get(utils.Config.ShowDonors.URL)
 
 	if err != nil {
 		logger.Errorf("error retrieving gitcoin feed Data: %v", err)
@@ -36,7 +33,7 @@ func fetchFeedData() *gitcoinfeed {
 	err = json.NewDecoder(resp.Body).Decode(&api)
 
 	if err != nil {
-		logger.Errorf("error decoding gitcoin feed json response to struct: %v", err)
+		logger.Errorf("error decoding gitcoin feed json response to struct: %v: <Is config correct?>", err)
 		return nil
 	}
 
