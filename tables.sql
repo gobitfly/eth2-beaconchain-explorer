@@ -31,10 +31,7 @@ create index idx_validators_pubkey on validators (pubkey);
 create index idx_validators_pubkeyhex on validators (pubkeyhex);
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
-
-
 create index idx_validators_activationepoch on validators (activationepoch);
-create index idx_validators_balance on validators (balance);
 
 drop table if exists validator_names;
 create table validator_names
@@ -189,15 +186,8 @@ create table validator_attestation_streaks
     length         int not null,
     primary key (validatorindex, status, start)
 );
-
-create index idx_validator_attestation_streaks_length on validator_attestation_streaks (length);
-
-drop table if exists validator_attestation_streaks_status;
-create table validator_attestation_streaks_status
-(
-    epoch int not null,
-    primary key (epoch)
-);
+create index idx_validator_attestation_streaks_validatorindex on validator_attestation_streaks (validatorindex);
+create index idx_validator_attestation_streaks_status on validator_attestation_streaks (status);
 
 drop table if exists queue;
 create table queue
