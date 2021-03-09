@@ -278,6 +278,7 @@ func main() {
 
 			// confirming the email update should not require auth
 			router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
+			router.HandleFunc("/gitcoinfeed", handlers.GitcoinFeed).Methods("GET")
 
 			// router.HandleFunc("/user/validators", handlers.UserValidators).Methods("GET")
 
@@ -385,6 +386,10 @@ func main() {
 				logrus.WithError(err).Fatal("Error serving metrics")
 			}
 		}(utils.Config.Metrics.Address)
+	}
+
+	if utils.Config.ShowDonors.Enabled {
+		services.InitGitCoinFeed()
 	}
 
 	utils.WaitForCtrlC()
