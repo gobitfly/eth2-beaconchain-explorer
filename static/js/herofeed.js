@@ -64,11 +64,21 @@ function updateFeed() {
             let isLive = data.isLive
             if (!isLive && feedInterval !== null) {
                 clearInterval(feedInterval)
+                return
             }
             data = data.donors
-            if (data.length > 0) {
-                $("#hero-feed").addClass("d-lg-flex fade-in-top")
-                donors = findNewDoner(data)
+            
+            if (isLive){
+                if (data.length > 0) {
+                    $("#hero-feed").addClass("d-lg-flex fade-in-top")
+                    donors = findNewDoner(data)
+                }else{
+                    $("#hero-feed").addClass("d-lg-flex fade-in-top")
+                    $("#hero-feed ul").html("")
+                    $("#hero-feed ul").prepend(`
+                        <li><i class="far fa-clock mx-1"></i><span>Waiting for gitcoin round</span></li>
+                    `)
+                }
             }
         }
     })
