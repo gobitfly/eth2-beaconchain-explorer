@@ -77,7 +77,6 @@ func epochUpdater() {
 		} else {
 			atomic.StoreUint64(&latestEpoch, epoch)
 			if firstRun {
-				logger.Infof("epochUpdater done")
 				ready.Done()
 				firstRun = false
 			}
@@ -98,7 +97,6 @@ func slotUpdater() {
 		} else {
 			atomic.StoreUint64(&latestSlot, slot)
 			if firstRun {
-				logger.Infof("slotUpdater done")
 				ready.Done()
 				firstRun = false
 			}
@@ -119,7 +117,6 @@ func latestProposedSlotUpdater() {
 		} else {
 			atomic.StoreUint64(&latestProposedSlot, slot)
 			if firstRun {
-				logger.Infof("latestProposedSlotUpdater done")
 				ready.Done()
 				firstRun = false
 			}
@@ -140,7 +137,6 @@ func indexPageDataUpdater() {
 		}
 		indexPageData.Store(data)
 		if firstRun {
-			logger.Infof("indexPageDataUpdater done")
 			ready.Done()
 			firstRun = false
 		}
