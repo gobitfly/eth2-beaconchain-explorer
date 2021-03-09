@@ -70,13 +70,14 @@ function updateFeed() {
             
             if (isLive){
                 $("#hero-feed").addClass("d-lg-flex fade-in-top")
-                
+
                 if (data.length > 0) {
                     donors = findNewDoner(data)
+                    $("#hero-feed ul>li#gitcoinwaitmsg").remove()
                 }else{
                     $("#hero-feed ul").html("")
                     $("#hero-feed ul").prepend(`
-                        <li><i class="far fa-clock mx-1"></i><span>Waiting for gitcoin round</span></li>
+                        <li id="gitcoinwaitmsg"><i class="far fa-clock mx-1"></i><span>Waiting for gitcoin round</span></li>
                     `)
                 }
             }
