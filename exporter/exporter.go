@@ -1018,7 +1018,7 @@ func updateAttestationStreaks() error {
 	}
 
 	t2 := time.Now()
-	logger.WithFields(logrus.Fields{"day": day, "calculate": t1.Sub(t0), "save": t2.Sub(t1), "all": t2.Sub(t0), "count": len(streaks)}).Info("updating streaks completed")
+	logrus.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "lastStatsDay": lastStatsDay, "calculate": t1.Sub(t0), "save": t2.Sub(t1), "all": t2.Sub(t0), "count": len(streaks)}).Info("updating streaks completed")
 
 	return tx.Commit()
 }
