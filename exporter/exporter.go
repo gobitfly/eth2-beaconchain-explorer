@@ -845,19 +845,26 @@ func genesisDepositsExporter() {
 func attestationStreaksUpdater() {
 	for {
 		start := time.Now()
-		err := updateAttestationStreaks()
+		err, done := updateAttestationStreaks()
 		if err != nil {
 			logger.WithField("duration", time.Since(start)).WithError(err).Error("Error updating attesation_streaks")
 		} else {
 			logger.WithField("duration", time.Since(start)).Info("updated attestation_streaks")
 		}
-		time.Sleep(time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
+
+		if done {
+			// updated streaks up to the current finalized epoch
+			time.Sleep(time.Hour)
+		} else {
+			// go gaster until streaks are upated to the current finalized epoch
+			time.Sleep(time.Second * 10)
+		}
 	}
 }
 
 // updateAttestationStreaks updates the table `validator_attestation_streaks` which holds the current streak and the longest missed and executed attestation-streaks.
 // it will use `validator_stats.missed_attestations` to optimize the query if possible.
-func updateAttestationStreaks() error {
+func updateAttestationStreaks() (error, bool) {
 	var err error
 
 	t0 := time.Now()
@@ -865,21 +872,21 @@ func updateAttestationStreaks() error {
 	lastFinalizedEpoch := 0
 	err = db.DB.Get(&lastFinalizedEpoch, `select coalesce(max(epoch),0) from epochs where finalized = 't'`)
 	if err != nil {
-		return fmt.Errorf("Error getting latestEpoch: %w", err)
+		return fmt.Errorf("Error getting latestEpoch: %w", err), false
 	}
 
 	if lastFinalizedEpoch == 0 {
-		return nil
+		return nil, false
 	}
 
 	lastStreaksEpoch := 0
 	err = db.DB.Get(&lastStreaksEpoch, `select coalesce(max(start+length),0) from validator_attestation_streaks`)
 	if err != nil {
-		return fmt.Errorf("Error getting lastStreaksEpoch: %w", err)
+		return fmt.Errorf("Error getting lastStreaksEpoch: %w", err), false
 	}
 
 	if lastStreaksEpoch >= lastFinalizedEpoch-1 {
-		return nil
+		return nil, false
 	}
 
 	startEpoch := lastStreaksEpoch + 1
@@ -894,13 +901,13 @@ func updateAttestationStreaks() error {
 	}
 
 	if startEpoch > endEpoch {
-		return nil
+		return nil, false
 	}
 
 	lastStatsDay := 0
 	err = db.DB.Get(&lastStatsDay, `select coalesce(max(day),0) from validator_stats`)
 	if err != nil {
-		return fmt.Errorf("Error getting lastStatsDay: %w", err)
+		return fmt.Errorf("Error getting lastStatsDay: %w", err), false
 	}
 
 	logger.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "lastStatsDay": lastStatsDay}).Infof("updating streaks")
@@ -977,20 +984,20 @@ func updateAttestationStreaks() error {
 		select validatorindex, status, start, length
 		from rankedstreaks where r = 1 or start+length = $2 order by validatorindex, start`, boundingsQry), uint64(startEpoch), uint64(endEpoch))
 	if err != nil {
-		return fmt.Errorf("Error getting streaks: %w", err)
+		return fmt.Errorf("Error getting streaks: %w", err), false
 	}
 
 	t1 := time.Now()
 
 	tx, err := db.DB.Beginx()
 	if err != nil {
-		return fmt.Errorf("error starting db transaction: %w", err)
+		return fmt.Errorf("error starting db transaction: %w", err), false
 	}
 	defer tx.Rollback()
 
 	_, err = tx.Exec("truncate validator_attestation_streaks")
 	if err != nil {
-		return fmt.Errorf("error truncating validator performance table: %w", err)
+		return fmt.Errorf("error truncating validator performance table: %w", err), false
 	}
 
 	batchSize := 5000
@@ -1013,12 +1020,17 @@ func updateAttestationStreaks() error {
 		stmt := fmt.Sprintf(`insert into validator_attestation_streaks (validatorindex, status, start, length) values %s`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return fmt.Errorf("Error inserting streaks %w", err)
+			return fmt.Errorf("Error inserting streaks %w", err), false
 		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("Error committing validator_attestation_streaks: %w", err), false
 	}
 
 	t2 := time.Now()
 	logrus.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "lastStatsDay": lastStatsDay, "calculate": t1.Sub(t0), "save": t2.Sub(t1), "all": t2.Sub(t0), "count": len(streaks)}).Info("updating streaks completed")
 
-	return tx.Commit()
+	return nil, lastFinalizedEpoch == endEpoch
 }
