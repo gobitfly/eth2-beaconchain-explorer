@@ -844,14 +844,11 @@ func genesisDepositsExporter() {
 
 func attestationStreaksUpdater() {
 	for {
-		start := time.Now()
 		err, done := updateAttestationStreaks()
 		if err != nil {
-			logger.WithField("duration", time.Since(start)).WithError(err).Error("Error updating attesation_streaks")
-		} else {
-			logger.WithField("duration", time.Since(start)).Info("updated attestation_streaks")
+			logger.WithError(err).Error("Error updating attesation_streaks")
 		}
-
+		logger.Infof("foo %v", done)
 		if done {
 			// updated streaks up to the current finalized epoch
 			time.Sleep(time.Hour)
@@ -886,7 +883,7 @@ func updateAttestationStreaks() (error, bool) {
 	}
 
 	if lastStreaksEpoch >= lastFinalizedEpoch-1 {
-		return nil, false
+		return nil, true
 	}
 
 	startEpoch := lastStreaksEpoch + 1
@@ -1030,7 +1027,7 @@ func updateAttestationStreaks() (error, bool) {
 	}
 
 	t2 := time.Now()
-	logrus.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "lastStatsDay": lastStatsDay, "calculate": t1.Sub(t0), "save": t2.Sub(t1), "all": t2.Sub(t0), "count": len(streaks)}).Info("updating streaks completed")
+	logger.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "lastStatsDay": lastStatsDay, "calculate": t1.Sub(t0), "save": t2.Sub(t1), "all": t2.Sub(t0), "count": len(streaks)}).Info("updating streaks completed")
 
 	return nil, lastFinalizedEpoch == endEpoch
 }
