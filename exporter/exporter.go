@@ -860,9 +860,7 @@ func attestationStreaksUpdater() {
 
 // updateAttestationStreaks updates the table `validator_attestation_streaks` which holds the current streak and the longest missed and executed attestation-streaks.
 // it will use `validator_stats.missed_attestations` to optimize the query if possible.
-func updateAttestationStreaks() (error, bool) {
-	var err error
-
+func updateAttestationStreaks() (error err, bool updatedToLastFinalizedEpoch) {
 	t0 := time.Now()
 
 	lastFinalizedEpoch := 0
