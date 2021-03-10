@@ -187,6 +187,8 @@ create table validator_attestation_streaks
 );
 create index idx_validator_attestation_streaks_validatorindex on validator_attestation_streaks (validatorindex);
 create index idx_validator_attestation_streaks_status on validator_attestation_streaks (status);
+create index idx_validator_attestation_streaks_length on validator_attestation_streaks (length);
+create index idx_validator_attestation_streaks_start on validator_attestation_streaks (start);
 
 drop table if exists queue;
 create table queue
