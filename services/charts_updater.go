@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prysmaticlabs/prysm/shared/mathutil"
 	"strings"
+
+	"github.com/prysmaticlabs/prysm/shared/mathutil"
 )
 
 type chartHandler struct {
@@ -1473,8 +1474,9 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 	}
 
 	type seriesDataItem struct {
-		Name string `json:"name"`
-		Y    uint64 `json:"y"`
+		Name    string `json:"name"`
+		Address string `json:"address"`
+		Y       uint64 `json:"y"`
 	}
 	seriesData := []seriesDataItem{}
 	othersItem := seriesDataItem{
@@ -1488,8 +1490,9 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		}
 
 		var poolName string
+		curAddr := string(utils.FormatEth1AddressString(rows[i].Address))
 		for _, pool := range stakePools {
-			if strings.ToLower(string(utils.FormatEth1AddressString(rows[i].Address))) == strings.ToLower("0x"+pool.Address) {
+			if strings.ToLower(curAddr) == strings.ToLower("0x"+pool.Address) {
 				poolName = pool.Name
 				break
 			}
@@ -1498,8 +1501,9 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			continue
 		}
 		seriesData = append(seriesData, seriesDataItem{
-			Name: poolName,
-			Y:    rows[i].Count,
+			Name:    poolName,
+			Address: curAddr,
+			Y:       rows[i].Count,
 		})
 	}
 	if othersItem.Y > 0 {
@@ -1526,7 +1530,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		PlotOptionsSeriesCursor: "pointer",
 		PlotOptionsSeriesEventsClick: `function(event){ 
 			if (event.point.name == 'others') { window.location.href = '/validators/eth1deposits' }
-			else { window.location.href = '/validators/eth1deposits?q='+encodeURIComponent(event.point.name) } }`,
+			else { window.location.href = '/validators/eth1deposits?q='+encodeURIComponent(event.point.address) } }`,
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Deposits Distribution",
