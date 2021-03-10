@@ -388,7 +388,7 @@ func main() {
 		}(utils.Config.Metrics.Address)
 	}
 
-	if utils.Config.ShowDonors.Enabled {
+	if utils.Config.Frontend.ShowDonors.Enabled {
 		services.InitGitCoinFeed()
 	}
 
