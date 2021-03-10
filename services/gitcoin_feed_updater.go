@@ -21,7 +21,7 @@ var feedOnMux = &sync.RWMutex{}
 
 func fetchFeedData() *gitcoinfeed {
 	var api gitcoinfeed
-	resp, err := http.Get(utils.Config.ShowDonors.URL)
+	resp, err := http.Get(utils.Config.Frontend.ShowDonors.URL)
 
 	if err != nil {
 		logger.Errorf("error retrieving gitcoin feed Data: %v", err)

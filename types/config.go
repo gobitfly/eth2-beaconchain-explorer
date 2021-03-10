@@ -103,11 +103,11 @@ type Config struct {
 			} `yaml:"mailgun"`
 		} `yaml:"mail"`
 		GATag string `yaml:"gatag"  envconfig:"GATAG"`
+		ShowDonors struct {
+			Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
+			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
+		} `yaml:"showDonors"`
 	} `yaml:"frontend"`
-	ShowDonors struct {
-		Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
-		URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
-	} `yaml:"showDonors"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
 		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
