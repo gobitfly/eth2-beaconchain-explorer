@@ -848,7 +848,6 @@ func attestationStreaksUpdater() {
 		if err != nil {
 			logger.WithError(err).Error("Error updating attesation_streaks")
 		}
-		logger.Infof("foo %v", done)
 		if done {
 			// updated streaks up to the current finalized epoch
 			time.Sleep(time.Hour)
