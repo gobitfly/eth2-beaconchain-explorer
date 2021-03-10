@@ -96,20 +96,32 @@ func VerifyGoogle(client *playstore.Client, receipt *types.PremiumData) (*Verify
 
 	now := time.Now().Unix() * 1000
 	valid := resp.ExpiryTimeMillis > now
+	canceled := resp.UserCancellationTimeMillis > 0
+	var reason string = rejectReason(valid)
+	if canceled {
+		if resp.CancelReason == 0 {
+			reason = "user_canceled"
+		} else if resp.CancelReason == 1 {
+			reason = "system_canceled"
+		} else if resp.CancelReason == 2 {
+			reason = "canceled_replaced"
+		} else if resp.CancelReason == 3 {
+			reason = "developer_canceled"
+		}
+	}
 
 	return &VerifyResponse{
-		Valid:          valid,
+		Valid:          valid && !canceled,
 		ExpirationDate: resp.ExpiryTimeMillis / 1000,
-		RejectReason:   rejectReason(valid),
+		RejectReason:   reason,
 	}, nil
 }
 
 func rejectReason(valid bool) string {
 	if valid {
 		return ""
-	} else {
-		return "expired"
 	}
+	return "expired"
 }
 
 func VerifyApple(receipt *types.PremiumData) (*VerifyResponse, error) {
