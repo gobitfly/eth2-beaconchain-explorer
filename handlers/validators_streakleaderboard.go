@@ -97,7 +97,9 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Select(&sqlData, `
 			with 
 				longeststreaks as (
-					select validatorindex, start, length, rank() over (order by length desc)
+					select 
+						validatorindex, start, length, rank() over (order by length desc),
+						rank() over (partition by validatorindex order by length desc) as vrank
 					from validator_attestation_streaks
 					where status = 1
 				),
@@ -121,6 +123,7 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			left join validator_names on v.pubkey = validator_names.publickey
 			left join (select count(*) from longeststreaks) cnt(totalcount) on true
 			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
+			where vrank = 1
 			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start)
 	} else {
 		err = db.DB.Select(&sqlData, `
@@ -134,7 +137,9 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 						OR LOWER(vn.name) LIKE LOWER($3)
 				),
 				longeststreaks as (
-					select validatorindex, start, length, rank() over (order by length desc)
+					select 
+						validatorindex, start, length, rank() over (order by length desc),
+						rank() over (partition by validatorindex order by length desc) as vrank
 					from validator_attestation_streaks
 					where status = 1
 				),
@@ -157,6 +162,7 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			inner join matched_validators v on ls.validatorindex = v.validatorindex
 			left join (select count(*) from longeststreaks) cnt(totalcount) on true
 			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
+			where vrank = 1
 			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start, "%"+search+"%")
 	}
 	if err != nil {

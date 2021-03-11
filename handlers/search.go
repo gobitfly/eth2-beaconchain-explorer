@@ -99,11 +99,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Select(result, `
 			SELECT
 				validatorindex AS index,
-				ENCODE(pubkey::bytea, 'hex') AS pubkey
+				pubkeyhex AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE CAST(validatorindex AS text) LIKE $1
-				OR ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
+				OR pubkeyhex LIKE LOWER($1)
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "eth1_addresses":
@@ -117,11 +117,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
 		err = db.DB.Select(result, `
-			SELECT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
+			SELECT validatorindex AS index, pubkeyhex AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE CAST(validatorindex AS text) LIKE $1
-				OR ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
+				OR pubkeyhex LIKE LOWER($1)
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":

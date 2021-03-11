@@ -900,7 +900,7 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 
 	publicKeys := make([]string, 0)
 	db.DB.Select(&publicKeys, `
-	SELECT Encode(pubkey::bytea, 'hex') as pubkey
+	SELECT pubkeyhex as pubkey
 	FROM validators
 	WHERE validatorindex = ANY($1)
 	`, pq.Int64Array(indicesParsed))
