@@ -36,8 +36,8 @@
             </div>
         </div>
         <div class="row mt-5">
-            <div class="col-md-12 card p-0 pt-1">
-                <div class="table-responsive">
+            <div class="col-md-12">
+                <div class="table-responsive card px-0 py-1">
                     <table class="table" id="staking-pool-table">
                         <thead>
                             <tr>
@@ -45,8 +45,8 @@
                                 <th>Type</th>
                                 <th>ETH1 Addr</th>
                                 <th>Deposit</th>
-                                <!--<th>State</th>
-                                <th>Total Income</th>
+                                <th>State</th>
+                                <!-- <th>Total Income</th>
                                 <th>Act/Slashed Val.</th>
                                 <th>Avg. Att. Eff.</th>
                                 <th>Total Streak</th>
@@ -79,34 +79,49 @@
                 $("#ethCsupply").html(circulatingETH.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",") +" ETH")
             })
         .catch((error) => {
-            alert("Site may not function properly if you are using adblock or other types of communication blocking software")
+            alert("Page may not function properly if you are using adblock or other types of communication blocking software")
         });
         
-        let tableData = []
-        for (let el of {{.Data.PoolInfo}}){
-            tableData.push([el.name, el.category, el.address, el.deposit])
-        }
+        // let tableData = []
+        // for (let el of {{.Data.PoolInfo}}){
+        //     tableData.push([el.name, el.category, el.address, el.deposit])
+        // }
 
         $('#staking-pool-table').DataTable({
             processing: true,
             serverSide: false,
             ordering: true,
-            lengthChange: true,
             searching: false,
             pagingType: 'full_numbers',
-            lengthMenu: [10, 25, 50],
-            info: true,
-            data: tableData,
+            data: {{.Data.PoolInfo}},
             preDrawCallback: function() {
-            try {
-                $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip('dispose')
-            } catch (e) {}
+                try {
+                    $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip('dispose')
+                } catch (e) {}
             },
             drawCallback: function(settings) {
-            $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip()
+                $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip()
             },
+            columnDefs: [
+                    {
+                        targets: 0,
+                        data: '0',
+                        "orderable": true
+                    }, {
+                        targets: 1,
+                        data: '1',
+                        "orderable": true
+                    }, {
+                        targets: 2,
+                        data: '2',
+                        "orderable": false
+                    }, {
+                        targets: 3,
+                        data: '3',
+                        "orderable": true
+                    }
+                ],
             order: [[3,'desc']],
-            columnDefs: []
         })
     })
 </script>
