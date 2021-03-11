@@ -13,7 +13,7 @@ import (
 
 func main() {
 	configPath := flag.String("config", "", "Path to the config file")
-	dayToExport := flag.Int64("day", -1, "Day to export (will export the day independent if it has been already exported or not")
+	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
 
 	flag.Parse()
 
@@ -29,19 +29,28 @@ func main() {
 	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
 	defer db.DB.Close()
 
-	if *dayToExport >= 0 {
-		_, err := db.DB.Exec("delete from validator_stats_status where day = $1", *dayToExport)
+	if *statisticsDayToExport >= 0 {
+		_, err := db.DB.Exec("delete from validator_stats_status where day = $1", *statisticsDayToExport)
 		if err != nil {
-			logrus.Fatalf("error resetting status for day %v: %v", *dayToExport, err)
+			logrus.Fatalf("error resetting status for day %v: %v", *statisticsDayToExport, err)
 		}
 
-		err = db.WriteStatisticsForDay(uint64(*dayToExport))
+		err = db.WriteStatisticsForDay(uint64(*statisticsDayToExport))
 		if err != nil {
-			logrus.Errorf("error exporting stats for day %v: %v", dayToExport, err)
+			logrus.Errorf("error exporting stats for day %v: %v", *statisticsDayToExport, err)
 		}
 		return
 	}
 
+	go statisticsLoop()
+	go streaksLoop()
+
+	utils.WaitForCtrlC()
+
+	logrus.Println("exiting...")
+}
+
+func statisticsLoop() {
 	for true {
 		latestEpoch, err := db.GetLatestEpoch()
 		if err != nil {
@@ -75,5 +84,21 @@ func main() {
 			}
 		}
 		time.Sleep(time.Minute)
+	}
+}
+
+func streaksLoop() {
+	for {
+		done, err := db.UpdateAttestationStreaks()
+		if err != nil {
+			logrus.WithError(err).Error("error updating attesation_streaks")
+		}
+		if done {
+			// updated streaks up to the current finalized epoch
+			time.Sleep(time.Hour)
+		} else {
+			// go gaster until streaks are upated to the current finalized epoch
+			time.Sleep(time.Second * 10)
+		}
 	}
 }

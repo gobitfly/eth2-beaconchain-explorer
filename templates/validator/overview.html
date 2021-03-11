@@ -222,13 +222,20 @@
         <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Proposal Assignments"><i class="fas fa-cubes poin"></i> {{ .ProposedBlocksCount }}</span>
     </div>
     <div class="mx-3">
-        <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments"><i class="fas fa-file-signature"></i><span>{{.AttestationsCount}}</span>
+        <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments"><i class="fas fa-file-signature"></i> {{.AttestationsCount}}</span>
     </div>
     <div class="mx-3">
         <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash"></i> {{.SlashingsCount}}</span>
     </div>
     <div class="mx-3">
         <span id="depositCount" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet"></i> {{.DepositsCount}}</span>
+    </div>
+    <div class="mx-3">
+        {{if ne .CurrentAttestationStreak .LongestAttestationStreak}}
+        <span id="attestationStreak" style="cursor: default;" data-toggle="tooltip" title="Attestation Streaks (Current / Longest)"><i class="fas fa-fire"></i> {{.CurrentAttestationStreak}} / {{.LongestAttestationStreak}}</span>
+        {{else}}
+        <span id="attestationStreak" style="cursor: default;" data-toggle="tooltip" title="Attestation Streak"><i class="fas fa-fire"></i> {{.LongestAttestationStreak}}</span>
+        {{end}}
     </div>
 </div>
 
