@@ -71,7 +71,7 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
-		orderBy = "lrank"
+		orderBy = "ls.rank"
 	}
 
 	orderDir := q.Get("order[0][dir]")
