@@ -96,12 +96,22 @@
     word-wrap: break-word;
 }
 
+.border-rounded{
+    border-radius: 12px;
+    border-style: none;
+    border-width: 2px;
+}
+
 .fade-in{
     animation: fade 2s 1;
 }
 
 .fade-in-top{
     animation: fade-top 3s 1;
+}
+
+.color-shift-anim{
+    animation: color-shift 5s infinite;
 }
 
 @keyframes fade-top {
@@ -134,16 +144,16 @@
 
 @keyframes color-shift {
     0% {
-        background-color: var(--primary);
+        background-color: rgba(238, 113, 19, 0.2); 
     }
     25% {
-        background-color: cornflowerblue;
+        background-color: rgba(114,19,238, 0.2);
     }
     50% {
-        background-color: darkgoldenrod;
+        background-color: rgba(19, 238, 114, 0.2);
     }
     100% {
-        background-color: brown;
+        background-color: rgba(238, 113, 19, 0.2);
     }
 }
 
