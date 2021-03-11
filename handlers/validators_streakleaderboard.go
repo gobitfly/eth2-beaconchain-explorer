@@ -117,22 +117,55 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				coalesce(cs.start,0) cstart, 
 				coalesce(cs.length,0) clength 
 			from longeststreaks ls
-			left join validators v on ls.validatorindex = v.validatorindex
+			inner join validators v on ls.validatorindex = v.validatorindex
 			left join validator_names on v.pubkey = validator_names.publickey
 			left join (select count(*) from longeststreaks) cnt(totalcount) on true
 			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
 			order by `+orderBy+` `+orderDir+` nulls last limit $1 offset $2`, length, start)
-		if err != nil {
-			logger.Errorf("error retrieving streaksData data without search: %v", err)
-			http.Error(w, "Internal server error", 503)
-			return
-		}
-		if len(sqlData) > 0 {
-			totalCount = sqlData[0].Totalcount
-		}
 	} else {
-		http.Error(w, "not implemented yet", 503)
+		err = db.DB.Select(&sqlData, `
+			with 
+				matched_validators as (
+					SELECT v.validatorindex, v.pubkey, COALESCE(vn.name,'') as name
+					FROM validators v
+					LEFT JOIN validator_names vn ON vn.publickey = v.pubkey
+					WHERE (pubkeyhex LIKE $3
+						OR CAST(v.validatorindex AS text) LIKE $3)
+						OR LOWER(vn.name) LIKE LOWER($3)
+				),
+				longeststreaks as (
+					select validatorindex, start, length, rank() over (order by length desc)
+					from validator_attestation_streaks
+					where status = 1
+				),
+				currentstreaks as (
+					select validatorindex, start, length, rank() over (order by length desc)
+					from validator_attestation_streaks
+					where status = 1 and start+length = (select max(start+length) from validator_attestation_streaks)
+				)
+			select 
+				ls.validatorindex,
+				v.name,
+				cnt.totalcount,
+				ls.rank lrank, 
+				ls.start lstart, 
+				ls.length llength, 
+				coalesce(cs.rank,0) crank, 
+				coalesce(cs.start,0) cstart, 
+				coalesce(cs.length,0) clength 
+			from longeststreaks ls
+			inner join matched_validators v on ls.validatorindex = v.validatorindex
+			left join (select count(*) from longeststreaks) cnt(totalcount) on true
+			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
+			order by `+orderBy+` `+orderDir+` nulls last limit $1 offset $2`, length, start, "%"+search+"%")
+	}
+	if err != nil {
+		logger.Errorf("error retrieving streaksData data (search=%v): %v", search != "", err)
+		http.Error(w, "Internal server error", 503)
 		return
+	}
+	if len(sqlData) > 0 {
+		totalCount = sqlData[0].Totalcount
 	}
 
 	tableData := make([][]interface{}, len(sqlData))
