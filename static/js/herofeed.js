@@ -15,8 +15,8 @@ function showDoner(addr, name, icon, msg) {
     }
 
     name = name.replace("<", "").replace(">", "")
-    $("#hero-feed ul").prepend(`<li class="fade-in">
-        <div class="d-flex flex-row">
+    $("#hero-feed ul").prepend(`<li class="fade-in hover-shadow">
+        <div class="d-flex flex-row" style="cursor: pointer;" onclick='window.open("https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer")'>
         <img src="${icon}"/> 
         <div class="d-flex flex-column usrdiv">
             <div class="d-flex flex-row">
@@ -74,10 +74,15 @@ function updateFeed() {
                 if (data.length > 0) {
                     donors = findNewDoner(data)
                     $("#hero-feed ul>li#gitcoinwaitmsg").remove()
+                    $(".hover-shadow").hover(function(){
+                        $(this).addClass("shadow color-shift-anim border-rounded");
+                        }, function(){
+                        $(this).removeClass("shadow color-shift-anim border-rounded");
+                    });
                 }else{
                     $("#hero-feed ul").html("")
                     $("#hero-feed ul").prepend(`
-                        <li id="gitcoinwaitmsg"><i class="far fa-clock mx-1"></i><span>Waiting for gitcoin round</span></li>
+                        <li id="gitcoinwaitmsg"><i class="far fa-clock mx-1"></i><span>Waiting for the next gitcoin round to start</span></li>
                     `)
                 }
             }
