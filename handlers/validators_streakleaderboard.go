@@ -66,8 +66,8 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
-		"1": "lrank",
-		"4": "crank",
+		"1": "crank",
+		"4": "lrank",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -117,11 +117,11 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				coalesce(cs.start,0) cstart, 
 				coalesce(cs.length,0) clength 
 			from longeststreaks ls
-			left join validators on ls.validatorindex = validators.validatorindex
-			left join validator_names on validators.pubkey = validator_names.publickey
+			left join validators v on ls.validatorindex = v.validatorindex
+			left join validator_names on v.pubkey = validator_names.publickey
 			left join (select count(*) from longeststreaks) cnt(totalcount) on true
 			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
-			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start)
+			order by `+orderBy+` `+orderDir+` nulls last limit $1 offset $2`, length, start)
 		if err != nil {
 			logger.Errorf("error retrieving streaksData data without search: %v", err)
 			http.Error(w, "Internal server error", 503)
@@ -139,18 +139,18 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	for i, d := range sqlData {
 		tableData[i] = []interface{}{
 			utils.FormatValidatorWithName(d.Validatorindex, d.Name),
-			fmt.Sprintf("%v", d.Lrank),
-			utils.FormatEpoch(d.Lstart),
-			fmt.Sprintf("%v", d.Llength),
 			fmt.Sprintf("%v", d.Crank),
 			utils.FormatEpoch(d.Cstart),
 			fmt.Sprintf("%v", d.Clength),
+			fmt.Sprintf("%v", d.Lrank),
+			utils.FormatEpoch(d.Lstart),
+			fmt.Sprintf("%v", d.Llength),
 		}
 		// current streak is missed
 		if d.Crank == 0 {
-			tableData[i][4] = "-"
-			tableData[i][5] = "-"
-			tableData[i][6] = "-"
+			tableData[i][1] = "-"
+			tableData[i][2] = "-"
+			tableData[i][3] = "-"
 		}
 	}
 

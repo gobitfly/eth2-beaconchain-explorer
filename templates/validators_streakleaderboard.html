@@ -50,7 +50,7 @@
                         "orderable": false
                     },
                 ],
-                order: [[1, "asc"]]
+                order: [[4, "asc"]]
             }
             var usp = new URLSearchParams(window.location.search)
             var q = usp.get('q')
@@ -91,6 +91,7 @@
                         </ol>
                     </nav>
                 </div>
+                Streak represents the amount of attestations that have been proposed in a row. If a validator misses an attestation, the current length will reset to 0
             </div>
             <div class="card">
                 <div class="card-body px-0 py-2">
@@ -99,16 +100,16 @@
                             <thead>
                             <tr>
                                 <th rowspan="2">Index</th>
-                                <th colspan="3">Longest Streak</th>
                                 <th colspan="3">Current Streak</th>
+                                <th colspan="3">Longest Streak</th>
                             </tr>
                             <tr>
                                 <th>Rank</th>
-                                <th>Start</th>
-                                <th>Length</th>
+                                <th data-toggle="tooltip" title="The starting epoch of Streak">Start</th>
+                                <th data-toggle="tooltip" title="Amount of attestations that where proposed in a row">Length</th>
                                 <th>Rank</th>
-                                <th>Start</th>
-                                <th>Length</th>
+                                <th data-toggle="tooltip" title="The starting epoch of Streak">Start</th>
+                                <th data-toggle="tooltip" title="Amount of attestations that where proposed in a row">Length</th>
                             </tr>
                             </thead>
                             <tbody></tbody>

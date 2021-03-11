@@ -77,7 +77,7 @@ function updateFeed() {
                 }else{
                     $("#hero-feed ul").html("")
                     $("#hero-feed ul").prepend(`
-                        <li id="gitcoinwaitmsg"><i class="far fa-clock mx-1"></i><span>Waiting for the next gitcoin round to start</span></li>
+                        <li id="gitcoinwaitmsg"><i class="far fa-clock mx-1"></i><span>Waiting for gitcoin round</span></li>
                     `)
                 }
             }
