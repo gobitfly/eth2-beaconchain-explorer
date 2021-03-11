@@ -66,8 +66,8 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
-		"1": "crank",
-		"4": "lrank",
+		"1": "cs.rank",
+		"4": "ls.rank",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -121,7 +121,7 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			left join validator_names on v.pubkey = validator_names.publickey
 			left join (select count(*) from longeststreaks) cnt(totalcount) on true
 			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
-			order by `+orderBy+` `+orderDir+` nulls last limit $1 offset $2`, length, start)
+			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start)
 	} else {
 		err = db.DB.Select(&sqlData, `
 			with 
@@ -157,7 +157,7 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			inner join matched_validators v on ls.validatorindex = v.validatorindex
 			left join (select count(*) from longeststreaks) cnt(totalcount) on true
 			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
-			order by `+orderBy+` `+orderDir+` nulls last limit $1 offset $2`, length, start, "%"+search+"%")
+			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start, "%"+search+"%")
 	}
 	if err != nil {
 		logger.Errorf("error retrieving streaksData data (search=%v): %v", search != "", err)
@@ -181,9 +181,9 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 		}
 		// current streak is missed
 		if d.Crank == 0 {
-			tableData[i][1] = "-"
-			tableData[i][2] = "-"
-			tableData[i][3] = "-"
+			tableData[i][1] = `<span data-toggle="tooltip" title="Last attestation is missed">-</span>`
+			tableData[i][2] = `<span data-toggle="tooltip" title="Last attestation is missed">-</span>`
+			tableData[i][3] = `<span data-toggle="tooltip" title="Last attestation is missed">-</span>`
 		}
 	}
 
