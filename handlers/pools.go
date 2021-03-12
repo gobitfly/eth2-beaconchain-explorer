@@ -2,16 +2,13 @@ package handlers
 
 import (
 	// "eth2-exporter/db"
-	"encoding/hex"
+
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	types "eth2-exporter/types"
 	"eth2-exporter/utils"
-	"fmt"
 	"html/template"
 	"net/http"
-
-	"github.com/lib/pq"
 	// "strings"
 )
 
@@ -27,9 +24,32 @@ type pools struct {
 	Category *string `db:"category" json:"category"`
 }
 
-func Pools(w http.ResponseWriter, r *http.Request) {
-	// var err error
+type poolInfo struct {
+	Status         string `db:"status" json:"status"`
+	ValidatorIndex uint64 `db:"validatorindex" json:"validatorindex"`
+	Balance31d     uint64 `db:"balance31d" json:"balance31d"`
+}
 
+type poolStatsData struct {
+	PoolInfo []poolInfo
+	Address  string
+}
+
+type chart struct {
+	DepositDistribution types.ChartsPageDataChart
+	StakedEther         string
+	PoolInfo            []respData
+}
+
+type respData struct {
+	Address  string     `json:"address"`
+	Name     string     `json:"name"`
+	Deposit  int64      `json:"deposit"`
+	Category *string    `json:"category"`
+	PoolInfo []poolInfo `json:"poolInfo"`
+}
+
+func Pools(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	data := InitPageData(w, r, "services", "/pools", "Stacking Pools Services Overview")
@@ -40,77 +60,18 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 	}
 
-	// type pools struct {
-	// 	Address string
-	// 	Name    string
-	// }
-
-	// var stakePools []pools
-	// err = db.DB.Select(&stakePools, "select address, name from stake_pools_stats;")
-	// if err != nil {
-	// 	logger.Errorf("error retrieving stake pools stats: %v", err)
-	// 	http.Error(w, "Internal server error", 503)
-	// 	return
-	// }
-	// // logger.Errorln(stakePools)
-	// // logger.Errorf("%T", chartData.Series[0].Data.([]types.SeriesDataItem))
-	// for _, pool := range stakePools{
-	// 	for i, slice := range chartData.Series[0].Data.([]types.SeriesDataItem){
-	// 		logger.Errorln(i, slice.Name, "0x"+pool.Address, (slice.Name == "0x"+pool.Address))
-	// 		if strings.ToLower(slice.Name) == strings.ToLower("0x"+pool.Address) {
-	// 			chartData.Series[0].Data.([]types.SeriesDataItem)[i].Name = pool.Name
-	// 			// break
-	// 		}
-	// 	}
-	// 	logger.Errorln("")
-	// }
-
-	type chart struct {
-		DepositDistribution types.ChartsPageDataChart
-		StakedEther         string
-		PoolInfo            [][5]string
-	}
-
 	var pieChart chart
 
-	stats := services.LatestIndexPageData()
+	indexStats := services.LatestIndexPageData()
 
 	pieChart.DepositDistribution.Data = chartData
 	pieChart.DepositDistribution.Height = 500
 	pieChart.DepositDistribution.Path = "deposits_distribution"
-	pieChart.StakedEther = stats.StakedEther
-
-	var respData [][5]string
-
-	var stakePools []pools
-	err = db.DB.Select(&stakePools, "select address, name, deposit, category from stake_pools_stats;")
-	if err != nil {
-		logger.Errorf("error retrieving stake pools stats for %v route: %v", r.URL.String(), err)
-	}
-
-	states := getPoolState(stakePools)
-
-	for i, pool := range stakePools {
-		state := "?"
-		if len(states) > i {
-			state = states[i]
-		}
-
-		respData = append(respData, [5]string{
-			pool.Name,
-			*pool.Category,
-			pool.Address,
-			fmt.Sprint(pool.Deposit),
-			state,
-		})
-	}
-
-	pieChart.PoolInfo = respData
+	pieChart.StakedEther = indexStats.StakedEther
+	pieChart.PoolInfo = getPoolInfo()
 
 	data.Data = pieChart
 
-	// pageData.CsrfField = csrf.TemplateField(r)
-	// data.Data = pageData
 	err = poolsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -119,28 +80,56 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getPoolState(pools []pools) []string {
-	var addrs [][]byte
+func getPoolInfo() []respData {
+	var resp []respData
+
+	var stakePools []pools
+	err := db.DB.Select(&stakePools, "select address, name, deposit, category from stake_pools_stats;")
+	if err != nil {
+		logger.Errorf("error retrieving stake pools stats %v ", err)
+	}
+
+	stats := getPoolStats(stakePools)
+
+	for i, pool := range stakePools {
+		state := []poolInfo{}
+		if len(stats) > i {
+			if pool.Address == stats[i].Address {
+				state = stats[i].PoolInfo
+			}
+		}
+
+		resp = append(resp, respData{
+			Address:  pool.Address,
+			Category: pool.Category,
+			Deposit:  pool.Deposit,
+			Name:     pool.Name,
+			PoolInfo: state,
+		})
+	}
+
+	return resp
+}
+
+func getPoolStats(pools []pools) []poolStatsData {
+	var result []poolStatsData
 	for _, pool := range pools {
-		hex, err := hex.DecodeString(pool.Address)
+		var states []poolInfo
+		err := db.DB.Select(&states,
+			`SELECT status, validatorindex, balance31d
+			 FROM validators 
+			 WHERE pubkey = ANY(
+								SELECT publickey 
+								FROM eth1_deposits 
+								WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
+							)
+			 ORDER BY balance31d DESC`, pool.Address)
 		if err != nil {
-			logger.Errorf("error decoding:'%s', %v", pool.Address, err)
+			logger.Errorf("error encoding:'%s', %v", pool.Address, err)
 			continue
 		}
-		addrs = append(addrs, hex)
+		result = append(result, poolStatsData{PoolInfo: states, Address: pool.Address})
 	}
 
-	addrsArr := pq.Array(addrs)
-
-	var states []string
-	err := db.DB.Select(&states,
-		`SELECT status
-		 FROM validators 
-		 WHERE pubkey = ANY($1::bytea[])`, addrsArr)
-	if err != nil {
-		logger.Errorf("error retrieving pool status: %v", err)
-		return []string{}
-	}
-
-	return states
+	return result
 }

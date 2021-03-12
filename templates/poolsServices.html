@@ -61,12 +61,73 @@
             </div>
         </div>
     </div>
+    <div id="poolPopUP" style="position: absolute; width: 70%; height: 70%; z-index: 100; top: 15%; right: 15%;" class="card d-none">
+        <div class="container-fluid" style="width: 100%;">
+            <div class="row mb-1" style="width: 100%;">
+                <button id="poolPopUpBtn" class="col-2 btn btn-sm btn-primary">Close</button>
+            </div>
+            <div class="row popupMain" style="height: 65vh; width: 100%; overflow: auto;"></div>
+        </div>
+    </div>
 </section>
 
 <div id="tempcont" class=""></div>
 <script src="/bundle/js/jquery.min.js"></script>
 <script>
+    function getActive(poolValidators){
+        let active = 0
+        for (let item of poolValidators){
+            if (item.status==="active_online"){
+                active++
+            }
+        }
+
+        return 100.0 - (active/poolValidators.length)
+    }
+
+    function showPoolPopUP(address){
+        data = []
+        let elems = {{.Data.PoolInfo}}
+        for (let item of elems){
+            if (item.address===address){
+                data = item.poolInfo
+                break
+            }
+        }
+
+        if (data.length===0){
+            return
+        }
+
+        
+        let process = async ()=>{
+            for (let val of data){
+                let bg = "danger"
+                if (val.status==="active_online"){
+                    bg = "success"
+                }
+                $(".popupMain").append(`
+                    <div class="col-sm-12 col-md-4 col-lg-2 col-xl-2 card shadow-sm p-1 m-1 bg-${bg}">
+                        <div class="d-flex flex-row justify-content-between">
+                            <a class="text-white" href="/validator/${val.validatorindex}">${val.validatorindex}</a>
+                            <span class="text-white">${val.status}</span>
+                        </div>
+                        <span class="text-white">31 Day Balance ${(val.balance31d/1e9).toFixed(4)} ETH</span>
+                    </div>
+                `)
+            } 
+        }
+
+        process().then(()=>{$("#poolPopUP").removeClass("d-none")})
+        
+
+        // console.log(address)
+    }
+
+
     $(document).ready(function () {
+        $("#poolPopUpBtn").on("click", ()=>{$("#poolPopUP").addClass("d-none")})
+
         fetch("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
         .then(res => res.json())
         .then(data => {
@@ -82,10 +143,10 @@
             alert("Page may not function properly if you are using adblock or other types of communication blocking software")
         });
         
-        // let tableData = []
-        // for (let el of {{.Data.PoolInfo}}){
-        //     tableData.push([el.name, el.category, el.address, el.deposit])
-        // }
+        let tableData = []
+        for (let el of {{.Data.PoolInfo}}){
+            tableData.push([el.name, el.category, el.address, el.deposit, el.poolInfo])
+        }
 
         $('#staking-pool-table').DataTable({
             processing: true,
@@ -93,7 +154,7 @@
             ordering: true,
             searching: false,
             pagingType: 'full_numbers',
-            data: {{.Data.PoolInfo}},
+            data: tableData,
             preDrawCallback: function() {
                 try {
                     $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip('dispose')
@@ -101,6 +162,11 @@
             },
             drawCallback: function(settings) {
                 $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip()
+                $(".hover-shadow").hover(function(){
+                    $(this).addClass("shadow");
+                    }, function(){
+                    $(this).removeClass("shadow");
+                });
             },
             columnDefs: [
                     {
@@ -119,6 +185,15 @@
                         targets: 3,
                         data: '3',
                         "orderable": true
+                    }, {
+                        targets: 4,
+                        data: '4',
+                        render: function(data, type, row, meta) {
+                            // console.log(type, row, meta)
+                            return `<span data-toggle="tooltip" title="Percentage of active validators in this pool"
+                                        style="cursor: pointer;" class="hover-shadow p-1"
+                                        onclick=showPoolPopUP("${row[2]}")>${getActive(data).toFixed(2)}% Active</span>`
+                        }
                     }
                 ],
             order: [[3,'desc']],
