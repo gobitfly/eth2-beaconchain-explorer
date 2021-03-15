@@ -9,6 +9,8 @@ import (
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
+	"sync"
+	"time"
 	// "strings"
 )
 
@@ -49,6 +51,10 @@ type respData struct {
 	PoolInfo []poolInfo `json:"poolInfo"`
 }
 
+var poolInfoTemp []respData
+var poolInfoTempTime time.Time
+var poolInfoTempMux = &sync.RWMutex{}
+
 func Pools(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -68,7 +74,16 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	pieChart.DepositDistribution.Height = 500
 	pieChart.DepositDistribution.Path = "deposits_distribution"
 	pieChart.StakedEther = indexStats.StakedEther
-	pieChart.PoolInfo = getPoolInfo()
+
+	poolInfoTempMux.Lock()
+	defer poolInfoTempMux.Unlock()
+	if time.Now().Sub(poolInfoTempTime).Minutes() > 5 { // query db every 5 min
+		poolInfoTemp = getPoolInfo()
+		pieChart.PoolInfo = poolInfoTemp
+		poolInfoTempTime = time.Now()
+	} else {
+		pieChart.PoolInfo = poolInfoTemp
+	}
 
 	data.Data = pieChart
 
