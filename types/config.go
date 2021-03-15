@@ -76,10 +76,6 @@ type Config struct {
 			Host     string `yaml:"host" envconfig:"FRONTEND_DB_HOST"`
 			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
 		} `yaml:"database"`
-		Notifications struct {
-			Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
-			FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
-		} `yaml:"notifications"`
 		Stripe struct {
 			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
 			PublicKey string `yaml:"publicKey" envconfig:"FRONTEND_STRIPE_PUBLIC_KEY"`
@@ -106,12 +102,20 @@ type Config struct {
 				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
 			} `yaml:"mailgun"`
 		} `yaml:"mail"`
-		GATag string `yaml:"gatag"  envconfig:"GATAG"`
+		GATag      string `yaml:"gatag"  envconfig:"GATAG"`
+		ShowDonors struct {
+			Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
+			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
+		} `yaml:"showDonors"`
 	} `yaml:"frontend"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
 		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
 	} `yaml:"metrics"`
+	Notifications struct {
+		Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+		FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
+	} `yaml:"notifications"`
 }
 
 // Phase0 is the config for beacon chain phase0

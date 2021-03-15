@@ -239,6 +239,36 @@ type ValidatorPageData struct {
 	NetworkStats                        *IndexPageData
 	EstimatedActivationTs               int64
 	InclusionDelay                      int64
+	CurrentAttestationStreak            uint64
+	LongestAttestationStreak            uint64
+}
+
+type ValidatorStatsTablePageData struct {
+	ValidatorIndex uint64
+	Rows           []*ValidatorStatsTableRow
+}
+
+type ValidatorStatsTableRow struct {
+	ValidatorIndex        uint64
+	Day                   uint64
+	StartBalance          sql.NullInt64 `db:"start_balance"`
+	EndBalance            sql.NullInt64 `db:"end_balance"`
+	Income                int64         `db:"-"`
+	MinBalance            sql.NullInt64 `db:"min_balance"`
+	MaxBalance            sql.NullInt64 `db:"max_balance"`
+	StartEffectiveBalance sql.NullInt64 `db:"start_effective_balance"`
+	EndEffectiveBalance   sql.NullInt64 `db:"end_effective_balance"`
+	MinEffectiveBalance   sql.NullInt64 `db:"min_effective_balance"`
+	MaxEffectiveBalance   sql.NullInt64 `db:"max_effective_balance"`
+	MissedAttestations    sql.NullInt64 `db:"missed_attestations"`
+	OrphanedAttestations  sql.NullInt64 `db:"orphaned_attestations"`
+	ProposedBlocks        sql.NullInt64 `db:"proposed_blocks"`
+	MissedBlocks          sql.NullInt64 `db:"missed_blocks"`
+	OrphanedBlocks        sql.NullInt64 `db:"orphaned_blocks"`
+	AttesterSlashings     sql.NullInt64 `db:"attester_slashings"`
+	ProposerSlashings     sql.NullInt64 `db:"proposer_slashings"`
+	Deposits              sql.NullInt64 `db:"deposits"`
+	DepositsAmount        sql.NullInt64 `db:"deposits_amount"`
 }
 
 type ChartDataPoint struct {
@@ -484,6 +514,7 @@ type BlockPageAttesterSlashing struct {
 type BlockPageProposerSlashing struct {
 	BlockSlot         uint64 `db:"block_slot"`
 	BlockIndex        uint64 `db:"block_index"`
+	BlockRoot         []byte `db:"block_root" json:"block_root"`
 	ProposerIndex     uint64 `db:"proposerindex"`
 	Header1Slot       uint64 `db:"header1_slot"`
 	Header1ParentRoot []byte `db:"header1_parentroot"`

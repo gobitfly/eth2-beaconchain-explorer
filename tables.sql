@@ -9,6 +9,7 @@ create table validators
 (
     validatorindex             int         not null,
     pubkey                     bytea       not null,
+    pubkeyhex                  text        not null default '',
     withdrawableepoch          bigint      not null,
     withdrawalcredentials      bytea       not null,
     balance                    bigint      not null,
@@ -26,8 +27,10 @@ create table validators
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
+create index idx_validators_pubkeyhex on validators (pubkeyhex);
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
+create index idx_validators_activationepoch on validators (activationepoch);
 
 drop table if exists validator_names;
 create table validator_names
@@ -129,6 +132,17 @@ CREATE TABLE validator_balances_7 PARTITION OF validator_balances_p FOR VALUES I
 CREATE TABLE validator_balances_8 PARTITION OF validator_balances_p FOR VALUES IN (8);
 CREATE TABLE validator_balances_9 PARTITION OF validator_balances_p FOR VALUES IN (9);
 
+drop table if exists validator_balances_recent;
+create table validator_balances_recent
+(
+    epoch          int    not null,
+    validatorindex int    not null,
+    balance        bigint not null,
+    primary key (epoch, validatorindex)
+);
+create index idx_validator_balances_recent_epoch on validator_balances_recent (epoch);
+create index idx_validator_balances_recent_validatorindex on validator_balances_recent (validatorindex);
+
 drop table if exists validator_stats;
 create table validator_stats
 (
@@ -161,6 +175,20 @@ create table validator_stats_status
     status boolean not null,
     primary key (day)
 );
+
+drop table if exists validator_attestation_streaks;
+create table validator_attestation_streaks
+(
+    validatorindex int not null,
+    status         int not null,
+    start          int not null,
+    length         int not null,
+    primary key (validatorindex, status, start)
+);
+create index idx_validator_attestation_streaks_validatorindex on validator_attestation_streaks (validatorindex);
+create index idx_validator_attestation_streaks_status on validator_attestation_streaks (status);
+create index idx_validator_attestation_streaks_length on validator_attestation_streaks (length);
+create index idx_validator_attestation_streaks_start on validator_attestation_streaks (start);
 
 drop table if exists queue;
 create table queue
@@ -238,6 +266,7 @@ create table blocks_proposerslashings
 (
     block_slot         int    not null,
     block_index        int    not null,
+    block_root         bytea  not null default '',
     proposerindex      int    not null,
     header1_slot       bigint not null,
     header1_parentroot bytea  not null,
@@ -257,6 +286,7 @@ create table blocks_attesterslashings
 (
     block_slot                   int       not null,
     block_index                  int       not null,
+    block_root                   bytea     not null default '',
     attestation1_indices         integer[] not null,
     attestation1_signature       bytea     not null,
     attestation1_slot            bigint    not null,
@@ -283,6 +313,7 @@ create table blocks_attestations
 (
     block_slot      int   not null,
     block_index     int   not null,
+    block_root      bytea not null default '',
     aggregationbits bytea not null,
     validators      int[] not null,
     signature       bytea not null,
@@ -304,6 +335,7 @@ create table blocks_deposits
 (
     block_slot            int    not null,
     block_index           int    not null,
+    block_root            bytea  not null default '',
     proof                 bytea[],
     publickey             bytea  not null,
     withdrawalcredentials bytea  not null,
@@ -317,6 +349,7 @@ create table blocks_voluntaryexits
 (
     block_slot     int   not null,
     block_index    int   not null,
+    block_root     bytea not null default '',
     epoch          int   not null,
     validatorindex int   not null,
     signature      bytea not null,
