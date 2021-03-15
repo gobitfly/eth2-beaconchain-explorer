@@ -72,10 +72,10 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 		boundingsQry = `boundings as (select validatorindex, $2+1 as epoch, status from attestation_assignments_p where week = $2/255/7 and epoch = $2),`
 	} else {
 		// use validator_stats table to limit search-space
-		nomissesQry := "select validatorindex, $2+1 as epoch, 1 as status from validator_stats where missed_attestations = 0 and day = $1/225"
+		nomissesQry := "select validatorindex, $2+1 as epoch, 1 as status from validator_stats where day = $1/225 and (missed_attestations = 0 or missed_attestations is null) and validatorindex != 2147483647"
 		if lastStatsDay < day {
 			// if the validator_stats table has no entry for this day we find validators with only misses or no misses
-			nomissesQry = "select validatorindex, $2+1 as epoch, status from attestation_assignments_p where week = $1/225/7 and epoch >= $1 and epoch <= $2 and status = 1 group by validatorindex, status having count(*) = $2-$1+1"
+			nomissesQry = "select validatorindex, $2+1 as epoch, status from attestation_assignments_p where week = $1/225/7 and epoch >= $1 and epoch <= $2 group by validatorindex, status having count(*) = $2-$1+1"
 		}
 		boundingsQry = fmt.Sprintf(`
 			-- limit search-space
@@ -94,7 +94,7 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 			),`, nomissesQry)
 	}
 
-	err = DB.Select(&streaks, fmt.Sprintf(`
+	qry := fmt.Sprintf(`
 		with
 			%s
 			-- calculate streaklengths
@@ -130,7 +130,11 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 				) a
 			)
 		select validatorindex, status, start, length
-		from rankedstreaks where r = 1 or start+length = $2-1 order by validatorindex, start`, boundingsQry), uint64(startEpoch), uint64(endEpoch))
+		from rankedstreaks where r = 1 or start+length = $2+1 order by validatorindex, start`, boundingsQry)
+
+	// fmt.Println(strings.ReplaceAll(strings.ReplaceAll(qry, "$1", fmt.Sprintf("%d", startEpoch)), "$2", fmt.Sprintf("%d", endEpoch)))
+
+	err = DB.Select(&streaks, qry, uint64(startEpoch), uint64(endEpoch))
 	if err != nil {
 		return false, fmt.Errorf("Error getting streaks: %w", err)
 	}
