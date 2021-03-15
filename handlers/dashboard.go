@@ -19,6 +19,7 @@ import (
 )
 
 var dashboardTemplate = template.Must(template.New("dashboard").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/dashboard.html"))
+var validatorLimit = 200
 
 func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 	if str == "" {
@@ -29,7 +30,7 @@ func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 	strSplitLen := len(strSplit)
 
 	// we only support up to 200 validators
-	if strSplitLen > 200 {
+	if strSplitLen > validatorLimit {
 		return []uint64{}, fmt.Errorf("Too much validators")
 	}
 
@@ -293,7 +294,7 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN proposals p2 ON validators.validatorindex = p2.validatorindex AND p2.status = 2
 		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = ANY($1)
-		LIMIT 200`, filter)
+		LIMIT $2`, filter, validatorLimit)
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator data")
