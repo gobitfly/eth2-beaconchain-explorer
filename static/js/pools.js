@@ -37,12 +37,14 @@ function showPoolInfo(data){
     if (data.length > 100){
         data2Show = data.slice(0, 100)
         data2ShowOnScroll = data.slice(100, data.length-1)
-        console.log("data2Show len", data2Show.length, data2ShowOnScroll.length, data2Show, data2ShowOnScroll[0])
     }
     for (let item of data2Show){
         $(".popupMain").append(getValidatorCard(item))
     }
     $("#poolPopUP").removeClass("d-none")
+    $('html, body').animate({
+        scrollTop: $("body").offset().top
+    }, 1500);
     if (data2ShowOnScroll.length > 0){
         $(".popupMain").on('scroll', (e)=>{
             var elem = $(e.currentTarget);
@@ -58,7 +60,6 @@ function showPoolInfo(data){
 function addHandlers(){
     for (let item of tableData){
         $("#"+item[2]).on("click", ()=>{
-            // showPoolPopUP(item[2])
             showPoolInfo(item[4])
         })
     }
@@ -66,7 +67,6 @@ function addHandlers(){
 
 $(document).ready(function () {
     $("#poolPopUpBtn").on("click", ()=>{$("#poolPopUP").addClass("d-none")})
-    // $(".popupMain").bind('scroll', detectBottom);
     fetch("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
     .then(res => res.json())
     .then(data => {
@@ -129,11 +129,22 @@ $(document).ready(function () {
                     targets: 4,
                     data: '4',
                     render: function(data, type, row, meta) {
-                        // console.log(type, row, meta)
                         let info = getActive(data)
-                        return `<span data-toggle="tooltip" title="${info[0].toFixed(2)}% of validators are active in this pool"
-                                    style="cursor: pointer;" class="hover-shadow p-1"
-                                    id="${row[2]}">${info[1]}</span>`
+                        let bg = "bg-success"
+                        let fg = "white"
+                        if (parseInt(info[0]) < 60){
+                            bg = "bg-danger"
+                            fg = "black"
+                        }
+                        return `
+                        <div id="${row[2]}" style="cursor: pointer;" class="progress hover-shadow" style="height: 100%;" data-toggle="tooltip" title="${info[0].toFixed(2)}% of validators are active in this pool">
+                            <div class="progress-bar progress-bar-success ${bg}" 
+                                role="progressbar" aria-valuenow="${parseInt(info[0])}"
+                                aria-valuemin="0" aria-valuemax="100" style="width: ${parseInt(info[0])}%; color: ${fg};" >
+                                ${info[1]}
+                            </div>
+                        </div>
+                        `
                     }
                 }
             ],
