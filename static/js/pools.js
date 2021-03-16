@@ -28,7 +28,6 @@ function getValidatorCard(val){
 }
 
 function showPoolInfo(data){
-    $(".popupMain").off('scroll')
     $(".popupMain").html("")
     let data2Show = data
     let data2ShowOnScroll = []
@@ -44,9 +43,11 @@ function showPoolInfo(data){
         scrollTop: $("body").offset().top
     }, 1500);
     if (data2ShowOnScroll.length > 0){
+        $(".popupMain").off('scroll')
         $(".popupMain").on('scroll', (e)=>{
             var elem = $(e.currentTarget);
-            if (elem[0].scrollHeight - elem.scrollTop() <= elem.outerHeight()){
+            // console.log((elem[0].scrollHeight - elem.scrollTop() <= elem.outerHeight()), elem[0].scrollHeight, elem.scrollTop(), elem.outerHeight())
+            if ((elem[0].scrollHeight - elem.scrollTop())-10 <= elem.outerHeight()){
                 for (let i = 0; i<100; i++){
                     $(".popupMain").append(getValidatorCard(data2ShowOnScroll.shift()))
                 }
@@ -75,6 +76,8 @@ function updateTableType(){
         $("#poolTable").removeClass("table")
         $("#poolTable").addClass("table-responsive")
     }
+
+    $("#staking-pool-table_wrapper div.row:last").addClass("mt-4")
 }
 
 function randerTable(tableData){
@@ -116,7 +119,10 @@ function randerTable(tableData){
                 }, {
                     targets: 2,
                     data: '2',
-                    "orderable": false
+                    "orderable": false,
+                    render: function(data, type, row, meta){
+                        return `<a href="/validators/eth1deposits?q=0x${data}">${data}</a>`
+                    } 
                 }, {
                     targets: 3,
                     data: '3',

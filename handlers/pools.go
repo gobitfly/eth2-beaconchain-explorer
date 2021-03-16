@@ -18,6 +18,7 @@ import (
 var poolsServicesTemplate = template.Must(template.New("poolsServices").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
 	"templates/poolsServices.html",
+	"templates/bannerPoolsServices.html",
 	"templates/index/depositDistribution.html"))
 
 type pools struct {

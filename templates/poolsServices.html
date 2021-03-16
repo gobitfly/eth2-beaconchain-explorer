@@ -20,6 +20,11 @@
         </div>
         <div class="row">
             <div class="col-md-12">
+                {{ template "bannerPoolsServices" }}
+            </div>
+       </div>
+        <div class="row">
+            <div class="col-md-12">
                 <div class="d-flex justify-content-between" style="width: 100%;">
                     <div>
                         <span data-toggle="tooltip" data-placement="top" title="Staked ETH">{{.Data.StakedEther}}</span> / <span id="ethCsupply" data-toggle="tooltip" data-placement="top" title="Circulating ETH">114,788,539 ETH</span>
@@ -59,13 +64,13 @@
             </div>
         </div>
     </div>
-    <div id="poolPopUP" style="position: absolute; width: 70%; height: 70%; z-index: 100; top: 15%; right: 15%;" class="card d-none">
+    <div id="poolPopUP" style="position: absolute; width: 70%; z-index: 100; top: 15%; right: 15%;" class="card p-1 d-none">
         <div class="container-fluid" style="width: 100%;">
             <div class="row m-0 mb-1" style="width: 100%;">
                 <button id="poolPopUpBtn" class="col-2 btn btn-sm btn-primary">Close</button>
                 <span class="col p-1 mx-1" style="color: gray;"><i class="fas fa-info-circle"></i> Validators are ordered by 31 day balance, highest first</span>
             </div>
-            <div class="row popupMain p-0 m-0 justify-content-center" style="height: 65vh; width: 100%; overflow: auto;"></div>
+            <div class="row popupMain p-0 m-0 justify-content-center" style="height: 70vh; width: 100%; overflow: auto;"></div>
         </div>
     </div>
 </section>
