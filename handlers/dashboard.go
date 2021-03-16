@@ -417,6 +417,7 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 
 	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
 	if err != nil {
+		logger.Errorf("error retrieving active validators %v", err)
 		http.Error(w, "Invalid query", 400)
 		return
 	}

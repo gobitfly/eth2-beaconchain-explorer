@@ -56,10 +56,14 @@ function showPoolInfo(data){
 }
 
 function addHandlers(tableData){
-    for (let item of tableData){
-        $("#"+item[2]).on("click", ()=>{
-            showPoolInfo(item[5])
+    for (let item of Object.keys(tableData)){
+        if (isNaN(parseInt(item, 10))) continue
+
+        $("#"+tableData[item][2]).off("click")
+        $("#"+tableData[item][2]).on("click", ()=>{
+            showPoolInfo(tableData[item][5])
         })
+        getPoolEffectiveness(tableData[item][2]+"eff", tableData[item][5])
     }
 }
 
@@ -93,8 +97,12 @@ function randerTable(tableData){
                 }, function(){
                 $(this).removeClass("shadow");
             });
-            addHandlers(tableData)
+            let api = this.api();
+            let curData = api.rows( {page:'current'} ).data()
+            // console.log(curData, typeof(curData), Object.keys(curData) ,api.row(this).data());
+            addHandlers(curData)
             updateTableType()
+ 
         },
         columnDefs: [
                 {
@@ -123,11 +131,9 @@ function randerTable(tableData){
                     render: function(data, type, row, meta) {
                         function getIncomeStats(){
                             return `
-                                <div>
-                                    <span>Last Day: ${(data.lastDay/1e9).toFixed(4)}</span>
-                                    <span>Last Week: ${(data.lastWeek/1e9).toFixed(4)}</span>
-                                    <span>Last Month: ${(data.lastMonth/1e9).toFixed(4)}</span>
-                                </div>
+                                Last Day: ${(data.lastDay/1e9).toFixed(4)}
+                                Last Week: ${(data.lastWeek/1e9).toFixed(4)}
+                                Last Month: ${(data.lastMonth/1e9).toFixed(4)}
                                 `
                         }
                         return `<span data-toggle="tooltip" title="${getIncomeStats()}" data-html="true">
@@ -161,6 +167,20 @@ function randerTable(tableData){
                         </div>
                         `
                     }
+                }, {
+                    targets: 6,
+                    data: '6',
+                    render: function(data, type, row, meta) {
+                        // getPoolEffectiveness(data[0]+"eff", data[1])
+                        return `
+                            <div id="${data}eff" data-toggle="tooltip" data-original-title="Effectiveness of the top 200 validators">
+                                <div class="spinner-grow spinner-grow-sm text-primary" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                            </div>
+                        `
+                    }
+                
                 }
             ],
         order: [[3,'desc']],
@@ -177,6 +197,30 @@ function updateEthSupply(){
     $("#ethCsupply").html(circulatingETH.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",") +" ETH")
 }
 
+function getPoolEffectiveness(id, data){
+    let load = async ()=>{
+        let query = "?validators="
+        for (let item of data.slice(0, 200)){
+            query+=item.validatorindex+","
+        }
+        query = query.substring(0, query.length-1)
+        // console.log(query)
+        let resp = await fetch(`/dashboard/data/effectiveness${query}`)
+        resp = await resp.json()
+        let eff = 0.0
+        for (let incDistance of resp){
+            if (incDistance===0.0){
+            continue
+            }
+            eff+=(1.0/incDistance)*100.0
+        }
+        eff=eff/resp.length
+        setValidatorEffectiveness(id, eff)
+    }
+
+    load().then(()=>{})
+}
+
 $(document).ready(function () {
     $(window).on("resize", ()=>{
         updateTableType()
@@ -187,7 +231,10 @@ $(document).ready(function () {
     
     let tableData = []
     for (let el of POOL_INFO){
-        tableData.push([el.name, el.category, el.address, parseInt(el.poolIncome.totalDeposits/1e9), el.poolIncome, el.poolInfo])
+        tableData.push([el.name, el.category, el.address, 
+                        parseInt(el.poolIncome.totalDeposits/1e9), 
+                        el.poolIncome, el.poolInfo, 
+                        el.address])
     }
 
     randerTable(tableData)
