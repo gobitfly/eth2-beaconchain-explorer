@@ -225,7 +225,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		WHERE (ENCODE(validators.pubkey::bytea, 'hex') LIKE $1
+		WHERE (pubkeyhex LIKE $1
 			OR CAST(validators.validatorindex AS text) LIKE $1)
 		%s
 		ORDER BY %s %s

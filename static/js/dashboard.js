@@ -593,7 +593,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Validators by ETH1 Addresses</h3>',
         suggestion: function(data) {
-          var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
+          var len = data.validator_indices.length > VALLIMIT ? VALLIMIT+'+' : data.validator_indices.length 
           return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         }
       }
@@ -606,7 +606,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Validators by Graffiti</h3>',
         suggestion: function(data) {
-          var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
+          var len = data.validator_indices.length > VALLIMIT ? VALLIMIT+'+' : data.validator_indices.length 
           return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.graffiti}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         }
       }
@@ -619,7 +619,7 @@ $(document).ready(function() {
       templates: {
         header: '<h3>Validators by Name</h3>',
         suggestion: function(data) {
-          var len = data.validator_indices.length > 100 ? '100+' : data.validator_indices.length 
+          var len = data.validator_indices.length > VALLIMIT ? VALLIMIT+'+' : data.validator_indices.length 
           return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.name}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
         }
       }
