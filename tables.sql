@@ -534,7 +534,7 @@ CREATE TABLE stats_meta (
 	
 	user_id 		 	bigint	 	 		not null,
     foreign key(user_id) references users(id),
-    UNIQUE (user_id, created_trunc, process)
+    UNIQUE (user_id, created_trunc, process, machine)
 );
 
 create index idx_stats_machine on stats_meta (machine);
@@ -552,8 +552,6 @@ CREATE TABLE stats_process (
 	client_version		 	character varying(25)	 	not null,
 	client_build		 	int 				not null,
 	
-	sync_eth1_fallback_configured  bool	 			not null,
-	sync_eth1_fallback_connected 	bool	 			not null,
 	sync_eth2_fallback_configured  bool 				not null,
 	sync_eth2_fallback_connected 	bool	 			not null,
 	
@@ -573,6 +571,8 @@ CREATE TABLE stats_add_beaconnode (
 	sync_eth1_connected	 		bool	 		not null,
 	sync_eth2_synced 			bool	 		not null,
 	sync_beacon_head_slot	 		bigint	 		not null,
+    sync_eth1_fallback_configured  bool	 			not null,
+	sync_eth1_fallback_connected 	bool	 			not null,
 	
 	general_id		 		bigint	 		not null,
 	

@@ -309,6 +309,16 @@ func UserClientDelete(userID uint64, clientName string) error {
 	return err
 }
 
+func GetStatsMachineCount(tx *sql.Tx, userID uint64) (uint64, error) {
+	var count uint64
+	row := tx.QueryRow(
+		"SELECT COUNT(DISTINCT sub.machine) as count FROM (SELECT machine from stats_meta WHERE user_id = $1 AND created_trunc + '15 minutes'::INTERVAL > 'now' order by id desc LIMIT 15) sub",
+		userID,
+	)
+	err := row.Scan(&count)
+	return count, err
+}
+
 func InsertStatsMeta(tx *sql.Tx, userID uint64, data types.StatsMeta) (uint64, error) {
 	now := time.Now()
 	nowTs := now.Unix()
@@ -346,12 +356,12 @@ func InsertStatsProcessGeneral(tx *sql.Tx, meta_id uint64, data types.StatsProce
 	var id uint64
 	row := tx.QueryRow(
 		"INSERT INTO stats_process (meta_id, cpu_process_seconds_total, memory_process_bytes, client_name, client_version,"+
-			"client_build, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured,"+
+			"client_build, sync_eth2_fallback_configured,"+
 			"sync_eth2_fallback_connected"+
 			") "+
-			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
+			"VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
 		meta_id, data.CPUProcessSecondsTotal, data.MemoryProcessBytes, data.ClientName, data.ClientVersion, data.ClientBuild,
-		data.SyncEth1FallbackConfigured, data.SyncEth1FallbackConnected, data.SyncEth2FallbackConfigured, data.SyncEth2FallbackConnected,
+		data.SyncEth2FallbackConfigured, data.SyncEth2FallbackConnected,
 	)
 	err := row.Scan(&id)
 	return id, err
@@ -373,11 +383,11 @@ func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, data types.StatsAdditi
 	row := tx.QueryRow(
 		"INSERT INTO stats_add_beaconnode (general_id, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive,"+
 			"network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected, sync_eth2_synced,"+
-			"sync_beacon_head_slot"+
+			"sync_beacon_head_slot, sync_eth1_fallback_configured, sync_eth1_fallback_connected"+
 			") "+
-			"VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
 		general_id, data.DiskBeaconchainBytesTotal, data.NetworkLibp2pBytesTotalReceive, data.NetworkLibp2pBytesTotalTransmit,
-		data.NetworkPeersConnected, data.SyncEth1Connected, data.SyncEth2Synced, data.SyncBeaconHeadSlot,
+		data.NetworkPeersConnected, data.SyncEth1Connected, data.SyncEth2Synced, data.SyncBeaconHeadSlot, data.SyncEth1FallbackConfigured, data.SyncEth1FallbackConnected,
 	)
 	err := row.Scan(&id)
 	return id, err

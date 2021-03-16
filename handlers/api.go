@@ -999,8 +999,9 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	offset := parseUintWithDefault(vars["offset"], 0)
-	limit := parseUintWithDefault(vars["limit"], 100)
+	limit := parseUintWithDefault(vars["limit"], 180)
 	if limit > 1000 {
+		// TODO: adaptive limit
 		limit = 1000
 	}
 
@@ -1126,6 +1127,19 @@ func insertStats(userID uint64, machine string, j *json.Encoder, r *http.Request
 		return false
 	}
 	defer tx.Rollback()
+
+	count, err := db.GetStatsMachineCount(tx, userID)
+	if err != nil {
+		logger.Errorf("Could not get max machine count| %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not get machine count")
+		return false
+	}
+	if count >= 2 {
+		// TODO: adaptive limit
+		logger.Errorf("User has reached max machine count | %v", err)
+		sendErrorResponse(j, r.URL.String(), "reached max machine count")
+		return false
+	}
 
 	id, err := db.InsertStatsMeta(tx, userID, parsedMeta)
 	if err != nil {

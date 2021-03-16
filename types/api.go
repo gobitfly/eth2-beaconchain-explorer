@@ -33,8 +33,6 @@ type StatsProcess struct {
 	ClientName                 string `json:"client_name"`
 	ClientVersion              string `json:"client_version"`
 	ClientBuild                uint64 `json:"client_build"`
-	SyncEth1FallbackConfigured bool   `json:"sync_eth1_fallback_configured"`
-	SyncEth1FallbackConnected  bool   `json:"sync_eth1_fallback_connected"`
 	SyncEth2FallbackConfigured bool   `json:"sync_eth2_fallback_configured"`
 	SyncEth2FallbackConnected  bool   `json:"sync_eth2_fallback_connected"`
 }
@@ -52,6 +50,8 @@ type StatsAdditionalsBeaconnode struct {
 	SyncEth1Connected               bool   `json:"sync_eth1_connected"`
 	SyncEth2Synced                  bool   `json:"sync_eth2_synced"`
 	SyncBeaconHeadSlot              uint64 `json:"sync_beacon_head_slot"`
+	SyncEth1FallbackConfigured      bool   `json:"sync_eth1_fallback_configured"`
+	SyncEth1FallbackConnected       bool   `json:"sync_eth1_fallback_connected"`
 }
 
 type StatsMeta struct {
