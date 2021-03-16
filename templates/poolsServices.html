@@ -36,18 +36,17 @@
         </div>
         <div class="row mt-5">
             <div class="col-md-12">
-                <div class="table-responsive card px-0 py-1">
+                <div id="poolTable" class="table-responsive card px-0 py-1">
                     <table class="table" id="staking-pool-table">
                         <thead>
                             <tr>
                                 <th>Service</th>
                                 <th>Type</th>
                                 <th>ETH1 Addr</th>
-                                <th>Deposit</th>
+                                <th>Deposit (ETH)</th>
+                                <th>Total Income (ETH)</th>
                                 <th>State</th>
-                                <!-- <th>Total Income</th>
-                                <th>Act/Slashed Val.</th>
-                                <th>Avg. Att. Eff.</th>
+                                <!--<th>Avg. Att. Eff.</th>
                                 <th>Total Streak</th>
                                 <th>Tslfu</th> -->
                             </tr>
@@ -64,6 +63,7 @@
         <div class="container-fluid" style="width: 100%;">
             <div class="row m-0 mb-1" style="width: 100%;">
                 <button id="poolPopUpBtn" class="col-2 btn btn-sm btn-primary">Close</button>
+                <span class="col p-1 mx-1" style="color: gray;"><i class="fas fa-info-circle"></i> Validators are ordered by 31 day balance, highest first</span>
             </div>
             <div class="row popupMain p-0 m-0 justify-content-center" style="height: 65vh; width: 100%; overflow: auto;"></div>
         </div>
@@ -75,6 +75,7 @@
 <script>
     const POOL_INFO = {{.Data.PoolInfo}}
     const STAKED_ETH = {{.Data.StakedEther}}
+    const ETH_SUPPLY = {{.Data.EthSupply}}
 </script>
 <script src="/bundle/js/pools.js"></script>
 {{end}}

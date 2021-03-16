@@ -1,5 +1,3 @@
-let tableData = []
-
 function getActive(poolValidators){
     let active = 0
     for (let item of poolValidators){
@@ -57,36 +55,25 @@ function showPoolInfo(data){
     }
 }
 
-function addHandlers(){
+function addHandlers(tableData){
     for (let item of tableData){
         $("#"+item[2]).on("click", ()=>{
-            showPoolInfo(item[4])
+            showPoolInfo(item[5])
         })
     }
 }
 
-$(document).ready(function () {
-    $("#poolPopUpBtn").on("click", ()=>{$("#poolPopUP").addClass("d-none")})
-    fetch("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
-    .then(res => res.json())
-    .then(data => {
-            let circulatingETH = parseInt(data.result / 1e18);
-            let stakedEth = STAKED_ETH;
-            let eth = parseFloat(stakedEth.split(" ")[0].replace(",", "").replace(",", ""));
-            let progress = ((eth/circulatingETH)*100).toFixed(2);
-            $(".staked-progress").width(progress);
-            $(".staked-progress, #staked-percent").html(`${progress}%`);
-            $("#ethCsupply").html(circulatingETH.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",") +" ETH")
-        })
-    .catch((error) => {
-        alert("Page may not function properly if you are using adblock or other types of communication blocking software")
-    });
-    
-    
-    for (let el of POOL_INFO){
-        tableData.push([el.name, el.category, el.address, el.deposit, el.poolInfo])
+function updateTableType(){
+    if($(window).width() > 1444){
+        $("#poolTable").addClass("table")
+        $("#poolTable").removeClass("table-responsive")
+    }else{
+        $("#poolTable").removeClass("table")
+        $("#poolTable").addClass("table-responsive")
     }
+}
 
+function randerTable(tableData){
     $('#staking-pool-table').DataTable({
         processing: true,
         serverSide: false,
@@ -106,7 +93,8 @@ $(document).ready(function () {
                 }, function(){
                 $(this).removeClass("shadow");
             });
-            addHandlers()
+            addHandlers(tableData)
+            updateTableType()
         },
         columnDefs: [
                 {
@@ -124,10 +112,32 @@ $(document).ready(function () {
                 }, {
                     targets: 3,
                     data: '3',
-                    "orderable": true
+                    "orderable": true,
+                    render: function(data, type, row, meta) {
+                        return data
+                    }
                 }, {
                     targets: 4,
                     data: '4',
+                    "orderable": true,
+                    render: function(data, type, row, meta) {
+                        function getIncomeStats(){
+                            return `
+                                <div>
+                                    <span>Last Day: ${(data.lastDay/1e9).toFixed(4)}</span>
+                                    <span>Last Week: ${(data.lastWeek/1e9).toFixed(4)}</span>
+                                    <span>Last Month: ${(data.lastMonth/1e9).toFixed(4)}</span>
+                                </div>
+                                `
+                        }
+                        return `<span data-toggle="tooltip" title="${getIncomeStats()}" data-html="true">
+                                ${parseInt(data.total/1e9)}
+                                </span>
+                                `
+                    }
+                }, {
+                    targets: 5,
+                    data: '5',
                     render: function(data, type, row, meta) {
                         let info = getActive(data)
                         let bg = "bg-success"
@@ -137,11 +147,16 @@ $(document).ready(function () {
                             fg = "black"
                         }
                         return `
-                        <div id="${row[2]}" style="cursor: pointer;" class="progress hover-shadow" style="height: 100%;" data-toggle="tooltip" title="${info[0].toFixed(2)}% of validators are active in this pool">
-                            <div class="progress-bar progress-bar-success ${bg}" 
-                                role="progressbar" aria-valuenow="${parseInt(info[0])}"
-                                aria-valuemin="0" aria-valuemax="100" style="width: ${parseInt(info[0])}%; color: ${fg};" >
+                        <div id="${row[2]}" style="cursor: pointer;" class="d-flex flex-column hover-shadow" style="height: 100%;" 
+                                            data-toggle="tooltip" title="${info[0].toFixed(2)}% of validators are active in this pool">
+                            <div class="d-flex justify-content-center">
                                 ${info[1]}
+                            </div>
+                            <div class="progress" style="height: 3px;">    
+                                <div class="progress-bar progress-bar-success ${bg}" 
+                                    role="progressbar" aria-valuenow="${parseInt(info[0])}"
+                                    aria-valuemin="0" aria-valuemax="100" style="width: ${parseInt(info[0])}%; color: ${fg};" >
+                                </div>
                             </div>
                         </div>
                         `
@@ -150,4 +165,30 @@ $(document).ready(function () {
             ],
         order: [[3,'desc']],
     })
+}
+
+function updateEthSupply(){
+    let circulatingETH = parseInt(ETH_SUPPLY.result / 1e18);
+    let stakedEth = STAKED_ETH;
+    let eth = parseFloat(stakedEth.split(" ")[0].replace(",", "").replace(",", ""));
+    let progress = ((eth/circulatingETH)*100).toFixed(2);
+    $(".staked-progress").width(progress);
+    $(".staked-progress, #staked-percent").html(`${progress}%`);
+    $("#ethCsupply").html(circulatingETH.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",") +" ETH")
+}
+
+$(document).ready(function () {
+    $(window).on("resize", ()=>{
+        updateTableType()
+    })
+    $("#poolPopUpBtn").on("click", ()=>{$("#poolPopUP").addClass("d-none")})
+    
+    updateEthSupply()
+    
+    let tableData = []
+    for (let el of POOL_INFO){
+        tableData.push([el.name, el.category, el.address, parseInt(el.poolIncome.totalDeposits/1e9), el.poolIncome, el.poolInfo])
+    }
+
+    randerTable(tableData)
 })

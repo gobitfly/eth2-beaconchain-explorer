@@ -3,6 +3,7 @@ package handlers
 import (
 	// "eth2-exporter/db"
 
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/services"
 	types "eth2-exporter/types"
@@ -41,19 +42,22 @@ type chart struct {
 	DepositDistribution types.ChartsPageDataChart
 	StakedEther         string
 	PoolInfo            []respData
+	EthSupply           interface{}
 }
 
 type respData struct {
-	Address  string     `json:"address"`
-	Name     string     `json:"name"`
-	Deposit  int64      `json:"deposit"`
-	Category *string    `json:"category"`
-	PoolInfo []poolInfo `json:"poolInfo"`
+	Address    string                   `json:"address"`
+	Name       string                   `json:"name"`
+	Deposit    int64                    `json:"deposit"`
+	Category   *string                  `json:"category"`
+	PoolInfo   []poolInfo               `json:"poolInfo"`
+	PoolIncome *types.ValidatorEarnings `json:"poolIncome"`
 }
 
 var poolInfoTemp []respData
 var poolInfoTempTime time.Time
-var poolInfoTempMux = &sync.RWMutex{}
+var ethSupply interface{}
+var updateMux = &sync.RWMutex{}
 
 func Pools(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -75,14 +79,17 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	pieChart.DepositDistribution.Path = "deposits_distribution"
 	pieChart.StakedEther = indexStats.StakedEther
 
-	poolInfoTempMux.Lock()
-	defer poolInfoTempMux.Unlock()
-	if time.Now().Sub(poolInfoTempTime).Minutes() > 5 { // query db every 5 min
+	updateMux.Lock()
+	defer updateMux.Unlock()
+	if time.Now().Sub(poolInfoTempTime).Minutes() > 30 { // query db every 30 min
 		poolInfoTemp = getPoolInfo()
+		ethSupply = getEthSupply()
 		pieChart.PoolInfo = poolInfoTemp
+		pieChart.EthSupply = ethSupply
 		poolInfoTempTime = time.Now()
 	} else {
 		pieChart.PoolInfo = poolInfoTemp
+		pieChart.EthSupply = ethSupply
 	}
 
 	data.Data = pieChart
@@ -111,16 +118,21 @@ func getPoolInfo() []respData {
 		if len(stats) > i {
 			if pool.Address == stats[i].Address {
 				state = stats[i].PoolInfo
+				// get income
+				income, err := getPoolIncome(state)
+				if err != nil {
+					income = &types.ValidatorEarnings{}
+				}
+				resp = append(resp, respData{
+					Address:    pool.Address,
+					Category:   pool.Category,
+					Deposit:    pool.Deposit,
+					Name:       pool.Name,
+					PoolInfo:   state,
+					PoolIncome: income,
+				})
 			}
 		}
-
-		resp = append(resp, respData{
-			Address:  pool.Address,
-			Category: pool.Category,
-			Deposit:  pool.Deposit,
-			Name:     pool.Name,
-			PoolInfo: state,
-		})
 	}
 
 	return resp
@@ -147,4 +159,34 @@ func getPoolStats(pools []pools) []poolStatsData {
 	}
 
 	return result
+}
+
+func getPoolIncome(pools []poolInfo) (*types.ValidatorEarnings, error) {
+	var indexes = make([]uint64, len(pools))
+	for i, pools := range pools {
+		indexes[i] = pools.ValidatorIndex
+	}
+
+	return GetValidatorEarnings(indexes)
+}
+
+func getEthSupply() interface{} {
+	var respjson interface{}
+	resp, err := http.Get("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
+
+	if err != nil {
+		logger.Errorf("error retrieving ETH Supply Data: %v", err)
+		return nil
+	}
+
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&respjson)
+
+	if err != nil {
+		logger.Errorf("error decoding ETH Supply json response to interface: %v", err)
+		return nil
+	}
+
+	return respjson
 }
