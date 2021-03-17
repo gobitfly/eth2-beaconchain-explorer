@@ -381,8 +381,9 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -442,8 +443,9 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -472,8 +474,9 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -508,7 +511,9 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 		epoch = 0
 	}
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -578,8 +583,9 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -608,8 +614,9 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -638,8 +645,9 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -763,8 +771,13 @@ func getTokenByCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pkg, err := db.GetUserPremiumPackage(codeAuthData.UserID)
+	if err != nil {
+		pkg = "standard"
+	}
+
 	// Create access token
-	token, expiresIn, err := utils.CreateAccessToken(codeAuthData.UserID, codeAuthData.AppID, deviceID)
+	token, expiresIn, err := utils.CreateAccessToken(codeAuthData.UserID, codeAuthData.AppID, deviceID, pkg)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.ServerError, "can not create access_token")
@@ -803,8 +816,13 @@ func getTokenByRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pkg, err := db.GetUserPremiumPackage(userID)
+	if err != nil {
+		pkg = "standard"
+	}
+
 	// Create access token
-	token, expiresIn, err := utils.CreateAccessToken(userID, unsafeClaims.AppID, unsafeClaims.DeviceID)
+	token, expiresIn, err := utils.CreateAccessToken(userID, unsafeClaims.AppID, unsafeClaims.DeviceID, pkg)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.ServerError, "can not create access_token")
@@ -862,6 +880,82 @@ func MobileNotificationUpdatePOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	OKResponse(w, r)
+}
+
+func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	var parsedBase types.MobileSubscription
+	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &parsedBase)
+
+	if err != nil {
+		logger.Errorf("error parsing body | err: %v %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not parse body")
+		return
+	}
+
+	claims := getAuthClaims(r)
+
+	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
+	if err != nil || subscriptionCount >= 4 {
+		sendErrorResponse(j, r.URL.String(), "reached max subscription limit")
+		return
+	}
+
+	// Verify subscription with apple/google
+	verifyPackage := &types.PremiumData{
+		ID:        0,
+		Receipt:   parsedBase.Transaction.Receipt,
+		Store:     parsedBase.Transaction.Type,
+		Active:    false,
+		ProductID: parsedBase.ProductID,
+	}
+
+	// we can ignore this error since it always returns a result object and err
+	// case is not needed on receipt insert
+	validationResult, _ := services.VerifyReceipt(nil, verifyPackage)
+	parsedBase.Valid = validationResult.Valid
+
+	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason)
+	if err != nil {
+		logger.Errorf("could not save subscription data %v", err)
+		sendErrorResponse(j, r.URL.String(), "Can not save subscription data")
+		return
+	}
+
+	if parsedBase.Valid == false {
+		sendErrorResponse(j, r.URL.String(), "receipt is not valid")
+		return
+	}
+
+	OKResponse(w, r)
+}
+
+type PremiumData struct {
+	Package       string
+	MaxValidators int
+}
+
+func getUserPremium(r *http.Request) PremiumData {
+	result := PremiumData{
+		Package:       "standard",
+		MaxValidators: 100,
+	}
+
+	claims := getAuthClaims(r)
+
+	if claims == nil || claims.Package == "" {
+		return result
+	}
+
+	result.Package = claims.Package
+	if result.Package == "whale" {
+		result.MaxValidators = 300
+	}
+
+	return result
 }
 
 // MobileDeviceSettings godoc
@@ -1251,6 +1345,11 @@ func insertStats(userID uint64, machine string, j *json.Encoder, r *http.Request
 }
 
 func getAuthClaims(r *http.Request) *utils.CustomClaims {
+	middleWare := context.Get(r, utils.MobileAuthorizedKey)
+	if middleWare == nil {
+		return utils.GetAuthorizationClaims(r)
+	}
+
 	claims := context.Get(r, utils.ClaimsContextKey)
 	if claims == nil {
 		return nil
@@ -1307,9 +1406,9 @@ func sendOKResponse(j *json.Encoder, route string, data []interface{}) {
 	return
 }
 
-func parseApiValidatorParam(origParam string) (indices []uint64, pubkeys pq.ByteaArray, err error) {
+func parseApiValidatorParam(origParam string, limit int) (indices []uint64, pubkeys pq.ByteaArray, err error) {
 	params := strings.Split(origParam, ",")
-	if len(params) > 100 {
+	if len(params) > limit {
 		return nil, nil, fmt.Errorf("only a maximum of 100 query parameters are allowed")
 	}
 	for _, param := range params {

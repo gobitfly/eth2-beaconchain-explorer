@@ -1232,7 +1232,7 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error retrieving validator stats history: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Validator not found", 404)
 		return
 	}
 

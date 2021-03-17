@@ -220,6 +220,55 @@ func MobileNotificatonTokenUpdate(userID, deviceID uint64, notifyToken string) e
 	return err
 }
 
+func InsertMobileSubscription(userID uint64, paymentDetails types.MobileSubscription, store, receipt string, expiration int64, rejectReson string) error {
+	now := time.Now()
+	nowTs := now.Unix()
+	_, err := FrontendDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason) VALUES("+
+		"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12);",
+		userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson,
+	)
+	return err
+}
+
+func GetAppSubscriptionCount(userID uint64) (int64, error) {
+	var count int64
+	row := FrontendDB.QueryRow(
+		"SELECT count(receipt) as count FROM users_app_subscriptions WHERE user_id = $1",
+		userID,
+	)
+	err := row.Scan(&count)
+	return count, err
+}
+
+func GetUserPremiumPackage(userID uint64) (string, error) {
+	var pkg string
+	row := FrontendDB.QueryRow(
+		"SELECT product_id from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
+		userID,
+	)
+	err := row.Scan(&pkg)
+	return pkg, err
+}
+
+func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
+	data := []*types.PremiumData{}
+
+	err := FrontendDB.Select(&data,
+		"SELECT id, receipt, store, active from users_app_subscriptions WHERE validate_remotely = true order by id desc",
+	)
+
+	return data, err
+}
+
+func UpdateUserSubscription(id uint64, valid bool, expiration int64, rejectReason string) error {
+	now := time.Now()
+	nowTs := now.Unix()
+	_, err := FrontendDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE id = $5;",
+		valid, nowTs, expiration, rejectReason, id,
+	)
+	return err
+}
+
 func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 	pushByID := map[uint64][]string{}
 	if len(ids) == 0 {

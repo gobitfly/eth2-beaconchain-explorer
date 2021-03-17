@@ -5,7 +5,9 @@ go 1.15
 require (
 	cloud.google.com/go/firestore v1.4.0 // indirect
 	firebase.google.com/go v3.13.0+incompatible
+	github.com/Gurpartap/storekit-go v0.0.0-20201205024111-36b6cd5c6a21
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
+	github.com/awa/go-iap v1.3.7
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/chromedp/cdproto v0.0.0-20200709115526-d1f6fc58448b
 	github.com/chromedp/chromedp v0.5.3
@@ -52,7 +54,7 @@ require (
 	golang.org/x/text v0.3.4
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/api v0.36.0
-	google.golang.org/grpc v1.33.2
+	google.golang.org/grpc v1.34.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.3.0
 )
