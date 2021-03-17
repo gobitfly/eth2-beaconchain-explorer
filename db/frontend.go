@@ -58,10 +58,11 @@ func GetUserApiKeyById(id uint64) (string, error) {
 	return apiKey, err
 }
 
-func GetUserIdByApiKey(apiKey string) (uint64, error) {
-	var userID uint64
-	err := FrontendDB.Get(&userID, "SELECT id FROM users WHERE api_key = $1", apiKey)
-	return userID, err
+func GetUserIdByApiKey(apiKey string) (*types.UserWithPremium, error) {
+	data := &types.UserWithPremium{}
+	row := FrontendDB.QueryRow("SELECT id, (SELECT product_id from users_app_subscriptions WHERE user_id = users.id AND active = true order by id desc limit 1) FROM users WHERE api_key = $1", apiKey)
+	err := row.Scan(&data.ID, &data.Product)
+	return data, err
 }
 
 // DeleteUserById deletes a user.

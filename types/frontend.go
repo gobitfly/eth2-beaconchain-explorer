@@ -1,6 +1,7 @@
 package types
 
 import (
+	"database/sql"
 	"strings"
 	"time"
 
@@ -133,4 +134,9 @@ type PremiumData struct {
 	Store     string `db:"store"`
 	Active    bool   `db:"active"`
 	ProductID string `db:"product_id"`
+}
+
+type UserWithPremium struct {
+	ID      uint64         `db:"id"`
+	Product sql.NullString `db:"product_id"`
 }

@@ -936,23 +936,40 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 type PremiumData struct {
 	Package       string
 	MaxValidators int
+	MaxStats      uint64
+	MaxNodes      uint64
 }
 
 func getUserPremium(r *http.Request) PremiumData {
+	claims := getAuthClaims(r)
+
+	if claims == nil {
+		return getUserPremiumByPackage("")
+	}
+
+	return getUserPremiumByPackage(claims.Package)
+}
+
+func getUserPremiumByPackage(pkg string) PremiumData {
 	result := PremiumData{
 		Package:       "standard",
 		MaxValidators: 100,
+		MaxStats:      180,
+		MaxNodes:      1,
 	}
 
-	claims := getAuthClaims(r)
-
-	if claims == nil || claims.Package == "" {
+	if pkg == "" {
 		return result
 	}
 
-	result.Package = claims.Package
+	result.Package = pkg
+	result.MaxStats = 43200
+	if result.Package == "goldfish" {
+		result.MaxNodes = 5
+	}
 	if result.Package == "whale" {
 		result.MaxValidators = 300
+		result.MaxNodes = 10
 	}
 
 	return result
@@ -1091,12 +1108,13 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 	claims := getAuthClaims(r)
 
+	maxStats := getUserPremium(r).MaxStats
+
 	vars := mux.Vars(r)
 	offset := parseUintWithDefault(vars["offset"], 0)
 	limit := parseUintWithDefault(vars["limit"], 180)
-	if limit > 1000 {
-		// TODO: adaptive limit
-		limit = 1000
+	if limit > maxStats {
+		limit = maxStats
 	}
 
 	validator, err := db.GetStatsValidator(claims.UserID, limit, offset)
@@ -1173,7 +1191,7 @@ func ClientStatsPost(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
 
-	userID, err := db.GetUserIdByApiKey(vars["apiKey"])
+	userData, err := db.GetUserIdByApiKey(vars["apiKey"])
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "no user found with api key")
 		return
@@ -1181,12 +1199,12 @@ func ClientStatsPost(w http.ResponseWriter, r *http.Request) {
 
 	machine := vars["machine"]
 
-	if insertStats(userID, machine, j, r) {
+	if insertStats(userData, machine, j, r) {
 		OKResponse(w, r)
 	}
 }
 
-func insertStats(userID uint64, machine string, j *json.Encoder, r *http.Request) bool {
+func insertStats(userData *types.UserWithPremium, machine string, j *json.Encoder, r *http.Request) bool {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		logger.Errorf("error reading body | err: %v", err)
@@ -1214,6 +1232,8 @@ func insertStats(userID uint64, machine string, j *json.Encoder, r *http.Request
 		return false
 	}
 
+	maxNodes := getUserPremiumByPackage(userData.Product.String).MaxNodes
+
 	tx, err := db.NewTransaction()
 	if err != nil {
 		logger.Errorf("Could not transact | %v", err)
@@ -1222,20 +1242,20 @@ func insertStats(userID uint64, machine string, j *json.Encoder, r *http.Request
 	}
 	defer tx.Rollback()
 
-	count, err := db.GetStatsMachineCount(tx, userID)
+	count, err := db.GetStatsMachineCount(tx, userData.ID)
 	if err != nil {
 		logger.Errorf("Could not get max machine count| %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not get machine count")
 		return false
 	}
-	if count >= 2 {
-		// TODO: adaptive limit
+
+	if count > maxNodes {
 		logger.Errorf("User has reached max machine count | %v", err)
 		sendErrorResponse(j, r.URL.String(), "reached max machine count")
 		return false
 	}
 
-	id, err := db.InsertStatsMeta(tx, userID, parsedMeta)
+	id, err := db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 	if err != nil {
 		logger.Errorf("Could not store stats (meta stats) | %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not store meta")
