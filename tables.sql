@@ -30,6 +30,7 @@ create index idx_validators_pubkey on validators (pubkey);
 create index idx_validators_pubkeyhex on validators (pubkeyhex);
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
+create index idx_validators_activationepoch on validators (activationepoch);
 
 drop table if exists validator_names;
 create table validator_names
@@ -174,6 +175,20 @@ create table validator_stats_status
     status boolean not null,
     primary key (day)
 );
+
+drop table if exists validator_attestation_streaks;
+create table validator_attestation_streaks
+(
+    validatorindex int not null,
+    status         int not null,
+    start          int not null,
+    length         int not null,
+    primary key (validatorindex, status, start)
+);
+create index idx_validator_attestation_streaks_validatorindex on validator_attestation_streaks (validatorindex);
+create index idx_validator_attestation_streaks_status on validator_attestation_streaks (status);
+create index idx_validator_attestation_streaks_length on validator_attestation_streaks (length);
+create index idx_validator_attestation_streaks_start on validator_attestation_streaks (start);
 
 drop table if exists queue;
 create table queue

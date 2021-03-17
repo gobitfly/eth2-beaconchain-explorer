@@ -239,6 +239,8 @@ type ValidatorPageData struct {
 	NetworkStats                        *IndexPageData
 	EstimatedActivationTs               int64
 	InclusionDelay                      int64
+	CurrentAttestationStreak            uint64
+	LongestAttestationStreak            uint64
 }
 
 type ValidatorStatsTablePageData struct {

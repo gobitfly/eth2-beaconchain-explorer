@@ -245,6 +245,8 @@ func main() {
 			router.HandleFunc("/validators/slashings/data", handlers.ValidatorsSlashingsData).Methods("GET")
 			router.HandleFunc("/validators/leaderboard", handlers.ValidatorsLeaderboard).Methods("GET")
 			router.HandleFunc("/validators/leaderboard/data", handlers.ValidatorsLeaderboardData).Methods("GET")
+			router.HandleFunc("/validators/streakleaderboard", handlers.ValidatorsStreakLeaderboard).Methods("GET")
+			router.HandleFunc("/validators/streakleaderboard/data", handlers.ValidatorsStreakLeaderboardData).Methods("GET")
 			router.HandleFunc("/validators/eth1deposits", handlers.Eth1Deposits).Methods("GET")
 			router.HandleFunc("/validators/eth1deposits/data", handlers.Eth1DepositsData).Methods("GET")
 			router.HandleFunc("/validators/eth1leaderboard", handlers.Eth1DepositsLeaderboard).Methods("GET")
@@ -283,6 +285,7 @@ func main() {
 
 			// confirming the email update should not require auth
 			router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
+			router.HandleFunc("/gitcoinfeed", handlers.GitcoinFeed).Methods("GET")
 
 			// router.HandleFunc("/user/validators", handlers.UserValidators).Methods("GET")
 
@@ -390,6 +393,10 @@ func main() {
 				logrus.WithError(err).Fatal("Error serving metrics")
 			}
 		}(utils.Config.Metrics.Address)
+	}
+
+	if utils.Config.Frontend.ShowDonors.Enabled {
+		services.InitGitCoinFeed()
 	}
 
 	utils.WaitForCtrlC()

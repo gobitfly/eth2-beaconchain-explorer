@@ -57,6 +57,13 @@ func chartsPageDataUpdater() {
 			continue
 		}
 		now := time.Now()
+
+		if now.Add(time.Minute * -20).After(utils.EpochToTime(latestEpoch)) {
+			logger.Info("skipping chartsPageDataUpdater because the explorer is syncing")
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
 		data, err := getChartsPageData()
 		if err != nil {
 			logger.WithField("epoch", latestEpoch).Errorf("error updating chartPageData: %v", err)

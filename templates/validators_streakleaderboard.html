@@ -1,0 +1,125 @@
+{{ define "js"}}
+    <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/datatable_input.js"></script>
+    <script>
+        $(document).ready(function () {
+            var tblOpts = {
+                processing: true,
+                serverSide: true,
+                ordering: true,
+                searching: true,
+                ajax: '/validators/streakleaderboard/data',
+                pagingType: 'input',
+                pageLength: 50,
+                language: {
+                    searchPlaceholder: 'Search by Public Key / Index / Name',
+                    search: '',
+                    paginate: {
+                        previous: "<",
+                        next: ">",
+                    }
+                },
+                columnDefs: [
+                    {
+                        targets: 0,
+                        data: '0',
+                        "orderable": true
+                    }, {
+                        targets: 1,
+                        data: '1',
+                        "orderable": true
+                    }, {
+                        targets: 2,
+                        data: '2',
+                        "orderable": false
+                    }, {
+                        targets: 3,
+                        data: '3',
+                        "orderable": false
+                    }, {
+                        targets: 4,
+                        data: '4',
+                        "orderable": true
+                    }, {
+                        targets: 5,
+                        data: '5',
+                        "orderable": false
+                    }, {
+                        targets: 6,
+                        data: '6',
+                        "orderable": false
+                    },
+                ],
+                order: [[4, "asc"]]
+            }
+            var usp = new URLSearchParams(window.location.search)
+            var q = usp.get('q')
+            if (q) {
+                tblOpts.search = {"search": q}
+            }
+            var tbl = $('#leaderboard').DataTable(tblOpts)
+            $("#leaderboard_filter > label > input").on('input', function (ev) {
+                if (ev && ev.target && ev.target.value) {
+                    var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+                    window.history.replaceState(null, 'Attestation Streak Leaderboard', newUrl)
+                } else {
+                    window.history.replaceState(null, 'Attestation Streak Leaderboard', window.location.pathname)
+                }
+            })
+        })
+    </script>
+{{end}}
+
+{{ define "css"}}
+    <link rel="stylesheet" type="text/css"
+          href="/bundle/css/datatables.min.css"/>
+
+{{end}}
+
+{{ define "content"}}
+    {{with .Data}}
+        <div class="container mt-2">
+            <div class="my-3">
+                <div class="d-md-flex py-2 justify-content-md-between">
+                    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-medal"></i> Attestation Streak Leaderboard</h1>
+                    
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                            <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Streak Leaderboard</li>
+                        </ol>
+                    </nav>
+                </div>
+                Streak represents the amount of attestations that have been proposed in a row. If a validator misses an attestation, the current length will reset to 0
+            </div>
+            <div class="card">
+                <div class="card-body px-0 py-2">
+                    <div class="table-responsive pt-2">
+                        <table class="table" id="leaderboard" width="100%">
+                            <thead>
+                            <tr>
+                                <th rowspan="2">Index</th>
+                                <th colspan="3">Current Streak</th>
+                                <th colspan="3">Longest Streak</th>
+                            </tr>
+                            <tr>
+                                <th>Rank</th>
+                                <th data-toggle="tooltip" title="The starting epoch of Streak">Start</th>
+                                <th data-toggle="tooltip" title="Amount of attestations that where proposed in a row">Length</th>
+                                <th>Rank</th>
+                                <th data-toggle="tooltip" title="The starting epoch of Streak">Start</th>
+                                <th data-toggle="tooltip" title="Amount of attestations that where proposed in a row">Length</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between py-2">
+                <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+            </div>
+        </div>
+    {{end}}
+{{end}}
