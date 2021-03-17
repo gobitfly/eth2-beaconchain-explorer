@@ -205,6 +205,10 @@ func GetAvgLongestStreak(w http.ResponseWriter, r *http.Request) {
 		pool = pool[:128]
 	}
 
+	// var sqlData []struct {
+	// 	Long    *string
+	// 	Current *string
+	// }
 	var sqlData []string
 
 	err := db.DB.Select(&sqlData, `
@@ -223,8 +227,8 @@ func GetAvgLongestStreak(w http.ResponseWriter, r *http.Request) {
 					from validator_attestation_streaks
 					where status = 1
 				)
-			select 
-				AVG(ls.length) 
+			select  
+				SUM(ls.length)
 			from longeststreaks ls
 			inner join matched_validators v on ls.validatorindex = v.validatorindex
 			left join (select count(*) from longeststreaks) cnt(totalcount) on true
