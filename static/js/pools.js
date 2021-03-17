@@ -6,7 +6,7 @@ function getActive(poolValidators){
         }
     }
 
-    return [100.0 - ((1.0-(active/poolValidators.length))*100), `${active}/${poolValidators.length}`]
+    return [100.0 - ((1.0-(active/poolValidators.length))*100), `${addCommas(active)} / ${addCommas(poolValidators.length)}`]
 }
 
 function getValidatorCard(val){
@@ -129,7 +129,7 @@ function randerTable(tableData){
                     data: '3',
                     "orderable": true,
                     render: function(data, type, row, meta) {
-                        return data
+                        return addCommas(data)
                     }
                 }, {
                     targets: 4,
@@ -138,13 +138,13 @@ function randerTable(tableData){
                     render: function(data, type, row, meta) {
                         function getIncomeStats(){
                             return `
-                                Last Day: ${(data.lastDay/1e9).toFixed(4)}
-                                Last Week: ${(data.lastWeek/1e9).toFixed(4)}
-                                Last Month: ${(data.lastMonth/1e9).toFixed(4)}
+                                Last Day: ${addCommas(parseInt(data.lastDay/1e9))}
+                                Last Week: ${addCommas(parseInt(data.lastWeek/1e9))}
+                                Last Month: ${addCommas(parseInt(data.lastMonth/1e9))}
                                 `
                         }
                         return `<span data-toggle="tooltip" title="${getIncomeStats()}" data-html="true">
-                                ${parseInt(data.total/1e9)}
+                                ${addCommas(parseInt(data.total/1e9))}
                                 </span>
                                 `
                     }
@@ -206,6 +206,10 @@ function randerTable(tableData){
     })
 }
 
+function addCommas(number){
+    return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+}
+
 function updateEthSupply(){
     let circulatingETH = parseInt(ETH_SUPPLY.result / 1e18);
     let stakedEth = STAKED_ETH;
@@ -213,7 +217,7 @@ function updateEthSupply(){
     let progress = ((eth/circulatingETH)*100).toFixed(2);
     $(".staked-progress").width(progress);
     $(".staked-progress, #staked-percent").html(`${progress}%`);
-    $("#ethCsupply").html(circulatingETH.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",") +" ETH")
+    $("#ethCsupply").html(addCommas(circulatingETH) +" ETH")
 }
 
 function getPoolEffectiveness(id, data){
@@ -245,7 +249,7 @@ function getAvgLongestStreak(id){
     .then((resp)=>{
         resp.json()
         .then((data)=>{
-            $(`#${id}streak`).html(parseInt(data))
+            $(`#${id}streak`).html(addCommas(parseInt(data)))
         })
     })
 }
