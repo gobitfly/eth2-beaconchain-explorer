@@ -70,7 +70,7 @@ function addHandlers(tableData){
 }
 
 function updateTableType(){
-    if($(window).width() > 1444){
+    if($(window).width() > 1440){
         $("#poolTable").addClass("table")
         $("#poolTable").removeClass("table-responsive")
     }else{
