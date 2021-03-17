@@ -8,8 +8,10 @@ import (
 	"eth2-exporter/services"
 	types "eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"html/template"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 	// "strings"
@@ -190,4 +192,55 @@ func getEthSupply() interface{} {
 	}
 
 	return respjson
+}
+
+func GetAvgLongestStreak(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+
+	pool := strings.Replace(q.Get("pool"), "0x", "", -1)
+	if len(pool) > 128 {
+		pool = pool[:128]
+	}
+
+	var sqlData []string
+
+	err := db.DB.Select(&sqlData, `
+			with 
+				matched_validators as (
+					SELECT v.validatorindex  
+					FROM validators v 
+					LEFT JOIN eth1_deposits e ON e.publickey = v.pubkey
+					WHERE ENCODE(e.from_address::bytea, 'hex') LIKE LOWER($1)
+
+				),
+				longeststreaks as (
+					select 
+						validatorindex, start, length, rank() over (order by length desc),
+						rank() over (partition by validatorindex order by length desc) as vrank
+					from validator_attestation_streaks
+					where status = 1
+				)
+			select 
+				AVG(ls.length) 
+			from longeststreaks ls
+			inner join matched_validators v on ls.validatorindex = v.validatorindex
+			left join (select count(*) from longeststreaks) cnt(totalcount) on true
+			where vrank = 1
+			`, pool)
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Internal server error: %v", err), 503)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(sqlData)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 }

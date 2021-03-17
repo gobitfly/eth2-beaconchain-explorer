@@ -65,6 +65,7 @@ function addHandlers(tableData){
             showPoolInfo(tableData[item][5])
         })
         getPoolEffectiveness(tableData[item][2]+"eff", tableData[item][5])
+        getAvgLongestStreak(tableData[item][2])
     }
 }
 
@@ -177,9 +178,21 @@ function randerTable(tableData){
                     targets: 6,
                     data: '6',
                     render: function(data, type, row, meta) {
-                        // getPoolEffectiveness(data[0]+"eff", data[1])
                         return `
                             <div id="${data}eff" data-toggle="tooltip" data-original-title="Effectiveness of the top 200 validators">
+                                <div class="spinner-grow spinner-grow-sm text-primary" role="status">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                            </div>
+                        `
+                    }
+                
+                }, {
+                    targets: 7,
+                    data: '7',
+                    render: function(data, type, row, meta) {
+                        return `
+                            <div id="${data}streak">
                                 <div class="spinner-grow spinner-grow-sm text-primary" role="status">
                                     <span class="sr-only">Loading...</span>
                                 </div>
@@ -227,6 +240,16 @@ function getPoolEffectiveness(id, data){
     load().then(()=>{})
 }
 
+function getAvgLongestStreak(id){
+    fetch("/pools/streak/longest?pool=0x"+id)
+    .then((resp)=>{
+        resp.json()
+        .then((data)=>{
+            $(`#${id}streak`).html(parseInt(data))
+        })
+    })
+}
+
 $(document).ready(function () {
     $(window).on("resize", ()=>{
         updateTableType()
@@ -240,7 +263,7 @@ $(document).ready(function () {
         tableData.push([el.name, el.category, el.address, 
                         parseInt(el.poolIncome.totalDeposits/1e9), 
                         el.poolIncome, el.poolInfo, 
-                        el.address])
+                        el.address, el.address])
     }
 
     randerTable(tableData)
