@@ -462,7 +462,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var attestationStreaks []struct {
 		Length uint64
 	}
-	err = db.DB.Select(&attestationStreaks, `select length from validator_attestation_streaks where validatorindex = $1 and status = 1 order by start desc`, index)
+	err = db.DB.Select(&attestationStreaks, `select greatest(0,length) as length from validator_attestation_streaks where validatorindex = $1 and status = 1 order by start desc`, index)
 	if err != nil {
 		logger.Errorf("error retrieving AttestationStreaks: %v", err)
 		http.Error(w, "Internal server error", 503)
