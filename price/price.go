@@ -38,7 +38,8 @@ func updateEthPrice() {
 }
 
 func fetchPrice() {
-	resp, err := http.Get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd%2Ceur%2Crub%2Ccny%2Ccad%2Cjpy%2Cgbp")
+	client := &http.Client{Timeout: time.Second * 10}
+	resp, err := client.Get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd%2Ceur%2Crub%2Ccny%2Ccad%2Cjpy%2Cgbp")
 
 	if err != nil {
 		logger.Errorf("error retrieving ETH price: %v", err)

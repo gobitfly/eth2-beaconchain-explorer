@@ -176,7 +176,8 @@ paths:
   /api/v1/chart/{chart}:
     get:
       parameters:
-      - description: Chart name (see https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/services/charts_updater.go#L20 for all available names)
+      - description: Chart name (see https://github.com/gobitfly/eth2-beaconchain-explorer/blob/master/services/charts_updater.go#L20
+          for all available names)
         in: path
         name: chart
         required: true
@@ -193,7 +194,8 @@ paths:
       - Charts
   /api/v1/epoch/{epoch}:
     get:
-      description: Returns information for a specified epoch by the epoch number or the latest epoch
+      description: Returns information for a specified epoch by the epoch number or
+        the latest epoch
       parameters:
       - description: Epoch number or the string latest
         in: path
@@ -247,7 +249,7 @@ paths:
       summary: Get an eth1 deposit by its eth1 transaction hash
       tags:
       - Eth1
-  /api/v1/user/dashboard/save:
+  /api/v1/mobile/notify/register:
     post:
       parameters:
       - description: Your device`s firebase notification token
@@ -276,6 +278,82 @@ paths:
       summary: Register or update your mobile notification token
       tags:
       - User
+  /api/v1/user/clients:
+    delete:
+      parameters:
+      - description: 'Valid client names are: lighthouse, prysm, nimbus, teku, geth,
+          openethereum, nethermind, besu'
+        in: body
+        name: clientName
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: deletes an ethereum or ethereum 2 client from a user
+      tags:
+      - User
+    post:
+      parameters:
+      - description: 'Valid client names are: lighthouse, prysm, nimbus, teku, geth,
+          openeth, nethermind, besu'
+        in: body
+        name: clientName
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      - description: 'Client version (github release api: release id) or 0 for unknown
+          or no change.'
+        in: body
+        name: clientVersion
+        required: true
+        schema:
+          type: string
+      - description: Receive client update notifications
+        in: body
+        name: notify
+        required: true
+        schema:
+          type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: associates an ethereum or ethereum 2 client with an user
+      tags:
+      - User
   /api/v1/user/mobile/settings:
     get:
       produces:
@@ -300,7 +378,8 @@ paths:
             $ref: '#/definitions/types.ApiResponse'
       security:
       - ApiKeyAuth: []
-      summary: Get your device settings, currently only whether to enable mobile notifcations or not
+      summary: Get your device settings, currently only whether to enable mobile notifcations
+        or not
       tags:
       - User
     post:
@@ -339,20 +418,24 @@ paths:
   /api/v1/user/token:
     post:
       parameters:
-      - description: grant_type use authorization_code for oauth code or refresh_token if you wish to refresh an token
+      - description: grant_type use authorization_code for oauth code or refresh_token
+          if you wish to refresh an token
         in: formData
         name: grant_type
         required: true
         type: string
-      - description: Only required when using authorization_code grant type. Code received via oauth redirect_uri
+      - description: Only required when using authorization_code grant type. Code
+          received via oauth redirect_uri
         in: formData
         name: code
         type: string
-      - description: Only required when using authorization_code grant type. Must match the redirect_uri from your oauth flow.
+      - description: Only required when using authorization_code grant type. Must
+          match the redirect_uri from your oauth flow.
         in: formData
         name: redirect_uri
         type: string
-      - description: Only required when using refresh_token grant type. The refresh_token you received during authorization_code flow.
+      - description: Only required when using refresh_token grant type. The refresh_token
+          you received during authorization_code flow.
         in: formData
         name: refresh_token
         type: string
@@ -373,7 +456,8 @@ paths:
             $ref: '#/definitions/utils.OAuthErrorResponse'
       security:
       - OAuthAccessCode: []
-      summary: Exchange your oauth code for an access token or refresh your access token
+      summary: Exchange your oauth code for an access token or refresh your access
+        token
       tags:
       - User
   /api/v1/user/validator/{pubkey}/add:
@@ -489,6 +573,24 @@ paths:
       summary: Get up to 100 validators by their index
       tags:
       - Validator
+  /api/v1/validator/{indexOrPubkey}/attestationefficiency:
+    get:
+      parameters:
+      - description: Up to 100 validator indicesOrPubkeys, comma separated
+        in: path
+        name: index
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get the current performance of up to 100 validators
+      tags:
+      - Validator
   /api/v1/validator/{indexOrPubkey}/attestations:
     get:
       parameters:
@@ -504,7 +606,7 @@ paths:
           description: OK
           schema:
             type: string
-      summary: Get all attestations during the last 100 epochs for up to 100 validators
+      summary: Get all attestations during the last 10 epochs for up to 100 validators
       tags:
       - Validator
   /api/v1/validator/{indexOrPubkey}/balancehistory:
@@ -606,7 +708,26 @@ paths:
           description: OK
           schema:
             type: string
-      summary: Get the current top 100 performing validators (using the income over the last 7 days)
+      summary: Get the current top 100 performing validators (using the income over
+        the last 7 days)
+      tags:
+      - Validator
+  /api/v1/validator/stats/{index}:
+    get:
+      parameters:
+      - description: Validator index
+        in: path
+        name: index
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get the daily validator stats by the validator index
       tags:
       - Validator
 securityDefinitions:
