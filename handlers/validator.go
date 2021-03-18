@@ -328,9 +328,19 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			uint64(utils.SlotToTime(b.Slot).Unix()),
 			b.Status,
 		}
+		if b.Status == 0 {
+			validatorPageData.ScheduledBlocksCount++
+		} else if b.Status == 1 {
+			validatorPageData.ProposedBlocksCount++
+		} else if b.Status == 2 {
+			validatorPageData.MissedBlocksCount++
+		} else if b.Status == 3 {
+			validatorPageData.OrphanedBlocksCount++
+		}
 	}
 
-	validatorPageData.ProposedBlocksCount = uint64(len(proposals))
+	validatorPageData.BlocksCount = uint64(len(proposals))
+	validatorPageData.UnmissedBlocksPercentage = float64(validatorPageData.BlocksCount-validatorPageData.MissedBlocksCount) / float64(len(proposals))
 
 	//logger.Infof("proposals data retrieved, elapsed: %v", time.Since(start))
 	//start = time.Now()
@@ -344,6 +354,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	if validatorPageData.ExitEpoch != 9223372036854775807 {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
+	}
+	err = db.DB.Get(&validatorPageData.MissedAttestationsCount, "select sum(missed_attestations) from validator_stats where validatorindex = $1", index)
+	if err != nil {
+		logger.Errorf("error retrieving validator missed attestations count: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 
 	var incomeHistory []*types.ValidatorIncomeHistory
