@@ -32,6 +32,7 @@ require (
 	github.com/lib/pq v1.2.0
 	github.com/mailgun/mailgun-go/v4 v4.1.3
 	github.com/mailru/easyjson v0.7.6 // indirect
+	github.com/mitchellh/mapstructure v1.3.2
 	github.com/mssola/user_agent v0.5.2
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029

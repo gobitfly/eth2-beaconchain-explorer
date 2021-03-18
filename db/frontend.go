@@ -369,7 +369,7 @@ func GetStatsMachineCount(tx *sql.Tx, userID uint64) (uint64, error) {
 	return count, err
 }
 
-func InsertStatsMeta(tx *sql.Tx, userID uint64, data types.StatsMeta) (uint64, error) {
+func InsertStatsMeta(tx *sql.Tx, userID uint64, data *types.StatsMeta) (uint64, error) {
 	now := time.Now()
 	nowTs := now.Unix()
 
@@ -382,7 +382,7 @@ func InsertStatsMeta(tx *sql.Tx, userID uint64, data types.StatsMeta) (uint64, e
 	return id, err
 }
 
-func InsertStatsSystem(tx *sql.Tx, meta_id uint64, data types.StatsSystem) (uint64, error) {
+func InsertStatsSystem(tx *sql.Tx, meta_id uint64, data *types.StatsSystem) (uint64, error) {
 	var id uint64
 	row := tx.QueryRow(
 		"INSERT INTO stats_system (meta_id, cpu_cores, cpu_threads, cpu_node_system_seconds_total, "+
@@ -402,7 +402,7 @@ func InsertStatsSystem(tx *sql.Tx, meta_id uint64, data types.StatsSystem) (uint
 	return id, err
 }
 
-func InsertStatsProcessGeneral(tx *sql.Tx, meta_id uint64, data types.StatsProcess) (uint64, error) {
+func InsertStatsProcessGeneral(tx *sql.Tx, meta_id uint64, data *types.StatsProcess) (uint64, error) {
 	var id uint64
 	row := tx.QueryRow(
 		"INSERT INTO stats_process (meta_id, cpu_process_seconds_total, memory_process_bytes, client_name, client_version,"+
@@ -417,7 +417,7 @@ func InsertStatsProcessGeneral(tx *sql.Tx, meta_id uint64, data types.StatsProce
 	return id, err
 }
 
-func InsertStatsValidator(tx *sql.Tx, general_id uint64, data types.StatsAdditionalsValidator) (uint64, error) {
+func InsertStatsValidator(tx *sql.Tx, general_id uint64, data *types.StatsAdditionalsValidator) (uint64, error) {
 	var id uint64
 	row := tx.QueryRow(
 		"INSERT INTO stats_add_validator (general_id, validator_total, validator_active) "+
@@ -428,7 +428,7 @@ func InsertStatsValidator(tx *sql.Tx, general_id uint64, data types.StatsAdditio
 	return id, err
 }
 
-func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, data types.StatsAdditionalsBeaconnode) (uint64, error) {
+func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, data *types.StatsAdditionalsBeaconnode) (uint64, error) {
 	var id uint64
 	row := tx.QueryRow(
 		"INSERT INTO stats_add_beaconnode (general_id, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive,"+

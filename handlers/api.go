@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
 )
 
@@ -1199,28 +1200,57 @@ func ClientStatsPost(w http.ResponseWriter, r *http.Request) {
 
 	machine := vars["machine"]
 
-	if insertStats(userData, machine, j, r) {
-		OKResponse(w, r)
-	}
-}
-
-func insertStats(userData *types.UserWithPremium, machine string, j *json.Encoder, r *http.Request) bool {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		logger.Errorf("error reading body | err: %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not read body")
-		return false
+		return
 	}
 
-	var parsedMeta types.StatsMeta
-	err = json.Unmarshal(body, &parsedMeta)
-	parsedMeta.Machine = machine
-
+	var jsonObjects []map[string]interface{}
+	err = json.Unmarshal(body, &jsonObjects)
 	if err != nil {
-		logger.Errorf("Could not parse stats (meta stats) | %v", err)
+		var jsonObject map[string]interface{}
+		err = json.Unmarshal(body, &jsonObject)
+		if err != nil {
+			logger.Errorf("Could not parse stats (meta stats) general | %v ", err)
+			sendErrorResponse(j, r.URL.String(), "could not parse meta")
+			return
+		}
+		jsonObjects = []map[string]interface{}{jsonObject}
+	}
+
+	if len(jsonObjects) >= 10 {
+		logger.Errorf("Max number of stat entries are 10", err)
+		sendErrorResponse(j, r.URL.String(), "Max number of stat entries are 10")
+		return
+	}
+
+	var result bool = false
+	for i := 0; i < len(jsonObjects); i++ {
+		result = insertStats(userData, machine, &jsonObjects[i], j, r)
+		if !result {
+			break
+		}
+	}
+
+	if result {
+		OKResponse(w, r)
+		return
+	}
+}
+
+func insertStats(userData *types.UserWithPremium, machine string, body *map[string]interface{}, j *json.Encoder, r *http.Request) bool {
+
+	var parsedMeta *types.StatsMeta
+	err := mapstructure.Decode(body, &parsedMeta)
+	if err != nil {
+		logger.Errorf("Could not parse stats (meta stats) | %v ", err)
 		sendErrorResponse(j, r.URL.String(), "could not parse meta")
 		return false
 	}
+
+	parsedMeta.Machine = machine
 
 	if parsedMeta.Version != 1 {
 		sendErrorResponse(j, r.URL.String(), "this version is not supported")
@@ -1264,8 +1294,8 @@ func insertStats(userData *types.UserWithPremium, machine string, j *json.Encode
 
 	// Special case for system
 	if parsedMeta.Process == "system" {
-		var parsedResponse types.StatsSystem
-		err = json.Unmarshal(body, &parsedResponse)
+		var parsedResponse *types.StatsSystem
+		err = mapstructure.Decode(body, &parsedResponse)
 
 		if err != nil {
 			logger.Errorf("Could not parse stats (system stats) | %v", err)
@@ -1292,8 +1322,8 @@ func insertStats(userData *types.UserWithPremium, machine string, j *json.Encode
 		return true
 	}
 
-	var parsedGeneral types.StatsProcess
-	err = json.Unmarshal(body, &parsedGeneral)
+	var parsedGeneral *types.StatsProcess
+	err = mapstructure.Decode(body, &parsedGeneral)
 
 	if err != nil {
 		logger.Errorf("Could not parse stats (process stats) | %v", err)
@@ -1313,8 +1343,8 @@ func insertStats(userData *types.UserWithPremium, machine string, j *json.Encode
 	}
 
 	if parsedMeta.Process == "validator" {
-		var parsedValidator types.StatsAdditionalsValidator
-		err = json.Unmarshal(body, &parsedValidator)
+		var parsedValidator *types.StatsAdditionalsValidator
+		err = mapstructure.Decode(body, &parsedValidator)
 
 		if err != nil {
 			logger.Errorf("Could not parse stats (validator stats) | %v", err)
@@ -1334,8 +1364,8 @@ func insertStats(userData *types.UserWithPremium, machine string, j *json.Encode
 		}
 
 	} else if parsedMeta.Process == "beaconnode" {
-		var parsedNode types.StatsAdditionalsBeaconnode
-		err = json.Unmarshal(body, &parsedNode)
+		var parsedNode *types.StatsAdditionalsBeaconnode
+		err = mapstructure.Decode(body, &parsedNode)
 
 		if err != nil {
 			logger.Errorf("Could not parse stats (node stats) | %v", err)
