@@ -679,6 +679,28 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiGraffitiwall godoc
+// @Summary Get all pixels that have been painted until now on the graffitiwall
+// @Tags Graffitiwall
+// @Produce  json
+// @Success 200 {object} string
+// @Router /api/v1/validator/{indexOrPubkey}/proposals [get]
+func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+
+	rows, err := db.DB.Query("SELECT x, y, color, slot, validator FROM graffitiwall ORDER BY x, y LIMIT 1000000")
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 // ApiChart godoc
 // @Summary Returns charts from the page https://beaconcha.in/charts as PNG
 // @Tags Charts

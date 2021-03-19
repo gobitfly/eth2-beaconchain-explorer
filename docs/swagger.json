@@ -1052,18 +1052,9 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Validator"
+                    "Graffitiwall"
                 ],
-                "summary": "Get all proposed blocks during the last 100 epochs for up to 100 validators",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
-                        "name": "indexOrPubkey",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
+                "summary": "Get all pixels that have been painted until now on the graffitiwall",
                 "responses": {
                     "200": {
                         "description": "OK",
