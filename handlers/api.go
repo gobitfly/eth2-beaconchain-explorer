@@ -684,7 +684,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 // @Tags Graffitiwall
 // @Produce  json
 // @Success 200 {object} string
-// @Router /api/v1/validator/{indexOrPubkey}/proposals [get]
+// @Router /api/v1/graffitiwall [get]
 func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
