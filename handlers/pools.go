@@ -84,7 +84,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	updateMux.Lock()
 	defer updateMux.Unlock()
-	if time.Now().Sub(poolInfoTempTime).Minutes() > 30 { // query db every 30 min
+	if time.Now().Sub(poolInfoTempTime).Hours() > 1 { // query db every 1 hour
 		poolInfoTemp = getPoolInfo()
 		ethSupply = getEthSupply()
 		pieChart.PoolInfo = poolInfoTemp

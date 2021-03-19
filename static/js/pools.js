@@ -89,6 +89,7 @@ function randerTable(tableData){
         searching: false,
         pagingType: 'full_numbers',
         data: tableData,
+        lengthMenu: [10, 25],
         preDrawCallback: function() {
             try {
                 $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip('dispose')
@@ -151,6 +152,7 @@ function randerTable(tableData){
                 }, {
                     targets: 5,
                     data: '5',
+                    "orderable": false,
                     render: function(data, type, row, meta) {
                         let info = getActive(data)
                         let bg = "bg-success"
@@ -177,6 +179,7 @@ function randerTable(tableData){
                 }, {
                     targets: 6,
                     data: '6',
+                    "orderable": false,
                     render: function(data, type, row, meta) {
                         return `
                             <div id="${data}eff" data-toggle="tooltip" data-original-title="Effectiveness of the top 200 validators">
@@ -190,6 +193,7 @@ function randerTable(tableData){
                 }, {
                     targets: 7,
                     data: '7',
+                    "orderable": false,
                     render: function(data, type, row, meta) {
                         return `
                             <div id="${data}streak">
