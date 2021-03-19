@@ -665,12 +665,6 @@ paths:
       - Validator
   /api/v1/validator/{indexOrPubkey}/proposals:
     get:
-      parameters:
-      - description: Up to 100 validator indicesOrPubkeys, comma separated
-        in: path
-        name: indexOrPubkey
-        required: true
-        type: string
       produces:
       - application/json
       responses:
@@ -678,9 +672,9 @@ paths:
           description: OK
           schema:
             type: string
-      summary: Get all proposed blocks during the last 100 epochs for up to 100 validators
+      summary: Get all pixels that have been painted until now on the graffitiwall
       tags:
-      - Validator
+      - Graffitiwall
   /api/v1/validator/eth1/{address}:
     get:
       parameters:

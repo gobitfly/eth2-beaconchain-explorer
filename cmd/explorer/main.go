@@ -156,6 +156,7 @@ func main() {
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/attestationefficiency", handlers.ApiValidatorAttestationEfficiency).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/stats/{index}", handlers.ApiValidatorDailyStats).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/eth1/{address}", handlers.ApiValidatorByEth1Address).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/graffitiwall", handlers.ApiGraffitiwall).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
 		apiV1Router.HandleFunc("/dashboard/data/balance", handlers.DashboardDataBalance).Methods("GET", "OPTIONS")
