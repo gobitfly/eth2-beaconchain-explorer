@@ -221,6 +221,7 @@ type ValidatorPageData struct {
 	UnmissedBlocksPercentage            float64
 	AttestationsCount                   uint64
 	MissedAttestationsCount             uint64
+	OrphanedAttestationsCount           uint64
 	StatusProposedCount                 uint64
 	StatusMissedCount                   uint64
 	DepositsCount                       uint64
