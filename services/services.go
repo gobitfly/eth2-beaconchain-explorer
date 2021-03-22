@@ -50,6 +50,7 @@ func Init() {
 	if !utils.Config.Frontend.DisableCharts {
 		go chartsPageDataUpdater()
 	}
+
 	go statsUpdater()
 }
 

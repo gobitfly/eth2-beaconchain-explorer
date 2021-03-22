@@ -489,8 +489,8 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 }
 
 // UpdateCanonicalBlocks will update the blocks for an epoch range in the database
-func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte) error {
-	if len(orphanedBlocks) == 0 {
+func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBlock) error {
+	if len(blocks) == 0 {
 		return nil
 	}
 
@@ -505,13 +505,53 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte)
 		return err
 	}
 
-	for _, orphanedBlock := range orphanedBlocks {
-		logger.Printf("marking block %x as orphaned", orphanedBlock)
-		_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = $1", orphanedBlock)
+	for _, block := range blocks {
+		if block.Canonical {
+			continue
+		}
+		logger.Printf("marking block %x at slot %v as orphaned", block.BlockRoot, block.Slot)
+		_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = $1", block.BlockRoot)
 		if err != nil {
 			return err
 		}
 	}
+	return tx.Commit()
+}
+
+func SetBlockStatus(blocks []*types.CanonBlock) error {
+	if len(blocks) == 0 {
+		return nil
+	}
+
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %v", err)
+	}
+	defer tx.Rollback()
+
+	canonBlocks := make(pq.ByteaArray, 0)
+	orphanedBlocks := make(pq.ByteaArray, 0)
+	for _, block := range blocks {
+		if !block.Canonical {
+			logger.Printf("marking block %x at slot %v as orphaned", block.BlockRoot, block.Slot)
+			orphanedBlocks = append(orphanedBlocks, block.BlockRoot)
+		} else {
+			logger.Printf("marking block %x at slot %v as canonical", block.BlockRoot, block.Slot)
+			canonBlocks = append(canonBlocks, block.BlockRoot)
+		}
+
+	}
+
+	_, err = tx.Exec("UPDATE blocks SET status = '1' WHERE blockroot = ANY($1)", canonBlocks)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = ANY($1)", orphanedBlocks)
+	if err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 

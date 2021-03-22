@@ -383,6 +383,15 @@ func FormatIncome(balanceInt int64, currency string) template.HTML {
 	}
 }
 
+// FormatMoney will return a string for a balance
+func FormatMoney(money float64) template.HTML {
+	if money > 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.2f</b></span>`, money))
+	} else {
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.2f</b></span>`, money))
+	}
+}
+
 func FormatIncomeSql(balanceInt sql.NullInt64, currency string) template.HTML {
 
 	if !balanceInt.Valid {
