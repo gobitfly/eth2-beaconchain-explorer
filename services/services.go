@@ -200,10 +200,11 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			threshold = &deposit.BlockTs
 		}
 
-		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
+		data.DepositThreshold = float64(utils.Config.Chain.Phase0.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
+
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
-		genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
+		genesisDelay := time.Duration(int64(utils.Config.Chain.Phase0.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 
