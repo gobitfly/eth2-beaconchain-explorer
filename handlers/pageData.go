@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -35,11 +36,29 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		FinalizationDelay:     services.FinalizationDelay(),
 		EthPrice:              price.GetEthPrice("USD"),
 		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-		Currency:              GetCurrency(r),
-		ClientsUpdated:        ethclients.ClientsUpdated(),
+		// deprecated please use phase0 variables
+		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
+		Phase0:          utils.Config.Chain.Phase0,
+		Currency:        GetCurrency(r),
+		ClientsUpdated:  ethclients.ClientsUpdated(),
+		Lang:            "en-US",
 		// InfoBanner:            ethclients.GetBannerClients(),
 	}
+
+	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")
+	if len(acceptedLangs) > 0 {
+		if strings.Contains(acceptedLangs[0], "ru") || strings.Contains(acceptedLangs[0], "RU") {
+			data.Lang = "ru-RU"
+		}
+	}
+
+	for _, v := range r.Cookies() {
+		if v.Name == "language" {
+			data.Lang = v.Value
+			break
+		}
+	}
+
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
 
 	return data
