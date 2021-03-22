@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -1055,40 +1056,38 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	queryValidatorsArr := pq.Array(queryValidators)
 
 	// get data from one week before latest epoch
-	//latestEpoch := services.LatestEpoch()
+	latestEpoch := services.LatestEpoch()
+	oneWeekEpochs := uint64(3600 * 24 * 7 / float64(utils.Config.Chain.SecondsPerSlot*utils.Config.Chain.SlotsPerEpoch))
+	queryOffsetEpoch := uint64(0)
+	if latestEpoch > oneWeekEpochs {
+		queryOffsetEpoch = latestEpoch - oneWeekEpochs
+	}
 
-	var incomeHistory []*types.ValidatorIncomeHistory
-	err = db.DB.Select(&incomeHistory, "select day, SUM(start_balance) as start_balance, SUM(end_balance) as end_balance, COALESCE(SUM(deposits_amount), 0) as deposits_amount from validator_stats where validatorindex = ANY($1) GROUP BY day ORDER BY day;", queryValidatorsArr)
+	query := `
+		SELECT
+			epoch,
+			COALESCE(SUM(effectivebalance),0) AS effectivebalance,
+			COALESCE(SUM(balance),0) AS balance,
+			COUNT(*) AS validatorcount
+		FROM validator_balances_p
+		WHERE validatorindex = ANY($1) AND epoch > $2 AND week >= $2 / 1575
+		GROUP BY epoch
+		ORDER BY epoch ASC`
+
+	data := []*types.DashboardValidatorBalanceHistory{}
+	err = db.DB.Select(&data, query, queryValidatorsArr, queryOffsetEpoch)
 	if err != nil {
-		logger.Errorf("error retrieving validator balance history: %v", err)
+		logger.WithError(err).WithField("route", r.URL.String()).Errorf("error retrieving validator balance history")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	var currentBalance uint64
-	err = db.DB.Get(&currentBalance, "SELECT SUM(balance) as balance FROM validators WHERE validatorindex = ANY($1)", queryValidatorsArr)
-	if err != nil {
-		logger.Errorf("error retrieving validator current balance: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
 
-	balanceHistoryChartData := make([][4]float64, len(incomeHistory))
-
-	if len(incomeHistory) > 0 {
-		for i := 0; i < len(incomeHistory)-1; i++ {
-			income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance
-			if income >= incomeHistory[i].Deposits {
-				income = income - incomeHistory[i].Deposits
-			}
-
-			change := utils.ExchangeRateForCurrency(currency) * (float64(income) / 1000000000)
-			balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
-
-			balanceHistoryChartData[i][0] = float64(balanceTs.Unix() * 1000)
-			balanceHistoryChartData[i][1] = float64(incomeHistory[i+1].Deposits) // deprecated
-			balanceHistoryChartData[i][2] = change
-			balanceHistoryChartData[i][3] = 0 // deprecated
-		}
+	balanceHistoryChartData := make([][4]float64, len(data))
+	for i, item := range data {
+		balanceHistoryChartData[i][0] = float64(utils.EpochToTime(item.Epoch).Unix() * 1000)
+		balanceHistoryChartData[i][1] = item.ValidatorCount
+		balanceHistoryChartData[i][2] = float64(item.Balance) / 1e9 * price.GetEthPrice(currency)
+		balanceHistoryChartData[i][3] = float64(item.EffectiveBalance) / 1e9 * price.GetEthPrice(currency)
 	}
 
 	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
