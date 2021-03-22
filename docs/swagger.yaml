@@ -249,6 +249,18 @@ paths:
       summary: Get an eth1 deposit by its eth1 transaction hash
       tags:
       - Eth1
+  /api/v1/graffitiwall:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get all pixels that have been painted until now on the graffitiwall
+      tags:
+      - Graffitiwall
   /api/v1/mobile/notify/register:
     post:
       parameters:
@@ -665,6 +677,12 @@ paths:
       - Validator
   /api/v1/validator/{indexOrPubkey}/proposals:
     get:
+      parameters:
+      - description: Up to 100 validator indicesOrPubkeys, comma separated
+        in: path
+        name: indexOrPubkey
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -672,9 +690,9 @@ paths:
           description: OK
           schema:
             type: string
-      summary: Get all pixels that have been painted until now on the graffitiwall
+      summary: Get all proposed blocks during the last 100 epochs for up to 100 validators
       tags:
-      - Graffitiwall
+      - Validator
   /api/v1/validator/eth1/{address}:
     get:
       parameters:
