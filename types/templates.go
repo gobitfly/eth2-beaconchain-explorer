@@ -33,6 +33,8 @@ type PageData struct {
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
 	IsUserClientUpdated   func(uint64) bool
+	Phase0                Phase0
+	Lang                  string
 }
 
 // Meta is a struct to hold metadata about the page
@@ -99,7 +101,6 @@ type IndexPageData struct {
 	Mainnet                   bool                   `json:"-"`
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
-	Lang                      string
 }
 
 type IndexPageDataEpochs struct {
