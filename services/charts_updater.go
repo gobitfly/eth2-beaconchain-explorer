@@ -1474,6 +1474,16 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		Name    string
 	}
 
+	type drillSeriesData struct {
+		Name string      `json:"name"`
+		ID   string      `json:"id"`
+		Data [][2]string `json:"data"`
+	}
+
+	type drilldown struct {
+		Series []drillSeriesData `json:"series"`
+	}
+
 	var stakePools []pools
 	err = db.DB.Select(&stakePools, "select address, name from stake_pools_stats;")
 	if err != nil {
@@ -1481,37 +1491,152 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 	}
 
 	type seriesDataItem struct {
-		Name    string `json:"name"`
-		Address string `json:"address"`
-		Y       uint64 `json:"y"`
+		Name      string `json:"name"`
+		Address   string `json:"address"`
+		Y         uint64 `json:"y"`
+		Drilldown string `json:"drilldown"`
 	}
-	seriesData := []seriesDataItem{}
+
+	seriesData := []seriesDataItem{
+		{
+			Name:      "Kraken",
+			Y:         0,
+			Drilldown: "Kraken",
+		},
+		{
+			Name:      "Binance",
+			Y:         0,
+			Drilldown: "Binance",
+		},
+		{
+			Name:      "Whale",
+			Y:         0,
+			Drilldown: "Whale",
+		},
+		{
+			Name:      "Huobi",
+			Y:         0,
+			Drilldown: "Huobi",
+		},
+		{
+			Name:      "Bitcoin suisse",
+			Y:         0,
+			Drilldown: "Bitcoin suisse",
+		},
+		{
+			Name:      "Staked.us",
+			Y:         0,
+			Drilldown: "Staked.us",
+		},
+		{
+			Name:      "Lido",
+			Y:         0,
+			Drilldown: "Lido",
+		},
+		{
+			Name:      "Stakefish",
+			Y:         0,
+			Drilldown: "Stakefish",
+		},
+		{
+			Name:      "Defi",
+			Y:         0,
+			Drilldown: "Defi",
+		},
+	}
+	drillSeries := []drillSeriesData{
+		{
+			Name: "Kraken",
+			ID:   "Kraken",
+			Data: [][2]string{},
+		},
+		{
+			Name: "Binance",
+			ID:   "Binance",
+			Data: [][2]string{},
+		},
+		{
+			Name: "Whale",
+			ID:   "Whale",
+			Data: [][2]string{},
+		},
+		{
+			Name: "Huobi",
+			ID:   "Huobi",
+			Data: [][2]string{},
+		},
+		{
+			Name: "Bitcoin suisse",
+			ID:   "Bitcoin suisse",
+			Data: [][2]string{},
+		},
+		{
+			Name: "Staked.us",
+			ID:   "Staked.us",
+			Data: [][2]string{},
+		},
+		{
+			Name: "Lido",
+			ID:   "Lido",
+			Data: [][2]string{},
+		},
+		{
+			Name: "Stakefish",
+			ID:   "Stakefish",
+			Data: [][2]string{},
+		},
+		{
+			Name: "Defi",
+			ID:   "Defi",
+			Data: [][2]string{},
+		},
+		{ // always must be the last
+			Name: "Others",
+			ID:   "Others",
+			Data: [][2]string{},
+		},
+	}
 	othersItem := seriesDataItem{
-		Name: "others",
-		Y:    0,
+		Name:      "Others",
+		Y:         0,
+		Drilldown: "Others",
 	}
 	for i := range rows {
-		if i > 20 {
-			othersItem.Y += rows[i].Count
-			continue
-		}
-
 		var poolName string
 		curAddr := string(utils.FormatEth1AddressString(rows[i].Address))
+		skipAppend := false
 		for _, pool := range stakePools {
 			if strings.ToLower(curAddr) == strings.ToLower("0x"+pool.Address) {
+				for j, seriesItem := range seriesData {
+					if strings.Contains(pool.Name, seriesItem.Name) {
+						seriesData[j].Y += rows[i].Count
+						for k, drillItem := range drillSeries {
+							if strings.Contains(pool.Name, drillItem.ID) {
+								drillSeries[k].Data = append(drillSeries[k].Data, [2]string{pool.Name, fmt.Sprintf("%d", rows[i].Count)})
+								break
+							}
+						}
+						skipAppend = true
+						break
+					}
+				}
 				poolName = pool.Name
 				break
 			}
 		}
-		if poolName == "" {
+
+		if skipAppend {
 			continue
 		}
-		seriesData = append(seriesData, seriesDataItem{
-			Name:    poolName,
-			Address: curAddr,
-			Y:       rows[i].Count,
-		})
+
+		if drillSeries[len(drillSeries)-1].ID == "Others" {
+			othersItem.Y += rows[i].Count
+			if rows[i].Count > 200 { // validators > 200 per pool show stake
+				drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
+					[2]string{poolName, fmt.Sprintf("%d", rows[i].Count)},
+				)
+			}
+		}
 	}
 	if othersItem.Y > 0 {
 		seriesData = append(seriesData, othersItem)
@@ -1535,15 +1660,15 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			} 
 		}`,
 		PlotOptionsSeriesCursor: "pointer",
-		PlotOptionsSeriesEventsClick: `function(event){ 
-			if (event.point.name == 'others') { window.location.href = '/validators/eth1deposits' }
-			else { window.location.href = '/validators/eth1deposits?q='+encodeURIComponent(event.point.address) } }`,
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Deposits Distribution",
 				Type: "pie",
 				Data: seriesData,
 			},
+		},
+		Drilldown: drilldown{
+			Series: drillSeries,
 		},
 	}
 

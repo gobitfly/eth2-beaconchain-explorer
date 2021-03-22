@@ -71,6 +71,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
+		return
 	}
 
 	var pieChart chart
@@ -194,7 +195,7 @@ func getEthSupply() interface{} {
 	return respjson
 }
 
-func GetAvgLongestStreak(w http.ResponseWriter, r *http.Request) {
+func GetSumLongestStreak(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 

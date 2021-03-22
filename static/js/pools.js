@@ -123,7 +123,7 @@ function randerTable(tableData){
                     data: '2',
                     "orderable": false,
                     render: function(data, type, row, meta){
-                        return `<a href="/validators/eth1deposits?q=0x${data}">${data}</a>`
+                        return `<a href="/validators/eth1deposits?q=0x${data}">0x${data}</a>`
                     } 
                 }, {
                     targets: 3,

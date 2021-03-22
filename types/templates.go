@@ -638,6 +638,7 @@ type GenericChartData struct {
 	StackingMode                    string                    `json:"stacking_mode"`
 	ColumnDataGroupingApproximation string                    // "average", "averages", "open", "high", "low", "close" and "sum"
 	Series                          []*GenericChartDataSeries `json:"series"`
+	Drilldown                       interface{}               `json:"drilldown"`
 }
 
 type SeriesDataItem struct {

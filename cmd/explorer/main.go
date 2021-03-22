@@ -275,7 +275,7 @@ func main() {
 			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
-			router.HandleFunc("/pools/streak/longest", handlers.GetAvgLongestStreak).Methods("GET")
+			router.HandleFunc("/pools/streak/longest", handlers.GetSumLongestStreak).Methods("GET")
 
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
