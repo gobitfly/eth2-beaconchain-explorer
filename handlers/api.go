@@ -5,19 +5,19 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"github.com/mssola/user_agent"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // @title Beaconcha.in ETH2 API
@@ -1028,6 +1028,76 @@ func MobileTagedValidators(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendOKResponse(j, r.URL.String(), data)
+}
+
+// TODO Replace app code to work with new income balance dashboard
+// Meanwhile keep old code from Feb 2021 to be app compatible
+func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+
+	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"))
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	if len(queryValidators) < 1 {
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+	queryValidatorsArr := pq.Array(queryValidators)
+
+	// get data from one week before latest epoch
+	//latestEpoch := services.LatestEpoch()
+
+	var incomeHistory []*types.ValidatorIncomeHistory
+	err = db.DB.Select(&incomeHistory, "select day, SUM(start_balance) as start_balance, SUM(end_balance) as end_balance, COALESCE(SUM(deposits_amount), 0) as deposits_amount from validator_stats where validatorindex = ANY($1) GROUP BY day ORDER BY day;", queryValidatorsArr)
+	if err != nil {
+		logger.Errorf("error retrieving validator balance history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	var currentBalance uint64
+	err = db.DB.Get(&currentBalance, "SELECT SUM(balance) as balance FROM validators WHERE validatorindex = ANY($1)", queryValidatorsArr)
+	if err != nil {
+		logger.Errorf("error retrieving validator current balance: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	balanceHistoryChartData := make([][4]float64, len(incomeHistory))
+
+	if len(incomeHistory) > 0 {
+		for i := 0; i < len(incomeHistory)-1; i++ {
+			income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance
+			if income >= incomeHistory[i].Deposits {
+				income = income - incomeHistory[i].Deposits
+			}
+
+			change := utils.ExchangeRateForCurrency(currency) * (float64(income) / 1000000000)
+			balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
+
+			balanceHistoryChartData[i][0] = float64(balanceTs.Unix() * 1000)
+			balanceHistoryChartData[i][1] = 0 // deprecated
+			balanceHistoryChartData[i][2] = change
+			balanceHistoryChartData[i][3] = 0 // deprecated
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(balanceHistoryChartData)
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error enconding json response")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 }
 
 func getAuthClaims(r *http.Request) *utils.CustomClaims {
