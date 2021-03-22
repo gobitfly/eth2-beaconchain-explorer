@@ -1,18 +1,18 @@
-function getActive(poolValidators){
+function getActive(poolValidators) {
     let active = 0
-    for (let item of poolValidators){
-        if (item.status==="active_online"){
+    for (let item of poolValidators) {
+        if (item.status === "active_online") {
             active++
         }
     }
 
-    return [100.0 - ((1.0-(active/poolValidators.length))*100), `${addCommas(active)} / ${addCommas(poolValidators.length)}`]
+    return [100.0 - ((1.0 - (active / poolValidators.length)) * 100), `${addCommas(active)} / ${addCommas(poolValidators.length)}`]
 }
 
-function getValidatorCard(val){
-    if (val===undefined) return ""
+function getValidatorCard(val) {
+    if (val === undefined) return ""
     let bg = "danger"
-    if (val.status==="active_online"){
+    if (val.status === "active_online") {
         bg = "success"
     }
     return `
@@ -22,33 +22,43 @@ function getValidatorCard(val){
             <span class="text-${bg}">${val.status.replace("_", " ")}</span>
         </div>
         <hr/>
-        <span data-toggle="tooltip" title="31 Day Balance">${(val.balance31d/1e9).toFixed(4)} ETH</span>
+        <span data-toggle="tooltip" title="31 Day Balance">${(val.balance31d / 1e9).toFixed(4)} ETH</span>
     </div>
     `
 }
 
-function showPoolInfo(data){
+function showPoolInfo(data) {
     $(".popupMain").html("")
-    let data2Show = data
-    let data2ShowOnScroll = []
-    if (data.length > 100){
-        data2Show = data.slice(0, 100)
-        data2ShowOnScroll = data.slice(100, data.length-1)
+    let data2Show = []
+    for (let d of data) {
+        if (d.status === "active_online") {
+            continue
+        }
+        data2Show.push(d)
     }
-    for (let item of data2Show){
+    let data2ShowOnScroll = []
+    if (data2Show.length > 100) {
+        data2ShowOnScroll = data2Show.slice(100, data.length - 1)
+        data2Show = data2Show.slice(0, 100)
+    } else if (data2Show.length === 0) {
+        $(".popupMain").html(`All Validators are active <i class="fas fa-rocket"></i>`)
+    }
+
+    for (let item of data2Show) {
         $(".popupMain").append(getValidatorCard(item))
     }
+
     $("#poolPopUP").removeClass("d-none")
     $('html, body').animate({
         scrollTop: $("body").offset().top
     }, 1500);
-    if (data2ShowOnScroll.length > 0){
+    if (data2ShowOnScroll.length > 0) {
         $(".popupMain").off('scroll')
-        $(".popupMain").on('scroll', (e)=>{
+        $(".popupMain").on('scroll', (e) => {
             var elem = $(e.currentTarget);
             // console.log((elem[0].scrollHeight - elem.scrollTop() <= elem.outerHeight()), elem[0].scrollHeight, elem.scrollTop(), elem.outerHeight())
-            if ((elem[0].scrollHeight - elem.scrollTop())-10 <= elem.outerHeight()){
-                for (let i = 0; i<100; i++){
+            if ((elem[0].scrollHeight - elem.scrollTop()) - 10 <= elem.outerHeight()) {
+                for (let i = 0; i < 100; i++) {
                     $(".popupMain").append(getValidatorCard(data2ShowOnScroll.shift()))
                 }
             }
@@ -56,24 +66,24 @@ function showPoolInfo(data){
     }
 }
 
-function addHandlers(tableData){
-    for (let item of Object.keys(tableData)){
+function addHandlers(tableData) {
+    for (let item of Object.keys(tableData)) {
         if (isNaN(parseInt(item, 10))) continue
 
-        $("#"+tableData[item][2]).off("click")
-        $("#"+tableData[item][2]).on("click", ()=>{
+        $("#" + tableData[item][2]).off("click")
+        $("#" + tableData[item][2]).on("click", () => {
             showPoolInfo(tableData[item][5])
         })
-        getPoolEffectiveness(tableData[item][2]+"eff", tableData[item][5])
-        getAvgLongestStreak(tableData[item][2])
+        getPoolEffectiveness(tableData[item][2] + "eff", tableData[item][5])
+        getSumLongestStreak(tableData[item][2])
     }
 }
 
-function updateTableType(){
-    if($(window).width() > 1440){
+function updateTableType() {
+    if ($(window).width() > 1440) {
         $("#poolTable").addClass("table")
         $("#poolTable").removeClass("table-responsive")
-    }else{
+    } else {
         $("#poolTable").removeClass("table")
         $("#poolTable").addClass("table-responsive")
     }
@@ -81,7 +91,7 @@ function updateTableType(){
     $("#staking-pool-table_wrapper div.row:last").addClass("mt-4")
 }
 
-function randerTable(tableData){
+function randerTable(tableData) {
     $('#staking-pool-table').DataTable({
         processing: true,
         serverSide: false,
@@ -90,78 +100,78 @@ function randerTable(tableData){
         pagingType: 'full_numbers',
         data: tableData,
         lengthMenu: [10, 25],
-        preDrawCallback: function() {
+        preDrawCallback: function () {
             try {
                 $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip('dispose')
-            } catch (e) {}
+            } catch (e) { }
         },
-        drawCallback: function(settings) {
+        drawCallback: function (settings) {
             $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip()
-            $(".hover-shadow").hover(function(){
+            $(".hover-shadow").hover(function () {
                 $(this).addClass("shadow");
-                }, function(){
+            }, function () {
                 $(this).removeClass("shadow");
             });
             let api = this.api();
-            let curData = api.rows( {page:'current'} ).data()
+            let curData = api.rows({ page: 'current' }).data()
             // console.log(curData, typeof(curData), Object.keys(curData) ,api.row(this).data());
             addHandlers(curData)
             updateTableType()
- 
+
         },
         columnDefs: [
-                {
-                    targets: 0,
-                    data: '0',
-                    "orderable": true
-                }, {
-                    targets: 1,
-                    data: '1',
-                    "orderable": true
-                }, {
-                    targets: 2,
-                    data: '2',
-                    "orderable": false,
-                    render: function(data, type, row, meta){
-                        return `<a href="/validators/eth1deposits?q=0x${data}">0x${data}</a>`
-                    } 
-                }, {
-                    targets: 3,
-                    data: '3',
-                    "orderable": true,
-                    render: function(data, type, row, meta) {
-                        return addCommas(data)
-                    }
-                }, {
-                    targets: 4,
-                    data: '4',
-                    "orderable": true,
-                    render: function(data, type, row, meta) {
-                        function getIncomeStats(){
-                            return `
-                                Last Day: ${addCommas(parseInt(data.lastDay/1e9))}
-                                Last Week: ${addCommas(parseInt(data.lastWeek/1e9))}
-                                Last Month: ${addCommas(parseInt(data.lastMonth/1e9))}
+            {
+                targets: 0,
+                data: '0',
+                "orderable": true
+            }, {
+                targets: 1,
+                data: '1',
+                "orderable": true
+            }, {
+                targets: 2,
+                data: '2',
+                "orderable": false,
+                render: function (data, type, row, meta) {
+                    return `<a href="/validators/eth1deposits?q=0x${data}">0x${data}</a>`
+                }
+            }, {
+                targets: 3,
+                data: '3',
+                "orderable": true,
+                render: function (data, type, row, meta) {
+                    return addCommas(data)
+                }
+            }, {
+                targets: 4,
+                data: '4',
+                "orderable": true,
+                render: function (data, type, row, meta) {
+                    function getIncomeStats() {
+                        return `
+                                Last Day: ${addCommas(parseInt(data.lastDay / 1e9))}
+                                Last Week: ${addCommas(parseInt(data.lastWeek / 1e9))}
+                                Last Month: ${addCommas(parseInt(data.lastMonth / 1e9))}
                                 `
-                        }
-                        return `<span data-toggle="tooltip" title="${getIncomeStats()}" data-html="true">
-                                ${addCommas(parseInt(data.total/1e9))}
+                    }
+                    return `<span data-toggle="tooltip" title="${getIncomeStats()}" data-html="true">
+                                ${addCommas(parseInt(data.total / 1e9))}
                                 </span>
                                 `
+                }
+            }, {
+                targets: 5,
+                data: '5',
+                "orderable": false,
+                render: function (data, type, row, meta) {
+                    let info = getActive(data)
+                    let bg = "bg-success"
+                    let fg = "white"
+                    if (parseInt(info[0]) < 60) {
+                        bg = "bg-danger"
+                        fg = "black"
                     }
-                }, {
-                    targets: 5,
-                    data: '5',
-                    "orderable": false,
-                    render: function(data, type, row, meta) {
-                        let info = getActive(data)
-                        let bg = "bg-success"
-                        let fg = "white"
-                        if (parseInt(info[0]) < 60){
-                            bg = "bg-danger"
-                            fg = "black"
-                        }
-                        return `
+                    return `
                         <div id="${row[2]}" style="cursor: pointer;" class="d-flex flex-column hover-shadow" style="height: 100%;" 
                                             data-toggle="tooltip" title="${info[0].toFixed(2)}% of validators are active in this pool">
                             <div class="d-flex justify-content-center">
@@ -175,103 +185,106 @@ function randerTable(tableData){
                             </div>
                         </div>
                         `
-                    }
-                }, {
-                    targets: 6,
-                    data: '6',
-                    "orderable": false,
-                    render: function(data, type, row, meta) {
-                        return `
+                }
+            }, {
+                targets: 6,
+                data: '6',
+                "orderable": false,
+                render: function (data, type, row, meta) {
+                    return `
                             <div id="${data}eff" data-toggle="tooltip" data-original-title="Effectiveness of the top 200 validators">
                                 <div class="spinner-grow spinner-grow-sm text-primary" role="status">
                                     <span class="sr-only">Loading...</span>
                                 </div>
                             </div>
                         `
-                    }
-                
-                }, {
-                    targets: 7,
-                    data: '7',
-                    "orderable": false,
-                    render: function(data, type, row, meta) {
-                        return `
+                }
+
+            }, {
+                targets: 7,
+                data: '7',
+                "orderable": false,
+                render: function (data, type, row, meta) {
+                    return `
                             <div id="${data}streak">
                                 <div class="spinner-grow spinner-grow-sm text-primary" role="status">
                                     <span class="sr-only">Loading...</span>
                                 </div>
                             </div>
                         `
-                    }
-                
                 }
-            ],
-        order: [[3,'desc']],
+
+            }
+        ],
+        order: [[3, 'desc']],
     })
 }
 
-function addCommas(number){
+function addCommas(number) {
     return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
 
-function updateEthSupply(){
+function updateEthSupply() {
     let circulatingETH = parseInt(ETH_SUPPLY.result / 1e18);
     let stakedEth = STAKED_ETH;
     let eth = parseFloat(stakedEth.split(" ")[0].replace(",", "").replace(",", ""));
-    let progress = ((eth/circulatingETH)*100).toFixed(2);
+    let progress = ((eth / circulatingETH) * 100).toFixed(2);
     $(".staked-progress").width(progress);
-    $(".staked-progress, #staked-percent").html(`${progress}%`);
-    $("#ethCsupply").html(addCommas(circulatingETH) +" ETH")
+    $("#staked-percent").html(`${progress}%`);
+    $("#ethCsupply").html(addCommas(circulatingETH) + " ETH")
 }
 
-function getPoolEffectiveness(id, data){
-    let load = async ()=>{
+function getPoolEffectiveness(id, data) {
+    let load = async () => {
         let query = "?validators="
-        for (let item of data.slice(0, 200)){
-            query+=item.validatorindex+","
+        for (let item of data.slice(0, 200)) {
+            query += item.validatorindex + ","
         }
-        query = query.substring(0, query.length-1)
+        query = query.substring(0, query.length - 1)
         // console.log(query)
         let resp = await fetch(`/dashboard/data/effectiveness${query}`)
         resp = await resp.json()
         let eff = 0.0
-        for (let incDistance of resp){
-            if (incDistance===0.0){
-            continue
+        for (let incDistance of resp) {
+            if (incDistance === 0.0) {
+                continue
             }
-            eff+=(1.0/incDistance)*100.0
+            eff += (1.0 / incDistance) * 100.0
         }
-        eff=eff/resp.length
+        eff = eff / resp.length
         setValidatorEffectiveness(id, eff)
     }
 
-    load().then(()=>{})
+    load().then(() => { })
 }
 
-function getAvgLongestStreak(id){
-    fetch("/pools/streak/longest?pool=0x"+id)
-    .then((resp)=>{
-        resp.json()
-        .then((data)=>{
-            $(`#${id}streak`).html(addCommas(parseInt(data)))
+function getSumLongestStreak(id) {
+    fetch("/pools/streak/longest?pool=0x" + id)
+        .then((resp) => {
+            resp.json()
+                .then((data) => {
+                    $(`#${id}streak`).html(addCommas(parseInt(data)))
+                })
+        }).catch((err) => {
+            console.log(err)
+            $(`#${id}streak`).html("N/a")
         })
-    })
 }
 
 $(document).ready(function () {
-    $(window).on("resize", ()=>{
+    $(window).on("resize", () => {
         updateTableType()
     })
-    $("#poolPopUpBtn").on("click", ()=>{$("#poolPopUP").addClass("d-none")})
-    
+    $("#poolPopUpBtn").on("click", () => { $("#poolPopUP").addClass("d-none") })
+
     updateEthSupply()
-    
+
     let tableData = []
-    for (let el of POOL_INFO){
-        tableData.push([el.name, el.category, el.address, 
-                        parseInt(el.poolIncome.totalDeposits/1e9), 
-                        el.poolIncome, el.poolInfo, 
-                        el.address, el.address])
+    for (let el of POOL_INFO) {
+        tableData.push([el.name, el.category, el.address,
+        parseInt(el.poolIncome.totalDeposits / 1e9),
+        el.poolIncome, el.poolInfo,
+        el.address, el.address])
     }
 
     randerTable(tableData)

@@ -33,14 +33,13 @@
                 <div class="progress" style="height: 100%;">
                     <div class="progress-bar progress-bar-success staked-progress" role="progressbar" aria-valuenow="40"
                         aria-valuemin="0" aria-valuemax="100" style="width:100%">
-                        0%
                     </div>
                 </div>
             </div>
         </div>
         <div class="row mt-5">
             <div class="col-md-12">
-                <div id="poolTable" class="table-responsive card px-0 py-1">
+                <div id="poolTable" class="table-responsive card px-0 py-1 mb-2">
                     <table class="table" id="staking-pool-table">
                         <thead>
                             <tr>
@@ -60,6 +59,7 @@
                         </tbody>
                     </table>
                 </div>
+                <span class="px-2" id="lastUpdate"></span>
             </div>
         </div>
     </div>
@@ -67,7 +67,7 @@
         <div class="container-fluid" style="width: 100%;">
             <div class="row m-0 mb-1" style="width: 100%;">
                 <button id="poolPopUpBtn" class="col-2 btn btn-sm btn-primary">Close</button>
-                <span class="col p-1 mx-1" style="color: gray;"><i class="fas fa-info-circle"></i> Validators are ordered by 31 day balance, highest first</span>
+                <span class="col p-1 mx-1" style="color: gray;"><i class="fas fa-info-circle"></i> Inactive validators are ordered by 31 day balance, highest first</span>
             </div>
             <div class="row popupMain p-0 m-0 justify-content-center" style="height: 70vh; width: 100%; overflow: auto;"></div>
         </div>
@@ -76,10 +76,15 @@
 
 <div id="tempcont" class=""></div>
 <script src="/bundle/js/jquery.min.js"></script>
+<script src="/bundle/js/luxon.min.js"></script>
 <script>
     const POOL_INFO = {{.Data.PoolInfo}}
     const STAKED_ETH = {{.Data.StakedEther}}
     const ETH_SUPPLY = {{.Data.EthSupply}}
+    const LAST_UPDATE = {{.Data.LastUpdate}}
+
+    // console.log(LAST_UPDATE, luxon.DateTime.fromMillis(LAST_UPDATE).toRelative())
+    $("#lastUpdate").html(`Last Updated: ${luxon.DateTime.fromMillis(LAST_UPDATE*1000).toRelative()}`)
 </script>
 <script src="/bundle/js/pools.js"></script>
 {{end}}

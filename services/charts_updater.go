@@ -1602,7 +1602,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		Drilldown: "Others",
 	}
 	for i := range rows {
-		var poolName string
+		var poolName string = "Unknown"
 		curAddr := string(utils.FormatEth1AddressString(rows[i].Address))
 		skipAppend := false
 		for _, pool := range stakePools {

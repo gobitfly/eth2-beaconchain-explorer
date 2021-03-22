@@ -46,6 +46,7 @@ type chart struct {
 	StakedEther         string
 	PoolInfo            []respData
 	EthSupply           interface{}
+	LastUpdate          int64
 }
 
 type respData struct {
@@ -61,6 +62,7 @@ var poolInfoTemp []respData
 var poolInfoTempTime time.Time
 var ethSupply interface{}
 var updateMux = &sync.RWMutex{}
+var firstReq = true
 
 func Pools(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -85,16 +87,13 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 
 	updateMux.Lock()
 	defer updateMux.Unlock()
-	if time.Now().Sub(poolInfoTempTime).Hours() > 1 { // query db every 1 hour
-		poolInfoTemp = getPoolInfo()
-		ethSupply = getEthSupply()
-		pieChart.PoolInfo = poolInfoTemp
-		pieChart.EthSupply = ethSupply
-		poolInfoTempTime = time.Now()
-	} else {
-		pieChart.PoolInfo = poolInfoTemp
-		pieChart.EthSupply = ethSupply
+	if firstReq {
+		updatePoolInfo()
+		firstReq = false
 	}
+	pieChart.PoolInfo = poolInfoTemp
+	pieChart.EthSupply = ethSupply
+	pieChart.LastUpdate = poolInfoTempTime.Unix()
 
 	data.Data = pieChart
 
@@ -103,6 +102,21 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
 		return
+	}
+
+	// go func() {
+	// 	updateMux.Lock()
+	// 	defer updateMux.Unlock()
+	updatePoolInfo()
+	// }()
+}
+
+func updatePoolInfo() {
+	if time.Now().Sub(poolInfoTempTime).Hours() > 6 { // query db every 6 hour
+		poolInfoTemp = getPoolInfo()
+		ethSupply = getEthSupply()
+		poolInfoTempTime = time.Now()
+		logger.Infoln("Updated Pool Info")
 	}
 }
 
@@ -210,7 +224,7 @@ func GetSumLongestStreak(w http.ResponseWriter, r *http.Request) {
 	// 	Long    *string
 	// 	Current *string
 	// }
-	var sqlData []string
+	var sqlData []*string
 
 	err := db.DB.Select(&sqlData, `
 			with 
