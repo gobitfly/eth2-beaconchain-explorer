@@ -1085,7 +1085,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 			balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
 
 			balanceHistoryChartData[i][0] = float64(balanceTs.Unix() * 1000)
-			balanceHistoryChartData[i][1] = 0 // deprecated
+			balanceHistoryChartData[i][1] = incomeHistory[i+1].Deposits // deprecated
 			balanceHistoryChartData[i][2] = change
 			balanceHistoryChartData[i][3] = 0 // deprecated
 		}
