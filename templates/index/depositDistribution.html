@@ -18,16 +18,17 @@
             chart: { 
             type: {{.DepositDistribution.Data.Type}}, 
             borderColor: null,
+            backgroundColor: "rgba(0,0,0,0.0)",
             height: parseInt({{.DepositDistribution.Height}})? parseInt({{.DepositDistribution.Height}}) : 300
             },
             rangeSelector: {  enabled: false },
             title: { 
                 useHTML: true,
-                text: '<a href="charts/{{.DepositDistribution.Path}}">{{.DepositDistribution.Data.Title}}</a>',
+                text: '<a class="text-dark" href="charts/{{.DepositDistribution.Path}}">{{.DepositDistribution.Data.Title}}</a>',
             },
             subtitle: {
                 useHTML: true,
-                text: {{.DepositDistribution.Data.Subtitle}}{{ if .DepositDistribution.Data.ShowGapHider }} + ' <button class="button btn-secondary btn-xs hide-gaps text-light">hide gaps</button>'{{end}}
+                text: '<span class="text-dark">{{.DepositDistribution.Data.Subtitle}}</span>'{{ if .DepositDistribution.Data.ShowGapHider }} + ' <button class="button btn-secondary btn-xs hide-gaps text-light">hide gaps</button>'{{end}}
             },
             plotOptions: { 
                 column: { stacking: {{.DepositDistribution.Data.StackingMode}} }, 
