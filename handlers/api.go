@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
-
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
