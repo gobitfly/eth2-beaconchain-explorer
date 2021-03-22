@@ -331,6 +331,25 @@ var doc = `{
                 }
             }
         },
+        "/api/v1/graffitiwall": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Graffitiwall"
+                ],
+                "summary": "Get all pixels that have been painted until now on the graffitiwall",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/mobile/notify/register": {
             "post": {
                 "security": [
@@ -1068,9 +1087,18 @@ var doc = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Graffitiwall"
+                    "Validator"
                 ],
-                "summary": "Get all pixels that have been painted until now on the graffitiwall",
+                "summary": "Get all proposed blocks during the last 100 epochs for up to 100 validators",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
+                        "name": "indexOrPubkey",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",

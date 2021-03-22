@@ -10,14 +10,15 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/gorilla/context"
-	"github.com/gorilla/mux"
-	"github.com/lib/pq"
-	"github.com/mssola/user_agent"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/context"
+	"github.com/gorilla/mux"
+	"github.com/lib/pq"
+	"github.com/mssola/user_agent"
 )
 
 // @title Beaconcha.in ETH2 API
@@ -684,7 +685,7 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 // @Tags Graffitiwall
 // @Produce  json
 // @Success 200 {object} string
-// @Router /api/v1/validator/{indexOrPubkey}/proposals [get]
+// @Router /api/v1/graffitiwall [get]
 func ApiGraffitiwall(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
