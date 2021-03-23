@@ -80,14 +80,6 @@ function addHandlers(tableData) {
 }
 
 function updateTableType() {
-    if ($(window).width() > 1440) {
-        $("#poolTable").addClass("table")
-        $("#poolTable").removeClass("table-responsive")
-    } else {
-        $("#poolTable").removeClass("table")
-        $("#poolTable").addClass("table-responsive")
-    }
-
     $("#staking-pool-table_wrapper div.row:last").addClass("mt-4")
 }
 
