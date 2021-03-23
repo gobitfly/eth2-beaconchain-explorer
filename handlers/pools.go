@@ -168,7 +168,7 @@ func getPoolStats(pools []pools) []poolStatsData {
 								FROM eth1_deposits 
 								WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
 							)
-			 `, pool.Address)
+			 ORDER BY balance31d DESC`, pool.Address)
 		if err != nil {
 			logger.Errorf("error encoding:'%s', %v", pool.Address, err)
 			continue
