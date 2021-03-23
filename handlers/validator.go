@@ -1124,6 +1124,16 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	currentEpoch := services.LatestEpoch()
 
+	lookBack := uint64(0)
+
+	if currentEpoch >= 10 {
+		lookBack = currentEpoch - 10
+	}
+
+	if lookBack >= start {
+		lookBack = lookBack - start
+	}
+
 	var validatorHistory []*types.ValidatorHistory
 	err = db.DB.Select(&validatorHistory, `
 			SELECT 
@@ -1139,7 +1149,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			WHERE vbalance.validatorindex = $1 AND vbalance.epoch >= $2 AND vbalance.epoch <= $3 AND vbalance.week >= $2 / 1575 AND vbalance.week <= $3 / 1575
 			ORDER BY epoch DESC
 			LIMIT 10
-			`, index, currentEpoch-10-start, currentEpoch-start)
+			`, index, lookBack, currentEpoch-start)
 
 	if err != nil {
 		logger.Errorf("error retrieving validator history: %v", err)
