@@ -91,7 +91,7 @@ update set deposits = excluded.deposits, deposits_amount = excluded.deposits_amo
 	start = time.Now()
 
 	logger.Infof("marking day export as completed in the status table")
-	_, err = tx.Exec("insert into validator_stats_status (day, status) values ($1, true)", day)
+	_, err = tx.Exec("insert into validator_stats_status (day, status) values ($1, true) on conflict (day) do update set day = excluded.day", day)
 	if err != nil {
 		return err
 	}
