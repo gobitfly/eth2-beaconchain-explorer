@@ -168,7 +168,7 @@ func getPoolStats(pools []pools) []poolStatsData {
 								FROM eth1_deposits 
 								WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
 							)
-			 ORDER BY balance31d DESC`, pool.Address)
+			 `, pool.Address)
 		if err != nil {
 			logger.Errorf("error encoding:'%s', %v", pool.Address, err)
 			continue
@@ -181,8 +181,8 @@ func getPoolStats(pools []pools) []poolStatsData {
 
 func getPoolIncome(pools []poolInfo) (*types.ValidatorEarnings, error) {
 	var indexes = make([]uint64, len(pools))
-	for i, pools := range pools {
-		indexes[i] = pools.ValidatorIndex
+	for i, pool := range pools {
+		indexes[i] = pool.ValidatorIndex
 	}
 
 	return GetValidatorEarnings(indexes)
@@ -209,7 +209,7 @@ func getEthSupply() interface{} {
 	return respjson
 }
 
-func GetSumLongestStreak(w http.ResponseWriter, r *http.Request) {
+func GetAvgCurrentStreak(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -237,17 +237,20 @@ func GetSumLongestStreak(w http.ResponseWriter, r *http.Request) {
 				),
 				longeststreaks as (
 					select 
-						validatorindex, start, length, rank() over (order by length desc),
-						rank() over (partition by validatorindex order by length desc) as vrank
+						validatorindex, start, length
 					from validator_attestation_streaks
 					where status = 1
+				),
+				currentstreaks as (
+					select validatorindex, start, length
+					from validator_attestation_streaks
+					where status = 1 and start+length = (select max(start+length) from validator_attestation_streaks)
 				)
 			select  
-				SUM(ls.length)
+				AVG(coalesce(cs.length,0))
 			from longeststreaks ls
 			inner join matched_validators v on ls.validatorindex = v.validatorindex
-			left join (select count(*) from longeststreaks) cnt(totalcount) on true
-			where vrank = 1
+			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
 			`, pool)
 
 	if err != nil {

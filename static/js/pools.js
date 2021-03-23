@@ -75,7 +75,7 @@ function addHandlers(tableData) {
             showPoolInfo(tableData[item][5])
         })
         getPoolEffectiveness(tableData[item][2] + "eff", tableData[item][5])
-        getSumLongestStreak(tableData[item][2])
+        getAvgCurrentStreak(tableData[item][2])
     }
 }
 
@@ -258,8 +258,8 @@ function getPoolEffectiveness(id, data) {
     load().then(() => { })
 }
 
-function getSumLongestStreak(id) {
-    fetch("/pools/streak/longest?pool=0x" + id)
+function getAvgCurrentStreak(id) {
+    fetch("/pools/streak/current?pool=0x" + id)
         .then((resp) => {
             resp.json()
                 .then((data) => {
