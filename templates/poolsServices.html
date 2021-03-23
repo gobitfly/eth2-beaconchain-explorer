@@ -17,27 +17,27 @@
                 {{template "depositDistributionChart" .Data}}
             </div>
         </div>
-        <div class="row">
+        <!-- <div class="row">
             <div class="col-md-12">
                 {{ template "bannerPoolsServices" }}
             </div>
-       </div>
+       </div> -->
         <div class="row">
             <div class="col-md-12">
                 <div class="d-flex justify-content-between" style="width: 100%;">
-                    <div>
-                        <span data-toggle="tooltip" data-placement="top" title="Staked ETH">{{.Data.StakedEther}}</span> / <span id="ethCsupply" data-toggle="tooltip" data-placement="top" title="Circulating ETH">114,788,539 ETH</span>
+                    <div class="row" style="width: 42%;">
+                        <span class="col-md-3 col-sm-12 pr-0" data-toggle="tooltip" data-placement="top" title="Staked ETH">{{.Data.StakedEther}}</span><span class="d-none d-md-inline">/</span><span class="col-md-3 col-sm-12 pr-0" id="ethCsupply" data-toggle="tooltip" data-placement="top" title="Circulating ETH">114,788,539 ETH</span>
                     </div>
                     <span>Currently Staked: <span id="staked-percent"></span></span>
                 </div>
-                <div class="progress" style="height: 100%;">
+                <div class="progress">
                     <div class="progress-bar progress-bar-success staked-progress" role="progressbar" aria-valuenow="40"
                         aria-valuemin="0" aria-valuemax="100" style="width:100%">
                     </div>
                 </div>
             </div>
         </div>
-        <div class="row mt-5">
+        <div class="row mt-4">
             <div class="col-md-12">
                 <div id="poolTable" class="table-responsive card px-0 py-1 mb-2">
                     <table class="table" id="staking-pool-table">

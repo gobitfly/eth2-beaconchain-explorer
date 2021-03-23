@@ -1509,7 +1509,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			Drilldown: "Binance",
 		},
 		{
-			Name:      "Whale",
+			Name:      "Whales",
 			Y:         0,
 			Drilldown: "Whale",
 		},
@@ -1608,7 +1608,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		for _, pool := range stakePools {
 			if strings.ToLower(curAddr) == strings.ToLower("0x"+pool.Address) {
 				for j, seriesItem := range seriesData {
-					if strings.Contains(pool.Name, seriesItem.Name) {
+					if strings.Contains(pool.Name, seriesItem.Drilldown) {
 						seriesData[j].Y += rows[i].Count
 						for k, drillItem := range drillSeries {
 							if strings.Contains(pool.Name, drillItem.ID) {
