@@ -128,9 +128,9 @@ func getPoolInfo() []respData {
 	if err != nil {
 		logger.Errorf("error retrieving stake pools stats %v ", err)
 	}
-
+	// logger.Errorln("pool stats", time.Now())
 	stats := getPoolStats(stakePools)
-
+	// logger.Errorln("pool stats after", time.Now())
 	for i, pool := range stakePools {
 		state := []poolInfo{}
 		if len(stats) > i {
@@ -158,7 +158,7 @@ func getPoolInfo() []respData {
 
 func getPoolStats(pools []pools) []poolStatsData {
 	var result []poolStatsData
-	for _, pool := range pools {
+	for _, pool := range pools { // needs optimisation takes 10 sec. to run
 		var states []poolInfo
 		err := db.DB.Select(&states,
 			`SELECT status, validatorindex, balance31d
