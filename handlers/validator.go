@@ -1130,7 +1130,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		lookBack = currentEpoch - 10
 	}
 
-	if lookBack > start {
+	if lookBack >= start {
 		lookBack = lookBack - start
 	}
 
