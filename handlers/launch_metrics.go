@@ -27,6 +27,12 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var blks []sqlBlocks = []sqlBlocks{}
+	lookBack := services.LatestEpoch()
+	if lookBack < 5 {
+		lookBack = 0
+	} else {
+		lookBack = lookBack - 5
+	}
 
 	err := db.DB.Select(&blks, `
 	SELECT
@@ -49,7 +55,7 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	WHERE
 	  b.epoch > $1 and b.epoch <= $2
 	ORDER BY slot desc
-`, services.LatestEpoch()-5, services.LatestEpoch())
+`, lookBack, services.LatestEpoch())
 	if err != nil {
 		logger.Errorf("error querying blocks table for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
