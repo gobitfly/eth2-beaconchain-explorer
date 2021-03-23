@@ -41,12 +41,6 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	pieChart.DepositDistribution.Path = "deposits_distribution"
 	pieChart.StakedEther = indexStats.StakedEther
 
-	// updateMux.Lock()
-	// defer updateMux.Unlock()
-	// if firstReq {
-	// 	updatePoolInfo()
-	// 	firstReq = false
-	// }
 	pieChart.PoolInfo, pieChart.EthSupply, pieChart.LastUpdate = services.GetPoolsData()
 
 	data.Data = pieChart
@@ -70,10 +64,6 @@ func GetAvgCurrentStreak(w http.ResponseWriter, r *http.Request) {
 		pool = pool[:128]
 	}
 
-	// var sqlData []struct {
-	// 	Long    *string
-	// 	Current *string
-	// }
 	var sqlData []*string
 
 	err := db.DB.Select(&sqlData, `

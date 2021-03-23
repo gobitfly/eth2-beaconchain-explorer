@@ -52,7 +52,6 @@ func Init() {
 	}
 
 	go statsUpdater()
-	InitPools()
 }
 
 func InitNotifications() {
