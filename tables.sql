@@ -538,6 +538,17 @@ create table api_statistics
     primary key (ts, apikey, call)
 );
 
+drop table if exists stake_pools_stats;
+create table stake_pools_stats
+(
+    id serial not null, 
+    address text not null, 
+    deposit int, 
+    name text not null, 
+    category text, 
+    PRIMARY KEY(id, address, deposit, name)
+);
+
 drop table if exists price;
 create table price
 (

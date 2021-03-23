@@ -277,6 +277,8 @@ func main() {
 
 			router.HandleFunc("/education", handlers.EducationServices).Methods("GET")
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
+			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
+			router.HandleFunc("/pools/streak/current", handlers.GetAvgCurrentStreak).Methods("GET")
 
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
@@ -396,6 +398,8 @@ func main() {
 	if utils.Config.Frontend.ShowDonors.Enabled {
 		services.InitGitCoinFeed()
 	}
+
+	services.InitPools() // making sure the website is available before updating
 
 	utils.WaitForCtrlC()
 
