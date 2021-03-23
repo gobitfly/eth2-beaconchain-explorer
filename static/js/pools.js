@@ -192,7 +192,7 @@ function randerTable(tableData) {
                 "orderable": false,
                 render: function (data, type, row, meta) {
                     return `
-                            <div id="${data}eff" data-toggle="tooltip" data-original-title="Effectiveness of the top 200 validators">
+                            <div id="${data}eff" data-toggle="tooltip" data-original-title="Average Attestation Eff. of Top 200 validators (highest balance)">
                                 <div class="spinner-grow spinner-grow-sm text-primary" role="status">
                                     <span class="sr-only">Loading...</span>
                                 </div>
