@@ -140,7 +140,11 @@ function randerTable(tableData) {
                 data: '3',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return addCommas(data)
+                    if(type === 'display') {
+                        return addCommas(data)
+                    }
+
+                    return data
                 }
             }, {
                 targets: 4,
@@ -154,10 +158,14 @@ function randerTable(tableData) {
                                 Last Month: ${addCommas(parseInt(data.lastMonth / 1e9))}
                                 `
                     }
-                    return `<span data-toggle="tooltip" title="${getIncomeStats()}" data-html="true">
+                    if(type === 'display') {
+                        return `<span data-toggle="tooltip" title="${getIncomeStats()}" data-html="true">
                                 ${addCommas(parseInt(data.total / 1e9))}
                                 </span>
                                 `
+                    }
+
+                    return parseInt(data.total / 1e9)
                 }
             }, {
                 targets: 5,
