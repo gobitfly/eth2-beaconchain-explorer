@@ -240,19 +240,6 @@ function showValidatorsInSearch(qty){
   }
 }
 
-function setValidatorEffectiveness(elem, eff){
-  if (elem===undefined) return
-  eff=parseInt(eff)
-  if (eff >= 100) {
-    $('#'+elem).html(`<span class="text-success"> ${eff}% - Perfect <i class="fas fa-grin-stars"></i>`)
-  } else if (eff > 80) {
-    $('#'+elem).html(`<span class="text-success"> ${eff}% - Good <i class="fas fa-smile"></i></span>`)
-  } else if (eff > 60) {
-    $('#'+elem).html(`<span class="text-warning"> ${eff}% - Fair <i class="fas fa-meh"></i></span>`)
-  } else {
-    $('#'+elem).html(`<span class="text-danger"> ${eff}% - Bad <i class="fas fa-frown"></i></span>`)
-  }
-}
 
 function renderProposedHistoryTable(data){
   if ($.fn.dataTable.isDataTable('#proposals-table')){

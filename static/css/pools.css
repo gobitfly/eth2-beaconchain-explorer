@@ -1,0 +1,15 @@
+.popupMain::-webkit-scrollbar{
+    width: 5px;
+}
+
+.popupMain::-webkit-scrollbar-thumb{
+    background-color: var(--primary);
+    border-radius: 12px;
+    border-style: none;
+    border-width: 2px;
+}
+
+.popupMain{
+    scrollbar-color: var(--primary);
+    scrollbar-width: thin;
+}
