@@ -643,6 +643,12 @@ type GenericChartData struct {
 	StackingMode                    string                    `json:"stacking_mode"`
 	ColumnDataGroupingApproximation string                    // "average", "averages", "open", "high", "low", "close" and "sum"
 	Series                          []*GenericChartDataSeries `json:"series"`
+	Drilldown                       interface{}               `json:"drilldown"`
+}
+
+type SeriesDataItem struct {
+	Name string `json:"name"`
+	Y    uint64 `json:"y"`
 }
 
 // GenericChartDataSeries is a struct to hold chart series data
@@ -659,9 +665,10 @@ type ChartsPageData []*ChartsPageDataChart
 
 // ChartsPageDataChart is a struct to hold a chart for the charts-page
 type ChartsPageDataChart struct {
-	Order int
-	Path  string
-	Data  *GenericChartData
+	Order  int
+	Path   string
+	Data   *GenericChartData
+	Height int
 }
 
 // DashboardData is a struct to hold data for the dashboard-page
