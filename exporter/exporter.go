@@ -199,6 +199,8 @@ func Start(client rpc.Client) error {
 
 	newBlockChan := client.GetNewBlockChan()
 
+	doFullCheck(client)
+
 	lastExportedSlot := uint64(0)
 	for {
 		select {
