@@ -33,6 +33,16 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 	} else {
 		lookBack = lookBack - 5
 	}
+	// latestEpoch := services.LatestEpoch()
+	// lowEpoch := latestEpoch - 5
+	// if latestEpoch < 5 {
+	// 	lowEpoch = 0
+
+	// } else {
+	// 	lowEpoch = latestEpoch - 5
+	// }
+
+	// highEpoch := latestEpoch
 
 	err := db.DB.Select(&blks, `
 	SELECT
@@ -53,7 +63,7 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 		left join epochs e on e.epoch = b.epoch
 		left join network_liveness nl on headepoch = (select max(headepoch) from network_liveness)
 	WHERE
-	  b.epoch > $1 and b.epoch <= $2
+	  b.epoch >= $1 and b.epoch <= $2
 	ORDER BY slot desc
 `, lookBack, services.LatestEpoch())
 	if err != nil {
