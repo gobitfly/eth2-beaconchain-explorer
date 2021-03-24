@@ -1603,41 +1603,56 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		Y:         0,
 		Drilldown: "Others",
 	}
-	for i := range rows {
-		var poolName string = "Unknown"
-		curAddr := string(utils.FormatEth1AddressString(rows[i].Address))
-		skipAppend := false
-		for _, pool := range stakePools {
-			if strings.ToLower(curAddr) == strings.ToLower("0x"+pool.Address) {
-				for j, seriesItem := range seriesData {
-					if strings.Contains(pool.Name, seriesItem.Drilldown) {
-						seriesData[j].Y += rows[i].Count
-						for k, drillItem := range drillSeries {
-							if strings.Contains(pool.Name, drillItem.ID) {
-								drillSeries[k].Data = append(drillSeries[k].Data, [2]string{pool.Name, fmt.Sprintf("%d", rows[i].Count)})
-								break
+
+	if utils.Config.Chain.Network == "mainnet" {
+		for i := range rows {
+			var poolName string = "Unknown"
+			curAddr := string(utils.FormatEth1AddressString(rows[i].Address))
+			skipAppend := false
+			for _, pool := range stakePools {
+				if strings.ToLower(curAddr) == strings.ToLower("0x"+pool.Address) {
+					for j, seriesItem := range seriesData {
+						if strings.Contains(pool.Name, seriesItem.Drilldown) {
+							seriesData[j].Y += rows[i].Count
+							for k, drillItem := range drillSeries {
+								if strings.Contains(pool.Name, drillItem.ID) {
+									drillSeries[k].Data = append(drillSeries[k].Data, [2]string{pool.Name, fmt.Sprintf("%d", rows[i].Count)})
+									break
+								}
 							}
+							skipAppend = true
+							break
 						}
-						skipAppend = true
-						break
 					}
+					poolName = pool.Name
+					break
 				}
-				poolName = pool.Name
-				break
+			}
+
+			if skipAppend {
+				continue
+			}
+
+			if drillSeries[len(drillSeries)-1].ID == "Others" {
+				othersItem.Y += rows[i].Count
+				if rows[i].Count > 200 { // validators > 200 per pool show stake
+					drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
+						[2]string{poolName, fmt.Sprintf("%d", rows[i].Count)},
+					)
+				}
 			}
 		}
-
-		if skipAppend {
-			continue
-		}
-
-		if drillSeries[len(drillSeries)-1].ID == "Others" {
-			othersItem.Y += rows[i].Count
-			if rows[i].Count > 200 { // validators > 200 per pool show stake
-				drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
-					[2]string{poolName, fmt.Sprintf("%d", rows[i].Count)},
-				)
+	} else {
+		seriesData = []seriesDataItem{}
+		for i := range rows {
+			if i > 20 {
+				othersItem.Y += rows[i].Count
+				continue
 			}
+			seriesData = append(seriesData, seriesDataItem{
+				Name: string(utils.FormatEth1AddressString(rows[i].Address)),
+				Y:    rows[i].Count,
+			})
 		}
 	}
 	if othersItem.Y > 0 {
