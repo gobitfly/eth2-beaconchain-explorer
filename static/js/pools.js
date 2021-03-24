@@ -115,11 +115,19 @@ function randerTable(tableData) {
             {
                 targets: 0,
                 data: '0',
-                "orderable": true
+                "orderable": true,
+                render: function (data, type, row, meta) {
+                    if (data===""){return "Unknown"}
+                    return data
+                }
             }, {
                 targets: 1,
                 data: '1',
-                "orderable": true
+                "orderable": true,
+                render: function (data, type, row, meta) {
+                    if (data==="" || data===null){return "Unknown"}
+                    return data
+                }
             }, {
                 targets: 2,
                 data: '2',
