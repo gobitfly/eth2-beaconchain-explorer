@@ -2,6 +2,7 @@ package services
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -58,9 +59,9 @@ func chartsPageDataUpdater() {
 			time.Sleep(sleepDuration)
 			continue
 		}
-		now := time.Now()
+		start := time.Now()
 
-		if now.Add(time.Minute * -20).After(utils.EpochToTime(latestEpoch)) {
+		if start.Add(time.Minute * -20).After(utils.EpochToTime(latestEpoch)) {
 			logger.Info("skipping chartsPageDataUpdater because the explorer is syncing")
 			time.Sleep(time.Second * 60)
 			continue
@@ -72,7 +73,8 @@ func chartsPageDataUpdater() {
 			time.Sleep(sleepDuration)
 			continue
 		}
-		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(now)).Info("chartPageData update completed")
+		metrics.TaskDuration.WithLabelValues("service_charts_updater").Observe(time.Since(start).Seconds())
+		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(start)).Info("chartPageData update completed")
 		chartsPageData.Store(&data)
 		prevEpoch = latestEpoch
 		if latestEpoch == 0 {

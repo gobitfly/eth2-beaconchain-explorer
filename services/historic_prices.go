@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -17,6 +18,10 @@ func StartHistoricPriceService() {
 	}
 }
 func updateHistoricPrices() error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("service_historic_prices").Observe(time.Since(start).Seconds())
+	}()
 	var dates []time.Time
 
 	err := db.DB.Select(&dates, "SELECT ts FROM price")
