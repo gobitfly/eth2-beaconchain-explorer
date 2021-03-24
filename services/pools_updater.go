@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"fmt"
 	"net/http"
@@ -54,6 +55,10 @@ var updateMux = &sync.RWMutex{}
 var firstReq = true
 
 func updatePoolInfo() {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("service_pools_updater").Observe(time.Since(start).Seconds())
+	}()
 	updateMux.Lock()
 	defer updateMux.Unlock()
 	if time.Now().Sub(poolInfoTempTime).Hours() > 6 { // query db every 6 hour

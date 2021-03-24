@@ -1,6 +1,7 @@
 package db
 
 import (
+	"eth2-exporter/metrics"
 	"fmt"
 	"strings"
 	"time"
@@ -14,6 +15,9 @@ import (
 // It will return `true` for `updatedToLastFinalizedEpoch` if all attesations up to the last finalized epoch have been considered and false otherwise.
 func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 	t0 := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_validator_attestation_streaks").Observe(time.Since(t0).Seconds())
+	}()
 
 	lastFinalizedEpoch := 0
 	err = DB.Get(&lastFinalizedEpoch, `select coalesce(max(epoch),0) from epochs where finalized = 't'`)

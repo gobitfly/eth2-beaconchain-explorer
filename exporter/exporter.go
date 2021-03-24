@@ -430,7 +430,7 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 func ExportEpoch(epoch uint64, client rpc.Client) error {
 	start := time.Now()
 	defer func() {
-		metrics.ExporterExportEpochDuration.Observe(time.Since(start).Seconds())
+		metrics.TaskDuration.WithLabelValues("export_epoch").Observe(time.Since(start).Seconds())
 	}()
 
 	// Check if the partition for the validator_balances and attestation_assignments table for this epoch exists
@@ -454,13 +454,14 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		}
 	}
 
+	startGetEpochData := time.Now()
 	logger.Printf("retrieving data for epoch %v", epoch)
 	data, err := client.GetEpochData(epoch)
 
 	if err != nil {
 		return fmt.Errorf("error retrieving epoch data: %v", err)
 	}
-
+	metrics.TaskDuration.WithLabelValues("rpc_get_epoch_data").Observe(time.Since(startGetEpochData).Seconds())
 	logger.Printf("data for epoch %v retrieved, took %v", epoch, time.Since(start))
 
 	if len(data.Validators) == 0 {
@@ -511,6 +512,10 @@ func performanceDataUpdater() {
 }
 
 func updateValidatorPerformance() error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("update_validator_performance").Observe(time.Since(start).Seconds())
+	}()
 	tx, err := db.DB.Beginx()
 	if err != nil {
 		return fmt.Errorf("error starting db transaction: %w", err)
