@@ -1451,31 +1451,6 @@ func depositsChartData() (*types.GenericChartData, error) {
 func depositsDistributionChartData() (*types.GenericChartData, error) {
 	var err error
 
-	rows := []struct {
-		Address []byte
-		Count   uint64
-	}{}
-
-	err = db.DB.Select(&rows, `
-		select from_address as address, count(*) as count
-		from (
-			select publickey, from_address
-			from eth1_deposits
-			where valid_signature = true
-			group by publickey, from_address
-			having sum(amount) >= 32e9
-		) a
-		group by from_address
-		order by count desc`)
-	if err != nil {
-		return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
-	}
-
-	type pools struct {
-		Address string
-		Name    string
-	}
-
 	type drillSeriesData struct {
 		Name string      `json:"name"`
 		ID   string      `json:"id"`
@@ -1486,12 +1461,6 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		Series []drillSeriesData `json:"series"`
 	}
 
-	var stakePools []pools
-	err = db.DB.Select(&stakePools, "select address, name from stake_pools_stats;")
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving stake pools stats: %v", err)
-	}
-
 	type seriesDataItem struct {
 		Name      string `json:"name"`
 		Address   string `json:"address"`
@@ -1499,151 +1468,189 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 		Drilldown string `json:"drilldown"`
 	}
 
-	seriesData := []seriesDataItem{
-		{
-			Name:      "Kraken",
-			Y:         0,
-			Drilldown: "Kraken",
-		},
-		{
-			Name:      "Binance",
-			Y:         0,
-			Drilldown: "Binance",
-		},
-		{
-			Name:      "Whales",
-			Y:         0,
-			Drilldown: "Whale",
-		},
-		{
-			Name:      "Huobi",
-			Y:         0,
-			Drilldown: "Huobi",
-		},
-		{
-			Name:      "Bitcoin suisse",
-			Y:         0,
-			Drilldown: "Bitcoin suisse",
-		},
-		{
-			Name:      "Staked.us",
-			Y:         0,
-			Drilldown: "Staked.us",
-		},
-		{
-			Name:      "Lido",
-			Y:         0,
-			Drilldown: "Lido",
-		},
-		{
-			Name:      "Stakefish",
-			Y:         0,
-			Drilldown: "Stakefish",
-		},
-		{
-			Name:      "Defi",
-			Y:         0,
-			Drilldown: "Defi",
-		},
-	}
-	drillSeries := []drillSeriesData{
-		{
-			Name: "Kraken",
-			ID:   "Kraken",
-			Data: [][2]string{},
-		},
-		{
-			Name: "Binance",
-			ID:   "Binance",
-			Data: [][2]string{},
-		},
-		{
-			Name: "Whale",
-			ID:   "Whale",
-			Data: [][2]string{},
-		},
-		{
-			Name: "Huobi",
-			ID:   "Huobi",
-			Data: [][2]string{},
-		},
-		{
-			Name: "Bitcoin suisse",
-			ID:   "Bitcoin suisse",
-			Data: [][2]string{},
-		},
-		{
-			Name: "Staked.us",
-			ID:   "Staked.us",
-			Data: [][2]string{},
-		},
-		{
-			Name: "Lido",
-			ID:   "Lido",
-			Data: [][2]string{},
-		},
-		{
-			Name: "Stakefish",
-			ID:   "Stakefish",
-			Data: [][2]string{},
-		},
-		{
-			Name: "Defi",
-			ID:   "Defi",
-			Data: [][2]string{},
-		},
-		{ // always must be the last
-			Name: "Others",
-			ID:   "Others",
-			Data: [][2]string{},
-		},
-	}
 	othersItem := seriesDataItem{
 		Name:      "Others",
 		Y:         0,
 		Drilldown: "Others",
 	}
 
-	if utils.Config.Chain.Network == "mainnet" {
+	seriesData := []seriesDataItem{}
+	drillSeries := []drillSeriesData{}
+
+	if utils.Config.Chain.Network == "mainnet" { // finish this optimize
+		rows := []struct {
+			Name  *string
+			Count uint64
+		}{}
+
+		err = db.DB.Select(&rows, `
+			select ss.name, b.count
+			from(select from_address as address, count(*) as count
+			from (
+				select publickey, from_address
+				from eth1_deposits
+				where valid_signature = true
+				group by publickey, from_address
+				having sum(amount) >= 32e9
+			) a
+			group by from_address
+			order by count desc) b
+			left JOIN stake_pools_stats ss ON Lower(ENCODE(b.address::bytea, 'hex')) like LOWER(ss.address)`)
+		if err != nil {
+			return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
+		}
+		seriesData = []seriesDataItem{ // make sure this has the same order as "drillSeries" below
+			{
+				Name:      "Kraken",
+				Y:         0,
+				Drilldown: "Kraken",
+			},
+			{
+				Name:      "Binance",
+				Y:         0,
+				Drilldown: "Binance",
+			},
+			{
+				Name:      "Whales",
+				Y:         0,
+				Drilldown: "Whale",
+			},
+			{
+				Name:      "Huobi",
+				Y:         0,
+				Drilldown: "Huobi",
+			},
+			{
+				Name:      "Bitcoin suisse",
+				Y:         0,
+				Drilldown: "Bitcoin suisse",
+			},
+			{
+				Name:      "Staked.us",
+				Y:         0,
+				Drilldown: "Staked.us",
+			},
+			{
+				Name:      "Lido",
+				Y:         0,
+				Drilldown: "Lido",
+			},
+			{
+				Name:      "Stakefish",
+				Y:         0,
+				Drilldown: "Stakefish",
+			},
+			{
+				Name:      "Defi",
+				Y:         0,
+				Drilldown: "Defi",
+			},
+		}
+		drillSeries = []drillSeriesData{
+			{
+				Name: "Kraken",
+				ID:   "Kraken",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Binance",
+				ID:   "Binance",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Whale",
+				ID:   "Whale",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Huobi",
+				ID:   "Huobi",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Bitcoin suisse",
+				ID:   "Bitcoin suisse",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Staked.us",
+				ID:   "Staked.us",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Lido",
+				ID:   "Lido",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Stakefish",
+				ID:   "Stakefish",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Defi",
+				ID:   "Defi",
+				Data: [][2]string{},
+			},
+			{ // always must be the last
+				Name: "Others",
+				ID:   "Others",
+				Data: [][2]string{},
+			},
+		}
+
+		var unknownCount uint64 = 0
 		for i := range rows {
-			var poolName string = "Unknown"
-			curAddr := string(utils.FormatEth1AddressString(rows[i].Address))
-			skipAppend := false
-			for _, pool := range stakePools {
-				if strings.ToLower(curAddr) == strings.ToLower("0x"+pool.Address) {
-					for j, seriesItem := range seriesData {
-						if strings.Contains(pool.Name, seriesItem.Drilldown) {
-							seriesData[j].Y += rows[i].Count
-							for k, drillItem := range drillSeries {
-								if strings.Contains(pool.Name, drillItem.ID) {
-									drillSeries[k].Data = append(drillSeries[k].Data, [2]string{pool.Name, fmt.Sprintf("%d", rows[i].Count)})
-									break
-								}
-							}
-							skipAppend = true
-							break
-						}
-					}
-					poolName = pool.Name
+			if rows[i].Name == nil {
+				unknownCount += rows[i].Count
+				continue
+			}
+			foundMatch := false
+			for j, seriesItem := range seriesData {
+				if strings.Contains(*rows[i].Name, seriesItem.Drilldown) {
+					seriesData[j].Y += rows[i].Count
+				}
+
+				if strings.Contains(*rows[i].Name, drillSeries[j].ID) {
+					drillSeries[j].Data = append(drillSeries[j].Data,
+						[2]string{*rows[i].Name, fmt.Sprintf("%d", rows[i].Count)})
+					foundMatch = true
 					break
 				}
 			}
 
-			if skipAppend {
-				continue
+			if !foundMatch && rows[i].Count > 10 { // validators > 10 per pool show stake{
+				drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
+					[2]string{*rows[i].Name, fmt.Sprintf("%d", rows[i].Count)},
+				)
+				othersItem.Y += rows[i].Count
 			}
 
-			if drillSeries[len(drillSeries)-1].ID == "Others" {
-				othersItem.Y += rows[i].Count
-				if rows[i].Count > 200 { // validators > 200 per pool show stake
-					drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
-						[2]string{poolName, fmt.Sprintf("%d", rows[i].Count)},
-					)
-				}
-			}
 		}
+		drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
+			[2]string{"Unknown", fmt.Sprintf("%d", unknownCount)})
+		othersItem.Y += unknownCount
 	} else {
-		seriesData = []seriesDataItem{}
+		rows := []struct {
+			Address []byte
+			Count   uint64
+		}{}
+
+		err = db.DB.Select(&rows, `
+			select from_address as address, count(*) as count
+			from (
+				select publickey, from_address
+				from eth1_deposits
+				where valid_signature = true
+				group by publickey, from_address
+				having sum(amount) >= 32e9
+			) a
+			group by from_address
+			order by count desc`)
+		if err != nil {
+			return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
+		}
+
 		for i := range rows {
 			if i > 20 {
 				othersItem.Y += rows[i].Count
@@ -1655,6 +1662,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			})
 		}
 	}
+
 	if othersItem.Y > 0 {
 		seriesData = append(seriesData, othersItem)
 	}
