@@ -1477,7 +1477,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 	seriesData := []seriesDataItem{}
 	drillSeries := []drillSeriesData{}
 
-	if utils.Config.Chain.Network == "mainnet" { // finish this optimize
+	if utils.Config.Chain.Network == "mainnet" {
 		rows := []struct {
 			Name  *string
 			Count uint64
