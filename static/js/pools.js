@@ -14,7 +14,7 @@ function getActive(poolValidators) {
 
     let view = `<i class="fas fa-male ${active>0?"text-success":""} fa-sm mr-1"></i> ${addCommas(active)} <i class="fas fa-user-slash ${slashed>0?"text-danger":""} fa-sm mx-1"></i> ${addCommas(slashed)} / ${addCommas(poolValidators.length)}`
 
-    return [(active / poolValidators.length) * 100, view]
+    return [(active / poolValidators.length) * 100, view, slashed]
 }
 
 function getValidatorCard(val) {
@@ -96,7 +96,7 @@ function randerTable(tableData) {
         processing: true,
         serverSide: false,
         ordering: true,
-        searching: false,
+        searching: true,
         pagingType: 'full_numbers',
         data: tableData,
         lengthMenu: [10, 25],
@@ -218,7 +218,7 @@ function randerTable(tableData) {
                             </div>
                             `
                     }
-                    return info[0]
+                    return info[2]
                 }
             }, {
                 targets: 7,
