@@ -4,17 +4,25 @@ let totalValidators = 0
 function getActive(poolValidators) {
     let active = 0
     let slashed = 0
+    let pending = 0
     for (let item of poolValidators) {
         if (item.status === "active_online") {
             active++
         }else if (item.status === "slashed"){
             slashed++
+        }else if (item.status === "pending"){
+            pending++
         }
     }
 
-    let view = `<i class="fas fa-male ${active>0?"text-success":""} fa-sm mr-1"></i> ${addCommas(active)} <i class="fas fa-user-slash ${slashed>0?"text-danger":""} fa-sm mx-1"></i> ${addCommas(slashed)} / ${addCommas(poolValidators.length)}`
+    // let view = `<i class="fas fa-male ${active>0?"text-success":""} mr-1"></i> (${addCommas(active)} / ${addCommas(poolValidators.length)}) <i class="fas fa-user-slash ${slashed>0?"text-danger":""} fa-sm mx-1"></i> ${addCommas(slashed)}`
 
-    return [(active / poolValidators.length) * 100, view, slashed]
+    return [(active / poolValidators.length) * 100, {active: `<i class="fas fa-male ${active>0?"text-success":""} mr-1"></i> <span style="font-size: 12px;">${addCommas(active)}</span>`,
+                                                     slashed: `<i class="fas fa-user-slash ${slashed>0?"text-danger":""} fa-sm mx-1"></i> <span style="font-size: 12px;">${addCommas(slashed)}</span>`,
+                                                     pending: `<i class="fas fa-male ${pending>0?"text-info":""} mr-1"></i> <span style="font-size: 12px;">${addCommas(pending)}</span>`,
+                                                     total: `${addCommas(poolValidators.length)}`
+                                                    }, 
+            slashed]
 }
 
 function getValidatorCard(val) {
@@ -80,9 +88,9 @@ function addHandlers(tableData) {
 
         $("#" + tableData[item][2]).off("click")
         $("#" + tableData[item][2]).on("click", () => {
-            showPoolInfo(tableData[item][6])
+            showPoolInfo(tableData[item][7])
         })
-        getPoolEffectiveness(tableData[item][2] + "eff", tableData[item][6])
+        getPoolEffectiveness(tableData[item][2] + "eff", tableData[item][7])
         getAvgCurrentStreak(tableData[item][2])
     }
 }
@@ -195,6 +203,17 @@ function randerTable(tableData) {
                 data: '6',
                 "orderable": true,
                 render: function (data, type, row, meta) {
+                    if(type === 'display') {
+                        return `${data.toFixed(5)}` //(${(data*100).toFixed(2)}%)
+                    }
+
+                    return data
+                }
+            }, {
+                targets: 7,
+                data: '7',
+                "orderable": true,
+                render: function (data, type, row, meta) {
                     let info = getActive(data)
                     let bg = "bg-success"
                     let fg = "white"
@@ -204,10 +223,10 @@ function randerTable(tableData) {
                     }
                     if(type === 'display') {
                         return `
-                            <div id="${row[2]}" style="cursor: pointer;" class="d-flex flex-column hover-shadow" style="height: 100%;" 
+                            <div id="${row[2]}" style="cursor: pointer; border-radius: 10px; border-style: none;" class="d-flex flex-column hover-shadow" style="height: 100%;" 
                                                 data-toggle="tooltip" title="${info[0].toFixed(2)}% of validators are active in this pool">
-                                <div class="d-flex justify-content-center">
-                                    ${info[1]}
+                                <div class="d-flex justify-content-between">
+                                    ${info[1].active} ${info[1].slashed}
                                 </div>
                                 <div class="progress" style="height: 3px;">    
                                     <div class="progress-bar progress-bar-success ${bg}" 
@@ -215,14 +234,17 @@ function randerTable(tableData) {
                                         aria-valuemin="0" aria-valuemax="100" style="width: ${parseInt(info[0])}%; color: ${fg};" >
                                     </div>
                                 </div>
+                                <div class="d-flex justify-content-center">
+                                    <span style="font-size: 12px;">${info[1].total}</span>
+                                </div>
                             </div>
                             `
                     }
                     return info[2]
                 }
             }, {
-                targets: 7,
-                data: '7',
+                targets: 8,
+                data: '8',
                 "orderable": false,
                 render: function (data, type, row, meta) {
                     return `
@@ -235,8 +257,8 @@ function randerTable(tableData) {
                 }
 
             }, {
-                targets: 8,
-                data: '8',
+                targets: 9,
+                data: '9',
                 "orderable": false,
                 render: function (data, type, row, meta) {
                     return `
@@ -330,9 +352,9 @@ $(document).ready(function () {
     let tableData = []
     for (let el of POOL_INFO) {
         tableData.push([el.name, el.category, el.address, el.name,
-        parseInt(el.poolIncome.totalDeposits / 1e9),
-        el.poolIncome, el.poolInfo,
-        el.address, el.address])
+        parseInt(el.poolIncome.totalDeposits / 1e9), el.poolIncome, 
+        parseInt(el.poolIncome.total)/parseInt(el.poolIncome.totalDeposits), 
+        el.poolInfo, el.address, el.address])
     }
 
     randerTable(tableData)
