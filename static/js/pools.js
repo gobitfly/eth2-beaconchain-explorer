@@ -1,3 +1,6 @@
+let poolShare = {}
+let totalValidators = 0
+
 function getActive(poolValidators) {
     let active = 0
     for (let item of poolValidators) {
@@ -72,9 +75,9 @@ function addHandlers(tableData) {
 
         $("#" + tableData[item][2]).off("click")
         $("#" + tableData[item][2]).on("click", () => {
-            showPoolInfo(tableData[item][5])
+            showPoolInfo(tableData[item][6])
         })
-        getPoolEffectiveness(tableData[item][2] + "eff", tableData[item][5])
+        getPoolEffectiveness(tableData[item][2] + "eff", tableData[item][6])
         getAvgCurrentStreak(tableData[item][2])
     }
 }
@@ -133,11 +136,26 @@ function randerTable(tableData) {
                 data: '2',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `<a href="/validators/eth1deposits?q=0x${data}">0x${data}</a>`
+                    return `<a href="/validators/eth1deposits?q=0x${data}">0x${data.slice(0, 7)}...</a>`
                 }
             }, {
                 targets: 3,
                 data: '3',
+                "orderable": true,
+                render: function (data, type, row, meta) {
+                    let val = parseFloat((poolShare[data]/totalValidators)*100).toFixed(2)
+                    
+                    if(type === 'display') {
+                        if (isNaN(val)) return "Unknown"
+                        return `${parseFloat((poolShare[data]/totalValidators)*100).toFixed(2)}%`
+                    }
+
+                    if (isNaN(val)) return 0
+                    return poolShare[data]
+                }
+            },{
+                targets: 4,
+                data: '4',
                 "orderable": true,
                 render: function (data, type, row, meta) {
                     if(type === 'display') {
@@ -147,8 +165,8 @@ function randerTable(tableData) {
                     return data
                 }
             }, {
-                targets: 4,
-                data: '4',
+                targets: 5,
+                data: '5',
                 "orderable": true,
                 render: function (data, type, row, meta) {
                     function getIncomeStats() {
@@ -168,8 +186,8 @@ function randerTable(tableData) {
                     return parseInt(data.total / 1e9)
                 }
             }, {
-                targets: 5,
-                data: '5',
+                targets: 6,
+                data: '6',
                 "orderable": false,
                 render: function (data, type, row, meta) {
                     let info = getActive(data)
@@ -195,8 +213,8 @@ function randerTable(tableData) {
                         `
                 }
             }, {
-                targets: 6,
-                data: '6',
+                targets: 7,
+                data: '7',
                 "orderable": false,
                 render: function (data, type, row, meta) {
                     return `
@@ -209,8 +227,8 @@ function randerTable(tableData) {
                 }
 
             }, {
-                targets: 7,
-                data: '7',
+                targets: 8,
+                data: '8',
                 "orderable": false,
                 render: function (data, type, row, meta) {
                     return `
@@ -224,7 +242,7 @@ function randerTable(tableData) {
 
             }
         ],
-        order: [[3, 'desc']],
+        order: [[4, 'desc']],
     })
 }
 
@@ -279,21 +297,36 @@ function getAvgCurrentStreak(id) {
         })
 }
 
+function updatePoolShare (arr){
+    // console.log(arr)
+    for (let item of arr){
+        if (typeof item === 'object' && 'data' in item){
+            updatePoolShare(item.data)
+        }else {
+            poolShare[item[0]] = item[1]
+            totalValidators += item[1]
+        }
+    }
+}
+
 $(document).ready(function () {
-    $(window).on("resize", () => {
-        updateTableType()
-    })
+    // $(window).on("resize", () => {
+    //     updateTableType()
+    // })
     $("#poolPopUpBtn").on("click", () => { $("#poolPopUP").addClass("d-none") })
 
     updateEthSupply()
 
+    updatePoolShare(drill.series)
+
     let tableData = []
     for (let el of POOL_INFO) {
-        tableData.push([el.name, el.category, el.address,
+        tableData.push([el.name, el.category, el.address, el.name,
         parseInt(el.poolIncome.totalDeposits / 1e9),
         el.poolIncome, el.poolInfo,
         el.address, el.address])
     }
 
     randerTable(tableData)
+
 })

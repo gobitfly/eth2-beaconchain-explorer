@@ -23,7 +23,7 @@ var poolsServicesTemplate = template.Must(template.New("poolsServices").Funcs(ut
 func Pools(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	data := InitPageData(w, r, "services", "/pools", "Stacking Pools Services Overview")
+	data := InitPageData(w, r, "services", "/pools", "Staking Pools Services Overview")
 
 	chartData, err := services.ChartHandlers["deposits_distribution"].DataFunc()
 	if err != nil {
