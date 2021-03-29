@@ -3,13 +3,18 @@ let totalValidators = 0
 
 function getActive(poolValidators) {
     let active = 0
+    let slashed = 0
     for (let item of poolValidators) {
         if (item.status === "active_online") {
             active++
+        }else if (item.status === "slashed"){
+            slashed++
         }
     }
 
-    return [100.0 - ((1.0 - (active / poolValidators.length)) * 100), `${addCommas(active)} / ${addCommas(poolValidators.length)}`]
+    let view = `<i class="fas fa-male ${active>0?"text-success":""} fa-sm mr-1"></i> ${addCommas(active)} <i class="fas fa-user-slash ${slashed>0?"text-danger":""} fa-sm mx-1"></i> ${addCommas(slashed)} / ${addCommas(poolValidators.length)}`
+
+    return [(active / poolValidators.length) * 100, view]
 }
 
 function getValidatorCard(val) {
@@ -188,7 +193,7 @@ function randerTable(tableData) {
             }, {
                 targets: 6,
                 data: '6',
-                "orderable": false,
+                "orderable": true,
                 render: function (data, type, row, meta) {
                     let info = getActive(data)
                     let bg = "bg-success"
@@ -197,20 +202,23 @@ function randerTable(tableData) {
                         bg = "bg-danger"
                         fg = "black"
                     }
-                    return `
-                        <div id="${row[2]}" style="cursor: pointer;" class="d-flex flex-column hover-shadow" style="height: 100%;" 
-                                            data-toggle="tooltip" title="${info[0].toFixed(2)}% of validators are active in this pool">
-                            <div class="d-flex justify-content-center">
-                                ${info[1]}
-                            </div>
-                            <div class="progress" style="height: 3px;">    
-                                <div class="progress-bar progress-bar-success ${bg}" 
-                                    role="progressbar" aria-valuenow="${parseInt(info[0])}"
-                                    aria-valuemin="0" aria-valuemax="100" style="width: ${parseInt(info[0])}%; color: ${fg};" >
+                    if(type === 'display') {
+                        return `
+                            <div id="${row[2]}" style="cursor: pointer;" class="d-flex flex-column hover-shadow" style="height: 100%;" 
+                                                data-toggle="tooltip" title="${info[0].toFixed(2)}% of validators are active in this pool">
+                                <div class="d-flex justify-content-center">
+                                    ${info[1]}
+                                </div>
+                                <div class="progress" style="height: 3px;">    
+                                    <div class="progress-bar progress-bar-success ${bg}" 
+                                        role="progressbar" aria-valuenow="${parseInt(info[0])}"
+                                        aria-valuemin="0" aria-valuemax="100" style="width: ${parseInt(info[0])}%; color: ${fg};" >
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        `
+                            `
+                    }
+                    return info[0]
                 }
             }, {
                 targets: 7,
