@@ -32,18 +32,18 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var pieChart services.Chart
+	var poolData services.Chart
 
 	indexStats := services.LatestIndexPageData()
 
-	pieChart.DepositDistribution.Data = chartData
-	pieChart.DepositDistribution.Height = 500
-	pieChart.DepositDistribution.Path = "deposits_distribution"
-	pieChart.StakedEther = indexStats.StakedEther
+	poolData.DepositDistribution.Data = chartData
+	poolData.DepositDistribution.Height = 500
+	poolData.DepositDistribution.Path = "deposits_distribution"
+	poolData.StakedEther = indexStats.StakedEther
 
-	pieChart.PoolInfo, pieChart.EthSupply, pieChart.LastUpdate = services.GetPoolsData()
+	poolData.PoolInfo, poolData.EthSupply, poolData.LastUpdate = services.GetPoolsData()
 
-	data.Data = pieChart
+	data.Data = poolData
 
 	err = poolsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

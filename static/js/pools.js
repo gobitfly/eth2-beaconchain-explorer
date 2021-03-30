@@ -15,10 +15,8 @@ function getActive(poolValidators) {
         }
     }
 
-    // let view = `<i class="fas fa-male ${active>0?"text-success":""} mr-1"></i> (${addCommas(active)} / ${addCommas(poolValidators.length)}) <i class="fas fa-user-slash ${slashed>0?"text-danger":""} fa-sm mx-1"></i> ${addCommas(slashed)}`
-
-    return [(active / poolValidators.length) * 100, {active: `<i class="fas fa-male ${active>0?"text-success":""} mr-1"></i> <span style="font-size: 12px;">${addCommas(active)}</span>`,
-                                                     slashed: `<i class="fas fa-user-slash ${slashed>0?"text-danger":""} fa-sm mx-1"></i> <span style="font-size: 12px;">${addCommas(slashed)}</span>`,
+    return [(active / poolValidators.length) * 100, {active: `<i class="fas fa-male ${active>0?"text-success":""} mr-1"><span style="font-size: 12px;">${addCommas(active)}</span></i>`,
+                                                     slashed: `<i class="fas fa-user-slash ${slashed>0?"text-danger":""} fa-sm mx-1"><span style="font-size: 12px;">${addCommas(slashed)}</span></i>`,
                                                      pending: `<i class="fas fa-male ${pending>0?"text-info":""} mr-1"></i> <span style="font-size: 12px;">${addCommas(pending)}</span>`,
                                                      total: `${addCommas(poolValidators.length)}`
                                                     }, 
@@ -156,11 +154,11 @@ function randerTable(tableData) {
                 data: '3',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    let val = parseFloat((poolShare[data]/totalValidators)*100).toFixed(2)
+                    let val = parseFloat((poolShare[data]/totalValidators)*100).toFixed(3)
                     
                     if(type === 'display') {
-                        if (isNaN(val)) return "Unknown"
-                        return `${parseFloat((poolShare[data]/totalValidators)*100).toFixed(2)}%`
+                        if (isNaN(val)) return "0.00%"
+                        return `${val}%`
                     }
 
                     if (isNaN(val)) return 0
@@ -203,11 +201,14 @@ function randerTable(tableData) {
                 data: '6',
                 "orderable": true,
                 render: function (data, type, row, meta) {
+                    let ipd = parseInt(data.total)/parseInt(data.depositsBeforeEpochEth)
                     if(type === 'display') {
-                        return `${data.toFixed(5)}` //(${(data*100).toFixed(2)}%)
+                       return `<span data-toggle="tooltip" title="Calculated on ${addCommas(parseInt(data.depositsBeforeEpochEth/1e9))} ETH deposits from ${addCommas(data.depositsBeforeEpoch)} epochs ago">
+                            ${parseFloat(ipd).toFixed(5)} ETH
+                        </span>`
                     }
 
-                    return data
+                    return ipd
                 }
             }, {
                 targets: 7,
@@ -353,7 +354,7 @@ $(document).ready(function () {
     for (let el of POOL_INFO) {
         tableData.push([el.name, el.category, el.address, el.name,
         parseInt(el.poolIncome.totalDeposits / 1e9), el.poolIncome, 
-        parseInt(el.poolIncome.total)/parseInt(el.poolIncome.totalDeposits), 
+        el.poolIncome, 
         el.poolInfo, el.address, el.address])
     }
 

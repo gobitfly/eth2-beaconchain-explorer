@@ -250,6 +250,8 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	var earningsLastWeek int64
 	var earningsLastMonth int64
 	var totalDeposits int64
+	var depositsBeforeEpochEth int64
+	var depositsBeforeEpoch int64 = lastWeekEpoch
 
 	for _, balance := range balances {
 
@@ -258,6 +260,9 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		}
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
+			if depositsBeforeEpoch > epoch {
+				depositsBeforeEpochEth += deposit
+			}
 			if epoch > int64(balance.ActivationEpoch) {
 				earningsTotal -= deposit
 			}
@@ -285,13 +290,16 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
 		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
 		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
+		// logger.Errorln(earningsTotal, earningsLastDay, earningsLastWeek, earningsLastMonth)
 	}
 
 	return &types.ValidatorEarnings{
-		Total:         earningsTotal,
-		LastDay:       earningsLastDay,
-		LastWeek:      earningsLastWeek,
-		LastMonth:     earningsLastMonth,
-		TotalDeposits: totalDeposits,
+		Total:                  earningsTotal,
+		LastDay:                earningsLastDay,
+		LastWeek:               earningsLastWeek,
+		LastMonth:              earningsLastMonth,
+		TotalDeposits:          totalDeposits,
+		DepositsBeforeEpoch:    latestEpoch - depositsBeforeEpoch,
+		DepositsBeforeEpochEth: depositsBeforeEpochEth,
 	}, nil
 }

@@ -1619,7 +1619,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				}
 			}
 
-			if !foundMatch && rows[i].Count > 10 { // validators > 10 per pool show stake{
+			if !foundMatch {
 				drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
 					[2]string{*rows[i].Name, fmt.Sprintf("%d", rows[i].Count)},
 				)
