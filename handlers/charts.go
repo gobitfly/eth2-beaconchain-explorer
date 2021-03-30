@@ -91,6 +91,9 @@ func GenericChart(w http.ResponseWriter, r *http.Request) {
 
 	data.Meta.Title = fmt.Sprintf("%v - %v Chart - beaconcha.in - %v", chartData.Title, utils.Config.Frontend.SiteName, time.Now().Year())
 	data.Meta.Path = "/charts/" + chartVar
+	if chartVar == "deposits_distribution" {
+		data.Meta.Path = "/pools"
+	}
 	data.Data = chartData
 
 	genericChartTemplate = template.Must(template.New("chart").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/genericchart.html"))
