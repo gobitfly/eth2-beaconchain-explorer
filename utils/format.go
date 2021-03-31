@@ -598,3 +598,28 @@ func TrLang(lang string, key string) template.HTML {
 	I18n := getLocaliser()
 	return template.HTML(I18n.Tr(lang, key))
 }
+
+func FormatCurrencySymbol(currency string) string {
+	symbol := ""
+	switch currency {
+	case "AUD":
+		symbol = "A$"
+	case "CAD":
+		symbol = "C$"
+	case "CNY":
+		symbol = "¥"
+	case "ETH":
+		symbol = "Ξ"
+	case "EUR":
+		symbol = "€"
+	case "GBP":
+		symbol = "£"
+	case "JPY":
+		symbol = "¥"
+	case "RUB":
+		symbol = "₽"
+	case "USD":
+		symbol = "$"
+	}
+	return symbol
+}

@@ -33,16 +33,19 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              price.GetEthPrice("USD"),
+		EthPrice:              0,
 		EthTruncPrice:         0,
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 		Currency:              GetCurrency(r),
+		CurrencySymbol:        "",
 		ClientsUpdated:        ethclients.ClientsUpdated(),
 		// InfoBanner:            ethclients.GetBannerClients(),
 	}
+	data.EthPrice = price.GetEthPrice(data.Currency)
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
 	data.EthTruncPrice = price.GetEthTruncPrice(data.EthPrice)
+	data.CurrencySymbol = utils.FormatCurrencySymbol(data.Currency)
 
 	return data
 }
