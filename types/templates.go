@@ -689,14 +689,14 @@ type DashboardValidatorBalanceHistory struct {
 
 // ValidatorEarnings is a struct to hold the earnings of one or multiple validators
 type ValidatorEarnings struct {
-	Total                  int64   `json:"total"`
-	LastDay                int64   `json:"lastDay"`
-	LastWeek               int64   `json:"lastWeek"`
-	LastMonth              int64   `json:"lastMonth"`
-	APR                    float64 `json:"apr"`
-	TotalDeposits          int64   `json:"totalDeposits"`
-	DepositsBeforeEpoch    int64   `json:"depositsBeforeEpoch"`
-	DepositsBeforeEpochEth int64   `json:"depositsBeforeEpochEth"`
+	Total                   int64   `json:"total"`
+	LastDay                 int64   `json:"lastDay"`
+	LastWeek                int64   `json:"lastWeek"`
+	LastMonth               int64   `json:"lastMonth"`
+	APR                     float64 `json:"apr"`
+	TotalDeposits           int64   `json:"totalDeposits"`
+	EarningsInPeriodBalance int64   `json:"earningsInPeriodBalance"`
+	EarningsInPeriod        int64   `json:"earningsInPeriod"`
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing

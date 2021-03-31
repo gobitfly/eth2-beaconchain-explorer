@@ -199,6 +199,8 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	lastDayEpoch := latestEpoch - 225
 	lastWeekEpoch := latestEpoch - 225*7
 	lastMonthEpoch := latestEpoch - 225*31
+	twoWeeksBeforeEpoch := latestEpoch - 255*14
+	threeWeeksBeforeEpoch := latestEpoch - 255*21
 
 	if lastDayEpoch < 0 {
 		lastDayEpoch = 0
@@ -208,6 +210,12 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}
 	if lastMonthEpoch < 0 {
 		lastMonthEpoch = 0
+	}
+	if twoWeeksBeforeEpoch < 0 {
+		twoWeeksBeforeEpoch = 0
+	}
+	if threeWeeksBeforeEpoch < 0 {
+		threeWeeksBeforeEpoch = 0
 	}
 
 	balances := []*types.Validator{}
@@ -219,12 +227,15 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 			   COALESCE(balance7d, 0) AS balance7d, 
 			   COALESCE(balance31d , 0) AS balance31d,
        			activationepoch,
-       			pubkey
+       			pubkey,
+				exitepoch
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
+
+	// logger.Errorln("b", balances)
 
 	deposits := []struct {
 		Epoch     int64
@@ -244,25 +255,32 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		}
 		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
 	}
+	// logger.Errorln("d", depositsMap)
 
 	var earningsTotal int64
 	var earningsLastDay int64
 	var earningsLastWeek int64
 	var earningsLastMonth int64
 	var totalDeposits int64
-	var depositsBeforeEpochEth int64
-	var depositsBeforeEpoch int64 = lastWeekEpoch
+	var earningsInPeriod int64
+	var earningsInPeriodBalance int64
+	// var earningsPerEth int64
 
 	for _, balance := range balances {
 
 		if int64(balance.ActivationEpoch) > latestEpoch {
 			continue
 		}
+
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
-			if depositsBeforeEpoch > epoch {
-				depositsBeforeEpochEth += deposit
+
+			if epoch >= threeWeeksBeforeEpoch && epoch <= lastWeekEpoch &&
+				epoch > int64(balance.ActivationEpoch) {
+				// logger.Errorln(threeWeeksBeforeEpoch, epoch, twoWeeksBeforeEpoch, earningsInPeriod)
+				earningsInPeriod -= deposit
 			}
+
 			if epoch > int64(balance.ActivationEpoch) {
 				earningsTotal -= deposit
 			}
@@ -286,20 +304,39 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		if int64(balance.ActivationEpoch) > lastMonthEpoch {
 			balance.Balance31d = balance.BalanceActivation
 		}
+
+		if int64(balance.ActivationEpoch) >= lastMonthEpoch &&
+			int64(balance.ActivationEpoch) <= twoWeeksBeforeEpoch {
+			earningsInPeriod += int64(balance.Balance) - int64(balance.Balance7d)
+			earningsInPeriodBalance += int64(balance.BalanceActivation)
+		}
+
 		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
 		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
 		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
 		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
+		// earningsInPeriod += int64(balance.Balance) - earningsInPeriodBalance
+		// logger.Errorln(earningsInPeriodBalance, earningsInPeriod)
 		// logger.Errorln(earningsTotal, earningsLastDay, earningsLastWeek, earningsLastMonth)
+		// logger.Errorln("t2", earningsTotal, balance.Balance, balance.BalanceActivation)
+		// logger.Errorln("ld2", earningsLastDay, balance.Balance, balance.Balance1d)
+		// logger.Errorln("lw2", earningsLastWeek, balance.Balance, balance.Balance7d)
 	}
+	if earningsInPeriodBalance == 0 {
+		earningsInPeriodBalance = 1
+	}
+	// logger.Errorln("\t\t", fmt.Sprintf("%d/%d=%f", earningsInPeriod, earningsInPeriodBalance, float64(earningsInPeriod)/float64(earningsInPeriodBalance)))
+	// logger.Errorln("t3", earningsTotal)
+	// logger.Errorln("ld3", earningsLastDay)
+	// logger.Errorln("lw3", earningsLastWeek)
 
 	return &types.ValidatorEarnings{
-		Total:                  earningsTotal,
-		LastDay:                earningsLastDay,
-		LastWeek:               earningsLastWeek,
-		LastMonth:              earningsLastMonth,
-		TotalDeposits:          totalDeposits,
-		DepositsBeforeEpoch:    latestEpoch - depositsBeforeEpoch,
-		DepositsBeforeEpochEth: depositsBeforeEpochEth,
+		Total:                   earningsTotal,
+		LastDay:                 earningsLastDay,
+		LastWeek:                earningsLastWeek,
+		LastMonth:               earningsLastMonth,
+		TotalDeposits:           totalDeposits,
+		EarningsInPeriodBalance: earningsInPeriodBalance,
+		EarningsInPeriod:        earningsInPeriod,
 	}, nil
 }
