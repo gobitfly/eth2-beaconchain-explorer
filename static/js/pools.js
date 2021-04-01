@@ -203,7 +203,8 @@ function randerTable(tableData) {
                 render: function (data, type, row, meta) {
                     let ipd = parseInt(data.earningsInPeriod)/parseInt(data.earningsInPeriodBalance)
                     if(type === 'display') {
-                       return `<span data-toggle="tooltip" title="Calculated based on validator that become active 31 <-> 14 days ago. Total Income of selected validators in this period is ${(parseInt(data.earningsInPeriod)/1e9).toFixed(1)} ETH">
+                       return `<span data-toggle="tooltip" title="Calculated based on active validators in period between 21 <-> 14 days ago. 
+                                                                    Total income of selected validators in this period was ${addCommas((parseInt(data.earningsInPeriod)/1e9))} ETH and total balance was ${addCommas((parseInt(data.earningsInPeriodBalance)/1e9))} ETH">
                             ${parseFloat(ipd).toFixed(5)} ETH
                         </span>`
                     }

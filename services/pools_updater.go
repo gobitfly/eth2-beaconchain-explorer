@@ -228,14 +228,13 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 			   COALESCE(balance31d , 0) AS balance31d,
        			activationepoch,
        			pubkey,
-				exitepoch
+				exitepoch,
+				status
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
-
-	// logger.Errorln("b", balances)
 
 	deposits := []struct {
 		Epoch     int64
@@ -255,7 +254,6 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		}
 		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
 	}
-	// logger.Errorln("d", depositsMap)
 
 	var earningsTotal int64
 	var earningsLastDay int64
@@ -264,7 +262,6 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	var totalDeposits int64
 	var earningsInPeriod int64
 	var earningsInPeriodBalance int64
-	// var earningsPerEth int64
 
 	for _, balance := range balances {
 
@@ -277,7 +274,6 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 
 			if epoch >= threeWeeksBeforeEpoch && epoch <= lastWeekEpoch &&
 				epoch > int64(balance.ActivationEpoch) {
-				// logger.Errorln(threeWeeksBeforeEpoch, epoch, twoWeeksBeforeEpoch, earningsInPeriod)
 				earningsInPeriod -= deposit
 			}
 
@@ -305,30 +301,17 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 			balance.Balance31d = balance.BalanceActivation
 		}
 
-		if int64(balance.ActivationEpoch) >= lastMonthEpoch &&
-			int64(balance.ActivationEpoch) <= twoWeeksBeforeEpoch {
-			earningsInPeriod += int64(balance.Balance) - int64(balance.Balance7d)
-			earningsInPeriodBalance += int64(balance.BalanceActivation)
-		}
-
 		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
 		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
 		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
 		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
-		// earningsInPeriod += int64(balance.Balance) - earningsInPeriodBalance
-		// logger.Errorln(earningsInPeriodBalance, earningsInPeriod)
-		// logger.Errorln(earningsTotal, earningsLastDay, earningsLastWeek, earningsLastMonth)
-		// logger.Errorln("t2", earningsTotal, balance.Balance, balance.BalanceActivation)
-		// logger.Errorln("ld2", earningsLastDay, balance.Balance, balance.Balance1d)
-		// logger.Errorln("lw2", earningsLastWeek, balance.Balance, balance.Balance7d)
+
+		if int64(balance.ActivationEpoch) <= threeWeeksBeforeEpoch && balance.Status == "active_online" { // and was active between three weeks ago and two weeks ago
+			earningsInPeriod += (int64(balance.Balance) - int64(balance.BalanceActivation)) -
+				(int64(balance.Balance) - int64(balance.Balance7d))
+			earningsInPeriodBalance += int64(balance.BalanceActivation)
+		}
 	}
-	if earningsInPeriodBalance == 0 {
-		earningsInPeriodBalance = 1
-	}
-	// logger.Errorln("\t\t", fmt.Sprintf("%d/%d=%f", earningsInPeriod, earningsInPeriodBalance, float64(earningsInPeriod)/float64(earningsInPeriodBalance)))
-	// logger.Errorln("t3", earningsTotal)
-	// logger.Errorln("ld3", earningsLastDay)
-	// logger.Errorln("lw3", earningsLastWeek)
 
 	return &types.ValidatorEarnings{
 		Total:                   earningsTotal,
