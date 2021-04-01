@@ -221,6 +221,7 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	balances := []*types.Validator{}
 
 	err := db.DB.Select(&balances, `SELECT 
+			   validatorindex,
 			   COALESCE(balance, 0) AS balance, 
 			   COALESCE(balanceactivation, 0) AS balanceactivation, 
 			   COALESCE(balance1d, 0) AS balance1d, 
@@ -228,7 +229,6 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 			   COALESCE(balance31d , 0) AS balance31d,
        			activationepoch,
        			pubkey,
-				exitepoch,
 				status
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
@@ -306,10 +306,12 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
 		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
 
-		if int64(balance.ActivationEpoch) <= threeWeeksBeforeEpoch && balance.Status == "active_online" { // and was active between three weeks ago and two weeks ago
+		if int64(balance.ActivationEpoch) <= threeWeeksBeforeEpoch && balance.Status == "active_online" {
 			earningsInPeriod += (int64(balance.Balance) - int64(balance.BalanceActivation)) -
 				(int64(balance.Balance) - int64(balance.Balance7d))
+			// earningsInPeriod += getValidatorIncomeInPeriod(balance.Index) //takes painfully long
 			earningsInPeriodBalance += int64(balance.BalanceActivation)
+			// logger.Errorln(balance.Index, earningsInPeriod)
 		}
 	}
 
@@ -322,4 +324,29 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		EarningsInPeriodBalance: earningsInPeriodBalance,
 		EarningsInPeriod:        earningsInPeriod,
 	}, nil
+}
+
+func getValidatorIncomeInPeriod(index uint64) int64 {
+	var incomeHistory []*types.ValidatorIncomeHistory
+	err := db.DB.Select(&incomeHistory, `SELECT day, 
+					start_balance,
+					COALESCE(deposits_amount, 0) as deposits_amount 
+					FROM validator_stats 
+					WHERE validatorindex=$1 order by day desc limit 21;`, index)
+	if err != nil {
+		logger.Errorf("error retrieving validator balance history: %v", err)
+		return 0
+	}
+	var income int64 = 0
+	if len(incomeHistory) == 21 {
+		for i := 13; i < len(incomeHistory)-1; i++ {
+			incomeTemp := incomeHistory[i].StartBalance - incomeHistory[i+1].StartBalance
+			if incomeTemp >= incomeHistory[i+1].Deposits {
+				incomeTemp = incomeTemp - incomeHistory[i+1].Deposits
+			}
+			income += incomeTemp
+		}
+	}
+
+	return income
 }
