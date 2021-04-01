@@ -207,7 +207,7 @@ function randerTable(tableData) {
                     }
                     if(type === 'display') {
                        return `<span data-toggle="tooltip" title="Calculated based on active validators between epochs ${data.epochStart} <-> ${data.epochEnd}. 
-                                                                    Total income of selected validators in this period was ${addCommas((parseInt(data.earningsInPeriod)/1e9).toFixed(1))} ETH and total balance was ${addCommas((parseInt(data.earningsInPeriodBalance)/1e9).toFixed(1))} ETH">
+                                                                    Total income of selected validators in this period was ~${addCommas((parseInt(data.earningsInPeriod)/1e9).toFixed(3))} ETH and total balance was ~${addCommas((parseInt(data.earningsInPeriodBalance)/1e9).toFixed(1))} ETH">
                             ${parseFloat(ipd).toFixed(5)} ETH
                         </span>`
                     }
