@@ -608,17 +608,17 @@ func FormatCurrencySymbol(currency string) string {
 		symbol = "C$"
 	case "CNY":
 		symbol = "¥"
-	case "ETH":
-		symbol = "Ξ"
 	case "EUR":
 		symbol = "€"
 	case "GBP":
 		symbol = "£"
 	case "JPY":
 		symbol = "¥"
+	case "USD":
+		symbol = "$"
 	case "RUB":
 		symbol = "₽"
-	case "USD":
+	default:
 		symbol = "$"
 	}
 	return symbol
