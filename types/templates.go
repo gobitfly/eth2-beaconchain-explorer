@@ -697,6 +697,8 @@ type ValidatorEarnings struct {
 	TotalDeposits           int64   `json:"totalDeposits"`
 	EarningsInPeriodBalance int64   `json:"earningsInPeriodBalance"`
 	EarningsInPeriod        int64   `json:"earningsInPeriod"`
+	EpochStart              int64   `json:"epochStart"`
+	EpochEnd                int64   `json:"epochEnd"`
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing

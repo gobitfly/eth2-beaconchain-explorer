@@ -307,8 +307,7 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
 
 		if int64(balance.ActivationEpoch) <= threeWeeksBeforeEpoch && balance.Status == "active_online" {
-			earningsInPeriod += (int64(balance.Balance) - int64(balance.BalanceActivation)) -
-				(int64(balance.Balance) - int64(balance.Balance7d))
+			earningsInPeriod += (int64(balance.Balance) - int64(balance.Balance7d))
 			// earningsInPeriod += getValidatorIncomeInPeriod(balance.Index) //takes painfully long
 			earningsInPeriodBalance += int64(balance.BalanceActivation)
 			// logger.Errorln(balance.Index, earningsInPeriod)
@@ -323,6 +322,8 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		TotalDeposits:           totalDeposits,
 		EarningsInPeriodBalance: earningsInPeriodBalance,
 		EarningsInPeriod:        earningsInPeriod,
+		EpochStart:              threeWeeksBeforeEpoch,
+		EpochEnd:                lastWeekEpoch,
 	}, nil
 }
 
