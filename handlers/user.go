@@ -645,9 +645,11 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query()
-	newEmail, err := url.QueryUnescape(q.Get("email"))
-	if err != nil {
-		utils.SetFlash(w, r, authSessionName, "Error: Could not update your email please try again.")
+
+	newEmail := q.Get("email")
+
+	if !utils.IsValidEmail(newEmail) {
+		utils.SetFlash(w, r, authSessionName, "Error: Could not update your email because the new email is invalid, please try again.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
