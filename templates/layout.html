@@ -142,7 +142,13 @@
 							</span>
                             <span class="item-text">Pr<span class="d-none d-md-inline">ice</span>:</span>
                         </div>
-                        <div class="info-item-body"><a id="banner-eth-price-data">{{.CurrencySymbol}} {{.EthTruncPrice}}</a></div>
+                        <div class="info-item-body">
+                            <a id="banner-eth-price-data">
+                                <span class="currency-symbol">{{.CurrencySymbol}}</span>
+                                <span class="k-formatted-price">{{.EthTruncPrice}}</span>
+                                <span class="price">{{.EthRoundPrice}}</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
 

@@ -141,6 +141,30 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   }
 }
 
+.currency-symbol {
+  font-weight: 500;
+}
+
+.k-formatted-price {
+  display: inline-block;
+}
+
+@media (min-width: 800px) {
+  .k-formatted-price {
+    display: none;
+  }
+}
+
+.price {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .price {
+    display: inline-block;
+  }
+}
+
 .currency-flag {
   border: .2px solid rgba(0, 0, 0, .1);
   border-radius: 2px;

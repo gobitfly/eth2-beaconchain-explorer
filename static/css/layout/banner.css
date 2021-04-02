@@ -22,6 +22,30 @@
   font-weight: bold;
 }
 
+.currency-symbol {
+  font-weight: 500;
+}
+
+.k-formatted-price {
+  display: inline-block;
+}
+
+@media (min-width: 800px) {
+  .k-formatted-price {
+    display: none;
+  }
+}
+
+.price {
+  display: none;
+}
+
+@media (min-width: 800px) {
+  .price {
+    display: inline-block;
+  }
+}
+
 .info-banner-center, .info-banner-left, .info-banner-right {
   flex: 1 1 auto;
   height: inherit;
@@ -40,8 +64,6 @@
   align-items: center;
   justify-content: flex-end;
 }
-
-
 
 .info-banner-right i {
   padding: .5rem .3rem;
@@ -182,8 +204,6 @@
   .info-banner-container:not(.searching) .info-banner-search .search-button:hover i {
     color: var(--highlight);
   }
-
-
 }
 
 @media (max-width: 960px) {
@@ -217,7 +237,6 @@ color: var(--banner-text);
   padding: 5px 0;
   position: relative;
 }
-
 
 @keyframes rotate {
   0% {
