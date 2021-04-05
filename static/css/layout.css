@@ -149,23 +149,32 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   display: inline-block;
 }
 
-@media (min-width: 800px) {
-  .k-formatted-price {
-    display: none;
-  }
-}
-
 .price {
   display: none;
 }
 
-@media (min-width: 800px) {
-  .price {
-    display: inline-block;
+.currency-flag-dropdown {
+  width: 26px;
+  background-color: white;
+  /* border: .2px solid rgba(0, 0, 0, .1); */
+  border-radius: 50%;
+  margin: 0 .3rem .4rem 0;
+}
+
+@media (max-width: 600px) {
+  .currency-flag-dropdown {
+    display: none;
   }
 }
 
-.currency-flag {
+@media (max-width: 450px) {
+  #currencyDropdown,
+  .dropdown {
+    font-size: 12px;
+  }
+}
+
+.currency-flag-option {
   /* width: 26px; */
   border: .2px solid rgba(0, 0, 0, .1);
   border-radius: 50%;
@@ -173,10 +182,24 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
 }
 
 .currency-name {
-  display: inline-block;
+  display: none;
   width: 50%;
   margin-right: 2.5rem;
   font-weight: 600;
+}
+
+@media (min-width: 800px) {
+  .k-formatted-price {
+    display: none;
+  }
+
+  .price {
+    display: inline-block;
+  }
+
+  .currency-name {
+    display: inline-block;
+  }
 }
 
 
