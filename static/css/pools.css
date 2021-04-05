@@ -13,3 +13,33 @@
     scrollbar-color: var(--primary);
     scrollbar-width: thin;
 }
+
+.tableTotalTop{
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    top: -12px;
+    height: 20px;
+    background-color: rgba(0,0,0,0);
+    color: var(--text-white);
+    border-radius: 8px;
+    border-color: var(--primary);
+    border-style: solid;
+    border-width: 2px;
+    border-bottom-left-radius: 30px;
+    border-bottom-right-radius: 30px;
+    padding: 5%;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: bounce 1s 1;
+}
+
+@keyframes bounce{
+    0% {
+        top: 0px;
+    }
+    100%{
+        top: -12px;
+    }
+}

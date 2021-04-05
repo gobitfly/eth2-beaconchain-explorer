@@ -1,5 +1,8 @@
 let poolShare = {}
 let totalValidators = 0
+let totalDeposited = 0, 
+    totalIncome = 0,
+    totalIperEth = 0;
 
 function getActive(poolValidators) {
     let active = 0
@@ -93,8 +96,22 @@ function addHandlers(tableData) {
     }
 }
 
+function makeTotalVisisble(id){
+    $("#"+id).removeClass("d-none")
+    $("#"+id).addClass("tableTotalTop shadow")
+
+}
+
 function updateTableType() {
     $("#staking-pool-table_wrapper div.row:last").addClass("mt-4")
+    $("#tableDepositTotal").html(addCommas(totalDeposited))
+    $("#tableIncomeTotal").html(addCommas(totalIncome))
+    $("#tableIpDTotal").html(totalIperEth.toFixed(5))
+    $("#tableValidatorsTotal").html(addCommas(totalValidators))
+    makeTotalVisisble("tableDepositTotal")
+    makeTotalVisisble("tableIncomeTotal")
+    makeTotalVisisble("tableIpDTotal")
+    makeTotalVisisble("tableValidatorsTotal")
 }
 
 function randerTable(tableData) {
@@ -208,7 +225,7 @@ function randerTable(tableData) {
                     if(type === 'display') {
                        return `<span data-toggle="tooltip" title="Calculated based on active validators between epochs ${data.epochStart} <-> ${data.epochEnd}. 
                                                                     Total income of selected validators in this period was ~${addCommas((parseInt(data.earningsInPeriod)/1e9).toFixed(3))} ETH and total balance was ~${addCommas((parseInt(data.earningsInPeriodBalance)/1e9).toFixed(1))} ETH">
-                            ${parseFloat(ipd).toFixed(5)} ETH
+                            ${parseFloat(ipd).toFixed(5)}
                         </span>`
                     }
 
@@ -360,6 +377,12 @@ $(document).ready(function () {
         parseInt(el.poolIncome.totalDeposits / 1e9), el.poolIncome, 
         el.poolIncome, 
         el.poolInfo, el.address, el.address])
+
+        totalDeposited += parseInt(el.poolIncome.totalDeposits / 1e9)
+        totalIncome += parseInt(el.poolIncome.total / 1e9)
+        let ipd = parseInt(el.poolIncome.earningsInPeriod)/parseInt(el.poolIncome.earningsInPeriodBalance)
+        isNaN(ipd)? ipd=0 : ipd;
+        totalIperEth += ipd 
     }
 
     randerTable(tableData)
