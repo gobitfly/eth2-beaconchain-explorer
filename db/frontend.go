@@ -302,3 +302,29 @@ func UserClientDelete(userID uint64, clientName string) error {
 	_, err := FrontendDB.Exec("DELETE FROM users_clients WHERE user_id = $1 AND client = $2 ", userID, clientName)
 	return err
 }
+
+func GetHistoricPrices(currency string) (map[uint64]float64, error) {
+	data := []struct {
+		Ts       time.Time
+		Currency float64
+	}{}
+
+	if currency != "eur" && currency != "usd" && currency != "rub" && currency != "cny" && currency != "cad" && currency != "gbp" && currency != "gbp" {
+		return nil, fmt.Errorf("currency %v not supported", currency)
+	}
+
+	err := DB.Select(&data, fmt.Sprintf("SELECT ts, %s AS currency FROM price", currency))
+	if err != nil {
+		return nil, err
+	}
+
+	dataMap := make(map[uint64]float64)
+	genesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+
+	for _, d := range data {
+		day := uint64(d.Ts.Sub(genesisTime).Hours()) / 24
+		dataMap[day] = d.Currency
+	}
+
+	return dataMap, nil
+}

@@ -2,12 +2,15 @@ package services
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
+
+	"strings"
 
 	"github.com/prysmaticlabs/prysm/shared/mathutil"
 )
@@ -56,14 +59,22 @@ func chartsPageDataUpdater() {
 			time.Sleep(sleepDuration)
 			continue
 		}
-		now := time.Now()
+		start := time.Now()
+
+		if start.Add(time.Minute * -20).After(utils.EpochToTime(latestEpoch)) {
+			logger.Info("skipping chartsPageDataUpdater because the explorer is syncing")
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
 		data, err := getChartsPageData()
 		if err != nil {
 			logger.WithField("epoch", latestEpoch).Errorf("error updating chartPageData: %v", err)
 			time.Sleep(sleepDuration)
 			continue
 		}
-		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(now)).Info("chartPageData update completed")
+		metrics.TaskDuration.WithLabelValues("service_charts_updater").Observe(time.Since(start).Seconds())
+		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(start)).Info("chartPageData update completed")
 		chartsPageData.Store(&data)
 		prevEpoch = latestEpoch
 		if latestEpoch == 0 {
@@ -1440,45 +1451,218 @@ func depositsChartData() (*types.GenericChartData, error) {
 func depositsDistributionChartData() (*types.GenericChartData, error) {
 	var err error
 
-	rows := []struct {
-		Address []byte
-		Count   uint64
-	}{}
+	type drillSeriesData struct {
+		Name string      `json:"name"`
+		ID   string      `json:"id"`
+		Data [][2]string `json:"data"`
+	}
 
-	err = db.DB.Select(&rows, `
-		select from_address as address, count(*) as count
-		from (
-			select publickey, from_address
-			from eth1_deposits
-			where valid_signature = true
-			group by publickey, from_address
-			having sum(amount) >= 32e9
-		) a
-		group by from_address
-		order by count desc`)
-	if err != nil {
-		return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
+	type drilldown struct {
+		Series []drillSeriesData `json:"series"`
 	}
 
 	type seriesDataItem struct {
-		Name string `json:"name"`
-		Y    uint64 `json:"y"`
+		Name      string `json:"name"`
+		Address   string `json:"address"`
+		Y         uint64 `json:"y"`
+		Drilldown string `json:"drilldown"`
 	}
-	seriesData := []seriesDataItem{}
+
 	othersItem := seriesDataItem{
-		Name: "others",
-		Y:    0,
+		Name:      "Others",
+		Y:         0,
+		Drilldown: "Others",
 	}
-	for i := range rows {
-		if i > 20 {
-			othersItem.Y += rows[i].Count
-			continue
+
+	seriesData := []seriesDataItem{}
+	drillSeries := []drillSeriesData{}
+
+	if utils.Config.Chain.Network == "mainnet" {
+		rows := []struct {
+			Name  *string
+			Count uint64
+		}{}
+
+		err = db.DB.Select(&rows, `
+			select ss.name, b.count
+			from(select from_address as address, count(*) as count
+			from (
+				select publickey, from_address
+				from eth1_deposits
+				where valid_signature = true
+				group by publickey, from_address
+				having sum(amount) >= 32e9
+			) a
+			group by from_address
+			order by count desc) b
+			left JOIN stake_pools_stats ss ON Lower(ENCODE(b.address::bytea, 'hex')) like LOWER(ss.address)`)
+		if err != nil {
+			return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
 		}
-		seriesData = append(seriesData, seriesDataItem{
-			Name: string(utils.FormatEth1AddressString(rows[i].Address)),
-			Y:    rows[i].Count,
-		})
+		seriesData = []seriesDataItem{ // make sure this has the same order as "drillSeries" below
+			{
+				Name:      "Kraken",
+				Y:         0,
+				Drilldown: "Kraken",
+			},
+			{
+				Name:      "Binance",
+				Y:         0,
+				Drilldown: "Binance",
+			},
+			{
+				Name:      "Whales",
+				Y:         0,
+				Drilldown: "Whale",
+			},
+			{
+				Name:      "Huobi",
+				Y:         0,
+				Drilldown: "Huobi",
+			},
+			{
+				Name:      "Bitcoin suisse",
+				Y:         0,
+				Drilldown: "Bitcoin suisse",
+			},
+			{
+				Name:      "Staked.us",
+				Y:         0,
+				Drilldown: "Staked.us",
+			},
+			{
+				Name:      "Lido",
+				Y:         0,
+				Drilldown: "Lido",
+			},
+			{
+				Name:      "Stakefish",
+				Y:         0,
+				Drilldown: "Stakefish",
+			},
+			{
+				Name:      "Defi",
+				Y:         0,
+				Drilldown: "Defi",
+			},
+		}
+		drillSeries = []drillSeriesData{
+			{
+				Name: "Kraken",
+				ID:   "Kraken",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Binance",
+				ID:   "Binance",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Whale",
+				ID:   "Whale",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Huobi",
+				ID:   "Huobi",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Bitcoin suisse",
+				ID:   "Bitcoin suisse",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Staked.us",
+				ID:   "Staked.us",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Lido",
+				ID:   "Lido",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Stakefish",
+				ID:   "Stakefish",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Defi",
+				ID:   "Defi",
+				Data: [][2]string{},
+			},
+			{ // always must be the last
+				Name: "Others",
+				ID:   "Others",
+				Data: [][2]string{},
+			},
+		}
+
+		var unknownCount uint64 = 0
+		for i := range rows {
+			if rows[i].Name == nil {
+				unknownCount += rows[i].Count
+				continue
+			}
+			foundMatch := false
+			for j, seriesItem := range seriesData {
+				if strings.Contains(*rows[i].Name, seriesItem.Drilldown) {
+					seriesData[j].Y += rows[i].Count
+				}
+
+				if strings.Contains(*rows[i].Name, drillSeries[j].ID) {
+					drillSeries[j].Data = append(drillSeries[j].Data,
+						[2]string{*rows[i].Name, fmt.Sprintf("%d", rows[i].Count)})
+					foundMatch = true
+					break
+				}
+			}
+
+			if !foundMatch {
+				drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
+					[2]string{*rows[i].Name, fmt.Sprintf("%d", rows[i].Count)},
+				)
+				othersItem.Y += rows[i].Count
+			}
+
+		}
+		drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
+			[2]string{"Unknown", fmt.Sprintf("%d", unknownCount)})
+		othersItem.Y += unknownCount
+	} else {
+		rows := []struct {
+			Address []byte
+			Count   uint64
+		}{}
+
+		err = db.DB.Select(&rows, `
+			select from_address as address, count(*) as count
+			from (
+				select publickey, from_address
+				from eth1_deposits
+				where valid_signature = true
+				group by publickey, from_address
+				having sum(amount) >= 32e9
+			) a
+			group by from_address
+			order by count desc`)
+		if err != nil {
+			return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
+		}
+
+		for i := range rows {
+			if i > 20 {
+				othersItem.Y += rows[i].Count
+				continue
+			}
+			seriesData = append(seriesData, seriesDataItem{
+				Name: string(utils.FormatEth1AddressString(rows[i].Address)),
+				Y:    rows[i].Count,
+			})
+		}
 	}
+
 	if othersItem.Y > 0 {
 		seriesData = append(seriesData, othersItem)
 	}
@@ -1495,21 +1679,21 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			dataLabels: { 
 				enabled:true, 
 				formatter: function() { 
-					var name = this.point.name.length > 8 ? this.point.name.substring(0,8) : this.point.name;
-					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'…</b><span style="stroke:none; fill: var(--font-color)">: '+this.point.y+' ('+this.point.percentage.toFixed(2)+'%)</span></span>' 
+					var name = this.point.name.length > 20 ? this.point.name.substring(0,20)+'...' : this.point.name;
+					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'</b></span>' 
 				} 
 			} 
 		}`,
 		PlotOptionsSeriesCursor: "pointer",
-		PlotOptionsSeriesEventsClick: `function(event){ 
-			if (event.point.name == 'others') { window.location.href = '/validators/eth1deposits' }
-			else { window.location.href = '/validators/eth1deposits?q='+encodeURIComponent(event.point.name) } }`,
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Deposits Distribution",
 				Type: "pie",
 				Data: seriesData,
 			},
+		},
+		Drilldown: drilldown{
+			Series: drillSeries,
 		},
 	}
 

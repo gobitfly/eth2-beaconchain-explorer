@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/version"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -41,6 +42,8 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Currency:              GetCurrency(r),
 		CurrencySymbol:        "",
 		ClientsUpdated:        ethclients.ClientsUpdated(),
+		Phase0:                utils.Config.Chain.Phase0,
+		Lang:                  "en-US",
 		// InfoBanner:            ethclients.GetBannerClients(),
 	}
 	data.EthPrice = price.GetEthPrice(data.Currency)
@@ -48,6 +51,20 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
 	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
 	data.CurrencySymbol = utils.FormatCurrencySymbol(data.Currency)
+
+	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")
+	if len(acceptedLangs) > 0 {
+		if strings.Contains(acceptedLangs[0], "ru") || strings.Contains(acceptedLangs[0], "RU") {
+			data.Lang = "ru-RU"
+		}
+	}
+
+	for _, v := range r.Cookies() {
+		if v.Name == "language" {
+			data.Lang = v.Value
+			break
+		}
+	}
 
 	return data
 }

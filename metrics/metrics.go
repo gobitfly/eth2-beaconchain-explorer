@@ -30,12 +30,11 @@ var (
 		Name: "http_requests_duration",
 		Help: "Duration of HTTP requests in seconds by path and method.",
 	}, []string{"path", "method"})
-	ExporterExportEpochDuration = promauto.NewHistogram(prometheus.HistogramOpts{
-		Name: "exporter_export_epoch_duration",
-		Help: "Time it took to export an epoch.",
-		// Buckets: prometheus.ExponentialBuckets(1, 4, 6),
-		Buckets: []float64{1, 5, 10, 15, 30, 45, 60, 120, 300, 600},
-	})
+	TaskDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "task_duration",
+		Help:    "Duration of tasks",
+		Buckets: []float64{.05, .1, .5, 1, 5, 10, 20, 60, 90, 120, 180, 300},
+	}, []string{"task"})
 )
 
 func init() {

@@ -1,0 +1,159 @@
+#hero-feed{
+    min-width: 450px;
+    min-height: 250px;
+    max-width: 450px;
+    max-height: 260px;
+    position: absolute;
+    top: 70px;
+    right: 0px;
+    border-radius: 12px;
+    border-style: none;
+    z-index: 1;
+    padding-top: 2%;
+    padding-bottom: 2%;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    
+}
+
+#hero-feed ul{
+    min-width: 100%;
+    min-height: 240px;
+    max-width: 100%;
+    max-height: 240px;
+    overflow-y: auto;
+    overflow-x: none;
+    list-style: none;
+    padding: 0%;
+    margin: 0%;
+    scrollbar-color: var(--primary) rgba(0,0,0,0.0);
+    scrollbar-width: thin;
+}
+
+#hero-feed ul li{
+    min-height: 80px;
+    width: 100%;
+    border-bottom: var(--primary);
+    border-bottom-style: none;
+    border-bottom-width: 1px;
+    padding-top: 3%;
+}
+
+.donate-btn{
+    position: absolute;
+    bottom: 10px;
+    right: 7px;
+    background-color: var(--primary);
+    color: black;
+    border-radius: 5px;
+    border-style: none;
+    cursor: pointer;
+    padding-right: 35px;
+    padding-left: 35px;
+    padding-bottom: 5px;
+    z-index: 9999;
+}
+
+#hero-feed ul li img{
+    min-width: 50px;
+    max-width: 50px;
+    /* height: auto; */
+    min-height: 50px;
+    max-height: 50px;
+    border-radius: 25px;
+    border-style: solid;
+    border-color: var(--primary);
+    margin-left: 2%;
+    animation: color-shift 4s 2;
+}
+
+.pkey{
+    margin-left: 1%;
+    color: var(--primary);
+}
+
+.usrdiv{
+    padding-left: 2%;
+}
+
+
+#hero-feed ul::-webkit-scrollbar{
+    width: 5px;
+    /* background-color: var(--bg-color-secondary); */
+  }
+  
+#hero-feed ul::-webkit-scrollbar-thumb{
+    background-color: var(--primary);
+    border-color: var(--primary);
+    border-radius: 12px;
+    border-style: solid;
+    border-width: 2px;
+}
+
+.umsg{
+    font-size: 12px;
+    word-wrap: break-word;
+}
+
+.border-rounded{
+    border-radius: 12px;
+    border-style: none;
+    border-width: 2px;
+}
+
+.fade-in{
+    animation: fade 2s 1;
+}
+
+.fade-in-top{
+    animation: fade-top 3s 1;
+}
+
+.color-shift-anim{
+    animation: color-shift 5s infinite;
+}
+
+@keyframes fade-top {
+    0% {
+        opacity: 0;
+        top: 0px;
+        backdrop-filter: blur(0px);
+        -webkit-backdrop-filter: blur(0px);
+    }
+    100% {
+        opacity: 1;
+        top: 70px;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+    }
+}
+
+@keyframes fade {
+    0% {
+      opacity: 0;
+    }
+    50%{
+        opacity: 1;
+    }
+    100% {
+      opacity: 1;
+    }
+}
+
+
+@keyframes color-shift {
+    0% {
+        background-color: rgba(238, 113, 19, 0.2); 
+    }
+    25% {
+        background-color: rgba(114,19,238, 0.2);
+    }
+    50% {
+        background-color: rgba(19, 238, 114, 0.2);
+    }
+    100% {
+        background-color: rgba(238, 113, 19, 0.2);
+    }
+}
+

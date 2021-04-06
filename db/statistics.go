@@ -1,12 +1,16 @@
 package db
 
 import (
+	"eth2-exporter/metrics"
 	"eth2-exporter/utils"
 	"time"
 )
 
 func WriteStatisticsForDay(day uint64) error {
 	exportStart := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_validator_stats").Observe(time.Since(exportStart).Seconds())
+	}()
 
 	epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot
 	firstEpoch := day * epochsPerDay

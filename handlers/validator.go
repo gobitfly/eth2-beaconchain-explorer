@@ -459,6 +459,23 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.AttestationInclusionEffectiveness = 1.0 / validatorPageData.AverageAttestationInclusionDistance * 100
 	}
 
+	var attestationStreaks []struct {
+		Length uint64
+	}
+	err = db.DB.Select(&attestationStreaks, `select greatest(0,length) as length from validator_attestation_streaks where validatorindex = $1 and status = 1 order by start desc`, index)
+	if err != nil {
+		logger.Errorf("error retrieving AttestationStreaks: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	if len(attestationStreaks) > 1 {
+		validatorPageData.CurrentAttestationStreak = attestationStreaks[0].Length
+		validatorPageData.LongestAttestationStreak = attestationStreaks[1].Length
+	} else if len(attestationStreaks) > 0 {
+		validatorPageData.CurrentAttestationStreak = attestationStreaks[0].Length
+		validatorPageData.LongestAttestationStreak = attestationStreaks[0].Length
+	}
+
 	//logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	//start = time.Now()
 
@@ -1107,6 +1124,16 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	currentEpoch := services.LatestEpoch()
 
+	lookBack := uint64(0)
+
+	if currentEpoch >= 10 {
+		lookBack = currentEpoch - 10
+	}
+
+	if lookBack >= start {
+		lookBack = lookBack - start
+	}
+
 	var validatorHistory []*types.ValidatorHistory
 	err = db.DB.Select(&validatorHistory, `
 			SELECT 
@@ -1122,7 +1149,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			WHERE vbalance.validatorindex = $1 AND vbalance.epoch >= $2 AND vbalance.epoch <= $3 AND vbalance.week >= $2 / 1575 AND vbalance.week <= $3 / 1575
 			ORDER BY epoch DESC
 			LIMIT 10
-			`, index, currentEpoch-10-start, currentEpoch-start)
+			`, index, lookBack, currentEpoch-start)
 
 	if err != nil {
 		logger.Errorf("error retrieving validator history: %v", err)
