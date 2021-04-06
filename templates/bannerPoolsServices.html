@@ -8,10 +8,10 @@
   <script>
       
     window.addEventListener('load', function() {
-      if(window.innerWidth > 1140) {
-        $("#revive-banner").append('<ins ref="ins" data-revive-zoneid="13" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>')  
+      if(window.innerWidth < 1140) {
+        $("#revive-banner").append('<ins ref="ins" data-revive-zoneid="11" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>')  
       } else {
-        $("#revive-banner").append('<ins ref="ins" data-revive-zoneid="12" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>')  
+        $("#revive-banner").append('<ins ref="ins" data-revive-zoneid="10" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>')  
       }
       function refreshAd() {
         if(document.hasFocus()) {
@@ -29,13 +29,13 @@
 
       window.addEventListener('resize',  function(e) {
         var id = $("#revive-banner").find('ins').attr('data-revive-zoneid')
-        if(e.target.innerWidth < 1140 && id === "12") {
+        if(e.target.innerWidth < 1140 && id === "10") {
           // change to mobile
-          $("#revive-banner").find('ins').attr('data-revive-zoneid', "13")
+          $("#revive-banner").find('ins').attr('data-revive-zoneid', "11")
           refreshAd()
-        } else if(e.target.innerWidth >= 1140 && id === "13") {
+        } else if(e.target.innerWidth >= 1140 && id === "11") {
           // change to desktop
-          $("#revive-banner").find('ins').attr('data-revive-zoneid', "12")
+          $("#revive-banner").find('ins').attr('data-revive-zoneid', "10")
           refreshAd()
         }
       })
