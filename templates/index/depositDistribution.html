@@ -6,14 +6,14 @@
     </div>
     </figure>
     <script>
-        {{if .DepositDistribution}}    
-    window.addEventListener('load', function() {
-      let drill = {{.DepositDistribution.Data.Drilldown}}
+        {{if .DepositDistribution}}
+        var drill = {{.DepositDistribution.Data.Drilldown}}
         for (let i=0; i<drill.series.length; i++){
           for (let j=0; j<drill.series[i].data.length; j++){
             drill.series[i].data[j][1] = parseInt(drill.series[i].data[j][1])
           }
-        }
+        }    
+    window.addEventListener('load', function() {
       Highcharts.chart('deposit-distribution-chart',{
             chart: { 
             type: {{.DepositDistribution.Data.Type}}, 
@@ -24,7 +24,7 @@
             rangeSelector: {  enabled: false },
             title: { 
                 useHTML: true,
-                text: '<a class="text-dark" href="charts/{{.DepositDistribution.Path}}">{{.DepositDistribution.Data.Title}}</a>',
+                text: '<a class="text-dark" href="/pools">{{.DepositDistribution.Data.Title}}</a>',
             },
             subtitle: {
                 useHTML: true,

@@ -199,6 +199,8 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	lastDayEpoch := latestEpoch - 225
 	lastWeekEpoch := latestEpoch - 225*7
 	lastMonthEpoch := latestEpoch - 225*31
+	twoWeeksBeforeEpoch := latestEpoch - 255*14
+	threeWeeksBeforeEpoch := latestEpoch - 255*21
 
 	if lastDayEpoch < 0 {
 		lastDayEpoch = 0
@@ -209,17 +211,25 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	if lastMonthEpoch < 0 {
 		lastMonthEpoch = 0
 	}
+	if twoWeeksBeforeEpoch < 0 {
+		twoWeeksBeforeEpoch = 0
+	}
+	if threeWeeksBeforeEpoch < 0 {
+		threeWeeksBeforeEpoch = 0
+	}
 
 	balances := []*types.Validator{}
 
 	err := db.DB.Select(&balances, `SELECT 
+			   validatorindex,
 			   COALESCE(balance, 0) AS balance, 
 			   COALESCE(balanceactivation, 0) AS balanceactivation, 
 			   COALESCE(balance1d, 0) AS balance1d, 
 			   COALESCE(balance7d, 0) AS balance7d, 
 			   COALESCE(balance31d , 0) AS balance31d,
        			activationepoch,
-       			pubkey
+       			pubkey,
+				status
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		logger.Error(err)
@@ -250,14 +260,23 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	var earningsLastWeek int64
 	var earningsLastMonth int64
 	var totalDeposits int64
+	var earningsInPeriod int64
+	var earningsInPeriodBalance int64
 
 	for _, balance := range balances {
 
 		if int64(balance.ActivationEpoch) > latestEpoch {
 			continue
 		}
+
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
 			totalDeposits += deposit
+
+			if epoch >= threeWeeksBeforeEpoch && epoch <= lastWeekEpoch &&
+				epoch > int64(balance.ActivationEpoch) {
+				earningsInPeriod -= deposit
+			}
+
 			if epoch > int64(balance.ActivationEpoch) {
 				earningsTotal -= deposit
 			}
@@ -281,17 +300,54 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		if int64(balance.ActivationEpoch) > lastMonthEpoch {
 			balance.Balance31d = balance.BalanceActivation
 		}
+
 		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
 		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
 		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
 		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
+
+		if int64(balance.ActivationEpoch) <= lastMonthEpoch && balance.Status == "active_online" {
+			earningsInPeriod += (int64(balance.Balance) - int64(balance.Balance31d)) - (int64(balance.Balance) - int64(balance.Balance7d))
+			// earningsInPeriod += getValidatorIncomeInPeriod(balance.Index) //takes painfully long
+			earningsInPeriodBalance += int64(balance.BalanceActivation)
+			// logger.Errorln(balance.Index, earningsInPeriod)
+		}
 	}
 
 	return &types.ValidatorEarnings{
-		Total:         earningsTotal,
-		LastDay:       earningsLastDay,
-		LastWeek:      earningsLastWeek,
-		LastMonth:     earningsLastMonth,
-		TotalDeposits: totalDeposits,
+		Total:                   earningsTotal,
+		LastDay:                 earningsLastDay,
+		LastWeek:                earningsLastWeek,
+		LastMonth:               earningsLastMonth,
+		TotalDeposits:           totalDeposits,
+		EarningsInPeriodBalance: earningsInPeriodBalance,
+		EarningsInPeriod:        earningsInPeriod,
+		EpochStart:              lastMonthEpoch,
+		EpochEnd:                lastWeekEpoch,
 	}, nil
+}
+
+func getValidatorIncomeInPeriod(index uint64) int64 {
+	var incomeHistory []*types.ValidatorIncomeHistory
+	err := db.DB.Select(&incomeHistory, `SELECT day, 
+					start_balance,
+					COALESCE(deposits_amount, 0) as deposits_amount 
+					FROM validator_stats 
+					WHERE validatorindex=$1 order by day desc limit 21;`, index)
+	if err != nil {
+		logger.Errorf("error retrieving validator balance history: %v", err)
+		return 0
+	}
+	var income int64 = 0
+	if len(incomeHistory) == 21 {
+		for i := 13; i < len(incomeHistory)-1; i++ {
+			incomeTemp := incomeHistory[i].StartBalance - incomeHistory[i+1].StartBalance
+			if incomeTemp >= incomeHistory[i+1].Deposits {
+				incomeTemp = incomeTemp - incomeHistory[i+1].Deposits
+			}
+			income += incomeTemp
+		}
+	}
+
+	return income
 }
