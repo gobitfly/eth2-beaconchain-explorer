@@ -562,3 +562,13 @@ create table price
     gbp numeric(20,10)                not null,
     primary key (ts)
 );
+
+drop table if exists staking_pools_chart;
+create table staking_pools_chart
+(
+    epoch                      int  not null,
+    name                       text not null, 
+    income                     bigint not null, 
+    balance                    bigint not null, 
+    PRIMARY KEY(epoch, name, income, balance)
+);

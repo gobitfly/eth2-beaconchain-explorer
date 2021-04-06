@@ -63,6 +63,7 @@ func updatePoolInfo() {
 	updateMux.Lock()
 	defer updateMux.Unlock()
 	if time.Now().Sub(poolInfoTempTime).Hours() > 6 { // query db every 6 hour
+		deleteOldChartEntries()
 		poolInfoTemp = getPoolInfo()
 		ethSupply = getEthSupply()
 		poolInfoTempTime = time.Now()
@@ -121,7 +122,11 @@ func getPoolInfo() []RespData {
 			if pool.Address == stats[i].Address {
 				state = stats[i].PoolInfo
 				// get income
-				income, err := getPoolIncome(state)
+				pName := pool.Address
+				if utils.Config.Chain.Network == "mainnet" {
+					pName = pool.Name
+				}
+				income, err := getPoolIncome(state, pName)
 				if err != nil {
 					income = &types.ValidatorEarnings{}
 				}
@@ -163,13 +168,13 @@ func getPoolStats(pools []Pools) []PoolStatsData {
 	return result
 }
 
-func getPoolIncome(pools []PoolInfo) (*types.ValidatorEarnings, error) {
-	var indexes = make([]uint64, len(pools))
-	for i, pool := range pools {
-		indexes[i] = pool.ValidatorIndex
+func getPoolIncome(pool []PoolInfo, poolName string) (*types.ValidatorEarnings, error) {
+	var indexes = make([]uint64, len(pool))
+	for i, validator := range pool {
+		indexes[i] = validator.ValidatorIndex
 	}
 
-	return getValidatorEarnings(indexes)
+	return getValidatorEarnings(indexes, poolName)
 }
 
 func getEthSupply() interface{} {
@@ -193,7 +198,7 @@ func getEthSupply() interface{} {
 	return respjson
 }
 
-func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error) {
+func getValidatorEarnings(validators []uint64, poolName string) (*types.ValidatorEarnings, error) {
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(LatestEpoch())
 	lastDayEpoch := latestEpoch - 225
@@ -232,7 +237,7 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 				status
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
-		logger.Error(err)
+		logger.Error("error selecting balances from validators: %v", err)
 		return nil, err
 	}
 
@@ -308,11 +313,13 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 
 		if int64(balance.ActivationEpoch) <= lastMonthEpoch && balance.Status == "active_online" {
 			earningsInPeriod += (int64(balance.Balance) - int64(balance.Balance31d)) - (int64(balance.Balance) - int64(balance.Balance7d))
-			// earningsInPeriod += getValidatorIncomeInPeriod(balance.Index) //takes painfully long
 			earningsInPeriodBalance += int64(balance.BalanceActivation)
-			// logger.Errorln(balance.Index, earningsInPeriod)
 		}
 	}
+
+	go func() {
+		updateChartDB(poolName, lastWeekEpoch, earningsInPeriod, earningsInPeriodBalance)
+	}()
 
 	return &types.ValidatorEarnings{
 		Total:                   earningsTotal,
@@ -327,27 +334,26 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}, nil
 }
 
-func getValidatorIncomeInPeriod(index uint64) int64 {
-	var incomeHistory []*types.ValidatorIncomeHistory
-	err := db.DB.Select(&incomeHistory, `SELECT day, 
-					start_balance,
-					COALESCE(deposits_amount, 0) as deposits_amount 
-					FROM validator_stats 
-					WHERE validatorindex=$1 order by day desc limit 21;`, index)
+func updateChartDB(poolName string, epoch int64, income int64, balance int64) {
+	_, err := db.DB.Exec(`
+		INSERT INTO staking_pools_chart
+		(epoch, name, income, balance)
+		VALUES
+		($1, $2, $3, $4)
+	`, epoch, poolName, income, balance)
 	if err != nil {
-		logger.Errorf("error retrieving validator balance history: %v", err)
-		return 0
+		logger.Errorf("error inserting staking pool chart data (if 'duplicate key' error not critical): %v", err)
 	}
-	var income int64 = 0
-	if len(incomeHistory) == 21 {
-		for i := 13; i < len(incomeHistory)-1; i++ {
-			incomeTemp := incomeHistory[i].StartBalance - incomeHistory[i+1].StartBalance
-			if incomeTemp >= incomeHistory[i+1].Deposits {
-				incomeTemp = incomeTemp - incomeHistory[i+1].Deposits
-			}
-			income += incomeTemp
-		}
-	}
+}
 
-	return income
+func deleteOldChartEntries() {
+	latestEpoch := int64(LatestEpoch())
+	sixMonthsOld := latestEpoch - 225*31*6
+	_, err := db.DB.Exec(`
+		DELETE FROM staking_pools_chart
+		WHERE epoch <= $1
+	`, sixMonthsOld)
+	if err != nil {
+		logger.Errorf("error removing old staking pool chart data: %v", err)
+	}
 }
