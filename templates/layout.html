@@ -606,31 +606,31 @@
     {{ template "css" .Data }}
 
     <main>
-        <div style="overflow-wrap: break-word;background-color: var(--bg-color-light); height: 40px; display: flex; justify-content:center; align-items:center; padding-top: 12.5px; padding-left: 12.5px; padding-right: 12.5px;"> 
+        <div class="p-1" style="overflow-wrap: break-word;background-color: var(--bg-color-light); height: 40px; display: flex; justify-content:center; align-items:center;"> 
           <span class="d-none d-md-block">
 
-            <p>Watch the 
-                <span style="color: #ff6600;">
+            <span>Watch the 
+                <span>
                     <a style="color: #ff6600;" href="https://ethernodes.org/berlin" target="_blank">
                     Berlin Hardfork
                     </a>
                 </span> live on 
-                    <span style="color: #ff6600;">
+                    <span>
                         <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=4R638fPK3NQ" target="_blank">
                             YouTube
                         </a>
                     </span> hosted by 
-                    <span style="color: #ff6600;">
+                    <span>
                         <a style="color: #ff6600;" href="https://discord.gg/NvCxbCu" target="_blank">
                             Ethstaker
                         </a>
                     </span> on Friday, Apr 16, 2021
-            </p>
+                </span>
 
 
         </span>
-        <span class="d-md-none">
-            <p>
+        <span class="d-md-none p-1">
+            <span>
                 <span>
                     <a style="color: #ff6600;" href="https://ethernodes.org/berlin" target="_blank">
                         Berlin Hardfork
@@ -641,7 +641,7 @@
                     YouTube
                 </a>
                 </span> on Friday, Apr 16, 2021
-            </p>
+            </span>
         </span>
         </div>
         <!-- {{ if .HeaderAd }}
