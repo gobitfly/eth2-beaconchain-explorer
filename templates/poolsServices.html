@@ -2,6 +2,7 @@
 <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
 <script src="/bundle/js/highcharts/highcharts-full-v9.min.js"></script>
 <script src="/bundle/js/highcharts/highcharts-global-options.js"></script>
+<script src="/bundle/js/requestInterval.js"></script>
 {{end}}
 
 {{ define "css"}}
@@ -21,11 +22,11 @@
                 <div id="poolsIDChart"></div>
             </div>
         </div>
-        <!-- <div class="row">
+         <div class="row">
             <div class="col-md-12">
                 {{ template "bannerPoolsServices" }}
             </div>
-       </div> -->
+       </div> 
         <div class="row">
             <div class="col-md-12">
                 <div class="d-flex justify-content-between" style="width: 100%;">
@@ -79,7 +80,6 @@
         </div>
     </div>
 </section>
-
 <div id="tempcont" class=""></div>
 <script src="/bundle/js/jquery.min.js"></script>
 <script src="/bundle/js/luxon.min.js"></script>
