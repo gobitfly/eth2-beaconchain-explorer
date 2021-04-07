@@ -1,6 +1,6 @@
 let poolShare = {}
 let totalValidators = 0
-let totalDeposited = 0, 
+let totalDeposited = 0,
     totalIncome = 0,
     totalIperEth = 0;
 
@@ -11,19 +11,20 @@ function getActive(poolValidators) {
     for (let item of poolValidators) {
         if (item.status === "active_online") {
             active++
-        }else if (item.status === "slashed"){
+        } else if (item.status === "slashed") {
             slashed++
-        }else if (item.status === "pending"){
+        } else if (item.status === "pending") {
             pending++
         }
     }
 
-    return [(active / poolValidators.length) * 100, {active: `<i class="fas fa-male ${active>0?"text-success":""} mr-1"><span style="font-size: 12px;">${addCommas(active)}</span></i>`,
-                                                     slashed: `<i class="fas fa-user-slash ${slashed>0?"text-danger":""} fa-sm mx-1"><span style="font-size: 12px;">${addCommas(slashed)}</span></i>`,
-                                                     pending: `<i class="fas fa-male ${pending>0?"text-info":""} mr-1"></i> <span style="font-size: 12px;">${addCommas(pending)}</span>`,
-                                                     total: `${addCommas(poolValidators.length)}`
-                                                    }, 
-            slashed]
+    return [(active / poolValidators.length) * 100, {
+        active: `<i class="fas fa-male ${active > 0 ? "text-success" : ""} mr-1"><span style="font-size: 12px;">${addCommas(active)}</span></i>`,
+        slashed: `<i class="fas fa-user-slash ${slashed > 0 ? "text-danger" : ""} fa-sm mx-1"><span style="font-size: 12px;">${addCommas(slashed)}</span></i>`,
+        pending: `<i class="fas fa-male ${pending > 0 ? "text-info" : ""} mr-1"></i> <span style="font-size: 12px;">${addCommas(pending)}</span>`,
+        total: `${addCommas(poolValidators.length)}`
+    },
+        slashed]
 }
 
 function getValidatorCard(val) {
@@ -96,9 +97,9 @@ function addHandlers(tableData) {
     }
 }
 
-function makeTotalVisisble(id){
-    $("#"+id).removeClass("d-none")
-    $("#"+id).addClass("tableTotalTop shadow")
+function makeTotalVisisble(id) {
+    $("#" + id).removeClass("d-none")
+    $("#" + id).addClass("tableTotalTop shadow")
 
 }
 
@@ -112,6 +113,69 @@ function updateTableType() {
     makeTotalVisisble("tableIncomeTotal")
     makeTotalVisisble("tableIpDTotal")
     makeTotalVisisble("tableValidatorsTotal")
+}
+
+function addCommas(number) {
+    return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+}
+
+function updateEthSupply() {
+    let circulatingETH = parseInt(ETH_SUPPLY.result / 1e18);
+    let stakedEth = STAKED_ETH;
+    let eth = parseFloat(stakedEth.split(" ")[0].replace(",", "").replace(",", ""));
+    let progress = ((eth / circulatingETH) * 100).toFixed(2);
+    $(".staked-progress").width(progress);
+    $("#staked-percent").html(`${progress}%`);
+    $("#ethCsupply").html(addCommas(circulatingETH) + " ETH")
+}
+
+function getPoolEffectiveness(id, data) {
+    let load = async () => {
+        let query = "?validators="
+        for (let item of data.slice(0, 200)) {
+            query += item.validatorindex + ","
+        }
+        query = query.substring(0, query.length - 1)
+        // console.log(query)
+        let resp = await fetch(`/dashboard/data/effectiveness${query}`)
+        resp = await resp.json()
+        let eff = 0.0
+        for (let incDistance of resp) {
+            if (incDistance === 0.0) {
+                continue
+            }
+            eff += (1.0 / incDistance) * 100.0
+        }
+        eff = eff / resp.length
+        setValidatorEffectiveness(id, eff)
+    }
+
+    load().then(() => { })
+}
+
+function getAvgCurrentStreak(id) {
+    fetch("/pools/streak/current?pool=0x" + id)
+        .then((resp) => {
+            resp.json()
+                .then((data) => {
+                    $(`#${id}streak`).html(addCommas(parseInt(data)))
+                })
+        }).catch((err) => {
+            console.log(err)
+            $(`#${id}streak`).html("N/a")
+        })
+}
+
+function updatePoolShare(arr) {
+    // console.log(arr)
+    for (let item of arr) {
+        if (typeof item === 'object' && 'data' in item) {
+            updatePoolShare(item.data)
+        } else {
+            poolShare[item[0]] = item[1]
+            totalValidators += item[1]
+        }
+    }
 }
 
 function randerTable(tableData) {
@@ -148,7 +212,7 @@ function randerTable(tableData) {
                 data: '0',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    if (data===""){return "Unknown"}
+                    if (data === "") { return "Unknown" }
                     return data
                 }
             }, {
@@ -156,7 +220,7 @@ function randerTable(tableData) {
                 data: '1',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    if (data==="" || data===null){return "Unknown"}
+                    if (data === "" || data === null) { return "Unknown" }
                     return data
                 }
             }, {
@@ -171,9 +235,9 @@ function randerTable(tableData) {
                 data: '3',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    let val = parseFloat((poolShare[data]/totalValidators)*100).toFixed(3)
-                    
-                    if(type === 'display') {
+                    let val = parseFloat((poolShare[data] / totalValidators) * 100).toFixed(3)
+
+                    if (type === 'display') {
                         if (isNaN(val)) return "0.00%"
                         return `${val}%`
                     }
@@ -181,12 +245,12 @@ function randerTable(tableData) {
                     if (isNaN(val)) return 0
                     return poolShare[data]
                 }
-            },{
+            }, {
                 targets: 4,
                 data: '4',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    if(type === 'display') {
+                    if (type === 'display') {
                         return addCommas(data)
                     }
 
@@ -204,7 +268,7 @@ function randerTable(tableData) {
                                 Last Month: ${addCommas(parseInt(data.lastMonth / 1e9))}
                                 `
                     }
-                    if(type === 'display') {
+                    if (type === 'display') {
                         return `<span data-toggle="tooltip" title="${getIncomeStats()}" data-html="true">
                                 ${addCommas(parseInt(data.total / 1e9))}
                                 </span>
@@ -218,13 +282,13 @@ function randerTable(tableData) {
                 data: '6',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    let ipd = parseInt(data.earningsInPeriod)/parseInt(data.earningsInPeriodBalance)
+                    let ipd = parseInt(data.earningsInPeriod) / parseInt(data.earningsInPeriodBalance)
                     if (isNaN(ipd)) {
-                        ipd=0
+                        ipd = 0
                     }
-                    if(type === 'display') {
-                       return `<span data-toggle="tooltip" title="Calculated based on active validators between epochs ${data.epochStart} <-> ${data.epochEnd}. 
-                                                                    Total income of selected validators in this period was ~${addCommas((parseInt(data.earningsInPeriod)/1e9).toFixed(3))} ETH and total balance was ~${addCommas((parseInt(data.earningsInPeriodBalance)/1e9).toFixed(1))} ETH">
+                    if (type === 'display') {
+                        return `<span data-toggle="tooltip" title="Calculated based on active validators between epochs ${data.epochStart} <-> ${data.epochEnd}. 
+                                                                    Total income of selected validators in this period was ~${addCommas((parseInt(data.earningsInPeriod) / 1e9).toFixed(3))} ETH and total balance was ~${addCommas((parseInt(data.earningsInPeriodBalance) / 1e9).toFixed(1))} ETH">
                             ${parseFloat(ipd).toFixed(5)}
                         </span>`
                     }
@@ -243,7 +307,7 @@ function randerTable(tableData) {
                         bg = "bg-danger"
                         fg = "black"
                     }
-                    if(type === 'display') {
+                    if (type === 'display') {
                         return `
                             <div id="${row[2]}" style="cursor: pointer; border-radius: 10px; border-style: none;" class="d-flex flex-column hover-shadow" style="height: 100%;" 
                                                 data-toggle="tooltip" title="${info[0].toFixed(2)}% of validators are active in this pool">
@@ -298,67 +362,82 @@ function randerTable(tableData) {
     })
 }
 
-function addCommas(number) {
-    return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-}
-
-function updateEthSupply() {
-    let circulatingETH = parseInt(ETH_SUPPLY.result / 1e18);
-    let stakedEth = STAKED_ETH;
-    let eth = parseFloat(stakedEth.split(" ")[0].replace(",", "").replace(",", ""));
-    let progress = ((eth / circulatingETH) * 100).toFixed(2);
-    $(".staked-progress").width(progress);
-    $("#staked-percent").html(`${progress}%`);
-    $("#ethCsupply").html(addCommas(circulatingETH) + " ETH")
-}
-
-function getPoolEffectiveness(id, data) {
-    let load = async () => {
-        let query = "?validators="
-        for (let item of data.slice(0, 200)) {
-            query += item.validatorindex + ","
-        }
-        query = query.substring(0, query.length - 1)
-        // console.log(query)
-        let resp = await fetch(`/dashboard/data/effectiveness${query}`)
-        resp = await resp.json()
-        let eff = 0.0
-        for (let incDistance of resp) {
-            if (incDistance === 0.0) {
-                continue
+function randerChart() {
+    const chart = Highcharts.chart('poolsIDChart', {
+        title: {
+            text: 'Incoem per deposited ETH',
+            x: -20 //center
+        },
+        subtitle: {
+            text: 'Incoem per deposited ETH for each pool',
+            x: -20
+        },
+        xAxis: {
+        },
+        yAxis: {
+            title: {
+                text: 'ETH'
             }
-            eff += (1.0 / incDistance) * 100.0
+        },
+        tooltip: {
+            valueSuffix: 'ETH'
+        },
+        legend: {
+            layout: 'vertical',
+            align: 'right',
+            verticalAlign: 'middle',
+            borderWidth: 0,
+            showInLegend: false
+        },
+        series: [{
+            marker: {
+                fillColor: 'transparent',
+                lineColor: Highcharts.getOptions().colors[0]
+            },
+            data: [...Array(12)].map(Math.random)
+        }, {
+            marker: {
+                fillColor: 'transparent'
+            },
+            data: [...Array(12)].map(Math.random)
+        }, {
+
+            data: [...Array(12)].map(Math.random)
+        }, {
+            lineColor: 'red',
+            data: [...Array(12)].map(Math.random)
+        }],
+        responsive: {
+            rules: [{
+                condition: {
+                    maxWidth: 500
+                },
+                chartOptions: {
+                    legend: {
+                        align: 'center',
+                        verticalAlign: 'bottom',
+                        layout: 'horizontal'
+                    },
+                    yAxis: {
+                        labels: {
+                            align: 'left',
+                            x: 0,
+                            y: -5
+                        },
+                        title: {
+                            text: null
+                        }
+                    },
+                    subtitle: {
+                        text: null
+                    },
+                    credits: {
+                        enabled: false
+                    }
+                }
+            }]
         }
-        eff = eff / resp.length
-        setValidatorEffectiveness(id, eff)
-    }
-
-    load().then(() => { })
-}
-
-function getAvgCurrentStreak(id) {
-    fetch("/pools/streak/current?pool=0x" + id)
-        .then((resp) => {
-            resp.json()
-                .then((data) => {
-                    $(`#${id}streak`).html(addCommas(parseInt(data)))
-                })
-        }).catch((err) => {
-            console.log(err)
-            $(`#${id}streak`).html("N/a")
-        })
-}
-
-function updatePoolShare (arr){
-    // console.log(arr)
-    for (let item of arr){
-        if (typeof item === 'object' && 'data' in item){
-            updatePoolShare(item.data)
-        }else {
-            poolShare[item[0]] = item[1]
-            totalValidators += item[1]
-        }
-    }
+    })
 }
 
 $(document).ready(function () {
@@ -374,17 +453,18 @@ $(document).ready(function () {
     let tableData = []
     for (let el of POOL_INFO) {
         tableData.push([el.name, el.category, el.address, el.name,
-        parseInt(el.poolIncome.totalDeposits / 1e9), el.poolIncome, 
-        el.poolIncome, 
+        parseInt(el.poolIncome.totalDeposits / 1e9), el.poolIncome,
+        el.poolIncome,
         el.poolInfo, el.address, el.address])
 
         totalDeposited += parseInt(el.poolIncome.totalDeposits / 1e9)
         totalIncome += parseInt(el.poolIncome.total / 1e9)
-        let ipd = parseInt(el.poolIncome.earningsInPeriod)/parseInt(el.poolIncome.earningsInPeriodBalance)
-        isNaN(ipd)? ipd=0 : ipd;
-        totalIperEth += ipd 
+        let ipd = parseInt(el.poolIncome.earningsInPeriod) / parseInt(el.poolIncome.earningsInPeriodBalance)
+        isNaN(ipd) ? ipd = 0 : ipd;
+        totalIperEth += ipd
     }
 
     randerTable(tableData)
+    randerChart()
 
 })
