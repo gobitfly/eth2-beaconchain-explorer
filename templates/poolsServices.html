@@ -15,11 +15,17 @@
 <section>
     <div class="container">
         <div style="padding-top: 2rem;" class="row-5 justify-content-center align-items-center">
-            <div class="col p-1">
-                {{template "depositDistributionChart" .Data}}
+            <div class="d-flex justify-content-end align-items-center chart-switch-btn flex-row" style="height: 30px; width: 100%;">
+                <i class="fas fa-chart-pie fa-sm p-1 pr-2 text-primary"></i>
+                <i class="fas fa-chart-line fa-sm p-1 pl-2 text-dark"></i>
             </div>
-            <div class="col p-1">
-                <div id="poolsIDChart"></div>
+            <div class="col p-1" style="height: 530px;">
+                <div class="chart-pi">
+                    {{template "depositDistributionChart" .Data}}
+                </div>
+                <div class="chart-line d-none">
+                    <div id="poolsIDChart"></div>
+                </div>
             </div>
         </div>
          <div class="row">
@@ -88,6 +94,7 @@
     const STAKED_ETH = {{.Data.StakedEther}}
     const ETH_SUPPLY = {{.Data.EthSupply}}
     const LAST_UPDATE = {{.Data.LastUpdate}}
+    const IDETH_SERIES = {{.Data.IdEthSeries}}
 
     // console.log(LAST_UPDATE, luxon.DateTime.fromMillis(LAST_UPDATE).toRelative())
     $("#lastUpdate").html(`Last Updated: ${luxon.DateTime.fromMillis(LAST_UPDATE*1000).toRelative()}`)

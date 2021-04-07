@@ -32,12 +32,18 @@ type PoolStatsData struct {
 	Address  string
 }
 
+type idEthSeries struct {
+	Name string       `json:"name"`
+	Data [][2]float64 `json:"data"`
+}
+
 type Chart struct {
 	DepositDistribution types.ChartsPageDataChart
 	StakedEther         string
 	PoolInfo            []RespData
 	EthSupply           interface{}
 	LastUpdate          int64
+	IdEthSeries         []idEthSeries
 }
 
 type RespData struct {
@@ -54,6 +60,7 @@ var poolInfoTempTime time.Time
 var ethSupply interface{}
 var updateMux = &sync.RWMutex{}
 var firstReq = true
+var idEthSeriesTemp = []idEthSeries{}
 
 func updatePoolInfo() {
 	start := time.Now()
@@ -66,6 +73,7 @@ func updatePoolInfo() {
 		deleteOldChartEntries()
 		poolInfoTemp = getPoolInfo()
 		ethSupply = getEthSupply()
+		idEthSeriesTemp = getIDEthChartSeries()
 		poolInfoTempTime = time.Now()
 		logger.Infoln("Updated Pool Info")
 	}
@@ -82,10 +90,10 @@ func InitPools() {
 	}()
 }
 
-func GetPoolsData() ([]RespData, interface{}, int64) {
+func GetPoolsData() ([]RespData, interface{}, int64, []idEthSeries) {
 	updateMux.Lock()
 	defer updateMux.Unlock()
-	return poolInfoTemp, ethSupply, poolInfoTempTime.Unix()
+	return poolInfoTemp, ethSupply, poolInfoTempTime.Unix(), idEthSeriesTemp
 }
 
 func getPoolInfo() []RespData {
@@ -356,4 +364,48 @@ func deleteOldChartEntries() {
 	if err != nil {
 		logger.Errorf("error removing old staking pool chart data: %v", err)
 	}
+}
+
+func getIDEthChartSeries() []idEthSeries {
+
+	type idEthSeriesData struct {
+		Epoch   int64
+		Name    string
+		Income  int64
+		Balance int64
+	}
+
+	dbData := []idEthSeriesData{}
+	err := db.DB.Select(&dbData, `SELECT 
+			   epoch,
+			   name, 
+			   income,
+			   (CASE balance WHEN 0 THEN 1 ELSE balance END) as balance
+		FROM staking_pools_chart`)
+	if err != nil {
+		logger.Error("error selecting balances from validators: %v", err)
+		return []idEthSeries{}
+	}
+
+	seriesMap := map[string]idEthSeries{}
+	for _, item := range dbData {
+		elem, exist := seriesMap[item.Name]
+		if !exist {
+			seriesMap[item.Name] = idEthSeries{
+				Name: item.Name,
+				Data: [][2]float64{{float64(item.Epoch), float64(item.Income) / float64(item.Balance)}},
+			}
+			continue
+		}
+		elem.Data = append(elem.Data, [2]float64{float64(item.Epoch), float64(item.Income) / float64(item.Balance)})
+		seriesMap[item.Name] = elem
+	}
+
+	resp := []idEthSeries{}
+	for _, item := range seriesMap {
+		resp = append(resp, item)
+	}
+
+	return resp
+
 }

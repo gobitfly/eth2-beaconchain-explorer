@@ -41,7 +41,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	poolData.DepositDistribution.Path = "deposits_distribution"
 	poolData.StakedEther = indexStats.StakedEther
 
-	poolData.PoolInfo, poolData.EthSupply, poolData.LastUpdate = services.GetPoolsData()
+	poolData.PoolInfo, poolData.EthSupply, poolData.LastUpdate, poolData.IdEthSeries = services.GetPoolsData()
 
 	data.Data = poolData
 

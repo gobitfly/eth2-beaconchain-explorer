@@ -35,6 +35,23 @@
     animation: bounce 2s 1;
 }
 
+.chart-pi, .chart-line {
+    animation: fadein 2s 1;
+}
+
+.chart-switch-btn{
+    cursor: pointer;
+}
+
+@keyframes fadein{
+    0%{
+        opacity: 0.0;
+    }
+    100%{
+        opacity: 1.0;
+    }
+}
+
 @keyframes bounce{
     0% {
         top: 0px;

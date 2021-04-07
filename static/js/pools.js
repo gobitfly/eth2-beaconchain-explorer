@@ -362,17 +362,22 @@ function randerTable(tableData) {
     })
 }
 
-function randerChart() {
+function randerChart(dataSeries) {
+    // console.log(dataSeries)
     const chart = Highcharts.chart('poolsIDChart', {
+        chart: {
+            height: 500,
+            type: 'line',
+            zoomType: 'y'
+        },
         title: {
-            text: 'Incoem per deposited ETH',
+            text: 'Income Per Deposited ETH',
             x: -20 //center
         },
-        subtitle: {
-            text: 'Incoem per deposited ETH for each pool',
-            x: -20
-        },
         xAxis: {
+            title: {
+                text: 'EPOCH'
+            }
         },
         yAxis: {
             title: {
@@ -389,24 +394,7 @@ function randerChart() {
             borderWidth: 0,
             showInLegend: false
         },
-        series: [{
-            marker: {
-                fillColor: 'transparent',
-                lineColor: Highcharts.getOptions().colors[0]
-            },
-            data: [...Array(12)].map(Math.random)
-        }, {
-            marker: {
-                fillColor: 'transparent'
-            },
-            data: [...Array(12)].map(Math.random)
-        }, {
-
-            data: [...Array(12)].map(Math.random)
-        }, {
-            lineColor: 'red',
-            data: [...Array(12)].map(Math.random)
-        }],
+        series: dataSeries,
         responsive: {
             rules: [{
                 condition: {
@@ -465,6 +453,24 @@ $(document).ready(function () {
     }
 
     randerTable(tableData)
-    randerChart()
+    randerChart(IDETH_SERIES)
+
+    $(".chart-switch-btn").on("click", ()=>{
+        if ($(".chart-pi").hasClass("d-none")){
+            $(".chart-line").addClass("d-none")
+            $(".chart-pi").removeClass("d-none")
+            $("div.chart-switch-btn i:first").addClass("text-primary")
+            $("div.chart-switch-btn i:first").removeClass("text-dark")
+            $("div.chart-switch-btn i:last").addClass("text-dark")
+            $("div.chart-switch-btn i:last").removeClass("text-primary")
+        }else if ($(".chart-line").hasClass("d-none")){
+            $(".chart-pi").addClass("d-none")
+            $(".chart-line").removeClass("d-none")
+            $("div.chart-switch-btn i:last").addClass("text-primary")
+            $("div.chart-switch-btn i:last").removeClass("text-dark")
+            $("div.chart-switch-btn i:first").addClass("text-dark")
+            $("div.chart-switch-btn i:first").removeClass("text-primary")
+        }
+    })
 
 })
