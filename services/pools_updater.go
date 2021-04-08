@@ -100,14 +100,23 @@ func getPoolInfo() []RespData {
 	var resp []RespData
 
 	var stakePools []Pools
+	addrName := map[string]Pools{}
 
 	if utils.Config.Chain.Network == "mainnet" {
-		err := db.DB.Select(&stakePools, "select address, name, deposit, category from stake_pools_stats;")
+		var stakePoolsNames []Pools
+		err := db.DB.Select(&stakePoolsNames, "select address, name, deposit, category from stake_pools_stats;")
 		if err != nil {
 			logger.Errorf("error retrieving stake pools stats %v ", err)
 		}
-	} else {
-		err := db.DB.Select(&stakePools, `
+
+		for _, pool := range stakePoolsNames {
+			if _, exist := addrName[pool.Address]; !exist {
+				addrName[pool.Address] = pool
+			}
+		}
+	}
+	// else {
+	err := db.DB.Select(&stakePools, `
 		select ENCODE(from_address::bytea, 'hex') as address, count(*) as deposit
 		from (
 			select publickey, from_address
@@ -117,10 +126,10 @@ func getPoolInfo() []RespData {
 			having sum(amount) >= 32e9
 		) a
 		group by from_address order by deposit desc limit 100`) // deposit is a placeholder the actual value is not used on frontend
-		if err != nil {
-			logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
-		}
+	if err != nil {
+		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
 	}
+	// }
 	// logger.Errorln("pool stats", time.Now())
 	stats := getPoolStats(stakePools)
 	// logger.Errorln("pool stats after", time.Now())
@@ -132,7 +141,12 @@ func getPoolInfo() []RespData {
 				// get income
 				pName := pool.Address
 				if utils.Config.Chain.Network == "mainnet" {
-					pName = pool.Name
+					nPool, exist := addrName[pool.Address]
+					if exist {
+						pName = nPool.Name
+						pool.Name = nPool.Name
+						pool.Category = nPool.Category
+					}
 				}
 				income, err := getPoolIncome(state, pName)
 				if err != nil {
