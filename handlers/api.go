@@ -933,10 +933,10 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := db.DB.Query(
-		"SELECT validatorindex, pubkey, balance, effectivebalance, slashed, activationeligibilityepoch, "+
-			"activationepoch, exitepoch, lastattestationslot, status, validator_performance.validator_performance.* FROM validators "+
+		"SELECT pubkey, balance, effectivebalance, slashed, activationeligibilityepoch, "+
+			"activationepoch, exitepoch, lastattestationslot, status, validator_performance.* FROM validators "+
 			"LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex "+
-			" WHERE validatorindex = ANY($1) OR pubkey = ANY($2) ORDER BY validatorindex",
+			" WHERE validator_performance.validatorindex = ANY($1) OR pubkey = ANY($2) ORDER BY validator_performance.validatorindex",
 		pq.Array(queryIndices), queryPubkeys,
 	)
 	if err != nil {
