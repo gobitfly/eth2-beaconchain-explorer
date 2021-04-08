@@ -280,3 +280,97 @@ color: var(--banner-text);
     transform: rotate(360deg)
   }
 }
+
+@media (max-width: 1139.98px) {
+  .info-banner-content.container {
+    padding-right: 0;
+    padding-left: 0;
+  }
+  .info-banner-container {
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .info-banner-container {
+    padding: 0 .5rem;
+  }
+}
+
+.currency-symbol {
+  font-weight: 500;
+}
+
+.k-formatted-price {
+  display: inline-block;
+}
+
+.price {
+  display: none;
+}
+
+.currency-dropdown-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.currency-dropdown-toggle > div:nth-child(1) {
+  width: 26px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* height: 25px; */
+  padding-right: .3rem;
+}
+
+
+.currency-flag-dropdown-image {
+  width: 100%; /* set the image as responsive with width 100% and height auto and define the size in the container above */
+  height: auto; 
+  background-color: white; /* use css variables */
+  /* border: .2px solid rgba(0, 0, 0, .1); */
+  border-radius: 50%;
+  /* margin: 0 .3rem .4rem 0; */ /* this margin is a bit much the inner container does not have enough space. */
+}
+
+@media (max-width: 600px) {
+  .currency-dropdown-toggle > div:nth-child(1) {
+    display: none;
+  }
+}
+
+@media (max-width: 450px) {
+  #currencyDropdown,
+  .dropdown {
+    font-size: 12px;
+  }
+}
+
+.currency-flag-option {
+  /* width: 25px; */
+  /* height: 25px; */ /* if you want it to be round add width and height */
+  border: .2px solid rgba(0, 0, 0, .1);
+  border-radius: 50%;
+  margin: 0 .8rem 0 0; 
+}
+
+.currency-name {
+  display: none;
+  width: 50%;
+  margin-right: 2.5rem;
+  font-weight: 600;
+}
+
+@media (min-width: 800px) {
+  .k-formatted-price {
+    display: none;
+  }
+
+  .price {
+    display: inline-block;
+  }
+
+  .currency-name {
+    display: inline-block;
+  }
+}
