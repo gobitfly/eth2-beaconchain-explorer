@@ -362,6 +362,16 @@ function randerTable(tableData) {
     })
 }
 
+function showChartSwitch(chart){
+    if (parseInt(localStorage.getItem("chartWelcomeAnimatoin"))!==1){
+        switchCharts()
+        setTimeout(()=>{
+            switchCharts()
+            localStorage.setItem("chartWelcomeAnimatoin", 1)
+        }, 2000)
+    }
+}
+
 function randerChart(dataSeries) {
     // console.log(dataSeries)
     const chart = Highcharts.chart('poolsIDChart', {
@@ -425,7 +435,25 @@ function randerChart(dataSeries) {
                 }
             }]
         }
-    })
+    }, showChartSwitch)
+}
+
+function switchCharts(){
+    if ($(".chart-pi").hasClass("d-none")){
+        $(".chart-line").addClass("d-none")
+        $(".chart-pi").removeClass("d-none")
+        $("div.chart-switch-btn i:first").addClass("text-primary")
+        $("div.chart-switch-btn i:first").removeClass("text-dark")
+        $("div.chart-switch-btn i:last").addClass("text-dark")
+        $("div.chart-switch-btn i:last").removeClass("text-primary")
+    }else if ($(".chart-line").hasClass("d-none")){
+        $(".chart-pi").addClass("d-none")
+        $(".chart-line").removeClass("d-none")
+        $("div.chart-switch-btn i:last").addClass("text-primary")
+        $("div.chart-switch-btn i:last").removeClass("text-dark")
+        $("div.chart-switch-btn i:first").addClass("text-dark")
+        $("div.chart-switch-btn i:first").removeClass("text-primary")
+    }
 }
 
 $(document).ready(function () {
@@ -456,21 +484,7 @@ $(document).ready(function () {
     randerChart(IDETH_SERIES)
 
     $(".chart-switch-btn").on("click", ()=>{
-        if ($(".chart-pi").hasClass("d-none")){
-            $(".chart-line").addClass("d-none")
-            $(".chart-pi").removeClass("d-none")
-            $("div.chart-switch-btn i:first").addClass("text-primary")
-            $("div.chart-switch-btn i:first").removeClass("text-dark")
-            $("div.chart-switch-btn i:last").addClass("text-dark")
-            $("div.chart-switch-btn i:last").removeClass("text-primary")
-        }else if ($(".chart-line").hasClass("d-none")){
-            $(".chart-pi").addClass("d-none")
-            $(".chart-line").removeClass("d-none")
-            $("div.chart-switch-btn i:last").addClass("text-primary")
-            $("div.chart-switch-btn i:last").removeClass("text-dark")
-            $("div.chart-switch-btn i:first").addClass("text-dark")
-            $("div.chart-switch-btn i:first").removeClass("text-primary")
-        }
+        switchCharts()
     })
 
 })

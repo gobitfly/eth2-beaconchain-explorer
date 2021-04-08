@@ -39,16 +39,22 @@
     animation: fadein 2s 1;
 }
 
-.chart-switch-btn{
+.chart-switch-btn i{
     cursor: pointer;
+    animation: zoominout 1s 1;
 }
 
 @keyframes fadein{
     0%{
         opacity: 0.0;
+        transform: translateY(0);
+    }
+    50%{
+        transform: translateY(5%); 
     }
     100%{
         opacity: 1.0;
+        transform: translateY(0);
     }
 }
 
@@ -58,5 +64,17 @@
     }
     100%{
         top: -12px;
+    }
+}
+
+@keyframes zoominout {
+    0% {
+        font-size: small;
+    }
+    50% {
+        font-size: large;
+    }
+    100% {
+        font-size: small;
     }
 }
