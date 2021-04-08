@@ -201,23 +201,58 @@
             </div>
             <div class="info-banner-right">
                 <div class="dropdown">
-                    <a class="btn btn-transparent btn-sm dropdown-toggle"  data-toggle="dropdown"
+                    <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle"  data-toggle="dropdown"
                        aira-haspopup="true" aria-expanded="false">
-                       <span id="currencyFlagDropdown">
-                           <img class='currency-flag-dropdown' src='img/{{.Currency}}.png'>
-                       </span>
-                       <span id="currencyDropdown">{{.Currency}}</span>
+                       <div id="currencyFlagDropdown">
+                           <img class='currency-flag-dropdown-image' src='img/{{.Currency}}.png'>
+                       </div>
+                       <div id="currencyDropdown">{{.Currency}}</div>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')"><img class="currency-flag-option" src="img/ETH.png"><span class="currency-name">Ethereum</span>ETH</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')"><img class="currency-flag-option" src="img/USD.png"><span class="currency-name">United States Dollar</span>USD</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')"><img class="currency-flag-option" src="img/EUR.png"><span class="currency-name">Euro</span>EUR</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')"><img class="currency-flag-option" src="img/GBP.png"><span class="currency-name">Pound Sterling</span>GBP</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')"><img class="currency-flag-option" src="img/CNY.png"><span class="currency-name">Chinese Yuan</span>CNY</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')"><img class="currency-flag-option" src="img/RUB.png"><span class="currency-name">Russian Ruble</span>RUB</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')"><img class="currency-flag-option" src="img/CAD.png"><span class="currency-name">Canadian Dollar</span>CAD</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('AUD')"><img class="currency-flag-option" src="img/AUD.png"><span class="currency-name">Australian Dollar</span>AUD</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')"><img class="currency-flag-option" src="img/JPY.png"><span class="currency-name">Japanese Yen</span>JPY</a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">
+                            <img class="currency-flag-option" src="img/ETH.png">
+                            <span class="currency-name">Ethereum</span>
+                            ETH
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')">
+                            <img class="currency-flag-option" src="img/USD.png">
+                            <span class="currency-name">United States Dollar</span>
+                            USD
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')">
+                            <img class="currency-flag-option" src="img/EUR.png">
+                            <span class="currency-name">Euro</span>
+                            EUR
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')">
+                            <img class="currency-flag-option" src="img/GBP.png">
+                            <span class="currency-name">Pound Sterling</span>GBP
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')">
+                            <img class="currency-flag-option" src="img/CNY.png">
+                            <span class="currency-name">Chinese Yuan</span>
+                            CNY
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')">
+                            <img class="currency-flag-option" src="img/RUB.png">
+                            <span class="currency-name">Russian Ruble</span>
+                            RUB
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')">
+                            <img class="currency-flag-option" src="img/CAD.png">
+                            <span class="currency-name">Canadian Dollar</span>
+                            CAD
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('AUD')">
+                            <img class="currency-flag-option" src="img/AUD.png">
+                            <span class="currency-name">Australian Dollar</span>
+                            AUD
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')">
+                            <img class="currency-flag-option" src="img/JPY.png">
+                            <span class="currency-name">Japanese Yen</span>
+                            JPY
+                        </a>
                     </div>
                 </div>
                 <!--<div class="dropdown">
