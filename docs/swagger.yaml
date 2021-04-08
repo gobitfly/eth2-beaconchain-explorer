@@ -327,79 +327,6 @@ paths:
       summary: Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
       tags:
       - User
-  /api/v1/user/clients:
-    delete:
-      parameters:
-      - description: 'Valid client names are: lighthouse, prysm, nimbus, teku, geth, openethereum, nethermind, besu'
-        in: body
-        name: clientName
-        required: true
-        schema:
-          items:
-            type: string
-          type: array
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/types.ApiResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/types.ApiResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/types.ApiResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: deletes an ethereum or ethereum 2 client from a user
-      tags:
-      - User
-    post:
-      parameters:
-      - description: 'Valid client names are: lighthouse, prysm, nimbus, teku, geth, openeth, nethermind, besu'
-        in: body
-        name: clientName
-        required: true
-        schema:
-          items:
-            type: string
-          type: array
-      - description: 'Client version (github release api: release id) or 0 for unknown or no change.'
-        in: body
-        name: clientVersion
-        required: true
-        schema:
-          type: string
-      - description: Receive client update notifications
-        in: body
-        name: notify
-        required: true
-        schema:
-          type: boolean
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/types.ApiResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/types.ApiResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/types.ApiResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: associates an ethereum or ethereum 2 client with an user
-      tags:
-      - User
   /api/v1/user/mobile/settings:
     get:
       produces:
@@ -463,14 +390,16 @@ paths:
   /api/v1/user/stats/{offset}/{limit}:
     get:
       parameters:
-      - description: Data offset, default 0
+      - default: 0
+        description: Data offset, default 0
         in: path
         name: offset
-        type: string
-      - description: 'Data limit, default 180 (~3h). '
+        type: integer
+      - default: 180
+        description: Data limit, default 180 (~3h).
         in: path
         name: limit
-        type: string
+        type: integer
       produces:
       - application/json
       responses:

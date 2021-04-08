@@ -430,122 +430,6 @@ var doc = `{
                 }
             }
         },
-        "/api/v1/user/clients": {
-            "post": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User"
-                ],
-                "summary": "associates an ethereum or ethereum 2 client with an user",
-                "parameters": [
-                    {
-                        "description": "Valid client names are: lighthouse, prysm, nimbus, teku, geth, openeth, nethermind, besu",
-                        "name": "clientName",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    {
-                        "description": "Client version (github release api: release id) or 0 for unknown or no change.",
-                        "name": "clientVersion",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "description": "Receive client update notifications",
-                        "name": "notify",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "boolean"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/types.ApiResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/types.ApiResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/types.ApiResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User"
-                ],
-                "summary": "deletes an ethereum or ethereum 2 client from a user",
-                "parameters": [
-                    {
-                        "description": "Valid client names are: lighthouse, prysm, nimbus, teku, geth, openethereum, nethermind, besu",
-                        "name": "clientName",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/types.ApiResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/types.ApiResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/types.ApiResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/user/mobile/settings": {
             "get": {
                 "security": [
@@ -667,14 +551,16 @@ var doc = `{
                 "summary": "Get your client submitted stats",
                 "parameters": [
                     {
-                        "type": "string",
+                        "type": "integer",
+                        "default": 0,
                         "description": "Data offset, default 0",
                         "name": "offset",
                         "in": "path"
                     },
                     {
-                        "type": "string",
-                        "description": "Data limit, default 180 (~3h). ",
+                        "type": "integer",
+                        "default": 180,
+                        "description": "Data limit, default 180 (~3h).",
                         "name": "limit",
                         "in": "path"
                     }

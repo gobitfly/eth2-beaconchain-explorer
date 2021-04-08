@@ -1108,8 +1108,8 @@ func parseUintWithDefault(input string, defaultValue uint64) uint64 {
 // @Summary Get your client submitted stats
 // @Tags User
 // @Produce json
-// @Param offset path string false "Data offset, default 0"
-// @Param limit path string false "Data limit, default 180 (~3h). "
+// @Param offset path int false "Data offset, default 0" default(0)
+// @Param limit path int false "Data limit, default 180 (~3h)." default(180)
 // @Success 200 {object} types.ApiResponse{data=[]types.StatsDataStruct}
 // @Failure 400 {object} types.ApiResponse
 // @Failure 500 {object} types.ApiResponse
@@ -1125,11 +1125,10 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	offset := parseUintWithDefault(vars["offset"], 0)
 	limit := parseUintWithDefault(vars["limit"], 180)
-	if limit > maxStats {
+	timeframe := offset + limit
+	if timeframe > maxStats {
 		limit = maxStats
-	}
-	if offset > maxStats {
-		offset = maxStats
+		offset = 0
 	}
 
 	validator, err := db.GetStatsValidator(claims.UserID, limit, offset)

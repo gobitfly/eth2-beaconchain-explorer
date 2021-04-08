@@ -11,21 +11,26 @@ import (
 type EventName string
 
 const (
-	ValidatorBalanceDecreasedEventName              EventName = "validator_balance_decreased"
-	ValidatorMissedProposalEventName                EventName = "validator_proposal_missed"
-	ValidatorExecutedProposalEventName              EventName = "validator_proposal_submitted"
-	ValidatorMissedAttestationEventName             EventName = "validator_attestation_missed"
-	ValidatorGotSlashedEventName                    EventName = "validator_got_slashed"
-	ValidatorDidSlashEventName                      EventName = "validator_did_slash"
-	ValidatorStateChangedEventName                  EventName = "validator_state_changed"
-	ValidatorReceivedDepositEventName               EventName = "validator_received_deposit"
-	NetworkSlashingEventName                        EventName = "network_slashing"
-	NetworkValidatorActivationQueueFullEventName    EventName = "network_validator_activation_queue_full"
-	NetworkValidatorActivationQueueNotFullEventName EventName = "network_validator_activation_queue_not_full"
-	NetworkValidatorExitQueueFullEventName          EventName = "network_validator_exit_queue_full"
-	NetworkValidatorExitQueueNotFullEventName       EventName = "network_validator_exit_queue_not_full"
-	NetworkLivenessIncreasedEventName               EventName = "network_liveness_increased"
-	EthClientUpdateEventName                        EventName = "eth_client_update"
+	ValidatorBalanceDecreasedEventName               EventName = "validator_balance_decreased"
+	ValidatorMissedProposalEventName                 EventName = "validator_proposal_missed"
+	ValidatorExecutedProposalEventName               EventName = "validator_proposal_submitted"
+	ValidatorMissedAttestationEventName              EventName = "validator_attestation_missed"
+	ValidatorGotSlashedEventName                     EventName = "validator_got_slashed"
+	ValidatorDidSlashEventName                       EventName = "validator_did_slash"
+	ValidatorStateChangedEventName                   EventName = "validator_state_changed"
+	ValidatorReceivedDepositEventName                EventName = "validator_received_deposit"
+	NetworkSlashingEventName                         EventName = "network_slashing"
+	NetworkValidatorActivationQueueFullEventName     EventName = "network_validator_activation_queue_full"
+	NetworkValidatorActivationQueueNotFullEventName  EventName = "network_validator_activation_queue_not_full"
+	NetworkValidatorExitQueueFullEventName           EventName = "network_validator_exit_queue_full"
+	NetworkValidatorExitQueueNotFullEventName        EventName = "network_validator_exit_queue_not_full"
+	NetworkLivenessIncreasedEventName                EventName = "network_liveness_increased"
+	EthClientUpdateEventName                         EventName = "eth_client_update"
+	MonitoringMachineOfflineEventName                EventName = "monitoring_machine_offline"
+	MonitoringMachineDiskAlmostFullEventName         EventName = "monitoring_hdd_almostfull"
+	MonitoringMachineCpuLoadEventName                EventName = "monitoring_cpu_load"
+	MonitoringMachineSwitchedToETH2FallbackEventName EventName = "monitoring_fallback_eth2inuse"
+	MonitoringMachineSwitchedToETH1FallbackEventName EventName = "monitoring_fallback_eth1inuse"
 )
 
 var EventNames = []EventName{
@@ -44,6 +49,11 @@ var EventNames = []EventName{
 	NetworkValidatorExitQueueNotFullEventName,
 	NetworkLivenessIncreasedEventName,
 	EthClientUpdateEventName,
+	MonitoringMachineOfflineEventName,
+	MonitoringMachineDiskAlmostFullEventName,
+	MonitoringMachineCpuLoadEventName,
+	MonitoringMachineSwitchedToETH2FallbackEventName,
+	MonitoringMachineSwitchedToETH1FallbackEventName,
 }
 
 func GetDisplayableEventName(event EventName) string {

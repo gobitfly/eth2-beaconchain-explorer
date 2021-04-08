@@ -175,8 +175,6 @@ func main() {
 		apiV1AuthRouter.HandleFunc("/dashboard/save", handlers.UserDashboardWatchlistAdd).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST", "OPTIONS")
-		apiV1AuthRouter.HandleFunc("/clients", handlers.UserClientsAdd).Methods("POST", "OPTIONS")
-		apiV1AuthRouter.HandleFunc("/clients/delete", handlers.UserClientsDelete).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/stats", handlers.ClientStats).Methods("GET", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/stats/{offset}/{limit}", handlers.ClientStats).Methods("GET", "OPTIONS")
 		apiV1AuthRouter.Use(utils.CORSMiddleware)
