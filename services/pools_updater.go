@@ -19,16 +19,17 @@ type Pools struct {
 	Name     string  `db:"name" json:"name"`
 	Deposit  int64   `db:"deposit" json:"deposit"`
 	Category *string `db:"category" json:"category"`
+	ValCount int64   `db:"vcount"`
 }
 
-type PoolInfo struct {
+type PoolStatsData struct {
 	Status         string `db:"status" json:"status"`
 	ValidatorIndex uint64 `db:"validatorindex" json:"validatorindex"`
 	Balance31d     uint64 `db:"balance31d" json:"balance31d"`
 }
 
-type PoolStatsData struct {
-	PoolInfo []PoolInfo
+type PoolStats struct {
+	PoolInfo []PoolStatsData
 	Address  string
 }
 
@@ -37,25 +38,26 @@ type idEthSeries struct {
 	Data [][2]float64 `json:"data"`
 }
 
-type Chart struct {
+type PoolsResp struct {
 	DepositDistribution types.ChartsPageDataChart
 	StakedEther         string
-	PoolInfo            []RespData
+	PoolInfo            []PoolsInfo
 	EthSupply           interface{}
 	LastUpdate          int64
 	IdEthSeries         []idEthSeries
+	TotalValidators     uint64
 }
 
-type RespData struct {
+type PoolsInfo struct {
 	Address    string                   `json:"address"`
 	Name       string                   `json:"name"`
 	Deposit    int64                    `json:"deposit"`
 	Category   *string                  `json:"category"`
-	PoolInfo   []PoolInfo               `json:"poolInfo"`
+	PoolInfo   []PoolStatsData          `json:"poolInfo"`
 	PoolIncome *types.ValidatorEarnings `json:"poolIncome"`
 }
 
-var poolInfoTemp []RespData
+var poolInfoTemp []PoolsInfo
 var poolInfoTempTime time.Time
 var ethSupply interface{}
 var updateMux = &sync.RWMutex{}
@@ -68,12 +70,20 @@ func updatePoolInfo() {
 		metrics.TaskDuration.WithLabelValues("service_pools_updater").Observe(time.Since(start).Seconds())
 	}()
 	updateMux.Lock()
-	defer updateMux.Unlock()
-	if time.Now().Sub(poolInfoTempTime).Hours() > 6 { // query db every 6 hour
+	lastUpdateTime := poolInfoTempTime
+	updateMux.Unlock()
+
+	if time.Now().Sub(lastUpdateTime).Hours() > 6 { // query db every 6 hour
 		deleteOldChartEntries()
-		poolInfoTemp = getPoolInfo()
-		ethSupply = getEthSupply()
-		idEthSeriesTemp = getIDEthChartSeries()
+		poolInfoTempLocal := getPoolInfo()
+		ethSupplyLocal := getEthSupply()
+		idEthSeriesTempLocal := getIDEthChartSeries()
+
+		updateMux.Lock()
+		defer updateMux.Unlock()
+		poolInfoTemp = poolInfoTempLocal
+		ethSupply = ethSupplyLocal
+		idEthSeriesTemp = idEthSeriesTempLocal
 		poolInfoTempTime = time.Now()
 		logger.Infoln("Updated Pool Info")
 	}
@@ -90,21 +100,21 @@ func InitPools() {
 	}()
 }
 
-func GetPoolsData() ([]RespData, interface{}, int64, []idEthSeries) {
+func GetPoolsData() ([]PoolsInfo, interface{}, int64, []idEthSeries) {
 	updateMux.Lock()
 	defer updateMux.Unlock()
 	return poolInfoTemp, ethSupply, poolInfoTempTime.Unix(), idEthSeriesTemp
 }
 
-func getPoolInfo() []RespData {
-	var resp []RespData
+func getPoolInfo() []PoolsInfo {
+	var resp []PoolsInfo
 
 	var stakePools []Pools
 	addrName := map[string]Pools{}
 
 	if utils.Config.Chain.Network == "mainnet" {
 		var stakePoolsNames []Pools
-		err := db.DB.Select(&stakePoolsNames, "select address, name, deposit, category from stake_pools_stats;")
+		err := db.DB.Select(&stakePoolsNames, "select address, name, deposit, category from stake_pools_stats;") // deposit is a placeholder the actual value is not used on frontend
 		if err != nil {
 			logger.Errorf("error retrieving stake pools stats %v ", err)
 		}
@@ -117,7 +127,7 @@ func getPoolInfo() []RespData {
 	}
 	// else {
 	err := db.DB.Select(&stakePools, `
-		select ENCODE(from_address::bytea, 'hex') as address, count(*) as deposit
+		select ENCODE(from_address::bytea, 'hex') as address, count(*) as vcount
 		from (
 			select publickey, from_address
 			from eth1_deposits
@@ -125,7 +135,8 @@ func getPoolInfo() []RespData {
 			group by publickey, from_address
 			having sum(amount) >= 32e9
 		) a
-		group by from_address order by deposit desc limit 100`) // deposit is a placeholder the actual value is not used on frontend
+		group by from_address 
+		order by vcount desc limit 100`) // total at this point is 7k+, the limit is important
 	if err != nil {
 		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
 	}
@@ -134,12 +145,12 @@ func getPoolInfo() []RespData {
 	stats := getPoolStats(stakePools)
 	// logger.Errorln("pool stats after", time.Now())
 	for i, pool := range stakePools {
-		state := []PoolInfo{}
+		state := []PoolStatsData{}
 		if len(stats) > i {
 			if pool.Address == stats[i].Address {
 				state = stats[i].PoolInfo
 				// get income
-				pName := pool.Address
+				pName := ""
 				if utils.Config.Chain.Network == "mainnet" {
 					nPool, exist := addrName[pool.Address]
 					if exist {
@@ -148,11 +159,11 @@ func getPoolInfo() []RespData {
 						pool.Category = nPool.Category
 					}
 				}
-				income, err := getPoolIncome(state, pName)
+				income, err := getPoolIncome(pool.Address, pName)
 				if err != nil {
 					income = &types.ValidatorEarnings{}
 				}
-				resp = append(resp, RespData{
+				resp = append(resp, PoolsInfo{
 					Address:    pool.Address,
 					Category:   pool.Category,
 					Deposit:    pool.Deposit,
@@ -167,10 +178,10 @@ func getPoolInfo() []RespData {
 	return resp
 }
 
-func getPoolStats(pools []Pools) []PoolStatsData {
-	var result []PoolStatsData
+func getPoolStats(pools []Pools) []PoolStats {
+	var result []PoolStats
 	for _, pool := range pools { // needs optimisation takes 10 sec. to run
-		var states []PoolInfo
+		var states []PoolStatsData
 		err := db.DB.Select(&states,
 			`SELECT status, validatorindex, balance31d
 			 FROM validators 
@@ -184,16 +195,28 @@ func getPoolStats(pools []Pools) []PoolStatsData {
 			logger.Errorf("error encoding:'%s', %v", pool.Address, err)
 			continue
 		}
-		result = append(result, PoolStatsData{PoolInfo: states, Address: pool.Address})
+		result = append(result, PoolStats{PoolInfo: states, Address: pool.Address})
 	}
 
 	return result
 }
 
-func getPoolIncome(pool []PoolInfo, poolName string) (*types.ValidatorEarnings, error) {
-	var indexes = make([]uint64, len(pool))
-	for i, validator := range pool {
-		indexes[i] = validator.ValidatorIndex
+func getPoolIncome(poolAddress string, poolName string) (*types.ValidatorEarnings, error) {
+	// var indexes = make([]uint64, len(pool))
+	// for i, validator := range pool {
+	// 	indexes[i] = validator.ValidatorIndex
+	// }
+	var indexes []uint64
+	err := db.DB.Select(&indexes,
+		`SELECT validatorindex
+		 FROM validators 
+		 WHERE pubkey = ANY(
+							SELECT publickey 
+							FROM eth1_deposits 
+							WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
+						)`, poolAddress)
+	if err != nil {
+		logger.Errorf("error selecting validator indexes:'%s', %v", poolAddress, err)
 	}
 
 	return getValidatorEarnings(indexes, poolName)
@@ -357,6 +380,9 @@ func getValidatorEarnings(validators []uint64, poolName string) (*types.Validato
 }
 
 func updateChartDB(poolName string, epoch int64, income int64, balance int64) {
+	if poolName == "" {
+		return
+	}
 	_, err := db.DB.Exec(`
 		INSERT INTO staking_pools_chart
 		(epoch, name, income, balance)
@@ -422,4 +448,23 @@ func getIDEthChartSeries() []idEthSeries {
 
 	return resp
 
+}
+
+func GetTotalValidators() uint64 {
+	epoch := int64(LatestEpoch())
+	var limit int64 = 0
+	if epoch > 0 {
+		limit = epoch - 1
+	}
+	var activeValidators uint64
+
+	err := db.DB.Get(&activeValidators, `
+			SELECT validatorscount 
+			FROM epochs 
+			WHERE epoch = $1`, limit)
+	if err != nil {
+		logger.Errorf("error retrieving staked ether history: %v", err)
+	}
+
+	return activeValidators
 }

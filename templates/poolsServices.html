@@ -37,7 +37,9 @@
             <div class="col-md-12">
                 <div class="d-flex justify-content-between" style="width: 100%;">
                     <div class="row" style="width: 42%;">
-                        <span class="col-md-3 col-sm-12 pr-0" data-toggle="tooltip" data-placement="top" title="Staked ETH">{{.Data.StakedEther}}</span><span class="d-none d-md-inline">/</span><span class="col-md-3 col-sm-12 pr-0" id="ethCsupply" data-toggle="tooltip" data-placement="top" title="Circulating ETH">114,788,539 ETH</span>
+                        <span class="col-md-3 col-sm-12 pr-0" data-toggle="tooltip" data-placement="top" title="Staked ETH">{{.Data.StakedEther}}</span>
+                        <span class="d-none d-md-inline">/</span>
+                        <span class="col-md-3 col-sm-12 pr-0" id="ethCsupply" data-toggle="tooltip" data-placement="top" title="Circulating ETH">0 ETH</span>
                     </div>
                     <span>Currently Staked: <span id="staked-percent"></span></span>
                 </div>
@@ -60,7 +62,7 @@
                                 <th>Share</th>
                                 <th>Deposit (ETH)<div id="tableDepositTotal" class="d-none" data-toggle="tooltip" data-original-title="Total Deposited"></div></th>
                                 <th>Income (ETH)<div id="tableIncomeTotal" class="d-none" data-toggle="tooltip" data-original-title="Total Income"></div></th>
-                                <th>I/D ETH<div id="tableIpDTotal" class="d-none" data-toggle="tooltip" data-original-title="Total income per deposited ETH"></div></th>
+                                <th>I/D ETH<div id="tableIpDTotal" class="d-none" data-toggle="tooltip" data-original-title="Average income per deposited ETH"></div></th>
                                 <th>State<div id="tableValidatorsTotal" class="d-none" data-toggle="tooltip" data-original-title="Total Validators"></div></th>
                                 <th data-toggle="tooltip" data-original-title="Average Attestation Effectiveness">Avg. Att. Eff.</th>
                                 <th data-toggle="tooltip" data-original-title="Average of Current Streak of all validators">Streak</th>
@@ -95,6 +97,8 @@
     const ETH_SUPPLY = {{.Data.EthSupply}}
     const LAST_UPDATE = {{.Data.LastUpdate}}
     const IDETH_SERIES = {{.Data.IdEthSeries}}
+    const TOTAL_VALIDATORS = {{.Data.TotalValidators}}
+    console.log(TOTAL_VALIDATORS)
 
     // console.log(LAST_UPDATE, luxon.DateTime.fromMillis(LAST_UPDATE).toRelative())
     $("#lastUpdate").html(`Last Updated: ${luxon.DateTime.fromMillis(LAST_UPDATE*1000).toRelative()}`)

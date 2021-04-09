@@ -1,5 +1,5 @@
 let poolShare = {}
-let totalValidators = 0
+
 let totalDeposited = 0,
     totalIncome = 0,
     totalIperEth = 0;
@@ -25,6 +25,18 @@ function getActive(poolValidators) {
         total: `${addCommas(poolValidators.length)}`
     },
         slashed]
+}
+
+function updatePoolShare(arr) {
+    // console.log(arr)
+    for (let item of arr) {
+        if (typeof item === 'object' && 'data' in item) {
+            updatePoolShare(item.data)
+        } else {
+            poolShare[item[0]] = item[1]
+            // totalValidators += item[1]
+        }
+    }
 }
 
 function getValidatorCard(val) {
@@ -105,11 +117,14 @@ function makeTotalVisisble(id) {
 
 function updateTableType() {
     $("#staking-pool-table_wrapper div.row:last").addClass("mt-4")
-    $("#tableDepositTotal").html(addCommas(totalDeposited))
+    // $("#tableDepositTotal").html(addCommas(totalDeposited))
     $("#tableIncomeTotal").html(addCommas(totalIncome))
-    $("#tableIpDTotal").html(totalIperEth.toFixed(5))
-    $("#tableValidatorsTotal").html(addCommas(totalValidators))
-    makeTotalVisisble("tableDepositTotal")
+    $("#tableIpDTotal").html((totalIperEth/POOL_INFO.length).toFixed(5))
+    $("#tableIpDTotal").attr("data-original-title", `Average Income Per Deposited ETH Of Top ${POOL_INFO.length} Pools By Deposit`)
+    $("#tableValidatorsTotal").html(addCommas(TOTAL_VALIDATORS))
+    $("#tableIncomeTotal").attr("data-original-title", `Total Income Of Top ${POOL_INFO.length} Pools By Deposit`)
+    
+    // makeTotalVisisble("tableDepositTotal")
     makeTotalVisisble("tableIncomeTotal")
     makeTotalVisisble("tableIpDTotal")
     makeTotalVisisble("tableValidatorsTotal")
@@ -164,18 +179,6 @@ function getAvgCurrentStreak(id) {
             console.log(err)
             $(`#${id}streak`).html("N/a")
         })
-}
-
-function updatePoolShare(arr) {
-    // console.log(arr)
-    for (let item of arr) {
-        if (typeof item === 'object' && 'data' in item) {
-            updatePoolShare(item.data)
-        } else {
-            poolShare[item[0]] = item[1]
-            totalValidators += item[1]
-        }
-    }
 }
 
 function randerTable(tableData) {
@@ -235,7 +238,7 @@ function randerTable(tableData) {
                 data: '3',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    let val = parseFloat((poolShare[data] / totalValidators) * 100).toFixed(3)
+                    let val = parseFloat((poolShare[data] / TOTAL_VALIDATORS) * 100).toFixed(3)
 
                     if (type === 'display') {
                         if (isNaN(val)) return "0.00%"
@@ -462,22 +465,25 @@ $(document).ready(function () {
     // })
     $("#poolPopUpBtn").on("click", () => { $("#poolPopUP").addClass("d-none") })
 
+    updatePoolShare(drill.series)
+    
     updateEthSupply()
 
-    updatePoolShare(drill.series)
 
     let tableData = []
     for (let el of POOL_INFO) {
-        tableData.push([el.name, el.category, el.address, el.name,
-        parseInt(el.poolIncome.totalDeposits / 1e9), el.poolIncome,
-        el.poolIncome,
-        el.poolInfo, el.address, el.address])
-
         totalDeposited += parseInt(el.poolIncome.totalDeposits / 1e9)
         totalIncome += parseInt(el.poolIncome.total / 1e9)
         let ipd = parseInt(el.poolIncome.earningsInPeriod) / parseInt(el.poolIncome.earningsInPeriodBalance)
         isNaN(ipd) ? ipd = 0 : ipd;
         totalIperEth += ipd
+
+        if (el.name === "") continue;
+
+        tableData.push([el.name, el.category, el.address, el.name,
+        parseInt(el.poolIncome.totalDeposits / 1e9), el.poolIncome,
+        el.poolIncome,
+        el.poolInfo, el.address, el.address])
     }
 
     randerTable(tableData)
