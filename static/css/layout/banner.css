@@ -315,22 +315,18 @@ color: var(--banner-text);
 }
 
 .currency-dropdown-toggle > div:nth-child(1) {
-  width: 26px;
+  width: 2rem;
+  height: auto;
   display: flex;
   justify-content: center;
   align-items: center;
-  /* height: 25px; */
-  padding-right: .3rem;
+  padding-right: .4rem;
 }
 
-
 .currency-flag-dropdown-image {
-  width: 100%; /* set the image as responsive with width 100% and height auto and define the size in the container above */
-  height: auto; 
-  background-color: white; /* use css variables */
-  /* border: .2px solid rgba(0, 0, 0, .1); */
-  border-radius: 50%;
-  /* margin: 0 .3rem .4rem 0; */ /* this margin is a bit much the inner container does not have enough space. */
+  width: 98%; 
+  height: auto;
+  border-radius: 3px;
 }
 
 @media (max-width: 600px) {
@@ -347,18 +343,17 @@ color: var(--banner-text);
 }
 
 .currency-flag-option {
-  /* width: 25px; */
-  /* height: 25px; */ /* if you want it to be round add width and height */
+  width: 1.8rem;
   border: .2px solid rgba(0, 0, 0, .1);
-  border-radius: 50%;
+  border-radius: 3px;
   margin: 0 .8rem 0 0; 
 }
 
 .currency-name {
   display: none;
   width: 50%;
-  margin-right: 2.5rem;
-  font-weight: 600;
+  margin-right: 2rem;
+  font-weight: 500;
 }
 
 @media (min-width: 800px) {
