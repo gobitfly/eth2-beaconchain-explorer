@@ -125,7 +125,7 @@ func getPoolInfo() []PoolsInfo {
 			}
 		}
 	}
-	// else {
+
 	err := db.DB.Select(&stakePools, `
 		select ENCODE(from_address::bytea, 'hex') as address, count(*) as vcount
 		from (
@@ -140,49 +140,14 @@ func getPoolInfo() []PoolsInfo {
 	if err != nil {
 		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
 	}
-	// }
-	// logger.Errorln("pool stats", time.Now())
-	stats := getPoolStats(stakePools)
-	// logger.Errorln("pool stats after", time.Now())
-	for i, pool := range stakePools {
-		state := []PoolStatsData{}
-		if len(stats) > i {
-			if pool.Address == stats[i].Address {
-				state = stats[i].PoolInfo
-				// get income
-				pName := ""
-				if utils.Config.Chain.Network == "mainnet" {
-					nPool, exist := addrName[pool.Address]
-					if exist {
-						pName = nPool.Name
-						pool.Name = nPool.Name
-						pool.Category = nPool.Category
-					}
-				}
-				income, err := getPoolIncome(pool.Address, pName)
-				if err != nil {
-					income = &types.ValidatorEarnings{}
-				}
-				resp = append(resp, PoolsInfo{
-					Address:    pool.Address,
-					Category:   pool.Category,
-					Deposit:    pool.Deposit,
-					Name:       pool.Name,
-					PoolInfo:   state,
-					PoolIncome: income,
-				})
-			}
-		}
-	}
 
-	return resp
-}
+	loopstart := time.Now()
+	// logger.Errorln("pool stats", loopstart)
 
-func getPoolStats(pools []Pools) []PoolStats {
-	var result []PoolStats
-	for _, pool := range pools { // needs optimisation takes 10 sec. to run
-		var states []PoolStatsData
-		err := db.DB.Select(&states,
+	for _, pool := range stakePools {
+		// li := time.Now()
+		var stats []PoolStatsData
+		err := db.DB.Select(&stats,
 			`SELECT status, validatorindex, balance31d
 			 FROM validators 
 			 WHERE pubkey = ANY(
@@ -195,10 +160,34 @@ func getPoolStats(pools []Pools) []PoolStats {
 			logger.Errorf("error encoding:'%s', %v", pool.Address, err)
 			continue
 		}
-		result = append(result, PoolStats{PoolInfo: states, Address: pool.Address})
+		// st := time.Now().Sub(li).Seconds()
+		if len(stats) > 0 {
+			pName := ""
+			if utils.Config.Chain.Network == "mainnet" {
+				nPool, exist := addrName[pool.Address]
+				if exist {
+					pName = nPool.Name
+					pool.Name = nPool.Name
+					pool.Category = nPool.Category
+				}
+			}
+			income, err := getPoolIncome(pool.Address, pName)
+			// logger.Errorf("\n %s\nst %f\ngp %f\n", pName, st, time.Now().Sub(li).Seconds()-st)
+			if err != nil {
+				income = &types.ValidatorEarnings{}
+			}
+			resp = append(resp, PoolsInfo{
+				Address:    pool.Address,
+				Category:   pool.Category,
+				Deposit:    pool.Deposit,
+				Name:       pool.Name,
+				PoolInfo:   stats,
+				PoolIncome: income,
+			})
+		}
 	}
-
-	return result
+	logger.Infof("pool update for loop took %f seconds", time.Now().Sub(loopstart).Seconds())
+	return resp
 }
 
 func getPoolIncome(poolAddress string, poolName string) (*types.ValidatorEarnings, error) {
@@ -220,27 +209,6 @@ func getPoolIncome(poolAddress string, poolName string) (*types.ValidatorEarning
 	}
 
 	return getValidatorEarnings(indexes, poolName)
-}
-
-func getEthSupply() interface{} {
-	var respjson interface{}
-	resp, err := http.Get("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
-
-	if err != nil {
-		logger.Errorf("error retrieving ETH Supply Data: %v", err)
-		return nil
-	}
-
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&respjson)
-
-	if err != nil {
-		logger.Errorf("error decoding ETH Supply json response to interface: %v", err)
-		return nil
-	}
-
-	return respjson
 }
 
 func getValidatorEarnings(validators []uint64, poolName string) (*types.ValidatorEarnings, error) {
@@ -292,7 +260,14 @@ func getValidatorEarnings(validators []uint64, poolName string) (*types.Validato
 		Publickey []byte
 	}{}
 
-	err = db.DB.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
+	err = db.DB.Select(&deposits, `
+	SELECT block_slot / 32 AS epoch, amount, publickey 
+	FROM blocks_deposits 
+	WHERE publickey IN (
+		SELECT pubkey 
+		FROM validators 
+		WHERE validatorindex = ANY($1)
+	)`, validatorsPQArray)
 	if err != nil {
 		return nil, err
 	}
@@ -467,4 +442,25 @@ func GetTotalValidators() uint64 {
 	}
 
 	return activeValidators
+}
+
+func getEthSupply() interface{} {
+	var respjson interface{}
+	resp, err := http.Get("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
+
+	if err != nil {
+		logger.Errorf("error retrieving ETH Supply Data: %v", err)
+		return nil
+	}
+
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&respjson)
+
+	if err != nil {
+		logger.Errorf("error decoding ETH Supply json response to interface: %v", err)
+		return nil
+	}
+
+	return respjson
 }

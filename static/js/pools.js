@@ -105,7 +105,7 @@ function addHandlers(tableData) {
             showPoolInfo(tableData[item][7])
         })
         getPoolEffectiveness(tableData[item][2] + "eff", tableData[item][7])
-        getAvgCurrentStreak(tableData[item][2])
+        // getAvgCurrentStreak(tableData[item][2])
     }
 }
 
@@ -117,17 +117,17 @@ function makeTotalVisisble(id) {
 
 function updateTableType() {
     $("#staking-pool-table_wrapper div.row:last").addClass("mt-4")
-    // $("#tableDepositTotal").html(addCommas(totalDeposited))
+    $("#tableDepositTotal").html(addCommas(totalDeposited))
     $("#tableIncomeTotal").html(addCommas(totalIncome))
     $("#tableIpDTotal").html((totalIperEth/POOL_INFO.length).toFixed(5))
-    $("#tableIpDTotal").attr("data-original-title", `Average Income Per Deposited ETH Of Top ${POOL_INFO.length} Pools By Deposit`)
+    // $("#tableIpDTotal").attr("data-original-title", `Average Income Per Deposited ETH Of Top ${POOL_INFO.length} Pools By Number Of Validators`)
     $("#tableValidatorsTotal").html(addCommas(TOTAL_VALIDATORS))
-    $("#tableIncomeTotal").attr("data-original-title", `Total Income Of Top ${POOL_INFO.length} Pools By Deposit`)
+    // $("#tableIncomeTotal").attr("data-original-title", `Total Income Of Top ${POOL_INFO.length} Pools By Number Of Validators`)
     
     // makeTotalVisisble("tableDepositTotal")
-    makeTotalVisisble("tableIncomeTotal")
-    makeTotalVisisble("tableIpDTotal")
-    makeTotalVisisble("tableValidatorsTotal")
+    // makeTotalVisisble("tableIncomeTotal")
+    // makeTotalVisisble("tableIpDTotal")
+    // makeTotalVisisble("tableValidatorsTotal")
 }
 
 function addCommas(number) {
@@ -138,6 +138,7 @@ function updateEthSupply() {
     let circulatingETH = parseInt(ETH_SUPPLY.result / 1e18);
     let stakedEth = STAKED_ETH;
     let eth = parseFloat(stakedEth.split(" ")[0].replace(",", "").replace(",", ""));
+    totalDeposited = eth
     let progress = ((eth / circulatingETH) * 100).toFixed(2);
     $(".staked-progress").width(progress);
     $("#staked-percent").html(`${progress}%`);
@@ -349,6 +350,7 @@ function randerTable(tableData) {
                 targets: 9,
                 data: '9',
                 "orderable": false,
+                visible: false,
                 render: function (data, type, row, meta) {
                     return `
                             <div id="${data}streak">
@@ -361,7 +363,7 @@ function randerTable(tableData) {
 
             }
         ],
-        order: [[4, 'desc']],
+        order: [[5, 'desc']],
     })
 }
 
@@ -472,7 +474,7 @@ $(document).ready(function () {
 
     let tableData = []
     for (let el of POOL_INFO) {
-        totalDeposited += parseInt(el.poolIncome.totalDeposits / 1e9)
+        // totalDeposited += parseInt(el.poolIncome.totalDeposits / 1e9)
         totalIncome += parseInt(el.poolIncome.total / 1e9)
         let ipd = parseInt(el.poolIncome.earningsInPeriod) / parseInt(el.poolIncome.earningsInPeriodBalance)
         isNaN(ipd) ? ipd = 0 : ipd;
@@ -492,5 +494,7 @@ $(document).ready(function () {
     $(".chart-switch-btn").on("click", ()=>{
         switchCharts()
     })
+
+    $("#totalmsg").html(`"Total Income" and "Average Income Per Deposite" are based on top ${POOL_INFO.length} pools by number of validators`)
 
 })
