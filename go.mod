@@ -1,6 +1,6 @@
 module eth2-exporter
 
-go 1.15
+go 1.16
 
 require (
 	cloud.google.com/go v0.81.0
@@ -17,7 +17,7 @@ require (
 	github.com/cortesi/modd v0.0.0-20210222043654-cbdcc23af7d5 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/ethereum/go-ethereum v1.9.14
+	github.com/ethereum/go-ethereum v1.10.0
 	github.com/evanw/esbuild v0.8.23
 	github.com/gin-gonic/gin v1.6.3 // indirect
 	github.com/gofrs/uuid v3.3.0+incompatible // indirect
@@ -48,9 +48,10 @@ require (
 	github.com/protolambda/ztyp v0.1.0
 	github.com/prysmaticlabs/eth2-types v0.0.0-20210127031309-22cbe426eba6
 	github.com/prysmaticlabs/ethereumapis v0.0.0-20210218172602-3f05f78bea9d
-	github.com/prysmaticlabs/go-bitfield v0.0.0-20200618145306-2ae0807bef65
-	github.com/prysmaticlabs/go-ssz v0.0.0-20200612203617-6d5c9aa213ae
+	github.com/prysmaticlabs/go-bitfield v0.0.0-20210121075346-fee7b721f342
+	github.com/prysmaticlabs/go-ssz v0.0.0-20210121151755-f6208871c388
 	github.com/prysmaticlabs/prysm v1.0.0-alpha.25.0.20200917185001-3db678499074
+	github.com/rocket-pool/rocketpool-go v0.0.8
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stripe/stripe-go/v72 v72.50.0
 	github.com/swaggo/http-swagger v0.0.0-20200308142732-58ac5e232fba
@@ -70,4 +71,4 @@ require (
 	gopkg.in/yaml.v2 v2.3.0
 )
 
-replace github.com/ethereum/go-ethereum => github.com/prysmaticlabs/bazel-go-ethereum v0.0.0-20200626171358-a933315235ec
+replace github.com/ethereum/go-ethereum => github.com/prysmaticlabs/bazel-go-ethereum v0.0.0-20210311182818-b9c0d847ae7b
