@@ -171,6 +171,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+		session.Save(r, w)
 	}
 
 	err = r.ParseForm()

@@ -85,6 +85,7 @@ func getUserFromSessionStore(w http.ResponseWriter, r *http.Request) *types.User
 			logger.Errorf("error getting session from sessionStore: %v", err)
 			return u
 		}
+		session.Save(r, w)
 	}
 	ok := false
 	u.Authenticated, ok = session.Values["authenticated"].(bool)
@@ -109,6 +110,7 @@ func getUserSession(w http.ResponseWriter, r *http.Request) (*types.User, *sessi
 			logger.Errorf("error getting session from sessionStore: %v", err)
 			return u, session, err
 		}
+		session.Save(r, w)
 	}
 	ok := false
 	u.Authenticated, ok = session.Values["authenticated"].(bool)
