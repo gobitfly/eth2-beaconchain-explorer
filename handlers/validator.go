@@ -328,9 +328,19 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			uint64(utils.SlotToTime(b.Slot).Unix()),
 			b.Status,
 		}
+		if b.Status == 0 {
+			validatorPageData.ScheduledBlocksCount++
+		} else if b.Status == 1 {
+			validatorPageData.ProposedBlocksCount++
+		} else if b.Status == 2 {
+			validatorPageData.MissedBlocksCount++
+		} else if b.Status == 3 {
+			validatorPageData.OrphanedBlocksCount++
+		}
 	}
 
-	validatorPageData.ProposedBlocksCount = uint64(len(proposals))
+	validatorPageData.BlocksCount = uint64(len(proposals))
+	validatorPageData.UnmissedBlocksPercentage = float64(validatorPageData.BlocksCount-validatorPageData.MissedBlocksCount) / float64(len(proposals))
 
 	//logger.Infof("proposals data retrieved, elapsed: %v", time.Since(start))
 	//start = time.Now()
@@ -344,6 +354,19 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 	if validatorPageData.ExitEpoch != 9223372036854775807 {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
+	}
+	err = db.DB.Get(&validatorPageData.MissedAttestationsCount, "select sum(missed_attestations) from validator_stats where validatorindex = $1", index)
+	if err != nil {
+		logger.Errorf("error retrieving validator missed attestations count: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	var missedAttestationsToday uint64
+	err = db.DB.Get(&missedAttestationsToday, "select count(*) from attestation_assignments_p where week = $1/32/225/7 and epoch = $1/32 and validatorindex = $2 and status = 0", services.LatestSlot(), index)
+	if err != nil {
+		logger.Errorf("error retrieving validator missed attestations count: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 
 	var incomeHistory []*types.ValidatorIncomeHistory
@@ -425,9 +448,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.SlashedFor = slashingInfo.Reason
 	}
 
-	err = db.DB.Get(&validatorPageData.SlashingsCount, `
-		select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1 and blocks.status = '1'
-		`, index)
+	err = db.DB.Get(&validatorPageData.SlashingsCount, `select COALESCE(sum(attesterslashingscount) + sum(proposerslashingscount), 0) from blocks where blocks.proposer = $1 and blocks.status = '1'`, index)
 	if err != nil {
 		logger.Errorf("error retrieving slashings-count: %v", err)
 		http.Error(w, "Internal server error", 503)
