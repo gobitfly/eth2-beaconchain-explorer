@@ -425,6 +425,7 @@ type BlockPageData struct {
 	VoluntaryExitscount    uint64 `db:"voluntaryexitscount"`
 	SlashingsCount         uint64
 	VotesCount             uint64
+	VotingValidatorsCount  uint64
 	Mainnet                bool
 
 	Attestations      []*BlockPageAttestation // Attestations included in this block
