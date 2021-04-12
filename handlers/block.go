@@ -190,6 +190,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+	votesPerValidator := map[int64]int{}
 	for rows.Next() {
 		attestation := &types.BlockPageAttestation{}
 
@@ -208,8 +209,15 @@ func Block(w http.ResponseWriter, r *http.Request) {
 				IncludedIn:     attestation.BlockSlot,
 				CommitteeIndex: attestation.CommitteeIndex,
 			})
+			_, exists := votesPerValidator[validator]
+			if !exists {
+				votesPerValidator[validator] = 1
+			} else {
+				votesPerValidator[validator]++
+			}
 		}
 	}
+	blockPageData.VotingValidatorsCount = uint64(len(votesPerValidator))
 	blockPageData.Votes = votes
 	sort.Slice(blockPageData.Votes, func(i, j int) bool {
 		return blockPageData.Votes[i].Validator < blockPageData.Votes[j].Validator
