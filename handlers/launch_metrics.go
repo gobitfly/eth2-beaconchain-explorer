@@ -28,10 +28,10 @@ func LaunchMetricsData(w http.ResponseWriter, r *http.Request) {
 
 	var blks []sqlBlocks = []sqlBlocks{}
 	lookBack := services.LatestEpoch()
-	if lookBack < 5 {
+	if lookBack < 4 {
 		lookBack = 0
 	} else {
-		lookBack = lookBack - 5
+		lookBack = lookBack - 4
 	}
 	// latestEpoch := services.LatestEpoch()
 	// lowEpoch := latestEpoch - 5
