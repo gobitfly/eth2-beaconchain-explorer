@@ -399,7 +399,7 @@ func getIDEthChartSeries() []idEthSeries {
 			   name, 
 			   income,
 			   (CASE balance WHEN 0 THEN 1 ELSE balance END) as balance
-		FROM staking_pools_chart`)
+		FROM staking_pools_chart order by epoch asc`)
 	if err != nil {
 		logger.Error("error selecting balances from validators: %v", err)
 		return []idEthSeries{}

@@ -432,7 +432,7 @@ function randerChart(dataSeries) {
                 inactiveColor: '#CCC',
                 style: {
                     fontWeight: 'bold',
-                    color: 'green',
+                    color: 'var(--dark)',
                     fontSize: '12px'
                 }
             }
