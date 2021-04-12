@@ -148,7 +148,8 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 	data := services.LatestState()
 	data.EthPrice = price.GetEthPrice(currency)
-	data.EthTruncPrice = price.GetEthTruncPrice(data.EthPrice)
+	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
+	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
 	data.CurrencySymbol = utils.FormatCurrencySymbol(currency)
 	err := json.NewEncoder(w).Encode(data)
 

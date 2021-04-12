@@ -25,8 +25,8 @@ function updateBanner() {
 
     var ethPriceHandle = document.getElementById('banner-eth-price-data')
 
-    if (data.ethTruncPrice)
-      ethPriceHandle.innerHTML = data.currencySymbol + " " + data.ethTruncPrice
+    if (data.ethRoundPrice)
+      ethPriceHandle.innerHTML = "<span class='currency-symbol'>" + data.currencySymbol + "</span>" + "<span class='k-formatted-price'>" + data.ethTruncPrice + "</span>" + "<span class='price'>" + data.ethRoundPrice + "</span>"
     
     // always visible
     var slotHandle = document.getElementById('banner-slot-data')

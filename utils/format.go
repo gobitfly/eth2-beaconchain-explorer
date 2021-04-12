@@ -646,3 +646,11 @@ func FormatCurrencySymbol(currency string) string {
 	}
 	return symbol
 }
+
+func KFormatterEthPrice(currency int) string {
+	if currency > 999 {
+		ethTruncPrice := fmt.Sprint(float64(int((float64(currency)/float64(1000))*10))/float64(10)) + "k"
+		return ethTruncPrice
+	}
+	return fmt.Sprint(currency)
+}

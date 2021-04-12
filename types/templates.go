@@ -28,7 +28,8 @@ type PageData struct {
 	Mainnet               bool
 	DepositContract       string
 	EthPrice              float64
-	EthTruncPrice         int
+	EthRoundPrice         int
+	EthTruncPrice         string
 	Currency              string
 	CurrencySymbol        string
 	ExchangeRate          float64
@@ -60,7 +61,8 @@ type LatestState struct {
 	FinalityDelay         uint64  `json:"finalityDelay"`
 	IsSyncing             bool    `json:"syncing"`
 	EthPrice              float64 `json:"ethPrice"`
-	EthTruncPrice         int     `json:"ethTruncPrice"`
+	EthRoundPrice         int     `json:"ethRoundPrice"`
+	EthTruncPrice         string  `json:"ethTruncPrice"`
 	Currency              string  `json:"currency"`
 	CurrencySymbol        string  `json:"currencySymbol"`
 }
