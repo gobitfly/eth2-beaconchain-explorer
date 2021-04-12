@@ -36,12 +36,12 @@
 }
 
 .chart-pi, .chart-line {
-    animation: fadein 2s 1;
+    animation: fadein 0.15s 1;
 }
 
 .chart-switch-btn i{
     cursor: pointer;
-    animation: zoominout 1s 1;
+    animation: zoominout 0.1s 1;
 }
 
 @keyframes fadein{

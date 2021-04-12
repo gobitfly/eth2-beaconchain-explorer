@@ -119,11 +119,11 @@ function updateTableType() {
     $("#staking-pool-table_wrapper div.row:last").addClass("mt-4")
     $("#tableDepositTotal").html(addCommas(totalDeposited))
     $("#tableIncomeTotal").html(addCommas(totalIncome))
-    $("#tableIpDTotal").html((totalIperEth/POOL_INFO.length).toFixed(5))
+    $("#tableIpDTotal").html((totalIperEth / POOL_INFO.length).toFixed(5))
     // $("#tableIpDTotal").attr("data-original-title", `Average Income Per Deposited ETH Of Top ${POOL_INFO.length} Pools By Number Of Validators`)
     $("#tableValidatorsTotal").html(addCommas(TOTAL_VALIDATORS))
     // $("#tableIncomeTotal").attr("data-original-title", `Total Income Of Top ${POOL_INFO.length} Pools By Number Of Validators`)
-    
+
     // makeTotalVisisble("tableDepositTotal")
     // makeTotalVisisble("tableIncomeTotal")
     // makeTotalVisisble("tableIpDTotal")
@@ -367,10 +367,25 @@ function randerTable(tableData) {
     })
 }
 
-function showChartSwitch(chart){
-    if (parseInt(localStorage.getItem("chartWelcomeAnimatoin"))!==1){
+function showChartSwitch(chart) {
+    $('#uncheckAllSeries').click(function () {
+        let option = $('#uncheckAllSeries').hasClass("text-primary")
+        let series = chart.series;
+        for (i = 0; i < chart.series.length; i++) {
+            series[i].setVisible(option, option);
+        }
+        chart.redraw();
+
+        if (option){
+            $('#uncheckAllSeries').removeClass("text-primary")
+        }else{
+            $('#uncheckAllSeries').addClass("text-primary")
+        }
+    });
+
+    if (parseInt(localStorage.getItem("chartWelcomeAnimatoin")) !== 1) {
         switchCharts()
-        setTimeout(()=>{
+        setTimeout(() => {
             switchCharts()
             localStorage.setItem("chartWelcomeAnimatoin", 1)
         }, 2000)
@@ -386,8 +401,9 @@ function randerChart(dataSeries) {
             zoomType: 'y'
         },
         title: {
-            text: 'Income Per Deposited ETH',
-            x: -20 //center
+            text: 'Income Per Deposited ETH <i id="uncheckAllSeries" style="cursor: pointer;" class="fas fa-eye-slash fa-sm"></i>',
+            x: -20, //center
+            useHTML: true
         },
         xAxis: {
             title: {
@@ -407,7 +423,19 @@ function randerChart(dataSeries) {
             align: 'right',
             verticalAlign: 'middle',
             borderWidth: 0,
-            showInLegend: false
+            showInLegend: false,
+            useHTML: true,
+            navigation: {
+                activeColor: 'var(--primary)',
+                animation: true,
+                arrowSize: 12,
+                inactiveColor: '#CCC',
+                style: {
+                    fontWeight: 'bold',
+                    color: 'green',
+                    fontSize: '12px'
+                }
+            }
         },
         series: dataSeries,
         responsive: {
@@ -443,15 +471,15 @@ function randerChart(dataSeries) {
     }, showChartSwitch)
 }
 
-function switchCharts(){
-    if ($(".chart-pi").hasClass("d-none")){
+function switchCharts() {
+    if ($(".chart-pi").hasClass("d-none")) {
         $(".chart-line").addClass("d-none")
         $(".chart-pi").removeClass("d-none")
         $("div.chart-switch-btn i:first").addClass("text-primary")
         $("div.chart-switch-btn i:first").removeClass("text-dark")
         $("div.chart-switch-btn i:last").addClass("text-dark")
         $("div.chart-switch-btn i:last").removeClass("text-primary")
-    }else if ($(".chart-line").hasClass("d-none")){
+    } else if ($(".chart-line").hasClass("d-none")) {
         $(".chart-pi").addClass("d-none")
         $(".chart-line").removeClass("d-none")
         $("div.chart-switch-btn i:last").addClass("text-primary")
@@ -468,7 +496,7 @@ $(document).ready(function () {
     $("#poolPopUpBtn").on("click", () => { $("#poolPopUP").addClass("d-none") })
 
     updatePoolShare(drill.series)
-    
+
     updateEthSupply()
 
 
@@ -491,7 +519,7 @@ $(document).ready(function () {
     randerTable(tableData)
     randerChart(IDETH_SERIES)
 
-    $(".chart-switch-btn").on("click", ()=>{
+    $(".chart-switch-btn").on("click", () => {
         switchCharts()
     })
 

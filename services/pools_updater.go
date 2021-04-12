@@ -34,8 +34,11 @@ type PoolStats struct {
 }
 
 type idEthSeries struct {
-	Name string       `json:"name"`
-	Data [][2]float64 `json:"data"`
+	Name   string       `json:"name"`
+	Data   [][2]float64 `json:"data"`
+	Marker struct {
+		Enabled bool `json:"enabled"`
+	} `json:"marker"`
 }
 
 type PoolsResp struct {
