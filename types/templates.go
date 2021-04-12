@@ -30,6 +30,7 @@ type PageData struct {
 	EthPrice              float64
 	EthTruncPrice         int
 	Currency              string
+	CurrencySymbol        string
 	ExchangeRate          float64
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
@@ -50,7 +51,7 @@ type Meta struct {
 	GATag       string
 }
 
-//LatestState is a struct to hold data for the banner
+// LatestState is a struct to hold data for the banner
 type LatestState struct {
 	LastProposedSlot      uint64  `json:"lastProposedSlot"`
 	CurrentSlot           uint64  `json:"currentSlot"`
@@ -60,6 +61,8 @@ type LatestState struct {
 	IsSyncing             bool    `json:"syncing"`
 	EthPrice              float64 `json:"ethPrice"`
 	EthTruncPrice         int     `json:"ethTruncPrice"`
+	Currency              string  `json:"currency"`
+	CurrencySymbol        string  `json:"currencySymbol"`
 }
 
 type Stats struct {

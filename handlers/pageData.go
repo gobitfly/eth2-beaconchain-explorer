@@ -34,7 +34,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              price.GetEthPrice("USD"),
+		EthPrice:              0,
 		EthTruncPrice:         0,
 		Mainnet:               utils.Config.Chain.Mainnet,
 		// deprecated please use phase0 variables
@@ -60,8 +60,10 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		}
 	}
 
+	data.EthPrice = price.GetEthPrice(data.Currency)
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
 	data.EthTruncPrice = price.GetEthTruncPrice(data.EthPrice)
+	data.CurrencySymbol = utils.FormatCurrencySymbol(data.Currency)
 
 	return data
 }

@@ -16,16 +16,18 @@ function updateBanner() {
   fetch('/latestState').then(function (res) {
     return res.json()
   }).then(function (data) {
+
     // always visible
     var epochHandle = document.getElementById('banner-epoch-data')
 
     if (data.currentEpoch)
       epochHandle.textContent = data.currentEpoch;
 
-    var ethPriceHandle = document.getElementById('banner-eth-price-data');
-    if (data.ethTruncPrice){
-      ethPriceHandle.innerHTML = "$"+data.ethTruncPrice
-    }
+    var ethPriceHandle = document.getElementById('banner-eth-price-data')
+
+    if (data.ethTruncPrice)
+      ethPriceHandle.innerHTML = data.currencySymbol + " " + data.ethTruncPrice
+    
     // always visible
     var slotHandle = document.getElementById('banner-slot-data')
 
@@ -97,5 +99,6 @@ function updateBanner() {
     }
   })
 }
+
 // update the banner every 12 seconds
 setInterval(updateBanner, 12000)
