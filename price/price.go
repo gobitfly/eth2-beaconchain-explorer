@@ -74,14 +74,14 @@ func GetEthPrice(currency string) float64 {
 		return ethPrice.Ethereum.Cny
 	case "CAD":
 		return ethPrice.Ethereum.Cad
+	case "AUD":
+		return ethPrice.Ethereum.Aud
 	case "JPY":
 		return ethPrice.Ethereum.Jpy
 	case "GBP":
 		return ethPrice.Ethereum.Gbp
-	case "AUD":
-		return ethPrice.Ethereum.Aud
 	default:
-		return 1
+		return ethPrice.Ethereum.Usd
 	}
 }
 
