@@ -141,6 +141,12 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   }
 }
 
+@media (max-width: 400px) {
+  .info-banner-container {
+    padding: 0;
+  }
+}
+
 .currency-symbol {
   font-weight: 500;
 }
