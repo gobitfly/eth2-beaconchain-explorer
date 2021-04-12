@@ -15,10 +15,6 @@
 <section>
     <div class="container">
         <div style="padding-top: 2rem;" class="row-5 justify-content-center align-items-center">
-            <div class="d-flex justify-content-end align-items-center chart-switch-btn flex-row" style="height: 30px; width: 100%;">
-                <i class="fas fa-chart-pie fa-sm p-1 pr-2 text-primary"></i>
-                <i class="fas fa-chart-line fa-sm p-1 pl-2 text-dark"></i>
-            </div>
             <div class="col p-1" style="height: 530px;">
                 <div class="chart-pi">
                     {{template "depositDistributionChart" .Data}}
@@ -132,6 +128,10 @@
                         </svg>
                     </div>
                 </div>
+            </div>
+            <div class="d-flex justify-content-center align-items-center chart-switch-btn flex-row" style="height: 30px; width: 100%;">
+                <i class="fas fa-chart-pie fa-sm p-1 pr-2 text-primary"></i>
+                <i class="fas fa-chart-line fa-sm p-1 pl-2 text-dark"></i>
             </div>
         </div>
          <div class="row">
