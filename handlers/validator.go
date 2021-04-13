@@ -41,7 +41,7 @@ var validatorEditFlash = "edit_validator_flash"
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
-	//start := time.Now()
+	// start := time.Now()
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 
@@ -205,8 +205,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Title = fmt.Sprintf("%v - Validator %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
 
-	//logger.Infof("retrieving data, elapsed: %v", time.Since(start))
-	//start = time.Now()
+	// logger.Infof("retrieving data, elapsed: %v", time.Since(start))
+	// start = time.Now()
 
 	err = db.DB.Get(&validatorPageData, `
 		SELECT 
@@ -249,8 +249,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(int64(validatorPageData.NetworkStats.ActiveValidators))
 	}
 
-	//logger.Infof("validator page data retrieved, elapsed: %v", time.Since(start))
-	//start = time.Now()
+	// logger.Infof("validator page data retrieved, elapsed: %v", time.Since(start))
+	// start = time.Now()
 
 	validatorPageData.Epoch = services.LatestEpoch()
 	validatorPageData.Index = index
@@ -283,8 +283,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.Watchlist = watchlist
 
-	//logger.Infof("watchlist data retrieved, elapsed: %v", time.Since(start))
-	//start = time.Now()
+	// logger.Infof("watchlist data retrieved, elapsed: %v", time.Since(start))
+	// start = time.Now()
 
 	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
 	if err != nil {
@@ -302,8 +302,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//logger.Infof("deposit data retrieved, elapsed: %v", time.Since(start))
-	//start = time.Now()
+	// logger.Infof("deposit data retrieved, elapsed: %v", time.Since(start))
+	// start = time.Now()
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -340,10 +340,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validatorPageData.BlocksCount = uint64(len(proposals))
-	validatorPageData.UnmissedBlocksPercentage = float64(validatorPageData.BlocksCount-validatorPageData.MissedBlocksCount) / float64(len(proposals))
+	if validatorPageData.BlocksCount > 0 {
+		validatorPageData.UnmissedBlocksPercentage = float64(validatorPageData.BlocksCount-validatorPageData.MissedBlocksCount) / float64(len(proposals))
+	} else {
+		validatorPageData.UnmissedBlocksPercentage = 1.0
+	}
 
-	//logger.Infof("proposals data retrieved, elapsed: %v", time.Since(start))
-	//start = time.Now()
+	// logger.Infof("proposals data retrieved, elapsed: %v", time.Since(start))
+	// start = time.Now()
 
 	// Every validator is scheduled to issue an attestation once per epoch
 	// Hence we can calculate the number of attestations using the current epoch and the activation epoch
@@ -355,22 +359,54 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if validatorPageData.ExitEpoch != 9223372036854775807 {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
-	err = db.DB.Get(&validatorPageData.MissedAttestationsCount, "select COALESCE(sum(missed_attestations), 0) from validator_stats where validatorindex = $1", index)
+
+	var lastStatsDay uint64
+	err = db.DB.Get(&lastStatsDay, "select coalesce(max(day),0) from validator_stats")
 	if err != nil {
-		logger.Errorf("error retrieving validator missed attestations count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	var missedAttestationsToday uint64
-	err = db.DB.Get(&missedAttestationsToday, "select count(*) from attestation_assignments_p where week = $1/32/225/7 and epoch = $1/32 and validatorindex = $2 and status = 0", services.LatestSlot(), index)
-	if err != nil {
-		logger.Errorf("error retrieving validator missed attestations count: %v", err)
+		logger.Errorf("error retrieving lastStatsDay: %v", err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
+	if validatorPageData.AttestationsCount > 0 {
+		// get attestationStats from validator_stats
+		attestationStats := struct {
+			MissedAttestations   uint64 `db:"missed_attestations"`
+			OrphanedAttestations uint64 `db:"orphaned_attestations"`
+		}{}
+		err = db.DB.Get(&attestationStats, "select coalesce(sum(missed_attestations), 0) as missed_attestations, coalesce(sum(orphaned_attestations), 0) as orphaned_attestations from validator_stats where validatorindex = $1", index)
+		if err != nil {
+			logger.Errorf("error retrieving validator attestationStats: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		// add attestationStats that are not yet in validator_stats
+		attestationStatsNotInStats := struct {
+			MissedAttestations   uint64 `db:"missed_attestations"`
+			OrphanedAttestations uint64 `db:"orphaned_attestations"`
+		}{}
+		err = db.DB.Get(&attestationStatsNotInStats, "select sum(case when status = 0 then 1 else 0 end) as missed_attestations, sum(case when status = 3 then 1 else 0 end) as orphaned_attestations from attestation_assignments_p where week >= $1/7 and epoch >= $1*225 and epoch < $2 and validatorindex = $3", lastStatsDay, services.LatestEpoch(), index)
+		if err != nil {
+			logger.Errorf("error retrieving validator attestationStatsAfterLastStatsDay: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations + attestationStatsNotInStats.MissedAttestations
+		validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations + attestationStatsNotInStats.OrphanedAttestations
+		validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
+		if validatorPageData.AttestationsCount < validatorPageData.MissedAttestationsCount {
+			logger.Errorf("error retrieving validator unmissedAttestationsPercentage for validator: attestationsCount < missedAttestationsCount: %v < %v", index, validatorPageData.AttestationsCount, validatorPageData.MissedAttestationsCount)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.AttestationsCount-validatorPageData.MissedAttestationsCount) / float64(validatorPageData.AttestationsCount)
+	}
+
+	// logger.Infof("attestations data retrieved, elapsed: %v", time.Since(start))
+	// start = time.Now()
+
 	var incomeHistory []*types.ValidatorIncomeHistory
-	err = db.DB.Select(&incomeHistory, "select day, start_balance, end_balance, COALESCE(deposits_amount, 0) as deposits_amount from validator_stats where validatorindex = $1 order by day;", index)
+	err = db.DB.Select(&incomeHistory, "select day, start_balance, end_balance, coalesce(deposits_amount, 0) as deposits_amount from validator_stats where validatorindex = $1 order by day;", index)
 	if err != nil {
 		logger.Errorf("error retrieving validator balance history: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -402,10 +438,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
 
 		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(currentDay).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor}
+	} else if len(incomeHistory) == 0 {
+		lastDayBalance := int64(validatorPageData.BalanceActivation)
+		lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance
+		lastDayIncomeColor := "#7cb5ec"
+		if lastDayIncome < 0 {
+			lastDayIncomeColor = "#f7a35c"
+		}
+		currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
+		validatorPageData.IncomeHistoryChartData = []*types.ChartDataPoint{
+			{X: float64(utils.DayToTime(currentDay).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor},
+		}
 	}
 
-	//logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
-	//start = time.Now()
+	// logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
+	// start = time.Now()
 
 	earnings, err := GetValidatorEarnings([]uint64{index})
 	if err != nil {
@@ -419,8 +466,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.Income31d = earnings.LastMonth
 	validatorPageData.Apr = earnings.APR
 
-	//logger.Infof("income data retrieved, elapsed: %v", time.Since(start))
-	//start = time.Now()
+	// logger.Infof("income data retrieved, elapsed: %v", time.Since(start))
+	// start = time.Now()
 
 	if validatorPageData.Slashed {
 		var slashingInfo struct {
@@ -455,8 +502,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
-	//start = time.Now()
+	// logger.Infof("slashing data retrieved, elapsed: %v", time.Since(start))
+	// start = time.Now()
 
 	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, `
 	SELECT COALESCE(
@@ -497,8 +544,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.LongestAttestationStreak = attestationStreaks[0].Length
 	}
 
-	//logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
-	//start = time.Now()
+	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
+	// start = time.Now()
 
 	data.Data = validatorPageData
 
