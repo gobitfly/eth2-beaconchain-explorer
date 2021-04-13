@@ -355,7 +355,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	if validatorPageData.ExitEpoch != 9223372036854775807 {
 		validatorPageData.AttestationsCount = validatorPageData.ExitEpoch - validatorPageData.ActivationEpoch
 	}
-	err = db.DB.Get(&validatorPageData.MissedAttestationsCount, "select sum(missed_attestations) from validator_stats where validatorindex = $1", index)
+	err = db.DB.Get(&validatorPageData.MissedAttestationsCount, "select COALESCE(sum(missed_attestations), 0) from validator_stats where validatorindex = $1", index)
 	if err != nil {
 		logger.Errorf("error retrieving validator missed attestations count: %v", err)
 		http.Error(w, "Internal server error", 503)
