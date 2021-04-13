@@ -219,10 +219,10 @@
 {{define "validatorOverviewCount"}}
 <div class="row flex-wrap justify-content-center p-3 mb-3">
     <div class="mx-3">
-        <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Proposed: {{.ProposedBlocksCount}}, Missed: {{.MissedBlocksCount}}, Orphaned: {{.OrphanedBlocksCount}}, Scheduled: {{.ScheduledBlocksCount}}"><i class="fas fa-cubes poin"></i> {{.BlocksCount}} ({{formatPercentageColored .UnmissedBlocksPercentage ""}})</span>
+        <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Proposed: {{.ProposedBlocksCount}}, Missed: {{.MissedBlocksCount}}, Orphaned: {{.OrphanedBlocksCount}}, Scheduled: {{.ScheduledBlocksCount}}"><i class="fas fa-cubes poin"></i> {{.BlocksCount}}{{if ne .BlocksCount 0}} ({{formatPercentageColored .UnmissedBlocksPercentage ""}}){{end}}</span>
     </div>
     <div class="mx-3">
-        <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments"><i class="fas fa-file-signature"></i> {{.AttestationsCount}} ({{.MissedAttestationsCount}})</span>
+        <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{.ExecutedAttestationsCount}}, Missed: {{.MissedAttestationsCount}}, Orphaned: {{.OrphanedAttestationsCount}})"><i class="fas fa-file-signature"></i> {{.AttestationsCount}}{{if ne .AttestationsCount 0}} ({{formatPercentageColored .UnmissedAttestationsPercentage ""}}){{end}}</span>
     </div>
     <div class="mx-3">
         <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash"></i> {{.SlashingsCount}}</span>
