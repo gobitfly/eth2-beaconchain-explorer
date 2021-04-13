@@ -539,7 +539,19 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query(`
+	rows, err := getAttestationEfficiencyQuery(epoch, queryIndices, queryPubkeys)
+	if err != nil {
+		logger.Error(err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
+func getAttestationEfficiencyQuery(epoch int64, queryIndices []uint64, queryPubkeys pq.ByteaArray) (*sql.Rows, error) {
+	return db.DB.Query(`
 	SELECT aa.validatorindex, validators.pubkey, COALESCE(
 		AVG(1 + inclusionslot - COALESCE((
 			SELECT MIN(slot)
@@ -554,14 +566,6 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 	GROUP BY aa.validatorindex, validators.pubkey
 	ORDER BY aa.validatorindex
 	`, epoch, pq.Array(queryIndices), pq.Array(queryPubkeys))
-	if err != nil {
-		logger.Error(err)
-		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
-		return
-	}
-	defer rows.Close()
-
-	returnQueryResults(rows, j, r)
 }
 
 // ApiValidatorLeaderboard godoc
@@ -909,6 +913,64 @@ func MobileNotificationUpdatePOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	OKResponse(w, r)
+}
+
+func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	epoch := int64(services.LatestEpoch()) - 100
+	if epoch < 0 {
+		epoch = 0
+	}
+
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+
+	rows, err := db.DB.Query(
+		"SELECT pubkey, effectivebalance, slashed, activationeligibilityepoch, "+
+			"activationepoch, exitepoch, lastattestationslot, status, validator_performance.* FROM validators "+
+			"LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex "+
+			" WHERE validator_performance.validatorindex = ANY($1) OR pubkey = ANY($2) ORDER BY validator_performance.validatorindex",
+		pq.Array(queryIndices), queryPubkeys,
+	)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	efficiencyRows, err := getAttestationEfficiencyQuery(epoch, queryIndices, queryPubkeys)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve efficiency db results")
+		return
+	}
+	defer efficiencyRows.Close()
+
+	generalData, err := utils.SqlRowsToJSON(rows)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	efficiencyData, err := utils.SqlRowsToJSON(efficiencyRows)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	data := &types.WidgetResponse{
+		Eff:       efficiencyData,
+		Validator: generalData,
+		Epoch:     epoch,
+	}
+
+	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
 // MobileDeviceSettings godoc

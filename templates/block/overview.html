@@ -97,10 +97,18 @@
     <div class="col-md-10"><b>{{.AttestationsCount}}</b></div>
   </div>
   <div class="row border-bottom p-3 mx-0">
+    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of votes included in this block">Votes:</span></div>
+    <div class="col-md-10"><b>{{.VotesCount}}</b></div>
+  </div>
+  <div class="row border-bottom p-3 mx-0">
+    <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voting validators">Voting Validators:</span></div>
+    <div class="col-md-10"><b>{{.VotingValidatorsCount}}</b></div>
+  </div>
+  <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voluntary Exits which have been included in this block by the block proposer">Voluntary Exits:</span></div>
     <div class="col-md-10"><b>{{.VoluntaryExitscount}}</b></div>
   </div>
-  <div class="row p-3 mx-0">
+  <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of slashings which have been included in this block by the block proposer">Slashings:</span></div>
     <div class="col-md-10"><b>{{.AttesterSlashingsCount}}</b> attester &
       <b>{{.ProposerSlashingsCount}}</b> proposer slashings

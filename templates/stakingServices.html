@@ -232,6 +232,7 @@
                 </div>
             </div>
         </section>
+        {{ template "bannerStakingServices" }}
         <div class="container mt-2">
             <section class="my-5">
                 <div class="row">
@@ -260,6 +261,38 @@
                                 </tr>
                                 </thead>
                                 <tbody>
+                                    <tr>
+                                        <td data-column="Service"><a href="https://www.rocketpool.net/">Rocket Pool (Validator)</a></td>
+                                        <td data-column="Validator key owner">User</td>
+                                        <td data-column="Withdrawal key owner">Smart Contract</td>
+                                        <td data-column="Pool token">Yes</td>
+                                        <td data-column="3rd Party Software">No</td>
+                                        <td data-column="Min. Stake">16 ETH</td>
+                                        <td data-column="Fee">0</td>
+                                        <td data-column="Open Source">Yes</td>
+                                        <td data-column="Social"><a href="https://discordapp.com/invite/tCRG54c" target="_blank"><i
+                                                        class="fab fa-discord ml-1 mr-1"></i></a><a
+                                                    href="https://twitter.com/Rocket_Pool" target="_blank"><i
+                                                        class="fab fa-twitter ml-1 mr-1"></i></a><i
+                                                        class="fab fa-telegram ml-1 mr-1"></i><i
+                                                    class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+                                    </tr>
+                                    <tr>
+                                        <td data-column="Service"><a href="https://www.rocketpool.net/">Rocket Pool (Pool)</a></td>
+                                        <td data-column="Validator key owner">User</td>
+                                        <td data-column="Withdrawal key owner">Smart Contract</td>
+                                        <td data-column="Pool token">Yes</td>
+                                        <td data-column="3rd Party Software">No</td>
+                                        <td data-column="Min. Stake">0.01 ETH</td>
+                                        <td data-column="Fee">5-20% of rewards</td>
+                                        <td data-column="Open Source">Yes</td>
+                                        <td data-column="Social"><a href="https://discordapp.com/invite/tCRG54c" target="_blank"><i
+                                                        class="fab fa-discord ml-1 mr-1"></i></a><a
+                                                    href="https://twitter.com/Rocket_Pool" target="_blank"><i
+                                                        class="fab fa-twitter ml-1 mr-1"></i></a><i
+                                                        class="fab fa-telegram ml-1 mr-1"></i><i
+                                                    class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+                                    </tr>
                                 <tr>
                                     <td data-column="Service"><a
                                                 href="https://www.allnodes.com/eth2/staking">Allnodes</a></td>
@@ -488,22 +521,6 @@
                                                 class="fa fa-mail-bulk ml-1 mr-1"></i></td>
                                 </tr>
                                 <tr>
-                                    <td data-column="Service"><a href="https://www.rocketpool.net/">Rocketpool</a></td>
-                                    <td data-column="Validator key owner">?</td>
-                                    <td data-column="Withdrawal key owner">?</td>
-                                    <td data-column="Pool token">Yes</td>
-                                    <td data-column="3rd Party Software">No</td>
-                                    <td data-column="Min. Stake">0.01 ETH</td>
-                                    <td data-column="Fee">?</td>
-                                    <td data-column="Open Source">Yes</td>
-                                    <td data-column="Social"><a href="https://discordapp.com/invite/tCRG54c" target="_blank"><i
-                                                    class="fab fa-discord ml-1 mr-1"></i></a><a
-                                                href="https://twitter.com/Rocket_Pool" target="_blank"><i
-                                                    class="fab fa-twitter ml-1 mr-1"></i></a><i
-                                                    class="fab fa-telegram ml-1 mr-1"></i><i
-                                                class="fa fa-mail-bulk ml-1 mr-1"></i></td>
-                                </tr>
-                                <tr>
                                     <td data-column="Service"><a    
                                                 href="https://www.bitcoinsuisse.com/staking/ethereum-2">Bitcoin
                                             Suisse Exchange</a></td>
@@ -544,7 +561,7 @@
                                     <td data-column="Pool token"> No</td>
                                     <td data-column="3rd Party Software"> No</td>
                                     <td data-column="Min. Stake">Any amount</td>
-                                    <td data-column="Fee">US$45 USD/month</td>
+                                    <td data-column="Fee">US$45USD/month</td>
                                     <td data-column="Open Source">Yes</td>
                                     <td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i></a><a
                                                 href="https://twitter.com/midl_dev" target="_blank"><i
@@ -664,9 +681,9 @@
 									<td data-column="Social"><i class="fab fa-discord ml-1 mr-1"></i><a href="https://twitter.com/atomicwallet" target="_blank"><i class="fab fa-twitter ml-1 mr-1"></i></a><a href="https://t.me/AtomicWallet" target="_blank"><i class="fab fa-telegram ml-1 mr-1"></i></a><a href="mailto:support@atomicwallet.io"><i class="fa fa-mail-bulk ml-1 mr-1"></i></a></td>
                                 </tr>
                                 <tr>
-									<td data-column="Service"><a href="https://www.cybavo.com">Cybavo</a></td>
-									<td data-column="Validator key owner">Service</td>
-									<td data-column="Withdrawal key owner">Service</td>
+									<td data-column="Service"><a href="https://www.cybavo.com/eth2-staking/">Cybavo</a></td>
+									<td data-column="Validator key owner">Service & User</td>
+									<td data-column="Withdrawal key owner">User</td>
 									<td data-column="Pool token">No</td>
 									<td data-column="3rd Party Software">No</td>
 									<td data-column="Min. Stake">32 ETH</td>
@@ -725,7 +742,6 @@
                         </div>
                     </div>
                 </div>
-                {{ template "bannerStakingServices" }}
             </section>
             <section class="my-5">
                 <div class="row">

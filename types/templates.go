@@ -220,8 +220,17 @@ type ValidatorPageData struct {
 	ActivationTs                        time.Time
 	ExitTs                              time.Time
 	Status                              string `db:"status"`
+	BlocksCount                         uint64
+	ScheduledBlocksCount                uint64
+	MissedBlocksCount                   uint64
+	OrphanedBlocksCount                 uint64
 	ProposedBlocksCount                 uint64
+	UnmissedBlocksPercentage            float64 // missed/(executed+orphaned+scheduled)
 	AttestationsCount                   uint64
+	ExecutedAttestationsCount           uint64
+	MissedAttestationsCount             uint64
+	OrphanedAttestationsCount           uint64
+	UnmissedAttestationsPercentage      float64 // missed/(executed+orphaned)
 	StatusProposedCount                 uint64
 	StatusMissedCount                   uint64
 	DepositsCount                       uint64
@@ -432,6 +441,7 @@ type BlockPageData struct {
 	VoluntaryExitscount    uint64 `db:"voluntaryexitscount"`
 	SlashingsCount         uint64
 	VotesCount             uint64
+	VotingValidatorsCount  uint64
 	Mainnet                bool
 
 	Attestations      []*BlockPageAttestation // Attestations included in this block

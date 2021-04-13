@@ -49,8 +49,6 @@ func RegisterPost(w http.ResponseWriter, r *http.Request) {
 	session, err := utils.SessionStore.Get(r, authSessionName)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
 	}
 
 	err = r.ParseForm()
@@ -166,8 +164,6 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 	session, err := utils.SessionStore.Get(r, authSessionName)
 	if err != nil {
 		logger.Errorf("Error retrieving session for login route: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
 	}
 
 	err = r.ParseForm()
