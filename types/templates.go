@@ -61,9 +61,13 @@ type LatestState struct {
 }
 
 type Stats struct {
-	TopDepositors        *[]StatsTopDepositors
-	InvalidDepositCount  *uint64 `db:"count"`
-	UniqueValidatorCount *uint64 `db:"count"`
+	TopDepositors         *[]StatsTopDepositors
+	InvalidDepositCount   *uint64 `db:"count"`
+	UniqueValidatorCount  *uint64 `db:"count"`
+	TotalValidatorCount   *uint64 `db:"count"`
+	ActiveValidatorCount  *uint64 `db:"count"`
+	PendingValidatorCount *uint64 `db:"count"`
+	ValidatorChurnLimit   *uint64
 }
 
 type StatsTopDepositors struct {
@@ -218,10 +222,12 @@ type ValidatorPageData struct {
 	MissedBlocksCount                   uint64
 	OrphanedBlocksCount                 uint64
 	ProposedBlocksCount                 uint64
-	UnmissedBlocksPercentage            float64
+	UnmissedBlocksPercentage            float64 // missed/(executed+orphaned+scheduled)
 	AttestationsCount                   uint64
+	ExecutedAttestationsCount           uint64
 	MissedAttestationsCount             uint64
 	OrphanedAttestationsCount           uint64
+	UnmissedAttestationsPercentage      float64 // missed/(executed+orphaned)
 	StatusProposedCount                 uint64
 	StatusMissedCount                   uint64
 	DepositsCount                       uint64

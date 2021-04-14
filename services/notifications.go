@@ -30,7 +30,7 @@ func notificationsSender() {
 		sendNotifications(notifications)
 		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
 		metrics.TaskDuration.WithLabelValues("service_notifications").Observe(time.Since(start).Seconds())
-		time.Sleep(time.Second * 60)
+		time.Sleep(time.Second * 120)
 	}
 }
 

@@ -167,6 +167,7 @@ create table validator_stats
     deposits_amount         bigint,
     primary key (validatorindex, day)
 );
+create index idx_validator_stats_day on validator_stats (day);
 
 drop table if exists validator_stats_status;
 create table validator_stats_status

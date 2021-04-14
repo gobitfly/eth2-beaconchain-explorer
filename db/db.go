@@ -1502,26 +1502,6 @@ func GetPendingValidatorCount() (uint64, error) {
 	return count, nil
 }
 
-// GetValidatorChurnLimit returns the rate at which validators can enter or leave the system
-func GetValidatorChurnLimit(currentEpoch uint64) (uint64, error) {
-	min := utils.Config.Chain.MinPerEpochChurnLimit
-
-	count, err := GetActiveValidatorCount()
-	if err != nil {
-		return 0, err
-	}
-	adaptable := uint64(0)
-	if count > 0 {
-		adaptable = utils.Config.Chain.ChurnLimitQuotient / count
-	}
-
-	if min > adaptable {
-		return min, nil
-	}
-
-	return adaptable, nil
-}
-
 func GetTotalEligibleEther() (uint64, error) {
 	var total uint64
 
