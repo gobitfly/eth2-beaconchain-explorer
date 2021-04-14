@@ -41,7 +41,9 @@ var validatorEditFlash = "edit_validator_flash"
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
-	// start := time.Now()
+	stats := services.GetLatestStats()
+	//start := time.Now()
+
 	w.Header().Set("Content-Type", "text/html")
 	vars := mux.Vars(r)
 
@@ -106,20 +108,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 			validatorPageData.Deposits = deposits
 
-			churnRate, err := db.GetValidatorChurnLimit(services.LatestEpoch())
-			if err != nil {
-				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", 503)
-				return
+			churnRate := stats.ValidatorChurnLimit
+			if churnRate == nil {
+				churnRate = new(uint64)
 			}
 
-			pendingCount, err := db.GetPendingValidatorCount()
-			if err != nil {
-				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-				http.Error(w, "Internal server error", 503)
-				return
+			pendingCount := stats.PendingValidatorCount
+			if pendingCount == nil {
+				pendingCount = new(uint64)
 			}
-			validatorPageData.PendingCount = pendingCount
+
+			validatorPageData.PendingCount = *pendingCount
 
 			validatorPageData.InclusionDelay = int64((utils.Config.Chain.Phase0.Eth1FollowDistance*utils.Config.Chain.Phase0.SecondsPerETH1Block+utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch*utils.Config.Chain.Phase0.EpochsPerEth1VotingPeriod)/3600) + 1
 
@@ -131,12 +130,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				validatorPageData.InclusionDelay = 0
 			}
 
-			if churnRate == 0 {
-				churnRate = 4
+			if *churnRate == 0 {
+				*churnRate = 4
 				logger.Warning("Churn rate not set in config using 4 as default please set minPerEpochChurnLimit")
 			}
 
-			activationEstimate := (pendingCount/churnRate)*(utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch) + uint64(latestDeposit)
+			activationEstimate := (*pendingCount / *churnRate)*(utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch) + uint64(latestDeposit)
 			validatorPageData.EstimatedActivationTs = int64(activationEstimate)
 
 			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
