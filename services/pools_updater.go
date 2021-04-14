@@ -8,6 +8,8 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -47,7 +49,7 @@ type PoolsResp struct {
 	PoolInfo            []PoolsInfo
 	EthSupply           interface{}
 	LastUpdate          int64
-	IdEthSeries         []idEthSeries
+	IdEthSeries         idEthSeriesDrill
 	TotalValidators     uint64
 }
 
@@ -60,12 +62,17 @@ type PoolsInfo struct {
 	PoolIncome *types.ValidatorEarnings `json:"poolIncome"`
 }
 
+type idEthSeriesDrill struct {
+	MainSeries  []idEthSeries `json:"mainSeries"`
+	DrillSeries []idEthSeries `json:"drillSeries"`
+}
+
 var poolInfoTemp []PoolsInfo
 var poolInfoTempTime time.Time
 var ethSupply interface{}
 var updateMux = &sync.RWMutex{}
 var firstReq = true
-var idEthSeriesTemp = []idEthSeries{}
+var idEthSeriesTemp = idEthSeriesDrill{}
 
 func updatePoolInfo() {
 	start := time.Now()
@@ -103,7 +110,7 @@ func InitPools() {
 	}()
 }
 
-func GetPoolsData() ([]PoolsInfo, interface{}, int64, []idEthSeries) {
+func GetPoolsData() ([]PoolsInfo, interface{}, int64, idEthSeriesDrill) {
 	updateMux.Lock()
 	defer updateMux.Unlock()
 	return poolInfoTemp, ethSupply, poolInfoTempTime.Unix(), idEthSeriesTemp
@@ -384,7 +391,7 @@ func deleteOldChartEntries() {
 	}
 }
 
-func getIDEthChartSeries() []idEthSeries {
+func getIDEthChartSeries() idEthSeriesDrill {
 
 	type idEthSeriesData struct {
 		Epoch   int64
@@ -402,7 +409,7 @@ func getIDEthChartSeries() []idEthSeries {
 		FROM staking_pools_chart order by epoch asc`)
 	if err != nil {
 		logger.Error("error selecting balances from validators: %v", err)
-		return []idEthSeries{}
+		return idEthSeriesDrill{}
 	}
 
 	seriesMap := map[string]idEthSeries{}
@@ -419,12 +426,25 @@ func getIDEthChartSeries() []idEthSeries {
 		seriesMap[item.Name] = elem
 	}
 
-	resp := []idEthSeries{}
-	for _, item := range seriesMap {
-		resp = append(resp, item)
+	mainSeriesSlice := []idEthSeries{}
+	subSeriesSlice := []idEthSeries{}
+
+	for key, item := range seriesMap {
+		poolName := strings.Split(key, "-")
+		if len(poolName) == 1 {
+			mainSeriesSlice = append(mainSeriesSlice, item)
+		} else if len(poolName) == 2 {
+			i, err := strconv.ParseInt(strings.ReplaceAll(poolName[1], " ", ""), 10, 64)
+			if err != nil || i == 1 {
+				item.Name = poolName[0]
+				mainSeriesSlice = append(mainSeriesSlice, item)
+			}
+		}
+
+		subSeriesSlice = append(subSeriesSlice, item)
 	}
 
-	return resp
+	return idEthSeriesDrill{MainSeries: mainSeriesSlice, DrillSeries: subSeriesSlice}
 
 }
 

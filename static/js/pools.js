@@ -1,5 +1,5 @@
 let poolShare = {}
-
+let poolchart = null
 let totalDeposited = 0,
     totalIncome = 0,
     totalIperEth = 0;
@@ -368,7 +368,10 @@ function randerTable(tableData) {
 }
 
 function showChartSwitch(chart) {
-    $('#uncheckAllSeries').click(function () {
+    chart.renderer.text('<i id="uncheckAllSeries" style="cursor: pointer;" class="fas fa-eye-slash"></i>', 
+    chart.chartWidth-80, 22, true)
+    .attr({ zIndex: 3 })
+    .on('click', function () {
         let option = $('#uncheckAllSeries').hasClass("text-primary")
         let series = chart.series;
         for (i = 0; i < chart.series.length; i++) {
@@ -381,7 +384,17 @@ function showChartSwitch(chart) {
         }else{
             $('#uncheckAllSeries').addClass("text-primary")
         }
-    });
+    })
+    .add();
+
+    chart.renderer.text('<button class="btn btn-primary btn-sm" >Return</button>', 
+    chart.chartWidth-80, 44, true)
+    .attr({ zIndex: 3 })
+    .on('click', function () {
+        // let option = $('#uncheckAllSeries').hasClass("text-primary")
+        updateChartSeries(IDETH_SERIES.mainSeries, null)
+    })
+    .add();
 
     if (parseInt(localStorage.getItem("chartWelcomeAnimatoin")) !== 1) {
         switchCharts()
@@ -392,16 +405,31 @@ function showChartSwitch(chart) {
     }
 }
 
+function updateChartSeries(pseries, name) {
+    while( poolchart.series.length > 0 ) {
+        poolchart.series[0].remove(false);
+    }
+    
+    for (let item of pseries){
+        if (item.name.includes(name) || name===null){
+            console.log(item.name, name)
+            poolchart.addSeries(item)
+        }
+    }
+
+    poolchart.redraw()
+}
+
 function randerChart(dataSeries) {
     // console.log(dataSeries)
-    const chart = Highcharts.chart('poolsIDChart', {
+    poolchart = Highcharts.chart('poolsIDChart', {
         chart: {
             height: 500,
             type: 'line',
             zoomType: 'y'
         },
         title: {
-            text: 'Income Per Deposited ETH <i id="uncheckAllSeries" style="cursor: pointer;" class="fas fa-eye-slash fa-sm"></i>',
+            text: 'Income Per Deposited ETH',
             x: -20, //center
             useHTML: true
         },
@@ -437,7 +465,17 @@ function randerChart(dataSeries) {
                 }
             }
         },
-        series: dataSeries,
+        series: dataSeries.mainSeries,
+        plotOptions: {
+            series: {
+                cursor: 'pointer',
+                events: {
+                    click: function (event){
+                        updateChartSeries(dataSeries.drillSeries, this.name)
+                    }
+                }
+            }
+        },
         responsive: {
             rules: [{
                 condition: {
