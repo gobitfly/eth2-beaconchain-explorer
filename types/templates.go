@@ -68,9 +68,13 @@ type LatestState struct {
 }
 
 type Stats struct {
-	TopDepositors        *[]StatsTopDepositors
-	InvalidDepositCount  *uint64 `db:"count"`
-	UniqueValidatorCount *uint64 `db:"count"`
+	TopDepositors         *[]StatsTopDepositors
+	InvalidDepositCount   *uint64 `db:"count"`
+	UniqueValidatorCount  *uint64 `db:"count"`
+	TotalValidatorCount   *uint64 `db:"count"`
+	ActiveValidatorCount  *uint64 `db:"count"`
+	PendingValidatorCount *uint64 `db:"count"`
+	ValidatorChurnLimit   *uint64
 }
 
 type StatsTopDepositors struct {
