@@ -81,7 +81,7 @@ func GetEthPrice(currency string) float64 {
 	case "GBP":
 		return ethPrice.Ethereum.Gbp
 	default:
-		return ethPrice.Ethereum.Usd
+		return 1
 	}
 }
 

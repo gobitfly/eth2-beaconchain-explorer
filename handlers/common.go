@@ -151,6 +151,7 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
 	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
 	data.CurrencySymbol = utils.FormatCurrencySymbol(currency)
+
 	err := json.NewEncoder(w).Encode(data)
 
 	if err != nil {

@@ -146,8 +146,8 @@
                         <div class="info-item-body">
                             <a id="banner-eth-price-data">
                                 <span class="currency-symbol">{{.CurrencySymbol}}</span>
-                                <span class="k-formatted-price">{{.EthTruncPrice}}</span>
-                                <span class="price">{{.EthRoundPrice}}</span>
+                                <span class="k-formatted-price">{{if eq .Currency "ETH"}} {{.USDTruncPrice}} {{else}} {{.EthTruncPrice}} {{end}}</span>
+                                <span class="price">{{if eq .Currency "ETH"}} {{.USDRoundPrice}} {{else}} {{.EthRoundPrice}} {{end}}</span>
                             </a>
                         </div>
                     </div>

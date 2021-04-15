@@ -3,6 +3,7 @@ package services
 import (
 	"database/sql"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -434,8 +435,9 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
-	// data.EthPrice = price.GetEthPrice("USD")
-	// data.EthTruncPrice = price.GetEthTruncPrice(data.EthPrice)
+	data.USDRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("USD"))
+	data.USDTruncPrice = utils.KFormatterEthPrice(data.USDRoundPrice)
+
 	return data
 }
 

@@ -25,8 +25,18 @@ function updateBanner() {
 
     var ethPriceHandle = document.getElementById('banner-eth-price-data')
 
-    if (data.ethRoundPrice)
-      ethPriceHandle.innerHTML = "<span class='currency-symbol'>" + data.currencySymbol + "</span>" + "<span class='k-formatted-price'>" + data.ethTruncPrice + "</span>" + "<span class='price'>" + data.ethRoundPrice + "</span>"
+    if (currency) {
+      if (currency === 'ETH') {
+        if (data.usdRoundPrice && data.usdTruncPrice) {
+          ethPriceHandle.innerHTML = "<span class='currency-symbol'>" + data.currencySymbol + "</span>" + "<span class='k-formatted-price'>" + data.usdTruncPrice + "</span>" + "<span class='price'>" + data.usdRoundPrice + "</span>"
+        }
+      } else {
+        if (data.ethRoundPrice && data.ethTruncPrice) {
+          ethPriceHandle.innerHTML = "<span class='currency-symbol'>" + data.currencySymbol + "</span>" + "<span class='k-formatted-price'>" + data.ethTruncPrice + "</span>" + "<span class='price'>" + data.ethRoundPrice + "</span>"
+        }
+      }
+    }
+
     
     // always visible
     var slotHandle = document.getElementById('banner-slot-data')

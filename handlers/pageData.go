@@ -37,6 +37,8 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		EthPrice:              0,
 		EthRoundPrice:         0,
 		EthTruncPrice:         "",
+		USDRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("USD")),
+		USDTruncPrice:         "",
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 		Currency:              GetCurrency(r),
@@ -50,6 +52,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
 	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
 	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
+	data.USDTruncPrice = utils.KFormatterEthPrice(data.USDRoundPrice)
 	data.CurrencySymbol = utils.FormatCurrencySymbol(data.Currency)
 
 	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")

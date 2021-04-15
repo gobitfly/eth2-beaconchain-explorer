@@ -30,6 +30,8 @@ type PageData struct {
 	EthPrice              float64
 	EthRoundPrice         int
 	EthTruncPrice         string
+	USDRoundPrice         int
+	USDTruncPrice         string
 	Currency              string
 	CurrencySymbol        string
 	ExchangeRate          float64
@@ -63,6 +65,8 @@ type LatestState struct {
 	EthPrice              float64 `json:"ethPrice"`
 	EthRoundPrice         int     `json:"ethRoundPrice"`
 	EthTruncPrice         string  `json:"ethTruncPrice"`
+	USDRoundPrice         int     `json:"usdRoundPrice"`
+	USDTruncPrice         string  `json:"usdTruncPrice"`
 	Currency              string  `json:"currency"`
 	CurrencySymbol        string  `json:"currencySymbol"`
 }
