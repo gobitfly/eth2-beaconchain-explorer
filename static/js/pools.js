@@ -438,10 +438,16 @@ function randerChart(dataSeries) {
         yAxis: {
             title: {
                 text: 'ETH'
+            },
+            labels: {
+                format: '{value:.5f}'
             }
         },
         tooltip: {
-            valueSuffix: 'ETH'
+            animation: true,
+            shared: true,
+            pointFormat: '{series.name}: <b>{point.y:.5f}</b> ETH<br/>',
+  
         },
         legend: {
             layout: 'vertical',
