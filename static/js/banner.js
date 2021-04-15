@@ -36,6 +36,7 @@ function updateBanner() {
         }
       }
     }
+
     
     // always visible
     var slotHandle = document.getElementById('banner-slot-data')
