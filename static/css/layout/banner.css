@@ -344,7 +344,7 @@ color: var(--banner-text);
 
 .currency-flag-option {
   width: 1.8rem;
-  border: .2px solid rgba(0, 0, 0, .1);
+  /* border: .2px solid rgba(0, 0, 0, .1); */
   border-radius: 3px;
   margin: 0 .8rem 0 0; 
 }
