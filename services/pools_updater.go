@@ -83,7 +83,7 @@ func updatePoolInfo() {
 	lastUpdateTime := poolInfoTempTime
 	updateMux.Unlock()
 
-	if time.Now().Sub(lastUpdateTime).Hours() > 6 { // query db every 6 hour
+	if time.Now().Sub(lastUpdateTime).Hours() > 3 { // query db every 3 hour
 		deleteOldChartEntries()
 		poolInfoTempLocal := getPoolInfo()
 		ethSupplyLocal := getEthSupply()
