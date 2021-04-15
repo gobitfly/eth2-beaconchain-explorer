@@ -602,9 +602,9 @@ func FormatPercentageColored(percentage float64, tooltipText string) template.HT
 		percentage = percentage * 100
 	}
 	if percentage == 100 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-grin-stars\"></i>", percentage))
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-grin-stars\"></i></span>", percentage))
 	} else if percentage >= 90 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-smile\"></i>", percentage))
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-smile\"></i></span>", percentage))
 	} else if percentage >= 80 {
 		return template.HTML(fmt.Sprintf("<span class=\"text-warning\">%.0f%% <i class=\"fas fa-smile\"></i></span>", percentage))
 	} else if percentage >= 60 {
