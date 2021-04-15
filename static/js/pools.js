@@ -409,7 +409,7 @@ function updateChartSeries(pseries, name) {
 
     for (let item of pseries){
         if (item.name.includes(name) || name===null){
-            console.log(item.name, name)
+            // console.log(item.name, name)
             poolchart.addSeries(item)
         }
     }
