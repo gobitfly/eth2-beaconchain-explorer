@@ -239,6 +239,12 @@
   }
 }
 
+@media (max-width: 350px) {
+  .info-banner-container .fa-sync {
+    display: none;
+  }
+}
+
 /* .info-banner-container .fa-search:not(.show) {
 cursor: pointer;
 color: var(--banner-text);
@@ -299,6 +305,12 @@ color: var(--banner-text);
 
 .currency-symbol {
   font-weight: 500;
+}
+
+@media (max-width: 350px) {
+  .currency-symbol {
+    display: none;
+  }
 }
 
 .k-formatted-price {
