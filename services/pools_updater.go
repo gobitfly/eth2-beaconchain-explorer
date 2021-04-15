@@ -84,7 +84,7 @@ func updatePoolInfo() {
 	updateMux.Unlock()
 
 	if time.Now().Sub(lastUpdateTime).Hours() > 3 { // query db every 3 hour
-		deleteOldChartEntries()
+		// deleteOldChartEntries()
 		poolInfoTempLocal := getPoolInfo()
 		ethSupplyLocal := getEthSupply()
 		idEthSeriesTempLocal := getIDEthChartSeries()
@@ -101,11 +101,11 @@ func updatePoolInfo() {
 }
 
 func InitPools() {
-	updatePoolInfo()
+	// updatePoolInfo()
 	go func() {
 		for true {
-			time.Sleep(time.Minute * 10)
 			updatePoolInfo()
+			time.Sleep(time.Minute * 10)
 		}
 	}()
 }
@@ -347,9 +347,9 @@ func getValidatorEarnings(validators []uint64, poolName string) (*types.Validato
 		}
 	}
 
-	go func() {
-		updateChartDB(poolName, lastWeekEpoch, earningsInPeriod, earningsInPeriodBalance)
-	}()
+	// go func() {
+	// 	updateChartDB(poolName, lastWeekEpoch, earningsInPeriod, earningsInPeriodBalance)
+	// }()
 
 	return &types.ValidatorEarnings{
 		Total:                   earningsTotal,
@@ -364,32 +364,32 @@ func getValidatorEarnings(validators []uint64, poolName string) (*types.Validato
 	}, nil
 }
 
-func updateChartDB(poolName string, epoch int64, income int64, balance int64) {
-	if poolName == "" {
-		return
-	}
-	_, err := db.DB.Exec(`
-		INSERT INTO staking_pools_chart
-		(epoch, name, income, balance)
-		VALUES
-		($1, $2, $3, $4)
-	`, epoch, poolName, income, balance)
-	if err != nil {
-		logger.Errorf("error inserting staking pool chart data (if 'duplicate key' error not critical): %v", err)
-	}
-}
+// func updateChartDB(poolName string, epoch int64, income int64, balance int64) {
+// 	if poolName == "" {
+// 		return
+// 	}
+// 	_, err := db.DB.Exec(`
+// 		INSERT INTO staking_pools_chart
+// 		(epoch, name, income, balance)
+// 		VALUES
+// 		($1, $2, $3, $4)
+// 	`, epoch, poolName, income, balance)
+// 	if err != nil {
+// 		logger.Errorf("error inserting staking pool chart data (if 'duplicate key' error not critical): %v", err)
+// 	}
+// }
 
-func deleteOldChartEntries() {
-	latestEpoch := int64(LatestEpoch())
-	sixMonthsOld := latestEpoch - 225*31*6
-	_, err := db.DB.Exec(`
-		DELETE FROM staking_pools_chart
-		WHERE epoch <= $1
-	`, sixMonthsOld)
-	if err != nil {
-		logger.Errorf("error removing old staking pool chart data: %v", err)
-	}
-}
+// func deleteOldChartEntries() {
+// 	latestEpoch := int64(LatestEpoch())
+// 	sixMonthsOld := latestEpoch - 225*31*6
+// 	_, err := db.DB.Exec(`
+// 		DELETE FROM staking_pools_chart
+// 		WHERE epoch <= $1
+// 	`, sixMonthsOld)
+// 	if err != nil {
+// 		logger.Errorf("error removing old staking pool chart data: %v", err)
+// 	}
+// }
 
 func getIDEthChartSeries() idEthSeriesDrill {
 
