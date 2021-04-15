@@ -120,14 +120,7 @@ function updateTableType() {
     $("#tableDepositTotal").html(addCommas(totalDeposited))
     $("#tableIncomeTotal").html(addCommas(totalIncome))
     $("#tableIpDTotal").html((totalIperEth / POOL_INFO.length).toFixed(5))
-    // $("#tableIpDTotal").attr("data-original-title", `Average Income Per Deposited ETH Of Top ${POOL_INFO.length} Pools By Number Of Validators`)
     $("#tableValidatorsTotal").html(addCommas(TOTAL_VALIDATORS))
-    // $("#tableIncomeTotal").attr("data-original-title", `Total Income Of Top ${POOL_INFO.length} Pools By Number Of Validators`)
-
-    // makeTotalVisisble("tableDepositTotal")
-    // makeTotalVisisble("tableIncomeTotal")
-    // makeTotalVisisble("tableIpDTotal")
-    // makeTotalVisisble("tableValidatorsTotal")
 }
 
 function addCommas(number) {
@@ -368,11 +361,13 @@ function randerTable(tableData) {
 }
 
 function showChartSwitch(chart) {
-    chart.renderer.text('<i id="uncheckAllSeries" style="cursor: pointer;" class="fas fa-eye-slash"></i>', 
-    chart.chartWidth-80, 22, true)
+    $("#uncheckAllSeriesbtn").remove()
+    $("#returnOriginalSeriesbtn").remove()
+    chart.renderer.text('<i id="uncheckAllSeriesbtn" style="cursor: pointer; font-size: 20px;" class="fas fa-eye-slash"></i>', 
+    chart.chartWidth-50, 22, true)
     .attr({ zIndex: 3 })
     .on('click', function () {
-        let option = $('#uncheckAllSeries').hasClass("text-primary")
+        let option = $('#uncheckAllSeriesbtn').hasClass("text-primary")
         let series = chart.series;
         for (i = 0; i < chart.series.length; i++) {
             series[i].setVisible(option, option);
@@ -380,19 +375,21 @@ function showChartSwitch(chart) {
         chart.redraw();
 
         if (option){
-            $('#uncheckAllSeries').removeClass("text-primary")
+            $('#uncheckAllSeriesbtn').removeClass("text-primary")
         }else{
-            $('#uncheckAllSeries').addClass("text-primary")
+            $('#uncheckAllSeriesbtn').addClass("text-primary")
         }
     })
     .add();
 
-    chart.renderer.text('<button class="btn btn-primary btn-sm" >Return</button>', 
-    chart.chartWidth-80, 44, true)
+    chart.renderer.text('<i id="returnOriginalSeriesbtn" style="cursor: pointer; font-size: 20px;" class="fas fa-long-arrow-alt-left"></i>', 
+    chart.chartWidth-80, 22, true)
     .attr({ zIndex: 3 })
     .on('click', function () {
         // let option = $('#uncheckAllSeries').hasClass("text-primary")
         updateChartSeries(IDETH_SERIES.mainSeries, null)
+        $("#returnOriginalSeriesbtn").removeClass("text-primary")
+        $('#uncheckAllSeriesbtn').removeClass("text-primary")
     })
     .add();
 
@@ -409,7 +406,7 @@ function updateChartSeries(pseries, name) {
     while( poolchart.series.length > 0 ) {
         poolchart.series[0].remove(false);
     }
-    
+
     for (let item of pseries){
         if (item.name.includes(name) || name===null){
             console.log(item.name, name)
@@ -472,6 +469,7 @@ function randerChart(dataSeries) {
                 events: {
                     click: function (event){
                         updateChartSeries(dataSeries.drillSeries, this.name)
+                        $("#returnOriginalSeriesbtn").addClass("text-primary")
                     }
                 }
             }
@@ -562,5 +560,7 @@ $(document).ready(function () {
     })
 
     $("#totalmsg").html(`"Total Income" and "Average Income Per Deposited ETH" are based on top ${POOL_INFO.length} pools by number of validators`)
-
+    $(window).on('resize', function(){
+        showChartSwitch(poolchart)
+    })
 })
