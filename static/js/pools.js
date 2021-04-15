@@ -446,8 +446,17 @@ function randerChart(dataSeries) {
         tooltip: {
             animation: true,
             shared: true,
-            pointFormat: '{series.name}: <b>{point.y:.5f}</b> ETH<br/>',
-  
+            useHTML: true,
+            formatter: function (tooltip) {
+                return this.points.reduce(function (s, point) {
+                    return s+ `<tr>
+                                    <td><span style="color: ${point.series.color};">\u25CF</span></td>
+                                    <td>${point.series.name}</td> 
+                                    <td><b>${point.y.toFixed(5)}</b></td> 
+                                    <td>ETH</td>
+                                </tr>`;
+                }, `<div style="font-weight:bold; text-align:center;">${this.x}</div><table>`)+'</table>';
+            },
         },
         legend: {
             layout: 'vertical',
