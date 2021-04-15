@@ -18,6 +18,7 @@ var latestEpoch uint64
 var latestFinalizedEpoch uint64
 var latestSlot uint64
 var latestProposedSlot uint64
+var latestValidatorCount uint64
 var indexPageData atomic.Value
 var chartsPageData atomic.Value
 var ready = sync.WaitGroup{}
@@ -425,6 +426,10 @@ func LatestIndexPageData() *types.IndexPageData {
 	return indexPageData.Load().(*types.IndexPageData)
 }
 
+func LatestValidatorCount() uint64 {
+	return atomic.LoadUint64(&latestValidatorCount)
+}
+
 // LatestState returns statistics about the current eth2 state
 func LatestState() *types.LatestState {
 	data := &types.LatestState{}
@@ -454,8 +459,12 @@ func GetLatestStats() *types.Stats {
 					DepositCount: 0,
 				},
 			},
-			InvalidDepositCount:  new(uint64),
-			UniqueValidatorCount: new(uint64),
+			InvalidDepositCount:   new(uint64),
+			UniqueValidatorCount:  new(uint64),
+			TotalValidatorCount:   new(uint64),
+			ActiveValidatorCount:  new(uint64),
+			PendingValidatorCount: new(uint64),
+			ValidatorChurnLimit:   new(uint64),
 		}
 	} else if stats.(*types.Stats).TopDepositors != nil && len(*stats.(*types.Stats).TopDepositors) == 1 {
 		*stats.(*types.Stats).TopDepositors = append(*stats.(*types.Stats).TopDepositors, types.StatsTopDepositors{

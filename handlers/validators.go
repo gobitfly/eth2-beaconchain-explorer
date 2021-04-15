@@ -194,6 +194,8 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
 
+	stats := services.GetLatestStats()
+
 	w.Header().Set("Content-Type", "application/json")
 
 	dataQuery, err := parseValidatorsDataQueryParams(r)
@@ -203,14 +205,16 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	totalCount, err := db.GetTotalValidatorsCount()
-	if err != nil {
-		logger.Errorf("error retrieving ejected validator count: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+	totalCount := stats.TotalValidatorCount
+	if totalCount == nil {
+		totalCount = new(uint64)
 	}
 
-	qry := fmt.Sprintf(`
+	var validators []*types.ValidatorsPageDataValidators
+	qry := ""
+
+	if dataQuery.Search == "" && dataQuery.StateFilter == "" {
+		qry = fmt.Sprintf(`
 		SELECT
 			validators.validatorindex,
 			validators.pubkey,
@@ -225,13 +229,38 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			validators.status AS state
 		FROM validators
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-		WHERE (pubkeyhex LIKE $1
-			OR CAST(validators.validatorindex AS text) LIKE $1)
-		%s
 		ORDER BY %s %s
-		LIMIT $2 OFFSET $3`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
+		LIMIT $1 OFFSET $2`, dataQuery.OrderBy, dataQuery.OrderDir)
 
-	var validators []*types.ValidatorsPageDataValidators
+		err = db.DB.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
+		if err != nil {
+			logger.Errorf("error retrieving validators data: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	}
+
+	qry = fmt.Sprintf(`
+			SELECT
+				validators.validatorindex,
+				validators.pubkey,
+				validators.withdrawableepoch,
+				validators.balance,
+				validators.effectivebalance,
+				validators.slashed,
+				validators.activationepoch,
+				validators.exitepoch,
+				validators.lastattestationslot,
+				COALESCE(validator_names.name, '') AS name,
+				validators.status AS state
+			FROM validators
+			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+			WHERE (pubkeyhex LIKE $1
+				OR CAST(validators.validatorindex AS text) LIKE $1)
+			%s
+			ORDER BY %s %s
+			LIMIT $2 OFFSET $3`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
+
 	err = db.DB.Select(&validators, qry, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
@@ -289,8 +318,8 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.DataTableResponse{
 		Draw:            dataQuery.Draw,
-		RecordsTotal:    totalCount,
-		RecordsFiltered: totalCount,
+		RecordsTotal:    *totalCount,
+		RecordsFiltered: *totalCount,
 		Data:            tableData,
 	}
 
