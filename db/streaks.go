@@ -61,6 +61,12 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 		return false, fmt.Errorf("Error getting lastStatsDay: %w", err)
 	}
 
+	if lastStatsDay < day {
+		// only do streaks once per day for now
+		logger.Infof("skipping streaks, last day: %v", day)
+		return true, nil
+	}
+
 	logger.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "lastStatsDay": lastStatsDay}).Infof("updating streaks")
 
 	var streaks []struct {
