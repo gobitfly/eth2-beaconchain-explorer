@@ -571,5 +571,5 @@ create table staking_pools_chart
     name                       text not null, 
     income                     bigint not null, 
     balance                    bigint not null, 
-    PRIMARY KEY(epoch, name, income, balance)
+    PRIMARY KEY(epoch, name)
 );
