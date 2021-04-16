@@ -37,12 +37,25 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		EthPrice:              0,
 		EthRoundPrice:         0,
 		EthTruncPrice:         "",
-		USDRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("USD")),
-		USDTruncPrice:         "",
+		UsdRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("USD")),
+		UsdTruncPrice:         "",
+		EurRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("EUR")),
+		EurTruncPrice:         "",
+		GbpRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("GBP")),
+		GbpTruncPrice:         "",
+		CnyRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("CNY")),
+		CnyTruncPrice:         "",
+		RubRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("RUB")),
+		RubTruncPrice:         "",
+		CadRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("CAD")),
+		CadTruncPrice:         "",
+		AudRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("AUD")),
+		AudTruncPrice:         "",
+		JpyRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("JPY")),
+		JpyTruncPrice:         "",
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 		Currency:              GetCurrency(r),
-		CurrencySymbol:        "",
 		ClientsUpdated:        ethclients.ClientsUpdated(),
 		Phase0:                utils.Config.Chain.Phase0,
 		Lang:                  "en-US",
@@ -52,8 +65,14 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
 	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
 	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
-	data.USDTruncPrice = utils.KFormatterEthPrice(data.USDRoundPrice)
-	data.CurrencySymbol = utils.FormatCurrencySymbol(data.Currency)
+	data.UsdTruncPrice = utils.KFormatterEthPrice(data.UsdRoundPrice)
+	data.EurTruncPrice = utils.KFormatterEthPrice(data.EurRoundPrice)
+	data.GbpTruncPrice = utils.KFormatterEthPrice(data.GbpRoundPrice)
+	data.CnyTruncPrice = utils.KFormatterEthPrice(data.CnyRoundPrice)
+	data.RubTruncPrice = utils.KFormatterEthPrice(data.RubRoundPrice)
+	data.CadTruncPrice = utils.KFormatterEthPrice(data.CadRoundPrice)
+	data.AudTruncPrice = utils.KFormatterEthPrice(data.AudRoundPrice)
+	data.JpyTruncPrice = utils.KFormatterEthPrice(data.JpyRoundPrice)
 
 	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")
 	if len(acceptedLangs) > 0 {

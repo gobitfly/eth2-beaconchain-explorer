@@ -90,6 +90,51 @@
                     document.getElementById('currencyFlagDropdown').innerHTML = "<img class='currency-flag-dropdown-image' src='/img/" + currentCurrency +  ".svg'>"
                 }
             })
+
+            window.addEventListener('load', function () {
+                switch (getCookie('currency')) {
+                    case 'AUD':
+                        document.getElementById('currentCurrencySymbol').textContent = 'A$'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.AudTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.AudRoundPrice}}
+                        break
+	                case 'CAD':
+                        document.getElementById('currentCurrencySymbol').textContent = 'C$'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.CadTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.CadRoundPrice}}
+		                break
+	                case 'CNY':
+                        document.getElementById('currentCurrencySymbol').textContent = '¥'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.CnyTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.CnyRoundPrice}}
+		                break
+	                case 'EUR':
+                        document.getElementById('currentCurrencySymbol').textContent = '€'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.EurTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.EurRoundPrice}}
+		                break
+	                case 'GBP':
+                        document.getElementById('currentCurrencySymbol').textContent = '£'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.GbpTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.GbpRoundPrice}}
+		                break
+	                case 'JPY':
+                        document.getElementById('currentCurrencySymbol').textContent = '¥'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.JpyTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.JpyRoundPrice}}
+		                break
+	                case 'RUB':
+                        document.getElementById('currentCurrencySymbol').textContent = '₽'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.RubTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.RubRoundPrice}}
+		                break
+                    default:
+                        document.getElementById('currentCurrencySymbol').textContent = '$'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.UsdTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.UsdRoundPrice}}
+		                break
+                }
+            })
         </script>
 
     </head>
@@ -146,9 +191,9 @@
                         </div>
                         <div class="info-item-body">
                             <a id="banner-eth-price-data">
-                                <span class="currency-symbol">{{.CurrencySymbol}}</span>
-                                <span class="k-formatted-price">{{if eq .Currency "ETH"}} {{.USDTruncPrice}} {{else}} {{.EthTruncPrice}} {{end}}</span>
-                                <span class="price">{{if eq .Currency "ETH"}} {{.USDRoundPrice}} {{else}} {{.EthRoundPrice}} {{end}}</span>
+                                <span id="currentCurrencySymbol" class="currency-symbol"></span>
+                                <span id="currentKFormattedPrice" class="k-formatted-price"></span>
+                                <span id="currentCurencyPrice" class="price"></span>
                             </a>
                         </div>
                     </div>

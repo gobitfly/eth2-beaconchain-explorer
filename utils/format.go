@@ -626,31 +626,6 @@ func TrLang(lang string, key string) template.HTML {
 	return template.HTML(I18n.Tr(lang, key))
 }
 
-func FormatCurrencySymbol(currency string) string {
-	symbol := ""
-	switch currency {
-	case "AUD":
-		symbol = "A$"
-	case "CAD":
-		symbol = "C$"
-	case "CNY":
-		symbol = "¥"
-	case "EUR":
-		symbol = "€"
-	case "GBP":
-		symbol = "£"
-	case "JPY":
-		symbol = "¥"
-	case "USD":
-		symbol = "$"
-	case "RUB":
-		symbol = "₽"
-	default:
-		symbol = "$"
-	}
-	return symbol
-}
-
 func KFormatterEthPrice(currency int) string {
 	if currency > 999 {
 		ethTruncPrice := fmt.Sprint(float64(int((float64(currency)/float64(1000))*10))/float64(10)) + "k"
