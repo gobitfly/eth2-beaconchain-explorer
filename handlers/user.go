@@ -267,6 +267,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	type watchlistSubscription struct {
+		Index     uint64
 		Publickey []byte
 		Balance   uint64
 		Events    *pq.StringArray
@@ -274,22 +275,20 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	wl := []watchlistSubscription{}
 	err = db.DB.Select(&wl, `
-	SELECT 
+		SELECT 
+			validators.validatorindex as index,
 			users_validators_tags.validator_publickey as publickey,
 			COALESCE (MAX(validators.balance), 0) as balance,
 			ARRAY_REMOVE(ARRAY_AGG(users_subscriptions.event_name), NULL) as events
 		FROM users_validators_tags
 		LEFT JOIN users_subscriptions
-		ON 
-			users_validators_tags.user_id = users_subscriptions.user_id
-		AND 
-			ENCODE(users_validators_tags.validator_publickey::bytea, 'hex') = users_subscriptions.event_filter
+			ON users_validators_tags.user_id = users_subscriptions.user_id
+			AND ENCODE(users_validators_tags.validator_publickey::bytea, 'hex') = users_subscriptions.event_filter
 		LEFT JOIN validators
-		ON
-			users_validators_tags.validator_publickey = validators.pubkey
+			ON users_validators_tags.validator_publickey = validators.pubkey
 		WHERE users_validators_tags.user_id = $1
-		GROUP BY users_validators_tags.user_id, users_validators_tags.validator_publickey;
-	`, user.UserID)
+		GROUP BY users_validators_tags.user_id, users_validators_tags.validator_publickey, validators.validatorindex;
+		`, user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving subscriptions for users: %v validators: %v", user.UserID, err)
 		http.Error(w, "Internal server error", 503)
@@ -299,15 +298,13 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, 0, len(wl))
 	for _, entry := range wl {
 		tableData = append(tableData, []interface{}{
+			utils.FormatValidator(entry.Index),
 			utils.FormatPublicKey(entry.Publickey),
 			utils.FormatBalance(entry.Balance, currency),
 			entry.Events,
-			// utils.FormatBalance(item.Balance),
-			// item.Events[0],
 		})
 	}
 
-	// log.Println("COUNT", len(watchlist))
 	data := &types.DataTableResponse{
 		Draw:            draw,
 		RecordsTotal:    uint64(len(wl)),

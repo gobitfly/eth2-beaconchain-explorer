@@ -44,6 +44,7 @@ func main() {
 
 	go statisticsLoop()
 	go streaksLoop()
+	go poolsLoop()
 
 	utils.WaitForCtrlC()
 
@@ -100,5 +101,12 @@ func streaksLoop() {
 			// go gaster until streaks are upated to the current finalized epoch
 			time.Sleep(time.Second * 10)
 		}
+	}
+}
+
+func poolsLoop() {
+	for {
+		db.UpdatePoolInfo()
+		time.Sleep(time.Minute * 10)
 	}
 }

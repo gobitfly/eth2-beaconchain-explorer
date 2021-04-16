@@ -3,6 +3,7 @@ module eth2-exporter
 go 1.15
 
 require (
+	cloud.google.com/go v0.81.0 // indirect
 	cloud.google.com/go/firestore v1.4.0 // indirect
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/PuerkitoBio/goquery v1.6.1
@@ -18,6 +19,7 @@ require (
 	github.com/evanw/esbuild v0.8.23
 	github.com/go-openapi/spec v0.19.12 // indirect
 	github.com/gogo/protobuf v1.3.1
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/gorilla/context v1.1.1
 	github.com/gorilla/csrf v1.7.0
 	github.com/gorilla/mux v1.8.0
@@ -50,11 +52,16 @@ require (
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
-	golang.org/x/text v0.3.4
+	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
+	golang.org/x/net v0.0.0-20210415231046-e915ea6b2b7d // indirect
+	golang.org/x/oauth2 v0.0.0-20210413134643-5e61552d6c78 // indirect
+	golang.org/x/sys v0.0.0-20210415045647-66c3f260301c // indirect
+	golang.org/x/text v0.3.6
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
-	google.golang.org/api v0.36.0
-	google.golang.org/grpc v1.33.2
+	google.golang.org/api v0.44.0
+	google.golang.org/genproto v0.0.0-20210415145412-64678f1ae2d5 // indirect
+	google.golang.org/grpc v1.37.0
+	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.3.0
 )
 
