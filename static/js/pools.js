@@ -559,7 +559,7 @@ $(document).ready(function () {
         isNaN(ipd) ? ipd = 0 : ipd;
         totalIperEth += ipd
 
-        if (el.name === "") continue;
+        if (el.name === "" && IS_MAINNET) continue;
 
         tableData.push([el.name, el.category, el.address, el.name,
         parseInt(el.poolIncome.totalDeposits / 1e9), el.poolIncome,
