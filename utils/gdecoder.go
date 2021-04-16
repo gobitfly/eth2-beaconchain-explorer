@@ -16,14 +16,6 @@ import (
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1"
 )
 
-// func checkForSecrets(s interface{}) {
-// 	v := reflect.ValueOf(config)
-// 	for i := 0; i < v.NumField(); i++ {
-// 		// fmt.Printf("Field: %s \t Value: "%v")
-// 	}
-
-// }
-
 // ErrInvalidSpecification indicates that a specification is of the wrong type.
 var ErrInvalidSpecification = errors.New("specification must be a struct pointer")
 
@@ -57,7 +49,7 @@ func ProcessSecrets(cfg interface{}) error {
 	}
 
 	for _, info := range infos {
-		hasPrefix := strings.HasPrefix(info.Field.String(), "projects/etherchain/secrets")
+		hasPrefix := strings.HasPrefix(info.Field.String(), "projects/")
 		if !hasPrefix {
 			continue
 		}
