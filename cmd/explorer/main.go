@@ -56,7 +56,6 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-
 	// decode phase0 config
 	if len(utils.Config.Chain.Phase0Path) > 0 {
 		phase0 := &types.Phase0{}
