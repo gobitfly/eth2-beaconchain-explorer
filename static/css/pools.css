@@ -35,11 +35,46 @@
     animation: bounce 2s 1;
 }
 
+.chart-pi, .chart-line {
+    animation: fadein 0.15s 1;
+}
+
+.chart-switch-btn i{
+    cursor: pointer;
+    animation: zoominout 0.1s 1;
+}
+
+@keyframes fadein{
+    0%{
+        opacity: 0.0;
+        transform: translateY(0);
+    }
+    50%{
+        transform: translateY(5%); 
+    }
+    100%{
+        opacity: 1.0;
+        transform: translateY(0);
+    }
+}
+
 @keyframes bounce{
     0% {
         top: 0px;
     }
     100%{
         top: -12px;
+    }
+}
+
+@keyframes zoominout {
+    0% {
+        font-size: small;
+    }
+    50% {
+        font-size: large;
+    }
+    100% {
+        font-size: small;
     }
 }

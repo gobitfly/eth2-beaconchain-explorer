@@ -602,9 +602,9 @@ func FormatPercentageColored(percentage float64, tooltipText string) template.HT
 		percentage = percentage * 100
 	}
 	if percentage == 100 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-grin-stars\"></i>", percentage))
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-grin-stars\"></i></span>", percentage))
 	} else if percentage >= 90 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-smile\"></i>", percentage))
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-smile\"></i></span>", percentage))
 	} else if percentage >= 80 {
 		return template.HTML(fmt.Sprintf("<span class=\"text-warning\">%.0f%% <i class=\"fas fa-smile\"></i></span>", percentage))
 	} else if percentage >= 60 {
@@ -624,4 +624,37 @@ func DerefString(str *string) string {
 func TrLang(lang string, key string) template.HTML {
 	I18n := getLocaliser()
 	return template.HTML(I18n.Tr(lang, key))
+}
+
+func FormatCurrencySymbol(currency string) string {
+	symbol := ""
+	switch currency {
+	case "AUD":
+		symbol = "A$"
+	case "CAD":
+		symbol = "C$"
+	case "CNY":
+		symbol = "¥"
+	case "EUR":
+		symbol = "€"
+	case "GBP":
+		symbol = "£"
+	case "JPY":
+		symbol = "¥"
+	case "USD":
+		symbol = "$"
+	case "RUB":
+		symbol = "₽"
+	default:
+		symbol = "$"
+	}
+	return symbol
+}
+
+func KFormatterEthPrice(currency int) string {
+	if currency > 999 {
+		ethTruncPrice := fmt.Sprint(float64(int((float64(currency)/float64(1000))*10))/float64(10)) + "k"
+		return ethTruncPrice
+	}
+	return fmt.Sprint(currency)
 }

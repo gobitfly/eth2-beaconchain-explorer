@@ -32,7 +32,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var poolData services.Chart
+	var poolData services.PoolsResp
 
 	indexStats := services.LatestIndexPageData()
 
@@ -40,9 +40,12 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	poolData.DepositDistribution.Height = 500
 	poolData.DepositDistribution.Path = "deposits_distribution"
 	poolData.StakedEther = indexStats.StakedEther
-
-	poolData.PoolInfo, poolData.EthSupply, poolData.LastUpdate = services.GetPoolsData()
-
+	poolData.TotalValidators = services.GetTotalValidators()
+	poolData.PoolInfo, poolData.EthSupply, poolData.LastUpdate, poolData.IdEthSeries = services.GetPoolsData()
+	poolData.IsMainnet = false
+	if utils.Config.Chain.Network == "mainnet" {
+		poolData.IsMainnet = true
+	}
 	data.Data = poolData
 
 	err = poolsServicesTemplate.ExecuteTemplate(w, "layout", data)

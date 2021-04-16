@@ -34,16 +34,26 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              price.GetEthPrice("USD"),
+		EthPrice:              0,
+		EthRoundPrice:         0,
+		EthTruncPrice:         "",
+		USDRoundPrice:         price.GetEthRoundPrice(price.GetEthPrice("USD")),
+		USDTruncPrice:         "",
 		Mainnet:               utils.Config.Chain.Mainnet,
-		// deprecated please use phase0 variables
-		DepositContract: utils.Config.Indexer.Eth1DepositContractAddress,
-		Phase0:          utils.Config.Chain.Phase0,
-		Currency:        GetCurrency(r),
-		ClientsUpdated:  ethclients.ClientsUpdated(),
-		Lang:            "en-US",
+		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
+		Currency:              GetCurrency(r),
+		CurrencySymbol:        "",
+		ClientsUpdated:        ethclients.ClientsUpdated(),
+		Phase0:                utils.Config.Chain.Phase0,
+		Lang:                  "en-US",
 		// InfoBanner:            ethclients.GetBannerClients(),
 	}
+	data.EthPrice = price.GetEthPrice(data.Currency)
+	data.ExchangeRate = price.GetEthPrice(data.Currency)
+	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
+	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
+	data.USDTruncPrice = utils.KFormatterEthPrice(data.USDRoundPrice)
+	data.CurrencySymbol = utils.FormatCurrencySymbol(data.Currency)
 
 	acceptedLangs := strings.Split(r.Header.Get("Accept-Language"), ",")
 	if len(acceptedLangs) > 0 {
@@ -58,8 +68,6 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			break
 		}
 	}
-
-	data.ExchangeRate = price.GetEthPrice(data.Currency)
 
 	return data
 }

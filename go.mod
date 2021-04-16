@@ -12,6 +12,7 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20200709115526-d1f6fc58448b
 	github.com/chromedp/chromedp v0.5.3
 	github.com/cloudflare/roughtime v0.0.0-20200528200038-bacff06d032d // indirect
+	github.com/cortesi/modd v0.0.0-20210222043654-cbdcc23af7d5 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ethereum/go-ethereum v1.9.14
@@ -29,7 +30,6 @@ require (
 	github.com/juliangruber/go-intersect v1.0.1-0.20200323101606-4bd944a17692
 	github.com/kataras/i18n v0.0.5
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.2.0
 	github.com/mailgun/mailgun-go/v4 v4.1.3
 	github.com/mailru/easyjson v0.7.6 // indirect
