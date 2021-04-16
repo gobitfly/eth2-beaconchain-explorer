@@ -440,7 +440,9 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
-	data.EthPrice = price.GetEthPrice("USD")
+	data.USDRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("USD"))
+	data.USDTruncPrice = utils.KFormatterEthPrice(data.USDRoundPrice)
+
 	return data
 }
 

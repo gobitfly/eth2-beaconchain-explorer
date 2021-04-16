@@ -28,7 +28,12 @@ type PageData struct {
 	Mainnet               bool
 	DepositContract       string
 	EthPrice              float64
+	EthRoundPrice         int
+	EthTruncPrice         string
+	USDRoundPrice         int
+	USDTruncPrice         string
 	Currency              string
+	CurrencySymbol        string
 	ExchangeRate          float64
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
@@ -49,7 +54,7 @@ type Meta struct {
 	GATag       string
 }
 
-//LatestState is a struct to hold data for the banner
+// LatestState is a struct to hold data for the banner
 type LatestState struct {
 	LastProposedSlot      uint64  `json:"lastProposedSlot"`
 	CurrentSlot           uint64  `json:"currentSlot"`
@@ -58,6 +63,12 @@ type LatestState struct {
 	FinalityDelay         uint64  `json:"finalityDelay"`
 	IsSyncing             bool    `json:"syncing"`
 	EthPrice              float64 `json:"ethPrice"`
+	EthRoundPrice         int     `json:"ethRoundPrice"`
+	EthTruncPrice         string  `json:"ethTruncPrice"`
+	USDRoundPrice         int     `json:"usdRoundPrice"`
+	USDTruncPrice         string  `json:"usdTruncPrice"`
+	Currency              string  `json:"currency"`
+	CurrencySymbol        string  `json:"currencySymbol"`
 }
 
 type Stats struct {

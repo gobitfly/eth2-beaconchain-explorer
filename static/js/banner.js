@@ -16,16 +16,28 @@ function updateBanner() {
   fetch('/latestState').then(function (res) {
     return res.json()
   }).then(function (data) {
+
     // always visible
     var epochHandle = document.getElementById('banner-epoch-data')
 
     if (data.currentEpoch)
       epochHandle.textContent = data.currentEpoch;
 
-    var ethPriceHandle = document.getElementById('banner-eth-price-data');
-    if (data.ethPrice){
-      ethPriceHandle.innerHTML = "$"+data.ethPrice
+    var ethPriceHandle = document.getElementById('banner-eth-price-data')
+
+    if (currency) {
+      if (currency === 'ETH') {
+        if (data.usdRoundPrice && data.usdTruncPrice) {
+          ethPriceHandle.innerHTML = "<span class='currency-symbol'>" + data.currencySymbol + "</span>" + "<span class='k-formatted-price'>" + data.usdTruncPrice + "</span>" + "<span class='price'>" + data.usdRoundPrice + "</span>"
+        }
+      } else {
+        if (data.ethRoundPrice && data.ethTruncPrice) {
+          ethPriceHandle.innerHTML = "<span class='currency-symbol'>" + data.currencySymbol + "</span>" + "<span class='k-formatted-price'>" + data.ethTruncPrice + "</span>" + "<span class='price'>" + data.ethRoundPrice + "</span>"
+        }
+      }
     }
+
+    
     // always visible
     var slotHandle = document.getElementById('banner-slot-data')
 
@@ -97,5 +109,6 @@ function updateBanner() {
     }
   })
 }
+
 // update the banner every 12 seconds
 setInterval(updateBanner, 12000)
