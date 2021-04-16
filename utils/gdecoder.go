@@ -59,6 +59,7 @@ func ProcessSecrets(cfg interface{}) error {
 			continue
 		}
 		if x == nil {
+			logrus.Error("error no value for secret returned: %v", info.Field.String())
 			continue
 		}
 
@@ -73,7 +74,7 @@ func ProcessSecrets(cfg interface{}) error {
 			field = field.Elem()
 		}
 
-		field.SetString(*x)
+		info.Field.SetString(*x)
 	}
 
 	return err
