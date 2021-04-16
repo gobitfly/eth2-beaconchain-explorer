@@ -42,7 +42,10 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	poolData.StakedEther = indexStats.StakedEther
 	poolData.TotalValidators = services.GetTotalValidators()
 	poolData.PoolInfo, poolData.EthSupply, poolData.LastUpdate, poolData.IdEthSeries = services.GetPoolsData()
-
+	poolData.IsMainnet = false
+	if utils.Config.Chain.Network == "mainnet" {
+		poolData.IsMainnet = true
+	}
 	data.Data = poolData
 
 	err = poolsServicesTemplate.ExecuteTemplate(w, "layout", data)
