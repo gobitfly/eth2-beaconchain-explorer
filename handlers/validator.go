@@ -394,9 +394,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations + attestationStatsNotInStats.OrphanedAttestations
 		validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
 		if validatorPageData.AttestationsCount < validatorPageData.MissedAttestationsCount {
-			logger.Errorf("error retrieving validator unmissedAttestationsPercentage for validator: attestationsCount < missedAttestationsCount: %v < %v", index, validatorPageData.AttestationsCount, validatorPageData.MissedAttestationsCount)
-			http.Error(w, "Internal server error", 503)
-			return
+			logger.Errorf("error retrieving validator unmissedAttestationsPercentage for validator %v: attestationsCount < missedAttestationsCount: %v < %v", index, validatorPageData.AttestationsCount, validatorPageData.MissedAttestationsCount)
+			// http.Error(w, "Internal server error", 503)
+			// return
 		}
 		validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.AttestationsCount-validatorPageData.MissedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 	}
