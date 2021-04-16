@@ -8,6 +8,8 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,41 +21,58 @@ type Pools struct {
 	Name     string  `db:"name" json:"name"`
 	Deposit  int64   `db:"deposit" json:"deposit"`
 	Category *string `db:"category" json:"category"`
+	ValCount int64   `db:"vcount"`
 }
 
-type PoolInfo struct {
+type PoolStatsData struct {
 	Status         string `db:"status" json:"status"`
 	ValidatorIndex uint64 `db:"validatorindex" json:"validatorindex"`
 	Balance31d     uint64 `db:"balance31d" json:"balance31d"`
 }
 
-type PoolStatsData struct {
-	PoolInfo []PoolInfo
+type PoolStats struct {
+	PoolInfo []PoolStatsData
 	Address  string
 }
 
-type Chart struct {
-	DepositDistribution types.ChartsPageDataChart
-	StakedEther         string
-	PoolInfo            []RespData
-	EthSupply           interface{}
-	LastUpdate          int64
+type idEthSeries struct {
+	Name   string       `json:"name"`
+	Data   [][2]float64 `json:"data"`
+	Marker struct {
+		Enabled bool `json:"enabled"`
+	} `json:"marker"`
 }
 
-type RespData struct {
+type PoolsResp struct {
+	DepositDistribution types.ChartsPageDataChart
+	StakedEther         string
+	PoolInfo            []PoolsInfo
+	EthSupply           interface{}
+	LastUpdate          int64
+	IdEthSeries         idEthSeriesDrill
+	TotalValidators     uint64
+}
+
+type PoolsInfo struct {
 	Address    string                   `json:"address"`
 	Name       string                   `json:"name"`
 	Deposit    int64                    `json:"deposit"`
 	Category   *string                  `json:"category"`
-	PoolInfo   []PoolInfo               `json:"poolInfo"`
+	PoolInfo   []PoolStatsData          `json:"poolInfo"`
 	PoolIncome *types.ValidatorEarnings `json:"poolIncome"`
 }
 
-var poolInfoTemp []RespData
+type idEthSeriesDrill struct {
+	MainSeries  []idEthSeries `json:"mainSeries"`
+	DrillSeries []idEthSeries `json:"drillSeries"`
+}
+
+var poolInfoTemp []PoolsInfo
 var poolInfoTempTime time.Time
 var ethSupply interface{}
 var updateMux = &sync.RWMutex{}
 var firstReq = true
+var idEthSeriesTemp = idEthSeriesDrill{}
 
 func updatePoolInfo() {
 	start := time.Now()
@@ -61,10 +80,20 @@ func updatePoolInfo() {
 		metrics.TaskDuration.WithLabelValues("service_pools_updater").Observe(time.Since(start).Seconds())
 	}()
 	updateMux.Lock()
-	defer updateMux.Unlock()
-	if time.Now().Sub(poolInfoTempTime).Hours() > 6 { // query db every 6 hour
-		poolInfoTemp = getPoolInfo()
-		ethSupply = getEthSupply()
+	lastUpdateTime := poolInfoTempTime
+	updateMux.Unlock()
+
+	if time.Now().Sub(lastUpdateTime).Hours() > 3 { // query db every 3 hour
+		// deleteOldChartEntries()
+		poolInfoTempLocal := getPoolInfo()
+		ethSupplyLocal := getEthSupply()
+		idEthSeriesTempLocal := getIDEthChartSeries()
+
+		updateMux.Lock()
+		defer updateMux.Unlock()
+		poolInfoTemp = poolInfoTempLocal
+		ethSupply = ethSupplyLocal
+		idEthSeriesTemp = idEthSeriesTempLocal
 		poolInfoTempTime = time.Now()
 		logger.Infoln("Updated Pool Info")
 	}
@@ -72,34 +101,43 @@ func updatePoolInfo() {
 }
 
 func InitPools() {
-	updatePoolInfo()
+	// updatePoolInfo()
 	go func() {
 		for true {
-			time.Sleep(time.Minute * 10)
 			updatePoolInfo()
+			time.Sleep(time.Minute * 10)
 		}
 	}()
 }
 
-func GetPoolsData() ([]RespData, interface{}, int64) {
+func GetPoolsData() ([]PoolsInfo, interface{}, int64, idEthSeriesDrill) {
 	updateMux.Lock()
 	defer updateMux.Unlock()
-	return poolInfoTemp, ethSupply, poolInfoTempTime.Unix()
+	return poolInfoTemp, ethSupply, poolInfoTempTime.Unix(), idEthSeriesTemp
 }
 
-func getPoolInfo() []RespData {
-	var resp []RespData
+func getPoolInfo() []PoolsInfo {
+	var resp []PoolsInfo
 
 	var stakePools []Pools
+	addrName := map[string]Pools{}
 
 	if utils.Config.Chain.Network == "mainnet" {
-		err := db.DB.Select(&stakePools, "select address, name, deposit, category from stake_pools_stats;")
+		var stakePoolsNames []Pools
+		err := db.DB.Select(&stakePoolsNames, "select address, name, deposit, category from stake_pools_stats;") // deposit is a placeholder the actual value is not used on frontend
 		if err != nil {
 			logger.Errorf("error retrieving stake pools stats %v ", err)
 		}
-	} else {
-		err := db.DB.Select(&stakePools, `
-		select ENCODE(from_address::bytea, 'hex') as address, count(*) as deposit
+
+		for _, pool := range stakePoolsNames {
+			if _, exist := addrName[pool.Address]; !exist {
+				addrName[pool.Address] = pool
+			}
+		}
+	}
+
+	err := db.DB.Select(&stakePools, `
+		select ENCODE(from_address::bytea, 'hex') as address, count(*) as vcount
 		from (
 			select publickey, from_address
 			from eth1_deposits
@@ -107,44 +145,19 @@ func getPoolInfo() []RespData {
 			group by publickey, from_address
 			having sum(amount) >= 32e9
 		) a
-		group by from_address order by deposit desc limit 100`) // deposit is a placeholder the actual value is not used on frontend
-		if err != nil {
-			logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
-		}
-	}
-	// logger.Errorln("pool stats", time.Now())
-	stats := getPoolStats(stakePools)
-	// logger.Errorln("pool stats after", time.Now())
-	for i, pool := range stakePools {
-		state := []PoolInfo{}
-		if len(stats) > i {
-			if pool.Address == stats[i].Address {
-				state = stats[i].PoolInfo
-				// get income
-				income, err := getPoolIncome(state)
-				if err != nil {
-					income = &types.ValidatorEarnings{}
-				}
-				resp = append(resp, RespData{
-					Address:    pool.Address,
-					Category:   pool.Category,
-					Deposit:    pool.Deposit,
-					Name:       pool.Name,
-					PoolInfo:   state,
-					PoolIncome: income,
-				})
-			}
-		}
+		group by from_address 
+		order by vcount desc limit 100`) // total at this point is 7k+, the limit is important
+	if err != nil {
+		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
 	}
 
-	return resp
-}
+	loopstart := time.Now()
+	// logger.Errorln("pool stats", loopstart)
 
-func getPoolStats(pools []Pools) []PoolStatsData {
-	var result []PoolStatsData
-	for _, pool := range pools { // needs optimisation takes 10 sec. to run
-		var states []PoolInfo
-		err := db.DB.Select(&states,
+	for _, pool := range stakePools {
+		// li := time.Now()
+		var stats []PoolStatsData
+		err := db.DB.Select(&stats,
 			`SELECT status, validatorindex, balance31d
 			 FROM validators 
 			 WHERE pubkey = ANY(
@@ -157,43 +170,58 @@ func getPoolStats(pools []Pools) []PoolStatsData {
 			logger.Errorf("error encoding:'%s', %v", pool.Address, err)
 			continue
 		}
-		result = append(result, PoolStatsData{PoolInfo: states, Address: pool.Address})
+		// st := time.Now().Sub(li).Seconds()
+		if len(stats) > 0 {
+			pName := ""
+			if utils.Config.Chain.Network == "mainnet" {
+				nPool, exist := addrName[pool.Address]
+				if exist {
+					pName = nPool.Name
+					pool.Name = nPool.Name
+					pool.Category = nPool.Category
+				}
+			}
+			income, err := getPoolIncome(pool.Address, pName)
+			// logger.Errorf("\n %s\nst %f\ngp %f\n", pName, st, time.Now().Sub(li).Seconds()-st)
+			if err != nil {
+				income = &types.ValidatorEarnings{}
+			}
+			resp = append(resp, PoolsInfo{
+				Address:    pool.Address,
+				Category:   pool.Category,
+				Deposit:    pool.Deposit,
+				Name:       pool.Name,
+				PoolInfo:   stats,
+				PoolIncome: income,
+			})
+		}
 	}
-
-	return result
+	logger.Infof("pool update for loop took %f seconds", time.Now().Sub(loopstart).Seconds())
+	return resp
 }
 
-func getPoolIncome(pools []PoolInfo) (*types.ValidatorEarnings, error) {
-	var indexes = make([]uint64, len(pools))
-	for i, pool := range pools {
-		indexes[i] = pool.ValidatorIndex
-	}
-
-	return getValidatorEarnings(indexes)
-}
-
-func getEthSupply() interface{} {
-	var respjson interface{}
-	resp, err := http.Get("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
-
+func getPoolIncome(poolAddress string, poolName string) (*types.ValidatorEarnings, error) {
+	// var indexes = make([]uint64, len(pool))
+	// for i, validator := range pool {
+	// 	indexes[i] = validator.ValidatorIndex
+	// }
+	var indexes []uint64
+	err := db.DB.Select(&indexes,
+		`SELECT validatorindex
+		 FROM validators 
+		 WHERE pubkey = ANY(
+							SELECT publickey 
+							FROM eth1_deposits 
+							WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
+						)`, poolAddress)
 	if err != nil {
-		logger.Errorf("error retrieving ETH Supply Data: %v", err)
-		return nil
+		logger.Errorf("error selecting validator indexes:'%s', %v", poolAddress, err)
 	}
 
-	defer resp.Body.Close()
-
-	err = json.NewDecoder(resp.Body).Decode(&respjson)
-
-	if err != nil {
-		logger.Errorf("error decoding ETH Supply json response to interface: %v", err)
-		return nil
-	}
-
-	return respjson
+	return getValidatorEarnings(indexes, poolName)
 }
 
-func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error) {
+func getValidatorEarnings(validators []uint64, poolName string) (*types.ValidatorEarnings, error) {
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(LatestEpoch())
 	lastDayEpoch := latestEpoch - 225
@@ -232,7 +260,7 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 				status
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
-		logger.Error(err)
+		logger.Error("error selecting balances from validators: %v", err)
 		return nil, err
 	}
 
@@ -242,8 +270,16 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		Publickey []byte
 	}{}
 
-	err = db.DB.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
+	err = db.DB.Select(&deposits, `
+	SELECT block_slot / 32 AS epoch, amount, publickey 
+	FROM blocks_deposits 
+	WHERE publickey IN (
+		SELECT pubkey 
+		FROM validators 
+		WHERE validatorindex = ANY($1)
+	)`, validatorsPQArray)
 	if err != nil {
+		logger.Error("error selecting deposits from blocks_deposits: %v", err)
 		return nil, err
 	}
 
@@ -308,11 +344,13 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 
 		if int64(balance.ActivationEpoch) <= lastMonthEpoch && balance.Status == "active_online" {
 			earningsInPeriod += (int64(balance.Balance) - int64(balance.Balance31d)) - (int64(balance.Balance) - int64(balance.Balance7d))
-			// earningsInPeriod += getValidatorIncomeInPeriod(balance.Index) //takes painfully long
 			earningsInPeriodBalance += int64(balance.BalanceActivation)
-			// logger.Errorln(balance.Index, earningsInPeriod)
 		}
 	}
+
+	// go func() {
+	// 	updateChartDB(poolName, lastWeekEpoch, earningsInPeriod, earningsInPeriodBalance)
+	// }()
 
 	return &types.ValidatorEarnings{
 		Total:                   earningsTotal,
@@ -327,27 +365,126 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}, nil
 }
 
-func getValidatorIncomeInPeriod(index uint64) int64 {
-	var incomeHistory []*types.ValidatorIncomeHistory
-	err := db.DB.Select(&incomeHistory, `SELECT day, 
-					start_balance,
-					COALESCE(deposits_amount, 0) as deposits_amount 
-					FROM validator_stats 
-					WHERE validatorindex=$1 order by day desc limit 21;`, index)
-	if err != nil {
-		logger.Errorf("error retrieving validator balance history: %v", err)
-		return 0
-	}
-	var income int64 = 0
-	if len(incomeHistory) == 21 {
-		for i := 13; i < len(incomeHistory)-1; i++ {
-			incomeTemp := incomeHistory[i].StartBalance - incomeHistory[i+1].StartBalance
-			if incomeTemp >= incomeHistory[i+1].Deposits {
-				incomeTemp = incomeTemp - incomeHistory[i+1].Deposits
-			}
-			income += incomeTemp
-		}
+// func updateChartDB(poolName string, epoch int64, income int64, balance int64) {
+// 	if poolName == "" {
+// 		return
+// 	}
+// 	_, err := db.DB.Exec(`
+// 		INSERT INTO staking_pools_chart
+// 		(epoch, name, income, balance)
+// 		VALUES
+// 		($1, $2, $3, $4)
+// 	`, epoch, poolName, income, balance)
+// 	if err != nil {
+// 		logger.Errorf("error inserting staking pool chart data (if 'duplicate key' error not critical): %v", err)
+// 	}
+// }
+
+// func deleteOldChartEntries() {
+// 	latestEpoch := int64(LatestEpoch())
+// 	sixMonthsOld := latestEpoch - 225*31*6
+// 	_, err := db.DB.Exec(`
+// 		DELETE FROM staking_pools_chart
+// 		WHERE epoch <= $1
+// 	`, sixMonthsOld)
+// 	if err != nil {
+// 		logger.Errorf("error removing old staking pool chart data: %v", err)
+// 	}
+// }
+
+func getIDEthChartSeries() idEthSeriesDrill {
+
+	type idEthSeriesData struct {
+		Epoch   int64
+		Name    string
+		Income  int64
+		Balance int64
 	}
 
-	return income
+	dbData := []idEthSeriesData{}
+	err := db.DB.Select(&dbData, `SELECT 
+			   epoch,
+			   name, 
+			   income,
+			   (CASE balance WHEN 0 THEN 1 ELSE balance END) as balance
+		FROM staking_pools_chart order by epoch asc`)
+	if err != nil {
+		logger.Error("error selecting balances from validators: %v", err)
+		return idEthSeriesDrill{}
+	}
+
+	seriesMap := map[string]idEthSeries{}
+	for _, item := range dbData {
+		elem, exist := seriesMap[item.Name]
+		if !exist {
+			seriesMap[item.Name] = idEthSeries{
+				Name: item.Name,
+				Data: [][2]float64{{float64(item.Epoch), float64(item.Income) / float64(item.Balance)}},
+			}
+			continue
+		}
+		elem.Data = append(elem.Data, [2]float64{float64(item.Epoch), float64(item.Income) / float64(item.Balance)})
+		seriesMap[item.Name] = elem
+	}
+
+	mainSeriesSlice := []idEthSeries{}
+	subSeriesSlice := []idEthSeries{}
+
+	for key, item := range seriesMap {
+		poolName := strings.Split(key, "-")
+		if len(poolName) == 1 {
+			mainSeriesSlice = append(mainSeriesSlice, item)
+		} else if len(poolName) == 2 {
+			i, err := strconv.ParseInt(strings.ReplaceAll(poolName[1], " ", ""), 10, 64)
+			if err != nil || i == 1 {
+				item.Name = poolName[0]
+				mainSeriesSlice = append(mainSeriesSlice, item)
+			}
+		}
+
+		subSeriesSlice = append(subSeriesSlice, item)
+	}
+
+	return idEthSeriesDrill{MainSeries: mainSeriesSlice, DrillSeries: subSeriesSlice}
+
+}
+
+func GetTotalValidators() uint64 {
+	epoch := int64(LatestEpoch())
+	var limit int64 = 0
+	if epoch > 0 {
+		limit = epoch - 1
+	}
+	var activeValidators uint64
+
+	err := db.DB.Get(&activeValidators, `
+			SELECT validatorscount 
+			FROM epochs 
+			WHERE epoch = $1`, limit)
+	if err != nil {
+		logger.Errorf("error retrieving staked ether history: %v", err)
+	}
+
+	return activeValidators
+}
+
+func getEthSupply() interface{} {
+	var respjson interface{}
+	resp, err := http.Get("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
+
+	if err != nil {
+		logger.Errorf("error retrieving ETH Supply Data: %v", err)
+		return nil
+	}
+
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&respjson)
+
+	if err != nil {
+		logger.Errorf("error decoding ETH Supply json response to interface: %v", err)
+		return nil
+	}
+
+	return respjson
 }
