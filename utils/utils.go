@@ -199,7 +199,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 		return err
 	}
 
-	return readConfigEnv(cfg)
+	readConfigEnv(cfg)
+	return readConfigSecrets(cfg)
 }
 
 func readConfigFile(cfg *types.Config, path string) error {
@@ -219,6 +220,10 @@ func readConfigFile(cfg *types.Config, path string) error {
 
 func readConfigEnv(cfg *types.Config) error {
 	return envconfig.Process("", cfg)
+}
+
+func readConfigSecrets(cfg *types.Config) error {
+	return ProcessSecrets(cfg)
 }
 
 // MustParseHex will parse a string into hex
