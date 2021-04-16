@@ -30,10 +30,23 @@ type PageData struct {
 	EthPrice              float64
 	EthRoundPrice         int
 	EthTruncPrice         string
-	USDRoundPrice         int
-	USDTruncPrice         string
+	UsdRoundPrice         int
+	UsdTruncPrice         string
+	EurRoundPrice         int
+	EurTruncPrice         string
+	GbpRoundPrice         int
+	GbpTruncPrice         string
+	CnyRoundPrice         int
+	CnyTruncPrice         string
+	RubRoundPrice         int
+	RubTruncPrice         string
+	CadRoundPrice         int
+	CadTruncPrice         string
+	AudRoundPrice         int
+	AudTruncPrice         string
+	JpyRoundPrice         int
+	JpyTruncPrice         string
 	Currency              string
-	CurrencySymbol        string
 	ExchangeRate          float64
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
@@ -65,10 +78,23 @@ type LatestState struct {
 	EthPrice              float64 `json:"ethPrice"`
 	EthRoundPrice         int     `json:"ethRoundPrice"`
 	EthTruncPrice         string  `json:"ethTruncPrice"`
-	USDRoundPrice         int     `json:"usdRoundPrice"`
-	USDTruncPrice         string  `json:"usdTruncPrice"`
+	UsdRoundPrice         int     `json:"usdRoundPrice"`
+	UsdTruncPrice         string  `json:"usdTruncPrice"`
+	EurRoundPrice         int     `json:"eurRoundPrice"`
+	EurTruncPrice         string  `json:"eurTruncPrice"`
+	GbpRoundPrice         int     `json:"gbpRoundPrice"`
+	GbpTruncPrice         string  `json:"gbpTruncPrice"`
+	CnyRoundPrice         int     `json:"cnyRoundPrice"`
+	CnyTruncPrice         string  `json:"cnyTruncPrice"`
+	RubRoundPrice         int     `json:"rubRoundPrice"`
+	RubTruncPrice         string  `json:"rubTruncPrice"`
+	CadRoundPrice         int     `json:"cadRoundPrice"`
+	CadTruncPrice         string  `json:"cadTruncPrice"`
+	AudRoundPrice         int     `json:"audRoundPrice"`
+	AudTruncPrice         string  `json:"audTruncPrice"`
+	JpyRoundPrice         int     `json:"jpyRoundPrice"`
+	JpyTruncPrice         string  `json:"jpyTruncPrice"`
 	Currency              string  `json:"currency"`
-	CurrencySymbol        string  `json:"currencySymbol"`
 }
 
 type Stats struct {

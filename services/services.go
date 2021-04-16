@@ -440,8 +440,22 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
-	data.USDRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("USD"))
-	data.USDTruncPrice = utils.KFormatterEthPrice(data.USDRoundPrice)
+	data.UsdRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("USD"))
+	data.UsdTruncPrice = utils.KFormatterEthPrice(data.UsdRoundPrice)
+	data.EurRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("EUR"))
+	data.EurTruncPrice = utils.KFormatterEthPrice(data.EurRoundPrice)
+	data.GbpRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("GBP"))
+	data.GbpTruncPrice = utils.KFormatterEthPrice(data.GbpRoundPrice)
+	data.CnyRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("CNY"))
+	data.CnyTruncPrice = utils.KFormatterEthPrice(data.CnyRoundPrice)
+	data.RubRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("RUB"))
+	data.RubTruncPrice = utils.KFormatterEthPrice(data.RubRoundPrice)
+	data.CadRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("CAD"))
+	data.CadTruncPrice = utils.KFormatterEthPrice(data.CadRoundPrice)
+	data.AudRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("AUD"))
+	data.AudTruncPrice = utils.KFormatterEthPrice(data.AudRoundPrice)
+	data.JpyRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("JPY"))
+	data.JpyTruncPrice = utils.KFormatterEthPrice(data.JpyRoundPrice)
 
 	return data
 }

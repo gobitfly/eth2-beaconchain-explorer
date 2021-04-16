@@ -147,11 +147,10 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	currency := GetCurrency(r)
 	data := services.LatestState()
-	data.Currency = currency
+	// data.Currency = currency
 	data.EthPrice = price.GetEthPrice(currency)
 	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
 	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
-	data.CurrencySymbol = utils.FormatCurrencySymbol(currency)
 
 	err := json.NewEncoder(w).Encode(data)
 
