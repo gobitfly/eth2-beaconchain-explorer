@@ -33,7 +33,7 @@
         <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
         <link id="app-style" rel="stylesheet" href="/bundle/css/layout.css">
         <link rel="stylesheet" href="/bundle/css/layout/toggle.css">
-        <link rel="stylesheet" href="/bundle/css/layout/banner.css">
+        <link rel="stylesheet" href="/bundle/css/layout/banner_2.css">
         <link rel="stylesheet" href="/bundle/css/layout/herofeed.css">
         <script>
             var mql = window.matchMedia('(prefers-color-scheme: light)');
@@ -56,7 +56,7 @@
             } else {
                 document.getElementById('app-style-initial').id = 'app-theme'
             }
-    </script>
+        </script>
 
         <script>
             function updateLang(lang) {
@@ -87,9 +87,9 @@
                 var currentCurrency = getCookie('currency')
                 if (currentCurrency) {
                     document.getElementById('currencyDropdown').textContent = currentCurrency
+                    document.getElementById('currencyFlagDropdown').innerHTML = "<img class='currency-flag-dropdown-image' src='/img/" + currentCurrency +  ".svg'>"
                 }
             })
-
         </script>
 
     </head>
@@ -122,7 +122,7 @@
                 </div>
 
 
-                <div class="d-none d-md-block">
+                <div class="d-none d-lg-block">
                     <div id="banner-slot" class="info-item d-flex mr-2">
                         <div class="info-item-header mr-2">
 							<span class="item-icon">
@@ -130,8 +130,9 @@
 							</span>
                             <span class="item-text">Slot:</span>
                         </div>
-                        <div class="info-item-body"><a id="banner-slot-data"
-                                                       href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
+                        <div class="info-item-body">
+                            <a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a>
+                        </div>
                     </div>
                 </div>
 
@@ -141,9 +142,15 @@
 							<span class="item-icon">
 								<i class="fas fa-cubes"></i>
 							</span>
-                            <span class="item-text">Pr<span class="d-none d-md-inline">ice</span>:</span>
+                            <span class="d-none d-xl-inline item-text">Pr<span class="d-none d-md-inline">ice</span>:</span>
                         </div>
-                        <div class="info-item-body"><a id="banner-eth-price-data">${{.EthPrice}}</a></div>
+                        <div class="info-item-body">
+                            <a id="banner-eth-price-data">
+                                <span class="currency-symbol">{{.CurrencySymbol}}</span>
+                                <span class="k-formatted-price">{{if eq .Currency "ETH"}} {{.USDTruncPrice}} {{else}} {{.EthTruncPrice}} {{end}}</span>
+                                <span class="price">{{if eq .Currency "ETH"}} {{.USDRoundPrice}} {{else}} {{.EthRoundPrice}} {{end}}</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
 
@@ -151,13 +158,13 @@
                     {{if gt .FinalizationDelay 3}}
                         <div id="banner-fin" class="info-item d-flex mr-3">
                             <div class="info-item-header mr-2 text-warning">
-              <span class="item-icon">
-                <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title=""
-                   data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
-              </span>
+                                <span class="item-icon">
+                                    <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title=""
+                                       data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
+                                </span>
                                 <span class="item-text d-none d-xl-block">
-                Finality
-              </span>
+                                    Finality
+                                </span>
                             </div>
                             <div class="info-item-body text-warning">
                                 <span id="banner-fin-data">{{.FinalizationDelay}}</span>
@@ -195,19 +202,59 @@
             </div>
             <div class="info-banner-right">
                 <div class="dropdown">
-                    <a class="btn btn-transparent btn-sm dropdown-toggle" id="currencyDropdown" data-toggle="dropdown"
+                    <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle"  data-toggle="dropdown"
                        aira-haspopup="true" aria-expanded="false">
-                        {{.Currency}}
+                       <div id="currencyFlagDropdown">
+                           <img class='currency-flag-dropdown-image' src='/img/{{.Currency}}.svg'>
+                       </div>
+                       <div id="currencyDropdown">{{.Currency}}</div>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">ETH</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')">USD</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')">EUR</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')">GBP</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')">CNY</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')">RUB</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')">CAD</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')">JPY</a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">
+                            <img class="currency-flag-option" src="/img/ETH.svg">
+                            <span class="currency-name">Ethereum</span>
+                            ETH
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')">
+                            <img class="currency-flag-option" src="/img/USD.svg">
+                            <span class="currency-name">United States Dollar</span>
+                            USD
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')">
+                            <img class="currency-flag-option" src="/img/EUR.svg">
+                            <span class="currency-name">Euro</span>
+                            EUR
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')">
+                            <img class="currency-flag-option" src="/img/GBP.svg">
+                            <span class="currency-name">Pound Sterling</span>
+                            GBP
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')">
+                            <img class="currency-flag-option" src="/img/CNY.svg">
+                            <span class="currency-name">Chinese Yuan</span>
+                            CNY
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')">
+                            <img class="currency-flag-option" src="/img/RUB.svg">
+                            <span class="currency-name">Russian Ruble</span>
+                            RUB
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')">
+                            <img class="currency-flag-option" src="/img/CAD.svg">
+                            <span class="currency-name">Canadian Dollar</span>
+                            CAD
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('AUD')">
+                            <img class="currency-flag-option" src="/img/AUD.svg">
+                            <span class="currency-name">Australian Dollar</span>
+                            AUD
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')">
+                            <img class="currency-flag-option" src="/img/JPY.svg">
+                            <span class="currency-name">Japanese Yen</span>
+                            JPY
+                        </a>
                     </div>
                 </div>
                 <!--<div class="dropdown">

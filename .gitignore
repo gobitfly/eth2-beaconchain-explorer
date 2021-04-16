@@ -7,6 +7,7 @@ bin/
 docker/
 templates/imprint.html
 config.yml
+frontend.yml
 config-staging.yml
 config-pyrmont.yml
 config-lighthouse.yml

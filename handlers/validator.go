@@ -384,7 +384,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			MissedAttestations   uint64 `db:"missed_attestations"`
 			OrphanedAttestations uint64 `db:"orphaned_attestations"`
 		}{}
-		err = db.DB.Get(&attestationStatsNotInStats, "select sum(case when status = 0 then 1 else 0 end) as missed_attestations, sum(case when status = 3 then 1 else 0 end) as orphaned_attestations from attestation_assignments_p where week >= $1/7 and epoch >= $1*225 and epoch < $2 and validatorindex = $3", lastStatsDay, services.LatestEpoch(), index)
+		err = db.DB.Get(&attestationStatsNotInStats, "select coalesce(sum(case when status = 0 then 1 else 0 end), 0) as missed_attestations, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_attestations from attestation_assignments_p where week >= $1/7 and epoch >= $1*225 and epoch < $2 and validatorindex = $3", lastStatsDay, services.LatestEpoch(), index)
 		if err != nil {
 			logger.Errorf("error retrieving validator attestationStatsAfterLastStatsDay: %v", err)
 			http.Error(w, "Internal server error", 503)
@@ -394,9 +394,9 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations + attestationStatsNotInStats.OrphanedAttestations
 		validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
 		if validatorPageData.AttestationsCount < validatorPageData.MissedAttestationsCount {
-			logger.Errorf("error retrieving validator unmissedAttestationsPercentage for validator: attestationsCount < missedAttestationsCount: %v < %v", index, validatorPageData.AttestationsCount, validatorPageData.MissedAttestationsCount)
-			http.Error(w, "Internal server error", 503)
-			return
+			logger.Errorf("error retrieving validator unmissedAttestationsPercentage for validator %v: attestationsCount < missedAttestationsCount: %v < %v", index, validatorPageData.AttestationsCount, validatorPageData.MissedAttestationsCount)
+			// http.Error(w, "Internal server error", 503)
+			// return
 		}
 		validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.AttestationsCount-validatorPageData.MissedAttestationsCount) / float64(validatorPageData.AttestationsCount)
 	}
