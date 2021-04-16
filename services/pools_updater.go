@@ -279,6 +279,7 @@ func getValidatorEarnings(validators []uint64, poolName string) (*types.Validato
 		WHERE validatorindex = ANY($1)
 	)`, validatorsPQArray)
 	if err != nil {
+		logger.Error("error selecting deposits from blocks_deposits: %v", err)
 		return nil, err
 	}
 
