@@ -428,18 +428,9 @@ func NewTransaction() (*sql.Tx, error) {
 
 func GetStatsValidator(userID, limit, offset uint64) (*sql.Rows, error) {
 	row, err := FrontendDB.Query(
-		"SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, validator_active, validator_total FROM stats_add_validator LEFT JOIN stats_process ON stats_add_validator.general_id = stats_process.id "+
+		"SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, validator_active, validator_total FROM stats_add_validator LEFT JOIN stats_process ON stats_add_validator.general_id = stats_process.id "+
 			" LEFT JOIN stats_meta on stats_process.meta_id = stats_meta.id "+
 			"WHERE user_id = $1 AND process = 'validator' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
-	)
-	return row, err
-}
-
-func GetStatsSlasher(userID, limit, offset uint64) (*sql.Rows, error) {
-	row, err := FrontendDB.Query(
-		"SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp FROM stats_process  "+
-			" LEFT JOIN stats_meta on stats_process.meta_id = stats_meta.id "+
-			"WHERE user_id = $1 AND process = 'slasher' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
 	)
 	return row, err
 }

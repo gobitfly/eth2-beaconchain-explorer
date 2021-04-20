@@ -1138,13 +1138,6 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slasher, err := db.GetStatsSlasher(claims.UserID, limit, offset)
-	if err != nil {
-		logger.Errorf("slasher stat error : %v", err)
-		sendErrorResponse(j, r.URL.String(), "could not retrieve slasher stats from db")
-		return
-	}
-
 	node, err := db.GetStatsNode(claims.UserID, limit, offset)
 	if err != nil {
 		logger.Errorf("node stat error : %v", err)
@@ -1164,11 +1157,6 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(j, r.URL.String(), "could not parse db results for validator stats")
 		return
 	}
-	dataSlasher, err := utils.SqlRowsToJSON(slasher)
-	if err != nil {
-		sendErrorResponse(j, r.URL.String(), "could not parse db results for slasher stats")
-		return
-	}
 
 	dataNode, err := utils.SqlRowsToJSON(node)
 	if err != nil {
@@ -1184,7 +1172,6 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.StatsDataStruct{
 		Validator: dataValidator,
-		Slasher:   dataSlasher,
 		Node:      dataNode,
 		System:    dataSystem,
 	}

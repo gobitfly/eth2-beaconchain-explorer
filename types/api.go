@@ -63,7 +63,6 @@ type StatsMeta struct {
 
 type StatsDataStruct struct {
 	Validator []interface{} `json:"validator"`
-	Slasher   []interface{} `json:"slasher"`
 	Node      []interface{} `json:"node"`
 	System    []interface{} `json:"system"`
 }
