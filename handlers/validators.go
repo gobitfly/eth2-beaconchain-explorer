@@ -247,8 +247,9 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 				validators.status AS state
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE (pubkeyhex LIKE $1
-				OR CAST(validators.validatorindex AS text) LIKE $1)
+			WHERE pubkeyhex LIKE $1
+				OR CAST(validators.validatorindex AS text) LIKE $1
+				OR LOWER(validator_names.name) LIKE LOWER($1)
 			%s
 			ORDER BY %s %s
 			LIMIT $2 OFFSET $3`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
