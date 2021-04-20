@@ -383,6 +383,15 @@ func FormatIncome(balanceInt int64, currency string) template.HTML {
 	}
 }
 
+// FormatMoney will return a string for a balance
+func FormatMoney(money float64) template.HTML {
+	if money > 0 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.2f</b></span>`, money))
+	} else {
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.2f</b></span>`, money))
+	}
+}
+
 func FormatIncomeSql(balanceInt sql.NullInt64, currency string) template.HTML {
 
 	if !balanceInt.Valid {
@@ -586,6 +595,24 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	}
 }
 
+func FormatPercentageColored(percentage float64, tooltipText string) template.HTML {
+	if math.IsInf(percentage, 0) || math.IsNaN(percentage) {
+		percentage = 0
+	} else {
+		percentage = percentage * 100
+	}
+	if percentage == 100 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-grin-stars\"></i></span>", percentage))
+	} else if percentage >= 90 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-smile\"></i></span>", percentage))
+	} else if percentage >= 80 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-warning\">%.0f%% <i class=\"fas fa-smile\"></i></span>", percentage))
+	} else if percentage >= 60 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-warning\">%.0f%% <i class=\"fas fa-meh\"></i></span>", percentage))
+	}
+	return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.0f%% <i class=\"fas fa-frown\"></i></span>", percentage))
+}
+
 func DerefString(str *string) string {
 	if str != nil {
 		return *str
@@ -597,4 +624,12 @@ func DerefString(str *string) string {
 func TrLang(lang string, key string) template.HTML {
 	I18n := getLocaliser()
 	return template.HTML(I18n.Tr(lang, key))
+}
+
+func KFormatterEthPrice(currency int) string {
+	if currency > 999 {
+		ethTruncPrice := fmt.Sprint(float64(int((float64(currency)/float64(1000))*10))/float64(10)) + "k"
+		return ethTruncPrice
+	}
+	return fmt.Sprint(currency)
 }

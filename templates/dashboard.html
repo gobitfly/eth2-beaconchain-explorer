@@ -523,9 +523,13 @@
                                           </div>
                                     </div>
                               </div>
-                              <div id="proposals" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="proposals-tab">
-                                   
-                                    <div id="proposed-chart" class="mt-5">
+                              <div id="proposals" class="tab-pane fade h-100" style="position: relative;" role="tabpanel" aria-labelledby="proposals-tab">
+                                    <div class="proposal-switch m-2">
+                                          <i class="fas fa-chart-line fa-sm switch-chart p-2 proposal-switch-selected"></i>
+                                          <i class="fas fa-table fa-sm switch-table p-2"></i>
+                                    </div>
+
+                                    <div id="proposed-chart">
                                           <div class="d-flex align-items-center justify-content-center p-5">
                                                 <svg style="width:60%; height: auto;" id="b8be6891-8c6c-471d-9cef-5646484caaf2"
                                                       data-name="Layer 1"
@@ -719,10 +723,7 @@
                                                 </svg>
                                           </div>
                                     </div>
-                                    <div class="proposal-switch">
-                                          <i class="fas fa-chart-line fa-sm switch-chart p-2 proposal-switch-selected"></i>
-                                          <i class="fas fa-table fa-sm switch-table p-2"></i>
-                                    </div>
+
                                     <div id="proposed-table-div" class="dashboard-table px-0 mx-0 d-none flex-column" id="proposals-table-holder">
                                           <!--<div class="d-flex justify-content-center align-items-center p-1 mt-2">
                                                       <span>Proposal History</span>

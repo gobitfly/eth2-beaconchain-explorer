@@ -33,7 +33,8 @@
         <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
         <link id="app-style" rel="stylesheet" href="/bundle/css/layout.css">
         <link rel="stylesheet" href="/bundle/css/layout/toggle.css">
-        <link rel="stylesheet" href="/bundle/css/layout/banner.css">
+        <link rel="stylesheet" href="/bundle/css/layout/banner_2.css">
+        <link rel="stylesheet" href="/bundle/css/layout/herofeed.css">
         <script>
             var mql = window.matchMedia('(prefers-color-scheme: light)');
             var lightScheme = mql.matches;
@@ -55,7 +56,7 @@
             } else {
                 document.getElementById('app-style-initial').id = 'app-theme'
             }
-    </script>
+        </script>
 
         <script>
             function updateLang(lang) {
@@ -86,9 +87,54 @@
                 var currentCurrency = getCookie('currency')
                 if (currentCurrency) {
                     document.getElementById('currencyDropdown').textContent = currentCurrency
+                    document.getElementById('currencyFlagDropdown').innerHTML = "<img class='currency-flag-dropdown-image' src='/img/" + currentCurrency +  ".svg'>"
                 }
             })
 
+            window.addEventListener('load', function () {
+                switch (getCookie('currency')) {
+                    case 'AUD':
+                        document.getElementById('currentCurrencySymbol').textContent = 'A$'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.AudTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.AudRoundPrice}}
+                        break
+	                case 'CAD':
+                        document.getElementById('currentCurrencySymbol').textContent = 'C$'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.CadTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.CadRoundPrice}}
+		                break
+	                case 'CNY':
+                        document.getElementById('currentCurrencySymbol').textContent = '¥'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.CnyTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.CnyRoundPrice}}
+		                break
+	                case 'EUR':
+                        document.getElementById('currentCurrencySymbol').textContent = '€'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.EurTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.EurRoundPrice}}
+		                break
+	                case 'GBP':
+                        document.getElementById('currentCurrencySymbol').textContent = '£'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.GbpTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.GbpRoundPrice}}
+		                break
+	                case 'JPY':
+                        document.getElementById('currentCurrencySymbol').textContent = '¥'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.JpyTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.JpyRoundPrice}}
+		                break
+	                case 'RUB':
+                        document.getElementById('currentCurrencySymbol').textContent = '₽'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.RubTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.RubRoundPrice}}
+		                break
+                    default:
+                        document.getElementById('currentCurrencySymbol').textContent = '$'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.UsdTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{.UsdRoundPrice}}
+		                break
+                }
+            })
         </script>
 
     </head>
@@ -121,7 +167,7 @@
                 </div>
 
 
-                <div class="d-none d-md-block">
+                <div class="d-none d-lg-block">
                     <div id="banner-slot" class="info-item d-flex mr-2">
                         <div class="info-item-header mr-2">
 							<span class="item-icon">
@@ -129,8 +175,9 @@
 							</span>
                             <span class="item-text">Slot:</span>
                         </div>
-                        <div class="info-item-body"><a id="banner-slot-data"
-                                                       href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a></div>
+                        <div class="info-item-body">
+                            <a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a>
+                        </div>
                     </div>
                 </div>
 
@@ -140,9 +187,15 @@
 							<span class="item-icon">
 								<i class="fas fa-cubes"></i>
 							</span>
-                            <span class="item-text">Pr<span class="d-none d-md-inline">ice</span>:</span>
+                            <span class="d-none d-xl-inline item-text">Pr<span class="d-none d-md-inline">ice</span>:</span>
                         </div>
-                        <div class="info-item-body"><a id="banner-eth-price-data">${{.EthPrice}}</a></div>
+                        <div class="info-item-body">
+                            <a id="banner-eth-price-data">
+                                <span id="currentCurrencySymbol" class="currency-symbol"></span>
+                                <span id="currentKFormattedPrice" class="k-formatted-price"></span>
+                                <span id="currentCurencyPrice" class="price"></span>
+                            </a>
+                        </div>
                     </div>
                 </div>
 
@@ -150,13 +203,13 @@
                     {{if gt .FinalizationDelay 3}}
                         <div id="banner-fin" class="info-item d-flex mr-3">
                             <div class="info-item-header mr-2 text-warning">
-              <span class="item-icon">
-                <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title=""
-                   data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
-              </span>
+                                <span class="item-icon">
+                                    <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title=""
+                                       data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
+                                </span>
                                 <span class="item-text d-none d-xl-block">
-                Finality
-              </span>
+                                    Finality
+                                </span>
                             </div>
                             <div class="info-item-body text-warning">
                                 <span id="banner-fin-data">{{.FinalizationDelay}}</span>
@@ -194,19 +247,59 @@
             </div>
             <div class="info-banner-right">
                 <div class="dropdown">
-                    <a class="btn btn-transparent btn-sm dropdown-toggle" id="currencyDropdown" data-toggle="dropdown"
+                    <a class="btn btn-transparent btn-sm dropdown-toggle currency-dropdown-toggle"  data-toggle="dropdown"
                        aira-haspopup="true" aria-expanded="false">
-                        {{.Currency}}
+                       <div id="currencyFlagDropdown">
+                           <img class='currency-flag-dropdown-image' src='/img/{{.Currency}}.svg'>
+                       </div>
+                       <div id="currencyDropdown">{{.Currency}}</div>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="currencyDropdown">
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">ETH</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')">USD</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')">EUR</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')">GBP</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')">CNY</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')">RUB</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')">CAD</a>
-                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')">JPY</a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('ETH')">
+                            <img class="currency-flag-option" src="/img/ETH.svg">
+                            <span class="currency-name">Ethereum</span>
+                            ETH
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('USD')">
+                            <img class="currency-flag-option" src="/img/USD.svg">
+                            <span class="currency-name">United States Dollar</span>
+                            USD
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('EUR')">
+                            <img class="currency-flag-option" src="/img/EUR.svg">
+                            <span class="currency-name">Euro</span>
+                            EUR
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('GBP')">
+                            <img class="currency-flag-option" src="/img/GBP.svg">
+                            <span class="currency-name">Pound Sterling</span>
+                            GBP
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CNY')">
+                            <img class="currency-flag-option" src="/img/CNY.svg">
+                            <span class="currency-name">Chinese Yuan</span>
+                            CNY
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('RUB')">
+                            <img class="currency-flag-option" src="/img/RUB.svg">
+                            <span class="currency-name">Russian Ruble</span>
+                            RUB
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('CAD')">
+                            <img class="currency-flag-option" src="/img/CAD.svg">
+                            <span class="currency-name">Canadian Dollar</span>
+                            CAD
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('AUD')">
+                            <img class="currency-flag-option" src="/img/AUD.svg">
+                            <span class="currency-name">Australian Dollar</span>
+                            AUD
+                        </a>
+                        <a tabindex="1" class="dropdown-item cursor-pointer" onClick="updateCurrency('JPY')">
+                            <img class="currency-flag-option" src="/img/JPY.svg">
+                            <span class="currency-name">Japanese Yen</span>
+                            JPY
+                        </a>
                     </div>
                 </div>
                 <!--<div class="dropdown">
@@ -323,6 +416,10 @@
                             <a class="dropdown-item" href="/validators/eth1leaderboard">
                                 <span class="nav-icon"><i class="fas fa-file-import mr-2"></i></span>
                                 <span class="nav-text">Deposit Leaderboard</span>
+                            </a>
+                            <a class="dropdown-item" href="/validators/streakleaderboard">
+                                <span class="nav-icon"><i class="fas fa-fire mr-2"></i></span>
+                                <span class="nav-text">Streak Leaderboard</span>
                             </a>
                             <hr>
                             <a class="dropdown-item" href="/validators/eth1deposits">
@@ -502,6 +599,10 @@
                         <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
                         <span class="nav-text">Staking Services</span>
                     </a>
+		    <a class="dropdown-item" href="/pools">
+                        <span class="nav-icon"><i class="fas fa-chart-pie mr-2"></i></span>
+                        <span class="nav-text">Staking pools</span>
+                    </a>
                     <a class="dropdown-item" href="/ethClients">
                         <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span>
                         <span class="nav-text">Ethereum Clients</span>
@@ -597,6 +698,45 @@
     {{ template "css" .Data }}
 
     <main>
+      <!--  <div class="p-1" style="overflow-wrap: break-word;background-color: var(--bg-color-light); height: 40px; display: flex; justify-content:center; align-items:center;"> 
+          <span class="d-none d-md-block">
+
+            <span>Watch the 
+                <span>
+                    <a style="color: #ff6600;" href="https://ethernodes.org/berlin" target="_blank">
+                    Berlin Hardfork
+                    </a>
+                </span> live on 
+                    <span>
+                        <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=4R638fPK3NQ" target="_blank">
+                            YouTube
+                        </a>
+                    </span> hosted by 
+                    <span>
+                        <a style="color: #ff6600;" href="https://discord.gg/NvCxbCu" target="_blank">
+                            Ethstaker
+                        </a>
+                    </span> on Thursday, Apr 15, 2021
+                </span>
+
+
+        </span>
+        <span class="d-md-none p-1" style="font-size:90%">
+            <span>
+                <span>
+                    Watch the 
+                    <a style="color: #ff6600;" href="https://ethernodes.org/berlin" target="_blank">
+                        Berlin Hardfork
+                    </a> 
+                </span>, 15. April, 
+                <span style="color: #ff6600;">
+                <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=4R638fPK3NQ" target="_blank">
+                    on YouTube
+                </a>
+                </span>
+            </span>
+        </span>
+        </div> -->
         <!-- {{ if .HeaderAd }}
 				<div class="container">
 					<div class="d-flex justify-content-between pt-4 pb-3">
@@ -644,15 +784,18 @@
                         <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag
                             Shop</a>
                         <a class="my-1" href="/pricing"><i class="fas fa-laptop-code mr-2"></i></i>API Pricing</a>
-                        <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i
-                                    class="fab fa-github mr-2"></i>Github</a>
+                        <!-- <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i
+                                    class="fab fa-github mr-2"></i>Github</a> -->
                     </div>
                 </div>
                 <div class="col-md-4 mb-2">
-                    <h5>Social Media</h5>
+                    <h5>Links</h5>
                     <div class="d-flex flex-column">
-                        <a class="my-1" href="https://twitter.com/etherchain_org"><i class="fab fa-twitter mr-2"></i>Twitter</a>
-                        <a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a>
+                        <a class="my-1" href="https://twitter.com/etherchain_org"><i class="fab fa-twitter mr-2"></i>Bitfly</a>
+                        <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>Github</a>
+                        <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer-app"><i class="fab fa-github mr-2"></i>Github Mobile App</a>
+
+                        <!-- <a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a> -->
                         <!-- <a class="my-1" href="https://gitter.im/gobitfly/beaconchain-explorer"><i
                                     class="fab fa-gitter"></i> Gitter Channel</a> -->
                     </div>

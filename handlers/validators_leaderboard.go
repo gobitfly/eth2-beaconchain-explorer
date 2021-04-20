@@ -103,14 +103,6 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN validators ON validators.validatorindex = a.validatorindex
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			LEFT JOIN (SELECT COUNT(*) FROM validator_performance) cnt(total_count) ON true`, length, start)
-		if err != nil {
-			logger.Errorf("error retrieving performanceData data with search: %v", err)
-			http.Error(w, "Internal server error", 503)
-			return
-		}
-		if len(performanceData) > 0 {
-			totalCount = performanceData[0].TotalCount
-		}
 	} else {
 		err = db.DB.Select(&performanceData, `
 			WITH 
@@ -118,7 +110,7 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 					SELECT v.validatorindex, v.pubkey, COALESCE(vn.name,'') as name
 					FROM validators v
 					LEFT JOIN validator_names vn ON vn.publickey = v.pubkey
-					WHERE (encode(v.pubkey::bytea, 'hex') LIKE $3
+					WHERE (pubkeyhex LIKE $3
 						OR CAST(v.validatorindex AS text) LIKE $3)
 						OR LOWER(vn.name) LIKE LOWER($3)
 				)
@@ -136,14 +128,14 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				ORDER BY `+orderBy+` `+orderDir+`
 			) perf ON perf.validatorindex = mv.validatorindex
 			limit $1 OFFSET $2`, length, start, "%"+search+"%")
-		if err != nil {
-			logger.Errorf("error retrieving performanceData data with search: %v", err)
-			http.Error(w, "Internal server error", 503)
-			return
-		}
-		if len(performanceData) > 0 {
-			totalCount = performanceData[0].TotalCount
-		}
+	}
+	if err != nil {
+		logger.Errorf("error retrieving performanceData data (search=%v): %v", search != "", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	if len(performanceData) > 0 {
+		totalCount = performanceData[0].TotalCount
 	}
 
 	tableData := make([][]interface{}, len(performanceData))

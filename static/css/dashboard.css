@@ -420,17 +420,25 @@ ul.multiselect input:focus {
 
 .tt-open{
   background-color: var(--bg-color-secondary);
+  scrollbar-color: var(--primary) rgba(0,0,0,0.2);
+  scrollbar-width: thin;
 }
 
-.tt-open::-webkit-scrollbar{
+#selected-validators-overview{
+  scrollbar-color: var(--primary) rgba(0,0,0,0.2);
+  scrollbar-width: thin;
+}
+
+.tt-open::-webkit-scrollbar, #selected-validators-overview::-webkit-scrollbar{
   width: 5px;
   /* background-color: var(--bg-color-secondary); */
 }
 
-.tt-open::-webkit-scrollbar-thumb{
-  background-color: var(--banner-text);
+.tt-open::-webkit-scrollbar-thumb, #selected-validators-overview::-webkit-scrollbar-thumb{
+  background-color: var(--primary);
   border-radius: 12px;
   border-style: solid;
+  color: var(--primary);
   border-width: 2px;
 }
 
@@ -440,8 +448,9 @@ ul.multiselect input:focus {
   border-color:  rgba(159, 162, 177, 0.4);
   background-color:rgba(159, 162, 177, 0.4);
   cursor:pointer;
+  width: 65px;
   position: absolute;
-  top: 8%;
+  top: 0%;	
   left: 1%;
   z-index: 999;
 }
@@ -455,4 +464,10 @@ ul.multiselect input:focus {
 
 #proposals-table_length, #proposals-table_info{
   display: none;
+}
+
+@media screen and (max-width: 500px) {
+  .proposal-switch{
+    position: relative;
+  }
 }

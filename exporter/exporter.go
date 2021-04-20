@@ -55,6 +55,27 @@ func Start(client rpc.Client) error {
 		}
 	}
 
+	if utils.Config.Indexer.FixCanonOnStartup {
+		logger.Printf("performing one time full canon check")
+		head, err := client.GetChainHead()
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		for epoch := head.HeadEpoch - 1; epoch >= 0; epoch-- {
+			blocks, err := client.GetBlockStatusByEpoch(epoch)
+			if err != nil {
+				logger.Errorf("error retrieving block status: %v", err)
+				continue
+			}
+			err = db.SetBlockStatus(blocks)
+			if err != nil {
+				logger.Errorf("error saving block status: %v", err)
+				continue
+			}
+		}
+	}
+
 	if utils.Config.Indexer.IndexMissingEpochsOnStartup {
 		// Add any missing epoch to the export set (might happen if the indexer was stopped for a long period of time)
 		epochs, err := db.GetAllEpochs()
@@ -372,32 +393,7 @@ func doFullCheck(client rpc.Client) {
 
 // MarkOrphanedBlocks will mark the orphaned blocks in the database
 func MarkOrphanedBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBlock) error {
-	blocksMap := make(map[string]bool)
-
-	for _, block := range blocks {
-		blocksMap[fmt.Sprintf("%x", block.BlockRoot)] = false
-	}
-
-	orphanedBlocks := make([][]byte, 0)
-	parentRoot := ""
-	for i := len(blocks) - 1; i >= 0; i-- {
-		blockRoot := fmt.Sprintf("%x", blocks[i].BlockRoot)
-
-		if i == len(blocks)-1 { // First block is always canon
-			parentRoot = fmt.Sprintf("%x", blocks[i].ParentRoot)
-			blocksMap[blockRoot] = true
-			continue
-		}
-		if parentRoot != blockRoot { // Block is not part of the canonical chain
-			logger.Errorf("block %x at slot %v in epoch %v has been orphaned", blocks[i].BlockRoot, blocks[i].Slot, blocks[i].Epoch)
-			orphanedBlocks = append(orphanedBlocks, blocks[i].BlockRoot)
-			continue
-		}
-		blocksMap[blockRoot] = true
-		parentRoot = fmt.Sprintf("%x", blocks[i].ParentRoot)
-	}
-
-	return db.UpdateCanonicalBlocks(startEpoch, endEpoch, orphanedBlocks)
+	return db.UpdateCanonicalBlocks(startEpoch, endEpoch, blocks)
 }
 
 // GetLastBlocks will get all blocks for a range of epochs
@@ -419,6 +415,7 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 					Slot:       block.Slot,
 					BlockRoot:  block.BlockRoot,
 					ParentRoot: block.ParentRoot,
+					Canonical:  block.Canonical,
 				})
 			}
 		}
@@ -433,7 +430,7 @@ func GetLastBlocks(startEpoch, endEpoch uint64, client rpc.Client) ([]*types.Min
 func ExportEpoch(epoch uint64, client rpc.Client) error {
 	start := time.Now()
 	defer func() {
-		metrics.ExporterExportEpochDuration.Observe(time.Since(start).Seconds())
+		metrics.TaskDuration.WithLabelValues("export_epoch").Observe(time.Since(start).Seconds())
 	}()
 
 	// Check if the partition for the validator_balances and attestation_assignments table for this epoch exists
@@ -457,13 +454,14 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 		}
 	}
 
+	startGetEpochData := time.Now()
 	logger.Printf("retrieving data for epoch %v", epoch)
 	data, err := client.GetEpochData(epoch)
 
 	if err != nil {
 		return fmt.Errorf("error retrieving epoch data: %v", err)
 	}
-
+	metrics.TaskDuration.WithLabelValues("rpc_get_epoch_data").Observe(time.Since(startGetEpochData).Seconds())
 	logger.Printf("data for epoch %v retrieved, took %v", epoch, time.Since(start))
 
 	if len(data.Validators) == 0 {
@@ -514,6 +512,10 @@ func performanceDataUpdater() {
 }
 
 func updateValidatorPerformance() error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("update_validator_performance").Observe(time.Since(start).Seconds())
+	}()
 	tx, err := db.DB.Beginx()
 	if err != nil {
 		return fmt.Errorf("error starting db transaction: %w", err)

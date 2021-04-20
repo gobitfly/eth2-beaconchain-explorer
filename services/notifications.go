@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/mail"
+	"eth2-exporter/metrics"
 	"eth2-exporter/notify"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -28,7 +29,8 @@ func notificationsSender() {
 		notifications := collectNotifications()
 		sendNotifications(notifications)
 		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
-		time.Sleep(time.Second * 60)
+		metrics.TaskDuration.WithLabelValues("service_notifications").Observe(time.Since(start).Seconds())
+		time.Sleep(time.Second * 120)
 	}
 }
 
@@ -728,7 +730,27 @@ func (n *ethClientNotification) GetEventName() types.EventName {
 func (n *ethClientNotification) GetInfo(includeUrl bool) string {
 	generalPart := fmt.Sprintf(`A new version for %s is available.`, n.EthClient)
 	if includeUrl {
-		return generalPart + " https://beaconcha.in/ethClients"
+		url := ""
+		switch n.EthClient {
+		case "Geth":
+			url = "https://github.com/ethereum/go-ethereum/releases"
+		case "Nethermind":
+			url = "https://github.com/NethermindEth/nethermind/releases"
+		case "OpenEthereum":
+			url = "https://github.com/openethereum/openethereum/releases"
+		case "Teku":
+			url = "https://github.com/ConsenSys/teku/releases"
+		case "Prysm":
+			url = "https://github.com/prysmaticlabs/prysm/releases"
+		case "Nimbus":
+			url = "https://github.com/status-im/nimbus-eth2/releases"
+		case "Lighthouse":
+			url = "https://github.com/sigp/lighthouse/releases"
+		default:
+			url = "https://beaconcha.in/ethClients"
+		}
+
+		return generalPart + " " + url
 	}
 	return generalPart
 }

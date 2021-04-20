@@ -30,6 +30,7 @@ create index idx_validators_pubkey on validators (pubkey);
 create index idx_validators_pubkeyhex on validators (pubkeyhex);
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
+create index idx_validators_activationepoch on validators (activationepoch);
 
 drop table if exists validator_names;
 create table validator_names
@@ -166,6 +167,7 @@ create table validator_stats
     deposits_amount         bigint,
     primary key (validatorindex, day)
 );
+create index idx_validator_stats_day on validator_stats (day);
 
 drop table if exists validator_stats_status;
 create table validator_stats_status
@@ -174,6 +176,20 @@ create table validator_stats_status
     status boolean not null,
     primary key (day)
 );
+
+drop table if exists validator_attestation_streaks;
+create table validator_attestation_streaks
+(
+    validatorindex int not null,
+    status         int not null,
+    start          int not null,
+    length         int not null,
+    primary key (validatorindex, status, start)
+);
+create index idx_validator_attestation_streaks_validatorindex on validator_attestation_streaks (validatorindex);
+create index idx_validator_attestation_streaks_status on validator_attestation_streaks (status);
+create index idx_validator_attestation_streaks_length on validator_attestation_streaks (length);
+create index idx_validator_attestation_streaks_start on validator_attestation_streaks (start);
 
 drop table if exists queue;
 create table queue
@@ -521,4 +537,39 @@ create table api_statistics
     call   varchar(64)                 not null,
     count  int                         not null default 0,
     primary key (ts, apikey, call)
+);
+
+drop table if exists stake_pools_stats;
+create table stake_pools_stats
+(
+    id serial not null, 
+    address text not null, 
+    deposit int, 
+    name text not null, 
+    category text, 
+    PRIMARY KEY(id, address, deposit, name)
+);
+
+drop table if exists price;
+create table price
+(
+    ts     timestamp without time zone not null,
+    eur numeric(20,10)                not null,
+    usd numeric(20,10)                not null,
+    rub numeric(20,10)                not null,
+    cny numeric(20,10)                not null,
+    cad numeric(20,10)                not null,
+    jpy numeric(20,10)                not null,
+    gbp numeric(20,10)                not null,
+    primary key (ts)
+);
+
+drop table if exists staking_pools_chart;
+create table staking_pools_chart
+(
+    epoch                      int  not null,
+    name                       text not null, 
+    income                     bigint not null, 
+    balance                    bigint not null, 
+    PRIMARY KEY(epoch, name)
 );

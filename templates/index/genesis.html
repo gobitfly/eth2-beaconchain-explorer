@@ -321,8 +321,10 @@
           .join(
             enter => enter.append('rect'),
             update => {
+              // var t = svg.transition().duration(550)
+
               return update
-              .call(rect => rect.transition(t)
+              .call(rect => rect //.transition(t)
                 .attr('stroke', (d) => d.active ? 'var(--body-color)' : 'transparent')
                 .attr("fill", (d) => {
                   if (d.status === "missed") {
@@ -425,6 +427,7 @@
           epochs[i].epoch = data[i].epoch
 
         }
+        console.log(epochs)
         chart.update(epochs)
       })
     }

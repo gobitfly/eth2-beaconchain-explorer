@@ -98,7 +98,7 @@
                         {{else}} 
                             The last ETH1 deposit was made  <span aria-ethereum-date-format="FROMNOW" aria-ethereum-date="{{.Deposits.LastEth1DepositTs}}"></span>, it will take <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a>  until your deposit is processed by the beacon chain. If there is a deposit queue then it may take longer for the validator to be activated. 
                         {{end}}
-                        {{if .PendingCount}}This validator will be activated approximately on <span class="font-weight-bolder">{{.EstimatedActivationTs | formatTsWithoutTooltip}}</span> after being registered by the beacon chain.{{end}}
+                        {{if .PendingCount}}This validator will be activated approximately <span class="font-weight-bolder">{{.EstimatedActivationTs | formatTsWithoutTooltip}}</span> after being registered by the beacon chain.{{end}}
                     </span>
                 </div>
             </div>
@@ -219,16 +219,23 @@
 {{define "validatorOverviewCount"}}
 <div class="row flex-wrap justify-content-center p-3 mb-3">
     <div class="mx-3">
-        <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Proposal Assignments"><i class="fas fa-cubes poin"></i> {{ .ProposedBlocksCount }}</span>
+        <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Proposed: {{.ProposedBlocksCount}}, Missed: {{.MissedBlocksCount}}, Orphaned: {{.OrphanedBlocksCount}}, Scheduled: {{.ScheduledBlocksCount}}"><i class="fas fa-cubes poin"></i> {{.BlocksCount}}{{if ne .BlocksCount 0}} ({{formatPercentageColored .UnmissedBlocksPercentage ""}}){{end}}</span>
     </div>
     <div class="mx-3">
-        <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments"><i class="fas fa-file-signature"></i><span>{{.AttestationsCount}}</span>
+        <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{.ExecutedAttestationsCount}}, Missed: {{.MissedAttestationsCount}}, Orphaned: {{.OrphanedAttestationsCount}})"><i class="fas fa-file-signature"></i> {{.AttestationsCount}}{{if ne .AttestationsCount 0}} ({{formatPercentageColored .UnmissedAttestationsPercentage ""}}){{end}}</span>
     </div>
     <div class="mx-3">
         <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash"></i> {{.SlashingsCount}}</span>
     </div>
     <div class="mx-3">
         <span id="depositCount" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet"></i> {{.DepositsCount}}</span>
+    </div>
+    <div class="mx-3">
+        {{if ne .CurrentAttestationStreak .LongestAttestationStreak}}
+        <span id="attestationStreak" style="cursor: default;" data-toggle="tooltip" title="Attestation Streaks (Current / Longest)"><i class="fas fa-fire"></i> {{.CurrentAttestationStreak}} / {{.LongestAttestationStreak}}</span>
+        {{else}}
+        <span id="attestationStreak" style="cursor: default;" data-toggle="tooltip" title="Attestation Streak"><i class="fas fa-fire"></i> {{.LongestAttestationStreak}}</span>
+        {{end}}
     </div>
 </div>
 
