@@ -268,13 +268,13 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if subscription.Items == nil {
-			logger.WithError(err).Error("error updating subscription no items found", subscription)
+			logger.Error("error updating subscription no items found", subscription)
 			http.Error(w, "error updating subscription no items found", 503)
 			return
 		}
 
 		if len(subscription.Items.Data) == 0 {
-			logger.WithError(err).Error("error updating subscription no items found", subscription)
+			logger.Error("error updating subscription no items found", subscription)
 			http.Error(w, "error updating subscription no items found", 503)
 			return
 		}
@@ -347,20 +347,20 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if invoice.Lines == nil {
-			logger.WithError(err).Error("error processing invoice and updating subscription no items found", invoice.ID)
-			http.Error(w, "error processing invoice and updating subscription no items found", 503)
+			logger.Warn("warning processing invoice and updating subscription no items found", invoice.ID)
+			// http.Error(w, "error processing invoice and updating subscription no items found", 503)
 			return
 		}
 
 		if len(invoice.Lines.Data) == 0 {
-			logger.WithError(err).Error("error processing invoice and updating subscription no items found", invoice.ID)
-			http.Error(w, "error processing invoice and updating subscription no items found", 503)
+			logger.Warn("warning processing invoice and updating subscription no items found", invoice.ID)
+			// http.Error(w, "error processing invoice and updating subscription no items found", 503)
 			return
 		}
 
 		if len(invoice.Lines.Data[0].Subscription) == 0 {
-			logger.WithError(err).Error("error processing invoice and updating subscription no items found", invoice.ID)
-			http.Error(w, "error processing invoice and updating subscription line items does not include a subscription", 503)
+			logger.Warn("error processing invoice and updating subscription no items found", invoice.ID)
+			// http.Error(w, "error processing invoice and updating subscription line items does not include a subscription", 503)
 			return
 		}
 
