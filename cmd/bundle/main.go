@@ -94,7 +94,8 @@ func bundle(staticDir string) (map[string]string, error) {
 			matchHash := strings.Replace(matchBundle, "."+fileType.ext, "."+codeHash[:6]+"."+fileType.ext, -1)
 
 			path := strings.ReplaceAll(match, "static/", "")
-			nameMapping[path] = matchHash
+			newPath := strings.ReplaceAll(match, "static/", "")
+			nameMapping[path] = newPath
 
 			err = ioutil.WriteFile(matchHash, code, 0755)
 			if err != nil {
