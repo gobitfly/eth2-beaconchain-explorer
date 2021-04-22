@@ -28,13 +28,13 @@
         <title>{{.Meta.Title}}</title>
         <link rel="shortcut icon" type="image/png" href="/favicon.ico"/>
 
-        <link rel="stylesheet" href="/bundle/css/fontawesome.min.css">
+        <link rel="stylesheet" href="/css/fontawesome.min.css">
 
         <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
-        <link id="app-style" rel="stylesheet" href="/bundle/css/layout.css">
-        <link rel="stylesheet" href="/bundle/css/layout/toggle.css">
-        <link rel="stylesheet" href="/bundle/css/layout/banner_2.css">
-        <link rel="stylesheet" href="/bundle/css/layout/herofeed.css">
+        <link id="app-style" rel="stylesheet" href="/css/layout.css">
+        <link rel="stylesheet" href="/css/layout/toggle.css">
+        <link rel="stylesheet" href="/css/layout/banner_2.css">
+        <link rel="stylesheet" href="/css/layout/herofeed.css">
         <script>
             var mql = window.matchMedia('(prefers-color-scheme: light)');
             var lightScheme = mql.matches;
@@ -838,19 +838,19 @@
 
 
 
-    <script src="/bundle/js/jquery.min.js"></script>
-    <script src="/bundle/js/popper.min.js"
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/popper.min.js"
             integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
             crossorigin="anonymous"></script>
 
     <script src="/theme/js/bootstrap.min.js"></script>
 
-    <script src="/bundle/js/luxon.min.js"></script>
+    <script src="/js/luxon.min.js"></script>
     <script>luxon.DateTime.local();</script>
 
-    <script src="/bundle/js/typeahead.bundle.min.js"></script>
-    <script src="/bundle/js/layout.js"></script>
-    <script src="/bundle/js/banner.js"></script>
+    <script src="/js/typeahead.bundle.min.js"></script>
+    <script src="/js/layout.js"></script>
+    <script src="/js/banner.js"></script>
     <script>
         var currency = {{.Currency}};
         var exchangeRate = {{.ExchangeRate}};
@@ -906,10 +906,10 @@
     </script>
     {{end}}
 
-    <script src="/bundle/js/clipboard.min.js"></script>
+    <script src="/js/clipboard.min.js"></script>
     {{ template "js" .Data }}
 
-    <script src="/bundle/js/instant.min.js" type="module"></script>
+    <script src="/js/instant.min.js" type="module"></script>
     {{ if ne .Meta.GATag ""}}
         <!-- Global site tag (gtag.js) - Google Analytics -->
         <script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>
@@ -967,7 +967,7 @@
         </script>
     {{end}}
 
-    <script type="text/javascript" async src="/bundle/js/revive.min.js"></script>
+    <script type="text/javascript" async src="/js/revive.min.js"></script>
     </body>
     </html>
 {{end}}
