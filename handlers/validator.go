@@ -22,7 +22,6 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
-
 var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
 	"templates/validator/validator.html",
@@ -1137,7 +1136,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 
 	currency := GetCurrency(r)
 
-
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
 	if err != nil {
@@ -1257,7 +1255,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-
 
 	if totalCount > 100 {
 		totalCount = 100

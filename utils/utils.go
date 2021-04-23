@@ -109,7 +109,6 @@ func GetTemplateFuncs() template.FuncMap {
 			return p.Sprintf("%.0f\n", i)
 		},
 
-
 		"derefString":      DerefString,
 		"trLang":           TrLang,
 		"firstCharToUpper": func(s string) string { return strings.Title(s) },
@@ -122,7 +121,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"isUserClientUpdated":       ethclients.IsUserClientUpdated,
 		"dismissClientNotification": ethclients.DismissClientNotification,
 		"isUserSubscribed":          ethclients.IsUserSubscribed,
-
 	}
 }
 
