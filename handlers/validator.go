@@ -22,6 +22,7 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
+
 var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
 	"templates/validator/validator.html",
@@ -1133,7 +1134,9 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 // ValidatorHistory returns a validators history in json
 func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
 	currency := GetCurrency(r)
+
 
 	vars := mux.Vars(r)
 	index, err := strconv.ParseUint(vars["index"], 10, 64)
@@ -1158,7 +1161,6 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-
 	//length := 10
 
 	var activationAndExitEpoch = struct {
@@ -1255,6 +1257,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
+
 
 	if totalCount > 100 {
 		totalCount = 100

@@ -77,7 +77,6 @@ function setValidatorStatus(state) {
   }
 }
 
-
 function setupDashboardButtons(validatorIdx) {
   var validators = []
 	$(document).ready(function () {

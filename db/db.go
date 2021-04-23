@@ -1540,8 +1540,7 @@ func GetDepositThresholdTime() (*time.Time, error) {
 		return nil, err
 	}
 	return threshold, nil
-}
-
+  
 func IsUserSubscribed(uid uint64, client string) bool {
 	var dbResult []struct {
 		UserID      uint64 `db:"user_id"`

@@ -1,0 +1,32 @@
+{{ define "validatorSummaryTable"}}
+<table id="validator-summary-table" class="table" width="100%">
+    <thead>
+        <tr>
+            <th scope="col"></th>
+            <th scope="col">1 day</th>
+            <th scope="col">7 days</th>
+            <th scope="col">31 days</th>
+            <th scope="col">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <th scope="row">Income</th>
+            <th>{{.Income1d | formatIncome}}</th>
+            <th>{{.Income7d | formatIncome}}</th>
+            <th>{{.Income31d | formatIncome}}</th>
+            <th>{{ (addI64 .Income31d (addI64 .Income1d .Income7d)) | formatIncome}}</th>
+        </tr>
+        <!--
+         <tr>
+            <th scope="row">Avg. optimal inclusion distance</th>
+        <tr>
+        <tr>
+            <th scope="row">Attestations (executed/missed)</th>
+        <tr>
+        <tr>
+            <th scope="row">Proposals (executed/missed)</th>
+        <tr> -->
+    </tbody>
+</table>
+{{end}}

@@ -162,6 +162,18 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 	}
 }
 
+// FormatBalanceChange will return a string for a balance change
+func FormatBalanceChange(balance *int64) template.HTML {
+	if balance == nil {
+		return template.HTML("<span> 0.00000 ETH</span>")
+	}
+	balanceF := float64(*balance) / float64(1e9)
+	if balanceF < 0 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.5f ETH</span>", balanceF))
+	}
+	return template.HTML(fmt.Sprintf("<span class=\"text-success\">+%.5f ETH</span>", balanceF))
+}
+
 // FormatBalance will return a string for a balance
 func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
@@ -342,10 +354,12 @@ func FormatGraffiti(graffiti []byte) template.HTML {
 	if len(s) <= 6 {
 		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, h))
 	}
+
 	if len(h) >= 8 {
 		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:8]))
 	}
 	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:]))
+
 }
 
 // FormatGraffitiAsLink will return the graffiti formated as html-link
