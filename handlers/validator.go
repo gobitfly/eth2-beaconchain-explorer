@@ -1133,7 +1133,6 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 // ValidatorHistory returns a validators history in json
 func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
 	currency := GetCurrency(r)
 
 	vars := mux.Vars(r)
@@ -1159,6 +1158,7 @@ func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+
 	//length := 10
 
 	var activationAndExitEpoch = struct {

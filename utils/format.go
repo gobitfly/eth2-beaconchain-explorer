@@ -342,12 +342,10 @@ func FormatGraffiti(graffiti []byte) template.HTML {
 	if len(s) <= 6 {
 		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, h))
 	}
-
 	if len(h) >= 8 {
 		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:8]))
 	}
 	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:]))
-
 }
 
 // FormatGraffitiAsLink will return the graffiti formated as html-link

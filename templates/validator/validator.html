@@ -6,17 +6,16 @@
 		})
 	</script>
 </script>
-
-	<script src="/bundle/js/validator.js"></script>
+	<script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}})</script>
 
     {{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
-		<script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
-		<script type="text/javascript" src="/bundle/js/datatable_input.js"></script>
-		<script src="/bundle/js/highcharts/highstock.min.js"></script>
-		<script src="/bundle/js/highcharts/exporting.min.js"></script>
-		<script src="/bundle/js/highcharts/offline-exporting.min.js"></script>
-		<script src="/bundle/js/highcharts/highcharts-global-options.js"></script>
+		<script type="text/javascript" src="/js/datatables.min.js"></script>
+		<script type="text/javascript" src="/js/datatable_input.js"></script>
+		<script src="/js/highcharts/highstock.min.js"></script>
+		<script src="/js/highcharts/exporting.min.js"></script>
+		<script src="/js/highcharts/offline-exporting.min.js"></script>
+		<script src="/js/highcharts/highcharts-global-options.js"></script>
 		<script>
             setupDashboardButtons({{.Index }}+'')
 		</script>
@@ -24,8 +23,8 @@
 {{end}}
 
 {{ define "css"}}
-	<link rel="stylesheet" href="/bundle/css/validator.css">
-	<link rel="stylesheet" type="text/css" href="/bundle/css/datatables.min.css"/>
+	<link rel="stylesheet" href="/css/validator.css">
+	<link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
 	<style>
 			/* #TODO:stefan maybe make this prettier somehow? */
 			#slashings-table td:first-child {
@@ -51,6 +50,7 @@
 		.validator-content .nav-tabs .nav-item { 
 			margin-top: 0 !important;
 		}
+
 		#chartTabs .nav-link {
 			padding: .5rem .8rem;
 		}
@@ -60,7 +60,6 @@
 		.overview-container > div {
 			flex: 0 1 100px;
 		} */
-
 	</style>
 {{end}}
 
