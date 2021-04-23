@@ -3,14 +3,11 @@ package handlers
 import (
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/csrf"
 )
@@ -35,33 +32,14 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - API Pricing - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/pricing",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "pricing",
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+
+	data := InitPageData(w, r, "pricing", "/pricing", "API Pricing")
 
 	pageData := &types.ApiPricing{}
+	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
 	pageData.CsrfField = csrf.TemplateField(r)
 
-	pageData.User = user
+	pageData.User = data.User
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
@@ -69,8 +47,8 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.Authenticated {
-		subscription, err := db.GetUserSubscription(user.UserID)
+	if data.User.Authenticated {
+		subscription, err := db.StripeGetUserAPISubscription(data.User.UserID)
 		if err != nil {
 			logger.Errorf("error retrieving user subscriptions %v", err)
 			http.Error(w, "Internal server error", 503)
@@ -94,13 +72,32 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// PricingPost sends an email for a user request for an api subscription
 func PricingPost(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		logger.Errorf("error parsing form: %v", err)
 		utils.SetFlash(w, r, "pricing_flash", "Error: invalid form submitted")
+		logger.Errorf("error parsing pricing request form for %v route: %v", r.URL.String(), err)
 		http.Redirect(w, r, "/pricing", http.StatusSeeOther)
 		return
+	}
+
+	if len(utils.Config.Frontend.RecaptchaSecretKey) > 0 && len(utils.Config.Frontend.RecaptchaSiteKey) > 0 {
+		if len(r.FormValue("g-recaptcha-response")) == 0 {
+			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
+			logger.Errorf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
+			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
+			return
+		}
+
+		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
+		if err != nil || !valid {
+			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
+			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
+			return
+		}
 	}
 
 	name := r.FormValue("name")
@@ -130,94 +127,4 @@ func PricingPost(w http.ResponseWriter, r *http.Request) {
 
 	utils.SetFlash(w, r, "pricing_flash", "Thank you for your inquiry, we will get back to you as soon as possible.")
 	http.Redirect(w, r, "/pricing", http.StatusSeeOther)
-}
-
-// page called when the checkout succeeds
-func PricingSuccess(w http.ResponseWriter, r *http.Request) {
-	var err error
-
-	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - API Pricing - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/pricing",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "pricing",
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
-
-	pageData := &types.ApiPricing{}
-	pageData.User = user
-	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
-	if err != nil {
-		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	data.Data = pageData
-
-	err = successTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-}
-
-// PricingCancled page called when the checkout is calcned
-func PricingCancled(w http.ResponseWriter, r *http.Request) {
-	var err error
-
-	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
-	data := &types.PageData{
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - API Pricing - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/pricing",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "pricing",
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
-
-	pageData := &types.ApiPricing{}
-	pageData.User = user
-	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
-	if err != nil {
-		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-	data.Data = pageData
-
-	err = cancelTemplate.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
 }

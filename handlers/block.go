@@ -4,10 +4,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -32,7 +30,7 @@ var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateF
 	"templates/block/exits.html",
 	"templates/block/overview.html",
 ))
-var blockNotFoundTemplate = template.Must(template.New("blocknotfound").ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
+var blockNotFoundTemplate = template.Must(template.New("blocknotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocknotfound.html"))
 
 // Block will return the data for a block
 func Block(w http.ResponseWriter, r *http.Request) {
@@ -48,27 +46,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 	}
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "blocks",
-		Data:                  nil,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "blocks", "/blocks", "")
 
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
@@ -212,6 +190,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+	votesPerValidator := map[int64]int{}
 	for rows.Next() {
 		attestation := &types.BlockPageAttestation{}
 
@@ -230,8 +209,15 @@ func Block(w http.ResponseWriter, r *http.Request) {
 				IncludedIn:     attestation.BlockSlot,
 				CommitteeIndex: attestation.CommitteeIndex,
 			})
+			_, exists := votesPerValidator[validator]
+			if !exists {
+				votesPerValidator[validator] = 1
+			} else {
+				votesPerValidator[validator]++
+			}
 		}
 	}
+	blockPageData.VotingValidatorsCount = uint64(len(votesPerValidator))
 	blockPageData.Votes = votes
 	sort.Slice(blockPageData.Votes, func(i, j int) bool {
 		return blockPageData.Votes[i].Validator < blockPageData.Votes[j].Validator
@@ -311,6 +297,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 // BlockDepositData returns the deposits for a specific slot
 func BlockDepositData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
 	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
@@ -412,7 +399,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		tableData = append(tableData, []interface{}{
 			i + 1 + int(start),
 			utils.FormatPublicKey(deposit.PublicKey),
-			utils.FormatBalance(deposit.Amount),
+			utils.FormatBalance(deposit.Amount, currency),
 			deposit.WithdrawalCredentials,
 			deposit.Signature,
 		})

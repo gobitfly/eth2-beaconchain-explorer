@@ -3,10 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -14,8 +12,8 @@ import (
 	"time"
 )
 
-var visTemplate = template.Must(template.New("vis").ParseFiles("templates/layout.html", "templates/vis.html"))
-var visVotesTemplate = template.Must(template.New("vis").ParseFiles("templates/layout.html", "templates/vis_votes.html"))
+var visTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/vis.html"))
+var visVotesTemplate = template.Must(template.New("vis").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/vis_votes.html"))
 
 // Vis returns the visualizations using a go template
 func Vis(w http.ResponseWriter, r *http.Request) {
@@ -24,29 +22,8 @@ func Vis(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Visualizations - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/blocks",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "stats",
-		Data:                  nil,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "stats", "/viz", "Visualizations")
+	data.HeaderAd = true
 
 	err = visTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -133,6 +110,8 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		data := &types.VotesVisChartData{}
 		err := rows.Scan(&data.Slot, &data.BlockRoot, &data.ParentRoot, &data.Validators)
@@ -146,21 +125,9 @@ func VisVotes(w http.ResponseWriter, r *http.Request) {
 
 	logger.Printf("returning %v entries since %v", len(chartData), sinceSlot)
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("Blocks - beaconcha.in - Ethereum 2.0 beacon chain explorer - %v", time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/blocks",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "vis",
-		Data:                  &types.VisVotesPageData{ChartData: chartData},
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-	}
+	data := InitPageData(w, r, "vis", "/vis", "Votes")
+	data.HeaderAd = true
+	data.Data = &types.VisVotesPageData{ChartData: chartData}
 
 	err = visVotesTemplate.ExecuteTemplate(w, "layout", data)
 

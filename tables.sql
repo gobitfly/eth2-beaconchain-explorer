@@ -7,21 +7,30 @@ In the future it is better to replace this table with an in memory cache (redis)
 drop table if exists validators;
 create table validators
 (
-    validatorindex             int    not null,
-    pubkey                     bytea  not null,
-    withdrawableepoch          bigint not null,
-    withdrawalcredentials      bytea  not null,
-    balance                    bigint not null,
-    effectivebalance           bigint not null,
-    slashed                    bool   not null,
-    activationeligibilityepoch bigint not null,
-    activationepoch            bigint not null,
-    exitepoch                  bigint not null,
+    validatorindex             int         not null,
+    pubkey                     bytea       not null,
+    pubkeyhex                  text        not null default '',
+    withdrawableepoch          bigint      not null,
+    withdrawalcredentials      bytea       not null,
+    balance                    bigint      not null,
+    balance1d                  bigint,
+    balance7d                  bigint,
+    balance31d                 bigint,
+    balanceactivation          bigint,
+    effectivebalance           bigint      not null,
+    slashed                    bool        not null,
+    activationeligibilityepoch bigint      not null,
+    activationepoch            bigint      not null,
+    exitepoch                  bigint      not null,
     lastattestationslot        bigint,
+    status                     varchar(20) not null default '',
     primary key (validatorindex)
 );
 create index idx_validators_pubkey on validators (pubkey);
-create index idx_validators_name on validators (name);
+create index idx_validators_pubkeyhex on validators (pubkeyhex);
+create index idx_validators_status on validators (status);
+create index idx_validators_balanceactivation on validators (balanceactivation);
+create index idx_validators_activationepoch on validators (activationepoch);
 
 drop table if exists validator_names;
 create table validator_names
@@ -30,6 +39,7 @@ create table validator_names
     name      varchar(40),
     primary key (publickey)
 );
+create index idx_validator_names_publickey on validator_names (publickey);
 
 drop table if exists validator_set;
 create table validator_set
@@ -55,6 +65,7 @@ create table validator_performance
     performance7d   bigint not null,
     performance31d  bigint not null,
     performance365d bigint not null,
+    rank7d          int    not null,
     primary key (validatorindex)
 );
 create index idx_validator_performance_balance on validator_performance (balance);
@@ -62,6 +73,7 @@ create index idx_validator_performance_performance1d on validator_performance (p
 create index idx_validator_performance_performance7d on validator_performance (performance7d);
 create index idx_validator_performance_performance31d on validator_performance (performance31d);
 create index idx_validator_performance_performance365d on validator_performance (performance365d);
+create index idx_validator_performance_rank7d on validator_performance (rank7d);
 
 drop table if exists proposal_assignments;
 create table proposal_assignments
@@ -74,8 +86,8 @@ create table proposal_assignments
 );
 create index idx_proposal_assignments_epoch on proposal_assignments (epoch);
 
-drop table if exists attestation_assignments;
-create table attestation_assignments
+drop table if exists attestation_assignments_p;
+create table attestation_assignments_p
 (
     epoch          int not null,
     validatorindex int not null,
@@ -83,21 +95,101 @@ create table attestation_assignments
     committeeindex int not null,
     status         int not null, /* Can be 0 = scheduled, 1 executed, 2 missed */
     inclusionslot  int not null default 0, /* Slot this attestation was included for the first time */
-    primary key (epoch, validatorindex, attesterslot, committeeindex)
-);
-create index idx_attestation_assignments_validatorindex on attestation_assignments (validatorindex);
-create index idx_attestation_assignments_epoch on attestation_assignments (epoch);
+    week           int not null,
+    primary key (validatorindex, week, epoch)
+) PARTITION BY LIST (week);
 
-drop table if exists validator_balances;
-create table validator_balances
+CREATE TABLE attestation_assignments_0 PARTITION OF attestation_assignments_p FOR VALUES IN (0);
+CREATE TABLE attestation_assignments_1 PARTITION OF attestation_assignments_p FOR VALUES IN (1);
+CREATE TABLE attestation_assignments_2 PARTITION OF attestation_assignments_p FOR VALUES IN (2);
+CREATE TABLE attestation_assignments_3 PARTITION OF attestation_assignments_p FOR VALUES IN (3);
+CREATE TABLE attestation_assignments_4 PARTITION OF attestation_assignments_p FOR VALUES IN (4);
+CREATE TABLE attestation_assignments_5 PARTITION OF attestation_assignments_p FOR VALUES IN (5);
+CREATE TABLE attestation_assignments_6 PARTITION OF attestation_assignments_p FOR VALUES IN (6);
+CREATE TABLE attestation_assignments_7 PARTITION OF attestation_assignments_p FOR VALUES IN (7);
+CREATE TABLE attestation_assignments_8 PARTITION OF attestation_assignments_p FOR VALUES IN (8);
+CREATE TABLE attestation_assignments_9 PARTITION OF attestation_assignments_p FOR VALUES IN (9);
+
+drop table if exists validator_balances_p;
+create table validator_balances_p
 (
     epoch            int    not null,
     validatorindex   int    not null,
     balance          bigint not null,
     effectivebalance bigint not null,
-    primary key (validatorindex, epoch)
+    week             int    not null,
+    primary key (validatorindex, week, epoch)
+) PARTITION BY LIST (week);
+
+CREATE TABLE validator_balances_0 PARTITION OF validator_balances_p FOR VALUES IN (0);
+CREATE TABLE validator_balances_1 PARTITION OF validator_balances_p FOR VALUES IN (1);
+CREATE TABLE validator_balances_2 PARTITION OF validator_balances_p FOR VALUES IN (2);
+CREATE TABLE validator_balances_3 PARTITION OF validator_balances_p FOR VALUES IN (3);
+CREATE TABLE validator_balances_4 PARTITION OF validator_balances_p FOR VALUES IN (4);
+CREATE TABLE validator_balances_5 PARTITION OF validator_balances_p FOR VALUES IN (5);
+CREATE TABLE validator_balances_6 PARTITION OF validator_balances_p FOR VALUES IN (6);
+CREATE TABLE validator_balances_7 PARTITION OF validator_balances_p FOR VALUES IN (7);
+CREATE TABLE validator_balances_8 PARTITION OF validator_balances_p FOR VALUES IN (8);
+CREATE TABLE validator_balances_9 PARTITION OF validator_balances_p FOR VALUES IN (9);
+
+drop table if exists validator_balances_recent;
+create table validator_balances_recent
+(
+    epoch          int    not null,
+    validatorindex int    not null,
+    balance        bigint not null,
+    primary key (epoch, validatorindex)
 );
-create index idx_validator_balances_epoch on validator_balances (epoch);
+create index idx_validator_balances_recent_epoch on validator_balances_recent (epoch);
+create index idx_validator_balances_recent_validatorindex on validator_balances_recent (validatorindex);
+
+drop table if exists validator_stats;
+create table validator_stats
+(
+    validatorindex          int not null,
+    day                     int not null,
+    start_balance           bigint,
+    end_balance             bigint,
+    min_balance             bigint,
+    max_balance             bigint,
+    start_effective_balance bigint,
+    end_effective_balance   bigint,
+    min_effective_balance   bigint,
+    max_effective_balance   bigint,
+    missed_attestations     int,
+    orphaned_attestations   int,
+    proposed_blocks         int,
+    missed_blocks           int,
+    orphaned_blocks         int,
+    attester_slashings      int,
+    proposer_slashings      int,
+    deposits                int,
+    deposits_amount         bigint,
+    primary key (validatorindex, day)
+);
+create index idx_validator_stats_day on validator_stats (day);
+
+drop table if exists validator_stats_status;
+create table validator_stats_status
+(
+    day    int     not null,
+    status boolean not null,
+    primary key (day)
+);
+
+drop table if exists validator_attestation_streaks;
+create table validator_attestation_streaks
+(
+    validatorindex int not null,
+    status         int not null,
+    start          int not null,
+    length         int not null,
+    primary key (validatorindex, status, start)
+);
+create index idx_validator_attestation_streaks_validatorindex on validator_attestation_streaks (validatorindex);
+create index idx_validator_attestation_streaks_status on validator_attestation_streaks (status);
+create index idx_validator_attestation_streaks_length on validator_attestation_streaks (length);
+create index idx_validator_attestation_streaks_start on validator_attestation_streaks (start);
 
 drop table if exists queue;
 create table queue
@@ -175,6 +267,7 @@ create table blocks_proposerslashings
 (
     block_slot         int    not null,
     block_index        int    not null,
+    block_root         bytea  not null default '',
     proposerindex      int    not null,
     header1_slot       bigint not null,
     header1_parentroot bytea  not null,
@@ -194,6 +287,7 @@ create table blocks_attesterslashings
 (
     block_slot                   int       not null,
     block_index                  int       not null,
+    block_root                   bytea     not null default '',
     attestation1_indices         integer[] not null,
     attestation1_signature       bytea     not null,
     attestation1_slot            bigint    not null,
@@ -220,6 +314,7 @@ create table blocks_attestations
 (
     block_slot      int   not null,
     block_index     int   not null,
+    block_root      bytea not null default '',
     aggregationbits bytea not null,
     validators      int[] not null,
     signature       bytea not null,
@@ -241,6 +336,7 @@ create table blocks_deposits
 (
     block_slot            int    not null,
     block_index           int    not null,
+    block_root            bytea  not null default '',
     proof                 bytea[],
     publickey             bytea  not null,
     withdrawalcredentials bytea  not null,
@@ -254,6 +350,7 @@ create table blocks_voluntaryexits
 (
     block_slot     int   not null,
     block_index    int   not null,
+    block_root     bytea not null default '',
     epoch          int   not null,
     validatorindex int   not null,
     signature      bytea not null,
@@ -315,50 +412,70 @@ create table users
     password_reset_ts       timestamp without time zone,
     register_ts             timestamp without time zone,
     api_key                 character varying(256) unique,
-    stripe_customerID       character varying(256) unique,
-    stripe_subscriptionID   character varying(256) unique,
-    stripe_priceID          character varying(256) unique,
-    stripe_active           bool                   not null default 'f',
+    stripe_customer_id      character varying(256) unique,
     primary key (id, email)
+);
+
+drop table if exists users_stripe_subscriptions;
+create table users_stripe_subscriptions
+(
+    subscription_id character varying(256) unique not null,
+    customer_id     character varying(256)        not null,
+    price_id        character varying(256)        not null,
+    active          bool not null default 'f',
+    payload         json                          not null,
+    primary key (customer_id, subscription_id, price_id)
 );
 
 drop table if exists oauth_apps;
 create table oauth_apps
 (
-    id                    serial                      not null,
-    owner_id              int                         not null,
-    redirect_uri          character varying(100)      not null unique,
-    app_name              character varying(35)       not null,
-    active                bool                        not null default 't',
-    created_ts            timestamp without time zone not null,
+    id           serial                      not null,
+    owner_id     int                         not null,
+    redirect_uri character varying(100)      not null unique,
+    app_name     character varying(35)       not null,
+    active       bool                        not null default 't',
+    created_ts   timestamp without time zone not null,
     primary key (id, redirect_uri)
 );
 
 drop table if exists oauth_codes;
 create table oauth_codes
 (
-    id              serial                      not null,
-    user_id         int                         not null,
-    code            character varying(64)       not null,
-    consumed        bool                        not null default 'f',
-    app_id          int                         not null,
-    created_ts      timestamp without time zone not null,
+    id         serial                      not null,
+    user_id    int                         not null,
+    code       character varying(64)       not null,
+    consumed   bool                        not null default 'f',
+    app_id     int                         not null,
+    created_ts timestamp without time zone not null,
     primary key (user_id, code)
 );
 
 drop table if exists users_devices;
 create table users_devices
 (
-    id                    serial                      not null,
-    user_id               int                         not null,
-    refresh_token         character varying(64)       not null,
-    device_name           character varying(20)       not null,
-    notification_token    character varying(500),
-    notify_enabled        bool                        not null default 't',
-    active                bool                        not null default 't',
-    app_id                int                         not null,
-    created_ts            timestamp without time zone not null,
+    id                 serial                      not null,
+    user_id            int                         not null,
+    refresh_token      character varying(64)       not null,
+    device_name        character varying(20)       not null,
+    notification_token character varying(500),
+    notify_enabled     bool                        not null default 't',
+    active             bool                        not null default 't',
+    app_id             int                         not null,
+    created_ts         timestamp without time zone not null,
     primary key (user_id, refresh_token)
+);
+
+drop table if exists users_clients;
+create table users_clients
+(
+    id             serial                      not null,
+    user_id        int                         not null,
+    client         character varying(12)       not null,
+    client_version int                         not null,
+    notify_enabled bool                        not null default 't',
+    created_ts     timestamp without time zone not null,
+    primary key (user_id, client)
 );
 
 drop table if exists users_subscriptions;
@@ -373,6 +490,18 @@ create table users_subscriptions
     created_ts      timestamp without time zone not null,
     created_epoch   int                         not null,
     primary key (user_id, event_name, event_filter)
+);
+
+drop table if exists users_notifications;
+create table users_notifications
+(
+    id              serial                      not null,
+    user_id         int                         not null,
+    event_name      character varying(100)      not null,
+    event_filter    text                        not null default '',
+    sent_ts         timestamp without time zone,
+    epoch           int                         not null,
+    primary key(user_id, event_name, event_filter, sent_ts)
 );
 
 drop table if exists users_validators_tags;
@@ -408,4 +537,39 @@ create table api_statistics
     call   varchar(64)                 not null,
     count  int                         not null default 0,
     primary key (ts, apikey, call)
+);
+
+drop table if exists stake_pools_stats;
+create table stake_pools_stats
+(
+    id serial not null, 
+    address text not null, 
+    deposit int, 
+    name text not null, 
+    category text, 
+    PRIMARY KEY(id, address, deposit, name)
+);
+
+drop table if exists price;
+create table price
+(
+    ts     timestamp without time zone not null,
+    eur numeric(20,10)                not null,
+    usd numeric(20,10)                not null,
+    rub numeric(20,10)                not null,
+    cny numeric(20,10)                not null,
+    cad numeric(20,10)                not null,
+    jpy numeric(20,10)                not null,
+    gbp numeric(20,10)                not null,
+    primary key (ts)
+);
+
+drop table if exists staking_pools_chart;
+create table staking_pools_chart
+(
+    epoch                      int  not null,
+    name                       text not null, 
+    income                     bigint not null, 
+    balance                    bigint not null, 
+    PRIMARY KEY(epoch, name)
 );

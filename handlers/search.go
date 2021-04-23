@@ -3,10 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -17,7 +15,7 @@ import (
 	"github.com/lib/pq"
 )
 
-var searchNotFoundTemplate = template.Must(template.New("searchnotfound").ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
+var searchNotFoundTemplate = template.Must(template.New("searchnotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/searchnotfound.html"))
 
 // Search handles search requests
 func Search(w http.ResponseWriter, r *http.Request) {
@@ -41,24 +39,9 @@ func Search(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/validators/eth1deposits?q="+search, 301)
 	} else {
 		w.Header().Set("Content-Type", "text/html")
-		data := &types.PageData{
-			HeaderAd: true,
-			Meta: &types.Meta{
-				Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-				GATag:       utils.Config.Frontend.GATag,
-			},
-			ShowSyncingMessage:    services.IsSyncing(),
-			Active:                "search",
-			Data:                  nil,
-			User:                  getUser(w, r),
-			Version:               version.Version,
-			ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-			ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-			ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-			CurrentEpoch:          services.LatestEpoch(),
-			CurrentSlot:           services.LatestSlot(),
-			EthPrice:              services.GetEthPrice(),
-		}
+		data := InitPageData(w, r, "search", "/search", "")
+		data.HeaderAd = true
+
 		err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -115,12 +98,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		result = &types.SearchAheadValidatorsResult{}
 		err = db.DB.Select(result, `
 			SELECT
-				DISTINCT validatorindex AS index,
-				ENCODE(pubkey::bytea, 'hex') AS pubkey
+				validatorindex AS index,
+				pubkeyhex AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE CAST(validatorindex AS text) LIKE $1
-				OR ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
+				OR pubkeyhex LIKE LOWER($1)
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "eth1_addresses":
@@ -134,15 +117,15 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
 		err = db.DB.Select(result, `
-			SELECT DISTINCT validatorindex AS index, ENCODE(pubkey::bytea, 'hex') AS pubkey
+			SELECT validatorindex AS index, pubkeyhex AS pubkey
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE CAST(validatorindex AS text) LIKE $1
-				OR ENCODE(pubkey::bytea, 'hex') LIKE LOWER($1)
+				OR pubkeyhex LIKE LOWER($1)
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":
-		// find validators per eth1-address (limit result by 10 addresses and 100 validators per address)
+		// find validators per eth1-address (limit result by N addresses and M validators per address)
 		result = &[]struct {
 			Eth1Address      string        `db:"from_address" json:"eth1_address"`
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
@@ -159,11 +142,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
 				WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1) 
 			) a 
-			WHERE validatorrow <= 101 AND addressrow <= 10
+			WHERE validatorrow <= 301 AND addressrow <= 10
 			GROUP BY from_address
 			ORDER BY count DESC`, search+"%")
 	case "indexed_validators_by_graffiti":
-		// find validators per graffiti (limit result by 10 graffities and 100 validators per graffiti)
+		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
 		res := []struct {
 			Graffiti         string        `db:"graffiti" json:"graffiti"`
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
@@ -182,7 +165,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1)
 					OR ENCODE(graffiti, 'hex') LIKE ($2)
 			) a 
-			WHERE validatorrow <= 101 AND graffitirow <= 10
+			WHERE validatorrow <= 301 AND graffitirow <= 10
 			GROUP BY graffiti
 			ORDER BY count DESC`, "%"+search+"%", fmt.Sprintf("%%%x%%", search))
 		if err == nil {
@@ -192,7 +175,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		}
 		result = &res
 	case "indexed_validators_by_name":
-		// find validators per name (limit result by 10 names and 100 validators per name)
+		// find validators per name (limit result by N names and N validators per name)
 		res := []struct {
 			Name             string        `db:"name" json:"name"`
 			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
@@ -209,7 +192,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 				WHERE LOWER(validator_names.name) LIKE LOWER($1)
 			) a
-			WHERE validatorrow <= 101 AND namerow <= 10
+			WHERE validatorrow <= 301 AND namerow <= 10
 			GROUP BY name
 			ORDER BY count DESC, name DESC`, "%"+search+"%")
 		if err == nil {

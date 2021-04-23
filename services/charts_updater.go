@@ -2,12 +2,15 @@ package services
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
+
+	"strings"
 
 	"github.com/prysmaticlabs/prysm/shared/mathutil"
 )
@@ -24,7 +27,7 @@ var ChartHandlers = map[string]chartHandler{
 	"average_balance":    {4, averageBalanceChartData},
 	"network_liveness":   {5, networkLivenessChartData},
 	"participation_rate": {6, participationRateChartData},
-	"inclusion_distance": {7, inclusionDistanceChartData},
+	// "inclusion_distance":             {7, inclusionDistanceChartData},
 	// "incorrect_attestations":         {6, incorrectAttestationsChartData},
 	// "validator_income":               {7, averageDailyValidatorIncomeChartData},
 	// "staking_rewards":                {8, stakingRewardsChartData},
@@ -56,14 +59,22 @@ func chartsPageDataUpdater() {
 			time.Sleep(sleepDuration)
 			continue
 		}
-		now := time.Now()
+		start := time.Now()
+
+		if start.Add(time.Minute * -20).After(utils.EpochToTime(latestEpoch)) {
+			logger.Info("skipping chartsPageDataUpdater because the explorer is syncing")
+			time.Sleep(time.Second * 60)
+			continue
+		}
+
 		data, err := getChartsPageData()
 		if err != nil {
 			logger.WithField("epoch", latestEpoch).Errorf("error updating chartPageData: %v", err)
 			time.Sleep(sleepDuration)
 			continue
 		}
-		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(now)).Info("chartPageData update completed")
+		metrics.TaskDuration.WithLabelValues("service_charts_updater").Observe(time.Since(start).Seconds())
+		logger.WithField("epoch", latestEpoch).WithField("duration", time.Since(start)).Info("chartPageData update completed")
 		chartsPageData.Store(&data)
 		prevEpoch = latestEpoch
 		if latestEpoch == 0 {
@@ -90,7 +101,7 @@ func getChartsPageData() ([]*types.ChartsPageDataChart, error) {
 			defer wg.Done()
 			start := time.Now()
 			data, err := ch.DataFunc()
-			logger.WithField("chart", i).WithField("duration", time.Since(start)).WithField("error", err).Info("generated chart")
+			logger.WithField("chart", i).WithField("duration", time.Since(start)).WithField("error", err).Debug("generated chart")
 			chartHandlerResChan <- &chartHandlerRes{ch.Order, i, data, err}
 		}(i, ch)
 	}
@@ -170,24 +181,50 @@ func blocksChartData() (*types.GenericChartData, error) {
 	}
 
 	chartData := &types.GenericChartData{
-		Title:        "Blocks",
-		Subtitle:     "History of daily blocks proposed.",
-		XAxisTitle:   "",
-		YAxisTitle:   "# of Blocks",
-		StackingMode: "normal",
-		Type:         "column",
+		Title:                "Blocks",
+		Subtitle:             "History of daily blocks proposed.",
+		XAxisTitle:           "",
+		YAxisTitle:           "% of Blocks",
+		Type:                 "column",
+		StackingMode:         "percent",
+		DataLabelsEnabled:    true,
+		DataLabelsFormatter:  `function(){ return this.point.percentage.toFixed(2)+'%' }`,
+		TooltipShared:        true,
+		TooltipUseHTML:       true,
+		TooltipFollowPointer: true,
+		TooltipFormatter: `function(tooltip){
+	let header = '<div style="font-weight:bold; text-align:center;">' + Highcharts.dateFormat("%Y-%m-%d %H:%M", this.x) + '</div><table>'
+	this.points.sort((a, b) => b.y - a.y)
+	let total = 0
+	return this.points.reduce(function (s, point) {
+		total += point.y
+		return s +
+			'<tr><td>' +
+			'<span style="color:' + point.series.color + ';">\u25CF </span>' +
+			'<span style="font-weight:bold;">' + point.series.name + ':</span></td><td>' +
+			point.percentage.toFixed(2)+'% ('+point.y+' blocks)'
+			'</td></tr>'
+	}, header) + 
+	'<tr><td>' + 
+	'<span>\u25CF </span><span style="font-weight:bold;">Total:</span></td><td>' + total + ' blocks'
+	'</td></tr>' +
+	'</table>'
+}`,
 		Series: []*types.GenericChartDataSeries{
 			{
-				Name: "Proposed",
-				Data: dailyProposedBlocks,
+				Name:  "Proposed",
+				Color: "#90ed7d",
+				Data:  dailyProposedBlocks,
 			},
 			{
-				Name: "Missed",
-				Data: dailyMissedBlocks,
+				Name:  "Missed",
+				Color: "#f7a35c",
+				Data:  dailyMissedBlocks,
 			},
 			{
-				Name: "Orphaned",
-				Data: dailyOrphanedBlocks,
+				Name:  "Orphaned",
+				Color: "#adadad",
+				Data:  dailyOrphanedBlocks,
 			},
 		},
 	}
@@ -433,9 +470,9 @@ func inclusionDistanceChartData() (*types.GenericChartData, error) {
 
 	err := db.DB.Select(&rows, `
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
-		from attestation_assignments a
+		from attestation_assignments_p a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.epoch > $1 and a.inclusionslot > 0
+		where a.week >= $1 / 1575 a.epoch > $1 and a.inclusionslot > 0
 		group by a.epoch
 		order by a.epoch asc`, epochOffset)
 	if err != nil {
@@ -488,9 +525,9 @@ func votingDistributionChartData() (*types.GenericChartData, error) {
 
 	err := db.DB.Select(&rows, `
 		select a.epoch, avg(a.inclusionslot - a.attesterslot) as inclusiondistance
-		from attestation_assignments a
+		from attestation_assignments_p a
 		inner join blocks b on b.slot = a.attesterslot and b.status = '1'
-		where a.inclusionslot > 0 and a.epoch > $1
+		where a.inclusionslot > 0 and a.epoch > $1and a.week >= $1 / 1575
 		group by a.epoch
 		order by a.epoch asc`, epochOffset)
 	if err != nil {
@@ -542,9 +579,10 @@ func averageDailyValidatorIncomeChartData() (*types.GenericChartData, error) {
 					vb.epoch,
 					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
 				from validators v
-					left join validator_balances vb
+					left join validator_balances_p vb
 						on vb.validatorindex = v.validatorindex
 						and vb.epoch = v.activationepoch
+						and vb.week = v.activationepoch / 1575
 				order by vb.epoch
 			),
 			extradeposits as (
@@ -637,9 +675,10 @@ func stakingRewardsChartData() (*types.GenericChartData, error) {
 					vb.epoch,
 					sum(coalesce(vb.balance,32e9)) over (order by v.activationepoch asc) as amount
 				from validators v
-					left join validator_balances vb
+					left join validator_balances_p vb
 						on vb.validatorindex = v.validatorindex
 						and vb.epoch = v.activationepoch
+						and vb.week = v.activationepoch / 1575
 				order by vb.epoch
 			),
 			extradeposits as (
@@ -894,7 +933,7 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 	defer tx.Rollback()
 
 	var currentEpoch uint64
-	err = tx.Get(&currentEpoch, "select max(epoch) from validator_balances")
+	err = tx.Get(&currentEpoch, "select max(epoch) from epochs")
 	if err != nil {
 		return nil, err
 	}
@@ -910,11 +949,11 @@ func balanceDistributionChartData() (*types.GenericChartData, error) {
 				select 
 					min(balance) as min,
 					max(balance) as max
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances) 
+				from validators 
 			),
 			balances as (
 				select balance
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances)
+				from validators
 			),
 			histogram as (
 				select 
@@ -977,7 +1016,7 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 	defer tx.Rollback()
 
 	var currentEpoch uint64
-	err = tx.Get(&currentEpoch, "select max(epoch) from validator_balances")
+	err = tx.Get(&currentEpoch, "select max(epoch) from epochs")
 	if err != nil {
 		return nil, err
 	}
@@ -993,11 +1032,11 @@ func effectiveBalanceDistributionChartData() (*types.GenericChartData, error) {
 				select 
 					min(effectivebalance) as min,
 					max(effectivebalance) as max
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances) 
+				from validators
 			),
 			balances as (
 				select effectivebalance
-				from validator_balances where epoch = (select max(epoch) as maxepoch from validator_balances)
+				from validators
 			),
 			histogram as (
 				select 
@@ -1412,45 +1451,218 @@ func depositsChartData() (*types.GenericChartData, error) {
 func depositsDistributionChartData() (*types.GenericChartData, error) {
 	var err error
 
-	rows := []struct {
-		Address []byte
-		Count   uint64
-	}{}
+	type drillSeriesData struct {
+		Name string      `json:"name"`
+		ID   string      `json:"id"`
+		Data [][2]string `json:"data"`
+	}
 
-	err = db.DB.Select(&rows, `
-		select from_address as address, count(*) as count
-		from (
-			select publickey, from_address
-			from eth1_deposits
-			where valid_signature = true
-			group by publickey, from_address
-			having sum(amount) >= 32e9
-		) a
-		group by from_address
-		order by count desc`)
-	if err != nil {
-		return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
+	type drilldown struct {
+		Series []drillSeriesData `json:"series"`
 	}
 
 	type seriesDataItem struct {
-		Name string `json:"name"`
-		Y    uint64 `json:"y"`
+		Name      string `json:"name"`
+		Address   string `json:"address"`
+		Y         uint64 `json:"y"`
+		Drilldown string `json:"drilldown"`
 	}
-	seriesData := []seriesDataItem{}
+
 	othersItem := seriesDataItem{
-		Name: "others",
-		Y:    0,
+		Name:      "Others",
+		Y:         0,
+		Drilldown: "Others",
 	}
-	for i := range rows {
-		if i > 20 {
-			othersItem.Y += rows[i].Count
-			continue
+
+	seriesData := []seriesDataItem{}
+	drillSeries := []drillSeriesData{}
+
+	if utils.Config.Chain.Network == "mainnet" {
+		rows := []struct {
+			Name  *string
+			Count uint64
+		}{}
+
+		err = db.DB.Select(&rows, `
+			select ss.name, b.count
+			from(select from_address as address, count(*) as count
+			from (
+				select publickey, from_address
+				from eth1_deposits
+				where valid_signature = true
+				group by publickey, from_address
+				having sum(amount) >= 32e9
+			) a
+			group by from_address
+			order by count desc) b
+			left JOIN stake_pools_stats ss ON Lower(ENCODE(b.address::bytea, 'hex')) like LOWER(ss.address)`)
+		if err != nil {
+			return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
 		}
-		seriesData = append(seriesData, seriesDataItem{
-			Name: string(utils.FormatEth1AddressString(rows[i].Address)),
-			Y:    rows[i].Count,
-		})
+		seriesData = []seriesDataItem{ // make sure this has the same order as "drillSeries" below
+			{
+				Name:      "Kraken",
+				Y:         0,
+				Drilldown: "Kraken",
+			},
+			{
+				Name:      "Binance",
+				Y:         0,
+				Drilldown: "Binance",
+			},
+			{
+				Name:      "Whales",
+				Y:         0,
+				Drilldown: "Whale",
+			},
+			{
+				Name:      "Huobi",
+				Y:         0,
+				Drilldown: "Huobi",
+			},
+			{
+				Name:      "Bitcoin suisse",
+				Y:         0,
+				Drilldown: "Bitcoin suisse",
+			},
+			{
+				Name:      "Staked.us",
+				Y:         0,
+				Drilldown: "Staked.us",
+			},
+			{
+				Name:      "Lido",
+				Y:         0,
+				Drilldown: "Lido",
+			},
+			{
+				Name:      "Stakefish",
+				Y:         0,
+				Drilldown: "Stakefish",
+			},
+			{
+				Name:      "Defi",
+				Y:         0,
+				Drilldown: "Defi",
+			},
+		}
+		drillSeries = []drillSeriesData{
+			{
+				Name: "Kraken",
+				ID:   "Kraken",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Binance",
+				ID:   "Binance",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Whale",
+				ID:   "Whale",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Huobi",
+				ID:   "Huobi",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Bitcoin suisse",
+				ID:   "Bitcoin suisse",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Staked.us",
+				ID:   "Staked.us",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Lido",
+				ID:   "Lido",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Stakefish",
+				ID:   "Stakefish",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Defi",
+				ID:   "Defi",
+				Data: [][2]string{},
+			},
+			{ // always must be the last
+				Name: "Others",
+				ID:   "Others",
+				Data: [][2]string{},
+			},
+		}
+
+		var unknownCount uint64 = 0
+		for i := range rows {
+			if rows[i].Name == nil {
+				unknownCount += rows[i].Count
+				continue
+			}
+			foundMatch := false
+			for j, seriesItem := range seriesData {
+				if strings.Contains(*rows[i].Name, seriesItem.Drilldown) {
+					seriesData[j].Y += rows[i].Count
+				}
+
+				if strings.Contains(*rows[i].Name, drillSeries[j].ID) {
+					drillSeries[j].Data = append(drillSeries[j].Data,
+						[2]string{*rows[i].Name, fmt.Sprintf("%d", rows[i].Count)})
+					foundMatch = true
+					break
+				}
+			}
+
+			if !foundMatch {
+				drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
+					[2]string{*rows[i].Name, fmt.Sprintf("%d", rows[i].Count)},
+				)
+				othersItem.Y += rows[i].Count
+			}
+
+		}
+		drillSeries[len(drillSeries)-1].Data = append(drillSeries[len(drillSeries)-1].Data,
+			[2]string{"Unknown", fmt.Sprintf("%d", unknownCount)})
+		othersItem.Y += unknownCount
+	} else {
+		rows := []struct {
+			Address []byte
+			Count   uint64
+		}{}
+
+		err = db.DB.Select(&rows, `
+			select from_address as address, count(*) as count
+			from (
+				select publickey, from_address
+				from eth1_deposits
+				where valid_signature = true
+				group by publickey, from_address
+				having sum(amount) >= 32e9
+			) a
+			group by from_address
+			order by count desc`)
+		if err != nil {
+			return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
+		}
+
+		for i := range rows {
+			if i > 20 {
+				othersItem.Y += rows[i].Count
+				continue
+			}
+			seriesData = append(seriesData, seriesDataItem{
+				Name: string(utils.FormatEth1AddressString(rows[i].Address)),
+				Y:    rows[i].Count,
+			})
+		}
 	}
+
 	if othersItem.Y > 0 {
 		seriesData = append(seriesData, othersItem)
 	}
@@ -1458,8 +1670,8 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 	chartData := &types.GenericChartData{
 		IsNormalChart:    true,
 		Type:             "pie",
-		Title:            "Deposits Distribution",
-		Subtitle:         "Deposits Distribution by ETH1-Addresses.",
+		Title:            "Eth1 Deposit Addresses",
+		Subtitle:         "Validator distribution by Eth1 deposit address.",
 		TooltipFormatter: `function(){ return '<b>'+this.point.name+'</b><br\>Percentage: '+this.point.percentage.toFixed(2)+'%<br\>Validators: '+this.point.y }`,
 		PlotOptionsPie: `{
 			borderWidth: 1,
@@ -1467,21 +1679,21 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			dataLabels: { 
 				enabled:true, 
 				formatter: function() { 
-					var name = this.point.name.length > 8 ? this.point.name.substring(0,8) : this.point.name;
-					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'…</b><span style="stroke:none; fill: var(--font-color)">: '+this.point.y+' ('+this.point.percentage.toFixed(2)+'%)</span></span>' 
+					var name = this.point.name.length > 20 ? this.point.name.substring(0,20)+'...' : this.point.name;
+					return '<span style="stroke:none; fill: var(--font-color)"><b style="stroke:none; fill: var(--font-color)">'+name+'</b></span>' 
 				} 
 			} 
 		}`,
 		PlotOptionsSeriesCursor: "pointer",
-		PlotOptionsSeriesEventsClick: `function(event){ 
-			if (event.point.name == 'others') { window.location.href = '/validators/eth1deposits' }
-			else { window.location.href = '/validators/eth1deposits?q='+encodeURIComponent(event.point.name) } }`,
 		Series: []*types.GenericChartDataSeries{
 			{
 				Name: "Deposits Distribution",
 				Type: "pie",
 				Data: seriesData,
 			},
+		},
+		Drilldown: drilldown{
+			Series: drillSeries,
 		},
 	}
 

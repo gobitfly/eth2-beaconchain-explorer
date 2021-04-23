@@ -2,14 +2,10 @@ package handlers
 
 import (
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
-	"fmt"
 	"html/template"
 	"net/http"
-	"time"
 )
 
 var stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
@@ -19,7 +15,7 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 
 	calculatorPageData := types.StakingCalculatorPageData{}
 
-	total, err := db.GetTotalEligableEther()
+	total, err := db.GetTotalEligibleEther()
 	if err != nil {
 		logger.WithError(err).Error("error getting total staked ether")
 		http.Error(w, "Internal server error", 503)
@@ -29,30 +25,9 @@ func StakingCalculator(w http.ResponseWriter, r *http.Request) {
 	calculatorPageData.TotalStaked = total
 
 	w.Header().Set("Content-Type", "text/html")
-	stakingCalculatorTemplate = template.Must(template.New("calculator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Staking calculator - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/calculator",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "stats",
-		Data:                  calculatorPageData,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+
+	data := InitPageData(w, r, "stats", "/calculator", "Staking calculator")
+	data.Data = calculatorPageData
 
 	// stakingCalculatorTemplate = template.Must(template.New("staking_estimator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/calculator.html"))
 	err = stakingCalculatorTemplate.ExecuteTemplate(w, "layout", data)

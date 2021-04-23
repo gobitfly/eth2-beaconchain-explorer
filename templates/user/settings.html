@@ -1,22 +1,25 @@
 {{ define "js"}}
-<script src="/js/payment.js" defer></script>
+<script src="/bundle/js/payment.js" defer></script>
+<script type="text/javascript" src="/bundle/js/bootstrap4-toggle.min.js"></script>
 <script>
     // form validations
     function checkPasswordsMatch(input) {
-    var pass = document.getElementById('password')
-    var pwConfirm = document.getElementById('pw-confirm')
-      if (pass.value !== input.value) {
-        input.setCustomValidity('Passwords do not match');
-      } else {
-        input.setCustomValidity('');
-      }
+        var pass = document.getElementById('password')
+        var pwConfirm = document.getElementById('pw-confirm')
+        if (pass.value !== input.value) {
+            input.setCustomValidity('Passwords do not match');
+        } else {
+            input.setCustomValidity('');
+        }
     }
+
     // false is edit true is save
     var buttonState = false;
+
     function toggleButton(button) {
         buttonState = !buttonState
         var emailInput = document.getElementById('email')
-        
+
         if (buttonState) {
             button.textContent = "Save"
             button.classList.remove('btn-outline-primary')
@@ -27,13 +30,67 @@
             document.getElementById('email-form').submit()
         }
     }
+
+    var debounceTimeouts = {}
+    function changePairSetting(box) {
+        box.classList.add('d-none')
+        if (box.previousSibling) box.previousSibling.classList.remove('d-none')
+
+        if (debounceTimeouts[box.id]) {
+            clearTimeout(debounceTimeouts[box.id])
+            debounceTimeouts[box.id] = null
+        } else {
+            debounceTimeouts[box.id] = setTimeout(function () {
+
+                var id = box.getAttribute('data-deviceid')
+                var event = box.getAttribute('data-event')
+                var value = box.checked
+                id = encodeURI(id)
+                event = encodeURI(event)
+
+                let csrfToken = document.getElementsByName("CsrfField")[0].value
+
+                debounceTimeouts[box.id] = null
+                let postData = new FormData();
+                postData.append("id", id);
+                postData.append(event, value);
+
+                // subscribe
+                fetch('/user/mobile/settings', {
+                    method: 'POST',
+                    headers: { "X-CSRF-Token": csrfToken },
+                    credentials: 'include',
+                    body: postData
+                }).then(function (response) {
+                    box.classList.remove('d-none')
+                    if (box.previousSibling) box.previousSibling.classList.add('d-none')
+
+                    if (response.status === 200) {
+                        // $('#subscriptions').DataTable().ajax.reload()
+
+                    } else {
+                        box.checked = false
+                        console.log('unexpected status', response.status)
+                    }
+                }).catch(function (err) {
+                    box.classList.remove('d-none')
+                    if (box.previousSibling) box.previousSibling.classList.add('d-none')
+
+                    console.log(err)
+                    box.checked = false
+                })
+            }, 300)
+        }
+    }
 </script>
 {{end}}
 
 {{ define "css" }}
+<link rel="stylesheet" type="text/css" href="/bundle/css/bootstrap4-toggle.min.css" />
 {{end}}
 
 {{ define "content"}}
+{{with .Data}}
 <div class="container mt-2">
 
     <div class="my-3">
@@ -50,26 +107,41 @@
     <div class="row ">
         <div class="col-xl-7 col-lg-7 col-md-10 col-sm-12 m-auto">
             {{if .Flashes}}
-                {{range $i, $flash := .Flashes}}
-                <div class="alert {{if contains $flash "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
-                        <div class="p-2">{{$flash | formatHTML}}</div>
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                {{end}}
+            {{range $i, $flash := .Flashes}}
+            <div class="alert {{if contains $flash "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
+                role="alert">
+                <div class="p-2">{{$flash | formatHTML}}</div>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            {{end}}
             {{end}}
             <div class="user__settings-container">
                 <!-- User Api Key -->
-                <div class="card my-3"> 
+                <div class="card my-3">
                     <div class="card-header justify-content-between d-flex align-items-center">
                         <h3 class="h5">
-                            Api Key 
+                            <span>Api Key</span> <span class="mx-1">|</span>
+                            <span style="font-size: 80%;" class="font-weight-light">
+                                {{if not .Subscription.Active}}
+                                Free Tier {{if .Subscription.SubscriptionID}}(waiting on payment){{end}}
+                                {{else}} 
+                                    {{if eqsp .Subscription.PriceID .Sapphire}} Sapphire <i style="color: #0f52ba"  class="fas fa-gem"></i> 
+                                    {{else}} 
+                                        {{if eqsp .Subscription.PriceID .Emerald}} Emerald <i style="color: #50c878;" class="fas fa-gem"></i> 
+                                        {{else}}
+                                            {{if eqsp .Subscription.PriceID .Diamond}} Diamond <i style="color: #b9f2ff" class="fas fa-gem"></i> {{end}}
+
+                                        {{end}}
+                                    {{end}}
+                                {{end}}
+                            </span>
                         </h3>
                         {{if .Subscription.SubscriptionID}}
                         <form class="manage-billing-form">
                             {{ .CsrfField }}
-                            <button class="btn btn-outline-primary">Manage Billing</button>
+                            <button class="btn btn-outline-primary">Manage Subscription</button>
                         </form>
                         {{else}}
                         <a href="/pricing" class="btn btn-outline-primary">Upgrade Plan</a>
@@ -77,7 +149,7 @@
                     </div>
                     <div class="card-body">
                         <div class="text-center">
-                        {{if .Subscription.ApiKey}} 
+                            {{if .Subscription.ApiKey}}
                             <div class="my-2">
                                 <span class="text-muted">
                                     Warning, everybody can access your account with this key. KEEP IT SAFE!
@@ -85,16 +157,19 @@
                             </div>
                             <div class="my-2">
                                 <span style="font-weight:bold">
-                                    <i class="fas fa-key"></i> 
-                                </span> 
+                                    <i class="fas fa-key"></i>
+                                </span>
                                 <span style="font-size: 90%; user-select: all;">
-                                    {{.Subscription.ApiKey}} 
-                                    <a style="color: #fff" id="copy-apiKey" data-toggle="tooltip" data-original-title="Copy API Key" data-clipboard-text="{{.Subscription.ApiKey}}" class="btn btn-primary mb-1 btn-icon-inside">
+                                    {{.Subscription.ApiKey}}
+                                    <a style="color: #fff" id="copy-apiKey" data-toggle="tooltip"
+                                        data-original-title="Copy API Key"
+                                        data-clipboard-text="{{.Subscription.ApiKey}}"
+                                        class="btn btn-primary mb-1 btn-icon-inside">
                                         <span class="fa fa-copy icon-inside"></span>
                                     </a>
-                                </span> 
+                                </span>
                             </div>
-                        {{else}}
+                            {{else}}
                             <div class="my-2">
                                 <span class="text-muted">
                                     No API key found for this account.
@@ -103,14 +178,14 @@
                             <div class="my-2">
                                 <form action="/user/generateKey" method="POST">
                                     {{ .CsrfField }}
-                                    <button type="submit" id="generate-api-key" class="btn btn-outline-primary">Generate Key</a>
+                                    <button type="submit" id="generate-api-key" class="btn btn-outline-primary">Generate
+                                        Key</a>
                                 </form>
                             </div>
-                        {{end}}
+                            {{end}}
                         </div>
                     </div>
                 </div>
-                
 
 
                 <!-- Update Email -->
@@ -124,93 +199,148 @@
                             <div class="form-group">
                                 <label for="email">Email address</label>
                                 <div class="input-group">
-                                <input value="{{.Subscription.Email}}" disabled inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email">
-                                <div class="input-group-append">
-                                    <button id="email-edit-button" onclick="toggleButton(this)" type="button" class="btn btn-outline-primary">Edit</button>
+                                    <input value="{{.Subscription.Email}}" disabled inputmode="email" type="text"
+                                        maxlength="100" class="form-control" autocomplete="email" id="email"
+                                        name="email">
+                                    <div class="input-group-append">
+                                        <button id="email-edit-button" onclick="toggleButton(this)" type="button"
+                                            class="btn btn-outline-primary">Edit
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        </form>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Update Password -->
-                <div class="card my-3">
-                    <div class="card-header">
-                        <h3 class="h5">Update Password</h3>
-                    </div>
-                    <div class="card-body">
-                        <form action="settings/password" method="post">
-                            {{ .CsrfField }}
-                            <input value="{{.Subscription.Email}}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" name="email">
-                            <div class="form-group">
-                                <label for="old-password">Old Password</label>
-                                <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="current-password" id="old-password" name="old-password">
-                            </div>
-                            <div class="form-group">
-                                <label for="password">New Password</label>
-                                <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="password" name="password">
-                            </div>
-                            <div class="form-group">
-                                <label for="pw-confirm">Confirm New Password</label>
-                                <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm" name="pw-confirm">
-                            </div>
-                            <button type="submit" class="btn btn-outline-primary float-right">Save Changes</button>
                         </form>
                     </div>
                 </div>
+            </div>
 
-                
-                
-                <!-- Delete Account -->
-                <div class="card my-3"> 
-                    <div class="card-header">
-                        <h3 class="h5">Delete Account <i class="fas fa-exclamation-triangle text-warning"></i></h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <span>
-                                Warning, you will not be able to recover your account!
-                            </span>
-                            <!-- Button trigger modal -->
-                            <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#deleteAccountModal">
-                                Delete
-                            </button>
+            <!-- Update Password -->
+            <div class="card my-3">
+                <div class="card-header">
+                    <h3 class="h5">Update Password</h3>
+                </div>
+                <div class="card-body">
+                    <form action="settings/password" method="post">
+                        {{ .CsrfField }}
+                        <input value="{{.Subscription.Email}}" inputmode="email" type="text" maxlength="100"
+                            class="form-control visually-hidden" autocomplete="email" name="email">
+                        <div class="form-group">
+                            <label for="old-password">Old Password</label>
+                            <input required type="password" minlength="5" maxlength="256" class="form-control"
+                                autocomplete="current-password" id="old-password" name="old-password">
                         </div>
+                        <div class="form-group">
+                            <label for="password">New Password</label>
+                            <input required type="password" minlength="5" maxlength="256" class="form-control"
+                                autocomplete="new-password" id="password" name="password">
+                        </div>
+                        <div class="form-group">
+                            <label for="pw-confirm">Confirm New Password</label>
+                            <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5"
+                                maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm"
+                                name="pw-confirm">
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary float-right">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Active linked devices -->
+            {{ $pairedDevicesLen := len .PairedDevices }}
+            {{ $lastPairedElement := sub $pairedDevicesLen 1 }}
+            
+            {{ if gt $pairedDevicesLen 0 }}
+            <div class="card my-3">
+                <div class="card-header">
+                    <h3 class="h5">Paired devices</h3>
+                </div>
+                <div class="card-body">
+                    <div>
+                        {{ range $key, $value := .PairedDevices }}
+                        <h5>Device: {{ $value.DeviceName }}</h5>
+                        <h6>Linked App: {{ $value.AppName }}</h6>
+                        <br />
+                        <span style="margin-left:4%;">
+                            <input id="notify_enabled_{{ $value.ID }}" data-event="notify_enabled"
+                                data-deviceid="{{ $value.ID }}" onchange="changePairSetting(this)" class="mr-2"
+                                {{ if not $value.Active }} disabled {{end}} {{ if $value.NotifyEnabled }} checked
+                                {{end}} type="checkbox" data-toggle="toggle" data-on="&shy;" data-off="&shy;"
+                                data-size="xs">
+                            Mobile notifications
+                        </span>
+                        <br />
+                        <br />
+                        <span style="margin-left:4%;">
+                            <input id="active_{{ $value.ID }}" data-event="active" data-deviceid="{{ $value.ID }}"
+                                onchange="changePairSetting(this)" class="mr-2" {{ if $value.Active }} checked {{end}}
+                                type="checkbox" data-toggle="toggle" data-on="&shy;" data-off="&shy;" data-size="xs">
+                            Grant account access (required)
+                        </span>
+                        <br /><br />
+                        <span>Paired:</span><i> {{ formatTimestampTs $value.CreatedAt }}</i>
+
+                        {{ if lt $key $lastPairedElement }}
+                        <hr style="width: 98%; margin-top:28px;margin-bottom:28px;" />
+                        {{ end }}
+                        {{ end }}
                     </div>
                 </div>
+            </div>
+            {{end}}
+
+            <!-- Delete Account -->
+            <div class="card my-3">
+                <div class="card-header">
+                    <h3 class="h5">Delete Account <i class="fas fa-exclamation-triangle text-warning"></i></h3>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <span>
+                            Warning, you will not be able to recover your account!
+                        </span>
+                        <!-- Button trigger modal -->
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal"
+                            data-target="#deleteAccountModal">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
 
-    
     <!-- Modal -->
-    <div class="modal fade" id="deleteAccountModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="deleteAccountLabel" aria-hidden="true">
+    <div class="modal fade" id="deleteAccountModal" data-backdrop="static" data-keyboard="false" tabindex="-1"
+        role="dialog" aria-labelledby="deleteAccountLabel" aria-hidden="true">
         <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-            <h5 class="modal-title" id="deleteAccountLabel">Please Confirm Account Deletion</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteAccountLabel">Please Confirm Account Deletion</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <i class="text-warning fas fa-exclamation-triangle"></i> Warning, you will not be able to
+                    recover your account!
+                </div>
+                <div class="modal-footer">
+                    <form id="delete-form" action="settings/delete" method="POST">
+                        {{ .CsrfField }}
+                        <button id="delete-button" type="submit" class="btn btn-outline-danger btn-sm"
+                            data-dismiss="modal">Delete
+                        </button>
+                    </form>
+                </div>
+                <script>
+                    document.getElementById('delete-button').addEventListener('click', function (event) {
+                        event.preventDefault()
+                        document.getElementById('delete-form').submit()
+                    })
+                </script>
             </div>
-            <div class="modal-body">
-                <i class="text-warning fas fa-exclamation-triangle"></i> Warning, you will not be able to recover your account!
-            </div>
-            <div class="modal-footer">
-                <form id="delete-form" action="settings/delete" method="POST">
-                    {{ .CsrfField }}
-                    <button id="delete-button" type="submit" class="btn btn-outline-danger btn-sm" data-dismiss="modal">Delete</button>
-                </form>
-            </div>
-            <script>
-                document.getElementById('delete-button').addEventListener('click', function(event) {
-                    event.preventDefault()
-                    document.getElementById('delete-form').submit()
-                })
-            </script>
-        </div>
         </div>
     </div>
 </div>
+{{end}}
 {{end}}

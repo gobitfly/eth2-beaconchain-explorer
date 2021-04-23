@@ -2,209 +2,218 @@
 {{end}}
 
 {{ define "css"}}
-<style>
-    .epoch__container {
-        position: relative;
-        display: flex;
-        padding: 0 1rem;
-        justify-content: space-between;
-        align-items: center;
-        flex-direction: row !important;
-        padding: .5rem 1rem;
-        margin: 1rem auto;
-    }
+    <style>
+        .epoch__container {
+            position: relative;
+            display: flex;
+            padding: 0 1rem;
+            justify-content: space-between;
+            align-items: center;
+            flex-direction: row !important;
+            padding: .5rem 1rem;
+            margin: 1rem auto;
+        }
 
-    .epoch__container>a,
-    .epoch__container>div {
-        position: relative;
-        margin: 0 1rem;
-        border-radius: 5px;
-        box-shadow: inset 1px 1px 2px var(--shadow-light),
+        .epoch__container > a,
+        .epoch__container > div {
+            position: relative;
+            margin: 0 1rem;
+            border-radius: 5px;
+            box-shadow: inset 1px 1px 2px var(--shadow-light),
             inset -1px -1px 2px var(--shadow-light);
-        flex: 1 1 30px;
-        max-width: 80px;
-    }
-
-    .epoch__container>a:hover {
-        transition: background .25s ease;
-        background: var(--linear-gradient) !important;
-    }
-
-    .epoch__container>a>div,
-    .epoch__container>div {
-        display: flex;
-        justify-content: center;
-        flex-direction: column;
-        align-items: center;
-        color: var(--font-color);
-    }
-
-    .epoch__container img {
-        width: 30px;
-        height: 30px;
-    }
-
-    .epoch__current {
-        font-size: 1.2rem;
-        border-radius: 5px;
-        background: var(--linear-gradient);
-    }
-
-    .epoch__current img {
-        width: 40px !important;
-        height: 40px !important;
-    }
-
-    .epoch__next .epoch__next-loading {
-        position: relative;
-    }
-
-    .epoch__next-loading::after {
-        position: absolute;
-        content: '...';
-        animation: dots 3s linear infinite;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-
-    @keyframes dots {
-        0% {
-            content: "..";
+            flex: 1 1 30px;
+            max-width: 80px;
         }
-        20% {
-            content: ".";
+
+        .epoch__container > a:hover {
+            transition: background .25s ease;
+            background: var(--linear-gradient) !important;
         }
-        40% {
-            content: ""
+
+        .epoch__container > a > div,
+        .epoch__container > div {
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            color: var(--font-color);
         }
-        60% {
-            content: "."
+
+        .epoch__container img {
+            width: 30px;
+            height: 30px;
         }
-        80% {
-            content: ".."
+
+        .epoch__current {
+            font-size: 1.2rem;
+            border-radius: 5px;
+            background: var(--linear-gradient);
         }
-        100% {
-            content: "..."
+
+        .epoch__current img {
+            width: 40px !important;
+            height: 40px !important;
         }
-    }
-</style>
+
+        .epoch__next .epoch__next-loading {
+            position: relative;
+        }
+
+        .epoch__next-loading::after {
+            position: absolute;
+            content: '...';
+            animation: dots 3s linear infinite;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        @keyframes dots {
+            0% {
+                content: "..";
+            }
+            20% {
+                content: ".";
+            }
+            40% {
+                content: ""
+            }
+            60% {
+                content: "."
+            }
+            80% {
+                content: ".."
+            }
+            100% {
+                content: "..."
+            }
+        }
+    </style>
 {{end}}
 
 {{ define "content"}}
-<div class="container mt-2">
+    {{with .Data}}
+        <div class="container mt-2">
 
-<div class="my-3">
-    <div class="d-md-flex py-2 justify-content-md-between">
-        <h1 class="h4 mb-1 mb-md-0">
-            <!-- {{if or (gt .PreviousEpoch 0) (eq .Epoch 1)}}
+            <div class="my-3">
+                <div class="d-md-flex py-2 justify-content-md-between">
+                    <h1 class="h4 mb-1 mb-md-0">
+                        <!-- {{if or (gt .PreviousEpoch 0) (eq .Epoch 1)}}
                     <a href="/epoch/{{.PreviousEpoch}}"><i class="fa fa-chevron-left"></i></a>
                 {{end}} -->
-            <span class="ml-1 mr-1"><i class="fas fa-history mr-2"></i>Epoch Details</span>
-            <!-- {{if gt .NextEpoch 0}}
+                        <span class="ml-1 mr-1"><i class="fas fa-history mr-2"></i>Epoch Details</span>
+                        <!-- {{if gt .NextEpoch 0}}
                     <a href="/epoch/{{.NextEpoch}}"><i class="fa fa-chevron-right"></i></a>
                 {{end}} -->
-        </h1>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                <li class="breadcrumb-item"><a href="/epochs" title="Epochs">Epochs</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Epoch Details</li>
-            </ol>
-        </nav>
-    </div>
-</div>
-    <div class="epoch__container card card-header">
-        {{if or (gt .PreviousEpoch 0) (eq .Epoch 1)}}
-        <a href="/epoch/{{.PreviousEpoch}}">
-            <div class="epoch__pervious">
-                <img src="/img/apps.png" alt="">
-                <span>{{.PreviousEpoch}}</span>
-            </div>
-        </a>
-        <i class="fas fa-arrow-left"></i>
-        {{else}}
-        <a style="visibility: hidden;" href="/epoch/{{.PreviousEpoch}}">
-            <div class="epoch__pervious">
-                <img src="/img/apps.png" alt="">
-                <span>{{.PreviousEpoch}}</span>
-            </div>
-        </a>
-        <i style="visibility: hidden;" class="fas fa-arrow-left"></i>
-        {{end}}
-        <div class="epoch__current">
-            <img src="/img/apps.png" alt="">
-            <span>{{.Epoch}}</span>
-        </div>
-        <i class="fas fa-arrow-right"></i>
-        {{if gt .NextEpoch 0}}
-        <a href="/epoch/{{.NextEpoch}}">
-            <div class="epoch__next">
-                <img src="/img/apps.png" alt="">
-                <span>{{.NextEpoch}}</span>
-            </div>
-        </a>
-        {{else}}
-        <div class="epoch__next">
-            <img src="/img/apps.png" alt="">
-            <span class="epoch__next-loading">&nbsp;</span>
-        </div>
-        {{end}}
-    </div>
-<div class="card">
-    <div class="card-body px-0 py-1">
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-3">Epoch:</div>
-            <div class="col-md-9">{{.Epoch}}</div>
-        </div>
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-3">Finalized:</div>
-            <div class="col-md-9">
-                {{if .Finalized}}
-                <span class="badge bg-success text-white">Yes</span>
-                {{else}}
-                <span class="badge bg-warning text-dark">No</span>
-                {{end}}
-            </div>
-        </div>
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-3">Time:</div>
-            <div class="col-md-9"><span aria-ethereum-date="{{.Ts.Unix}}">{{.Ts}}</span> (<span aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW"></span>)
-            </div>
-        </div>
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-3">
-                <span class=>Attestations:</span>
-            </div>
-            <div class="col-md-9">{{.AttestationsCount}}</div>
-        </div>
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-3">Deposits:</div>
-            <div class="col-md-9">{{.DepositsCount}}</div>
-        </div>
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-3">Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span>
-                / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span>:
-            </div>
-            <div class="col-md-9">{{.ProposerSlashingsCount}} / {{.AttesterSlashingsCount}}</div>
-        </div>
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-3">Voting Participation:</div>
-            <div class="col-md-9">
-                <div>{{.VotedEther | formatBalance}} of {{.EligibleEther | formatBalance}}<small class="text-muted ml-1">({{.GlobalParticipationRate | formatPercentage}}%)</small></div>
-                <div class="progress" style="height:5px; width: 250px;">
-                    <div class="progress-bar" role="progressbar" style="width: {{.GlobalParticipationRate | formatPercentage}}%;" aria-valuenow="{{.GlobalParticipationRate | formatPercentage}}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                            <li class="breadcrumb-item"><a href="/epochs" title="Epochs">Epochs</a></li>
+                            <li class="breadcrumb-item active" aria-current="page">Epoch Details</li>
+                        </ol>
+                    </nav>
                 </div>
             </div>
-        </div>
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-3">Validators:</div>
-            <div class="col-md-9">{{.ValidatorsCount}}</div>
-        </div>
-        <div class="row border-bottom p-3 mx-0">
-            <div class="col-md-3">Avg. Validator Balance:</div>
-            <div class="col-md-9">{{.AverageValidatorBalance | formatBalance}}</div>
-        </div>
-        <span class="row p-3 mx-0 collapsed">
+            <div class="epoch__container card card-header">
+                {{if or (gt .PreviousEpoch 0) (eq .Epoch 1)}}
+                    <a href="/epoch/{{.PreviousEpoch}}">
+                        <div class="epoch__pervious">
+                            <img src="/img/apps.png" alt="">
+                            <span>{{.PreviousEpoch}}</span>
+                        </div>
+                    </a>
+                    <i class="fas fa-arrow-left"></i>
+                {{else}}
+                    <a style="visibility: hidden;" href="/epoch/{{.PreviousEpoch}}">
+                        <div class="epoch__pervious">
+                            <img src="/img/apps.png" alt="">
+                            <span>{{.PreviousEpoch}}</span>
+                        </div>
+                    </a>
+                    <i style="visibility: hidden;" class="fas fa-arrow-left"></i>
+                {{end}}
+                <div class="epoch__current">
+                    <img src="/img/apps.png" alt="">
+                    <span>{{.Epoch}}</span>
+                </div>
+                <i class="fas fa-arrow-right"></i>
+                {{if gt .NextEpoch 0}}
+                    <a href="/epoch/{{.NextEpoch}}">
+                        <div class="epoch__next">
+                            <img src="/img/apps.png" alt="">
+                            <span>{{.NextEpoch}}</span>
+                        </div>
+                    </a>
+                {{else}}
+                    <div class="epoch__next">
+                        <img src="/img/apps.png" alt="">
+                        <span class="epoch__next-loading">&nbsp;</span>
+                    </div>
+                {{end}}
+            </div>
+            <div class="card">
+                <div class="card-body px-0 py-1">
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Epoch:</div>
+                        <div class="col-md-9">{{.Epoch}}</div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Finalized:</div>
+                        <div class="col-md-9">
+                            {{if .Finalized}}
+                                <span class="badge bg-success text-white">Yes</span>
+                            {{else}}
+                                <span class="badge bg-warning text-dark">No</span>
+                            {{end}}
+                        </div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Time:</div>
+                        <div class="col-md-9"><span aria-ethereum-date="{{.Ts.Unix}}">{{.Ts}}</span> (<span
+                                    aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW"></span>)
+                        </div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">
+                            <span class=>Attestations:</span>
+                        </div>
+                        <div class="col-md-9">{{.AttestationsCount}}</div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Deposits:</div>
+                        <div class="col-md-9">{{.DepositsCount}}</div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Slashings <span data-toggle="tooltip" data-placement="top"
+                                                              title="Proposers">P</span>
+                            / <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span>:
+                        </div>
+                        <div class="col-md-9">{{.ProposerSlashingsCount}} / {{.AttesterSlashingsCount}}</div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Voting Participation:</div>
+                        <div class="col-md-9">
+                            <div>{{formatBalance .VotedEther $.Currency}} of {{formatBalance .EligibleEther $.Currency}}
+                                <small
+                                        class="text-muted ml-1">({{formatPercentageWithPrecision .GlobalParticipationRate 1}}
+                                    %)</small></div>
+                            <div class="progress" style="height:5px; width: 250px;">
+                                <div class="progress-bar" role="progressbar"
+                                     style="width: {{.GlobalParticipationRate | formatPercentage}}%;"
+                                     aria-valuenow="{{.GlobalParticipationRate | formatPercentage}}" aria-valuemin="0"
+                                     aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Validators:</div>
+                        <div class="col-md-9">{{.ValidatorsCount}}</div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Avg. Validator Balance:</div>
+                        <div class="col-md-9">{{formatBalance .AverageValidatorBalance $.Currency }}</div>
+                    </div>
+                    <span class="row p-3 mx-0 collapsed">
             <div style="position:relative" class="col-md-3">Slots: </div>
             <div class="col-md-9"></i> {{.BlocksCount}}
                 <small class="text-muted">
@@ -212,51 +221,55 @@
                 </small>
             </div>
         </span>
-    </div>
-</div>
+                </div>
+            </div>
 
-<div id="epoch-blocks" class="card my-3 py-0 collapse show">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Slot</th>
-                        <th>Status</th>
-                        <th>Time</th>
-                        <th>Proposer</th>
-                        <th>Root Hash</th>
-                        <th>Attestations</th>
-                        <th>Deposits</th>
-                        <th>Slashings <span data-toggle="tooltip" data-placement="top" title="Proposers">P</span> /
-                            <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
-                        <th>Exits</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{range .Blocks}}
-                    <tr>
-                        <td><a href="/block/{{.Slot}}">{{.Slot}}</a></td>
-                        <td class="text-capitalize">{{formatBlockStatus .Status}}</td>
-                        <td aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
-                        <td><a href="/validator/{{.Proposer}}">{{.Proposer}}</a></td>
-                        <td class="text-monospace">
-                            {{ if eq .Status 1}}
-                            <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}...</a>
-                            {{else}}
-                            N/A
+            <div id="epoch-blocks" class="card my-3 py-0 collapse show">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th>Slot</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                                <th>Proposer</th>
+                                <th>Root Hash</th>
+                                <th>Attestations</th>
+                                <th>Deposits</th>
+                                <th>Slashings <span data-toggle="tooltip" data-placement="top"
+                                                    title="Proposers">P</span> /
+                                    <span data-toggle="tooltip" data-placement="top" title="Attesters">A</span></th>
+                                <th>Exits</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {{range .Blocks}}
+                                <tr>
+                                    <td><a href="/block/{{.Slot}}">{{.Slot}}</a></td>
+                                    <td class="text-capitalize">{{formatBlockStatus .Status}}</td>
+                                    <td aria-ethereum-date="{{.Ts.Unix}}"
+                                        aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
+                                    <td><a href="/validator/{{.Proposer}}">{{.Proposer}}</a></td>
+                                    <td class="text-monospace">
+                                        {{ if eq .Status 1}}
+                                            <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}
+                                                ...</a>
+                                        {{else}}
+                                            N/A
+                                        {{end}}
+                                    </td>
+                                    <td>{{.Attestations}}</td>
+                                    <td>{{.Deposits}}</td>
+                                    <td>{{.Proposerslashings}} / {{.Attesterslashings}}</td>
+                                    <td>{{.Exits}}</td>
+                                </tr>
                             {{end}}
-                        </td>
-                        <td>{{.Attestations}}</td>
-                        <td>{{.Deposits}}</td>
-                        <td>{{.Proposerslashings}} / {{.Attesterslashings}}</td>
-                        <td>{{.Exits}}</td>
-                    </tr>
-                    {{end}}
-                </tbody>
-            </table>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
-</div>
+    {{end}}
 {{end}}

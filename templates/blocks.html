@@ -1,91 +1,100 @@
 {{ define "js"}}
-<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
-<script type="text/javascript" src="/js/datatable_input.js"></script>
+    <script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+    <script type="text/javascript" src="/bundle/js/datatable_input.js"></script>
 
-<script>
-	$(document).ready(function () {
-		var tblOpts = {
-			processing: true,
-			serverSide: true,
-			ordering: false,
-			searching: true,
-			ajax: '/blocks/data',
-			pageLength: 10,
-			pagingType: 'input',
-			language: {
-				searchPlaceholder: 'Block Number / Graffiti / Proposer Name',
-				search: '',
-				paginate: {
-					previous: "<",
-					next: ">",
-				}
-			},
-			preDrawCallback: function () {
-				// this does not always work.. not sure how to solve the staying tooltip
-				try {
-					$('#blocks').find('[data-toggle="tooltip"]').tooltip('dispose')
-				} catch (e) { }
-			},
-			drawCallback: function (settings) {
-				formatTimestamps()
-				$('#blocks').find('[data-toggle="tooltip"]').tooltip()
-			},
-		}
-		var usp = new URLSearchParams(window.location.search)
-		var q = usp.get('q')
-		if (q) {
-			tblOpts.search = {"search": q}
-		}
-		var tbl = $('#blocks').DataTable(tblOpts)
-		$("#blocks_filter > label > input").on('input', function (ev) {
-			if (ev && ev.target && ev.target.value) {
-				var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
-				window.history.replaceState(null, 'Blocks', newUrl)
-			} else {
-				window.history.replaceState(null, 'Blocks', window.location.pathname)
-			}
-		})
-	})
-</script>
-{{end}} {{ define "css"}}
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css" />
-{{end}} {{ define "content"}}
-<div class="container mt-2">
-	<div class="d-md-flex py-2 justify-content-md-between">
-		<h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Blocks</h1>
-		<nav aria-label="breadcrumb">
-			<ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-				<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-				<li class="breadcrumb-item active" aria-current="page">Blocks</li>
-			</ol>
-		</nav>
-	</div>
-	<div class="card">
-		<div class="card-body px-0 py-3">
-			<div class="table-responsive px-0 py-1">
-				<table class="table" id="blocks">
-					<thead>
-						<tr>
-							<th>Epoch</th>
-							<th>Slot</th>
-							<th>Status</th>
-							<th>Time</th>
-							<th>Proposer</th>
-							<th data-toggle="tooltip" data-placement="top" title="Attestations included in slot">Att</th>
-							<th data-toggle="tooltip" data-placement="top" title="Deposits included in block">Dep</th>
-							<th data-toggle="tooltip" data-placement="top" title="Slashings Proposer/Attester">S- <span>P</span>/<span>A</span></th>
-							<th>Exits</th>
-							<th>Votes</th>
-							<th>Graffiti</th>
-						</tr>
-					</thead>
-					<tbody> </tbody>
-				</table>
-			</div>
-		</div>
-	</div>
-	<div class="d-flex justify-content-between py-2">
-		<ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-	</div>
-</div>
+    <script>
+        $(document).ready(function () {
+            var tblOpts = {
+                processing: true,
+                serverSide: true,
+                ordering: false,
+                searching: true,
+                ajax: '/blocks/data',
+                pageLength: 50,
+                pagingType: 'input',
+                language: {
+                    searchPlaceholder: 'Block Number / Graffiti / Proposer Name',
+                    search: '',
+                    paginate: {
+                        previous: "<",
+                        next: ">",
+                    }
+                },
+                preDrawCallback: function () {
+                    // this does not always work.. not sure how to solve the staying tooltip
+                    try {
+                        $('#blocks').find('[data-toggle="tooltip"]').tooltip('dispose')
+                    } catch (e) {
+                    }
+                },
+                drawCallback: function (settings) {
+                    formatTimestamps()
+                    $('#blocks').find('[data-toggle="tooltip"]').tooltip()
+                },
+            }
+            var usp = new URLSearchParams(window.location.search)
+            var q = usp.get('q')
+            if (q) {
+                tblOpts.search = {"search": q}
+            }
+            var tbl = $('#blocks').DataTable(tblOpts)
+            $("#blocks_filter > label > input").on('input', function (ev) {
+                if (ev && ev.target && ev.target.value) {
+                    var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+                    window.history.replaceState(null, 'Blocks', newUrl)
+                } else {
+                    window.history.replaceState(null, 'Blocks', window.location.pathname)
+                }
+            })
+        })
+    </script>
+{{end}}
+{{ define "css"}}
+    <link rel="stylesheet" type="text/css" href="/bundle/css/datatables.min.css"/>
+{{end}}
+{{ define "content"}}
+    {{with .Data}}
+        <div class="container mt-2">
+            <div class="d-md-flex py-2 justify-content-md-between">
+                <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Blocks</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Blocks</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="card">
+                <div class="card-body px-0 py-3">
+                    <div class="table-responsive px-0 py-1">
+                        <table class="table" id="blocks">
+                            <thead>
+                            <tr>
+                                <th>Epoch</th>
+                                <th>Slot</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                                <th>Proposer</th>
+                                <th data-toggle="tooltip" data-placement="top" title="Attestations included in slot">Att
+                                </th>
+                                <th data-toggle="tooltip" data-placement="top" title="Deposits included in block">Dep
+                                </th>
+                                <th data-toggle="tooltip" data-placement="top" title="Slashings Proposer/Attester">S-
+                                    <span>P</span>/<span>A</span>
+                                </th>
+                                <th>Exits</th>
+                                <th>Votes</th>
+                                <th>Graffiti</th>
+                            </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between py-2">
+                <ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
+            </div>
+        </div>
+    {{end}}
 {{end}}

@@ -29,6 +29,7 @@ type Config struct {
 	} `yaml:"chain"`
 	Indexer struct {
 		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
+		FixCanonOnStartup           bool `yaml:"fixCanonOnStartup" envconfig:"INDEXER_FIX_CANON_ON_STARTUP"`
 		FullIndexOnStartup          bool `yaml:"fullIndexOnStartup" envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`
 		IndexMissingEpochsOnStartup bool `yaml:"indexMissingEpochsOnStartup" envconfig:"INDEXER_MISSING_INDEX_ON_STARTUP"`
 		CheckAllBlocksOnStartup     bool `yaml:"checkAllBlocksOnStartup" envconfig:"INDEXER_CHECK_ALL_BLOCKS_ON_STARTUP"`
@@ -51,11 +52,17 @@ type Config struct {
 		} `yaml:"onetimeexport"`
 	} `yaml:"indexer"`
 	Frontend struct {
-		Kong         string `yaml:"kong" envconfig:"FRONTEND_KONG"`
-		OnlyAPI      bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
-		CsrfAuthKey  string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRFAUTHKEY`
-		Enabled      bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
+		Kong               string `yaml:"kong" envconfig:"FRONTEND_KONG"`
+		OnlyAPI            bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
+		CsrfAuthKey        string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY`
+		CsrfInsecure       bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`
+		DisableCharts      bool   `yaml:"disableCharts" envconfig:"disableCharts"`
+		RecaptchaSiteKey   string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
+		RecaptchaSecretKey string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
+		Enabled            bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
+		// Imprint is deprecated place imprint file into the legal directory
 		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
+		LegalDir     string `yaml:"legalDir" envconfig:"FRONTEND_LEGAL"`
 		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
 		SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
 		SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
@@ -70,9 +77,6 @@ type Config struct {
 			Host     string `yaml:"host" envconfig:"FRONTEND_DB_HOST"`
 			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
 		} `yaml:"database"`
-		Notifications struct {
-			Enabled bool `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
-		} `yaml:"notifications"`
 		Stripe struct {
 			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
 			PublicKey string `yaml:"publicKey" envconfig:"FRONTEND_STRIPE_PUBLIC_KEY"`
@@ -99,8 +103,20 @@ type Config struct {
 				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
 			} `yaml:"mailgun"`
 		} `yaml:"mail"`
-		GATag string `yaml:"gatag"  envconfig:"GATAG"`
+		GATag      string `yaml:"gatag"  envconfig:"GATAG"`
+		ShowDonors struct {
+			Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
+			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
+		} `yaml:"showDonors"`
 	} `yaml:"frontend"`
+	Metrics struct {
+		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
+		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
+	} `yaml:"metrics"`
+	Notifications struct {
+		Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+		FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
+	} `yaml:"notifications"`
 }
 
 // Phase0 is the config for beacon chain phase0

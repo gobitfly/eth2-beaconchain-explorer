@@ -6,6 +6,9 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
+	ethclients "eth2-exporter/ethClients"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
 	"html/template"
@@ -14,8 +17,10 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -53,6 +58,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"includeHTML":                             IncludeHTML,
 		"formatHTML":                              FormatMessageToHtml,
 		"formatBalance":                           FormatBalance,
+		"formatBalanceSql":                        FormatBalanceSql,
 		"formatCurrentBalance":                    FormatCurrentBalance,
 		"formatEffectiveBalance":                  FormatEffectiveBalance,
 		"formatBlockStatus":                       FormatBlockStatus,
@@ -66,11 +72,17 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
 		"formatIncome":                            FormatIncome,
+		"formatMoney":                             FormatMoney,
+		"formatIncomeSql":                         FormatIncomeSql,
+		"formatSqlInt64":                          FormatSqlInt64,
 		"formatValidator":                         FormatValidator,
 		"formatValidatorWithName":                 FormatValidatorWithName,
 		"formatValidatorInt64":                    FormatValidatorInt64,
 		"formatValidatorStatus":                   FormatValidatorStatus,
 		"formatPercentage":                        FormatPercentage,
+		"formatPercentageWithPrecision":           FormatPercentageWithPrecision,
+		"formatPercentageWithGPrecision":          FormatPercentageWithGPrecision,
+		"formatPercentageColored":                 FormatPercentageColored,
 		"formatPublicKey":                         FormatPublicKey,
 		"formatSlashedValidator":                  FormatSlashedValidator,
 		"formatSlashedValidatorInt64":             FormatSlashedValidatorInt64,
@@ -80,6 +92,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
 		"epochOfSlot":                             EpochOfSlot,
+		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
 		"mod":                                     func(i, j int) bool { return i%j == 0 },
 		"sub":                                     func(i, j int) int { return i - j },
@@ -95,9 +108,19 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
+
 		"derefString":      DerefString,
 		"trLang":           TrLang,
 		"firstCharToUpper": func(s string) string { return strings.Title(s) },
+		"eqsp": func(a, b *string) bool {
+			if a != nil && b != nil {
+				return *a == *b
+			}
+			return false
+		},
+		"isUserClientUpdated":       ethclients.IsUserClientUpdated,
+		"dismissClientNotification": ethclients.DismissClientNotification,
+		"isUserSubscribed":          ethclients.IsUserSubscribed,
 	}
 }
 
@@ -148,6 +171,11 @@ func EpochToTime(epoch uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
 }
 
+// EpochToTime will return a time.Time for an epoch
+func DayToTime(day uint64) time.Time {
+	return time.Unix(int64(Config.Chain.GenesisTimestamp), 0).Add(time.Hour * time.Duration(24*int(day)))
+}
+
 // TimeToEpoch will return an epoch for a given time
 func TimeToEpoch(ts time.Time) int64 {
 	if int64(Config.Chain.GenesisTimestamp) > ts.Unix() {
@@ -171,7 +199,8 @@ func ReadConfig(cfg *types.Config, path string) error {
 		return err
 	}
 
-	return readConfigEnv(cfg)
+	readConfigEnv(cfg)
+	return readConfigSecrets(cfg)
 }
 
 func readConfigFile(cfg *types.Config, path string) error {
@@ -193,6 +222,10 @@ func readConfigEnv(cfg *types.Config) error {
 	return envconfig.Process("", cfg)
 }
 
+func readConfigSecrets(cfg *types.Config) error {
+	return ProcessSecrets(cfg)
+}
+
 // MustParseHex will parse a string into hex
 func MustParseHex(hexString string) []byte {
 	data, err := hex.DecodeString(strings.Replace(hexString, "0x", "", -1))
@@ -204,7 +237,7 @@ func MustParseHex(hexString string) []byte {
 
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Headers:", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*, Authorization")
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "*")
 		if r.Method == "OPTIONS" {
@@ -319,48 +352,67 @@ func SqlRowsToJSON(rows *sql.Rows) ([]interface{}, error) {
 
 			//log.Println(v.Name(), v.DatabaseTypeName())
 			if z, ok := (scanArgs[i]).(*sql.NullBool); ok {
-				masterData[v.Name()] = z.Bool
+				if z.Valid {
+					masterData[v.Name()] = z.Bool
+				} else {
+					masterData[v.Name()] = nil
+				}
 				continue
 			}
 
 			if z, ok := (scanArgs[i]).(*sql.NullString); ok {
-				if v.DatabaseTypeName() == "BYTEA" {
-					if len(z.String) > 0 {
-						masterData[v.Name()] = "0x" + hex.EncodeToString([]byte(z.String))
+				if z.Valid {
+					if v.DatabaseTypeName() == "BYTEA" {
+						if len(z.String) > 0 {
+							masterData[v.Name()] = "0x" + hex.EncodeToString([]byte(z.String))
+						} else {
+							masterData[v.Name()] = nil
+						}
+					} else if v.DatabaseTypeName() == "NUMERIC" {
+						nbr, _ := new(big.Int).SetString(z.String, 10)
+						masterData[v.Name()] = nbr
 					} else {
-						masterData[v.Name()] = nil
+						masterData[v.Name()] = z.String
 					}
-				} else if v.DatabaseTypeName() == "NUMERIC" {
-					nbr, _ := new(big.Int).SetString(z.String, 10)
-					masterData[v.Name()] = nbr
 				} else {
-					masterData[v.Name()] = z.String
+					masterData[v.Name()] = nil
 				}
 				continue
 			}
 
 			if z, ok := (scanArgs[i]).(*sql.NullInt64); ok {
-				masterData[v.Name()] = z.Int64
-				continue
-			}
-
-			if z, ok := (scanArgs[i]).(*sql.NullFloat64); ok {
-				masterData[v.Name()] = z.Float64
-				continue
-			}
-
-			if z, ok := (scanArgs[i]).(*sql.NullFloat64); ok {
-				masterData[v.Name()] = z.Float64
+				if z.Valid {
+					masterData[v.Name()] = z.Int64
+				} else {
+					masterData[v.Name()] = nil
+				}
 				continue
 			}
 
 			if z, ok := (scanArgs[i]).(*sql.NullInt32); ok {
-				masterData[v.Name()] = z.Int32
+				if z.Valid {
+					masterData[v.Name()] = z.Int32
+				} else {
+					masterData[v.Name()] = nil
+				}
+				continue
+			}
+
+			if z, ok := (scanArgs[i]).(*sql.NullFloat64); ok {
+				if z.Valid {
+					masterData[v.Name()] = z.Float64
+				} else {
+					masterData[v.Name()] = nil
+				}
 				continue
 			}
 
 			if z, ok := (scanArgs[i]).(*sql.NullTime); ok {
-				masterData[v.Name()] = z.Time.Unix()
+				if z.Valid {
+					masterData[v.Name()] = z.Time.Unix()
+				} else {
+					masterData[v.Name()] = nil
+				}
 				continue
 			}
 
@@ -379,7 +431,62 @@ func GenerateAPIKey(passwordHash, email, Ts string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	key := apiKey[:15]
-	apiKeyBase64 := base64.StdEncoding.EncodeToString(key)
+	key := apiKey
+	if len(apiKey) > 30 {
+		key = apiKey[8:29]
+	}
+
+	apiKeyBase64 := base64.RawURLEncoding.EncodeToString(key)
 	return apiKeyBase64, nil
+}
+
+func ExchangeRateForCurrency(currency string) float64 {
+	return price.GetEthPrice(currency)
+}
+
+func Glob(dir string, ext string) ([]string, error) {
+	files := []string{}
+	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
+		if filepath.Ext(path) == ext {
+			files = append(files, path)
+		}
+		return nil
+	})
+
+	return files, err
+}
+
+// ValidateReCAPTCHA validates a ReCaptcha server side
+func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
+	// Check this URL verification details from Google
+	// https://developers.google.com/recaptcha/docs/verify
+	req, err := http.PostForm("https://www.google.com/recaptcha/api/siteverify", url.Values{
+		"secret":   {Config.Frontend.RecaptchaSecretKey},
+		"response": {recaptchaResponse},
+	})
+	if err != nil { // Handle error from HTTP POST to Google reCAPTCHA verify server
+		return false, err
+	}
+	defer req.Body.Close()
+	body, err := ioutil.ReadAll(req.Body) // Read the response from Google
+	if err != nil {
+		return false, err
+	}
+
+	var googleResponse types.GoogleRecaptchaResponse
+	err = json.Unmarshal(body, &googleResponse) // Parse the JSON response from Google
+	if err != nil {
+		return false, err
+	}
+	if len(googleResponse.ErrorCodes) > 0 {
+		err = fmt.Errorf("Error validating ReCaptcha %v", googleResponse.ErrorCodes)
+	} else {
+		err = nil
+	}
+
+	if googleResponse.Score > 0.5 {
+		return true, err
+	}
+
+	return false, fmt.Errorf("Score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
 }

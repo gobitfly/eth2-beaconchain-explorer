@@ -3,6 +3,7 @@ package services
 import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"time"
 )
 
@@ -44,6 +45,33 @@ func calculateStats() (*types.Stats, error) {
 		return nil, err
 	}
 	stats.UniqueValidatorCount = uniqueValidatorCount
+
+	totalValidatorCount, err := db.GetTotalValidatorsCount()
+	if err != nil {
+		logger.WithError(err).Error("error getting total validator count")
+	}
+	stats.TotalValidatorCount = &totalValidatorCount
+
+	activeValidatorCount, err := db.GetActiveValidatorCount()
+	if err != nil {
+		logger.WithError(err).Error("error getting active validator count")
+	}
+
+	stats.ActiveValidatorCount = &activeValidatorCount
+
+	pendingValidatorCount, err := db.GetPendingValidatorCount()
+	if err != nil {
+		logger.WithError(err).Error("error getting pending validator count")
+	}
+
+	stats.PendingValidatorCount = &pendingValidatorCount
+
+	validatorChurnLimit, err := GetValidatorChurnLimit()
+	if err != nil {
+		logger.WithError(err).Error("error getting total validator churn limit")
+	}
+
+	stats.ValidatorChurnLimit = &validatorChurnLimit
 
 	return &stats, nil
 }
@@ -110,4 +138,27 @@ func eth1UniqueValidatorsCount() (*uint64, error) {
 	}
 
 	return &count, nil
+}
+
+// GetValidatorChurnLimit returns the rate at which validators can enter or leave the system
+func GetValidatorChurnLimit() (uint64, error) {
+	min := utils.Config.Chain.MinPerEpochChurnLimit
+
+	stats := GetLatestStats()
+	count := stats.ActiveValidatorCount
+
+	if count == nil {
+		count = new(uint64)
+	}
+
+	adaptable := uint64(0)
+	if *count > 0 {
+		adaptable = utils.Config.Chain.ChurnLimitQuotient / *count
+	}
+
+	if min > adaptable {
+		return min, nil
+	}
+
+	return adaptable, nil
 }

@@ -1,16 +1,25 @@
 {{ define "js"}}
-<script>
-    // form validations
-    function checkPasswordsMatch(input) {
-        var pass = document.getElementById('password')
-        var pwConfirm = document.getElementById('pw-confirm')
-        if (pass.value !== input.value) {
-            input.setCustomValidity('Passwords do not match');
-        } else {
-            input.setCustomValidity('');
+    <script>
+        // form validations
+        function checkPasswordsMatch(input) {
+            var pass = document.getElementById('password')
+            var pwConfirm = document.getElementById('pw-confirm')
+            if (pass.value !== input.value) {
+                input.setCustomValidity('Passwords do not match');
+            } else {
+                input.setCustomValidity('');
+            }
         }
-    }
-</script>
+               // form validations
+        function tosAccepted(input) {
+            var ipt = document.getElementById('tos-checkbox')
+            if (!ipt.checked) {
+                input.setCustomValidity('Please accept the Terms and Conditions before creating an account');
+            } else {
+                input.setCustomValidity('');
+            }
+        }
+    </script>
 
 {{end}}
 
@@ -18,39 +27,53 @@
 {{end}}
 
 {{ define "content"}}
-<div class="container">
-    <div class="row my-3">
-      <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
-          <h1 class="h2">Sign up to <i>beaconcha.in</i></h1>
-          <p>Manage and track the progress of your validator.</p>
-          {{if .Flashes}}
-              {{range $i, $flash := .Flashes}}
-              <div class="alert {{if contains $flash "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2" role="alert">
-                      <div class="p-2">{{$flash | formatHTML}}</div>
-                      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                          <span aria-hidden="true">&times;</span>
-                      </button>
-                  </div>
-              {{end}}
-          {{end}}
-        <form action="/register" method="post">
-            {{.CsrfField}}
-            <div class="form-group">
-                <label for="email">Email address</label>
-                <input required inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email">
+    {{with .Data}}
+        <div class="container">
+            <div class="row my-3">
+                <div class="col-lg-6 col-sm-8 col-xl-5 mx-auto">
+                    <h1 class="h2">Sign up to <i>beaconcha.in</i></h1>
+                    <p>Manage and track the progress of your validator.</p>
+                    {{if .Flashes}}
+                        {{range $i, $flash := .Flashes}}
+                            <div class="alert {{if contains $flash "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
+                                 role="alert">
+                                <div class="p-2">{{$flash | formatHTML}}</div>
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        {{end}}
+                    {{end}}
+                    <form action="/register" method="post">
+                        {{.CsrfField}}
+                        <div class="form-group">
+                            <label for="email">Email address</label>
+                            <input required inputmode="email" type="text" maxlength="100" class="form-control"
+                                   autocomplete="email" id="email" name="email">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input required type="password" minlength="5" maxlength="256" class="form-control"
+                                   autocomplete="new-password" id="password" name="password">
+                        </div>
+                        <div class="form-group">
+                            <label for="pw-confirm">Confirm Password</label>
+                            <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5"
+                                   maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm"
+                                   name="pw-confirm">
+                        </div>
+                        <div class="custom-control custom-checkbox d-flex align-items-center text-muted mb-2">
+                            <input oninput="tosAccepted(this)" type="checkbox" id="tos-checkbox" class="custom-control-input" required>
+                            <label class="custom-control-label active" for="tos-checkbox">
+                               <span>I agree to the <a class="link-muted" href="/legal/tos.pdf" target="_blank">Terms and Conditions</a> and <a class="link-muted" href="/legal/privacy.pdf" target="_blank">Privacy Policy</a>
+                            </span>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary float-right">Register</button>
+                    </form>
+                    <span style="font-size: 90%;" class="text-muted">Already have an account?</span> <a href="/login">Login</a>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="password" name="password">
-            </div>
-            <div class="form-group">
-                <label for="pw-confirm">Confirm Password</label>
-                <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm" name="pw-confirm">
-            </div>
-            <button type="submit" class="btn btn-primary float-right">Register</button>
-        </form>
-          <span style="font-size: 90%;" class="text-muted">Already have an account?</span> <a href="/login">Login</a>
-      </div>
-  </div>
-</div>
+        </div>
+    {{end}}
 {{end}}

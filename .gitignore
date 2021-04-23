@@ -7,9 +7,16 @@ bin/
 docker/
 templates/imprint.html
 config.yml
+frontend.yml
+config-staging.yml
+config-pyrmont.yml
 config-lighthouse.yml
 .*swp
 bootstrap/node_modules
 private/
-/run-local
+run-local
+docker-compose-private.yml
+static/bundle/css
+static/bundle/js
 
+.vscode

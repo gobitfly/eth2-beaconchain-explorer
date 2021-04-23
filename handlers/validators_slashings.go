@@ -3,15 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
-	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/juliangruber/go-intersect"
 )
@@ -22,29 +18,8 @@ var validatorsSlashingsTemplate = template.Must(template.New("validators").Funcs
 func ValidatorsSlashings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Title:       fmt.Sprintf("%v - Validator Slashings - beaconcha.in - %v", utils.Config.Frontend.SiteName, time.Now().Year()),
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/validators/slashings",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		ShowSyncingMessage:    services.IsSyncing(),
-		Active:                "validators",
-		Data:                  nil,
-		User:                  getUser(w, r),
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "validators", "/validators/slashings", "Validator Slashings")
+	data.HeaderAd = true
 
 	err := validatorsSlashingsTemplate.ExecuteTemplate(w, "layout", data)
 
@@ -104,7 +79,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 				blocks_attesterslashings.attestation2_indices,
 				'Attestation Violation'::varchar as type
 			FROM blocks_attesterslashings 
-			LEFT JOIN blocks on blocks_attesterslashings.block_slot = blocks.slot
+			INNER JOIN blocks on blocks_attesterslashings.block_slot = blocks.slot AND blocks.status = '1'
 			UNION ALL
 			SELECT
 				blocks.slot, 
@@ -115,7 +90,7 @@ func ValidatorsSlashingsData(w http.ResponseWriter, r *http.Request) {
 				NULL as attestation2_indices,
 				'Proposer Violation' as type 
 			FROM blocks_proposerslashings
-			LEFT JOIN blocks on blocks_proposerslashings.block_slot = blocks.slot
+			INNER JOIN blocks on blocks_proposerslashings.block_slot = blocks.slot AND blocks.status = '1'
 		) as query
 		ORDER BY slot desc
 		LIMIT $1

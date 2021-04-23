@@ -2,13 +2,12 @@ package services
 
 import (
 	"database/sql"
-	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,6 +19,7 @@ var latestEpoch uint64
 var latestFinalizedEpoch uint64
 var latestSlot uint64
 var latestProposedSlot uint64
+var latestValidatorCount uint64
 var indexPageData atomic.Value
 var chartsPageData atomic.Value
 var ready = sync.WaitGroup{}
@@ -31,19 +31,12 @@ var depositThresholdReached atomic.Value
 
 var logger = logrus.New().WithField("module", "services")
 
-type EthPrice struct {
-	USD float64
-}
-
-var ethPrice *EthPrice = new(EthPrice)
-
 // Init will initialize the services
 func Init() {
 	ready.Add(4)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
-	go updateEthPrice()
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()
 	} else {
@@ -55,13 +48,16 @@ func Init() {
 		return
 	}
 
-	go chartsPageDataUpdater()
-	go statsUpdater()
-
-	if utils.Config.Frontend.Notifications.Enabled {
-		logger.Infof("starting notifications-sender")
-		go notificationsSender()
+	if !utils.Config.Frontend.DisableCharts {
+		go chartsPageDataUpdater()
 	}
+
+	go statsUpdater()
+}
+
+func InitNotifications() {
+	logger.Infof("starting notifications-sender")
+	go notificationsSender()
 }
 
 func epochUpdater() {
@@ -151,9 +147,10 @@ func indexPageDataUpdater() {
 }
 
 func getIndexPageData() (*types.IndexPageData, error) {
+	currency := "ETH"
+
 	data := &types.IndexPageData{}
 	data.Mainnet = utils.Config.Chain.Mainnet
-
 	data.NetworkName = utils.Config.Chain.Network
 	data.DepositContract = utils.Config.Indexer.Eth1DepositContractAddress
 
@@ -204,10 +201,11 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			threshold = &deposit.BlockTs
 		}
 
-		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
+		data.DepositThreshold = float64(utils.Config.Chain.Phase0.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
+
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
-		genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
+		genesisDelay := time.Duration(int64(utils.Config.Chain.Phase0.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 
@@ -285,16 +283,16 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	for _, epoch := range epochs {
 		epoch.Ts = utils.EpochToTime(epoch.Epoch)
 		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
-		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther)
-		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther)
-		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate)
+		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther, currency)
+		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther, currency)
+		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
 	}
 	data.Epochs = epochs
 
 	var scheduledCount uint8
 	err = db.DB.Get(&scheduledCount, `
-		select count(*) from blocks where status = '0' and epoch = (select max(epoch) from blocks limit 1);
-	`)
+		select count(*) from blocks where status = '0' and epoch = $1;
+	`, epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
 	}
@@ -349,24 +347,27 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		EnteringValidators uint64 `db:"entering_validators_count"`
 		ExitingValidators  uint64 `db:"exiting_validators_count"`
 	}{}
-
 	err = db.DB.Get(&queueCount, "SELECT entering_validators_count, exiting_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("error retrieving validator queue count: %v", err)
 	}
-
 	data.EnteringValidators = queueCount.EnteringValidators
 	data.ExitingValidators = queueCount.ExitingValidators
 
 	var averageBalance float64
-	err = db.DB.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validator_balances WHERE epoch = $1", epoch)
+	err = db.DB.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validators")
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
 	}
-	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance)))
+	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance), currency))
+
+	var epochLowerBound uint64
+	if epochLowerBound = 0; epoch > 1600 {
+		epochLowerBound = epoch - 1600
+	}
 
 	var epochHistory []*types.IndexPageEpochHistory
-	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 ORDER BY epoch", epoch)
+	err = db.DB.Select(&epochHistory, "SELECT epoch, eligibleether, validatorscount, finalized FROM epochs WHERE epoch < $1 and epoch > $2 ORDER BY epoch", epoch, epochLowerBound)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving staked ether history: %v", err)
 	}
@@ -380,10 +381,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			}
 		}
 
-		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther))
-		if len(data.StakedEther) < 1 {
-			data.StakedEther = string(utils.FormatBalance(0))
-		}
+		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther, currency))
 		data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
 	}
 
@@ -397,29 +395,6 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
 
 	return data, nil
-}
-
-func updateEthPrice() {
-	for true {
-		resp, err := http.Get("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD")
-
-		if err != nil {
-			logger.Errorf("error retrieving ETH price: %v", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		defer resp.Body.Close()
-
-		err = json.NewDecoder(resp.Body).Decode(&ethPrice)
-
-		if err != nil {
-			logger.Errorf("error decoding ETH price json response to struct: %v", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-		time.Sleep(time.Minute)
-	}
 }
 
 // LatestEpoch will return the latest epoch
@@ -452,6 +427,10 @@ func LatestIndexPageData() *types.IndexPageData {
 	return indexPageData.Load().(*types.IndexPageData)
 }
 
+func LatestValidatorCount() uint64 {
+	return atomic.LoadUint64(&latestValidatorCount)
+}
+
 // LatestState returns statistics about the current eth2 state
 func LatestState() *types.LatestState {
 	data := &types.LatestState{}
@@ -461,7 +440,23 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
-	data.EthPrice = GetEthPrice()
+	data.UsdRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("USD"))
+	data.UsdTruncPrice = utils.KFormatterEthPrice(data.UsdRoundPrice)
+	data.EurRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("EUR"))
+	data.EurTruncPrice = utils.KFormatterEthPrice(data.EurRoundPrice)
+	data.GbpRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("GBP"))
+	data.GbpTruncPrice = utils.KFormatterEthPrice(data.GbpRoundPrice)
+	data.CnyRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("CNY"))
+	data.CnyTruncPrice = utils.KFormatterEthPrice(data.CnyRoundPrice)
+	data.RubRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("RUB"))
+	data.RubTruncPrice = utils.KFormatterEthPrice(data.RubRoundPrice)
+	data.CadRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("CAD"))
+	data.CadTruncPrice = utils.KFormatterEthPrice(data.CadRoundPrice)
+	data.AudRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("AUD"))
+	data.AudTruncPrice = utils.KFormatterEthPrice(data.AudRoundPrice)
+	data.JpyRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("JPY"))
+	data.JpyTruncPrice = utils.KFormatterEthPrice(data.JpyRoundPrice)
+
 	return data
 }
 
@@ -480,8 +475,12 @@ func GetLatestStats() *types.Stats {
 					DepositCount: 0,
 				},
 			},
-			InvalidDepositCount:  new(uint64),
-			UniqueValidatorCount: new(uint64),
+			InvalidDepositCount:   new(uint64),
+			UniqueValidatorCount:  new(uint64),
+			TotalValidatorCount:   new(uint64),
+			ActiveValidatorCount:  new(uint64),
+			PendingValidatorCount: new(uint64),
+			ValidatorChurnLimit:   new(uint64),
 		}
 	} else if stats.(*types.Stats).TopDepositors != nil && len(*stats.(*types.Stats).TopDepositors) == 1 {
 		*stats.(*types.Stats).TopDepositors = append(*stats.(*types.Stats).TopDepositors, types.StatsTopDepositors{
@@ -496,38 +495,3 @@ func GetLatestStats() *types.Stats {
 func IsSyncing() bool {
 	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
 }
-
-func GetEthPrice() int {
-	return int(ethPrice.USD)
-}
-
-// func GetAvgOptimalInclusionDistances(validatorIndex uint64) [4]template.HTML {
-// 	var avgDistance []*types.AvgInclusionDistance
-// 	var distances [4]template.HTML
-// 	err := db.DB.Select(&avgDistance, `
-// 			SELECT
-// 				attestation_assignments.inclusionslot,
-// 				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0) AS earliestinclusionslot
-// 			FROM attestation_assignments
-// 			WHERE validatorindex = $1
-// 			ORDER BY attesterslot DESC, epoch DESC
-// 			LIMIT 100`, validatorIndex)
-
-// 	if err != nil {
-// 		logger.Errorf("error retrieving validator attestations data: %v", err)
-// 		return distances
-// 	}
-
-// 	distances[0] = utils.FormatInclusionDelay(avgDistance[0].InclusionSlot, avgDistance[0].InclusionSlot-avgDistance[0].EarliestInclusionSlot)
-// 	for i, item :=range avgDistance{
-// 		if i<7{ //blocks
-// 			distances[1]+=item.InclusionSlot-item.EarliestInclusionSlot
-// 		}
-// 		if i<31{ //blocks
-// 			distances[3]+=item.InclusionSlot-item.EarliestInclusionSlot
-// 		}
-// 		distances[4]+=item.InclusionSlot-item.EarliestInclusionSlot
-// 	}
-
-// 	return distances
-// }

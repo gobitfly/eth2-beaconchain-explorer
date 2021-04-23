@@ -1,0 +1,77 @@
+{{ define "validatorCountdown" }}
+<script>
+	function setTime(days, hour, min, second) {
+
+		if (second < 0) {
+			days = 0
+			hour = 0
+			min = 0
+			second = 0
+		}
+
+		if (second < 10) {
+			second = '0'+ second 
+		}
+		if (min < 10) {
+			min = '0' + min
+		}
+		if (hour < 10) {
+			hour = '0' + hour
+		}
+		if (days < 10) {
+			days = '0' + days
+		}
+		
+		$('#clock').html(days+' days '+hour + ' hr ' + min + ' min ' + second + ' sec')
+	}
+
+	document.addEventListener('DOMContentLoaded', function() {
+		var genesis = {{.ActivationTs.Unix}}
+		var now = Math.round((new Date()).getTime() / 1000)
+		var secondsLeft = genesis - now
+		var seconds = secondsLeft % 60
+		var min = ((secondsLeft - seconds) / 60) % 60
+		var hour = Math.round((secondsLeft - seconds - (min * 60)) / 3600) % 24
+		var days = Math.round((secondsLeft - seconds - (min * 60) - (hour * 60 * 60)) / 86400)
+		setTime(days, hour, min, seconds)
+		// $('#estimated+span').removeClass('d-none')
+		var countdownInterval = setInterval(function () {
+			if (hour <= 0 && min <= 0 && seconds <= 0 && days <= 0) {
+				clearInterval(countdownInterval)
+				$('#rocket').removeClass('d-none')
+				return
+			}
+
+			if (seconds === 0 && min === 0 && hour === 0 && days > 0) {
+				hour = 24
+				days -= 1
+			}
+
+			if (seconds === 0 && min === 0 && hour > 0) {
+				min = 60
+				hour -= 1
+			}
+
+			if (seconds === 0 && min > 0) {
+				seconds = 60
+				min -= 1
+			}
+
+			seconds -= 1
+			
+			setTime(days, hour, min, seconds)
+		}, 1000)
+	})
+</script>
+<div class="position-relative d-flex justify-content-center">
+	{{template "rocket"}}
+	<div style="max-width: 300px;" id="countdown" class="d-flex flex-column justify-content-center">
+		<div class="align-self-center text-center">
+			<div>
+				<strong id="clock">
+				</strong>
+			</div>
+		</div>
+	</div>
+</div>
+{{end}}

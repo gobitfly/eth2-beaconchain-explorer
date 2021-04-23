@@ -33,6 +33,10 @@ func NewLighthouseClient(endpoint string) (*LighthouseClient, error) {
 	return client, nil
 }
 
+func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
+	return nil
+}
+
 // GetChainHead gets the chain head from Lighthouse
 func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 	resp, err := lc.get(fmt.Sprintf("%v%v", lc.endpoint, "/beacon/head"))
@@ -139,8 +143,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	}
 
 	stateRootString := strings.Replace(string(stateRoot), "\"", "", -1)
-	// Retrieve the validator balances for the epoch (NOTE: Currently the API call is broken and allows only to retrieve the balances for the current epoch
-	data.ValidatorIndices = make(map[string]uint64)
 	data.Validators = make([]*types.Validator, 0)
 
 	var parsedResponse []*lighthouseValidatorResponse
@@ -159,7 +161,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	for _, validator := range parsedResponse {
 
 		pubKey := utils.MustParseHex(validator.Pubkey)
-		data.ValidatorIndices[fmt.Sprintf("%x", pubKey)] = validator.ValidatorIndex
 
 		data.Validators = append(data.Validators, &types.Validator{
 			Index:                      validator.ValidatorIndex,
@@ -250,9 +251,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 			}
 		}
 	}
-
-	// Unused for now
-	data.BeaconCommittees = make(map[uint64][]*types.BeaconCommitteItem)
 
 	data.EpochParticipationStats, err = lc.GetValidatorParticipation(epoch)
 	if err != nil {
@@ -505,4 +503,9 @@ type lighthouseValidatorResponse struct {
 		WithdrawalCredentials      string `json:"withdrawal_credentials"`
 	} `json:"validator"`
 	ValidatorIndex uint64 `json:"validator_index"`
+}
+
+func (pc *LighthouseClient) GetBlockStatusByEpoch(epoch uint64) ([]*types.CanonBlock, error) {
+	blocks := make([]*types.CanonBlock, 0)
+	return blocks, nil
 }

@@ -1,15 +1,14 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"eth2-exporter/version"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -54,40 +53,35 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subscription, err := db.GetUserSubscription(user.UserID)
-	if err != nil {
-		logger.Errorf("Error retrieving the email for user: %v %v", user.UserID, err)
+	subscription, err := db.StripeGetUserAPISubscription(user.UserID)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("Error retrieving the subscriptions for user: %v %v", user.UserID, err)
 		session.Flashes("Error: Something went wrong.")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
 
+	var pairedDevices []types.PairedDevice = nil
+	pairedDevices, err = db.GetUserDevicesByUserID(user.UserID)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("Error retrieving the paired devices for user: %v %v", user.UserID, err)
+		pairedDevices = nil
+	}
+
+	userSettingsData.PairedDevices = pairedDevices
 	userSettingsData.Subscription = subscription
+	userSettingsData.Sapphire = &utils.Config.Frontend.Stripe.Sapphire
+	userSettingsData.Emerald = &utils.Config.Frontend.Stripe.Emerald
+	userSettingsData.Diamond = &utils.Config.Frontend.Stripe.Diamond
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/user",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "user",
-		Data:                  userSettingsData,
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "user", "/user", "User Settings")
+	data.HeaderAd = true
+	data.Data = userSettingsData
+	data.User = user
+
 	err = userTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -128,6 +122,16 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	redirectURI := q.Get("redirect_uri")
 	state := q.Get("state")
 
+	session.Values["state"] = state
+	session.Values["oauth_redirect_uri"] = redirectURI
+	session.Save(r, w)
+
+	if !user.Authenticated {
+		logger.Errorf("User not authorized")
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
 	appData, err := db.GetAppDataFromRedirectUri(redirectURI)
 
 	if err != nil {
@@ -142,32 +146,32 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	authorizeData.CsrfField = csrf.TemplateField(r)
 	authorizeData.Flashes = utils.GetFlashes(w, r, authSessionName)
 
-	data := &types.PageData{
-		HeaderAd: false,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/user",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "user",
-		Data:                  authorizeData,
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-	}
+	data := InitPageData(w, r, "user", "/user", "")
+	data.Data = authorizeData
+
 	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		callback := appData.RedirectURI + "?error=temporarily_unaviable&error_description=err_template"
+		callback := appData.RedirectURI + "?error=temporarily_unaviable&error_description=err_template&state=" + state
 		http.Redirect(w, r, callback, http.StatusSeeOther)
 		return
 	}
+}
+
+// UserAuthorizationCancel cancels oauth authorization session states and redirects to frontpage
+func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
+	_, session, err := getUserSession(w, r)
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	delete(session.Values, "oauth_redirect_uri")
+	delete(session.Values, "state")
+	session.Save(r, w)
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+	return
 }
 
 func UserNotifications(w http.ResponseWriter, r *http.Request) {
@@ -217,27 +221,10 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	link = link[:len(link)-1]
 	userNotificationsData.DashboardLink = link
 
-	data := &types.PageData{
-		HeaderAd: true,
-		Meta: &types.Meta{
-			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
-			Path:        "/user",
-			GATag:       utils.Config.Frontend.GATag,
-		},
-		Active:                "user",
-		Data:                  userNotificationsData,
-		User:                  user,
-		Version:               version.Version,
-		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
-		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
-		ChainGenesisTimestamp: utils.Config.Chain.GenesisTimestamp,
-		CurrentEpoch:          services.LatestEpoch(),
-		CurrentSlot:           services.LatestSlot(),
-		FinalizationDelay:     services.FinalizationDelay(),
-		EthPrice:              services.GetEthPrice(),
-		Mainnet:               utils.Config.Chain.Mainnet,
-		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
-	}
+	data := InitPageData(w, r, "user", "/user", "")
+	data.Data = userNotificationsData
+	data.User = user
+
 	err = notificationTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -247,6 +234,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
+	currency := GetCurrency(r)
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
@@ -279,6 +267,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	type watchlistSubscription struct {
+		Index     uint64
 		Publickey []byte
 		Balance   uint64
 		Events    *pq.StringArray
@@ -286,22 +275,20 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	wl := []watchlistSubscription{}
 	err = db.DB.Select(&wl, `
-	SELECT 
+		SELECT 
+			validators.validatorindex as index,
 			users_validators_tags.validator_publickey as publickey,
 			COALESCE (MAX(validators.balance), 0) as balance,
 			ARRAY_REMOVE(ARRAY_AGG(users_subscriptions.event_name), NULL) as events
 		FROM users_validators_tags
 		LEFT JOIN users_subscriptions
-		ON 
-			users_validators_tags.user_id = users_subscriptions.user_id
-		AND 
-			ENCODE(users_validators_tags.validator_publickey::bytea, 'hex') = users_subscriptions.event_filter
+			ON users_validators_tags.user_id = users_subscriptions.user_id
+			AND ENCODE(users_validators_tags.validator_publickey::bytea, 'hex') = users_subscriptions.event_filter
 		LEFT JOIN validators
-		ON
-			users_validators_tags.validator_publickey = validators.pubkey
+			ON users_validators_tags.validator_publickey = validators.pubkey
 		WHERE users_validators_tags.user_id = $1
-		GROUP BY users_validators_tags.user_id, users_validators_tags.validator_publickey;
-	`, user.UserID)
+		GROUP BY users_validators_tags.user_id, users_validators_tags.validator_publickey, validators.validatorindex;
+		`, user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving subscriptions for users: %v validators: %v", user.UserID, err)
 		http.Error(w, "Internal server error", 503)
@@ -311,15 +298,13 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, 0, len(wl))
 	for _, entry := range wl {
 		tableData = append(tableData, []interface{}{
+			utils.FormatValidator(entry.Index),
 			utils.FormatPublicKey(entry.Publickey),
-			utils.FormatBalance(entry.Balance),
+			utils.FormatBalance(entry.Balance, currency),
 			entry.Events,
-			// utils.FormatBalance(item.Balance),
-			// item.Events[0],
 		})
 	}
 
-	// log.Println("COUNT", len(watchlist))
 	data := &types.DataTableResponse{
 		Draw:            draw,
 		RecordsTotal:    uint64(len(wl)),
@@ -546,7 +531,7 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !currentUser.Confirmed {
-		session.AddFlash("Error: Email has not been comfirmed, please click the link in the email we sent you or <a href='/resend'>resend link</a>!")
+		session.AddFlash("Error: Email has not been confirmed, please click the link in the email we sent you or <a href='/resend'>resend link</a>!")
 		session.Save(r, w)
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
@@ -657,9 +642,11 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query()
-	newEmail, err := url.QueryUnescape(q.Get("email"))
-	if err != nil {
-		utils.SetFlash(w, r, authSessionName, "Error: Could not update your email please try again.")
+
+	newEmail := q.Get("email")
+
+	if !utils.IsValidEmail(newEmail) {
+		utils.SetFlash(w, r, authSessionName, "Error: Could not update your email because the new email is invalid, please try again.")
 		http.Redirect(w, r, "/confirmation", http.StatusSeeOther)
 		return
 	}
@@ -811,6 +798,33 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	proposalSubmitted := FormValueOrJSON(r, "validator_proposal_submitted")
+	if proposalSubmitted == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorExecutedProposalEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+	proposalMissed := FormValueOrJSON(r, "validator_proposal_missed")
+	if proposalMissed == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorMissedProposalEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+	attestationMissed := FormValueOrJSON(r, "validator_attestation_missed")
+	if attestationMissed == "on" {
+		err := db.AddSubscription(user.UserID, types.ValidatorMissedAttestationEventName, pubKey)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
 
 	if len(pubKey) != 96 {
 		FlashRedirectOrJSONErrorResponse(w, r,
@@ -885,7 +899,7 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 
 	publicKeys := make([]string, 0)
 	db.DB.Select(&publicKeys, `
-	SELECT Encode(pubkey::bytea, 'hex') as pubkey
+	SELECT pubkeyhex as pubkey
 	FROM validators
 	WHERE validatorindex = ANY($1)
 	`, pq.Int64Array(indicesParsed))
@@ -903,6 +917,72 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error could not add validators to watchlist: %v, %v", r.URL.String(), err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	OKResponse(w, r)
+}
+
+// UserClientsAdd godoc
+// @Summary  associates an ethereum or ethereum 2 client with an user
+// @Tags User
+// @Produce  json
+// @Param clientName body []string true "Valid client names are: lighthouse, prysm, nimbus, teku, geth, openeth, nethermind, besu"
+// @Param clientVersion body string true "Client version (github release api: release id) or 0 for unknown or no change."
+// @Param notify body boolean true "Receive client update notifications"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/clients [post]
+func UserClientsAdd(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	j := json.NewEncoder(w)
+
+	clientName := FormValueOrJSON(r, "clientName")
+	clientVersion := FormValueOrJSON(r, "clientVersion")
+	notifyEnabled := FormValueOrJSON(r, "notify") == "true"
+
+	clientVersionNumber, err := strconv.ParseInt(clientVersion, 10, 64)
+	if err != nil {
+		logger.Errorf("error invalid client version number: %v: %v, %v", clientVersion, r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	user := getUser(w, r)
+
+	err2 := db.UserClientEntry(user.UserID, clientName, clientVersionNumber, notifyEnabled)
+	if err2 != nil {
+		logger.Errorf("error inserting or updating client entry %v, %v", r.URL.String(), err2)
+		sendErrorResponse(j, r.URL.String(), "error inserting or updating client entry")
+		return
+	}
+
+	OKResponse(w, r)
+}
+
+// UserClientsDelete godoc
+// @Summary  deletes an ethereum or ethereum 2 client from a user
+// @Tags User
+// @Produce  json
+// @Param clientName body []string true "Valid client names are: lighthouse, prysm, nimbus, teku, geth, openethereum, nethermind, besu"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/clients [delete]
+func UserClientsDelete(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	j := json.NewEncoder(w)
+
+	clientName := FormValueOrJSON(r, "clientName")
+	user := getUser(w, r)
+
+	err2 := db.UserClientDelete(user.UserID, clientName)
+	if err2 != nil {
+		logger.Errorf("error deleting client entry %v, %v", r.URL.String(), err2)
+		sendErrorResponse(j, r.URL.String(), "error deleting client entry")
 		return
 	}
 
@@ -972,25 +1052,59 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
 		logger.Errorf("error invalid event name: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	isPkey := !pkeyRegex.MatchString(filter)
+	filterLen := len(filter)
 
-	if len(filter) != 96 && isPkey {
+	if filterLen != 96 && filterLen != 0 && isPkey {
 		logger.Errorf("error invalid pubkey characters or length: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	err = db.AddSubscription(user.UserID, eventName, filter)
-	if err != nil {
-		logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if filterLen == 0 { // no filter = add all my watched validators (max 100)
+
+		filter := db.WatchlistFilter{
+			UserId:         user.UserID,
+			Validators:     nil,
+			Tag:            types.ValidatorTagsWatchlist,
+			JoinValidators: true,
+		}
+
+		myValidators, err2 := db.GetTaggedValidators(filter)
+		if err2 != nil {
+			ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
+			return
+		}
+
+		// not quite happy performance wise, placing a TODO here for future me
+		for i, v := range myValidators {
+			err = db.AddSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
+			if err != nil {
+				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			if i >= 100 {
+				break
+			}
+		}
+	} else {
+		// add filtered one
+
+		err = db.AddSubscription(user.UserID, eventName, filter)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
-	w.WriteHeader(200)
+
+	OKResponse(w, r)
 }
 
 func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
@@ -1004,23 +1118,56 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
 		logger.Errorf("error invalid event name: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	isPkey := !pkeyRegex.MatchString(filter)
+	filterLen := len(filter)
 
-	if len(filter) != 96 && isPkey {
+	if len(filter) != 96 && filterLen != 0 && isPkey {
 		logger.Errorf("error invalid pubkey characters or length: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	err = db.DeleteSubscription(user.UserID, eventName, filter)
-	if err != nil {
-		logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+	if filterLen == 0 { // no filter = add all my watched validators (max 100)
+
+		filter := db.WatchlistFilter{
+			UserId:         user.UserID,
+			Validators:     nil,
+			Tag:            types.ValidatorTagsWatchlist,
+			JoinValidators: true,
+		}
+
+		myValidators, err2 := db.GetTaggedValidators(filter)
+		if err2 != nil {
+			ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
+			return
+		}
+
+		// not quite happy performance wise, placing a TODO here for future me
+		for i, v := range myValidators {
+			err = db.DeleteSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
+			if err != nil {
+				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			if i >= 100 {
+				break
+			}
+		}
+	} else {
+		// filtered one only
+		err = db.DeleteSubscription(user.UserID, eventName, filter)
+		if err != nil {
+			logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
-	w.WriteHeader(200)
+
+	OKResponse(w, r)
 }
