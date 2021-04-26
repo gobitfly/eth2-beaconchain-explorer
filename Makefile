@@ -15,7 +15,7 @@ test:
 
 explorer:
 	rm -rf bin/
-	mkdir -p bin/templates/
+	mkdir -p bin/
 	cp -r templates/ bin/
 	go run cmd/bundle/main.go
 	cp -r static/ bin/static
