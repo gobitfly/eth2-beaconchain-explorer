@@ -1,0 +1,73 @@
+{{ define "js"}}
+<script src="bundle/js/validatorRewards.js"></script>
+{{end}}
+
+{{if not .User.Authenticated}}
+<script>
+    if (window.location.pathname!="/user/rewards"){
+        window.location.replace("/user/rewards");
+    }
+</script>
+{{end}}
+
+{{ define "css"}}
+<link rel="stylesheet" href="/bundle/css/validatorRewards.css"/>
+{{end}}
+
+{{ define "content"}}
+<div class="container mt-2">
+    <div class="my-3">
+        <div class="d-md-flex py-2 justify-content-md-between">
+            <h1 class="h4 mb-1 mb-md-0"><i class="far fa-money-bill-alt"></i> Validator Reward Calculator</h1>
+            
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                    <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Reward Calculator</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body p-2">
+            <form>
+                <div class="form-group">
+                  <label for="exampleInputEmail1">Validators</label>
+                    <input class="form-control" type="text"
+                            placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
+                </div>
+
+                <div class="form-group">
+                  <label for="exampleInputPassword1">Timezone</label>
+                  <select class="form-control">
+                    <option>Europe</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="exampleInputPassword1">Currency</label>
+                    <select class="form-control">
+                        <option>$</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="exampleInputPassword1">Data Range</label>
+                    <select class="form-control">
+                        <option>Q1 2021</option>
+                      </select>
+                </div>
+                
+                
+                <div class="form-check">
+                  <input type="checkbox" class="form-check-input" id="exampleCheck1" {{if not .User.Authenticated}}disabled{{end}}>
+                  <label class="form-check-label" for="exampleCheck1">Subscribe to receive monthly reports {{if not .User.Authenticated}}(<a style="color: red;" href="/login">Please sign in to use this feature</a>){{end}}</label>
+                </div>
+    
+                <button type="submit" class="btn btn-primary">Submit</button>
+              </form>
+        </div>
+    </div>
+</div>
+
+{{end}}
