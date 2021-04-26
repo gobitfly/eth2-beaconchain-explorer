@@ -135,6 +135,15 @@ function create_typeahead(input_container) {
 }
 
 
+function updateCurrencies(currencies, container){
+    for (item of currencies){
+        if(item==="ts")continue;
+        $(container).append(`<option>${item.toUpperCase()}</option>`);
+    }
+
+}
+
+
 $(document).ready(function () {
     create_typeahead('.typeahead-validators');
 
