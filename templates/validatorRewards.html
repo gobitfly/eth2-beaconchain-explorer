@@ -32,29 +32,31 @@
         <div class="card-body p-2">
             <form>
                 <div class="form-group">
-                  <label for="exampleInputEmail1">Validators</label>
-                    <input class="form-control" type="text"
+                    <label for="exampleInputEmail1">Validators</label>
+                    <textarea id="validator-index-view" style="width: 100%;" placeholder="type validator indices manually. eg. 1234,5678,9012, ..." required></textarea>
+                    or
+                    <input class="form-control typeahead-validators" type="text"
                             placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
                 </div>
 
                 <div class="form-group">
                   <label for="exampleInputPassword1">Timezone</label>
-                  <select class="form-control">
+                  <select class="form-control" required>
                     <option>Europe</option>
                   </select>
                 </div>
                 
                 <div class="form-group">
                     <label for="exampleInputPassword1">Currency</label>
-                    <select class="form-control">
+                    <select class="form-control" required>
                         <option>$</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
                     <label for="exampleInputPassword1">Data Range</label>
-                    <select class="form-control">
-                        <option>Q1 2021</option>
+                    <select class="form-control" required>
+                        <option>2021</option>
                       </select>
                 </div>
                 

@@ -1,0 +1,19 @@
+.twitter-typeahead{
+    width: 100%;
+}
+
+.tt-open{
+    background-color: var(--bg-color-secondary);
+    scrollbar-color: var(--primary) rgba(0,0,0,0.2);
+    scrollbar-width: thin;
+}
+
+.tt-open::-webkit-scrollbar{
+    width: 5px;
+}
+
+.tt-suggestion.tt-cursor,
+.tt-suggestion:hover {
+  color: #fff;
+  background-color: #007bff;
+}
