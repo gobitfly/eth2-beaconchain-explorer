@@ -94,7 +94,7 @@ func bundle(staticDir string) (map[string]string, error) {
 			matchHash := strings.Replace(matchBundle, "."+fileType.ext, "."+codeHash[:6]+"."+fileType.ext, -1)
 
 			path := strings.ReplaceAll(match, "static/", "")
-			newPath := strings.ReplaceAll(match, "static/", "")
+			newPath := strings.ReplaceAll(match, "static/", "bundle/")
 			nameMapping[path] = newPath
 
 			err = ioutil.WriteFile(matchHash, code, 0755)
@@ -108,14 +108,13 @@ func bundle(staticDir string) (map[string]string, error) {
 }
 
 func replaceFilesNames(files map[string]string) error {
-	bin := "./bin"
-	binDir := path.Join(bin)
+	templates := "./bin/templates"
+	templatesDir := path.Join(templates)
 
-	matches, err := utils.Glob(binDir, ".html")
+	matches, err := utils.Glob(templatesDir, ".html")
 	if err != nil {
 		return err
 	}
-
 	for _, match := range matches {
 		html, err := ioutil.ReadFile(match)
 		if err != nil {
@@ -123,6 +122,7 @@ func replaceFilesNames(files map[string]string) error {
 		}
 		h := string(html)
 		for oldPath, newPath := range files {
+			// logrus.Info("replacing: ", oldPath, " with: ", newPath)
 			h = strings.ReplaceAll(h, oldPath, newPath)
 		}
 		err = ioutil.WriteFile(match, []byte(h), 0755)
