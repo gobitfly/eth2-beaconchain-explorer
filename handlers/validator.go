@@ -827,7 +827,9 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 	if ae.ActivationEpoch > epoch {
 		totalCount = 0
 	}
+	lastAttestationEpoch := epoch
 	if ae.ExitEpoch != 9223372036854775807 {
+		lastAttestationEpoch = ae.ExitEpoch
 		totalCount = ae.ExitEpoch - ae.ActivationEpoch
 	}
 
@@ -852,7 +854,7 @@ func ValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 			FROM attestation_assignments_p aa
 			LEFT JOIN blocks on blocks.slot = aa.inclusionslot
 			WHERE validatorindex = $1 AND aa.epoch > $2 AND aa.epoch <= $3
-			ORDER BY `+orderBy+` `+orderDir, index, int64(epoch)-start-length, int64(epoch)-start)
+			ORDER BY `+orderBy+` `+orderDir, index, int64(lastAttestationEpoch)-start-length, int64(lastAttestationEpoch)-start)
 
 		if err != nil {
 			logger.Errorf("error retrieving validator attestations data: %v", err)
