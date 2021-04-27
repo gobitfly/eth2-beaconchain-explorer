@@ -1,5 +1,5 @@
 {{ define "js"}}
-<script src="/bundle/js/requestInterval.js"></script>
+<script src="/js/requestInterval.js"></script>
 {{ .CsrfField }}
 {{end}}
 
@@ -325,7 +325,7 @@
             </section>
         </div>
     {{end}}
-    <script src="/bundle/js/jquery.min.js"></script>
+    <script src="/js/jquery.min.js"></script>
     <script>
         {{if .User.Authenticated}}
             if (window.location.pathname!="/user/ethClients"){

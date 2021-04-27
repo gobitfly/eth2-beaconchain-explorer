@@ -1,14 +1,14 @@
 {{ define "js"}}
-<script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
-<script src="/bundle/js/highcharts/highcharts-full-v9.min.js"></script>
-<script src="/bundle/js/highcharts/highcharts-global-options.js"></script>
-<script src="/bundle/js/requestInterval.js"></script>
+<script type="text/javascript" src="/js/datatables.min.js"></script>
+<script src="/js/highcharts/highcharts-full-v9.min.js"></script>
+<script src="/js/highcharts/highcharts-global-options.js"></script>
+<script src="/js/requestInterval.js"></script>
 {{end}}
 
 {{ define "css"}}
     <link rel="stylesheet" type="text/css"
-    href="/bundle/css//datatables.min.css"/>
-    <link rel="stylesheet" href="/bundle/css/pools.css"></link>
+    href="/css//datatables.min.css"/>
+    <link rel="stylesheet" href="/css/pools.css"></link>
 {{end}}
 
 {{ define "content"}}
@@ -228,8 +228,8 @@
     </div>
 </section>
 <div id="tempcont" class=""></div>
-<script src="/bundle/js/jquery.min.js"></script>
-<script src="/bundle/js/luxon.min.js"></script>
+<script src="/js/jquery.min.js"></script>
+<script src="/js/luxon.min.js"></script>
 <script>
     const POOL_INFO = {{.Data.PoolInfo}}
     const STAKED_ETH = {{.Data.StakedEther}}
@@ -243,5 +243,5 @@
     // console.log(LAST_UPDATE, luxon.DateTime.fromMillis(LAST_UPDATE).toRelative())
     $("#lastUpdate").html(`Last Updated: ${luxon.DateTime.fromMillis(LAST_UPDATE*1000).toRelative()}`)
 </script>
-<script src="/bundle/js/pools.js"></script>
+<script src="/js/pools.js"></script>
 {{end}}

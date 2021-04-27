@@ -444,6 +444,7 @@ func ExchangeRateForCurrency(currency string) float64 {
 	return price.GetEthPrice(currency)
 }
 
+// Glob walks through a directory and returns files with a given extention
 func Glob(dir string, ext string) ([]string, error) {
 	files := []string{}
 	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {

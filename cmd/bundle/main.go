@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"eth2-exporter/utils"
 	"fmt"
 	"io/ioutil"
@@ -12,25 +13,28 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-func bundle(staticDir string) error {
+func bundle(staticDir string) (map[string]string, error) {
+
+	nameMapping := make(map[string]string, 0)
+
 	if staticDir == "" {
 		staticDir = "./static"
 	}
 
 	fileInfo, err := os.Stat(staticDir)
 	if err != nil {
-		return fmt.Errorf("error getting stats about the static dir", err)
+		return nameMapping, fmt.Errorf("error getting stats about the static dir", err)
 	}
 
 	if !fileInfo.IsDir() {
-		return fmt.Errorf("error static dir is not a directory")
+		return nameMapping, fmt.Errorf("error static dir is not a directory")
 	}
 
 	bundleDir := path.Join(staticDir, "bundle")
 	if _, err := os.Stat(bundleDir); os.IsNotExist(err) {
 		os.Mkdir(bundleDir, 0755)
 	} else if err != nil {
-		return fmt.Errorf("error getting stats about the bundle dir", err)
+		return nameMapping, fmt.Errorf("error getting stats about the bundle dir", err)
 	}
 
 	type fileType struct {
@@ -63,34 +67,67 @@ func bundle(staticDir string) error {
 		bundleTypeDir := path.Join(bundleDir, fileType.ext)
 		typeDir := path.Join(staticDir, fileType.ext)
 		matches, err := utils.Glob(typeDir, "."+fileType.ext)
-
 		if err != nil {
-			return err
+			return nameMapping, err
 		}
 
 		for _, match := range matches {
 			code, err := ioutil.ReadFile(match)
 			if err != nil {
-				return fmt.Errorf("error reading file %v", err)
+				return nameMapping, fmt.Errorf("error reading file %v", err)
 			}
 			if !strings.Contains(match, ".min") {
 				content := string(code)
 				result := api.Transform(content, fileType.transform)
 				if len(result.Errors) != 0 {
-					return fmt.Errorf("error transforming %v %v", fileType, result.Errors)
+					return nameMapping, fmt.Errorf("error transforming %v %v", fileType, result.Errors)
 				}
 				code = result.Code
 			}
-			match = strings.Replace(match, typeDir, bundleTypeDir, -1)
+			matchBundle := strings.Replace(match, typeDir, bundleTypeDir, -1)
 
-			if _, err := os.Stat(path.Dir(match)); os.IsNotExist(err) {
-				os.Mkdir(path.Dir(match), 0755)
+			if _, err := os.Stat(path.Dir(matchBundle)); os.IsNotExist(err) {
+				os.Mkdir(path.Dir(matchBundle), 0755)
 			}
 
-			err = ioutil.WriteFile(match, code, 0755)
+			codeHash := fmt.Sprintf("%x", md5.Sum([]byte(code)))
+			matchHash := strings.Replace(matchBundle, "."+fileType.ext, "."+codeHash[:6]+"."+fileType.ext, -1)
+
+			path := strings.ReplaceAll(match, "static/", "")
+			newPath := strings.ReplaceAll(matchHash, "static/", "")
+			nameMapping[path] = newPath
+
+			err = ioutil.WriteFile(matchHash, code, 0755)
 			if err != nil {
-				return fmt.Errorf("error failed to write file %v", err)
+				return nameMapping, fmt.Errorf("error failed to write file %v", err)
 			}
+		}
+	}
+
+	return nameMapping, nil
+}
+
+func replaceFilesNames(files map[string]string) error {
+	templates := "./bin/templates"
+	templatesDir := path.Join(templates)
+
+	matches, err := utils.Glob(templatesDir, ".html")
+	if err != nil {
+		return err
+	}
+	for _, match := range matches {
+		html, err := ioutil.ReadFile(match)
+		if err != nil {
+			return err
+		}
+		h := string(html)
+		for oldPath, newPath := range files {
+			// logrus.Info("replacing: ", oldPath, " with: ", newPath)
+			h = strings.ReplaceAll(h, oldPath, newPath)
+		}
+		err = ioutil.WriteFile(match, []byte(h), 0755)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -98,7 +135,12 @@ func bundle(staticDir string) error {
 }
 
 func main() {
-	if err := bundle("./static"); err != nil {
-		log.Fatal("error bundling: ", err)
+	files, err := bundle("./static")
+	if err != nil {
+		log.Fatalf("error bundling: %v", err)
+	}
+
+	if err := replaceFilesNames(files); err != nil {
+		log.Fatalf("error replacing dependencies err: %v", err)
 	}
 }
