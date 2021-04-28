@@ -994,12 +994,12 @@ type GoogleRecaptchaResponse struct {
 }
 
 type Price struct {
-	TS  uint64  `db:"ts"`
-	EUR float64 `db:"eur"`
-	USD float64 `db:"usd"`
-	GBP float64 `db:"gbp"`
-	CAD float64 `db:"cad"`
-	JPY float64 `db:"jpy"`
-	CNY float64 `db:"cny"`
-	RUB float64 `db:"rub"`
+	TS  time.Time `db:"ts"`
+	EUR float64   `db:"eur"`
+	USD float64   `db:"usd"`
+	GBP float64   `db:"gbp"`
+	CAD float64   `db:"cad"`
+	JPY float64   `db:"jpy"`
+	CNY float64   `db:"cny"`
+	RUB float64   `db:"rub"`
 }

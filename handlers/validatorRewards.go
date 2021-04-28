@@ -73,24 +73,97 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var prices []types.Price
-	err = db.DB.Select(&prices,
+	var pricesDb []types.Price
+	err = db.DB.Select(&pricesDb,
 		`select * from price order by ts desc limit $1`, days)
 	if err != nil {
-		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
+		logger.Errorf("error getting prices: %w", err)
 	}
 
+	var maxDay uint64
+	err = db.DB.Get(&maxDay,
+		`select MAX(day) from validator_stats`)
+	if err != nil {
+		logger.Errorf("error getting max day: %w", err)
+	}
+
+	var lowerBound uint64 = 0
+	if maxDay > days {
+		lowerBound = maxDay - days
+	}
 	var income []types.ValidatorStatsTableRow
 	err = db.DB.Select(&income,
 		`select day, start_balance, end_balance
 		 from validator_stats 
-		 where validatorindex=ANY($1)
-		 order by day desc limit $2`, validatorFilter, days)
+		 where validatorindex=ANY($1) AND day> $2
+		 order by day desc`, validatorFilter, lowerBound)
 	if err != nil {
-		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
+		logger.Errorf("error getting incomes: %w", err)
 	}
 
-	err = json.NewEncoder(w).Encode([]string{currency, fmt.Sprintf("%d", days)})
+	prices := map[string]float64{}
+	for _, item := range pricesDb {
+		year, month, day := item.TS.Date()
+		date := fmt.Sprintf("%d-%d-%d", day, month, year)
+		switch currency {
+		case "eur":
+			prices[date] = item.EUR
+		case "usd":
+			prices[date] = item.USD
+		case "gbp":
+			prices[date] = item.GBP
+		case "cad":
+			prices[date] = item.CAD
+		case "cny":
+			prices[date] = item.CNY
+		case "jyp":
+			prices[date] = item.JPY
+		case "rub":
+			prices[date] = item.RUB
+		default:
+			prices[date] = item.USD
+		}
+	}
+
+	totalIncomePerDay := map[string][2]int64{}
+	for _, item := range income {
+		year, month, day := utils.DayToTime(item.Day).Date()
+		date := fmt.Sprintf("%d-%d-%d", day, month, year)
+		if _, exist := totalIncomePerDay[date]; !exist {
+			totalIncomePerDay[date] = [2]int64{item.StartBalance.Int64, item.EndBalance.Int64}
+			continue
+		}
+		state := totalIncomePerDay[date]
+		state[0] += item.StartBalance.Int64
+		state[1] += item.EndBalance.Int64
+		totalIncomePerDay[date] = state
+	}
+
+	type resp struct {
+		Date         string  `json:"date"`
+		EndBalance   int64   `json:"end_balance"`
+		StartBalance int64   `json:"start_balance"`
+		Price        float64 `json:"price"`
+		Currency     string  `json:"currency"`
+	}
+
+	data := make([]resp, len(totalIncomePerDay))
+	i := 0
+	for key, item := range totalIncomePerDay {
+		if len(item) < 2 {
+			continue
+		}
+		data[i] = resp{
+			Date:         key,
+			StartBalance: item[0],
+			EndBalance:   item[1],
+			Price:        prices[key], //price will default to 0 if key does not exist
+			Currency:     currency,
+		}
+		i++
+	}
+
+	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
 		http.Error(w, "Internal server error", 503)
