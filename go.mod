@@ -3,7 +3,7 @@ module eth2-exporter
 go 1.15
 
 require (
-	cloud.google.com/go v0.81.0 // indirect
+	cloud.google.com/go v0.81.0
 	cloud.google.com/go/firestore v1.4.0 // indirect
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/PuerkitoBio/goquery v1.6.1
@@ -59,7 +59,7 @@ require (
 	golang.org/x/text v0.3.6
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/api v0.44.0
-	google.golang.org/genproto v0.0.0-20210415145412-64678f1ae2d5 // indirect
+	google.golang.org/genproto v0.0.0-20210415145412-64678f1ae2d5
 	google.golang.org/grpc v1.37.0
 	gopkg.in/yaml.v2 v2.3.0
 )
