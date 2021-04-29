@@ -1186,6 +1186,8 @@ github.com/protolambda/ztyp v0.1.0/go.mod h1:u9yT4ioIokwlHrOfiZ52ezHfKdza3phxhTJ
 github.com/prysmaticlabs/eth2-types v0.0.0-20210127031309-22cbe426eba6/go.mod h1:kOmQ/zdobQf7HUohDTifDNFEZfNaSCIY5fkONPL+dWU=
 github.com/prysmaticlabs/eth2-types v0.0.0-20210219172114-1da477c09a06 h1:b4WxLSz1KzkEdF/DPcog9gIKN9d9YAFgbZO1hqjNrW0=
 github.com/prysmaticlabs/eth2-types v0.0.0-20210219172114-1da477c09a06/go.mod h1:kOmQ/zdobQf7HUohDTifDNFEZfNaSCIY5fkONPL+dWU=
+github.com/prysmaticlabs/eth2-types v0.0.0-20210303084904-c9735a06829d h1:1dN7YAqMN3oAJ0LceWcyv/U4jHLh+5urnSnr4br6zg4=
+github.com/prysmaticlabs/eth2-types v0.0.0-20210303084904-c9735a06829d/go.mod h1:kOmQ/zdobQf7HUohDTifDNFEZfNaSCIY5fkONPL+dWU=
 github.com/prysmaticlabs/ethereumapis v0.0.0-20210311175904-cf9f64632dd4 h1:6qCWUpx87Ahd+GqthQz4k1wLLI2K5yJQ7kwvrs1+zzg=
 github.com/prysmaticlabs/ethereumapis v0.0.0-20210311175904-cf9f64632dd4/go.mod h1:7PScMYRV0tzumbo5iDa/iVfj42Pw1qYxBe9daF6OMsQ=
 github.com/prysmaticlabs/go-bitfield v0.0.0-20200322041314-62c2aee71669/go.mod h1:hCwmef+4qXWjv0jLDbQdWnL0Ol7cS7/lCSS26WR+u6s=

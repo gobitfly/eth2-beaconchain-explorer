@@ -42,7 +42,7 @@ require (
 	github.com/prometheus/client_golang v1.9.0
 	github.com/protolambda/zrnt v0.12.4
 	github.com/protolambda/ztyp v0.1.0
-	github.com/prysmaticlabs/eth2-types v0.0.0-20210219172114-1da477c09a06
+	github.com/prysmaticlabs/eth2-types v0.0.0-20210303084904-c9735a06829d
 	github.com/prysmaticlabs/ethereumapis v0.0.0-20210311175904-cf9f64632dd4
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20210202205921-7fcea7c45dc8
 	github.com/prysmaticlabs/go-ssz v0.0.0-20210121151755-f6208871c388
