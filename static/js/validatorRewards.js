@@ -1,4 +1,5 @@
 const VALLIMIT = 200
+var currency = ""
 // let validators = []
 
 function create_typeahead(input_container) {
@@ -122,30 +123,126 @@ function create_typeahead(input_container) {
     $(input_container).on('typeahead:select', function (ev, sug) {
         validators = $('#validator-index-view').val().split(",");
         if (sug.validator_indices) {
-            console.log(sug.validator_indices)
             validators = validators.concat(sug.validator_indices);
         } else {
-            console.log(sug.index)
             validators.push(sug.index);
         }
         validators = Array.from(new Set(validators));
+        if (validators.length > VALLIMIT){
+            validators = validators.slice(0, VALLIMIT)
+            alert(`No more than ${VALLIMIT} validators are allowed`)
+        }
         $('#validator-index-view').val(validators);
         $(input_container).typeahead('val', '')
     })
 }
 
 
-function updateCurrencies(currencies, container){
-    for (item of currencies){
-        if(item==="ts")continue;
-        $(container).append(`<option>${item.toUpperCase()}</option>`);
+function updateCurrencies(currencies, container) {
+    for (item of currencies) {
+        if (item === "ts") continue;
+        $(container).append(`<option value="${item}">${item.toUpperCase()}</option>`);
     }
 
 }
 
+function getValidatorQueryString() {
+    return window.location.href.slice(window.location.href.indexOf("?"), window.location.href.length)
+}
+
+function hideSpinner(){
+    $("#loading-div").addClass("d-none")
+    $("#loading-div").removeClass("d-flex")
+}
+
+function showTable(data){
+    if (data.length > 0 && data[0].length === 6){
+        currency = data[0][5].toUpperCase()
+    }
+    $('#tax-table').DataTable({
+        processing: true,
+        serverSide: false,
+        ordering: true,
+        searching: true,
+        pagingType: 'full_numbers',
+        pageLength: 100,
+        lengthChange: false,
+        data: data,
+        dom: 'Bfrtip',
+        buttons: [
+            'copyHtml5',
+            'excelHtml5',
+            'csvHtml5',
+            'pdfHtml5'
+        ],
+        drawCallback: function (settings) {
+            hideSpinner()
+            $("#form-div").addClass("d-none")
+            $("#table-div").removeClass("d-none")
+        },
+        columnDefs: [
+            {
+                targets: 0,
+                data: '0',
+                "orderable": true,
+                render: function (data, type, row, meta) {
+                    return data
+                }
+            }, {
+                targets: 1,
+                data: '1',
+                "orderable": true,
+                render: function (data, type, row, meta) {
+                    return parseFloat(data).toFixed(5)
+                }
+            }, {
+                targets: 2,
+                data: '2',
+                "orderable": true,
+                render: function (data, type, row, meta) {
+                    return parseFloat(data).toFixed(5)
+                }
+            }, {
+                targets: 3,
+                data: '3',
+                "orderable": false,
+                render: function (data, type, row, meta) {
+                    return `${currency} ${parseFloat(data).toFixed(5)}`
+                }
+            }, {
+                targets: 4,
+                data: '4',
+                "orderable": false,
+                render: function (data, type, row, meta) {
+                   return `${currency} ${parseFloat(data).toFixed(5)}`
+                }
+            }, {
+                targets: 5,
+                data: '5',
+                "orderable": false,
+                visible: false,
+                render: function (data, type, row, meta) {
+                    return data.toUpperCase()
+                }
+            }]
+    });
+}
 
 $(document).ready(function () {
     create_typeahead('.typeahead-validators');
-
-
+    let qry = getValidatorQueryString()
+    if (qry.length > 1){
+        fetch(`/rewards/hist${qry}`,{
+            method: "GET"
+          }).then((res)=>{
+            res.json().then((data)=>{
+              showTable(data)
+            })
+          }).catch(()=>{
+            alert("Failed to fetch the data :(")
+            hideSpinner()      
+          })
+    }else{
+        hideSpinner()
+    }
 })

@@ -97,7 +97,7 @@ func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]s
 			prices[date] = item.CAD
 		case "cny":
 			prices[date] = item.CNY
-		case "jyp":
+		case "jpy":
 			prices[date] = item.JPY
 		case "rub":
 			prices[date] = item.RUB

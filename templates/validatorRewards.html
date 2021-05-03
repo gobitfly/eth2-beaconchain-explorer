@@ -1,8 +1,13 @@
 {{ define "js"}}
+<script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
+<script type="text/javascript" src="/bundle/js/dataTables.buttons.min.js"></script>
+<script type="text/javascript" src="/bundle/js/jszip.min.js"></script>
+<script type="text/javascript" src="/bundle/js/pdfmake.min.js"></script>
+<script type="text/javascript" src="/bundle/js/vfs_fonts.min.js"></script>
+<script type="text/javascript" src="/bundle/js/buttons.html5.min.js"></script>
 <script src="bundle/js/validatorRewards.js"></script>
-
 <script>
-    updateCurrencies({{.Currencies}}, "#currency-select")
+    updateCurrencies({{.Currencies}}, "#currency")
 </script>
 
 {{end}}
@@ -16,7 +21,10 @@
 </script>
 
 {{ define "css"}}
+<link rel="stylesheet" type="text/css" href="/bundle/css/datatables.min.css"/>
+<link rel="stylesheet" type="text/css" href="/bundle/css/buttons.dataTables.min.css"/>
 <link rel="stylesheet" href="/bundle/css/validatorRewards.css"/>
+
 {{end}}
 
 {{ define "content"}}
@@ -34,49 +42,76 @@
         </div>
     </div>
     <div class="card">
-        <div class="card-body p-2">
-            <form>
-                <div class="form-group">
-                    <label for="validatorIndices">Validators</label>
-                    <textarea id="validator-index-view" class="form-control" style="width: 100%; background-color: rgba(0, 0, 0, 0);" placeholder="type validator indices manually. eg. 1234,5678,9012, ..." required></textarea>
-                    or
-                    <input class="form-control typeahead-validators" type="text"
-                            placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
+        <div class="card-body p-0">
+            <div id="table-div" class="d-none">
+                <div class="d-flex justify-content-end align-items-center p-2" style="width: 100%;">
+                    <a href="/rewards"><i class="fas fa-times text-danger"></i></a>
                 </div>
+                <div class="table-responsive py-2">
+                    <table class="table" id="tax-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>End-of-date balance ETH</th>
+                                <th>Income for date ETH</th>
+                                <th>Price of ETH for date</th>
+                                <th>Income for date</th>
+                                <th>Currency</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+            <div id="form-div" class="p-3">
+                <form>
+                    <div class="form-group">
+                        <label for="validators">Validators</label>
+                        <textarea id="validator-index-view" name="validators" class="form-control" style="width: 100%; background-color: rgba(0, 0, 0, 0);" placeholder="type validator indices manually. eg. 1234,5678,9012, ..." required></textarea>
+                        or
+                        <input class="form-control typeahead-validators" type="text"
+                                placeholder="Add a Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
+                    </div>
 
-                <!-- <div class="form-group">
-                  <label for="exampleInputPassword1">Timezone</label>
-                  <select class="form-control" required>
-                    <option>Europe</option>
-                  </select>
-                </div> -->
-                
-                <div class="form-group">
-                    <label for="currency">Currency</label>
-                    <select id="currency-select" class="form-control" required>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="dataRange">Data Range</label>
+                    <!-- <div class="form-group">
+                    <label for="exampleInputPassword1">Timezone</label>
                     <select class="form-control" required>
-                        <option value="30">a month</option>
-                        <option value="90">3 months</option>
-                        <option value="180">6 months</option>
-                        <option value="270">9 months</option>
-                        <option value="365">a year</option>
-                      </select>
-                </div>
-                
-                
-                <div class="form-check">
-                  <input type="checkbox" class="form-check-input" id="exampleCheck1" {{if not .User.Authenticated}}disabled{{end}}>
-                  <label class="form-check-label" for="exampleCheck1">Subscribe to receive monthly reports {{if not .User.Authenticated}}(<a style="color: red;" href="/login">Please sign in to use this feature</a>){{end}}</label>
-                </div>
-    
-                <button type="submit" class="btn btn-primary">Submit</button>
-              </form>
+                        <option>Europe</option>
+                    </select>
+                    </div> -->
+                    
+                    <div class="form-group">
+                        <label for="currency">Currency</label>
+                        <select id="currency" name="currency" class="form-control" required>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="days">Data Range</label>
+                        <select id="days" name="days" class="form-control" required>
+                            <option value="30">a month</option>
+                            <option value="90">3 months</option>
+                            <option value="180">6 months</option>
+                            <option value="270">9 months</option>
+                            <option value="365">a year</option>
+                        </select>
+                    </div>
+                    
+                    
+                    <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="checkbox" name="checkbox" {{if not .User.Authenticated}}disabled{{end}}>
+                    <label class="form-check-label" for="checkbox">Subscribe to receive monthly reports {{if not .User.Authenticated}}(<a style="color: red;" href="/login">Please sign in to use this feature</a>){{end}}</label>
+                    </div>
+        
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
         </div>
+    </div>
+
+    <div id="loading-div" style="position: absolute; width: 8%; height: 8%; z-index: 100; top: 46%; right: 46%;" class="card p-1 d-flex justify-content-center align-items-center">
+        <div class="spinner-border text-primary spinner-border-lg" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
     </div>
 </div>
 
