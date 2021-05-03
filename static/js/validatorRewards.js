@@ -132,7 +132,10 @@ function create_typeahead(input_container) {
             validators = validators.slice(0, VALLIMIT)
             alert(`No more than ${VALLIMIT} validators are allowed`)
         }
-        $('#validator-index-view').val(validators);
+        $('#validator-index-view').text(validators);
+        if ($('#validator-index-view').text().charAt(0) === ",") {
+            $('#validator-index-view').text($('#validator-index-view').text().slice(1))
+        }
         $(input_container).typeahead('val', '')
     })
 }
