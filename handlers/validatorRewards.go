@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/csrf"
 	"github.com/lib/pq"
@@ -47,31 +48,9 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	q := r.URL.Query()
-
-	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"))
-	if err != nil {
-		logger.Errorf("error retrieving active validators %v", err)
-		http.Error(w, "Invalid query", 400)
-		return
-	}
-
+func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]string {
+	var err error
 	validatorFilter := pq.Array(validatorArr)
-
-	currency := q.Get("currency")
-	if currency == "" {
-		currency = "usd"
-	}
-
-	days, err := strconv.ParseUint(q.Get("days"), 10, 64)
-	if err != nil {
-		logger.Errorf("error retrieving days %v", err)
-		http.Error(w, "Invalid query", 400)
-		return
-	}
 
 	var pricesDb []types.Price
 	err = db.DB.Select(&pricesDb,
@@ -95,7 +74,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	err = db.DB.Select(&income,
 		`select day, start_balance, end_balance
 		 from validator_stats 
-		 where validatorindex=ANY($1) AND day> $2
+		 where validatorindex=ANY($1) AND day > $2
 		 order by day desc`, validatorFilter, lowerBound)
 	if err != nil {
 		logger.Errorf("error getting incomes: %w", err)
@@ -103,8 +82,10 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	prices := map[string]float64{}
 	for _, item := range pricesDb {
-		year, month, day := item.TS.Date()
-		date := fmt.Sprintf("%d-%d-%d", day, month, year)
+		// year, month, day := item.TS.Date()
+		// date := fmt.Sprintf("%d-%d-%d", day, month, year)
+		date := fmt.Sprintf("%v", item.TS)
+		date = strings.Split(date, " ")[0]
 		switch currency {
 		case "eur":
 			prices[date] = item.EUR
@@ -127,8 +108,10 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	totalIncomePerDay := map[string][2]int64{}
 	for _, item := range income {
-		year, month, day := utils.DayToTime(item.Day).Date()
-		date := fmt.Sprintf("%d-%d-%d", day, month, year)
+		// year, month, day := utils.DayToTime(item.Day).Date()
+		// date := fmt.Sprintf("%d-%d-%d", day, month, year)
+		date := fmt.Sprintf("%v", utils.DayToTime(item.Day))
+		date = strings.Split(date, " ")[0]
 		if _, exist := totalIncomePerDay[date]; !exist {
 			totalIncomePerDay[date] = [2]int64{item.StartBalance.Int64, item.EndBalance.Int64}
 			continue
@@ -139,29 +122,59 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 		totalIncomePerDay[date] = state
 	}
 
-	type resp struct {
-		Date         string  `json:"date"`
-		EndBalance   int64   `json:"end_balance"`
-		StartBalance int64   `json:"start_balance"`
-		Price        float64 `json:"price"`
-		Currency     string  `json:"currency"`
-	}
+	// type resp struct {
+	// 	Date         string  `json:"date"`
+	// 	EndBalance   int64   `json:"end_balance"`
+	// 	StartBalance int64   `json:"start_balance"`
+	// 	Price        float64 `json:"price"`
+	// 	Currency     string  `json:"currency"`
+	// }
 
-	data := make([]resp, len(totalIncomePerDay))
+	data := make([][]string, len(totalIncomePerDay))
 	i := 0
 	for key, item := range totalIncomePerDay {
 		if len(item) < 2 {
 			continue
 		}
-		data[i] = resp{
-			Date:         key,
-			StartBalance: item[0],
-			EndBalance:   item[1],
-			Price:        prices[key], //price will default to 0 if key does not exist
-			Currency:     currency,
+		data[i] = []string{
+			key,
+			fmt.Sprintf("%f", float64(item[1])/1e9), // end of day balance
+			fmt.Sprintf("%f", (float64(item[1])/1e9)-(float64(item[0])/1e9)),               // income of day ETH
+			fmt.Sprintf("%f", prices[key]),                                                 //price will default to 0 if key does not exist
+			fmt.Sprintf("%f", ((float64(item[1])/1e9)-(float64(item[0])/1e9))*prices[key]), // income of day Currency
+			currency,
 		}
 		i++
 	}
+
+	return data
+}
+
+func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query()
+
+	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	if err != nil {
+		logger.Errorf("error retrieving active validators %v", err)
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+
+	currency := q.Get("currency")
+	if currency == "" {
+		currency = "usd"
+	}
+
+	days, err := strconv.ParseUint(q.Get("days"), 10, 64)
+	if err != nil {
+		logger.Errorf("error retrieving days %v", err)
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+
+	data := getValidatorHist(validatorArr, currency, days)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
