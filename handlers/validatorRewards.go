@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/csrf"
 	"github.com/lib/pq"
@@ -82,8 +84,6 @@ func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]s
 
 	prices := map[string]float64{}
 	for _, item := range pricesDb {
-		// year, month, day := item.TS.Date()
-		// date := fmt.Sprintf("%d-%d-%d", day, month, year)
 		date := fmt.Sprintf("%v", item.TS)
 		date = strings.Split(date, " ")[0]
 		switch currency {
@@ -103,13 +103,12 @@ func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]s
 			prices[date] = item.RUB
 		default:
 			prices[date] = item.USD
+			currency = "usd"
 		}
 	}
 
 	totalIncomePerDay := map[string][2]int64{}
 	for _, item := range income {
-		// year, month, day := utils.DayToTime(item.Day).Date()
-		// date := fmt.Sprintf("%d-%d-%d", day, month, year)
 		date := fmt.Sprintf("%v", utils.DayToTime(item.Day))
 		date = strings.Split(date, " ")[0]
 		if _, exist := totalIncomePerDay[date]; !exist {
@@ -121,14 +120,6 @@ func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]s
 		state[1] += item.EndBalance.Int64
 		totalIncomePerDay[date] = state
 	}
-
-	// type resp struct {
-	// 	Date         string  `json:"date"`
-	// 	EndBalance   int64   `json:"end_balance"`
-	// 	StartBalance int64   `json:"start_balance"`
-	// 	Price        float64 `json:"price"`
-	// 	Currency     string  `json:"currency"`
-	// }
 
 	data := make([][]string, len(totalIncomePerDay))
 	i := 0
@@ -147,6 +138,15 @@ func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]s
 		i++
 	}
 
+	sort.Slice(data, func(p, q int) bool {
+		i, err := time.Parse("2006-01-02", data[p][0])
+		i2, err := time.Parse("2006-01-02", data[q][0])
+		if err != nil {
+			return false
+		}
+		return i2.Before(i)
+	})
+
 	return data
 }
 
@@ -163,9 +163,6 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	currency := q.Get("currency")
-	if currency == "" {
-		currency = "usd"
-	}
 
 	days, err := strconv.ParseUint(q.Get("days"), 10, 64)
 	if err != nil {
@@ -179,6 +176,69 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+}
+
+func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Disposition", "attachment; filename=beaconcah_in-income-report.csv")
+	w.Header().Set("Content-Type", "text/csv")
+
+	q := r.URL.Query()
+
+	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	if err != nil {
+		logger.Errorf("error retrieving active validators %v", err)
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+
+	currency := q.Get("currency")
+
+	days, err := strconv.ParseUint(q.Get("days"), 10, 64)
+	if err != nil {
+		logger.Errorf("error retrieving days %v", err)
+		http.Error(w, "Invalid query", 400)
+		return
+	}
+
+	data := getValidatorHist(validatorArr, currency, days)
+
+	if len(data) == 0 {
+		w.Write([]byte("No data available"))
+		return
+	}
+	cur := data[0][len(data[0])-1]
+	cur = strings.ToUpper(cur)
+	csv := fmt.Sprintf("Date,End-of-date balance ETH,Income for date ETH,Price of ETH for date %s, Income for date %s", cur, cur)
+
+	totalIncomeEth := 0.0
+	totalIncomeCur := 0.0
+
+	for _, item := range data {
+		if len(item) < 5 {
+			csv += "\n0,0,0,0,0"
+			continue
+		}
+		csv += fmt.Sprintf("\n%s,%s,%s,%s,%s", item[0], item[1], item[2], item[3], item[4])
+		tEth, err := strconv.ParseFloat(item[2], 64)
+		tCur, err := strconv.ParseFloat(item[4], 64)
+
+		if err != nil {
+			continue
+		}
+
+		totalIncomeEth += tEth
+		totalIncomeCur += tCur
+	}
+
+	csv += fmt.Sprintf("\nTotal, ,%f, ,%f", totalIncomeEth, totalIncomeCur)
+
+	_, err = w.Write([]byte(csv))
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
