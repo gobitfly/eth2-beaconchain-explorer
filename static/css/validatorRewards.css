@@ -2,13 +2,13 @@
     width: 100%;
 }
 
-.tt-open{
+.tt-open, #validator-index-view{
     background-color: var(--bg-color-secondary);
     scrollbar-color: var(--primary) rgba(0,0,0,0.2);
     scrollbar-width: thin;
 }
 
-.tt-open::-webkit-scrollbar{
+.tt-open::-webkit-scrollbar, #validator-index-view::-webkit-scrollbar{
     width: 5px;
 }
 
@@ -16,4 +16,5 @@
 .tt-suggestion:hover {
   color: #fff;
   background-color: #007bff;
+  cursor: pointer;
 }
