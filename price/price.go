@@ -20,6 +20,7 @@ type EthPrice struct {
 		Rub float64 `json:"rub"`
 		Usd float64 `json:"usd"`
 		Gbp float64 `json:"gbp"`
+		Aud float64 `json:"aud"`
 	} `json:"ethereum"`
 }
 
@@ -38,7 +39,8 @@ func updateEthPrice() {
 }
 
 func fetchPrice() {
-	resp, err := http.Get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd%2Ceur%2Crub%2Ccny%2Ccad%2Cjpy%2Cgbp")
+	client := &http.Client{Timeout: time.Second * 10}
+	resp, err := client.Get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd%2Ceur%2Crub%2Ccny%2Ccad%2Cjpy%2Cgbp%2Caud")
 
 	if err != nil {
 		logger.Errorf("error retrieving ETH price: %v", err)
@@ -72,6 +74,8 @@ func GetEthPrice(currency string) float64 {
 		return ethPrice.Ethereum.Cny
 	case "CAD":
 		return ethPrice.Ethereum.Cad
+	case "AUD":
+		return ethPrice.Ethereum.Aud
 	case "JPY":
 		return ethPrice.Ethereum.Jpy
 	case "GBP":
@@ -79,4 +83,9 @@ func GetEthPrice(currency string) float64 {
 	default:
 		return 1
 	}
+}
+
+func GetEthRoundPrice(currency float64) int {
+	ethRoundPrice := int(currency)
+	return ethRoundPrice
 }

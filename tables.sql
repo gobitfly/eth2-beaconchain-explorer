@@ -167,6 +167,7 @@ create table validator_stats
     deposits_amount         bigint,
     primary key (validatorindex, day)
 );
+create index idx_validator_stats_day on validator_stats (day);
 
 drop table if exists validator_stats_status;
 create table validator_stats_status
@@ -441,7 +442,8 @@ create table users_app_subscriptions
     store           character varying(50)         not null,
     expires_at      timestamp without time zone   not null,
     reject_reason   character varying(50),
-    receipt         character varying(1024)       not null unique
+    receipt         character varying(99999)       not null,
+    receipt_hash    character varying(1024)        not null unique
 );
 create index idx_user_app_subscriptions on users_app_subscriptions (user_id);
 
@@ -658,4 +660,39 @@ CREATE TABLE stats_system (
 	
 	
 	foreign key(meta_id) references stats_meta(id)
+);
+
+drop table if exists stake_pools_stats;
+create table stake_pools_stats
+(
+    id serial not null, 
+    address text not null, 
+    deposit int, 
+    name text not null, 
+    category text, 
+    PRIMARY KEY(id, address, deposit, name)
+);
+
+drop table if exists price;
+create table price
+(
+    ts     timestamp without time zone not null,
+    eur numeric(20,10)                not null,
+    usd numeric(20,10)                not null,
+    rub numeric(20,10)                not null,
+    cny numeric(20,10)                not null,
+    cad numeric(20,10)                not null,
+    jpy numeric(20,10)                not null,
+    gbp numeric(20,10)                not null,
+    primary key (ts)
+);
+
+drop table if exists staking_pools_chart;
+create table staking_pools_chart
+(
+    epoch                      int  not null,
+    name                       text not null, 
+    income                     bigint not null, 
+    balance                    bigint not null, 
+    PRIMARY KEY(epoch, name)
 );

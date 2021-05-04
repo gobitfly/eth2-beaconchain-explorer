@@ -1,8 +1,8 @@
 {{ define "block_votes" }}
 <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
   <div class="row p-1">
-    <div class="col-md-12 text-center"><b>{{.VotesCount}} validator{{if ne .VotesCount 1}}s{{end}}
-        voted for
+    <div class="col-md-12 text-center"><b>{{.VotingValidatorsCount}} validator{{if ne .VotingValidatorsCount 1}}s{{end}}
+        voted {{.VotesCount}} times for
         this block:</b></div>
   </div>
   <div class="table-responsive">

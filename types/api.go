@@ -66,3 +66,9 @@ type StatsDataStruct struct {
 	Node      []interface{} `json:"node"`
 	System    []interface{} `json:"system"`
 }
+
+type WidgetResponse struct {
+	Eff       interface{} `json:"efficiency"`
+	Validator interface{} `json:"validator"`
+	Epoch     int64       `json:"epoch"`
+}

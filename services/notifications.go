@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/mail"
+	"eth2-exporter/metrics"
 	"eth2-exporter/notify"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -28,7 +29,8 @@ func notificationsSender() {
 		notifications := collectNotifications()
 		sendNotifications(notifications)
 		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
-		time.Sleep(time.Second * 60)
+		metrics.TaskDuration.WithLabelValues("service_notifications").Observe(time.Since(start).Seconds())
+		time.Sleep(time.Second * 120)
 	}
 }
 

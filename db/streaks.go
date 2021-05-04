@@ -1,6 +1,7 @@
 package db
 
 import (
+	"eth2-exporter/metrics"
 	"fmt"
 	"strings"
 	"time"
@@ -14,11 +15,14 @@ import (
 // It will return `true` for `updatedToLastFinalizedEpoch` if all attesations up to the last finalized epoch have been considered and false otherwise.
 func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 	t0 := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_validator_attestation_streaks").Observe(time.Since(t0).Seconds())
+	}()
 
 	lastFinalizedEpoch := 0
 	err = DB.Get(&lastFinalizedEpoch, `select coalesce(max(epoch),0) from epochs where finalized = 't'`)
 	if err != nil {
-		return false, fmt.Errorf("Error getting latestEpoch: %w", err)
+		return false, fmt.Errorf("error getting latestEpoch: %w", err)
 	}
 
 	if lastFinalizedEpoch == 0 {
@@ -28,7 +32,7 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 	lastStreaksEpoch := 0
 	err = DB.Get(&lastStreaksEpoch, `select coalesce(max(start+length)-1,0) from validator_attestation_streaks`)
 	if err != nil {
-		return false, fmt.Errorf("Error getting lastStreaksEpoch: %w", err)
+		return false, fmt.Errorf("error getting lastStreaksEpoch: %w", err)
 	}
 
 	if lastStreaksEpoch >= lastFinalizedEpoch {
@@ -54,7 +58,13 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 	lastStatsDay := 0
 	err = DB.Get(&lastStatsDay, `select coalesce(max(day),0) from validator_stats`)
 	if err != nil {
-		return false, fmt.Errorf("Error getting lastStatsDay: %w", err)
+		return false, fmt.Errorf("error getting lastStatsDay: %w", err)
+	}
+
+	if lastStatsDay < day {
+		// only do streaks once per day for now
+		logger.Infof("skipping streaks, last day: %v", day)
+		return true, nil
 	}
 
 	logger.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "lastStatsDay": lastStatsDay}).Infof("updating streaks")
@@ -111,14 +121,25 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 						and vas.status = b1.status
 						and vas.start+vas.length = $1
 			),
-			-- consider validator-activation, extra-step for performance-reasons
+			-- consider validator-activation and validator-exit, extra-step for performance-reasons
 			fixedstreaks as (
 				select streaks.validatorindex, streaks.status, 
-					coalesce(v.activationepoch, streaks.start) as start,
-					coalesce(streaks.end - v.activationepoch, streaks.length) as length
+					case
+						when v.activationepoch > streaks.start then v.activationepoch
+						else streaks.start
+					end as start,
+					case
+						when v.exitepoch < streaks.end and v.activationepoch > streaks.start then v.exitepoch - v.activationepoch
+						when v.exitepoch < streaks.end then v.exitepoch - streaks.start
+						when v.activationepoch > streaks.start then streaks.end - v.activationepoch
+						else streaks.length
+					end as length
 				from streaks
-				left join (select validatorindex, activationepoch from validators where activationepoch > $1) v
-					on v.validatorindex = streaks.validatorindex and v.activationepoch > streaks.start
+					inner join (
+						select validatorindex, activationepoch, exitepoch
+						from validators
+						where exitepoch > $1 and activationepoch <= $2
+					) v on v.validatorindex = streaks.validatorindex
 			),
 			-- rank by validator and status (we only save current and longest streaks (missed and executed))
 			rankedstreaks as (
@@ -136,7 +157,7 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 
 	err = DB.Select(&streaks, qry, uint64(startEpoch), uint64(endEpoch))
 	if err != nil {
-		return false, fmt.Errorf("Error getting streaks: %w", err)
+		return false, fmt.Errorf("error getting streaks: %w", err)
 	}
 
 	t1 := time.Now()
@@ -172,13 +193,13 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 		stmt := fmt.Sprintf(`insert into validator_attestation_streaks (validatorindex, status, start, length) values %s`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return false, fmt.Errorf("Error inserting streaks %w", err)
+			return false, fmt.Errorf("error inserting streaks %w", err)
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return false, fmt.Errorf("Error committing validator_attestation_streaks: %w", err)
+		return false, fmt.Errorf("error committing validator_attestation_streaks: %w", err)
 	}
 
 	t2 := time.Now()

@@ -1,4 +1,3 @@
-
 /* Revive ad server responsive images */
 ins[data-revive-zoneid] > a > img {
   max-width: 100%;
@@ -18,18 +17,14 @@ ins[data-revive-zoneid] > a > img {
 }
 
 @media (min-width: 1140px) and (max-width: 1440px) { 
-
   .navbar .nav-item img {
     display: none;
   }
-
 }
 
 .cursor-pointer {
   cursor: pointer;
 }
-
-
 
 @media (max-width: 1140px) {
   .nav-icon {
@@ -124,7 +119,6 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   background-image: linear-gradient(180deg, transparent 65%, var(--highlight) 0);
 }
 
-
 .visually-hidden {
   border: 0;
   clip: rect(0 0 0 0);
@@ -135,17 +129,6 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   position: absolute;
   width: 1px;
   white-space: nowrap;
-}
-
-
-@media (max-width: 1139.98px) {
-  .info-banner-content.container {
-    padding-right: 0;
-    padding-left: 0;
-  }
-  .info-banner-container {
-    padding: 0 1rem;
-  }
 }
 
 
@@ -368,6 +351,7 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   left: 50%;
   transform: translate(-50%,-50%);
 }
+
 .btn-icon-inside {
   position: relative;
   line-height: 0;
@@ -377,4 +361,3 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   width: 1.3rem;
   height: 1.3rem;
 }
-

@@ -1,7 +1,7 @@
 {{ define "js" }}
-    <script src="/bundle/js/highcharts/highstock.min.js"></script>
-    <script src="/bundle/js/highcharts/annotations.min.js"></script>
-    <script src="/bundle/js/highcharts/highcharts-global-options.js"></script>
+    <script src="/js/highcharts/highstock.min.js"></script>
+    <script src="/js/highcharts/annotations.min.js"></script>
+    <script src="/js/highcharts/highcharts-global-options.js"></script>
     <script>
         // share
         var left = (screen.width - 570) / 2;
@@ -97,7 +97,7 @@
                     RUB: 15277.44,
                     USD: 208.96,
                 }
-                this.config.totalEthSupply = 112748652436500000
+                this.config.totalEthSupply = 115113251499000000
                 this.config.showCosts = false
 
                 // the param key, encoding function, decoding function, include in url params bool, update element function
@@ -339,19 +339,18 @@
                             }
 
                         }).catch(err => {
-                        console.error(err)
-                        var ethSupply = this.config.totalEthSupply / 1e18
-                        document.getElementById('staking-variable-totalStake').setAttribute('max', ethSupply)
-                        document.getElementById('staking-variable-totalStake').setAttribute('value', (ethSupply) * 0.01)
-                        document.getElementById('staking-variable-totalStake-slider').setAttribute('max', ethSupply)
-                        document.getElementById('staking-variable-totalStake-slider').setAttribute('step', (ethSupply) * 0.0025)
-                        count += 1
-                        if (count == 2) {
-                            resolve()
-                        }
-                        // reject(err)
-
-                    })
+                            console.error(err)
+                            var ethSupply = this.config.totalEthSupply / 1e9
+                            document.getElementById('staking-variable-totalStake').setAttribute('max', ethSupply)
+                            document.getElementById('staking-variable-totalStake').setAttribute('value', (ethSupply) * 0.01)
+                            document.getElementById('staking-variable-totalStake-slider').setAttribute('max', ethSupply)
+                            document.getElementById('staking-variable-totalStake-slider').setAttribute('step', (ethSupply) * 0.0025)
+                            count += 1
+                            if (count == 2) {
+                                resolve()
+                            }
+                            // reject(err)
+                        })
 
                     fetch("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=BTC,USD,EUR,GBP,JPY,RUB,CNY,AUD,CAD,CZK")
                         .then(res => res.json())

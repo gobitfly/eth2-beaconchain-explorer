@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -144,8 +145,14 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 // LatestState will return common information that about the current state of the eth2 chain
 func LatestState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	currency := GetCurrency(r)
+	data := services.LatestState()
+	// data.Currency = currency
+	data.EthPrice = price.GetEthPrice(currency)
+	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
+	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
 
-	err := json.NewEncoder(w).Encode(services.LatestState())
+	err := json.NewEncoder(w).Encode(data)
 
 	if err != nil {
 		logger.Errorf("error sending latest index page data: %v", err)

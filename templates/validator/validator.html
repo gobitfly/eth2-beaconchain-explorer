@@ -6,16 +6,16 @@
 		})
 	</script>
 </script>
-	<script src="/bundle/js/validator.js"></script>
+	<script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}})</script>
 
     {{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
-		<script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
-		<script type="text/javascript" src="/bundle/js/datatable_input.js"></script>
-		<script src="/bundle/js/highcharts/highstock.min.js"></script>
-		<script src="/bundle/js/highcharts/exporting.min.js"></script>
-		<script src="/bundle/js/highcharts/offline-exporting.min.js"></script>
-		<script src="/bundle/js/highcharts/highcharts-global-options.js"></script>
+		<script type="text/javascript" src="/js/datatables.min.js"></script>
+		<script type="text/javascript" src="/js/datatable_input.js"></script>
+		<script src="/js/highcharts/highstock.min.js"></script>
+		<script src="/js/highcharts/exporting.min.js"></script>
+		<script src="/js/highcharts/offline-exporting.min.js"></script>
+		<script src="/js/highcharts/highcharts-global-options.js"></script>
 		<script>
             setupDashboardButtons({{.Index }}+'')
 		</script>
@@ -23,8 +23,8 @@
 {{end}}
 
 {{ define "css"}}
-	<link rel="stylesheet" href="/bundle/css/validator.css">
-	<link rel="stylesheet" type="text/css" href="/bundle/css/datatables.min.css"/>
+	<link rel="stylesheet" href="/css/validator.css">
+	<link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
 	<style>
 			/* #TODO:stefan maybe make this prettier somehow? */
 			#slashings-table td:first-child {
@@ -124,12 +124,12 @@
 									<a class="nav-link active" id="incomeChart-tab" data-toggle="tab" href="#incomeChart" role="tab" aria-controls="incomeChart-tab-content" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-chart-line"></i><span class="tab-text">Income</span></a>
 								</li>
 								<li class="nav-item">
-									<a class="nav-link {{if eq .ProposedBlocksCount 0}}disabled{{end}}" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart-tab-content" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-chart-bar"></i><span class="tab-text">Proposals</span></a>
+									<a class="nav-link {{if eq .BlocksCount 0}}disabled{{end}}" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart-tab-content" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-chart-bar"></i><span class="tab-text">Proposals</span></a>
 								</li>
 								<!-- Tables -->
 								
 								<li class="nav-item">
-									<a class="nav-link {{if eq .ProposedBlocksCount 0}}disabled{{end}}" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
+									<a class="nav-link {{if eq .BlocksCount 0}}disabled{{end}}" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
 									aria-controls="blocks" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Blocks</span></a>
 								</li>
 								<li class="nav-item">
@@ -152,7 +152,7 @@
 								<div id="proposedChart" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="proposedChart-tab">
 									{{template "validatorProposedChart"  . }}
 								</div>
-								{{if gt .ProposedBlocksCount 0}}
+								{{if gt .BlocksCount 0}}
 								<div class="tab-pane fade h-100" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
 									{{ template "validatorProposedTable"  . }}
 								</div>

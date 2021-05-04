@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"database/sql"
+	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -489,10 +490,14 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 }
 
 // UpdateCanonicalBlocks will update the blocks for an epoch range in the database
-func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte) error {
-	if len(orphanedBlocks) == 0 {
+func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, blocks []*types.MinimalBlock) error {
+	if len(blocks) == 0 {
 		return nil
 	}
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_canonical_blocks").Observe(time.Since(start).Seconds())
+	}()
 
 	tx, err := DB.Begin()
 	if err != nil {
@@ -505,13 +510,53 @@ func UpdateCanonicalBlocks(startEpoch, endEpoch uint64, orphanedBlocks [][]byte)
 		return err
 	}
 
-	for _, orphanedBlock := range orphanedBlocks {
-		logger.Printf("marking block %x as orphaned", orphanedBlock)
-		_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = $1", orphanedBlock)
+	for _, block := range blocks {
+		if block.Canonical {
+			continue
+		}
+		logger.Printf("marking block %x at slot %v as orphaned", block.BlockRoot, block.Slot)
+		_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = $1", block.BlockRoot)
 		if err != nil {
 			return err
 		}
 	}
+	return tx.Commit()
+}
+
+func SetBlockStatus(blocks []*types.CanonBlock) error {
+	if len(blocks) == 0 {
+		return nil
+	}
+
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("error starting db transactions: %v", err)
+	}
+	defer tx.Rollback()
+
+	canonBlocks := make(pq.ByteaArray, 0)
+	orphanedBlocks := make(pq.ByteaArray, 0)
+	for _, block := range blocks {
+		if !block.Canonical {
+			logger.Printf("marking block %x at slot %v as orphaned", block.BlockRoot, block.Slot)
+			orphanedBlocks = append(orphanedBlocks, block.BlockRoot)
+		} else {
+			logger.Printf("marking block %x at slot %v as canonical", block.BlockRoot, block.Slot)
+			canonBlocks = append(canonBlocks, block.BlockRoot)
+		}
+
+	}
+
+	_, err = tx.Exec("UPDATE blocks SET status = '1' WHERE blockroot = ANY($1)", canonBlocks)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("UPDATE blocks SET status = '3' WHERE blockroot = ANY($1)", orphanedBlocks)
+	if err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
@@ -560,6 +605,11 @@ func SaveBlock(block *types.Block) error {
 
 // SaveEpoch will stave the epoch data into the database
 func SaveEpoch(data *types.EpochData) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_save_epoch").Observe(time.Since(start).Seconds())
+	}()
+
 	tx, err := DB.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
@@ -567,7 +617,6 @@ func SaveEpoch(data *types.EpochData) error {
 	defer tx.Rollback()
 
 	logger.Infof("starting export of epoch %v", data.Epoch)
-	start := time.Now()
 
 	logger.Infof("exporting block data")
 	err = saveBlocks(data.Blocks, tx)
@@ -704,6 +753,10 @@ func SaveEpoch(data *types.EpochData) error {
 }
 
 func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_save_graffitiwall").Observe(time.Since(start).Seconds())
+	}()
 
 	stmtGraffitiwall, err := tx.Prepare(`
 		INSERT INTO graffitiwall (
@@ -755,6 +808,11 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) err
 }
 
 func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_save_validators").Observe(time.Since(start).Seconds())
+	}()
+
 	batchSize := 4000
 	var lenActivatedValidators int
 	var lastActivatedValidatorIdx uint64
@@ -895,6 +953,7 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 	if err != nil {
 		return err
 	}
+	metrics.TaskDuration.WithLabelValues("db_update_validator_status").Observe(time.Since(s).Seconds())
 	logger.Infof("saving validator status completed, took %v", time.Since(s))
 
 	s = time.Now()
@@ -908,6 +967,11 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 }
 
 func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint64, tx *sql.Tx) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_save_proposal_assignments").Observe(time.Since(start).Seconds())
+	}()
+
 	stmt, err := tx.Prepare(`
 		INSERT INTO proposal_assignments (epoch, validatorindex, proposerslot, status)
 		VALUES ($1, $2, $3, $4)
@@ -928,6 +992,11 @@ func saveValidatorProposalAssignments(epoch uint64, assignments map[uint64]uint6
 }
 
 func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]uint64, tx *sql.Tx) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_save_attestation_assignments").Observe(time.Since(start).Seconds())
+	}()
+
 	//args := make([][]interface{}, 0, len(assignments))
 	argsWeek := make([][]interface{}, 0, len(assignments))
 	for key, validator := range assignments {
@@ -988,6 +1057,11 @@ func saveValidatorAttestationAssignments(epoch uint64, assignments map[string]ui
 }
 
 func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_save_validator_balances").Observe(time.Since(start).Seconds())
+	}()
+
 	batchSize := 10000
 
 	//for b := 0; b < len(validators); b += batchSize {
@@ -1051,6 +1125,11 @@ func saveValidatorBalances(epoch uint64, validators []*types.Validator, tx *sql.
 }
 
 func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx *sql.Tx) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_save_validator_balances_recent").Observe(time.Since(start).Seconds())
+	}()
+
 	batchSize := 10000
 
 	for b := 0; b < len(validators); b += batchSize {
@@ -1091,6 +1170,10 @@ func saveValidatorBalancesRecent(epoch uint64, validators []*types.Validator, tx
 }
 
 func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_save_blocks").Observe(time.Since(start).Seconds())
+	}()
 
 	stmtBlock, err := tx.Prepare(`
 		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, proposer, status)
@@ -1349,6 +1432,11 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 
 // UpdateEpochStatus will update the epoch status in the database
 func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
+	start := time.Now()
+	defer func() {
+		metrics.TaskDuration.WithLabelValues("db_update_epochs_status").Observe(time.Since(start).Seconds())
+	}()
+
 	_, err := DB.Exec(`
 		UPDATE epochs SET
 			finalized = $1,
@@ -1412,26 +1500,6 @@ func GetPendingValidatorCount() (uint64, error) {
 		return 0, fmt.Errorf("error retrieving validator queue count: %v", err)
 	}
 	return count, nil
-}
-
-// GetValidatorChurnLimit returns the rate at which validators can enter or leave the system
-func GetValidatorChurnLimit(currentEpoch uint64) (uint64, error) {
-	min := utils.Config.Chain.MinPerEpochChurnLimit
-
-	count, err := GetActiveValidatorCount()
-	if err != nil {
-		return 0, err
-	}
-	adaptable := uint64(0)
-	if count > 0 {
-		adaptable = utils.Config.Chain.ChurnLimitQuotient / count
-	}
-
-	if min > adaptable {
-		return min, nil
-	}
-
-	return adaptable, nil
 }
 
 func GetTotalEligibleEther() (uint64, error) {

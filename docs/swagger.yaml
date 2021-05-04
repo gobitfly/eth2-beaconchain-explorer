@@ -24,10 +24,6 @@ definitions:
         items:
           type: object
         type: array
-      slasher:
-        items:
-          type: object
-        type: array
       system:
         items:
           type: object
@@ -118,13 +114,7 @@ paths:
       - Block
   /api/v1/block/{slot}/deposits:
     get:
-      description: Returns the deposits included in a specific block
-      parameters:
-      - description: Block slot
-        in: path
-        name: slot
-        required: true
-        type: string
+      description: Returns the current number of validators entering and exiting the beacon chain
       produces:
       - application/json
       responses:
@@ -132,7 +122,7 @@ paths:
           description: OK
           schema:
             type: string
-      summary: Get the deposits included in a specific block
+      summary: Get the current validator queue
       tags:
       - Block
   /api/v1/block/{slot}/proposerslashings:
@@ -266,6 +256,18 @@ paths:
       summary: Get an eth1 deposit by its eth1 transaction hash
       tags:
       - Eth1
+  /api/v1/graffitiwall:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get all pixels that have been painted until now on the graffitiwall
+      tags:
+      - Graffitiwall
   /api/v1/mobile/notify/register:
     post:
       parameters:
@@ -716,6 +718,24 @@ paths:
           schema:
             type: string
       summary: Get the current top 100 performing validators (using the income over the last 7 days)
+      tags:
+      - Validator
+  /api/v1/validator/stats/{index}:
+    get:
+      parameters:
+      - description: Validator index
+        in: path
+        name: index
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get the daily validator stats by the validator index
       tags:
       - Validator
 securityDefinitions:

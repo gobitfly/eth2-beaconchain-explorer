@@ -133,23 +133,14 @@ var doc = `{
         },
         "/api/v1/block/{slot}/deposits": {
             "get": {
-                "description": "Returns the deposits included in a specific block",
+                "description": "Returns the current number of validators entering and exiting the beacon chain",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Block"
                 ],
-                "summary": "Get the deposits included in a specific block",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Block slot",
-                        "name": "slot",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
+                "summary": "Get the current validator queue",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -322,6 +313,25 @@ var doc = `{
                         "required": true
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/graffitiwall": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Graffitiwall"
+                ],
+                "summary": "Get all pixels that have been painted until now on the graffitiwall",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -869,6 +879,34 @@ var doc = `{
                 }
             }
         },
+        "/api/v1/validator/stats/{index}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Validator"
+                ],
+                "summary": "Get the daily validator stats by the validator index",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Validator index",
+                        "name": "index",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/validator/{indexOrPubkey}": {
             "get": {
                 "produces": [
@@ -1101,12 +1139,6 @@ var doc = `{
             "type": "object",
             "properties": {
                 "node": {
-                    "type": "array",
-                    "items": {
-                        "type": "object"
-                    }
-                },
-                "slasher": {
                     "type": "array",
                     "items": {
                         "type": "object"
