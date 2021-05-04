@@ -18,3 +18,8 @@
   background-color: #007bff;
   cursor: pointer;
 }
+
+.form-group label:after { 
+    content:"*";
+    color:red;
+ }
