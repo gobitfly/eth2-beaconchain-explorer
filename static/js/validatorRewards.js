@@ -1,4 +1,6 @@
 const VALLIMIT = 200
+const DECIMAL_POINTS_ETH = 6
+const DECIMAL_POINTS_CURRENCY = 3
 var currency = ""
 // let validators = []
 
@@ -124,17 +126,22 @@ function create_typeahead(input_container) {
         validators = $('#validator-index-view').val().split(",");
         if (sug.validator_indices) {
             validators = validators.concat(sug.validator_indices);
+
         } else {
             validators.push(sug.index);
+
         }
+
         validators = Array.from(new Set(validators));
         if (validators.length > VALLIMIT){
             validators = validators.slice(0, VALLIMIT)
             alert(`No more than ${VALLIMIT} validators are allowed`)
         }
-        $('#validator-index-view').text(validators);
-        if ($('#validator-index-view').text().charAt(0) === ",") {
-            $('#validator-index-view').text($('#validator-index-view').text().slice(1))
+
+        $('#validator-index-view').val(validators);
+        if ($('#validator-index-view').val().charAt(0) === ",") {
+            $('#validator-index-view').val($('#validator-index-view').val().slice(1))
+            console.log("c d", validators)
         }
         $(input_container).typeahead('val', '')
     })
@@ -158,10 +165,28 @@ function hideSpinner(){
     $("#loading-div").removeClass("d-flex")
 }
 
+function updateTotals(data){
+    totalEth = 0.0
+    totalCurrency = 0.0
+
+    for(let item of data){
+        totalEth+=parseFloat(item[2])
+        totalCurrency+=parseFloat(item[4])
+    }
+
+    $("#total-income-eth-span").html(`ETH ${(totalEth.toFixed(DECIMAL_POINTS_ETH))}`)
+    $("#total-income-currency-span").html(`${currency} ${addCommas(totalCurrency.toFixed(DECIMAL_POINTS_CURRENCY))}`)
+}
+
+function addCommas(number) {
+    return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+}
+
 function showTable(data){
     if (data.length > 0 && data[0].length === 6){
         currency = data[0][5].toUpperCase()
     }
+    
     $('#tax-table').DataTable({
         processing: true,
         serverSide: false,
@@ -182,6 +207,7 @@ function showTable(data){
             hideSpinner()
             $("#form-div").addClass("d-none")
             $("#table-div").removeClass("d-none")
+            updateTotals(data)
         },
         columnDefs: [
             {
@@ -196,28 +222,28 @@ function showTable(data){
                 data: '1',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return parseFloat(data).toFixed(5)
+                    return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
                 }
             }, {
                 targets: 2,
                 data: '2',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return parseFloat(data).toFixed(5)
+                    return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
                 }
             }, {
                 targets: 3,
                 data: '3',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `${currency} ${parseFloat(data).toFixed(5)}`
+                    return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
                 }
             }, {
                 targets: 4,
                 data: '4',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                   return `${currency} ${parseFloat(data).toFixed(5)}`
+                   return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
                 }
             }, {
                 targets: 5,
@@ -238,6 +264,10 @@ $(document).ready(function () {
         fetch(`/rewards/hist${qry}`,{
             method: "GET"
           }).then((res)=>{
+              if (res.status !== 200){
+                alert("Request failed :(")
+                hideSpinner() 
+              }
             res.json().then((data)=>{
               showTable(data)
             })
