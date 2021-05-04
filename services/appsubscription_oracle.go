@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
@@ -126,11 +127,21 @@ func rejectReason(valid bool) string {
 
 func VerifyApple(receipt *types.PremiumData) (*VerifyResponse, error) {
 	appStoreSecret := utils.Config.Frontend.AppSubsAppleSecret
-	client := storekit.NewVerificationClient().OnSandboxEnv() // TODO switch to production
+	client := storekit.NewVerificationClient().OnProductionEnv()
+
+	receiptData, err := base64.StdEncoding.DecodeString(receipt.Receipt)
+	if err != nil {
+		return &VerifyResponse{
+			Valid:          false,
+			ExpirationDate: 0,
+			RejectReason:   "exception_decode",
+		}, err
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	_, resp, err := client.Verify(ctx, &storekit.ReceiptRequest{
-		ReceiptData:            []byte(receipt.Receipt),
+		ReceiptData:            receiptData,
 		Password:               appStoreSecret,
 		ExcludeOldTransactions: true,
 	})
@@ -144,6 +155,7 @@ func VerifyApple(receipt *types.PremiumData) (*VerifyResponse, error) {
 	}
 
 	if resp.Status != 0 {
+		logger.Errorf("invalid_state %v", resp.Status)
 		return &VerifyResponse{
 			Valid:          false,
 			ExpirationDate: 0,

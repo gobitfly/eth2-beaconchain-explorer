@@ -927,6 +927,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if parsedBase.Valid == false {
+		logger.Errorf("receipt is not valid %v", validationResult.RejectReason)
 		sendErrorResponse(j, r.URL.String(), "receipt is not valid")
 		return
 	}
@@ -966,7 +967,7 @@ func getUserPremiumByPackage(pkg string) PremiumData {
 	result.Package = pkg
 	result.MaxStats = 43200
 	if result.Package == "goldfish" {
-		result.MaxNodes = 5
+		result.MaxNodes = 2
 	}
 	if result.Package == "whale" {
 		result.MaxValidators = 300
