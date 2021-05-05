@@ -100,22 +100,13 @@
                             <option value="365">a year</option>
                         </select>
                     </div>
-                    
-                    {{if .User.Authenticated}}
-                    <div class="form-group row">
-                        <label for="userid" class="col-sm-1 col-form-label">UserID</label>
-                        <div class="col-sm-11">
-                          <input type="text" readonly class="form-control" id="userid" name="userid" value="{{.User.UserID}}">
-                        </div>
-                    </div>
-                    {{end}}
 
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="checkbox" name="checkbox" {{if not .User.Authenticated}}disabled{{end}}>
                         <label class="form-check-label" for="checkbox">Subscribe to receive monthly reports {{if not .User.Authenticated}}(<a style="color: red;" href="/login">Please sign in to use this feature</a>){{end}}</label>
                     </div>
                             
-                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button type="submit" class="btn btn-primary mt-1">Submit</button>
                 </form>
             </div>
         </div>

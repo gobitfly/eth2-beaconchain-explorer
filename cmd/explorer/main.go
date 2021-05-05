@@ -330,6 +330,7 @@ func main() {
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
 			authRouter.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			authRouter.HandleFunc("/rewards", handlers.ValidatorRewards).Methods("GET")
+			authRouter.HandleFunc("/rewards/subscribe", handlers.SubUserToRewardNotification).Methods("POST")
 
 			err = initStripe(authRouter)
 			if err != nil {
@@ -338,6 +339,7 @@ func main() {
 
 			authRouter.Use(handlers.UserAuthMiddleware)
 			authRouter.Use(csrfHandler)
+			// fmt.Println(csrfHandler)
 
 			legalFs := http.FileServer(http.Dir(utils.Config.Frontend.LegalDir))
 			router.PathPrefix("/legal").Handler(http.StripPrefix("/legal/", legalFs))

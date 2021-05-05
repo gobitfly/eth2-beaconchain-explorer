@@ -244,3 +244,46 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+func SubUserToRewardNotification(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	user := getUser(w, r)
+	if !user.Authenticated {
+		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
+		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		return
+	}
+
+	q := r.URL.Query()
+
+	validatorArr := q.Get("validators")
+
+	currency := q.Get("currency")
+
+	if validatorArr == "" || currency == "" {
+		logger.WithField("route", r.URL.String()).Error("Bad Query")
+		http.Error(w, "Internal server error, Bad Query", http.StatusInternalServerError)
+		return
+	}
+
+	err := db.AddSubscription(user.UserID,
+		types.TaxReportEventName,
+		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency))
+
+	if err != nil {
+		logger.Errorf("error updating user subscriptions: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(struct {
+		Msg string `json:"msg"`
+	}{Msg: "Subscription Updated"})
+
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+}

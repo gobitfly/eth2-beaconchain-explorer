@@ -275,6 +275,28 @@ $(document).ready(function () {
             alert("Failed to fetch the data :(")
             hideSpinner()      
           })
+
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const reqBody = JSON.stringify({validators: urlParams.get('validators'), currency: urlParams.get('currency')})
+        // console.log(reqBody)
+        if (urlParams.get('checkbox')==="on"){
+            fetch(`/user/rewards/subscribe${qry}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: reqBody,
+            }).then((res)=>{
+                if (res.status == 200){
+                    res.json().then((data)=>{
+                        console.log(data.msg)
+                    })              
+                }
+            })
+        }
+
+
     }else{
         hideSpinner()
     }
