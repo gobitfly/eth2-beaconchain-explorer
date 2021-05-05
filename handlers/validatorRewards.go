@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -20,8 +21,9 @@ import (
 var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validatorRewards.html"))
 
 type rewardsResp struct {
-	Currencies []string
-	CsrfField  template.HTML
+	Currencies    []string
+	CsrfField     template.HTML
+	Subscriptions [][]string
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +42,13 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
 	}
 
-	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r)}
+	var subs = [][]string{}
+
+	if data.User.Authenticated {
+		subs = getUserRewardSubscriptions(data.User.UserID)
+	}
+
+	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), Subscriptions: subs}
 
 	err = validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -48,6 +56,31 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+}
+
+func getUserRewardSubscriptions(uid uint64) [][]string {
+	var dbResp []types.Subscription
+	err := db.DB.Select(&dbResp,
+		`select * from users_subscriptions where event_name=$1 AND user_id=$2`, types.TaxReportEventName, uid)
+	if err != nil {
+		logger.Errorf("error getting prices: %w", err)
+	}
+
+	res := make([][]string, len(dbResp))
+	for i, item := range dbResp {
+		q, err := url.ParseQuery(item.EventFilter)
+		if err != nil {
+			continue
+		}
+		res[i] = []string{
+			fmt.Sprintf("%v", item.CreatedTime),
+			q.Get("currency"),
+			q.Get("validators"),
+			item.EventFilter,
+		}
+	}
+
+	return res
 }
 
 func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]string {
@@ -245,7 +278,7 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func SubUserToRewardNotification(w http.ResponseWriter, r *http.Request) {
+func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r)
 	user := getUser(w, r)
 	if !user.Authenticated {
@@ -286,4 +319,46 @@ func SubUserToRewardNotification(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	user := getUser(w, r)
+	if !user.Authenticated {
+		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
+		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		return
+	}
+
+	q := r.URL.Query()
+
+	validatorArr := q.Get("validators")
+
+	currency := q.Get("currency")
+
+	if validatorArr == "" || currency == "" {
+		logger.WithField("route", r.URL.String()).Error("Bad Query")
+		http.Error(w, "Internal server error, Bad Query", http.StatusInternalServerError)
+		return
+	}
+
+	err := db.DeleteSubscription(user.UserID,
+		types.TaxReportEventName,
+		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency))
+
+	if err != nil {
+		logger.Errorf("error deleting entry from user subscriptions: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(struct {
+		Msg string `json:"msg"`
+	}{Msg: "Subscription Deleted"})
+
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 }

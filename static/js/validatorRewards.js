@@ -1,6 +1,7 @@
 const VALLIMIT = 200
 const DECIMAL_POINTS_ETH = 6
 const DECIMAL_POINTS_CURRENCY = 3
+// var csrfToken = document.getElementsByName("CsrfField")[0].value
 var currency = ""
 // let validators = []
 
@@ -261,6 +262,22 @@ function showTable(data){
 
 function unSubUser(filter){
     console.log(filter)
+    fetch(`/user/rewards/unsubscribe?${filter}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            // "X-CSRF-Token": csrfToken
+        },
+        // credentials: 'include',
+        body: "",
+    }).then((res)=>{
+        if (res.status == 200){
+            res.json().then((data)=>{
+                console.log(data.msg)
+                window.location.reload(true)
+            })              
+        }
+    })
 }
 
 function updateSubscriptionTable(data, container){
@@ -317,7 +334,7 @@ function updateSubscriptionTable(data, container){
 $(document).ready(function () {
     create_typeahead('.typeahead-validators');
     let qry = getValidatorQueryString()
-    console.log(qry, qry.length)
+    // console.log(qry, qry.length)
     if (qry.length > 1){
         fetch(`/rewards/hist${qry}`,{
             method: "GET"
@@ -342,8 +359,10 @@ $(document).ready(function () {
             fetch(`/user/rewards/subscribe${qry}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    // "X-CSRF-Token": csrfToken
                 },
+                // credentials: 'include',
                 body: reqBody,
             }).then((res)=>{
                 if (res.status == 200){

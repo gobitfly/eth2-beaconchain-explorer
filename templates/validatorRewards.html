@@ -5,12 +5,12 @@
 <script type="text/javascript" src="/bundle/js/pdfmake.min.js"></script>
 <script type="text/javascript" src="/bundle/js/vfs_fonts.min.js"></script>
 <script type="text/javascript" src="/bundle/js/buttons.html5.min.js"></script>
+{{ .CsrfField }}
 <script src="bundle/js/validatorRewards.js"></script>
 <script>
     updateCurrencies({{.Currencies}}, "currency")
     updateSubscriptionTable({{.Subscriptions}}, "subscriptions-table")
 </script>
-
 {{end}}
 
 <script>
