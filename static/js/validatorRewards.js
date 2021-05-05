@@ -151,7 +151,7 @@ function create_typeahead(input_container) {
 function updateCurrencies(currencies, container) {
     for (item of currencies) {
         if (item === "ts") continue;
-        $(container).append(`<option value="${item}">${item.toUpperCase()}</option>`);
+        $("#"+container).append(`<option value="${item}">${item.toUpperCase()}</option>`);
     }
 
 }
@@ -207,6 +207,7 @@ function showTable(data){
             hideSpinner()
             $("#form-div").addClass("d-none")
             $("#table-div").removeClass("d-none")
+            $("#subscriptions-div").addClass("d-none")
             updateTotals(data)
         },
         columnDefs: [
@@ -257,9 +258,66 @@ function showTable(data){
     });
 }
 
+
+function unSubUser(filter){
+    console.log(filter)
+}
+
+function updateSubscriptionTable(data, container){
+    $('#'+container).DataTable({
+        processing: true,
+        serverSide: false,
+        ordering: true,
+        searching: true,
+        pagingType: 'full_numbers',
+        pageLength: 100,
+        lengthChange: false,
+        data: data,
+        columnDefs: [
+            {
+                targets: 0,
+                data: '0',
+                "orderable": true,
+                render: function (data, type, row, meta) {
+                    let date = data.split(" ")
+                    if (date.length >=2){
+                        return `${date[0]} ${date[1]}`
+                    }
+                    return data
+                }
+            }, {
+                targets: 1,
+                data: '1',
+                "orderable": true,
+                render: function (data, type, row, meta) {
+                    return data.toUpperCase()
+                }
+            }, {
+                targets: 2,
+                data: '2',
+                "orderable": false,
+                render: function (data, type, row, meta) {
+                    return `<textarea readonly style="height: 50px; width: 200px; overflow: auto;" class="nice-scroll">${data}</textarea>`
+                }
+            }, {
+                targets: 3,
+                data: '3',
+                "orderable": false,
+                render: function (data, type, row, meta) {
+                    return `
+                        <div class="d-flex justify-content-center align-item-center">
+                            <i class="fas fa-times text-danger" onClick='unSubUser("${data}")' style="cursor: pointer;"></i>
+                        </div>
+                        `
+                }
+            }]
+    });
+}
+
 $(document).ready(function () {
     create_typeahead('.typeahead-validators');
     let qry = getValidatorQueryString()
+    console.log(qry, qry.length)
     if (qry.length > 1){
         fetch(`/rewards/hist${qry}`,{
             method: "GET"

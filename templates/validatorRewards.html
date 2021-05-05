@@ -7,7 +7,8 @@
 <script type="text/javascript" src="/bundle/js/buttons.html5.min.js"></script>
 <script src="bundle/js/validatorRewards.js"></script>
 <script>
-    updateCurrencies({{.Currencies}}, "#currency")
+    updateCurrencies({{.Currencies}}, "currency")
+    updateSubscriptionTable({{.Subscriptions}}, "subscriptions-table")
 </script>
 
 {{end}}
@@ -111,6 +112,24 @@
             </div>
         </div>
     </div>
+    {{if .User.Authenticated}}
+    <div class="card mt-4" id="subscriptions-div">
+        <div class="card-body p-0">
+            <div class="table-responsive py-2">
+                <table class="table" id="subscriptions-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Currency</th>
+                            <th>Validators</th>
+                            <th>Remove</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{end}}
 
     <div id="loading-div" style="position: absolute; width: 8%; height: 8%; z-index: 100; top: 46%; right: 46%;" class="card p-1 d-flex justify-content-center align-items-center">
         <div class="spinner-border text-primary spinner-border-lg" role="status">
