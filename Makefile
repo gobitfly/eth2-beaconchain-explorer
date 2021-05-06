@@ -20,6 +20,7 @@ explorer:
 	go run cmd/bundle/main.go
 	cp -r static/ bin/static
 	cp -r locales/ bin/
+	go get github.com/swaggo/swag@v1.7.0 && swag init -g handlers/api.go
 	go build --ldflags=${LDFLAGS} --tags=blst_enabled -o bin/explorer cmd/explorer/main.go
 
 chartshotter:

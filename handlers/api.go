@@ -251,12 +251,10 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the current number of validators entering and exiting the beacon chain
 // @Produce  json
 // @Success 200 {object} string
-// @Router /api/v1/block/{slot}/deposits [get]
+// @Router /api/v1/validators/queue [get]
 func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
 	j := json.NewEncoder(w)
-	// vars := mux.Vars(r)
 
 	rows, err := db.DB.Query("SELECT entering_validators_count as beaconchain_entering, exiting_validators_count as beaconchain_exiting FROM queue ORDER BY ts DESC LIMIT 1")
 	if err != nil {

@@ -3,7 +3,7 @@ module eth2-exporter
 go 1.15
 
 require (
-	cloud.google.com/go v0.81.0 // indirect
+	cloud.google.com/go v0.81.0
 	cloud.google.com/go/firestore v1.4.0 // indirect
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/PuerkitoBio/goquery v1.6.1
@@ -17,7 +17,8 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ethereum/go-ethereum v1.9.14
 	github.com/evanw/esbuild v0.8.23
-	github.com/go-openapi/spec v0.19.12 // indirect
+	github.com/gin-gonic/gin v1.6.3 // indirect
+	github.com/gofrs/uuid v3.3.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/gorilla/context v1.1.1
@@ -48,7 +49,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stripe/stripe-go/v72 v72.30.0
 	github.com/swaggo/http-swagger v0.0.0-20200308142732-58ac5e232fba
-	github.com/swaggo/swag v1.6.9
+	github.com/swaggo/swag v1.7.0
 	github.com/urfave/cli/v2 v2.3.0 // indirect
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
@@ -59,7 +60,7 @@ require (
 	golang.org/x/text v0.3.6
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/api v0.44.0
-	google.golang.org/genproto v0.0.0-20210415145412-64678f1ae2d5 // indirect
+	google.golang.org/genproto v0.0.0-20210415145412-64678f1ae2d5
 	google.golang.org/grpc v1.37.0
 	gopkg.in/yaml.v2 v2.3.0
 )
