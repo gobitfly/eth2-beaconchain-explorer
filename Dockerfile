@@ -2,7 +2,8 @@
 FROM golang:1.15-alpine AS build-env
 RUN apk --no-cache add build-base git musl-dev linux-headers npm
 ADD . /src
-RUN cd /src && make -B all
+WORKDIR /src
+RUN make -B all
 
 # final stage
 FROM alpine

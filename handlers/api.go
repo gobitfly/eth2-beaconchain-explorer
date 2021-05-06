@@ -245,6 +245,27 @@ func ApiBlockDeposits(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiValidatorQueue godoc
+// @Summary Get the current validator queue
+// @Tags Block
+// @Description Returns the current number of validators entering and exiting the beacon chain
+// @Produce  json
+// @Success 200 {object} string
+// @Router /api/v1/validators/queue [get]
+func ApiValidatorQueue(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	rows, err := db.DB.Query("SELECT entering_validators_count as beaconchain_entering, exiting_validators_count as beaconchain_exiting FROM queue ORDER BY ts DESC LIMIT 1")
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 // ApiBlockAttesterSlashings godoc
 // @Summary Get the attester slashings included in a specific block
 // @Tags Block
