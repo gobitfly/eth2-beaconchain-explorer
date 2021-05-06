@@ -133,14 +133,23 @@ var doc = `{
         },
         "/api/v1/block/{slot}/deposits": {
             "get": {
-                "description": "Returns the current number of validators entering and exiting the beacon chain",
+                "description": "Returns the deposits included in a specific block",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Block"
                 ],
-                "summary": "Get the current validator queue",
+                "summary": "Get the deposits included in a specific block",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Block slot",
+                        "name": "slot",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1093,6 +1102,26 @@ var doc = `{
                         "required": true
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/validators/queue": {
+            "get": {
+                "description": "Returns the current number of validators entering and exiting the beacon chain",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Block"
+                ],
+                "summary": "Get the current validator queue",
                 "responses": {
                     "200": {
                         "description": "OK",
