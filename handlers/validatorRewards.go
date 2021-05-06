@@ -101,6 +101,9 @@ func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]s
 		logger.Errorf("error getting max day: %w", err)
 	}
 
+	if days > 365 {
+		days = 365
+	}
 	var lowerBound uint64 = 0
 	if maxDay > days {
 		lowerBound = maxDay - days
