@@ -1,12 +1,12 @@
 {{ define "js"}}
-<script type="text/javascript" src="/bundle/js/datatables.min.js"></script>
-<script type="text/javascript" src="/bundle/js/dataTables.buttons.min.js"></script>
-<script type="text/javascript" src="/bundle/js/jszip.min.js"></script>
-<script type="text/javascript" src="/bundle/js/pdfmake.min.js"></script>
-<script type="text/javascript" src="/bundle/js/vfs_fonts.min.js"></script>
-<script type="text/javascript" src="/bundle/js/buttons.html5.min.js"></script>
+<script type="text/javascript" src="/js/datatables.min.js"></script>
+<script type="text/javascript" src="/js/dataTables.buttons.min.js"></script>
+<script type="text/javascript" src="/js/jszip.min.js"></script>
+<script type="text/javascript" src="/js/pdfmake.min.js"></script>
+<script type="text/javascript" src="/js/vfs_fonts.min.js"></script>
+<script type="text/javascript" src="/js/buttons.html5.min.js"></script>
 {{ .CsrfField }}
-<script src="bundle/js/validatorRewards.js"></script>
+<script src="/js/validatorRewards.js"></script>
 <script>
     updateCurrencies({{.Currencies}}, "currency")
     updateSubscriptionTable({{.Subscriptions}}, "subscriptions-table")
