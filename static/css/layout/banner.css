@@ -348,8 +348,7 @@ color: var(--banner-text);
 }
 
 @media (max-width: 450px) {
-  #currencyDropdown,
-  .dropdown {
+  #currencyDropdown {
     font-size: 12px;
   }
 }
