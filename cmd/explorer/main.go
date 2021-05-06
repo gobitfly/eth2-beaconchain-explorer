@@ -287,6 +287,9 @@ func main() {
 			// confirming the email update should not require auth
 			router.HandleFunc("/settings/email/{hash}", handlers.UserConfirmUpdateEmail).Methods("GET")
 			router.HandleFunc("/gitcoinfeed", handlers.GitcoinFeed).Methods("GET")
+			router.HandleFunc("/rewards", handlers.ValidatorRewards).Methods("GET")
+			router.HandleFunc("/rewards/hist", handlers.RewardsHistoricalData).Methods("GET")
+			router.HandleFunc("/rewards/hist/download", handlers.DownloadRewardsHistoricalData).Methods("GET")
 
 			// router.HandleFunc("/user/validators", handlers.UserValidators).Methods("GET")
 
@@ -327,6 +330,10 @@ func main() {
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
 			authRouter.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
+			authRouter.HandleFunc("/rewards", handlers.ValidatorRewards).Methods("GET")
+			authRouter.HandleFunc("/rewards/subscribe", handlers.RewardNotificationSubscribe).Methods("POST")
+			authRouter.HandleFunc("/rewards/unsubscribe", handlers.RewardNotificationUnsubscribe).Methods("POST")
+
 			err = initStripe(authRouter)
 			if err != nil {
 				logrus.Errorf("error could not init stripe, %v", err)

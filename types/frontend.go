@@ -25,6 +25,7 @@ const (
 	NetworkValidatorExitQueueNotFullEventName       EventName = "network_validator_exit_queue_not_full"
 	NetworkLivenessIncreasedEventName               EventName = "network_liveness_increased"
 	EthClientUpdateEventName                        EventName = "eth_client_update"
+	TaxReportEventName                              EventName = "user_tax_report"
 )
 
 var EventNames = []EventName{
@@ -43,6 +44,7 @@ var EventNames = []EventName{
 	NetworkValidatorExitQueueNotFullEventName,
 	NetworkLivenessIncreasedEventName,
 	EthClientUpdateEventName,
+	TaxReportEventName,
 }
 
 func GetDisplayableEventName(event EventName) string {

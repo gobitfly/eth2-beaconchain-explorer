@@ -70,6 +70,12 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting Eth client notifications: %v", err)
 	}
 
+	//Tax Report
+	err = collectTaxReportNotificationNotifications(notificationsByUserID, types.TaxReportEventName)
+	if err != nil {
+		logger.Errorf("error collecting tax report notifications: %v", err)
+	}
+
 	return notificationsByUserID
 }
 
@@ -808,5 +814,85 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 		}
 	}
+	return nil
+}
+
+type taxReportNotification struct {
+	SubscriptionID uint64
+	UserID         uint64
+	Epoch          uint64
+	EventFilter    string
+}
+
+func (n *taxReportNotification) GetSubscriptionID() uint64 {
+	return n.SubscriptionID
+}
+
+func (n *taxReportNotification) GetEpoch() uint64 {
+	return n.Epoch
+}
+
+func (n *taxReportNotification) GetEventName() types.EventName {
+	return types.TaxReportEventName
+}
+
+func (n *taxReportNotification) GetInfo(includeUrl bool) string {
+	generalPart := fmt.Sprint(`New monthly report is ready to download`)
+	if includeUrl {
+		url := fmt.Sprintf("https://beaconcha.in/rewards/hist/download?%s", n.EventFilter)
+
+		return generalPart + " " + url
+	}
+	return generalPart
+}
+
+func (n *taxReportNotification) GetTitle() string {
+	return fmt.Sprint("New report ready")
+}
+
+func (n *taxReportNotification) GetEventFilter() string {
+	return n.EventFilter
+}
+
+func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
+	tNow := time.Now()
+	firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
+	if tNow.Year() == lastDay.Year() && tNow.Month() == lastDay.Month() && tNow.Day() == lastDay.Day() { // Send the reports at the end of the month
+		var dbResult []struct {
+			SubscriptionID uint64 `db:"id"`
+			UserID         uint64 `db:"user_id"`
+			Epoch          uint64 `db:"created_epoch"`
+			EventFilter    string `db:"event_filter"`
+		}
+
+		err := db.DB.Select(&dbResult, `
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
+			FROM users_subscriptions AS us
+			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '2 DAY' OR us.last_sent_ts IS NULL);
+			`,
+			eventName)
+
+		if err != nil {
+			return err
+		}
+
+		for _, r := range dbResult {
+			n := &ethClientNotification{
+				SubscriptionID: r.SubscriptionID,
+				UserID:         r.UserID,
+				Epoch:          r.Epoch,
+				EventFilter:    r.EventFilter,
+			}
+			if _, exists := notificationsByUserID[r.UserID]; !exists {
+				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+		}
+	}
+
 	return nil
 }
