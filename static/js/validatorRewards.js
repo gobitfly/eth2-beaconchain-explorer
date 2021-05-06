@@ -261,7 +261,7 @@ function showTable(data){
 
 
 function unSubUser(filter){
-    console.log(filter)
+    // console.log(filter)
     fetch(`/user/rewards/unsubscribe?${filter}`, {
         method: 'POST',
         headers: {
@@ -281,6 +281,7 @@ function unSubUser(filter){
 }
 
 function updateSubscriptionTable(data, container){
+    if (data.length===0)return
     $('#'+container).DataTable({
         processing: true,
         serverSide: false,
@@ -290,6 +291,10 @@ function updateSubscriptionTable(data, container){
         pageLength: 100,
         lengthChange: false,
         data: data,
+        drawCallback: function(settings){
+            $("#subscriptions-table-art").removeClass("d-flex").addClass("d-none")
+            $("#subscriptions-table-div").removeClass("invisible")
+        },
         columnDefs: [
             {
                 targets: 0,
