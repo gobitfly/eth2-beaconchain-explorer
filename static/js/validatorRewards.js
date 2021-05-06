@@ -1,7 +1,7 @@
 const VALLIMIT = 200
 const DECIMAL_POINTS_ETH = 6
 const DECIMAL_POINTS_CURRENCY = 3
-// var csrfToken = document.getElementsByName("CsrfField")[0].value
+var csrfToken = document.getElementsByName("CsrfField")[0].value
 var currency = ""
 // let validators = []
 
@@ -266,9 +266,9 @@ function unSubUser(filter){
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            // "X-CSRF-Token": csrfToken
+            "X-CSRF-Token": csrfToken
         },
-        // credentials: 'include',
+        credentials: 'include',
         body: "",
     }).then((res)=>{
         if (res.status == 200){
@@ -365,9 +365,9 @@ $(document).ready(function () {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    // "X-CSRF-Token": csrfToken
+                    "X-CSRF-Token": csrfToken
                 },
-                // credentials: 'include',
+                credentials: 'include',
                 body: reqBody,
             }).then((res)=>{
                 if (res.status == 200){
