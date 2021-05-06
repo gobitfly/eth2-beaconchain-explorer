@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/exporter"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -991,7 +992,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 
 	// we can ignore this error since it always returns a result object and err
 	// case is not needed on receipt insert
-	validationResult, _ := services.VerifyReceipt(nil, verifyPackage)
+	validationResult, _ := exporter.VerifyReceipt(nil, verifyPackage)
 	parsedBase.Valid = validationResult.Valid
 
 	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason)
