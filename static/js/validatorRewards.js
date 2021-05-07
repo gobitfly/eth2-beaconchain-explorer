@@ -1,7 +1,10 @@
 const VALLIMIT = 200
 const DECIMAL_POINTS_ETH = 6
 const DECIMAL_POINTS_CURRENCY = 3
-var csrfToken = document.getElementsByName("CsrfField")[0].value
+var csrfToken = ""
+if (document.getElementsByName("CsrfField")[0]!==undefined){
+    csrfToken = document.getElementsByName("CsrfField")[0].value
+}
 var currency = ""
 // let validators = []
 
@@ -319,7 +322,7 @@ function updateSubscriptionTable(data, container){
                 data: '2',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `<textarea readonly style="height: 50px; width: 200px; overflow: auto;" class="nice-scroll">${data}</textarea>`
+                    return `<textarea readonly style="height: 50px; width: 200px; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark">${data}</textarea>`
                 }
             }, {
                 targets: 3,
