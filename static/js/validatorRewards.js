@@ -2,9 +2,6 @@ const VALLIMIT = 200
 const DECIMAL_POINTS_ETH = 6
 const DECIMAL_POINTS_CURRENCY = 3
 var csrfToken = ""
-if (document.getElementsByName("CsrfField")[0]!==undefined){
-    csrfToken = document.getElementsByName("CsrfField")[0].value
-}
 var currency = ""
 // let validators = []
 
@@ -145,7 +142,6 @@ function create_typeahead(input_container) {
         $('#validator-index-view').val(validators);
         if ($('#validator-index-view').val().charAt(0) === ",") {
             $('#validator-index-view').val($('#validator-index-view').val().slice(1))
-            console.log("c d", validators)
         }
         $(input_container).typeahead('val', '')
     })
@@ -267,10 +263,7 @@ function unSubUser(filter){
     // console.log(filter)
     fetch(`/user/rewards/unsubscribe?${filter}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            "X-CSRF-Token": csrfToken
-        },
+        headers: {"X-CSRF-Token": csrfToken},
         credentials: 'include',
         body: "",
     }).then((res)=>{
@@ -340,6 +333,12 @@ function updateSubscriptionTable(data, container){
 }
 
 $(document).ready(function () {
+    if (document.getElementsByName("CsrfField")[0]===undefined){
+        console.error("Auth error")
+    }else{
+        csrfToken = document.getElementsByName("CsrfField")[0].value
+    }
+    
     create_typeahead('.typeahead-validators');
     let qry = getValidatorQueryString()
     // console.log(qry, qry.length)
@@ -366,10 +365,7 @@ $(document).ready(function () {
         if (urlParams.get('checkbox')==="on"){
             fetch(`/user/rewards/subscribe${qry}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    "X-CSRF-Token": csrfToken
-                },
+                headers: {"X-CSRF-Token": csrfToken},
                 credentials: 'include',
                 body: reqBody,
             }).then((res)=>{
