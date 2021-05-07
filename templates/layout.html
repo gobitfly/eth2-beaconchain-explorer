@@ -761,7 +761,7 @@
 				{{end}} -->
         {{ template "content" . }}
         {{if not .User.Authenticated}}
-        <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index:999; bottom: 3%; width: 100%; justify-content: center; align-items: center">
+        <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index:999; bottom: 3%; left: 50%; transform: translateX(-50%); width: 100%; justify-content: center; align-items: center">
             <div style="width: 80%; max-width: 600px;" class="card card-body row">
                 <div class="row">
                     <div class="col">
