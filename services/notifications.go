@@ -839,7 +839,7 @@ func (n *taxReportNotification) GetEventName() types.EventName {
 func (n *taxReportNotification) GetInfo(includeUrl bool) string {
 	generalPart := fmt.Sprint(`New monthly report is ready to download`)
 	if includeUrl {
-		url := fmt.Sprintf("https://staging.beaconcha.in/rewards/hist/download?%s", n.EventFilter)
+		url := fmt.Sprintf("https://%s/rewards/hist/download?%s", utils.Config.Frontend.SiteDomain, n.EventFilter)
 
 		return generalPart + " " + url
 	}
