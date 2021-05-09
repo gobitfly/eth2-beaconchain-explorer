@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	gtypes "github.com/ethereum/go-ethereum/core/types"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -503,9 +504,26 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 	}
 
 	if payload := parsedBlock.Message.Body.ExecutionPayload; payload != nil {
-		txs := make([][]byte, 0, len(payload.Transactions))
-		for _, tx := range payload.Transactions {
-			txs = append(txs, tx.Value)
+		txs := make([]*types.Transaction, 0, len(payload.Transactions))
+		for _, txUnion := range payload.Transactions {
+			otx := txUnion.Value
+
+			tx := &types.Transaction{Raw: otx}
+			var decTx gtypes.Transaction
+			if err := decTx.UnmarshalBinary(otx); err != nil {
+				h := decTx.Hash()
+				tx.TxHash = h[:]
+				tx.AccountNonce = decTx.Nonce()
+				// big endian
+				tx.Price = decTx.GasPrice().Bytes()
+				tx.GasLimit = decTx.Gas()
+				tx.Recipient = decTx.To().Bytes()
+				tx.Amount = decTx.Value().Bytes()
+				tx.Payload = decTx.Data()
+				tx.MaxPriorityFeePerGas = decTx.GasTipCap().Uint64()
+				tx.MaxFeePerGas = decTx.GasFeeCap().Uint64()
+			}
+			txs = append(txs, tx)
 		}
 		block.ExecutionPayload = &types.ExecutionPayload{
 			ParentHash:    payload.ParentHash,

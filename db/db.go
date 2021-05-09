@@ -1187,13 +1187,22 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 	}()
 
 	stmtBlock, err := tx.Prepare(`
-		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, syncaggregate_participation, proposer, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, syncaggregate_participation, proposer, status, exec_parenthash, exec_coinbase, exec_stateroot, exec_receiptroot, exec_logsbloom, exec_random, exec_block_number, exec_timestamp, exec_extra_data, exec_base_fee_per_gas, exec_blockhash, exec_transactioncount)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
 		ON CONFLICT (slot, blockroot) DO NOTHING`)
 	if err != nil {
 		return err
 	}
 	defer stmtBlock.Close()
+
+	stmtTransaction, err := tx.Prepare(`
+		INSERT INTO blocks_transactions (block_slot, block_index, block_root, raw, txhash, nonce, gasprice, gaslimit, recipient, amount, payload, max_priority_fee_per_gas, max_fee_per_gas)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		ON CONFLICT (block_slot, block_index) DO NOTHING`)
+	if err != nil {
+		return err
+	}
+	defer stmtTransaction.Close()
 
 	stmtProposerSlashing, err := tx.Prepare(`
 		INSERT INTO blocks_proposerslashings (block_slot, block_index, block_root, proposerindex, header1_slot, header1_parentroot, header1_stateroot, header1_bodyroot, header1_signature, header2_slot, header2_parentroot, header2_stateroot, header2_bodyroot, header2_signature)
@@ -1297,6 +1306,37 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				syncAggSig = b.SyncAggregate.SyncCommitteeSignature
 				syncAggParticipation = b.SyncAggregate.SyncAggregateParticipation
 			}
+
+			parentHash := []byte{}
+			coinBase := []byte{}
+			stateRoot := []byte{}
+			receiptRoot := []byte{}
+			logsBloom := []byte{}
+			random := []byte{}
+			blockNumber := uint64(0)
+			gasLimit := uint64(0)
+			gasUsed := uint64(0)
+			timestamp := uint64(0)
+			extraData := []byte{}
+			baseFeePerGas := []byte{}
+			blockHash := []byte{}
+			txCount := 0
+			if b.ExecutionPayload != nil {
+				parentHash = b.ExecutionPayload.ParentHash
+				coinBase = b.ExecutionPayload.CoinBase
+				stateRoot = b.ExecutionPayload.StateRoot
+				receiptRoot = b.ExecutionPayload.ReceiptRoot
+				logsBloom = b.ExecutionPayload.LogsBloom
+				random = b.ExecutionPayload.Random
+				blockNumber = b.ExecutionPayload.BlockNumber
+				gasLimit = b.ExecutionPayload.GasLimit
+				gasUsed = b.ExecutionPayload.GasUsed
+				timestamp = b.ExecutionPayload.Timestamp
+				extraData = b.ExecutionPayload.ExtraData
+				baseFeePerGas = b.ExecutionPayload.BaseFeePerGas
+				blockHash = b.ExecutionPayload.BlockHash
+				txCount = len(b.ExecutionPayload.Transactions)
+			}
 			_, err = stmtBlock.Exec(
 				b.Slot/utils.Config.Chain.SlotsPerEpoch,
 				b.Slot,
@@ -1320,11 +1360,37 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				syncAggParticipation,
 				b.Proposer,
 				strconv.FormatUint(b.Status, 10),
+				parentHash,
+				coinBase,
+				stateRoot,
+				receiptRoot,
+				logsBloom,
+				random,
+				blockNumber,
+				gasLimit,
+				gasUsed,
+				timestamp,
+				extraData,
+				baseFeePerGas,
+				blockHash,
+				txCount,
 			)
 			if err != nil {
 				return fmt.Errorf("error executing stmtBlocks for block %v: %v", b.Slot, err)
 			}
 
+			logger.Tracef("done, took %v", time.Since(n))
+			n = time.Now()
+			logger.Tracef("writing transactions data")
+			if payload := b.ExecutionPayload; payload != nil {
+				for i, tx := range payload.Transactions {
+					_, err := stmtTransaction.Exec(b.Slot, i, b.BlockRoot,
+						tx.Raw, tx.TxHash, tx.AccountNonce, tx.Price, tx.GasLimit, tx.Recipient, tx.Amount, tx.Payload, tx.MaxPriorityFeePerGas, tx.MaxFeePerGas)
+					if err != nil {
+						return fmt.Errorf("error executing stmtTransaction for block %v: %v", b.Slot, err)
+					}
+				}
+			}
 			logger.Tracef("done, took %v", time.Since(n))
 			n = time.Now()
 			logger.Tracef("writing proposer slashings data")

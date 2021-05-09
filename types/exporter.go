@@ -90,24 +90,6 @@ type SyncAggregate struct {
 	SyncAggregateParticipation float64
 }
 
-type ExecutionPayload struct {
-	ParentHash    []byte
-	CoinBase      []byte
-	StateRoot     []byte
-	ReceiptRoot   []byte
-	LogsBloom     []byte
-	Random        []byte
-	BlockNumber   uint64
-	GasLimit      uint64
-	GasUsed       uint64
-	Timestamp     uint64
-	ExtraData     []byte
-	BaseFeePerGas []byte
-	BlockHash     []byte
-	// TODO
-	Transactions [][]byte
-}
-
 // Block is a struct to hold block data
 type Block struct {
 	Status            uint64
@@ -129,6 +111,40 @@ type Block struct {
 	SyncAggregate     *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
 	ExecutionPayload  *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
 	Canonical         bool
+}
+
+type Transaction struct {
+	Raw []byte
+	// Note: below values may be nil/0 if Raw fails to decode into a valid transaction
+	TxHash       []byte
+	AccountNonce uint64
+	// big endian
+	Price     []byte
+	GasLimit  uint64
+	Recipient []byte
+	// big endian
+	Amount  []byte
+	Payload []byte
+
+	MaxPriorityFeePerGas uint64
+	MaxFeePerGas uint64
+}
+
+type ExecutionPayload struct {
+	ParentHash    []byte
+	CoinBase      []byte
+	StateRoot     []byte
+	ReceiptRoot   []byte
+	LogsBloom     []byte
+	Random        []byte
+	BlockNumber   uint64
+	GasLimit      uint64
+	GasUsed       uint64
+	Timestamp     uint64
+	ExtraData     []byte
+	BaseFeePerGas []byte
+	BlockHash     []byte
+	Transactions []*Transaction
 }
 
 // Eth1Data is a struct to hold the ETH1 data
