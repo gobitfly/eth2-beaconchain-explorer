@@ -54,6 +54,18 @@ func FormatBalance(balance uint64) template.HTML {
 	return template.HTML(string(rb) + " ETH")
 }
 
+// FormatBalanceChange will return a string for a balance change
+func FormatBalanceChange(balance *int64) template.HTML {
+	if balance == nil {
+		return template.HTML("<span> 0.00000 ETH</span>")
+	}
+	balanceF := float64(*balance) / float64(1e9)
+	if balanceF < 0 {
+		return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.5f ETH</span>", balanceF))
+	}
+	return template.HTML(fmt.Sprintf("<span class=\"text-success\">+%.5f ETH</span>", balanceF))
+}
+
 // FormatBalance will return a string for a balance
 func FormatBalanceShort(balance uint64) template.HTML {
 	p := message.NewPrinter(language.English)
@@ -200,7 +212,10 @@ func FormatGlobalParticipationRate(e uint64, r float64) template.HTML {
 func FormatGraffiti(graffiti []byte) template.HTML {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
 	h := template.HTMLEscapeString(s)
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, h))
+	if len(s) <= 6 {
+		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, h))
+	}
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:6]))
 }
 
 // FormatGraffitiAsLink will return the graffiti formated as html-link
@@ -394,4 +409,17 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	} else {
 		return template.HTML(fmt.Sprintf("<span class=\"text-danger\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Bad <i class=\"fas fa-frown\"></i>", tooltipText, eff))
 	}
+}
+
+func DerefString(str *string) string {
+	if str != nil {
+		return *str
+	}
+	return ""
+}
+
+// TrLang returns translated text based on language tag and text id
+func TrLang(lang string, key string) template.HTML {
+	I18n := getLocaliser()
+	return template.HTML(I18n.Tr(lang, key))
 }

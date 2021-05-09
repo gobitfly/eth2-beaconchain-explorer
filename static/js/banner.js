@@ -22,6 +22,10 @@ function updateBanner() {
     if (data.currentEpoch)
       epochHandle.textContent = data.currentEpoch;
 
+    var ethPriceHandle = document.getElementById('banner-eth-price-data');
+    if (data.ethPrice){
+      ethPriceHandle.innerHTML = "$"+data.ethPrice
+    }
     // always visible
     var slotHandle = document.getElementById('banner-slot-data')
 

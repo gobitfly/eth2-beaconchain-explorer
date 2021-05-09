@@ -65,6 +65,7 @@
                                 <strong>{{ .AppData.AppName }}</strong>?</p>
                             <form class="authorize-buttons" action="authorize" method="post">
                                 {{ .CsrfField }}
+                                <input type="hidden" name="state" value="{{ .State }}">
                                 <input type="hidden" name="redirect_uri" value="{{ .AppData.RedirectURI }}">
                                 <div class="form-group col-md-12">
                                     <button type="submit" class="btn btn-primary authorize-button">Continue</button>

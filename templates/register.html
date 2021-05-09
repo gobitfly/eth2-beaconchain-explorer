@@ -33,21 +33,22 @@
                   </div>
               {{end}}
           {{end}}
-                <form action="/register" method="post">
-              <div class="form-group">
-                  <label for="email">Email address</label>
-                  <input required inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email">
-              </div>
-              <div class="form-group">
-                  <label for="password">Password</label>
-                  <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="password" name="password">
-              </div>
-              <div class="form-group">
-                  <label for="pw-confirm">Confirm Password</label>
-                  <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm" name="pw-confirm">
-              </div>
-              <button type="submit" class="btn btn-primary float-right">Register</button>
-          </form>
+        <form action="/register" method="post">
+            {{.CsrfField}}
+            <div class="form-group">
+                <label for="email">Email address</label>
+                <input required inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="password" name="password">
+            </div>
+            <div class="form-group">
+                <label for="pw-confirm">Confirm Password</label>
+                <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm" name="pw-confirm">
+            </div>
+            <button type="submit" class="btn btn-primary float-right">Register</button>
+        </form>
           <span style="font-size: 90%;" class="text-muted">Already have an account?</span> <a href="/login">Login</a>
       </div>
   </div>

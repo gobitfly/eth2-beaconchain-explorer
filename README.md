@@ -68,7 +68,7 @@ We currently do not provide any pre-built binaries of the explorer. Docker image
 ## Developing locally with docker
 - Clone the repository
 - Run `docker-compose up` to start instances of the following containers `eth1`, `prysm`, `postgres` and `golang`.
-- Open a new terminal in project directory and run `docker run -it --rm --net=host -v ${pwd}/:/src  postgres psql -f /src/tables.sql -d db -h 0.0.0.0 -U postgres` to create new tables in the database  
+- Open a new terminal in project directory and run `docker run -it --rm --net=host -v $(pwd):/src  postgres psql -f /src/tables.sql -d db -h 0.0.0.0 -U postgres` to create new tables in the database  
 - Wait for the client to finish initial sync, you can check this by looking at logs of `prysm` instance.
 - Copy the `config-example.yml` file and adapt it to your environment.\
  In your `.yml` file specify `eth1Endpoint` as `'./private/eth1_node/.ethereum/goerli/geth.ipc'`. 

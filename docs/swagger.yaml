@@ -1,10 +1,48 @@
+definitions:
+  types.ApiResponse:
+    properties:
+      data:
+        type: object
+      status:
+        type: string
+    type: object
+  types.MinimalTaggedValidators:
+    properties:
+      index:
+        type: integer
+      pubKey:
+        type: string
+    type: object
+  types.MobileSettingsData:
+    properties:
+      notify_token:
+        type: string
+    type: object
+  utils.OAuthErrorResponse:
+    properties:
+      error:
+        type: string
+      error_description:
+        type: string
+    type: object
+  utils.OAuthResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      token_type:
+        type: string
+    type: object
 info:
   contact: {}
   description: |-
     High performance API for querying information from the Ethereum 2.0 beacon chain
     The API is currently free to use. A fair use policy applies. Calls are rate limited to
     10 requests / 1 minute / IP. All API results are cached for 1 minute.
-    If you required a higher usage plan please get in touch with us at support@beaconcha.in.
+    If you required a higher usage plan please checkout https://beaconcha.in/pricing.
   title: Beaconcha.in ETH2 API
   version: "1.0"
 paths:
@@ -209,6 +247,230 @@ paths:
       summary: Get an eth1 deposit by its eth1 transaction hash
       tags:
       - Eth1
+  /api/v1/user/dashboard/save:
+    post:
+      parameters:
+      - description: Your device`s firebase notification token
+        in: body
+        name: token
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Register or update your mobile notification token
+      tags:
+      - User
+  /api/v1/user/mobile/settings:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/types.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/types.MobileSettingsData'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get your device settings, currently only whether to enable mobile notifcations or not
+      tags:
+      - User
+    post:
+      parameters:
+      - description: Whether to enable mobile notifications for this device or not
+        in: body
+        name: notify_enabled
+        required: true
+        schema:
+          type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/types.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/types.MobileSettingsData'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Changing your devices mobile settings
+      tags:
+      - User
+  /api/v1/user/token:
+    post:
+      parameters:
+      - description: grant_type use authorization_code for oauth code or refresh_token if you wish to refresh an token
+        in: formData
+        name: grant_type
+        required: true
+        type: string
+      - description: Only required when using authorization_code grant type. Code received via oauth redirect_uri
+        in: formData
+        name: code
+        type: string
+      - description: Only required when using authorization_code grant type. Must match the redirect_uri from your oauth flow.
+        in: formData
+        name: redirect_uri
+        type: string
+      - description: Only required when using refresh_token grant type. The refresh_token you received during authorization_code flow.
+        in: formData
+        name: refresh_token
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.OAuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.OAuthErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.OAuthErrorResponse'
+      security:
+      - OAuthAccessCode: []
+      summary: Exchange your oauth code for an access token or refresh your access token
+      tags:
+      - User
+  /api/v1/user/validator/{pubkey}/add:
+    post:
+      parameters:
+      - description: Public Key of validator you want to subscribe to
+        in: query
+        name: pubKey
+        required: true
+        type: string
+      - description: Submit \
+        in: body
+        name: balance_decreases
+        schema:
+          type: string
+      - description: Submit \
+        in: body
+        name: validator_slashed
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: subscribes a user to get notifications from a specific validator
+      tags:
+      - User
+  /api/v1/user/validator/{pubkey}/remove:
+    post:
+      parameters:
+      - description: Public Key of validator you want to subscribe to
+        in: query
+        name: pubKey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: unsubscribes a user from a specific validator
+      tags:
+      - User
+  /api/v1/user/validator/saved:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/types.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/types.MinimalTaggedValidators'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.ApiResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get all your tagged validators
+      tags:
+      - User
   /api/v1/validator/{indexOrPubkey}:
     get:
       parameters:
@@ -347,4 +609,14 @@ paths:
       summary: Get the current top 100 performing validators (using the income over the last 7 days)
       tags:
       - Validator
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+  OAuthAccessCode:
+    authorizationUrl: https://beaconcha.in/user/authorize
+    flow: accessCode
+    tokenUrl: https://beaconcha.in/user/token
+    type: oauth2
 swagger: "2.0"

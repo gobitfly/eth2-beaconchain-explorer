@@ -77,32 +77,6 @@ function setValidatorStatus(state) {
   }
 }
 
-// clipboard
-function setTooltip(message) {
-  $('#copy-button').tooltip('hide')
-    .attr('data-original-title', message)
-    .tooltip('show');
-}
-
-function hideTooltip() {
-  setTimeout(function () {
-    $('#copy-button').tooltip('hide')
-      .attr('data-original-title', 'Copy public key to clipboard')
-  }, 1000);
-}
-
-var clipboard = new ClipboardJS('#copy-button');
-
-clipboard.on('success', function (e) {
-  setTooltip('Public key copied!');
-  hideTooltip();
-});
-
-clipboard.on('error', function (e) {
-  setTooltip('Failed to copy public key!');
-  hideTooltip();
-});
-
 // set date
 $('span[aria-ethereum-date]').each(function () {
   var d = $(this).attr('aria-ethereum-date');
@@ -178,6 +152,7 @@ function createProposedBlockChart(data) {
 }
 
 function createBalanceChart(balanceHistory, effectiveBalanceHistory) {
+	if (balanceHistory.length<2 && effectiveBalanceHistory.length<2) {return}
   Highcharts.stockChart('balancechart', {
 		colors: ["#7cb5ec", "#90ed7d", "#f7a35c", "#8085e9", "#f15c80", "#e4d354", "#2b908f", "#f45b5b", "#91e8e1"],
 		rangeSelector: {
@@ -291,7 +266,7 @@ function setupDashboardButtons(validatorIdx) {
 }
 
 function createValidatorDataTable(index) {
-    $(document).ready(function () {
+	$(document).ready(function () {
       $('#blocks-table').DataTable({
         processing: true,
         serverSide: true,
@@ -303,17 +278,6 @@ function createValidatorDataTable(index) {
           formatTimestamps()
         },
       });
-      $('#attestations-table').DataTable({
-        processing: true,
-        serverSide: true,
-        ordering: false,
-        searching: false,
-        ajax: '/validator/'+index+'/attestations',
-        pagingType: 'full',
-        drawCallback: function(settings) {
-          formatTimestamps()
-        },
-      })
       $('#slashings-table').DataTable({
         processing: true,
         serverSide: true,
@@ -324,6 +288,38 @@ function createValidatorDataTable(index) {
         drawCallback: function(settings) {
           formatTimestamps()
         },
-      })
+	  })
+
+	  $('#attestations-table').DataTable({
+        processing: true,
+        serverSide: true,
+        ordering: false,
+        searching: false,
+        ajax: '/validator/'+index+'/attestations',
+        pagingType: 'full',
+        drawCallback: function(settings) {
+          formatTimestamps()
+        },
+	  })
+	  
+	  $.ajax({url:'/validator/'+index+'/rank',
+			data : {"index": index}, 
+			success: (result)=>{
+				$('#validatorRank').html(result[0].rank)
+			}
+		})
+
+	    $('#validator-history-table').DataTable({
+			processing: true,
+			serverSide: true,
+			lengthChange: false,
+			ordering: false,
+			searching: false,
+			ajax: '/validator/'+index+'/history',
+			pagingType: 'simple',
+			drawCallback: function(settings) {
+			formatTimestamps()
+			},
+		})
     })
 }

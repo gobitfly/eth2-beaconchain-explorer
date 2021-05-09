@@ -1,4 +1,5 @@
 {{ define "js"}}
+<script src="/js/payment.js" defer></script>
 <script>
     // form validations
     function checkPasswordsMatch(input) {
@@ -59,7 +60,60 @@
                 {{end}}
             {{end}}
             <div class="user__settings-container">
-                <!-- Current User Stats -->
+                <!-- User Api Key -->
+                <div class="card my-3"> 
+                    <div class="card-header justify-content-between d-flex align-items-center">
+                        <h3 class="h5">
+                            Api Key 
+                        </h3>
+                        {{if .Subscription.SubscriptionID}}
+                        <form class="manage-billing-form">
+                            {{ .CsrfField }}
+                            <button class="btn btn-outline-primary">Manage Billing</button>
+                        </form>
+                        {{else}}
+                        <a href="/pricing" class="btn btn-outline-primary">Upgrade Plan</a>
+                        {{end}}
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center">
+                        {{if .Subscription.ApiKey}} 
+                            <div class="my-2">
+                                <span class="text-muted">
+                                    Warning, everybody can access your account with this key. KEEP IT SAFE!
+                                </span>
+                            </div>
+                            <div class="my-2">
+                                <span style="font-weight:bold">
+                                    <i class="fas fa-key"></i> 
+                                </span> 
+                                <span style="font-size: 90%; user-select: all;">
+                                    {{.Subscription.ApiKey}} 
+                                    <a style="color: #fff" id="copy-apiKey" data-toggle="tooltip" data-original-title="Copy API Key" data-clipboard-text="{{.Subscription.ApiKey}}" class="btn btn-primary mb-1 btn-icon-inside">
+                                        <span class="fa fa-copy icon-inside"></span>
+                                    </a>
+                                </span> 
+                            </div>
+                        {{else}}
+                            <div class="my-2">
+                                <span class="text-muted">
+                                    No API key found for this account.
+                                </span>
+                            </div>
+                            <div class="my-2">
+                                <form action="/user/generateKey" method="POST">
+                                    {{ .CsrfField }}
+                                    <button type="submit" id="generate-api-key" class="btn btn-outline-primary">Generate Key</a>
+                                </form>
+                            </div>
+                        {{end}}
+                        </div>
+                    </div>
+                </div>
+                
+
+
+                <!-- Update Email -->
                 <div class="card my-3">
                     <div class="card-header">
                         <h3 class="h5">Update Email</h3>
@@ -70,7 +124,7 @@
                             <div class="form-group">
                                 <label for="email">Email address</label>
                                 <div class="input-group">
-                                <input value="{{.Email}}" disabled inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email">
+                                <input value="{{.Subscription.Email}}" disabled inputmode="email" type="text" maxlength="100" class="form-control" autocomplete="email" id="email" name="email">
                                 <div class="input-group-append">
                                     <button id="email-edit-button" onclick="toggleButton(this)" type="button" class="btn btn-outline-primary">Edit</button>
                                 </div>
@@ -88,7 +142,7 @@
                     <div class="card-body">
                         <form action="settings/password" method="post">
                             {{ .CsrfField }}
-                            <input value="{{.Email}}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" name="email">
+                            <input value="{{.Subscription.Email}}" inputmode="email" type="text" maxlength="100" class="form-control visually-hidden" autocomplete="email" name="email">
                             <div class="form-group">
                                 <label for="old-password">Old Password</label>
                                 <input required type="password" minlength="5" maxlength="256" class="form-control" autocomplete="current-password" id="old-password" name="old-password">
@@ -105,6 +159,8 @@
                         </form>
                     </div>
                 </div>
+
+                
                 
                 <!-- Delete Account -->
                 <div class="card my-3"> 

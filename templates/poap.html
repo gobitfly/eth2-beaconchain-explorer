@@ -1,6 +1,5 @@
 {{ define "js"}}
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
 <script type="text/javascript" src="/js/datatable_input.js"></script>
 <script>
 var clients = {{.PoapClients}}
@@ -159,37 +158,15 @@ function genHexString(len) {
     return output;
 }
 
-function setTooltip(selector, message) {
-	
-	var title = $(selector).attr('data-original-title')
-	$(selector).tooltip('hide').attr('data-original-title', message)
-	
-  setTimeout(function(){
-    $(selector)
-      .tooltip('show');
-	}, 50)
-	
-	setTimeout(function () {
-    $(selector).tooltip('hide')
-      .attr('data-original-title', title)
-  }, 1000)
-}
-
 function createCopyButton(id) {
 	var clipboard = new ClipboardJS(id);
 	var copyButton = $(id)
 
   clipboard.on('success', function (e) {
     copyButton.find('span').removeClass('fa-copy').removeClass('fa').addClass('fas').addClass('fa-check')
-    setTooltip(id, 'Copied!')
     setTimeout(function(){
 			copyButton.find('span').removeClass('fas').removeClass('fa-check').addClass('fa').addClass('fa-copy')
     }, 500)
-	});
-
-  clipboard.on('error', function (e) {
-    setTooltip(id, 'Failed to Copy');
-    hideTooltip(id);
 	});
 }
 
@@ -329,7 +306,7 @@ $(document).ready(function() {
 												<td class="d-flex justify-content-between"><a  href="https://github.com/prysmaticlabs/prysm">Prysm</a> <a class="ml-2" href="https://discord.gg/wJW7Rjk"><i class="fab fa-discord"></i></a></td>
 												<td>
 													<span id="prysm-graffiti" class="text-monospace text-truncate"></span>
-													<a id="copy-prysm-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+													<a id="copy-prysm-graffiti" data-toggle="tooltip" data-original-title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>
@@ -338,7 +315,7 @@ $(document).ready(function() {
 												<td class="d-flex justify-content-between"><a href="https://github.com/sigp/lighthouse">Lighthouse</a>  <a class="ml-2" href="https://discord.gg/8mFMS7G"><i class="fab fa-discord"></i></a></td>
 												<td>
 													<span id="lighthouse-graffiti" class="text-monospace text-truncate"></span>
-													<a id="copy-lighthouse-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+													<a id="copy-lighthouse-graffiti" data-toggle="tooltip" data-original-title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>
@@ -347,7 +324,7 @@ $(document).ready(function() {
 												<td class="d-flex justify-content-between"><a href="https://github.com/PegaSysEng/teku">Teku</a>  <a class="ml-2" href="https://discord.gg/YgXN5ZK"><i class="fab fa-discord"></i></a></td>
 												<td>
 													<span id="teku-graffiti" class="text-monospace text-truncate"></span>
-													<a id="copy-teku-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+													<a id="copy-teku-graffiti" data-toggle="tooltip" data-original-title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>
@@ -356,7 +333,7 @@ $(document).ready(function() {
 												<td class="d-flex justify-content-between"><a href="https://github.com/status-im/nim-beacon-chain">Nimbus</a>  <a class="ml-2" href="https://discord.gg/KTUdhYF"><i class="fab fa-discord"></i></a></td>
 												<td>
 													<span id="nimbus-graffiti" class="text-monospace text-truncate"></span>
-													<a id="copy-nimbus-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+													<a id="copy-nimbus-graffiti" data-toggle="tooltip" data-original-title="Copy Graffiti" data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>
@@ -365,7 +342,7 @@ $(document).ready(function() {
 												<td class="d-flex justify-content-between"><a href="https://github.com/ChainSafe/lodestar">Lodestar</a>  <a class="ml-2" href="https://discord.gg/Gaakk42"><i class="fab fa-discord"></i></a></td>
 												<td>
 													<span id="lodestar-graffiti" class="text-monospace text-truncate"></span>
-													<a id="copy-lodestar-graffiti" data-toggle="tooltip" title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary ml-2 btn-icon-inside btn-sm text-white d-none">
+													<a id="copy-lodestar-graffiti" data-toggle="tooltip" data-original-title="Copy Graffiti" data-clipboard-text="" class="btn btn-primary ml-2 btn-icon-inside btn-sm text-white d-none">
 														<span class="fa fa-copy icon-inside"></span>
 													</a>
 												</td>

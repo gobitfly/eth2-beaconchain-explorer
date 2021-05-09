@@ -23,8 +23,16 @@ import (
 	"github.com/juliangruber/go-intersect"
 )
 
-var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validator.html"))
-var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validatornotfound.html"))
+var validatorTemplate = template.Must(template.New("validator").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html",
+	"templates/validator/validator.html",
+	"templates/validator/editModal.html",
+	"templates/validator/bookmarkModal.html",
+	"templates/validator/infoTable.html",
+	"templates/validator/lifeCycleDiagram.html",
+	"templates/validator/summaryTable.html",
+	"templates/validator/networkStats.html",
+	"templates/validator/historyTable.html"))
+var validatorNotFoundTemplate = template.Must(template.New("validatornotfound").ParseFiles("templates/layout.html", "templates/validator/validatornotfound.html"))
 var validatorEditFlash = "edit_validator_flash"
 
 // Validator returns validator data using a go template
@@ -55,10 +63,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		CurrentEpoch:          services.LatestEpoch(),
 		CurrentSlot:           services.LatestSlot(),
 		FinalizationDelay:     services.FinalizationDelay(),
+		EthPrice:              services.GetEthPrice(),
 		Mainnet:               utils.Config.Chain.Mainnet,
 		DepositContract:       utils.Config.Indexer.Eth1DepositContractAddress,
 	}
 
+	validatorPageData.NetworkStats = services.LatestIndexPageData()
 	validatorPageData.User = user
 
 	validatorPageData.FlashMessage, err = utils.GetFlash(w, r, validatorEditFlash)
@@ -100,12 +110,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
+
 			// there is no validator-index but there are eth1-deposits for the publickey
 			// which means the validator is in DEPOSITED state
 			// in this state there is nothing to display but the eth1-deposits
 			validatorPageData.Status = "deposited"
-			validatorPageData.PublicKey = []byte(pubKey)
+			validatorPageData.PublicKey = pubKey
 			validatorPageData.Deposits = deposits
+
+			for _, deposit := range validatorPageData.Deposits.Eth1Deposits {
+				if deposit.ValidSignature {
+					validatorPageData.Eth1DepositAddress = deposit.FromAddress
+					break
+				}
+			}
 
 			sumValid := uint64(0)
 			// check if a valid deposit exists
@@ -160,6 +178,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	// GetAvgOptimalInclusionDistance(index)
 
 	data.Meta.Title = fmt.Sprintf("%v - Validator %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, index, time.Now().Year())
 	data.Meta.Path = fmt.Sprintf("/validator/%v", index)
@@ -831,14 +851,10 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
 		return
 	}
-	if signatureParsed[64] != 27 && signatureParsed[64] != 28 {
-		logger.Errorf("invalid Ethereum signature (V is not 27 or 28)")
-		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
-		http.Redirect(w, r, "/validator/"+pubkey, 301)
-		return
-	}
 
-	signatureParsed[64] -= 27
+	if signatureParsed[64] == 27 || signatureParsed[64] == 28 {
+		signatureParsed[64] -= 27
+	}
 
 	recoveredPubkey, err := crypto.SigToPub(msgHash.Bytes(), signatureParsed)
 	if err != nil {
@@ -868,11 +884,11 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 			res, err := db.DB.Exec(`
 				INSERT INTO validator_names (publickey, name)
 				SELECT publickey, $1 as name
-				FROM (SELECT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature) a
+				FROM (SELECT DISTINCT publickey FROM eth1_deposits WHERE from_address = $2 AND valid_signature) a
 				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, recoveredAddress.Bytes())
 			if err != nil {
 				logger.Errorf("error saving validator name (apply to all): %x: %v: %v", pubkeyDecoded, name, err)
-				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
+				utils.SetFlash(w, r, validatorEditFlash, "Error: Db error while updating validator names")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
 			}
@@ -887,7 +903,7 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 				ON CONFLICT (publickey) DO UPDATE SET name = excluded.name`, name, pubkeyDecoded)
 			if err != nil {
 				logger.Errorf("error saving validator name: %x: %v: %v", pubkeyDecoded, name, err)
-				utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
+				utils.SetFlash(w, r, validatorEditFlash, "Error: Db error while updating validator name")
 				http.Redirect(w, r, "/validator/"+pubkey, 301)
 				return
 			}
@@ -899,6 +915,164 @@ func ValidatorSave(w http.ResponseWriter, r *http.Request) {
 	} else {
 		utils.SetFlash(w, r, validatorEditFlash, "Error: the provided signature is invalid")
 		http.Redirect(w, r, "/validator/"+pubkey, 301)
+	}
+
+}
+
+// ValidatorHistory returns a validators history in json
+func ValidatorHistory(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	q := r.URL.Query()
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	if length > 100 {
+		length = 100
+	}
+
+	var totalCount uint64
+	err = db.DB.Get(&totalCount, `
+		select
+			(
+				select count(*) from validator_balances vb
+				left join attestation_assignments a on vb.validatorindex = a.validatorindex and vb.epoch = a.epoch
+				left join blocks b on vb.validatorindex = b.proposer and vb.epoch = b.epoch
+				where vb.validatorindex = $1)`, index)
+	if err != nil {
+		logger.Errorf("error retrieving totalCount of validator-history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var validatorHistory []*types.ValidatorHistory
+	err = db.DB.Select(&validatorHistory, `
+			SELECT 
+				vbalance.epoch, 
+				vbalance.balance-LAG(vbalance.balance) OVER (ORDER BY vbalance.epoch) AS balancechange,
+				assign.attesterslot AS attestatation_attesterslot,
+				assign.inclusionslot AS attestation_inclusionslot,
+				vblocks.status as proposal_status,
+				vblocks.slot as proposal_slot
+			FROM validator_balances vbalance
+			LEFT JOIN attestation_assignments assign ON vbalance.validatorindex = assign.validatorindex AND vbalance.epoch = assign.epoch
+			LEFT JOIN blocks vblocks ON vbalance.validatorindex = vblocks.proposer AND vbalance.epoch = vblocks.epoch
+			WHERE vbalance.validatorindex = $1
+			ORDER BY epoch DESC 
+			LIMIT $2 OFFSET $3
+			`, index, length, start)
+
+	if err != nil {
+		logger.Errorf("error retrieving validator history: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	tableData := make([][]interface{}, 0, len(validatorHistory))
+	for _, b := range validatorHistory {
+		if b.InclusionSlot != nil {
+			tableData = append(tableData, []interface{}{
+				// utils.FormatEpoch(b.Epoch),
+				utils.FormatAttestationInclusionSlot(*b.InclusionSlot),
+				utils.FormatBalanceChange(b.BalanceChange),
+				"Attestation",
+			})
+		}
+
+		if b.ProposalSlot != nil {
+			tableData = append(tableData, []interface{}{
+				// utils.FormatEpoch(b.Epoch),
+				utils.FormatAttestationInclusionSlot(*b.ProposalSlot),
+				utils.FormatBalanceChange(b.BalanceChange),
+				"Proposed",
+			})
+		}
+
+		if b.InclusionSlot == nil && b.ProposalSlot == nil {
+			tableData = append(tableData, []interface{}{
+				// utils.FormatEpoch(b.Epoch),
+				template.HTML("-"),
+				utils.FormatBalanceChange(b.BalanceChange),
+				"Unavailable",
+			})
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+//ValidatorRank returns rank of a validator as a json
+func ValidatorRank(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	var valRank []*types.ValidatorRank
+
+	err = db.DB.Select(&valRank, `
+		SELECT rank FROM( 
+				SELECT
+					ROW_NUMBER() OVER (ORDER BY "performance7d" DESC) AS rank,
+					validatorindex, 
+					performance7d
+				FROM validator_performance
+			) AS rankTable
+		WHERE validatorindex=$1
+		`, index)
+	if err != nil {
+		logger.Errorf("error retrieving validator rank data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(valRank)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 
 }

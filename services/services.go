@@ -2,11 +2,13 @@ package services
 
 import (
 	"database/sql"
+	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -29,14 +31,29 @@ var depositThresholdReached atomic.Value
 
 var logger = logrus.New().WithField("module", "services")
 
+type EthPrice struct {
+	USD float64
+}
+
+var ethPrice *EthPrice = new(EthPrice)
+
 // Init will initialize the services
 func Init() {
 	ready.Add(4)
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
-	go indexPageDataUpdater()
+	go updateEthPrice()
+	if utils.Config.Frontend.OnlyAPI {
+		ready.Done()
+	} else {
+		go indexPageDataUpdater()
+	}
 	ready.Wait()
+
+	if utils.Config.Frontend.OnlyAPI {
+		return
+	}
 
 	go chartsPageDataUpdater()
 	go statsUpdater()
@@ -179,6 +196,14 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			return nil, fmt.Errorf("error retrieving eth1 deposits: %v", err)
 		}
 
+		threshold, err := db.GetDepositThresholdTime()
+		if err != nil {
+			logger.WithError(err).Error("error could not calcualte threshold time")
+		}
+		if threshold == nil {
+			threshold = &deposit.BlockTs
+		}
+
 		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
@@ -196,7 +221,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		// enough deposits
 		if data.DepositedTotal > data.DepositThreshold {
 			if depositThresholdReached.Load() == nil {
-				eth1BlockDepositReached.Store(deposit.BlockTs)
+				eth1BlockDepositReached.Store(*threshold)
 				depositThresholdReached.Store(true)
 			}
 			eth1Block := eth1BlockDepositReached.Load().(time.Time)
@@ -204,6 +229,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			if !(startSlotTime == time.Unix(0, 0)) && eth1Block.Add(genesisDelay).After(minGenesisTime) {
 				// Network starts after min genesis time
 				data.NetworkStartTs = eth1Block.Add(genesisDelay).Unix()
+			} else {
+				data.NetworkStartTs = minGenesisTime.Unix()
 			}
 		}
 
@@ -239,7 +266,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		data.Genesis = false
 	}
 	// show the transition view one hour before the first slot and until epoch 30 is reached
-	if now.Add(time.Hour*2).After(startSlotTime) && now.Before(genesisTransition) {
+	if now.Add(time.Hour*24).After(startSlotTime) && now.Before(genesisTransition) {
 		data.GenesisPeriod = true
 	} else {
 		data.GenesisPeriod = false
@@ -354,6 +381,9 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		}
 
 		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther))
+		if len(data.StakedEther) < 1 {
+			data.StakedEther = string(utils.FormatBalance(0))
+		}
 		data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
 	}
 
@@ -367,6 +397,29 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	data.Subtitle = template.HTML(utils.Config.Frontend.SiteSubtitle)
 
 	return data, nil
+}
+
+func updateEthPrice() {
+	for true {
+		resp, err := http.Get("https://min-api.cryptocompare.com/data/price?fsym=ETH&tsyms=USD")
+
+		if err != nil {
+			logger.Errorf("error retrieving ETH price: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+
+		defer resp.Body.Close()
+
+		err = json.NewDecoder(resp.Body).Decode(&ethPrice)
+
+		if err != nil {
+			logger.Errorf("error decoding ETH price json response to struct: %v", err)
+			time.Sleep(time.Second * 10)
+			continue
+		}
+		time.Sleep(time.Minute)
+	}
 }
 
 // LatestEpoch will return the latest epoch
@@ -408,6 +461,7 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
+	data.EthPrice = GetEthPrice()
 	return data
 }
 
@@ -442,3 +496,38 @@ func GetLatestStats() *types.Stats {
 func IsSyncing() bool {
 	return time.Now().Add(time.Minute * -10).After(utils.EpochToTime(LatestEpoch()))
 }
+
+func GetEthPrice() int {
+	return int(ethPrice.USD)
+}
+
+// func GetAvgOptimalInclusionDistances(validatorIndex uint64) [4]template.HTML {
+// 	var avgDistance []*types.AvgInclusionDistance
+// 	var distances [4]template.HTML
+// 	err := db.DB.Select(&avgDistance, `
+// 			SELECT
+// 				attestation_assignments.inclusionslot,
+// 				COALESCE((SELECT MIN(slot) FROM blocks WHERE slot > attestation_assignments.attesterslot AND blocks.status IN ('1', '3')), 0) AS earliestinclusionslot
+// 			FROM attestation_assignments
+// 			WHERE validatorindex = $1
+// 			ORDER BY attesterslot DESC, epoch DESC
+// 			LIMIT 100`, validatorIndex)
+
+// 	if err != nil {
+// 		logger.Errorf("error retrieving validator attestations data: %v", err)
+// 		return distances
+// 	}
+
+// 	distances[0] = utils.FormatInclusionDelay(avgDistance[0].InclusionSlot, avgDistance[0].InclusionSlot-avgDistance[0].EarliestInclusionSlot)
+// 	for i, item :=range avgDistance{
+// 		if i<7{ //blocks
+// 			distances[1]+=item.InclusionSlot-item.EarliestInclusionSlot
+// 		}
+// 		if i<31{ //blocks
+// 			distances[3]+=item.InclusionSlot-item.EarliestInclusionSlot
+// 		}
+// 		distances[4]+=item.InclusionSlot-item.EarliestInclusionSlot
+// 	}
+
+// 	return distances
+// }

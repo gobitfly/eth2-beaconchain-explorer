@@ -3,7 +3,6 @@
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
 {{ .CsrfField }}
 <script>
-
 	var events = {
 		//<span class="d-flex align-item-center"><input class="mr-2" checked data-target="validator_balance_decreased" type="checkbox"> <span style="height: 1rem;" class="mb-1">balance decreases</span></span>
 		validator_balance_decreased: 'balance decreases',
@@ -257,20 +256,6 @@
 		</div>
 	</div>
 
-	<!-- <div class="stats row justify-content-center">
-		<div class="card m-3">
-			<div class="card-body">Watchlist {{.CountWatchlist}}</div>
-		</div>
-		<div class="card m-3">
-			<div class="card-body">Subscriptions {{.CountSubscriptions}}</div>
-		</div>
-		<div class="card m-3">
-			<div class="card-body">asdf</div>
-		</div>
-		<div class="card m-3">
-			<div class="card-body">asdf</div>
-		</div>
-	</div> -->
 	<div class="d-flex mt-3 justify-content-between">
 		<h2 class="h4">Validator Watchlist </h2>
 		<a href="{{.DashboardLink}}" class="btn btn-sm btn-outline-primary h2">

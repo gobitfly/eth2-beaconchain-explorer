@@ -26,6 +26,7 @@ type PageData struct {
 	FinalizationDelay     uint64
 	Mainnet               bool
 	DepositContract       string
+	EthPrice              int
 }
 
 // Meta is a struct to hold metadata about the page
@@ -48,6 +49,7 @@ type LatestState struct {
 	CurrentFinalizedEpoch uint64 `json:"currentFinalizedEpoch"`
 	FinalityDelay         uint64 `json:"finalityDelay"`
 	IsSyncing             bool   `json:"syncing"`
+	EthPrice              int    `json:"ethPrice"`
 }
 
 type Stats struct {
@@ -91,6 +93,7 @@ type IndexPageData struct {
 	Mainnet                   bool                   `json:"-"`
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
+	Lang                      string
 }
 
 type IndexPageDataEpochs struct {
@@ -222,6 +225,12 @@ type ValidatorPageData struct {
 	AverageAttestationInclusionDistance float64
 	AttestationInclusionEffectiveness   float64
 	CsrfField                           template.HTML
+	NetworkStats                        *IndexPageData
+}
+
+//ValidatorRank is a struct for validator rank data
+type ValidatorRank struct {
+	Rank int64 `db:"rank" json:"rank"`
 }
 
 // DailyProposalCount is a struct for the daily proposal count data
@@ -274,6 +283,11 @@ type ValidatorAttestation struct {
 	InclusionSlot         uint64 `db:"inclusionslot"`
 	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
 }
+
+// type AvgInclusionDistance struct {
+// 	InclusionSlot         uint64 `db:"inclusionslot"`
+// 	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
+// }
 
 // VisPageData is a struct to hold the visualizations page data
 type VisPageData struct {
@@ -577,9 +591,10 @@ type ChartsPageDataChart struct {
 
 // DashboardData is a struct to hold data for the dashboard-page
 type DashboardData struct {
-	BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
-	Earnings       ValidatorEarnings                `json:"earnings"`
-	Validators     [][]interface{}                  `json:"validators"`
+	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
+	// Earnings       ValidatorEarnings                `json:"earnings"`
+	// Validators     [][]interface{}                  `json:"validators"`
+	Csrf string `json:"csrf"`
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
@@ -614,6 +629,15 @@ type ValidatorProposerSlashing struct {
 	ProposerIndex uint64 `db:"proposerindex" json:"proposer_index,omitempty"`
 }
 
+type ValidatorHistory struct {
+	Epoch          uint64  `db:"epoch" json:"epoch,omitempty"`
+	BalanceChange  *int64  `db:"balancechange" json:"balance_change,omitempty"`
+	AttesterSlot   *uint64 `db:"attestatation_attesterslot" json:"attester_slot,omitempty"`
+	InclusionSlot  *uint64 `db:"attestation_inclusionslot" json:"inclusion_slot,omitempty"`
+	ProposalStatus *uint64 `db:"proposal_status" json:"proposal_status,omitempty"`
+	ProposalSlot   *uint64 `db:"proposal_slot" json:"proposal_slot,omitempty"`
+}
+
 type ValidatorSlashing struct {
 	Epoch                  uint64        `db:"epoch" json:"epoch,omitempty"`
 	Slot                   uint64        `db:"slot" json:"slot,omitempty"`
@@ -627,6 +651,7 @@ type ValidatorSlashing struct {
 type StakingCalculatorPageData struct {
 	BestValidatorBalanceHistory *[]ValidatorBalanceHistory
 	WatchlistBalanceHistory     [][]interface{}
+	TotalStaked                 uint64
 }
 
 type EthOneDepositsPageData struct {
@@ -696,9 +721,20 @@ type User struct {
 	Authenticated bool   `json:"authenticated"`
 }
 
+type UserSubscription struct {
+	UserID         uint64  `db:"id"`
+	Email          string  `db:"email"`
+	Active         bool    `db:"stripe_active"`
+	CustomerID     *string `db:"stripe_customerid"`
+	SubscriptionID *string `db:"stripe_subscriptionid"`
+	PriceID        *string `db:"stripe_priceid"`
+	ApiKey         *string `db:"api_key"`
+}
+
 type AuthData struct {
 	Flashes   []interface{}
 	Email     string
+	State     string
 	CsrfField template.HTML
 }
 
@@ -707,9 +743,9 @@ type CsrfData struct {
 }
 
 type UserSettingsPageData struct {
-	Email     string `json:"email"`
 	CsrfField template.HTML
 	AuthData
+	Subscription UserSubscription
 }
 
 type UserAuthorizeConfirmPageData struct {
@@ -736,6 +772,11 @@ type ApiPricing struct {
 	FlashMessage string
 	User         *User
 	CsrfField    template.HTML
+	Subscription UserSubscription
+	StripePK     string
+	Sapphire     string
+	Emerald      string
+	Diamond      string
 }
 
 type StakeWithUsPageData struct {
