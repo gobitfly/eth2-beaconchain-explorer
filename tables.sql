@@ -289,12 +289,44 @@ create table blocks
     voluntaryexitscount         int   not null,
     proposer                    int   not null,
     status                      text  not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
+    exec_parenthash             bytea,
+    exec_coinbase               bytea,
+    exec_stateroot              bytea,
+    exec_receiptroot            bytea,
+    exec_logsbloom              bytea,
+    exec_random                 bytea,
+    exec_block_number           int,
+    exec_timestamp              int,
+    exec_extra_data             bytea,
+    exec_base_fee_per_gas       int,
+    exec_blockhash              bytea,
+    exec_transactioncount       int,
     primary key (slot, blockroot)
 );
+
 create index idx_blocks_proposer on blocks (proposer);
 create index idx_blocks_epoch on blocks (epoch);
 create index idx_blocks_graffiti_text on blocks using gin (graffiti_text gin_trgm_ops);
 create index idx_blocks_blockrootstatus on blocks (blockroot, status);
+
+drop table if exists blocks_transactions;
+create table blocks_transactions
+(
+    block_slot         int    not null,
+    block_index        int    not null,
+    block_root         bytea  not null default '',
+    raw                bytea  not null,
+    txhash             bytea  not null,
+    nonce              int    not null,
+    gasprice           bytea  not null,
+    gaslimit           int    not null,
+    recipient          bytea  not null,
+    amount             bytea  not null,
+    payload            bytea  not null,
+    max_priority_fee_per_gas  int,
+    max_fee_per_gas           int,
+    primary key (block_slot, block_index)
+);
 
 drop table if exists blocks_proposerslashings;
 create table blocks_proposerslashings
