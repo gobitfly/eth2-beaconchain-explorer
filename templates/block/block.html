@@ -167,11 +167,11 @@
                 <li class="nav-item">
                     <a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
                 </li>
-                {{if gt .TransactionsCount 0}}
+                {{if gt .ExecTransactionsCount 0}}
                 <li class="nav-item">
                     <a class="nav-link" id="transactions-tab" data-toggle="tab" href="#transactions" role="tab"
                        aria-controls="transactions" aria-selected="false">Transactions <span
-                            class="badge bg-secondary text-white">{{.TransactionsCount}}</span></a>
+                            class="badge bg-secondary text-white">{{.ExecTransactionsCount}}</span></a>
                 </li>
                 {{end}}
                 {{if gt .DepositsCount 0}}
@@ -222,7 +222,7 @@
                     </div>
                     {{template "block_attestations" .}}
                 </div>
-                {{if gt .TransactionsCount 0}}
+                {{if gt .ExecTransactionsCount 0}}
                     <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
                         <div class="card block-card">
                             {{ template "block_transactions" . }}

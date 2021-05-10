@@ -173,25 +173,23 @@
             <div class="row p-1">
                 <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Timestamp">Timestamp:</span></div>
                 <div class="col-md-5 text-monospace text-break">{{.ExecTimestamp}}</div>
-                <div class="col-md-5"><span aria-ethereum-date="{{.ExecTimestamp}}">{{.ExecTime}}</span> (<span aria-ethereum-date="{{.ExecTimestamp}}" aria-ethereum-date-format="FROMNOW"></span>)
+                <div class="col-md-5"><span aria-ethereum-date="{{.ExecTimestamp}}">{{.ExecTime}}</span> (<span aria-ethereum-date="{{.ExecTimestamp}}" aria-ethereum-date-format="FROMNOW"></span>)</div>
             </div>
 
             <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Hash of the received Eth1 Block">Receipt Root:</span></div>
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Receipt root">Receipt Root:</span></div>
                 <div class="col-md-10 text-monospace text-break">
                     0x{{printf "%x" .ExecReceiptRoot}}
                 </div>
             </div>
 
             <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Hash of the received Eth1 Block">Logs Bloom:</span></div>
-                <div class="col-md-10 text-monospace text-break">
-                    0x{{printf "%x" .ExecLogsBloom}}
-                </div>
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Logs Bloom">Logs Bloom:</span></div>
+                <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .ExecLogsBloom}}</div>
             </div>
 
             <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The root of the merkle tree of deposits">Transactions:</span></div>
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transactions">Transactions:</span></div>
                 <div class="col-md-10 text-monospace text-break">{{.ExecTransactionsCount}}</div>
             </div>
         </div>
