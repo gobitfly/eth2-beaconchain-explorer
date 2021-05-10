@@ -123,28 +123,28 @@
 
         <div class="col-md-10">
             <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Execution Block Hash">Execution Block Hash:</span></div>
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Execution Block Hash">Block Hash:</span></div>
                 <div class="col-md-10 text-monospace text-break">
                     0x{{printf "%x" .ExecBlockHash}}
                 </div>
             </div>
 
             <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Parent Execution Block Hash">Parent Execution Block Hash:</span></div>
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Parent Execution Block Hash">Parent Hash:</span></div>
                 <div class="col-md-10 text-monospace text-break">
                     0x{{printf "%x" .ExecParentHash}}
                 </div>
             </div>
 
             <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Proposer address">Proposer address:</span></div>
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Proposer address">Proposer:</span></div>
                 <div class="col-md-10 text-monospace text-break">
                     0x{{printf "%x" .ExecCoinbase}}
                 </div>
             </div>
 
             <div class="row p-1">
-                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Execution State Root">Execution State Root:</span></div>
+                <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Execution State Root">State Root:</span></div>
                 <div class="col-md-10 text-monospace text-break">
                     0x{{printf "%x" .ExecStateRoot}}
                 </div>
