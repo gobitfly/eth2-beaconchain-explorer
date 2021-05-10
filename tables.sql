@@ -320,6 +320,7 @@ create table blocks_transactions
     nonce              int    not null,
     gasprice           bytea  not null,
     gaslimit           int    not null,
+    sender             bytea  not null,
     recipient          bytea  not null,
     amount             bytea  not null,
     payload            bytea  not null,

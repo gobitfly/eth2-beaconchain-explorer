@@ -215,6 +215,13 @@
                     </div>
                     {{template "block_attestations" .}}
                 </div>
+                {{if gt .TransactionsCount 0}}
+                    <div class="tab-pane fade" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
+                        <div class="card block-card">
+                            {{ template "block_transactions" . }}
+                        </div>
+                    </div>
+                {{end}}
                 {{if gt .DepositsCount 0}}
                     <div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab">
                         <div class="card block-card">

@@ -611,6 +611,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 				// big endian
 				tx.Price = decTx.GasPrice().Bytes()
 				tx.GasLimit = decTx.Gas()
+				//tx.Sender = TODO sender
 				tx.Recipient = decTx.To().Bytes()
 				tx.Amount = decTx.Value().Bytes()
 				tx.Payload = decTx.Data()

@@ -125,13 +125,14 @@ type Transaction struct {
 	// big endian
 	Price     []byte
 	GasLimit  uint64
+	Sender    []byte
 	Recipient []byte
 	// big endian
 	Amount  []byte
 	Payload []byte
 
 	MaxPriorityFeePerGas uint64
-	MaxFeePerGas uint64
+	MaxFeePerGas         uint64
 }
 
 type ExecutionPayload struct {
@@ -148,7 +149,7 @@ type ExecutionPayload struct {
 	ExtraData     []byte
 	BaseFeePerGas []byte
 	BlockHash     []byte
-	Transactions []*Transaction
+	Transactions  []*Transaction
 }
 
 // Eth1Data is a struct to hold the ETH1 data
