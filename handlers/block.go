@@ -24,6 +24,7 @@ import (
 var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
 	"templates/block/block.html",
+	"templates/block/transactions.html",
 	"templates/block/attestations.html",
 	"templates/block/deposits.html",
 	"templates/block/votes.html",
@@ -147,14 +148,14 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		SELECT
     	block_slot,
     	block_index,
-    	raw,
     	txhash,
     	nonce,
     	gasprice,
     	gaslimit,
+    	sender,
     	recipient,
     	amount,
-    	payload,
+    	payload
 		FROM blocks_transactions
 		WHERE block_slot = $1
 		ORDER BY block_index`,
@@ -176,6 +177,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			&tx.AccountNonce,
 			&tx.Price,
 			&tx.GasLimit,
+			&tx.Sender,
 			&tx.Recipient,
 			&tx.Amount,
 			&tx.Payload,
@@ -188,8 +190,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		var amount, price big.Int
 		amount.SetBytes(tx.Amount)
 		price.SetBytes(tx.Price)
-		tx.AmountPretty = ToGWei(&amount)
-		tx.PricePretty = ToEth(&price)
+		tx.AmountPretty = ToEth(&amount)
+		tx.PricePretty = ToGWei(&price)
 		transactions = append(transactions, tx)
 	}
 	blockPageData.Transactions = transactions
@@ -491,6 +493,11 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+// ToWei converts the big.Int wei to its gwei string representation.
+func ToWei(wei *big.Int) string {
+	return wei.String()
 }
 
 // ToGWei converts the big.Int wei to its gwei string representation.
