@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"math/big"
 	"net/http"
 	"sort"
 	"strconv"
@@ -88,6 +89,17 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			blocks.voluntaryexitscount,
 			blocks.proposer,
 			blocks.status,
+			exec_blockhash,
+			exec_parenthash,
+			exec_coinbase,
+			exec_stateroot,
+			exec_number,
+			exec_gaslimit,
+			exec_gasused,
+			exec_timestamp,
+			exec_receiptroot,
+			exec_logsbloom,
+			exec_transactioncount,
 			COALESCE(validator_names.name, '') AS name
 		FROM blocks 
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
@@ -113,6 +125,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	data.Meta.Path = fmt.Sprintf("/block/%v", blockPageData.Slot)
 
 	blockPageData.Ts = utils.SlotToTime(blockPageData.Slot)
+	blockPageData.ExecTime = time.Unix(int64(blockPageData.ExecTimestamp), 0)
 	blockPageData.SlashingsCount = blockPageData.AttesterSlashingsCount + blockPageData.ProposerSlashingsCount
 
 	err = db.DB.Get(&blockPageData.NextSlot, "SELECT slot FROM blocks WHERE slot > $1 ORDER BY slot LIMIT 1", blockPageData.Slot)
@@ -129,8 +142,60 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		blockPageData.PreviousSlot = 0
 	}
 
-	var attestations []*types.BlockPageAttestation
+	var transactions []*types.BlockPageTransaction
 	rows, err := db.DB.Query(`
+		SELECT
+    	block_slot,
+    	block_index,
+    	raw,
+    	txhash,
+    	nonce,
+    	gasprice,
+    	gaslimit,
+    	recipient,
+    	amount,
+    	payload,
+		FROM blocks_transactions
+		WHERE block_slot = $1
+		ORDER BY block_index`,
+		blockPageData.Slot)
+	if err != nil {
+		logger.Errorf("error retrieving block transaction data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		tx := &types.BlockPageTransaction{}
+
+		err := rows.Scan(
+			&tx.BlockSlot,
+			&tx.BlockIndex,
+			&tx.TxHash,
+			&tx.AccountNonce,
+			&tx.Price,
+			&tx.GasLimit,
+			&tx.Recipient,
+			&tx.Amount,
+			&tx.Payload,
+		)
+		if err != nil {
+			logger.Errorf("error scanning block transaction data: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		var amount, price big.Int
+		amount.SetBytes(tx.Amount)
+		price.SetBytes(tx.Price)
+		tx.AmountPretty = ToGWei(&amount)
+		tx.PricePretty = ToEth(&price)
+		transactions = append(transactions, tx)
+	}
+	blockPageData.Transactions = transactions
+
+	var attestations []*types.BlockPageAttestation
+	rows, err = db.DB.Query(`
 		SELECT
 			block_slot,
 			block_index,
@@ -426,4 +491,19 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+// ToGWei converts the big.Int wei to its gwei string representation.
+func ToGWei(wei *big.Int) string {
+	return ToEth(new(big.Int).Mul(wei, big.NewInt(1e9)))
+}
+
+// ToEth converts the big.Int wei to its ether string representation.
+func ToEth(wei *big.Int) string {
+	z, m := new(big.Int).DivMod(wei, big.NewInt(1e18), new(big.Int))
+	if m.Cmp(new(big.Int)) == 0 {
+		return z.String()
+	}
+	s := strings.TrimRight(fmt.Sprintf("%018s", m.String()), "0")
+	return z.String() + "." + s
 }
