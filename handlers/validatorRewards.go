@@ -20,6 +20,8 @@ import (
 
 var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validatorRewards.html"))
 
+// var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub"}
+
 type rewardsResp struct {
 	Currencies    []string
 	CsrfField     template.HTML
@@ -186,6 +188,24 @@ func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]s
 	return data
 }
 
+func isValidCurrency(currency string) bool {
+	var count uint64
+	err := db.DB.Get(&count,
+		`select count(column_name) 
+		from information_schema.columns 
+		where table_name = 'price' AND column_name=$1;`, currency)
+	if err != nil {
+		logger.Errorf("error checking currency: %w", err)
+		return false
+	}
+
+	if count > 0 {
+		return true
+	}
+
+	return false
+}
+
 func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -293,16 +313,21 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	validatorArr := q.Get("validators")
+	_, err := parseValidatorsFromQueryString(validatorArr)
+	if err != nil {
+		http.Error(w, "Invalid query, Invalid Validators", 400)
+		return
+	}
 
 	currency := q.Get("currency")
 
-	if validatorArr == "" || currency == "" {
+	if validatorArr == "" || !isValidCurrency(currency) {
 		logger.WithField("route", r.URL.String()).Error("Bad Query")
 		http.Error(w, "Internal server error, Bad Query", http.StatusInternalServerError)
 		return
 	}
 
-	err := db.AddSubscription(user.UserID,
+	err = db.AddSubscription(user.UserID,
 		types.TaxReportEventName,
 		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency))
 
@@ -339,7 +364,7 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 	currency := q.Get("currency")
 
-	if validatorArr == "" || currency == "" {
+	if validatorArr == "" || !isValidCurrency(currency) {
 		logger.WithField("route", r.URL.String()).Error("Bad Query")
 		http.Error(w, "Internal server error, Bad Query", http.StatusInternalServerError)
 		return

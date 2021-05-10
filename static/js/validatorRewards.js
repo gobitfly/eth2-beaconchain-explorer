@@ -339,6 +339,11 @@ $(document).ready(function () {
         csrfToken = document.getElementsByName("CsrfField")[0].value
     }
 
+    $('#validator-index-view').on("keyup", function(){
+        $(this).val($(this).val().replace(/([a-zA-Z ])/g, ""))
+    })
+
+
     $('input[id="datepicker"]').daterangepicker({
         pens: 'left',
         minDate: moment().subtract(365, 'days'), 
