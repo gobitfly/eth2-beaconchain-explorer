@@ -338,6 +338,29 @@ $(document).ready(function () {
     }else{
         csrfToken = document.getElementsByName("CsrfField")[0].value
     }
+
+    $('input[id="datepicker"]').daterangepicker({
+        pens: 'left',
+        minDate: moment().subtract(365, 'days'), 
+        maxDate: moment(),
+        maxSpan: {
+            'days': 365
+        },
+        ranges: {
+            'This Month to date': [moment().startOf('month'), moment()],
+            'Last Month to date': [moment().subtract(1, 'month').startOf('month'), moment()],
+            'This Year to date': [moment().startOf('year'), moment()],
+            'Last 365 days': [moment().subtract(365, 'days'), moment()],
+         },
+         locale: {
+            format: 'DD/MM/YYYY'
+        },
+        singleDatePicker: true,
+        alwaysShowCalendars: false
+    }, function(start, end, label) {
+        let end_d = moment()
+        $("#days").val(end_d.diff(moment(start), 'days'))
+    });
     
     create_typeahead('.typeahead-validators');
     let qry = getValidatorQueryString()

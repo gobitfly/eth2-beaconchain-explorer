@@ -23,3 +23,7 @@
     content:"*";
     color:red;
  }
+
+ .daterangepicker{
+     background-color: var(--light);
+ }

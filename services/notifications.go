@@ -878,7 +878,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 	}
 
 	for _, r := range dbResult {
-		n := &ethClientNotification{
+		n := &taxReportNotification{
 			SubscriptionID: r.SubscriptionID,
 			UserID:         r.UserID,
 			Epoch:          r.Epoch,
