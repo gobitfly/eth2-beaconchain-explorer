@@ -37,16 +37,23 @@
             </nav>
         </div>
     </div>
+
+    <div class="d-flex justify-content-center align-items-center my-3" style="width: 100%;">
+        <div id="totals-div" class="card d-none" style="border-radius: 20px; border-style: none;">
+            <div class="card-body">
+                <span>Total</span>       
+                <span id="total-income-eth-span"></span>
+                <span class="mx-2">|</span>
+                <span>Total</span> 
+                <span id="total-income-currency-span"></span>
+            </div>
+        </div>
+    </div>
     <div class="card">
         <div class="card-body p-0">
             <div id="table-div" class="d-none">
                 <div class="d-flex justify-content-end align-items-center p-2" style="width: 100%;">
-                    <div class="d-flex justify-content-center align-items-center" style="width: 100%;"
-                    data-toggle="tooltip" data-original-title="Total Income">
-                        <span id="total-income-eth-span" class="mr-3"></span>
-                        <span id="total-income-currency-span"></span>
-                    </div>
-                    <a href="/rewards"><i class="fas fa-times text-danger"></i></a>
+                    <a href="/rewards"><i class="fas fa-trash text-danger"></i></a>
                 </div>
                 <div class="table-responsive py-2">
                     <table class="table" id="tax-table">
