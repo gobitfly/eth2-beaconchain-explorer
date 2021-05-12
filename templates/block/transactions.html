@@ -42,7 +42,7 @@
         </div>
         <div class="row border-bottom p-1 mx-0">
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Transaction payload">Payload:</span></div>
-            <div class="col-md-10 text-monospace text-break">{{$transaction.Payload}}</a>
+            <div class="col-md-10 text-monospace text-break">0x{{printf "%x" $transaction.Payload}}</a>
             </div>
         </div>
 
