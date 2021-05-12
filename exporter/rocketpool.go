@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	_ "github.com/jackc/pgx/v4/stdlib"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
@@ -30,7 +32,10 @@ func rocketpoolExporter() {
 		logger.Fatal(err)
 	}
 	for {
-		rpExporter.export()
+		err = rpExporter.Export()
+		if err != nil {
+			logger.Errorf("error when exporting rocketpool: %v", err)
+		}
 		time.Sleep(time.Second * 60)
 	}
 }
@@ -56,7 +61,7 @@ func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressH
 	return rpe, nil
 }
 
-func (rp *RocketpoolExporter) export() error {
+func (rp *RocketpoolExporter) Export() error {
 	latestBlock, err := rp.Eth1Client.BlockNumber(context.Background())
 	if err != nil {
 		return err
