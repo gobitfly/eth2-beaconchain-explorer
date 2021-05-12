@@ -855,6 +855,14 @@ func (pc *PrysmClient) parseAltairBlock(block *ethpb.BeaconBlockContainerAltair)
 //tx.Recipient = decTx.To().Bytes()
 //tx.Amount = decTx.Value().Bytes()
 //tx.Payload = decTx.Data()
+// TODO
+//if decTx.To() != nil {
+//tx.Recipient = decTx.To().Bytes()
+//} else {
+//tx.Recipient = make([]byte, 0)
+//}
+//tx.Amount = decTx.Value().Bytes()
+//tx.Payload = decTx.Data()
 //		}
 //		b.ExecutionPayload.Transactions[i] = tx
 //	}
