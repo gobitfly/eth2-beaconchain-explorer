@@ -745,6 +745,11 @@ type SearchAheadBlocksResult []struct {
 	Root string `db:"blockroot" json:"blockroot,omitempty"`
 }
 
+type SearchAheadTransactionsResult []struct {
+	Slot   string `db:"slot" json:"slot,omitempty"`
+	TxHash string `db:"txhash" json:"txhash,omitempty"`
+}
+
 // SearchAheadGraffitiResult is a struct to hold the search ahead blocks results with a given graffiti
 type SearchAheadGraffitiResult []struct {
 	Graffiti string `db:"graffiti" json:"graffiti,omitempty"`
