@@ -182,6 +182,7 @@ func main() {
 		apiV1AuthRouter.Use(utils.AuthorizedAPIMiddleware)
 
 		router.HandleFunc("/api/healthz", handlers.ApiHealthz).Methods("GET", "HEAD")
+		router.HandleFunc("/api/healthz-loadbalancer", handlers.ApiHealthzLoadbalancer).Methods("GET", "HEAD")
 
 		services.Init() // Init frontend services
 		price.Init()
