@@ -907,16 +907,16 @@ $(document).ready(function() {
           console.log(`loaded earnings: fetch: ${t1-t0}ms`)
           if (!result) return
 
-          addChange("#earnings-day", result.lastDay)
-          addChange("#earnings-week", result.lastWeek)
-          addChange("#earnings-month", result.lastMonth)
+          // addChange("#earnings-day", result.lastDay)
+          // addChange("#earnings-week", result.lastWeek)
+          // addChange("#earnings-month", result.lastMonth)
 
           document.querySelector('#earnings-day').innerHTML = (result.lastDayFormatted || '0.000') 
           document.querySelector('#earnings-week').innerHTML = (result.lastWeekFormatted || '0.000') 
           document.querySelector('#earnings-month').innerHTML = (result.lastMonthFormatted || '0.000')
-          document.querySelector('#earnings-total').innerHTML = (result.totalChangeFormatted || '0.000') + `<span id="earnings-total-change">${result.totalFormatted}</span>`
+          document.querySelector('#earnings-total').innerHTML = (result.totalChangeFormatted || '0.000') + ` | <span id="earnings-total-change">${result.totalFormatted}</span>`
           
-          addChange("#earnings-total-change", result.total)
+          // addChange("#earnings-total-change", result.total)
         }
       })
       $.ajax({
