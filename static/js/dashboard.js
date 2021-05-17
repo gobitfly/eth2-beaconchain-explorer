@@ -8,6 +8,15 @@ function createBlock(x, y) {
   return use;
 }
 
+function addCommas(number) {
+  if (number>=1000){
+    parseFloat(number).toFixed(3)
+    return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  }
+
+  return number
+}
+
 function appendBlocks(blocks) {
   $(".blue-cube g.move").each(function() {
     $(this).empty()
@@ -919,10 +928,10 @@ $(document).ready(function() {
           addChange("#earnings-week", lastWeek)
           addChange("#earnings-month", lastMonth)
 
-          document.querySelector('#earnings-day').innerHTML = (lastDay || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-week').innerHTML = (lastWeek || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-month').innerHTML = (lastMonth || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-total').innerHTML = (totalChange.toFixed(2) || '0.000') + `<span id="earnings-total-change">${total.toFixed(4)}</span>` + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-day').innerHTML = (addCommas(lastDay) || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-week').innerHTML = (addCommas(lastWeek) || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-month').innerHTML = (addCommas(lastMonth) || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
+          document.querySelector('#earnings-total').innerHTML = (addCommas(totalChange.toFixed(2)) || '0.000') + `<span id="earnings-total-change">${addCommas(total.toFixed(4))}</span>` + " <span class='small text-muted'>" + currency + "</span>"
           
           addChange("#earnings-total-change", total)
         }
