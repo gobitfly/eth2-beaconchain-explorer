@@ -300,7 +300,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		tableData = append(tableData, []interface{}{
 			utils.FormatValidator(entry.Index),
 			utils.FormatPublicKey(entry.Publickey),
-			utils.FormatBalance(int64(entry.Balance), currency),
+			utils.FormatBalance(entry.Balance, currency),
 			entry.Events,
 		})
 	}
