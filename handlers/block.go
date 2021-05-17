@@ -399,7 +399,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		tableData = append(tableData, []interface{}{
 			i + 1 + int(start),
 			utils.FormatPublicKey(deposit.PublicKey),
-			utils.FormatBalance(deposit.Amount, currency),
+			utils.FormatBalance(int64(deposit.Amount), currency),
 			deposit.WithdrawalCredentials,
 			deposit.Signature,
 		})

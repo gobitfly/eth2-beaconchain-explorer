@@ -63,7 +63,7 @@ func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint6
 }
 
 // FormatBalance will return a string for a balance
-func FormatBalance(balanceInt uint64, currency string) template.HTML {
+func FormatBalance(balanceInt int64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
 	balance := float64(balanceInt) / float64(1e9)
 

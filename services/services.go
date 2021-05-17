@@ -283,7 +283,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	for _, epoch := range epochs {
 		epoch.Ts = utils.EpochToTime(epoch.Epoch)
 		epoch.FinalizedFormatted = utils.FormatYesNo(epoch.Finalized)
-		epoch.VotedEtherFormatted = utils.FormatBalance(epoch.VotedEther, currency)
+		epoch.VotedEtherFormatted = utils.FormatBalance(int64(epoch.VotedEther), currency)
 		epoch.EligibleEtherFormatted = utils.FormatBalanceShort(epoch.EligibleEther, currency)
 		epoch.GlobalParticipationRateFormatted = utils.FormatGlobalParticipationRate(epoch.VotedEther, epoch.GlobalParticipationRate, currency)
 	}
@@ -359,7 +359,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
 	}
-	data.AverageBalance = string(utils.FormatBalance(uint64(averageBalance), currency))
+	data.AverageBalance = string(utils.FormatBalance(int64(averageBalance), currency))
 
 	var epochLowerBound uint64
 	if epochLowerBound = 0; epoch > 1600 {
@@ -381,7 +381,7 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			}
 		}
 
-		data.StakedEther = string(utils.FormatBalance(epochHistory[len(epochHistory)-1].EligibleEther, currency))
+		data.StakedEther = string(utils.FormatBalance(int64(epochHistory[len(epochHistory)-1].EligibleEther), currency))
 		data.ActiveValidators = epochHistory[len(epochHistory)-1].ValidatorsCount
 	}
 
