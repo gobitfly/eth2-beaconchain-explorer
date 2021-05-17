@@ -448,7 +448,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	earnings, err := GetValidatorEarnings([]uint64{index})
+	earnings, err := GetValidatorEarnings([]uint64{index}, GetCurrency(r))
 	if err != nil {
 		logger.Errorf("error retrieving validator earnings: %v", err)
 		http.Error(w, "Internal server error", 503)

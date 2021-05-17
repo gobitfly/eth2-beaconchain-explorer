@@ -224,7 +224,7 @@ func Eth1DepositsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	for i, d := range deposits {
 		tableData[i] = []interface{}{
 			utils.FormatEth1Address(d.FromAddress),
-			utils.FormatBalance(d.Amount, currency),
+			utils.FormatBalance(int64(d.Amount), currency),
 			d.ValidCount,
 			d.InvalidCount,
 			d.PendingCount,
