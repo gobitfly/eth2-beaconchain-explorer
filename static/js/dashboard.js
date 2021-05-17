@@ -915,7 +915,8 @@ $(document).ready(function() {
           document.querySelector('#earnings-week').innerHTML = (result.lastWeekFormatted || '0.000') 
           document.querySelector('#earnings-month').innerHTML = (result.lastMonthFormatted || '0.000')
           document.querySelector('#earnings-total').innerHTML = (result.totalChangeFormatted || '0.000') + ` | <span id="earnings-total-change">${result.totalFormatted}</span>`
-          
+          $("#earnings-total span:first").removeClass("text-success").removeClass("text-danger")
+          $("#earnings-total span:first").html($("#earnings-total span:first").html().replace("+", ""))
           // addChange("#earnings-total-change", result.total)
         }
       })
