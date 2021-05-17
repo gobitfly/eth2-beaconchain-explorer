@@ -619,11 +619,11 @@ type EpochPageData struct {
 	DepositsCount           uint64  `db:"depositscount"`
 	VoluntaryExitsCount     uint64  `db:"voluntaryexitscount"`
 	ValidatorsCount         uint64  `db:"validatorscount"`
-	AverageValidatorBalance uint64  `db:"averagevalidatorbalance"`
+	AverageValidatorBalance int64   `db:"averagevalidatorbalance"`
 	Finalized               bool    `db:"finalized"`
-	EligibleEther           uint64  `db:"eligibleether"`
+	EligibleEther           int64   `db:"eligibleether"`
 	GlobalParticipationRate float64 `db:"globalparticipationrate"`
-	VotedEther              uint64  `db:"votedether"`
+	VotedEther              int64   `db:"votedether"`
 
 	Blocks []*IndexPageDataBlocks
 
