@@ -339,6 +339,10 @@ $(document).ready(function () {
         csrfToken = document.getElementsByName("CsrfField")[0].value
     }
 
+    if (localStorage.getItem("dashboard_validators").length){
+        $('#validator-index-view').val(JSON.parse(localStorage.getItem("dashboard_validators")))
+    }
+
     $('#validator-index-view').on("keyup", function(){
         $(this).val($(this).val().replace(/([a-zA-Z ])/g, ""))
     })
