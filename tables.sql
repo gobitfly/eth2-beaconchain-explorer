@@ -753,6 +753,15 @@ create table pools_rocketpool_minipools
     withdrawal_processed bool not null,
 
     node_address bytea not null,
+    node_fee bigint not null, -- set and frozen at minipool-creation
+    node_deposit_balance bigint not null,
+    node_refund_balance bigint not null,
+    node_deposit_assigned bool not null,
+    node_deposit_balance bigint not null,
+    user_deposit_assigned bool not null,
+    user_deposit_assigned_time timestamp without time zone not null,
+    staking_start_balance bigint not null,
+    staking_end_balance bigint not null,
 
     primary key(address)
 );
@@ -766,10 +775,6 @@ create table pools_rocketpool_nodes
     exists bool not null,
     trusted bool not null,
     timezone_location varchar(200) not null,
-    fee float not null,
-    deposit_balance bigint not null,
-    refund_balnace bigint not null,
-    deposit_assigned bool not null,
 
     primary key(address)
 );
