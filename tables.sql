@@ -696,3 +696,12 @@ create table staking_pools_chart
     balance                    bigint not null, 
     PRIMARY KEY(epoch, name)
 );
+
+drop table if exists stats_sharing;
+CREATE TABLE stats_sharing (
+	id 				bigserial 			primary key,
+	ts 				timestamp  			not null,
+	share           bool             not null,
+	user_id 		 	bigint	 	 		not null,
+    foreign key(user_id) references users(id)
+);

@@ -69,11 +69,18 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		pairedDevices = nil
 	}
 
+	statsSharing, err := db.GetUserMonitorSharingSetting(user.UserID)
+	if err != nil {
+		logger.Errorf("Error retrieving stats sharing setting: %v %v", user.UserID, err)
+		statsSharing = false
+	}
+
 	userSettingsData.PairedDevices = pairedDevices
 	userSettingsData.Subscription = subscription
 	userSettingsData.Sapphire = &utils.Config.Frontend.Stripe.Sapphire
 	userSettingsData.Emerald = &utils.Config.Frontend.Stripe.Emerald
 	userSettingsData.Diamond = &utils.Config.Frontend.Stripe.Diamond
+	userSettingsData.ShareMonitoringData = statsSharing
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
@@ -491,6 +498,23 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
+}
+
+func UserUpdateFlagsPost(w http.ResponseWriter, r *http.Request) {
+	user, _, err := getUserSession(w, r)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	shareStats := FormValueOrJSON(r, "shareStats")
+
+	logger.Errorf("shareStats: %v", shareStats)
+
+	err = db.SetUserMonitorSharingSetting(user.UserID, shareStats == "true")
+
+	http.Redirect(w, r, "/user/settings#app", http.StatusOK)
 }
 
 func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {

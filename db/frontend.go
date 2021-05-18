@@ -171,6 +171,26 @@ func GetByRefreshToken(claimUserID, claimAppID, claimDeviceID uint64, hashedRefr
 	return userID, nil
 }
 
+func GetUserMonitorSharingSetting(userID uint64) (bool, error) {
+	var share bool
+	err := FrontendDB.Get(&share,
+		"SELECT share FROM stats_sharing WHERE user_id = $1 ORDER BY id desc limit 1", userID)
+
+	if err != nil {
+		return false, err
+	}
+
+	return share, nil
+}
+
+func SetUserMonitorSharingSetting(userID uint64, share bool) error {
+	_, err := FrontendDB.Exec("INSERT INTO stats_sharing (user_id, share, ts) VALUES($1, $2, 'NOW()')",
+		userID, share,
+	)
+
+	return err
+}
+
 func GetUserDevicesByUserID(userID uint64) ([]types.PairedDevice, error) {
 	data := []types.PairedDevice{}
 
