@@ -75,6 +75,38 @@ func ApiHealthz(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK. Last epoch is from %v ago", time.Since(epochTime))
 }
 
+// ApiHealthzLoadbalancer godoc
+// @Summary Health of the explorer-api regarding having a healthy connection to the database
+// @Tags Health
+// @Description Health endpoint for montitoring if the explorer-api
+// @Produce  text/plain
+// @Success 200 {object} string
+// @Router /api/healthz-loadbalancer [get]
+func ApiHealthzLoadbalancer(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "text/plain")
+
+	lastEpoch, err := db.GetLatestEpoch()
+
+	if err != nil {
+		http.Error(w, "Internal server error: could not retrieve latest epoch from the db", 503)
+		return
+	}
+
+	if 18446744073709551615 == utils.Config.Chain.GenesisTimestamp {
+		fmt.Fprint(w, "OK. No GENESIS_TIMESTAMP defined yet")
+		return
+	}
+
+	genesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
+	if genesisTime.After(time.Now()) {
+		fmt.Fprintf(w, "OK. Genesis in %v (%v)", time.Until(genesisTime), genesisTime)
+		return
+	}
+
+	fmt.Fprintf(w, "OK. Last epoch is from %v ago", time.Since(utils.EpochToTime(lastEpoch)))
+}
+
 // ApiEpoch godoc
 // @Summary Get epoch by number
 // @Tags Epoch
