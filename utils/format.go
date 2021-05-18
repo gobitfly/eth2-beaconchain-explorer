@@ -375,7 +375,14 @@ func FormatIncome(balanceInt int64, currency string) template.HTML {
 	balance := float64(balanceInt) / float64(1e9)
 
 	p := message.NewPrinter(language.English)
-	rb := []rune(p.Sprintf("%.2f", balance*exchangeRate))
+
+	decimals := "%.2f"
+
+	if currency == "ETH" {
+		decimals = "%.5f"
+	}
+
+	rb := []rune(p.Sprintf(decimals, balance*exchangeRate))
 	// remove trailing zeros
 	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
 		for rb[len(rb)-1] == '0' {
