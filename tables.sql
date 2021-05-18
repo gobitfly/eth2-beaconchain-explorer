@@ -261,6 +261,7 @@ create table blocks
     primary key (slot, blockroot)
 );
 create index idx_blocks_proposer on blocks (proposer);
+create index idx_blocks_epoch on blocks (epoch);
 
 drop table if exists blocks_proposerslashings;
 create table blocks_proposerslashings

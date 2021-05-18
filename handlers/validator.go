@@ -414,10 +414,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	if len(incomeHistory) > 0 {
 		for i := 0; i < len(incomeHistory)-1; i++ {
-			income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance
-			if income >= incomeHistory[i].Deposits {
-				income = income - incomeHistory[i].Deposits
-			}
+			income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
 			color := "#7cb5ec"
 			if income < 0 {
 				color = "#f7a35c"
@@ -451,7 +448,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	earnings, err := GetValidatorEarnings([]uint64{index})
+	earnings, err := GetValidatorEarnings([]uint64{index}, GetCurrency(r))
 	if err != nil {
 		logger.Errorf("error retrieving validator earnings: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -1333,12 +1330,10 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 	for i := len(validatorStatsTablePageData.Rows) - 1; i > 0; i-- {
 		validatorStatsTablePageData.Rows[i].EndBalance = validatorStatsTablePageData.Rows[i-1].StartBalance
 		if validatorStatsTablePageData.Rows[i].EndBalance.Valid && validatorStatsTablePageData.Rows[i].StartBalance.Valid {
-
 			validatorStatsTablePageData.Rows[i].Income = validatorStatsTablePageData.Rows[i].EndBalance.Int64 - validatorStatsTablePageData.Rows[i].StartBalance.Int64
-
-			if validatorStatsTablePageData.Rows[i].DepositsAmount.Valid && validatorStatsTablePageData.Rows[i].Income >= validatorStatsTablePageData.Rows[i].DepositsAmount.Int64 {
-				validatorStatsTablePageData.Rows[i].Income -= validatorStatsTablePageData.Rows[i].DepositsAmount.Int64
-			}
+		}
+		if validatorStatsTablePageData.Rows[i].DepositsAmount.Valid {
+			validatorStatsTablePageData.Rows[i].Income -= validatorStatsTablePageData.Rows[i].DepositsAmount.Int64
 		}
 	}
 
@@ -1346,7 +1341,6 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		if validatorStatsTablePageData.Rows[0].EndBalance.Valid && validatorStatsTablePageData.Rows[0].StartBalance.Valid {
 			validatorStatsTablePageData.Rows[0].Income = validatorStatsTablePageData.Rows[0].EndBalance.Int64 - validatorStatsTablePageData.Rows[0].StartBalance.Int64
 		}
-
 		if validatorStatsTablePageData.Rows[0].DepositsAmount.Valid {
 			validatorStatsTablePageData.Rows[0].Income -= validatorStatsTablePageData.Rows[0].DepositsAmount.Int64
 		}
