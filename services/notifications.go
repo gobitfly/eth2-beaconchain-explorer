@@ -938,7 +938,7 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 		MachineName    string `db:"machine"`
 	}
 
-	err := db.DB.Select(&dbResult, query, eventName, latestEpoch)
+	err := db.FrontendDB.Select(&dbResult, query, eventName, latestEpoch)
 	if err != nil {
 		return err
 	}
