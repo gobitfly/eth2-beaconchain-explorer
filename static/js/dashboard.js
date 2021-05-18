@@ -896,6 +896,7 @@ $(document).ready(function() {
       // } else {
       //   appendBlocks(xBlocks.slice(0, state.validators.length * 3 - 1))
       // }
+      document.querySelector('#rewards-button').style.visibility = "visible"
       document.querySelector('#bookmark-button').style.visibility = "visible"
       document.querySelector('#copy-button').style.visibility = "visible"
       document.querySelector('#clear-search').style.visibility = "visible"
@@ -975,6 +976,7 @@ $(document).ready(function() {
 
     } else {
       document.querySelector('#copy-button').style.visibility = "hidden"
+      document.querySelector('#rewards-button').style.visibility = "hidden"
       document.querySelector('#bookmark-button').style.visibility = "hidden"
       document.querySelector('#clear-search').style.visibility = "hidden"
       // window.location = "/dashboard"
