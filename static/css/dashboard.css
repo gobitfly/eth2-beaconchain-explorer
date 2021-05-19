@@ -194,8 +194,6 @@ ul.multiselect input:focus {
   display: flex;
 }
 
-
-
 @media screen and (max-width: 818px) {
   .dashboard-container {
     margin: 1rem 0;
@@ -470,4 +468,12 @@ ul.multiselect input:focus {
   .proposal-switch{
     position: relative;
   }
+}
+
+@media (max-width: 1140px){
+  .dashboard-table-nav{ margin: 0 }
+}
+
+@media (max-width: 450px){
+  .dashboard-table-nav-text{ display: none }
 }

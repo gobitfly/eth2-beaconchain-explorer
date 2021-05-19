@@ -102,7 +102,7 @@
                 }
             })
 
-            window.addEventListener('load', function () {
+            window.addEventListener('DOMContentLoaded', function () {
                 switch (getCookie('currency')) {
                     case 'AUD':
                         document.getElementById('currentCurrencySymbol').textContent = 'A$'

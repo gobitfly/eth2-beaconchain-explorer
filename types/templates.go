@@ -354,7 +354,7 @@ type ValidatorBalanceHistory struct {
 
 // ValidatorBalanceHistory is a struct for the validator income history data
 type ValidatorIncomeHistory struct {
-	Day          uint64 `db:"day"`
+	Day          int64 `db:"day"` // day can be -1 which is pre-genesis
 	Income       int64
 	StartBalance int64 `db:"start_balance" json:"-"`
 	EndBalance   int64 `db:"end_balance" json:"-"`
@@ -740,16 +740,21 @@ type DashboardValidatorBalanceHistory struct {
 
 // ValidatorEarnings is a struct to hold the earnings of one or multiple validators
 type ValidatorEarnings struct {
-	Total                   int64   `json:"total"`
-	LastDay                 int64   `json:"lastDay"`
-	LastWeek                int64   `json:"lastWeek"`
-	LastMonth               int64   `json:"lastMonth"`
-	APR                     float64 `json:"apr"`
-	TotalDeposits           int64   `json:"totalDeposits"`
-	EarningsInPeriodBalance int64   `json:"earningsInPeriodBalance"`
-	EarningsInPeriod        int64   `json:"earningsInPeriod"`
-	EpochStart              int64   `json:"epochStart"`
-	EpochEnd                int64   `json:"epochEnd"`
+	Total                   int64         `json:"total"`
+	LastDay                 int64         `json:"lastDay"`
+	LastWeek                int64         `json:"lastWeek"`
+	LastMonth               int64         `json:"lastMonth"`
+	APR                     float64       `json:"apr"`
+	TotalDeposits           int64         `json:"totalDeposits"`
+	EarningsInPeriodBalance int64         `json:"earningsInPeriodBalance"`
+	EarningsInPeriod        int64         `json:"earningsInPeriod"`
+	EpochStart              int64         `json:"epochStart"`
+	EpochEnd                int64         `json:"epochEnd"`
+	LastDayFormatted        template.HTML `json:"lastDayFormatted"`
+	LastWeekFormatted       template.HTML `json:"lastWeekFormatted"`
+	LastMonthFormatted      template.HTML `json:"lastMonthFormatted"`
+	TotalFormatted          template.HTML `json:"totalFormatted"`
+	TotalChangeFormatted    template.HTML `json:"totalChangeFormatted"`
 }
 
 // ValidatorAttestationSlashing is a struct to hold data of an attestation-slashing

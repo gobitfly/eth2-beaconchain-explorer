@@ -324,7 +324,7 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
 func FormatGlobalParticipationRate(e uint64, r float64, currency string) template.HTML {
 	p := message.NewPrinter(language.English)
-	rr := fmt.Sprintf("%.1f%%", r*100)
+	rr := fmt.Sprintf("%.2f%%", r*100)
 	tpl := `
 	<div style="position:relative;width:inherit;height:inherit;">
 	  %.0[1]f <small class="text-muted ml-3">(%[2]v)</small>
@@ -374,12 +374,31 @@ func FormatIncome(balanceInt int64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
 	balance := float64(balanceInt) / float64(1e9)
 
+	p := message.NewPrinter(language.English)
+
+	decimals := "%.2f"
+
+	if currency == "ETH" {
+		decimals = "%.5f"
+	}
+
+	rb := []rune(p.Sprintf(decimals, balance*exchangeRate))
+	// remove trailing zeros
+	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+		for rb[len(rb)-1] == '0' {
+			rb = rb[:len(rb)-1]
+		}
+		if rb[len(rb)-1] == '.' {
+			rb = rb[:len(rb)-1]
+		}
+	}
+
 	if balance > 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%.4f %v</b></span>`, balance*exchangeRate, currency))
+		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s %v</b></span>`, string(rb), currency))
 	} else if balance < 0 {
-		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%.4f %v</b></span>`, balance*exchangeRate, currency))
+		return template.HTML(fmt.Sprintf(`<span class="text-danger"><b>%s %v</b></span>`, string(rb), currency))
 	} else {
-		return template.HTML(fmt.Sprintf(`<b>%.4f %v</b>`, balance*exchangeRate, currency))
+		return template.HTML(fmt.Sprintf(`<b>%s %v</b>`, string(rb), currency))
 	}
 }
 
