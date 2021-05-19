@@ -81,13 +81,38 @@ update set attester_slashings = excluded.attester_slashings, proposer_slashings 
 	start = time.Now()
 
 	logger.Infof("exporting deposits and deposits_amount statistics")
-	_, err = tx.Exec(`insert into validator_stats (validatorindex, day, deposits, deposits_amount) (select validators.validatorindex, $3, count(*), sum(amount)
-                                                                              from blocks_deposits
-                                                                                       inner join validators on blocks_deposits.publickey = validators.pubkey
-                                                                              where block_slot >= $1 * 32
-                                                                                and block_slot <= $2 * 32
-                                                                              group by validators.validatorindex) on conflict (validatorindex, day) do
-update set deposits = excluded.deposits, deposits_amount = excluded.deposits_amount;`, firstEpoch, lastEpoch, day)
+	depositsQry := `
+		insert into validator_stats (validatorindex, day, deposits, deposits_amount) 
+		(
+			select validators.validatorindex, $3, count(*), sum(amount)
+			from blocks_deposits
+			inner join validators on blocks_deposits.publickey = validators.pubkey
+			where block_slot >= $1 * 32 and block_slot <= $2 * 32
+			group by validators.validatorindex
+		) on conflict (validatorindex, day) do
+			update set deposits = excluded.deposits, 
+			deposits_amount = excluded.deposits_amount;`
+	if day == 0 {
+		// genesis-deposits will be added to block 0 by the exporter which is technically not 100% correct
+		// since deposits will be added to the validator-balance only after the block which includes the deposits.
+		// to ease the calculation of validator-income (considering deposits) we set the day of genesis-deposits to -1.
+		depositsQry = `
+			insert into validator_stats (validatorindex, day, deposits, deposits_amount)
+			(
+				select validators.validatorindex, case when block_slot = 0 then -1 else $3 end as day, count(*), sum(amount)
+				from blocks_deposits
+				inner join validators on blocks_deposits.publickey = validators.pubkey
+				where block_slot >= $1 * 32 and block_slot <= $2 * 32
+				group by validators.validatorindex, day
+			) on conflict (validatorindex, day) do
+				update set deposits = excluded.deposits, 
+				deposits_amount = excluded.deposits_amount;`
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = tx.Exec(depositsQry, firstEpoch, lastEpoch, day)
 	if err != nil {
 		return err
 	}
