@@ -15,7 +15,7 @@
 {{ define "content"}}
 {{with .Data}}
 <div class="container mt-2">
-      <div class="dashboard-container">
+      <div class="dashboard-container" style="min-width: 400px;">
             <div class="dashboard-header">
                   <div class="dashboard-title">
                         <style>
@@ -220,7 +220,7 @@
                                           <i class="fa fa-trash-alt" style="width: 15px;"></i>
                                     </button>
                               </span>
-                              <span class="multiselect-border">
+                              <span class="multiselect-border" style="margin: 1rem 0;">
                                     <ul id="selected-validators-input" class="multiselect">
                                           <li class="input">
                                           <input class="typeahead-dashboard" type="text"
@@ -240,7 +240,7 @@
                                           </button>
                                     </div>
                               </span>
-                              <div style="font-weight:300;font-size:0.9rem;display:flex;justify-content:center" class="pb-2">
+                              <div style="font-weight:300;font-size:0.9rem;display:flex;justify-content:flex-start" class="pb-2">
                                     <span id="dashboard-info">Found 0 pending, 0 active and 0 exited validators</span>
                               </div>          
                         </div>  
@@ -280,17 +280,17 @@
             <div class="col-lg-8 px-lg-2 my-2">
                   <div class="card h-100 px-0 py-0 card-body" style="min-height: 600px;">
                         <ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="dashChartTabs" role="tablist">
-                              <li class="nav-item">
+                              <li class="nav-item dashboard-table-nav">
                                     <a class="nav-link show active" id="validators-tab" data-toggle="tab" href="#validators-table" role="tab"
-                                    aria-controls="validators" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-male"></i><span class="tab-text">Validators</span></a>
+                                    aria-controls="validators" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-male"></i><span class="tab-text dashboard-table-nav-text"> Validators</span></a>
                               </li>
-                              <li class="nav-item">
+                              <li class="nav-item dashboard-table-nav">
                                     <a class="nav-link" id="balances-tab" data-toggle="tab" href="#balances" role="tab"
-                                    aria-controls="balances" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Income</span></a>
+                                    aria-controls="balances" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text dashboard-table-nav-text"> Income</span></a>
                               </li>
-                              <li class="nav-item">
+                              <li class="nav-item dashboard-table-nav">
                                     <a class="nav-link" id="proposals-tab" data-toggle="tab" href="#proposals" role="tab"
-                                    aria-controls="proposals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-file-signature"></i><span class="tab-text">Proposals</span></a>
+                                    aria-controls="proposals" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-file-signature"></i><span class="tab-text dashboard-table-nav-text"> Proposals</span></a>
                               </li>
                         </ul>
                         <div class="tab-content h-100" id="dashTabContent">
