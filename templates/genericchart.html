@@ -70,9 +70,7 @@
             plotOptions: {
                 column: {
                     stacking: {{.StackingMode}},
-                    dataGrouping: {
-                        {{ if .ColumnDataGroupingApproximation }}approximation: {{.ColumnDataGroupingApproximation}},{{end}}
-                    },
+                    {{ if .ColumnDataGroupingApproximation }}dataGrouping: {approximation: {{.ColumnDataGroupingApproximation}}},{{end}}
                     dataLabels: {
                         enabled: {{ .DataLabelsEnabled }},
                         {{ if .DataLabelsFormatter }} formatter: {{ .DataLabelsFormatter }}, {{end}}
