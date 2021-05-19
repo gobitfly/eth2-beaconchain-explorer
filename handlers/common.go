@@ -31,7 +31,7 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 }
 
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
-func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error) {
+func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, error) {
 	validatorsPQArray := pq.Array(validators)
 	latestEpoch := int64(services.LatestEpoch())
 	lastDayEpoch := latestEpoch - 225
@@ -133,12 +133,17 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}
 
 	return &types.ValidatorEarnings{
-		Total:         earningsTotal,
-		LastDay:       earningsLastDay,
-		LastWeek:      earningsLastWeek,
-		LastMonth:     earningsLastMonth,
-		APR:           apr,
-		TotalDeposits: totalDeposits,
+		Total:                earningsTotal,
+		LastDay:              earningsLastDay,
+		LastWeek:             earningsLastWeek,
+		LastMonth:            earningsLastMonth,
+		APR:                  apr,
+		TotalDeposits:        totalDeposits,
+		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
+		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
+		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
+		TotalFormatted:       utils.FormatIncome(earningsTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(earningsTotal+totalDeposits, currency),
 	}, nil
 }
 

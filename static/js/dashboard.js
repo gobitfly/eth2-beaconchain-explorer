@@ -907,25 +907,18 @@ $(document).ready(function() {
           var t1 = Date.now()
           console.log(`loaded earnings: fetch: ${t1-t0}ms`)
           if (!result) return
-          // document.getElementById('stats').style.display = 'flex'
-          var lastDay = (result.lastDay / 1e9 * exchangeRate).toFixed(4)
-          var lastWeek = (result.lastWeek / 1e9 * exchangeRate).toFixed(4)
-          var lastMonth = (result.lastMonth / 1e9 * exchangeRate).toFixed(4)
-          var total = (result.total / 1e9 * exchangeRate)
-          var totalDeposits = (result.totalDeposits / 1e9 * exchangeRate)
-          var totalChange = total+totalDeposits
 
-          // console.log(totalChange, total, exchangeRate, "\n", result.total, result.totalDeposits)
-          addChange("#earnings-day", lastDay)
-          addChange("#earnings-week", lastWeek)
-          addChange("#earnings-month", lastMonth)
+          // addChange("#earnings-day", result.lastDay)
+          // addChange("#earnings-week", result.lastWeek)
+          // addChange("#earnings-month", result.lastMonth)
 
-          document.querySelector('#earnings-day').innerHTML = (lastDay || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-week').innerHTML = (lastWeek || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-month').innerHTML = (lastMonth || '0.000') + " <span class='small text-muted'>" + currency + "</span>"
-          document.querySelector('#earnings-total').innerHTML = (totalChange.toFixed(2) || '0.000') + `<span id="earnings-total-change">${total.toFixed(4)}</span>` + " <span class='small text-muted'>" + currency + "</span>"
-          
-          addChange("#earnings-total-change", total)
+          document.querySelector('#earnings-day').innerHTML = (result.lastDayFormatted || '0.000') 
+          document.querySelector('#earnings-week').innerHTML = (result.lastWeekFormatted || '0.000') 
+          document.querySelector('#earnings-month').innerHTML = (result.lastMonthFormatted || '0.000')
+          document.querySelector('#earnings-total').innerHTML = (result.totalChangeFormatted || '0.000') + ` | <span id="earnings-total-change">${result.totalFormatted}</span>`
+          $("#earnings-total span:first").removeClass("text-success").removeClass("text-danger")
+          $("#earnings-total span:first").html($("#earnings-total span:first").html().replace("+", ""))
+          // addChange("#earnings-total-change", result.total)
         }
       })
       $.ajax({
