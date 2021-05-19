@@ -380,6 +380,8 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 			} else {
 				pubkey = utils.FormatPublicKey(h)
 			}
+		} else if sub.EventName == types.TaxReportEventName {
+			pubkey = template.HTML(`<a href="/rewards">report</a>`)
 		}
 
 		tableData = append(tableData, []interface{}{
