@@ -302,7 +302,7 @@ type ValidatorStatsTablePageData struct {
 
 type ValidatorStatsTableRow struct {
 	ValidatorIndex         uint64
-        Day                    int64         `db:"day"`
+	Day                    int64         `db:"day"`
 	StartBalance           sql.NullInt64 `db:"start_balance"`
 	EndBalance             sql.NullInt64 `db:"end_balance"`
 	Income                 int64         `db:"-"`
