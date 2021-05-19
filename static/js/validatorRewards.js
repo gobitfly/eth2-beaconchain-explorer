@@ -174,8 +174,9 @@ function updateTotals(data){
         totalCurrency+=parseFloat(item[4])
     }
 
-    $("#total-income-eth-span").html(`ETH ${(totalEth.toFixed(DECIMAL_POINTS_ETH))}`)
-    $("#total-income-currency-span").html(`${currency} ${addCommas(totalCurrency.toFixed(DECIMAL_POINTS_CURRENCY))}`)
+    $("#total-income-eth-span").html(`ETH: <b>${(totalEth.toFixed(DECIMAL_POINTS_ETH))}</b>`)
+    $("#total-income-currency-span").html(`${currency}: <b>${addCommas(totalCurrency.toFixed(DECIMAL_POINTS_CURRENCY))}</b>`)
+    $("#totals-div").removeClass("d-none")
 }
 
 function addCommas(number) {
@@ -209,6 +210,8 @@ function showTable(data){
             $("#table-div").removeClass("d-none")
             $("#subscriptions-div").addClass("d-none")
             updateTotals(data)
+            $(".dt-button").addClass("ml-2 ")
+            $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
         },
         columnDefs: [
             {
@@ -337,6 +340,10 @@ $(document).ready(function () {
         console.error("Auth error")
     }else{
         csrfToken = document.getElementsByName("CsrfField")[0].value
+    }
+
+    if (localStorage.getItem("dashboard_validators").length){
+        $('#validator-index-view').val(JSON.parse(localStorage.getItem("dashboard_validators")))
     }
 
     $('#validator-index-view').on("keyup", function(){

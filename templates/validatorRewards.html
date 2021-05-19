@@ -27,26 +27,33 @@
 <div class="container mt-2">
     <div class="my-3">
         <div class="d-md-flex py-2 justify-content-md-between">
-            <h1 class="h4 mb-1 mb-md-0"><i class="far fa-money-bill-alt"></i> Validator Reward Calculator</h1>
+            <h1 class="h4 mb-1 mb-md-0"><i class="far fa-money-bill-alt"></i> Validator Reward History</h1>
             
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
                     <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Reward Calculator</li>
+                    <li class="breadcrumb-item active" aria-current="page">Reward History</li>
                 </ol>
             </nav>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-center align-items-center my-3" style="width: 100%;">
+        <div id="totals-div" class="card d-none" style="border-radius: 20px; border-style: none;">
+            <div class="card-body">
+                <span>Total</span>       
+                <span id="total-income-eth-span"></span>
+                <span class="mx-2">|</span>
+                <span>Total</span> 
+                <span id="total-income-currency-span"></span>
+            </div>
         </div>
     </div>
     <div class="card">
         <div class="card-body p-0">
             <div id="table-div" class="d-none">
                 <div class="d-flex justify-content-end align-items-center p-2" style="width: 100%;">
-                    <div class="d-flex justify-content-center align-items-center" style="width: 100%;"
-                    data-toggle="tooltip" data-original-title="Total Income">
-                        <span id="total-income-eth-span" class="mr-3"></span>
-                        <span id="total-income-currency-span"></span>
-                    </div>
-                    <a href="/rewards"><i class="fas fa-times text-danger"></i></a>
+                    <a href="/rewards"><i class="fas fa-trash text-danger"></i></a>
                 </div>
                 <div class="table-responsive py-2">
                     <table class="table" id="tax-table">
@@ -234,7 +241,7 @@
     </div>
     {{end}}
 
-    <div id="loading-div" style="position: absolute; width: 8%; height: 8%; z-index: 100; top: 46%; right: 46%;" class="card p-1 d-flex justify-content-center align-items-center">
+    <div id="loading-div" style="position: absolute; width: 10%; height: 10%; z-index: 100; top: 45%; right: 45%;" class="card p-1 d-flex justify-content-center align-items-center">
         <div class="spinner-border text-primary spinner-border-lg" role="status">
             <span class="sr-only">Loading...</span>
           </div>
