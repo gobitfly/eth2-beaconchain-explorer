@@ -47,6 +47,8 @@ type PageData struct {
 	JpyRoundPrice         int
 	JpyTruncPrice         string
 	Currency              string
+	CurrentPriceFormatted string
+	CurrentSymbol         string
 	ExchangeRate          float64
 	InfoBanner            *template.HTML
 	ClientsUpdated        bool
