@@ -156,6 +156,11 @@ Highcharts.setOptions({
       line: {
         animation: false,
         lineWidth: 2.5
+      },
+      column: {
+        dataGrouping: {
+          approximation: 'sum'
+        }
       }
     }
   })
