@@ -223,7 +223,7 @@ func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 		ID    uint64 `db:"user_id"`
 		Token string `db:"notification_token"`
 	}
-	err := FrontendDB.Select(&rows, "SELECT user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL GROUP BY user_id, notification_token ", pq.Array(ids))
+	err := FrontendDB.Select(&rows, "SELECT DISTINCT ON (user_id) user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL ORDER BY user_id, id DESC", pq.Array(ids))
 	if err != nil {
 		return nil, err
 	}

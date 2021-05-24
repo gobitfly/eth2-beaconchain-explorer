@@ -172,7 +172,7 @@ func EpochToTime(epoch uint64) time.Time {
 }
 
 // EpochToTime will return a time.Time for an epoch
-func DayToTime(day uint64) time.Time {
+func DayToTime(day int64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp), 0).Add(time.Hour * time.Duration(24*int(day)))
 }
 
