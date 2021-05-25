@@ -527,7 +527,7 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT validator_balances_p.* FROM validator_balances_p LEFT JOIN validators ON validators.validatorindex = validator_balances_p.validatorindex WHERE validators.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validatorindex, week desc, epoch DESC LIMIT 100", pq.Array(queryIndices), queryPubkeys)
+	rows, err := db.DB.Query("SELECT validator_balances_p.* FROM validator_balances_p LEFT JOIN validators ON validators.validatorindex = validator_balances_p.validatorindex WHERE week >= ((SELECT MAX(epoch) FROM epochs)-100)/(225*7) AND (validators.validatorindex = ANY($1) OR validators.pubkey = ANY($2)) ORDER BY validatorindex, week desc, epoch DESC LIMIT 100", pq.Array(queryIndices), queryPubkeys)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
