@@ -44,6 +44,26 @@ var doc = `{
                 }
             }
         },
+        "/api/healthz-loadbalancer": {
+            "get": {
+                "description": "Health endpoint for montitoring if the explorer-api",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health of the explorer-api regarding having a healthy connection to the database",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/block/{slotOrHash}": {
             "get": {
                 "description": "Returns a block by its slot or root hash",

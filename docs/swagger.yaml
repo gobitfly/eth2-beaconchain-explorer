@@ -74,6 +74,19 @@ paths:
       summary: Health of the explorer
       tags:
       - Health
+  /api/healthz-loadbalancer:
+    get:
+      description: Health endpoint for montitoring if the explorer-api
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Health of the explorer-api regarding having a healthy connection to the database
+      tags:
+      - Health
   /api/v1/block/{slot}/attestations:
     get:
       description: Returns the attestations included in a specific block
