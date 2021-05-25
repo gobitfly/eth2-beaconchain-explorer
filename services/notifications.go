@@ -333,7 +333,7 @@ func (n *validatorBalanceDecreasedNotification) GetEventFilter() string {
 }
 
 func getUrlPart(validatorIndex uint64) string {
-	return fmt.Sprintf(` For more information visit: https://%[2]s/validator/%[1]v.`, validatorIndex, utils.Config.Frontend.SiteDomain)
+	return fmt.Sprintf(` For more information visit: https://%[2]s/validator/%[1]v`, validatorIndex, utils.Config.Frontend.SiteDomain)
 }
 
 // collectValidatorBalanceDecreasedNotifications finds all validators whose balance decreased for 3 consecutive epochs
