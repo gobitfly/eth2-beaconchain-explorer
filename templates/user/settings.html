@@ -67,7 +67,6 @@
                 document.getElementById('copy-' + ref).setAttribute('data-clipboard-text', config)
                 document.getElementById(ref).classList.remove('text-muted')
                 document.getElementById("copy-" + ref).classList.remove('d-none')
-                document.getElementById(ref).style = "color: #050505;"
             } else {
                 document.getElementById(ref).innerText = "Not yet supported"
                 document.getElementById(ref).style = "color: #a3a3a3;"
@@ -236,17 +235,17 @@
                     <li class="nav-item">
                         <a class="nav-link show active" id="account-tab" data-toggle="tab" href="#account" role="tab"
                             aria-controls="account" aria-selected="true"><i
-                                class="tab-icon mr-md-1 fas fa-user"></i><span class="tab-text">Account</span></a>
+                                class="tab-icon mr-md-1 fas fa-user"></i><span class="tab-text" style="margin-left: 6px;">Account</span></a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" id="app-tab" data-toggle="tab" href="#app" role="tab" aria-controls="app"
                             aria-selected="false"><i class="tab-icon mr-md-1 fas fa-mobile-alt"></i><span
-                                class="tab-text">Mobile App</span></a>
+                                class="tab-text" style="margin-left: 6px;">Mobile App</span></a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" id="api-tab" data-toggle="tab" href="#api" role="tab" aria-controls="api"
                             aria-selected="false"><i class="tab-icon mr-md-1 fas fas fa-drafting-compass"></i><span
-                                class="tab-text">API</span></a>
+                                class="tab-text" style="margin-left: 6px;">API</span></a>
                     </li>
                 </ul>
 
