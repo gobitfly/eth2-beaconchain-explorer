@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/exporter"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,6 +20,7 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
+	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
 )
 
@@ -434,8 +437,9 @@ func ApiValidator(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -520,8 +524,9 @@ func ApiValidatorBalanceHistory(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -550,8 +555,9 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -586,7 +592,9 @@ func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
 		epoch = 0
 	}
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -660,8 +668,9 @@ func ApiValidatorDeposits(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -690,8 +699,9 @@ func ApiValidatorAttestations(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -720,8 +730,9 @@ func ApiValidatorProposals(w http.ResponseWriter, r *http.Request) {
 
 	j := json.NewEncoder(w)
 	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -867,8 +878,13 @@ func getTokenByCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pkg, err := db.GetUserPremiumPackage(codeAuthData.UserID)
+	if err != nil {
+		pkg = "standard"
+	}
+
 	// Create access token
-	token, expiresIn, err := utils.CreateAccessToken(codeAuthData.UserID, codeAuthData.AppID, deviceID)
+	token, expiresIn, err := utils.CreateAccessToken(codeAuthData.UserID, codeAuthData.AppID, deviceID, pkg)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.ServerError, "can not create access_token")
@@ -907,8 +923,13 @@ func getTokenByRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pkg, err := db.GetUserPremiumPackage(userID)
+	if err != nil {
+		pkg = "standard"
+	}
+
 	// Create access token
-	token, expiresIn, err := utils.CreateAccessToken(userID, unsafeClaims.AppID, unsafeClaims.DeviceID)
+	token, expiresIn, err := utils.CreateAccessToken(userID, unsafeClaims.AppID, unsafeClaims.DeviceID, pkg)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.ServerError, "can not create access_token")
@@ -968,6 +989,103 @@ func MobileNotificationUpdatePOST(w http.ResponseWriter, r *http.Request) {
 	OKResponse(w, r)
 }
 
+func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	var parsedBase types.MobileSubscription
+	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &parsedBase)
+
+	if err != nil {
+		logger.Errorf("error parsing body | err: %v %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not parse body")
+		return
+	}
+
+	claims := getAuthClaims(r)
+
+	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
+	if err != nil || subscriptionCount >= 4 {
+		sendErrorResponse(j, r.URL.String(), "reached max subscription limit")
+		return
+	}
+
+	// Verify subscription with apple/google
+	verifyPackage := &types.PremiumData{
+		ID:        0,
+		Receipt:   parsedBase.Transaction.Receipt,
+		Store:     parsedBase.Transaction.Type,
+		Active:    false,
+		ProductID: parsedBase.ProductID,
+	}
+
+	// we can ignore this error since it always returns a result object and err
+	// case is not needed on receipt insert
+	validationResult, _ := exporter.VerifyReceipt(nil, verifyPackage)
+	parsedBase.Valid = validationResult.Valid
+
+	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason)
+	if err != nil {
+		logger.Errorf("could not save subscription data %v", err)
+		sendErrorResponse(j, r.URL.String(), "Can not save subscription data")
+		return
+	}
+
+	if parsedBase.Valid == false {
+		logger.Errorf("receipt is not valid %v", validationResult.RejectReason)
+		sendErrorResponse(j, r.URL.String(), "receipt is not valid")
+		return
+	}
+
+	OKResponse(w, r)
+}
+
+type PremiumData struct {
+	Package       string
+	MaxValidators int
+	MaxStats      uint64
+	MaxNodes      uint64
+	WidgetSupport bool
+}
+
+func getUserPremium(r *http.Request) PremiumData {
+	claims := getAuthClaims(r)
+
+	if claims == nil {
+		return getUserPremiumByPackage("")
+	}
+
+	return getUserPremiumByPackage(claims.Package)
+}
+
+func getUserPremiumByPackage(pkg string) PremiumData {
+	result := PremiumData{
+		Package:       "standard",
+		MaxValidators: 100,
+		MaxStats:      180,
+		MaxNodes:      1,
+		WidgetSupport: false,
+	}
+
+	if pkg == "" {
+		return result
+	}
+
+	result.Package = pkg
+	result.MaxStats = 43200
+	result.WidgetSupport = true
+	if result.Package == "goldfish" {
+		result.MaxNodes = 2
+	}
+	if result.Package == "whale" {
+		result.MaxValidators = 300
+		result.MaxNodes = 10
+	}
+
+	return result
+}
+
 func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
@@ -978,8 +1096,13 @@ func GetMobileWidgetStats(w http.ResponseWriter, r *http.Request) {
 	if epoch < 0 {
 		epoch = 0
 	}
+	prime := getUserPremium(r)
+	if !prime.WidgetSupport {
+		sendErrorResponse(j, r.URL.String(), "feature only available for premium users")
+		return
+	}
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"])
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], prime.MaxValidators)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), err.Error())
 		return
@@ -1146,6 +1269,308 @@ func MobileTagedValidators(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), data)
 }
 
+func parseUintWithDefault(input string, defaultValue uint64) uint64 {
+	result, error := strconv.ParseUint(input, 10, 64)
+	if error != nil {
+		return defaultValue
+	}
+	return result
+}
+
+// ClientStats godoc
+// @Summary Get your client submitted stats
+// @Tags User
+// @Produce json
+// @Param offset path int false "Data offset, default 0" default(0)
+// @Param limit path int false "Data limit, default 180 (~3h)." default(180)
+// @Success 200 {object} types.ApiResponse{data=[]types.StatsDataStruct}
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/stats/{offset}/{limit} [get]
+func ClientStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+	claims := getAuthClaims(r)
+
+	maxStats := getUserPremium(r).MaxStats
+
+	vars := mux.Vars(r)
+	offset := parseUintWithDefault(vars["offset"], 0)
+	limit := parseUintWithDefault(vars["limit"], 180)
+	timeframe := offset + limit
+	if timeframe > maxStats {
+		limit = maxStats
+		offset = 0
+	}
+
+	validator, err := db.GetStatsValidator(claims.UserID, limit, offset)
+	if err != nil {
+		logger.Errorf("validator stat error : %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve validator stats from db")
+		return
+	}
+
+	node, err := db.GetStatsNode(claims.UserID, limit, offset)
+	if err != nil {
+		logger.Errorf("node stat error : %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve beaconnode stats from db")
+		return
+	}
+
+	system, err := db.GetStatsSystem(claims.UserID, limit, offset)
+	if err != nil {
+		logger.Errorf("system stat error : %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve system stats from db")
+		return
+	}
+
+	dataValidator, err := utils.SqlRowsToJSON(validator)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results for validator stats")
+		return
+	}
+
+	dataNode, err := utils.SqlRowsToJSON(node)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results for beaconnode stats")
+		return
+	}
+
+	dataSystem, err := utils.SqlRowsToJSON(system)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results for system stats")
+		return
+	}
+
+	data := &types.StatsDataStruct{
+		Validator: dataValidator,
+		Node:      dataNode,
+		System:    dataSystem,
+	}
+
+	sendOKResponse(j, r.URL.String(), []interface{}{data})
+}
+
+// ClientStatsPost godoc
+// @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
+// @Tags User
+// @Produce json
+// @Param apiKey path string true "User API key, can be found on https://beaconcha.in/user/settings"
+// @Param machine path string false "Name your device if you have multiple devices you wan't to monitor"
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/stats/{apiKey}/{machine} [get]
+func ClientStatsPost(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	userData, err := db.GetUserIdByApiKey(vars["apiKey"])
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "no user found with api key")
+		return
+	}
+
+	machine := vars["machine"]
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body | err: %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not read body")
+		return
+	}
+
+	var jsonObjects []map[string]interface{}
+	err = json.Unmarshal(body, &jsonObjects)
+	if err != nil {
+		var jsonObject map[string]interface{}
+		err = json.Unmarshal(body, &jsonObject)
+		if err != nil {
+			logger.Errorf("Could not parse stats (meta stats) general | %v ", err)
+			sendErrorResponse(j, r.URL.String(), "could not parse meta")
+			return
+		}
+		jsonObjects = []map[string]interface{}{jsonObject}
+	}
+
+	if len(jsonObjects) >= 10 {
+		logger.Errorf("Max number of stat entries are 10", err)
+		sendErrorResponse(j, r.URL.String(), "Max number of stat entries are 10")
+		return
+	}
+
+	var result bool = false
+	for i := 0; i < len(jsonObjects); i++ {
+		result = insertStats(userData, machine, &jsonObjects[i], j, r)
+		if !result {
+			break
+		}
+	}
+
+	if result {
+		OKResponse(w, r)
+		return
+	}
+}
+
+func insertStats(userData *types.UserWithPremium, machine string, body *map[string]interface{}, j *json.Encoder, r *http.Request) bool {
+
+	var parsedMeta *types.StatsMeta
+	err := mapstructure.Decode(body, &parsedMeta)
+	if err != nil {
+		logger.Errorf("Could not parse stats (meta stats) | %v ", err)
+		sendErrorResponse(j, r.URL.String(), "could not parse meta")
+		return false
+	}
+
+	parsedMeta.Machine = machine
+
+	if parsedMeta.Version != 1 {
+		sendErrorResponse(j, r.URL.String(), "this version is not supported")
+		return false
+	}
+
+	if parsedMeta.Process != "validator" && parsedMeta.Process != "beaconnode" && parsedMeta.Process != "slasher" && parsedMeta.Process != "system" {
+		sendErrorResponse(j, r.URL.String(), "unknown process")
+		return false
+	}
+
+	maxNodes := getUserPremiumByPackage(userData.Product.String).MaxNodes
+
+	tx, err := db.NewTransaction()
+	if err != nil {
+		logger.Errorf("Could not transact | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not store")
+		return false
+	}
+	defer tx.Rollback()
+
+	count, err := db.GetStatsMachineCount(tx, userData.ID)
+	if err != nil {
+		logger.Errorf("Could not get max machine count| %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not get machine count")
+		return false
+	}
+
+	if count > maxNodes {
+		logger.Errorf("User has reached max machine count | %v", err)
+		sendErrorResponse(j, r.URL.String(), "reached max machine count")
+		return false
+	}
+
+	id, err := db.InsertStatsMeta(tx, userData.ID, parsedMeta)
+	if err != nil {
+		logger.Errorf("Could not store stats (meta stats) | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not store meta")
+		return false
+	}
+
+	// Special case for system
+	if parsedMeta.Process == "system" {
+		var parsedResponse *types.StatsSystem
+		err = mapstructure.Decode(body, &parsedResponse)
+
+		if err != nil {
+			logger.Errorf("Could not parse stats (system stats) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not parse system")
+			return false
+		}
+		_, err := db.InsertStatsSystem(
+			tx,
+			id,
+			parsedResponse,
+		)
+		if err != nil {
+			logger.Errorf("Could not store stats (system stats) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not store system")
+			return false
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			logger.Errorf("Could not store (tx commit) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not store")
+			return false
+		}
+		return true
+	}
+
+	var parsedGeneral *types.StatsProcess
+	err = mapstructure.Decode(body, &parsedGeneral)
+
+	if err != nil {
+		logger.Errorf("Could not parse stats (process stats) | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not parse process")
+		return false
+	}
+
+	processGeneralID, err := db.InsertStatsProcessGeneral(
+		tx,
+		id,
+		parsedGeneral,
+	)
+	if err != nil {
+		logger.Errorf("Could not store stats (global process stats) | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not store global process")
+		return false
+	}
+
+	if parsedMeta.Process == "validator" {
+		var parsedValidator *types.StatsAdditionalsValidator
+		err = mapstructure.Decode(body, &parsedValidator)
+
+		if err != nil {
+			logger.Errorf("Could not parse stats (validator stats) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not parse validator")
+			return false
+		}
+
+		_, err := db.InsertStatsValidator(
+			tx,
+			processGeneralID,
+			parsedValidator,
+		)
+		if err != nil {
+			logger.Errorf("Could not store stats (validatorstats) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not store validator")
+			return false
+		}
+
+	} else if parsedMeta.Process == "beaconnode" {
+		var parsedNode *types.StatsAdditionalsBeaconnode
+		err = mapstructure.Decode(body, &parsedNode)
+
+		if err != nil {
+			logger.Errorf("Could not parse stats (node stats) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not parse node")
+			return false
+		}
+
+		_, err := db.InsertStatsBeaconnode(
+			tx,
+			processGeneralID,
+			parsedNode,
+		)
+		if err != nil {
+			logger.Errorf("Could not store stats (beaconnode) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not store beaconnode")
+			return false
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.Errorf("Could not store (tx commit) | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not store")
+		return false
+	}
+	return true
+}
+
 // TODO Replace app code to work with new income balance dashboard
 // Meanwhile keep old code from Feb 2021 to be app compatible
 func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
@@ -1215,6 +1640,11 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAuthClaims(r *http.Request) *utils.CustomClaims {
+	middleWare := context.Get(r, utils.MobileAuthorizedKey)
+	if middleWare == nil {
+		return utils.GetAuthorizationClaims(r)
+	}
+
 	claims := context.Get(r, utils.ClaimsContextKey)
 	if claims == nil {
 		return nil
@@ -1271,9 +1701,9 @@ func sendOKResponse(j *json.Encoder, route string, data []interface{}) {
 	return
 }
 
-func parseApiValidatorParam(origParam string) (indices []uint64, pubkeys pq.ByteaArray, err error) {
+func parseApiValidatorParam(origParam string, limit int) (indices []uint64, pubkeys pq.ByteaArray, err error) {
 	params := strings.Split(origParam, ",")
-	if len(params) > 100 {
+	if len(params) > limit {
 		return nil, nil, fmt.Errorf("only a maximum of 100 query parameters are allowed")
 	}
 	for _, param := range params {
