@@ -31,6 +31,7 @@ const (
 	MonitoringMachineCpuLoadEventName                EventName = "monitoring_cpu_load"
 	MonitoringMachineSwitchedToETH2FallbackEventName EventName = "monitoring_fallback_eth2inuse"
 	MonitoringMachineSwitchedToETH1FallbackEventName EventName = "monitoring_fallback_eth1inuse"
+	TaxReportEventName                               EventName = "user_tax_report"
 )
 
 var EventNames = []EventName{
@@ -54,6 +55,7 @@ var EventNames = []EventName{
 	MonitoringMachineCpuLoadEventName,
 	MonitoringMachineSwitchedToETH2FallbackEventName,
 	MonitoringMachineSwitchedToETH1FallbackEventName,
+	TaxReportEventName,
 }
 
 func GetDisplayableEventName(event EventName) string {

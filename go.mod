@@ -7,7 +7,7 @@ require (
 	cloud.google.com/go/firestore v1.4.0 // indirect
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/Gurpartap/storekit-go v0.0.0-20201205024111-36b6cd5c6a21
-	github.com/PuerkitoBio/goquery v1.6.1
+	github.com/PuerkitoBio/goquery v1.6.1 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/awa/go-iap v1.3.7
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
