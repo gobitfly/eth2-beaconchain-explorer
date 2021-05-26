@@ -573,6 +573,59 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiValidatorAttestationEffectiveness godoc
+// @Summary Get the current attestation-effectiveness of up to 100 validators. 1 = all attestations are included in the next possible block, < 1 some attestations have been included after the next possible block.
+// @Tags Validator
+// @Produce  json
+// @Param  index path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Success 200 {object} string
+// @Router /api/v1/validator/{indexOrPubkey}/attestationeffectiveness [get]
+func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	epoch := int64(services.LatestEpoch()) - 100
+	if epoch < 0 {
+		epoch = 0
+	}
+
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+
+	rows, err := db.DB.Query(`
+		SELECT aa.validatorindex, validators.pubkey, COALESCE(
+			1 / AVG(1 + inclusionslot - COALESCE((
+				SELECT MIN(slot)
+				FROM blocks
+				WHERE slot > aa.attesterslot AND blocks.status = '1'
+			), 0)
+		), 0)::float AS attestation_effectiveness
+		FROM attestation_assignments_p aa
+		INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+		INNER JOIN validators ON validators.validatorindex = aa.validatorindex
+		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2) OR validators.pubkey = ANY($3)) AND aa.inclusionslot > 0
+		GROUP BY aa.validatorindex, validators.pubkey
+		ORDER BY aa.validatorindex`,
+		epoch, pq.Array(queryIndices), pq.Array(queryPubkeys))
+
+	if err != nil {
+		logger.Error(err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 // ApiValidatorAttestationEfficiency godoc
 // @Summary Get the current performance of up to 100 validators
 // @Tags Validator
