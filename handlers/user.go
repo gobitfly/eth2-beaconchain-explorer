@@ -274,7 +274,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	type watchlistSubscription struct {
-		Index     uint64
+		Index     *uint64 // consider validators that only have deposited but do not have an index yet
 		Publickey []byte
 		Balance   uint64
 		Events    *pq.StringArray
@@ -304,8 +304,12 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(wl))
 	for _, entry := range wl {
+		index := template.HTML("-")
+		if entry.Index != nil {
+			index = utils.FormatValidator(*entry.Index)
+		}
 		tableData = append(tableData, []interface{}{
-			utils.FormatValidator(entry.Index),
+			index,
 			utils.FormatPublicKey(entry.Publickey),
 			utils.FormatBalance(entry.Balance, currency),
 			entry.Events,
