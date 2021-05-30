@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
@@ -77,7 +78,12 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			var name string
 			err = db.DB.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
 			if err != nil {
-				logger.Errorf("error getting validator-name from db: %v", err)
+				if err != sql.ErrNoRows {
+					logger.Errorf("error getting validator-name from db for pubKey %v: %v", pubKey, err)
+					http.Error(w, "Internal server error", 503)
+					return
+				}
+				// err == sql.ErrNoRows -> unnamed
 			} else {
 				validatorPageData.Name = name
 			}

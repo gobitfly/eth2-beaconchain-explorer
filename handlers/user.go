@@ -69,11 +69,18 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		pairedDevices = nil
 	}
 
+	statsSharing, err := db.GetUserMonitorSharingSetting(user.UserID)
+	if err != nil {
+		logger.Errorf("Error retrieving stats sharing setting: %v %v", user.UserID, err)
+		statsSharing = false
+	}
+
 	userSettingsData.PairedDevices = pairedDevices
 	userSettingsData.Subscription = subscription
 	userSettingsData.Sapphire = &utils.Config.Frontend.Stripe.Sapphire
 	userSettingsData.Emerald = &utils.Config.Frontend.Stripe.Emerald
 	userSettingsData.Diamond = &utils.Config.Frontend.Stripe.Diamond
+	userSettingsData.ShareMonitoringData = statsSharing
 	userSettingsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userSettingsData.CsrfField = csrf.TemplateField(r)
 
@@ -267,7 +274,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	type watchlistSubscription struct {
-		Index     uint64
+		Index     *uint64 // consider validators that only have deposited but do not have an index yet
 		Publickey []byte
 		Balance   uint64
 		Events    *pq.StringArray
@@ -297,8 +304,12 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, 0, len(wl))
 	for _, entry := range wl {
+		index := template.HTML("-")
+		if entry.Index != nil {
+			index = utils.FormatValidator(*entry.Index)
+		}
 		tableData = append(tableData, []interface{}{
-			utils.FormatValidator(entry.Index),
+			index,
 			utils.FormatPublicKey(entry.Publickey),
 			utils.FormatBalance(entry.Balance, currency),
 			entry.Events,
@@ -493,6 +504,23 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
 		return
 	}
+}
+
+func UserUpdateFlagsPost(w http.ResponseWriter, r *http.Request) {
+	user, _, err := getUserSession(w, r)
+	if err != nil {
+		logger.Errorf("error retrieving session: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	shareStats := FormValueOrJSON(r, "shareStats")
+
+	logger.Errorf("shareStats: %v", shareStats)
+
+	err = db.SetUserMonitorSharingSetting(user.UserID, shareStats == "true")
+
+	http.Redirect(w, r, "/user/settings#app", http.StatusOK)
 }
 
 func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
@@ -919,72 +947,6 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Errorf("error could not add validators to watchlist: %v, %v", r.URL.String(), err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	OKResponse(w, r)
-}
-
-// UserClientsAdd godoc
-// @Summary  associates an ethereum or ethereum 2 client with an user
-// @Tags User
-// @Produce  json
-// @Param clientName body []string true "Valid client names are: lighthouse, prysm, nimbus, teku, geth, openeth, nethermind, besu"
-// @Param clientVersion body string true "Client version (github release api: release id) or 0 for unknown or no change."
-// @Param notify body boolean true "Receive client update notifications"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Failure 500 {object} types.ApiResponse
-// @Security ApiKeyAuth
-// @Router /api/v1/user/clients [post]
-func UserClientsAdd(w http.ResponseWriter, r *http.Request) {
-	SetAutoContentType(w, r)
-	j := json.NewEncoder(w)
-
-	clientName := FormValueOrJSON(r, "clientName")
-	clientVersion := FormValueOrJSON(r, "clientVersion")
-	notifyEnabled := FormValueOrJSON(r, "notify") == "true"
-
-	clientVersionNumber, err := strconv.ParseInt(clientVersion, 10, 64)
-	if err != nil {
-		logger.Errorf("error invalid client version number: %v: %v, %v", clientVersion, r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	user := getUser(w, r)
-
-	err2 := db.UserClientEntry(user.UserID, clientName, clientVersionNumber, notifyEnabled)
-	if err2 != nil {
-		logger.Errorf("error inserting or updating client entry %v, %v", r.URL.String(), err2)
-		sendErrorResponse(j, r.URL.String(), "error inserting or updating client entry")
-		return
-	}
-
-	OKResponse(w, r)
-}
-
-// UserClientsDelete godoc
-// @Summary  deletes an ethereum or ethereum 2 client from a user
-// @Tags User
-// @Produce  json
-// @Param clientName body []string true "Valid client names are: lighthouse, prysm, nimbus, teku, geth, openethereum, nethermind, besu"
-// @Success 200 {object} types.ApiResponse
-// @Failure 400 {object} types.ApiResponse
-// @Failure 500 {object} types.ApiResponse
-// @Security ApiKeyAuth
-// @Router /api/v1/user/clients [delete]
-func UserClientsDelete(w http.ResponseWriter, r *http.Request) {
-	SetAutoContentType(w, r)
-	j := json.NewEncoder(w)
-
-	clientName := FormValueOrJSON(r, "clientName")
-	user := getUser(w, r)
-
-	err2 := db.UserClientDelete(user.UserID, clientName)
-	if err2 != nil {
-		logger.Errorf("error deleting client entry %v, %v", r.URL.String(), err2)
-		sendErrorResponse(j, r.URL.String(), "error deleting client entry")
 		return
 	}
 
