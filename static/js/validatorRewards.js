@@ -352,10 +352,9 @@ $(document).ready(function () {
         $(this).val($(this).val().replace(/([a-zA-Z ])/g, ""))
     })
 
-
     $('input[id="datepicker"]').daterangepicker({
         pens: 'left',
-        // minDate: moment().subtract(365, 'days'), 
+        minDate: moment.unix(MIN_TIMESTAMP), 
         maxDate: moment(),
         maxSpan: {
             'days': 365

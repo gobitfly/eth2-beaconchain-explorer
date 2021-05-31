@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/csrf"
 	"github.com/lib/pq"
@@ -21,9 +22,10 @@ var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewa
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub"}
 
 type rewardsResp struct {
-	Currencies    []string
-	CsrfField     template.HTML
-	Subscriptions [][]string
+	Currencies       []string
+	CsrfField        template.HTML
+	Subscriptions    [][]string
+	MinDateTimestamp uint64
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
@@ -42,13 +44,20 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
 	}
 
+	var minTime time.Time
+	err = db.DB.Get(&minTime,
+		`select ts from price order by ts asc limit 1`)
+	if err != nil {
+		logger.Errorf("error getting min ts: %w", err)
+	}
+
 	var subs = [][]string{}
 
 	if data.User.Authenticated {
 		subs = getUserRewardSubscriptions(data.User.UserID)
 	}
 
-	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), Subscriptions: subs}
+	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), Subscriptions: subs, MinDateTimestamp: uint64(minTime.Unix())}
 
 	err = validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
