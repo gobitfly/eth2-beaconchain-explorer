@@ -76,8 +76,9 @@
                         <label for="validators">Validators</label>
                         <input class="form-control typeahead-validators" type="text"
                                 placeholder="Find Validator via Validator index, Graffiti or Eth1 Address" aria-label="Search"/>
-                        or
-                        <textarea id="validator-index-view" name="validators" class="form-control" style="width: 100%; background-color: rgba(0, 0, 0, 0);" placeholder="Add validator indices manually. eg. 1234,5678,9012, ..." required></textarea>
+                        <textarea id="validator-index-view" name="validators" class="form-control mt-2" 
+                                    style="width: 100%; background-color: rgba(0, 0, 0, 0);" 
+                                    placeholder="or add validator indices manually. eg. 1234,5678,9012, ..." required></textarea>
                         
                     </div>
                     
@@ -92,7 +93,7 @@
                         <div class="d-flex flex-row align-items-center">
                             <i class="far fa-calendar-alt"></i>
                             <input id="datepicker" type="text" class="m-1 form-control"/>
-                            <input id="days" type="text" name="days" class="form-control" style="visibility: hidden;" value="30"/>
+                            <input id="days" type="text" name="days" class="form-control" style="visibility: hidden;" value="0-0"/>
                         </div>
                     </div>
 

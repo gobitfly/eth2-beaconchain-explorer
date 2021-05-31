@@ -211,7 +211,7 @@ function showTable(data){
             $("#subscriptions-div").addClass("d-none")
             updateTotals(data)
             $(".dt-button").addClass("ml-2 ")
-            $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
+            // $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
         },
         columnDefs: [
             {
@@ -318,7 +318,7 @@ function updateSubscriptionTable(data, container){
                 data: '2',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `<textarea readonly style="height: 50px; width: 200px; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark">${data}</textarea>`
+                    return `<textarea readonly style="height: 50px; width: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark">${data}</textarea>`
                 }
             }, {
                 targets: 3,
@@ -353,7 +353,7 @@ $(document).ready(function () {
 
     $('input[id="datepicker"]').daterangepicker({
         pens: 'left',
-        minDate: moment().subtract(365, 'days'), 
+        // minDate: moment().subtract(365, 'days'), 
         maxDate: moment(),
         maxSpan: {
             'days': 365
@@ -367,11 +367,11 @@ $(document).ready(function () {
          locale: {
             format: 'DD/MM/YYYY'
         },
-        singleDatePicker: true,
+        singleDatePicker: false,
         alwaysShowCalendars: false
     }, function(start, end, label) {
-        let end_d = moment()
-        $("#days").val(end_d.diff(moment(start), 'days'))
+        // let end_d = moment()
+        $("#days").val(`${moment(start).unix()}-${moment(end).unix()}`)
     });
     
     create_typeahead('.typeahead-validators');
