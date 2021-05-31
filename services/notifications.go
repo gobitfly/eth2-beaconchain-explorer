@@ -1045,10 +1045,14 @@ func (n *taxReportNotification) GetEventName() types.EventName {
 }
 
 func (n *taxReportNotification) GetInfo(includeUrl bool) string {
+	tNow := time.Now()
+	firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
+	dateRange := fmt.Sprintf("days=%d-%d", firstDay.Unix(), lastDay.Unix())
 	generalPart := fmt.Sprint(`New monthly report is ready to download`)
 	if includeUrl {
 		url := fmt.Sprintf("https://%s/rewards/hist/download?%s", utils.Config.Frontend.SiteDomain, n.EventFilter)
-
+		url = strings.Replace(url, "days=30", dateRange, -1)
 		return generalPart + " " + url
 	}
 	return generalPart

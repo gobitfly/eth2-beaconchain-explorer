@@ -211,15 +211,17 @@ function showTable(data){
             $("#subscriptions-div").addClass("d-none")
             updateTotals(data)
             $(".dt-button").addClass("ml-2 ")
-            $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
+            // $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
         },
+        order: [[0,'desc']],
         columnDefs: [
             {
                 targets: 0,
                 data: '0',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return data
+                    if (type==="display") return data
+                    return moment(data).unix()
                 }
             }, {
                 targets: 1,
@@ -318,7 +320,7 @@ function updateSubscriptionTable(data, container){
                 data: '2',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `<textarea readonly style="height: 50px; width: 200px; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark">${data}</textarea>`
+                    return `<textarea readonly style="height: 50px; width: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark">${data}</textarea>`
                 }
             }, {
                 targets: 3,
@@ -350,10 +352,9 @@ $(document).ready(function () {
         $(this).val($(this).val().replace(/([a-zA-Z ])/g, ""))
     })
 
-
     $('input[id="datepicker"]').daterangepicker({
         pens: 'left',
-        minDate: moment().subtract(365, 'days'), 
+        minDate: moment.unix(MIN_TIMESTAMP), 
         maxDate: moment(),
         maxSpan: {
             'days': 365
@@ -362,16 +363,15 @@ $(document).ready(function () {
             'This Month to date': [moment().startOf('month'), moment()],
             'Last Month to date': [moment().subtract(1, 'month').startOf('month'), moment()],
             'This Year to date': [moment().startOf('year'), moment()],
-            'Last 365 days': [moment().subtract(365, 'days'), moment()],
          },
          locale: {
             format: 'DD/MM/YYYY'
         },
-        singleDatePicker: true,
+        singleDatePicker: false,
         alwaysShowCalendars: false
     }, function(start, end, label) {
-        let end_d = moment()
-        $("#days").val(end_d.diff(moment(start), 'days'))
+        // let end_d = moment()
+        $("#days").val(`${moment(start).unix()}-${moment(end).unix()}`)
     });
     
     create_typeahead('.typeahead-validators');
