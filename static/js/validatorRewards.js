@@ -213,13 +213,15 @@ function showTable(data){
             $(".dt-button").addClass("ml-2 ")
             // $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
         },
+        order: [[0,'desc']],
         columnDefs: [
             {
                 targets: 0,
                 data: '0',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return data
+                    if (type==="display") return data
+                    return moment(data).unix()
                 }
             }, {
                 targets: 1,
@@ -362,7 +364,6 @@ $(document).ready(function () {
             'This Month to date': [moment().startOf('month'), moment()],
             'Last Month to date': [moment().subtract(1, 'month').startOf('month'), moment()],
             'This Year to date': [moment().startOf('year'), moment()],
-            'Last 365 days': [moment().subtract(365, 'days'), moment()],
          },
          locale: {
             format: 'DD/MM/YYYY'

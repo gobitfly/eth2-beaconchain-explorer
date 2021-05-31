@@ -101,16 +101,9 @@ func getValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 		logger.Errorf("error getting max day: %w", err)
 	}
 
-	// if days > 365 {
-	// 	days = 365
-	// }
-	// var lowerBound uint64 = 0
-	// if maxDay > days {
-	// 	lowerBound = maxDay - days
-	// }
 	lowerBound := utils.TimeToDay(start)
 	upperBound := utils.TimeToDay(end)
-	logger.Errorln(lowerBound, upperBound)
+
 	var income []types.ValidatorStatsTableRow
 	err = db.DB.Select(&income,
 		`select day, start_balance, end_balance
