@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -274,6 +275,16 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("No data available"))
 		return
 	}
+
+	sort.Slice(data, func(p, q int) bool {
+		i, err := time.Parse("2006-01-02", data[p][0])
+		i2, err := time.Parse("2006-01-02", data[q][0])
+		if err != nil {
+			return false
+		}
+		return i2.Before(i)
+	})
+
 	cur := data[0][len(data[0])-1]
 	cur = strings.ToUpper(cur)
 	csv := fmt.Sprintf("Date,End-of-date balance ETH,Income for date ETH,Price of ETH for date %s, Income for date %s", cur, cur)
