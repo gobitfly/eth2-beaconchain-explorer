@@ -93,7 +93,6 @@ ul.multiselect li.input {
   height: inherit;
   width: inherit;
   border-radius: 0;
-  
 }
 
 ul.multiselect li.input span {
@@ -101,7 +100,6 @@ ul.multiselect li.input span {
   border: 1px solid var(--bg-color-secondary);
   border-radius: 5px;
   background: var(--bg-color-secondary);
-
 }
 
 ul.multiselect li.input input {
@@ -465,6 +463,17 @@ ul.multiselect input:focus {
   text-align: right;
   white-space: normal;
 }
+
+.proposals-table > div {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.proposals-table > div > div:nth-child(3) { margin-top: auto !important }
+
+.history-table table tbody td span { padding: .35rem .5rem !important }
 
 @media screen and (max-width: 1140px) {
   .dashboard-table-nav { margin: 0 }
