@@ -242,7 +242,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 }
 
 func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Disposition", "attachment; filename=beaconcah_in-income-report.csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=beaconcha_in-rewards-history.csv")
 	w.Header().Set("Content-Type", "text/csv")
 
 	q := r.URL.Query()
