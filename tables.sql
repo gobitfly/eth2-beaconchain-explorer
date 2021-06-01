@@ -428,6 +428,26 @@ create table users_stripe_subscriptions
     primary key (customer_id, subscription_id, price_id)
 );
 
+drop table if exists users_app_subscriptions;
+create table users_app_subscriptions
+(
+    id              serial                        not null,
+    user_id         int                           not null,
+    product_id      character varying(256)        not null,
+    price_micros    int                           not null,
+    currency        character varying(10)         not null,
+    created_at      timestamp without time zone   not null,
+    updated_at      timestamp without time zone   not null,
+    validate_remotely boolean not null default 't',
+    active          bool not null default 'f',
+    store           character varying(50)         not null,
+    expires_at      timestamp without time zone   not null,
+    reject_reason   character varying(50),
+    receipt         character varying(99999)       not null,
+    receipt_hash    character varying(1024)        not null unique
+);
+create index idx_user_app_subscriptions on users_app_subscriptions (user_id);
+
 drop table if exists oauth_apps;
 create table oauth_apps
 (
@@ -540,6 +560,109 @@ create table api_statistics
     primary key (ts, apikey, call)
 );
 
+drop table if exists stats_meta;
+CREATE TABLE stats_meta (
+	id 				bigserial 			primary key,
+	version 			int 				not null default 1,
+	ts 				timestamp  			not null,
+	process 			character varying(20) 		not null,
+	machine 		 	character varying(50),
+    created_trunc       timestamp   not null,
+	
+	user_id 		 	bigint	 	 		not null,
+    foreign key(user_id) references users(id),
+    UNIQUE (user_id, created_trunc, process, machine)
+);
+
+create index idx_stats_machine on stats_meta (machine);
+create index idx_stats_user on stats_meta (user_id);
+
+drop table if exists stats_process;
+CREATE TABLE stats_process (
+	id 				bigserial 			primary key,
+	
+	cpu_process_seconds_total 	bigint   			not null,
+	
+	memory_process_bytes	 	bigint	 	 		not null,
+	
+	client_name 			character varying(25)  	not null,
+	client_version		 	character varying(25)	 	not null,
+	client_build		 	int 				not null,
+	
+	sync_eth2_fallback_configured  bool 				not null,
+	sync_eth2_fallback_connected 	bool	 			not null,
+	
+	meta_id 	 		bigint    			not null,
+	
+	foreign key(meta_id) references stats_meta(id)
+);
+
+drop table if exists stats_add_beaconnode;
+CREATE TABLE stats_add_beaconnode (
+	id 					bigserial 		primary key,
+
+	disk_beaconchain_bytes_total	 	bigint	 		not null,
+	network_libp2p_bytes_total_receive  	bigint	 		not null,
+	network_libp2p_bytes_total_transmit  	bigint	 		not null,
+	network_peers_connected 		int	 		not null,
+	sync_eth1_connected	 		bool	 		not null,
+	sync_eth2_synced 			bool	 		not null,
+	sync_beacon_head_slot	 		bigint	 		not null,
+    sync_eth1_fallback_configured  bool	 			not null,
+	sync_eth1_fallback_connected 	bool	 			not null,
+	
+	general_id		 		bigint	 		not null,
+	
+	foreign key(general_id) references stats_process(id)
+);
+
+drop table if exists stats_add_validator;
+CREATE TABLE stats_add_validator (
+	id		 			bigserial	 	primary key,
+	validator_total 			int	 		not null,
+	validator_active	 		int	 		not null,
+	
+	general_id	 			bigint		 	not null,
+	
+	foreign key(general_id) references stats_process(id)
+);
+
+drop table if exists stats_system;
+CREATE TABLE stats_system (
+	id		 			bigserial 	 	primary key,
+
+	cpu_cores 				int	 		not null,
+	cpu_threads 				int	 		not null,
+	
+	cpu_node_system_seconds_total  	bigint 		not null,
+	cpu_node_user_seconds_total 		bigint	 		not null,
+	cpu_node_iowait_seconds_total	 	bigint	 		not null,
+	cpu_node_idle_seconds_total	 	bigint	 		not null,
+	
+	memory_node_bytes_total 		bigint	 		not null,
+	memory_node_bytes_free	 		bigint	 		not null,
+	memory_node_bytes_cached 		bigint	 		not null,
+	memory_node_bytes_buffers 		bigint	 		not null,
+	
+	disk_node_bytes_total	 		bigint	 		not null,
+	disk_node_bytes_free	 		bigint	 		not null,
+	
+	disk_node_io_seconds	 		bigint	 		not null,
+	disk_node_reads_total	 		bigint	 		not null,
+	disk_node_writes_total	 		bigint 		not null,
+	
+	network_node_bytes_total_receive 	bigint	 		not null,
+	network_node_bytes_total_transmit 	bigint	 		not null,
+	
+	misc_node_boot_ts_seconds	 	bigint		 	not null,
+	misc_os		 		character varying(6)  	not null,
+	
+	meta_id	 			bigint		 	not null,
+	
+	
+	foreign key(meta_id) references stats_meta(id)
+);
+
 drop table if exists stake_pools_stats;
 create table stake_pools_stats
 (
@@ -573,4 +696,13 @@ create table staking_pools_chart
     income                     bigint not null, 
     balance                    bigint not null, 
     PRIMARY KEY(epoch, name)
+);
+
+drop table if exists stats_sharing;
+CREATE TABLE stats_sharing (
+	id 				bigserial 			primary key,
+	ts 				timestamp  			not null,
+	share           bool             not null,
+	user_id 		 	bigint	 	 		not null,
+    foreign key(user_id) references users(id)
 );

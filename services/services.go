@@ -37,6 +37,7 @@ func Init() {
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
+
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()
 	} else {
