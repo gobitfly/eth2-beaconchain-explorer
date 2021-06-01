@@ -93,7 +93,6 @@ ul.multiselect li.input {
   height: inherit;
   width: inherit;
   border-radius: 0;
-  
 }
 
 ul.multiselect li.input span {
@@ -101,7 +100,6 @@ ul.multiselect li.input span {
   border: 1px solid var(--bg-color-secondary);
   border-radius: 5px;
   background: var(--bg-color-secondary);
-
 }
 
 ul.multiselect li.input input {
@@ -193,8 +191,6 @@ ul.multiselect input:focus {
 .dashboard-title {
   display: flex;
 }
-
-
 
 @media screen and (max-width: 818px) {
   .dashboard-container {
@@ -343,6 +339,7 @@ ul.multiselect input:focus {
   color: var(--banner-text) !important;
   padding-right: 2rem;
 }
+
 .dashboard-container .search-container form > span {
   width: 100%;
   display: inline-flex !important;
@@ -366,75 +363,71 @@ ul.multiselect input:focus {
   }
 }
 
-.zoomanim{
+.zoomanim {
   animation: zoom 1s 1;
 }
 
-#selected-validators-input-button-val{
+#selected-validators-input-button-val {
   position: absolute;
   visibility: hidden;
 }
 
-.goinboxanim{
+.goinboxanim {
   visibility: visible;
   animation: goInBox 1s 1;
 }
 
-.gooutboxanim{
+.gooutboxanim {
   visibility: visible;
   animation: goOutBox 1s 1;
 }
 
 @keyframes zoom {
   0% {}
-  25%{}
-  50% {
-    font-size: 25px; z-index: 9999;
-  }
-  100% {
-    font-size: 15px; z-index: 9999;
-  }
+  25% {}
+  50% { font-size: 25px; z-index: 9999; }
+  100% { font-size: 15px; z-index: 9999; }
 }
 
 @keyframes goInBox {
   0% {
-      visibility: visible;
-      font-size: 15px;
-      z-index: 100;
-      top: 0%;
+    visibility: visible;
+    font-size: 15px;
+    z-index: 100;
+    top: 0%;
     }
-  75%{visibility: visible; font-size: 0px; z-index: 100; top: 100%;}
-  100%{visibility: hidden; font-size: 0px; z-index: 100; top: 100%;}
+  75% { visibility: visible; font-size: 0px; z-index: 100; top: 100%; }
+  100% { visibility: hidden; font-size: 0px; z-index: 100; top: 100%; }
 }
 
 @keyframes goOutBox {
   0% {
-      visibility: visible;
-      font-size: 15px;
-      z-index: 100;
-      top: 40%;
+    visibility: visible;
+    font-size: 15px;
+    z-index: 100;
+    top: 40%;
     }
-  75%{visibility: visible; font-size: 0px; z-index: 100; top: 0%;}
-  100%{visibility: hidden; font-size: 0px; z-index: 100; top: 0%;}
+  75% { visibility: visible; font-size: 0px; z-index: 100; top: 0%; }
+  100% { visibility: hidden; font-size: 0px; z-index: 100; top: 0%; }
 }
 
-.tt-open{
+.tt-open {
   background-color: var(--bg-color-secondary);
   scrollbar-color: var(--primary) rgba(0,0,0,0.2);
   scrollbar-width: thin;
 }
 
-#selected-validators-overview{
+#selected-validators-overview {
   scrollbar-color: var(--primary) rgba(0,0,0,0.2);
   scrollbar-width: thin;
 }
 
-.tt-open::-webkit-scrollbar, #selected-validators-overview::-webkit-scrollbar{
+.tt-open::-webkit-scrollbar, #selected-validators-overview::-webkit-scrollbar {
   width: 5px;
   /* background-color: var(--bg-color-secondary); */
 }
 
-.tt-open::-webkit-scrollbar-thumb, #selected-validators-overview::-webkit-scrollbar-thumb{
+.tt-open::-webkit-scrollbar-thumb, #selected-validators-overview::-webkit-scrollbar-thumb {
   background-color: var(--primary);
   border-radius: 12px;
   border-style: solid;
@@ -442,7 +435,7 @@ ul.multiselect input:focus {
   border-width: 2px;
 }
 
-.proposal-switch{
+.proposal-switch {
   border-radius: 12px;
   border-style: none;
   border-color:  rgba(159, 162, 177, 0.4);
@@ -455,19 +448,45 @@ ul.multiselect input:focus {
   z-index: 999;
 }
 
-.proposal-switch-selected{
+.proposal-switch-selected {
   border-radius: 12px;
   border-style: none;
   background-color: var(--primary);
   color: var(--white);
 }
 
-#proposals-table_length, #proposals-table_info{
+#proposals-table_length, #proposals-table_info {
   display: none;
 }
 
+.summary-table td {
+  text-align: right;
+  white-space: normal;
+}
+
+.proposals-table > div {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.proposals-table > div > div:nth-child(3) { margin-top: auto !important }
+
+.history-table table tbody td span { padding: .35rem .5rem !important }
+
+@media screen and (max-width: 1140px) {
+  .dashboard-table-nav { margin: 0 }
+}
+
 @media screen and (max-width: 500px) {
-  .proposal-switch{
+  .proposal-switch {
     position: relative;
   }
+}
+
+@media screen and (max-width: 450px) {
+  .outer-container { padding: 0 }
+  .summary-table, .validator-history-index { font-size: .9rem }
+  .dashboard-table-nav-text { display: none }
 }
