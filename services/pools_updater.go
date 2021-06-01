@@ -202,10 +202,6 @@ func getPoolInfo() []PoolsInfo {
 }
 
 func getPoolIncome(poolAddress string, poolName string) (*types.ValidatorEarnings, error) {
-	// var indexes = make([]uint64, len(pool))
-	// for i, validator := range pool {
-	// 	indexes[i] = validator.ValidatorIndex
-	// }
 	var indexes []uint64
 	err := db.DB.Select(&indexes,
 		`SELECT validatorindex
@@ -349,10 +345,6 @@ func getValidatorEarnings(validators []uint64, poolName string) (*types.Validato
 		}
 	}
 
-	// go func() {
-	// 	updateChartDB(poolName, lastWeekEpoch, earningsInPeriod, earningsInPeriodBalance)
-	// }()
-
 	return &types.ValidatorEarnings{
 		Total:                   earningsTotal,
 		LastDay:                 earningsLastDay,
@@ -366,35 +358,12 @@ func getValidatorEarnings(validators []uint64, poolName string) (*types.Validato
 	}, nil
 }
 
-// func updateChartDB(poolName string, epoch int64, income int64, balance int64) {
-// 	if poolName == "" {
-// 		return
-// 	}
-// 	_, err := db.DB.Exec(`
-// 		INSERT INTO staking_pools_chart
-// 		(epoch, name, income, balance)
-// 		VALUES
-// 		($1, $2, $3, $4)
-// 	`, epoch, poolName, income, balance)
-// 	if err != nil {
-// 		logger.Errorf("error inserting staking pool chart data (if 'duplicate key' error not critical): %v", err)
-// 	}
-// }
-
-// func deleteOldChartEntries() {
-// 	latestEpoch := int64(LatestEpoch())
-// 	sixMonthsOld := latestEpoch - 225*31*6
-// 	_, err := db.DB.Exec(`
-// 		DELETE FROM staking_pools_chart
-// 		WHERE epoch <= $1
-// 	`, sixMonthsOld)
-// 	if err != nil {
-// 		logger.Errorf("error removing old staking pool chart data: %v", err)
-// 	}
-// }
-
 func getIDEthChartSeries() idEthSeriesDrill {
-
+	epoch := int64(LatestEpoch())
+	lastMonthEpoch := epoch - 225*31
+	if lastMonthEpoch < 0 {
+		lastMonthEpoch = 0
+	}
 	type idEthSeriesData struct {
 		Epoch   int64
 		Name    string
@@ -408,7 +377,7 @@ func getIDEthChartSeries() idEthSeriesDrill {
 			   name, 
 			   income,
 			   (CASE balance WHEN 0 THEN 1 ELSE balance END) as balance
-		FROM staking_pools_chart order by epoch asc`)
+		FROM staking_pools_chart WHERE epoch >= $1 order by epoch asc`, lastMonthEpoch)
 	if err != nil {
 		logger.Error("error selecting balances from validators: %v", err)
 		return idEthSeriesDrill{}
