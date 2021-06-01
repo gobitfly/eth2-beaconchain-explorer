@@ -947,6 +947,34 @@
                 }
             }
         },
+        "/api/v1/validator/{indexOrPubkey}/attestationeffectiveness": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Validator"
+                ],
+                "summary": "Get the current attestation-effectiveness of up to 100 validators. 1 = all attestations are included in the next possible block, \u003c 1 some attestations have been included after the next possible block.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Up to 100 validator indicesOrPubkeys, comma separated",
+                        "name": "index",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/validator/{indexOrPubkey}/attestationefficiency": {
             "get": {
                 "produces": [
