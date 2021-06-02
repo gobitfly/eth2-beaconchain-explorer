@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/csrf"
+	"github.com/jung-kurt/gofpdf"
 	"github.com/lib/pq"
 )
 
@@ -169,6 +171,7 @@ func getValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 		if len(item) < 2 {
 			continue
 		}
+		//TODO format here for commas instead of frontend -> for report
 		data[i] = []string{
 			key,
 			fmt.Sprintf("%f", float64(item[1])/1e9), // end of day balance
@@ -242,7 +245,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 }
 
 func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Disposition", "attachment; filename=beaconcha_in-rewards-history.csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=beaconcha_in-rewards-history.pdf")
 	w.Header().Set("Content-Type", "text/csv")
 
 	q := r.URL.Query()
@@ -285,38 +288,112 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 		return i2.Before(i)
 	})
 
-	cur := data[0][len(data[0])-1]
-	cur = strings.ToUpper(cur)
-	csv := fmt.Sprintf("Date,End-of-date balance ETH,Income for date ETH,Price of ETH for date %s, Income for date %s", cur, cur)
+	// cur := data[0][len(data[0])-1]
+	// cur = strings.ToUpper(cur)
+	// csv := fmt.Sprintf("Date,End-of-date balance ETH,Income for date ETH,Price of ETH for date %s, Income for date %s", cur, cur)
 
-	totalIncomeEth := 0.0
-	totalIncomeCur := 0.0
+	// totalIncomeEth := 0.0
+	// totalIncomeCur := 0.0
 
-	for _, item := range data {
-		if len(item) < 5 {
-			csv += "\n0,0,0,0,0"
-			continue
-		}
-		csv += fmt.Sprintf("\n%s,%s,%s,%s,%s", item[0], item[1], item[2], item[3], item[4])
-		tEth, err := strconv.ParseFloat(item[2], 64)
-		tCur, err := strconv.ParseFloat(item[4], 64)
+	// for _, item := range data {
+	// 	if len(item) < 5 {
+	// 		csv += "\n0,0,0,0,0"
+	// 		continue
+	// 	}
+	// 	csv += fmt.Sprintf("\n%s,%s,%s,%s,%s", item[0], item[1], item[2], item[3], item[4])
+	// 	tEth, err := strconv.ParseFloat(item[2], 64)
+	// 	tCur, err := strconv.ParseFloat(item[4], 64)
 
-		if err != nil {
-			continue
-		}
+	// 	if err != nil {
+	// 		continue
+	// 	}
 
-		totalIncomeEth += tEth
-		totalIncomeCur += tCur
-	}
+	// 	totalIncomeEth += tEth
+	// 	totalIncomeCur += tCur
+	// }
 
-	csv += fmt.Sprintf("\nTotal, ,%f, ,%f", totalIncomeEth, totalIncomeCur)
+	// csv += fmt.Sprintf("\nTotal, ,%f, ,%f", totalIncomeEth, totalIncomeCur)
 
-	_, err = w.Write([]byte(csv))
+	_, err = w.Write(generatePdfReport(data))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+
+}
+
+func generatePdfReport(data [][]string) []byte {
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetTopMargin(15)
+	pdf.SetHeaderFuncMode(func() {
+		pdf.SetY(5)
+		pdf.SetFont("Arial", "B", 15)
+		pdf.Cell(80, 0, "")
+		pdf.CellFormat(30, 10, "Beaconcha.in Monthly Reward History", "", 0, "C", false, 0, "")
+		// pdf.Ln(-1)
+	}, true)
+
+	pdf.AddPage()
+	pdf.SetFont("Times", "", 9)
+
+	// generating the table
+	const (
+		colCount = 5
+		colWd    = 40.0
+		marginH  = 5.0
+		lineHt   = 5.5
+		maxHt    = 5
+	)
+
+	header := [colCount]string{"Date", "End-of-date balance ETH", "Income for date ETH", "Price of ETH for date", "Income for date"}
+
+	// pdf.SetMargins(marginH, marginH, marginH)
+
+	pdf.SetTextColor(224, 224, 224)
+	pdf.SetFillColor(64, 64, 64)
+	pdf.Cell(-5, 0, "")
+	for col := 0; col < colCount; col++ {
+		pdf.CellFormat(colWd, maxHt, header[col], "1", 0, "CM", true, 0, "")
+	}
+	pdf.Ln(-1)
+	pdf.SetTextColor(24, 24, 24)
+	pdf.SetFillColor(255, 255, 255)
+
+	// Rows
+	y := pdf.GetY()
+
+	for _, row := range data {
+		x := marginH
+		for col := 0; col < colCount; col++ {
+			pdf.Rect(x, y, colWd, maxHt, "D")
+			cellY := y
+			pdf.SetXY(x, cellY)
+			s := row[col]
+			if col > 2 {
+				s = fmt.Sprintf("%s %s", strings.ToUpper(row[len(row)-1]), row[col])
+			}
+			pdf.CellFormat(colWd, maxHt, s, "", 0,
+				"LM", false, 0, "")
+			cellY += lineHt
+			x += colWd
+		}
+		y += maxHt
+	}
+
+	// adding a footer
+	pdf.AliasNbPages("")
+	pdf.SetFooterFunc(func() {
+		pdf.SetY(-15)
+		pdf.SetFont("Arial", "I", 8)
+		pdf.CellFormat(0, 10, fmt.Sprintf("Page %d/{nb}", pdf.PageNo()),
+			"", 0, "C", false, 0, "")
+	})
+
+	buf := new(bytes.Buffer)
+	pdf.Output(buf)
+
+	return buf.Bytes()
 
 }
 
