@@ -317,6 +317,10 @@ function switchFrom(el1, el2, el3, el4){
 var firstSwitch=true
 
 $(document).ready(function() {
+  $("#rewards-button").on("click", ()=>{
+    localStorage.setItem("load_dashboard_validators", true)
+    window.location.href = "/rewards"
+  })
   
   $('.proposal-switch').on('click', ()=>{
     if ($('.switch-chart').hasClass("proposal-switch-selected")){

@@ -344,8 +344,10 @@ $(document).ready(function () {
         csrfToken = document.getElementsByName("CsrfField")[0].value
     }
 
-    if (localStorage.getItem("dashboard_validators").length){
+    if (JSON.parse(localStorage.getItem("load_dashboard_validators"))){
+        console.log("did it")
         $('#validator-index-view').val(JSON.parse(localStorage.getItem("dashboard_validators")))
+        localStorage.setItem("load_dashboard_validators", false)
     }
 
     $('#validator-index-view').on("keyup", function(){
