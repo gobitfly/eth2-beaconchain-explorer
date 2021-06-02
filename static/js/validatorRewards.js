@@ -345,7 +345,6 @@ $(document).ready(function () {
     }
 
     if (JSON.parse(localStorage.getItem("load_dashboard_validators"))){
-        console.log("did it")
         $('#validator-index-view').val(JSON.parse(localStorage.getItem("dashboard_validators")))
         localStorage.setItem("load_dashboard_validators", false)
     }
