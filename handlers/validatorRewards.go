@@ -18,6 +18,8 @@ import (
 	"github.com/gorilla/csrf"
 	"github.com/jung-kurt/gofpdf"
 	"github.com/lib/pq"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validatorRewards.html"))
@@ -29,6 +31,12 @@ type rewardsResp struct {
 	CsrfField        template.HTML
 	Subscriptions    [][]string
 	MinDateTimestamp uint64
+}
+
+type rewardHistory struct {
+	History       [][]string `json:"history"`
+	TotalETH      string     `json:"total_eth"`
+	TotalCurrency string     `json:"total_currency"`
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +103,7 @@ func getUserRewardSubscriptions(uid uint64) [][]string {
 	return res
 }
 
-func getValidatorHist(validatorArr []uint64, currency string, start uint64, end uint64) [][]string {
+func getValidatorHist(validatorArr []uint64, currency string, start uint64, end uint64) rewardHistory {
 	var err error
 	validatorFilter := pq.Array(validatorArr)
 
@@ -167,23 +175,31 @@ func getValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 
 	data := make([][]string, len(totalIncomePerDay))
 	i := 0
+	tETH := 0.0
+	tCur := 0.0
 	for key, item := range totalIncomePerDay {
 		if len(item) < 2 {
 			continue
 		}
-		//TODO format here for commas instead of frontend -> for report
+		iETH := (float64(item[1]) / 1e9) - (float64(item[0]) / 1e9)
+		tETH += iETH
+		iCur := ((float64(item[1]) / 1e9) - (float64(item[0]) / 1e9)) * prices[key]
+		tCur += iCur
 		data[i] = []string{
 			key,
-			fmt.Sprintf("%f", float64(item[1])/1e9), // end of day balance
-			fmt.Sprintf("%f", (float64(item[1])/1e9)-(float64(item[0])/1e9)),               // income of day ETH
-			fmt.Sprintf("%f", prices[key]),                                                 //price will default to 0 if key does not exist
-			fmt.Sprintf("%f", ((float64(item[1])/1e9)-(float64(item[0])/1e9))*prices[key]), // income of day Currency
-			currency,
+			addCommas(float64(item[1])/1e9, "%.5f"), // end of day balance
+			addCommas(iETH, "%.5f"),                 // income of day ETH
+			fmt.Sprintf("%s %s", strings.ToUpper(currency), addCommas(prices[key], "%.2f")), //price will default to 0 if key does not exist
+			fmt.Sprintf("%s %s", strings.ToUpper(currency), addCommas(iCur, "%.2f")),        // income of day Currency
 		}
 		i++
 	}
 
-	return data
+	return rewardHistory{
+		History:       data,
+		TotalETH:      addCommas(tETH, "%.5f"),
+		TotalCurrency: fmt.Sprintf("%s %s", strings.ToUpper(currency), addCommas(tCur, "%.2f")),
+	}
 }
 
 func isValidCurrency(currency string) bool {
@@ -272,21 +288,13 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := getValidatorHist(validatorArr, currency, start, end)
+	hist := getValidatorHist(validatorArr, currency, start, end)
+	// data := hist.History
 
-	if len(data) == 0 {
+	if len(hist.History) == 0 {
 		w.Write([]byte("No data available"))
 		return
 	}
-
-	sort.Slice(data, func(p, q int) bool {
-		i, err := time.Parse("2006-01-02", data[p][0])
-		i2, err := time.Parse("2006-01-02", data[q][0])
-		if err != nil {
-			return false
-		}
-		return i2.Before(i)
-	})
 
 	// cur := data[0][len(data[0])-1]
 	// cur = strings.ToUpper(cur)
@@ -314,7 +322,7 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	// csv += fmt.Sprintf("\nTotal, ,%f, ,%f", totalIncomeEth, totalIncomeCur)
 
-	_, err = w.Write(generatePdfReport(data))
+	_, err = w.Write(generatePdfReport(hist))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
 		http.Error(w, "Internal server error", 503)
@@ -323,7 +331,35 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func generatePdfReport(data [][]string) []byte {
+func addCommas(balance float64, decimals string) string {
+	p := message.NewPrinter(language.English)
+	rb := []rune(p.Sprintf(decimals, balance))
+	// remove trailing zeros
+	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+		for rb[len(rb)-1] == '0' {
+			rb = rb[:len(rb)-1]
+		}
+		if rb[len(rb)-1] == '.' {
+			rb = rb[:len(rb)-1]
+		}
+	}
+
+	return string(rb)
+}
+
+func generatePdfReport(hist rewardHistory) []byte {
+
+	data := hist.History
+
+	sort.Slice(data, func(p, q int) bool {
+		i, err := time.Parse("2006-01-02", data[p][0])
+		i2, err := time.Parse("2006-01-02", data[q][0])
+		if err != nil {
+			return false
+		}
+		return i2.Before(i)
+	})
+
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.SetTopMargin(15)
 	pdf.SetHeaderFuncMode(func() {
@@ -369,17 +405,16 @@ func generatePdfReport(data [][]string) []byte {
 			pdf.Rect(x, y, colWd, maxHt, "D")
 			cellY := y
 			pdf.SetXY(x, cellY)
-			s := row[col]
-			if col > 2 {
-				s = fmt.Sprintf("%s %s", strings.ToUpper(row[len(row)-1]), row[col])
-			}
-			pdf.CellFormat(colWd, maxHt, s, "", 0,
+			pdf.CellFormat(colWd, maxHt, row[col], "", 0,
 				"LM", false, 0, "")
 			cellY += lineHt
 			x += colWd
 		}
 		y += maxHt
 	}
+
+	pdf.Ln(10)
+	pdf.CellFormat(0, maxHt, fmt.Sprintf("Total ETH %s | Total %s", hist.TotalETH, hist.TotalCurrency), "1", 0, "CM", true, 0, "")
 
 	// adding a footer
 	pdf.AliasNbPages("")
