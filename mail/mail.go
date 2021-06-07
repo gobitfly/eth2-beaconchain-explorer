@@ -15,7 +15,7 @@ import (
 
 // SendMail sends an email to the given address with the given message.
 // It will use smtp if configured otherwise it will use gunmail if configured.
-func SendMail(to, subject, msg string, attachment []*types.EmailAttachment) error {
+func SendMail(to, subject, msg string, attachment []types.EmailAttachment) error {
 	var err error
 	if utils.Config.Frontend.Mail.SMTP.User != "" {
 		fmt.Println("Email Attachments will not work with SMTP server")
@@ -30,7 +30,7 @@ func SendMail(to, subject, msg string, attachment []*types.EmailAttachment) erro
 
 // SendMailRateLimited sends an email to a given address with the given message.
 // It will return a ratelimit-error if the configured ratelimit is exceeded.
-func SendMailRateLimited(to, subject, msg string, attachment []*types.EmailAttachment) error {
+func SendMailRateLimited(to, subject, msg string, attachment []types.EmailAttachment) error {
 	if utils.Config.Frontend.MaxMailsPerEmailPerDay > 0 {
 		now := time.Now()
 		count, err := db.GetMailsSentCount(to, now)
@@ -75,7 +75,7 @@ func SendMailSMTP(to, subject, body string) error {
 }
 
 // SendMailMailgun sends an email to the given address with the given message, using mailgun.
-func SendMailMailgun(to, subject, msg string, attachment []*types.EmailAttachment) error {
+func SendMailMailgun(to, subject, msg string, attachment []types.EmailAttachment) error {
 	mg := mailgun.NewMailgun(
 		utils.Config.Frontend.Mail.Mailgun.Domain,
 		utils.Config.Frontend.Mail.Mailgun.PrivateKey,
@@ -86,9 +86,9 @@ func SendMailMailgun(to, subject, msg string, attachment []*types.EmailAttachmen
 	defer cancel()
 	if len(attachment) > 0 {
 		for _, att := range attachment {
-			if att != nil {
-				message.AddBufferAttachment(att.Name, att.Attachment)
-			}
+			// if att != nil {
+			message.AddBufferAttachment(att.Name, att.Attachment)
+			// }
 		}
 	}
 
