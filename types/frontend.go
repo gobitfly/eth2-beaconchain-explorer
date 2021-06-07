@@ -84,6 +84,7 @@ type Notification interface {
 	GetInfo(includeUrl bool) string
 	GetTitle() string
 	GetEventFilter() string
+	GetEmailAttachment() *EmailAttachment
 }
 
 type Subscription struct {
@@ -151,4 +152,9 @@ type PremiumData struct {
 type UserWithPremium struct {
 	ID      uint64         `db:"id"`
 	Product sql.NullString `db:"product_id"`
+}
+
+type EmailAttachment struct {
+	Attachment []byte
+	Name       string
 }

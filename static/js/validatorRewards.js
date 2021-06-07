@@ -165,28 +165,28 @@ function hideSpinner(){
     $("#loading-div").removeClass("d-flex")
 }
 
-function updateTotals(data){
-    totalEth = 0.0
-    totalCurrency = 0.0
+// function updateTotals(data){
+//     totalEth = 0.0
+//     totalCurrency = 0.0
 
-    for(let item of data){
-        totalEth+=parseFloat(item[2])
-        totalCurrency+=parseFloat(item[4])
-    }
+//     for(let item of data){
+//         totalEth+=parseFloat(item[2])
+//         totalCurrency+=parseFloat(item[4])
+//     }
 
-    $("#total-income-eth-span").html(`ETH: <b>${(totalEth.toFixed(DECIMAL_POINTS_ETH))}</b>`)
-    $("#total-income-currency-span").html(`${currency}: <b>${addCommas(totalCurrency.toFixed(DECIMAL_POINTS_CURRENCY))}</b>`)
-    $("#totals-div").removeClass("d-none")
-}
+//     $("#total-income-eth-span").html(`ETH: <b>${(totalEth.toFixed(DECIMAL_POINTS_ETH))}</b>`)
+//     $("#total-income-currency-span").html(`${currency}: <b>${addCommas(totalCurrency.toFixed(DECIMAL_POINTS_CURRENCY))}</b>`)
+//     $("#totals-div").removeClass("d-none")
+// }
 
 function addCommas(number) {
     return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
 
 function showTable(data){
-    if (data.length > 0 && data[0].length === 6){
-        currency = data[0][5].toUpperCase()
-    }
+    // if (data.length > 0 && data[0].length === 6){
+    //     currency = data[0][5].toUpperCase()
+    // }
     
     $('#tax-table').DataTable({
         processing: true,
@@ -196,7 +196,7 @@ function showTable(data){
         pagingType: 'full_numbers',
         pageLength: 100,
         lengthChange: false,
-        data: data,
+        data: data.history,
         dom: 'Bfrtip',
         buttons: [
             'copyHtml5',
@@ -209,7 +209,10 @@ function showTable(data){
             $("#form-div").addClass("d-none")
             $("#table-div").removeClass("d-none")
             $("#subscriptions-div").addClass("d-none")
-            updateTotals(data)
+            // updateTotals(data)
+            $("#total-income-eth-span").html("ETH "+data.total_eth)
+            $("#total-income-currency-span").html(data.total_currency)
+            $("#totals-div").removeClass("d-none")
             $(".dt-button").addClass("ml-2 ")
             // $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
         },
@@ -228,37 +231,41 @@ function showTable(data){
                 data: '1',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    // return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    return data
                 }
             }, {
                 targets: 2,
                 data: '2',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    // return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    return data
                 }
             }, {
                 targets: 3,
                 data: '3',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                    // return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                    return data
                 }
             }, {
                 targets: 4,
                 data: '4',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                   return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                //    return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                    return data
                 }
-            }, {
-                targets: 5,
-                data: '5',
-                "orderable": false,
-                visible: false,
-                render: function (data, type, row, meta) {
-                    return data.toUpperCase()
-                }
+            // }, {
+            //     targets: 5,
+            //     data: '5',
+            //     "orderable": false,
+            //     visible: false,
+            //     render: function (data, type, row, meta) {
+            //         return data.toUpperCase()
+            //     }
             }]
     });
 }
