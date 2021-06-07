@@ -769,7 +769,9 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, emailConfirmationHash, url.QueryEscape(newEmail))
-	err = mail.SendMail(newEmail, subject, msg, nil)
+
+	err = mail.SendMail(newEmail, subject, msg, []types.EmailAttachment{})
+
 	if err != nil {
 		return err
 	}

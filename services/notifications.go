@@ -256,7 +256,9 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 			sentSubsByEpoch := map[uint64][]uint64{}
 			subject := fmt.Sprintf("%s: Notification", utils.Config.Frontend.SiteDomain)
 			msg := ""
-			attachments := []*types.EmailAttachment{}
+
+			attachments := []types.EmailAttachment{}
+
 			for event, ns := range userNotifications {
 				if len(msg) > 0 {
 					msg += "\n"
@@ -270,7 +272,11 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 					} else {
 						sentSubsByEpoch[e] = append(sentSubsByEpoch[e], n.GetSubscriptionID())
 					}
-					attachments = append(attachments, n.GetEmailAttachment())
+
+					if att := n.GetEmailAttachment(); att != nil {
+						attachments = append(attachments, *att)
+					}
+
 				}
 				if event == "validator_balance_decreased" {
 					msg += "\nYou will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.\n"
@@ -1067,16 +1073,19 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 
 	re := regexp.MustCompile(`currency=[A-Za-z]{3,}?`)
 	currency := fmt.Sprintf("%q\n", re.Find([]byte(n.EventFilter)))
-	if curSlice := strings.Split(currency, "="); len(curSlice) > 2 {
+
+	if curSlice := strings.Split(currency, "="); len(curSlice) >= 2 {
+
 		currency = curSlice[1]
 	}
 
 	re = regexp.MustCompile(`validators=.*?&`)
 	validatorsStr := fmt.Sprintf("%q\n", strings.Replace(string(re.Find([]byte(n.EventFilter))), "&", "", -1))
-	validatorsStr = strings.Replace(validatorsStr, "&", "", -1)
+
+	// validatorsStr = strings.Replace(validatorsStr, "&", "", -1)
 	valSlice := strings.Split(validatorsStr, "=")
 	validators := []uint64{}
-	if len(valSlice) > 2 {
+	if len(valSlice) >= 2 {
 		valSlice = strings.Split(valSlice[1], ",")
 		if len(valSlice) > 0 {
 			for _, val := range valSlice {
@@ -1157,10 +1166,12 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 			UserID:         r.UserID,
 			Epoch:          r.Epoch,
 			EventFilter:    r.EventFilter,
+
 		}
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
 			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
 		}
+
 		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
 			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 		}
