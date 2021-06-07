@@ -583,7 +583,7 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, emailConfirmationHash)
-	err = mail.SendMail(email, subject, msg)
+	err = mail.SendMail(email, subject, msg, nil)
 	if err != nil {
 		return err
 	}
@@ -634,7 +634,7 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, resetHash)
-	err = mail.SendMail(email, subject, msg)
+	err = mail.SendMail(email, subject, msg, nil)
 	if err != nil {
 		return err
 	}
