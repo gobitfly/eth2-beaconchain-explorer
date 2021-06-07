@@ -81,6 +81,7 @@ func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 	msg = template.HTMLEscapeString(msg)
 
 	err = mail.SendMail("support@beaconcha.in", "New ad inquiry", msg, []types.EmailAttachment{})
+
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
 		utils.SetFlash(w, r, "ad_flash", "Error: unable to submit ad request")
