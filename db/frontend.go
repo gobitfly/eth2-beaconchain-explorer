@@ -58,6 +58,13 @@ func GetUserApiKeyById(id uint64) (string, error) {
 	return apiKey, err
 }
 
+func GetUserIdByApiKey(apiKey string) (*types.UserWithPremium, error) {
+	data := &types.UserWithPremium{}
+	row := FrontendDB.QueryRow("SELECT id, (SELECT product_id from users_app_subscriptions WHERE user_id = users.id AND active = true order by id desc limit 1) FROM users WHERE api_key = $1", apiKey)
+	err := row.Scan(&data.ID, &data.Product)
+	return data, err
+}
+
 // DeleteUserById deletes a user.
 func DeleteUserById(id uint64) error {
 	_, err := FrontendDB.Exec("DELETE FROM users WHERE id = $1", id)
@@ -164,6 +171,26 @@ func GetByRefreshToken(claimUserID, claimAppID, claimDeviceID uint64, hashedRefr
 	return userID, nil
 }
 
+func GetUserMonitorSharingSetting(userID uint64) (bool, error) {
+	var share bool
+	err := FrontendDB.Get(&share,
+		"SELECT share FROM stats_sharing WHERE user_id = $1 ORDER BY id desc limit 1", userID)
+
+	if err != nil {
+		return false, err
+	}
+
+	return share, nil
+}
+
+func SetUserMonitorSharingSetting(userID uint64, share bool) error {
+	_, err := FrontendDB.Exec("INSERT INTO stats_sharing (user_id, share, ts) VALUES($1, $2, 'NOW()')",
+		userID, share,
+	)
+
+	return err
+}
+
 func GetUserDevicesByUserID(userID uint64) ([]types.PairedDevice, error) {
 	data := []types.PairedDevice{}
 
@@ -214,6 +241,56 @@ func MobileNotificatonTokenUpdate(userID, deviceID uint64, notifyToken string) e
 	return err
 }
 
+func InsertMobileSubscription(userID uint64, paymentDetails types.MobileSubscription, store, receipt string, expiration int64, rejectReson string) error {
+	now := time.Now()
+	nowTs := now.Unix()
+	receiptHash := utils.HashAndEncode(receipt)
+	_, err := FrontendDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash) VALUES("+
+		"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13);",
+		userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash,
+	)
+	return err
+}
+
+func GetAppSubscriptionCount(userID uint64) (int64, error) {
+	var count int64
+	row := FrontendDB.QueryRow(
+		"SELECT count(receipt) as count FROM users_app_subscriptions WHERE user_id = $1",
+		userID,
+	)
+	err := row.Scan(&count)
+	return count, err
+}
+
+func GetUserPremiumPackage(userID uint64) (string, error) {
+	var pkg string
+	row := FrontendDB.QueryRow(
+		"SELECT product_id from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
+		userID,
+	)
+	err := row.Scan(&pkg)
+	return pkg, err
+}
+
+func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
+	data := []*types.PremiumData{}
+
+	err := FrontendDB.Select(&data,
+		"SELECT id, receipt, store, active from users_app_subscriptions WHERE validate_remotely = true order by id desc",
+	)
+
+	return data, err
+}
+
+func UpdateUserSubscription(id uint64, valid bool, expiration int64, rejectReason string) error {
+	now := time.Now()
+	nowTs := now.Unix()
+	_, err := FrontendDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE id = $5;",
+		valid, nowTs, expiration, rejectReason, id,
+	)
+	return err
+}
+
 func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 	pushByID := map[uint64][]string{}
 	if len(ids) == 0 {
@@ -223,7 +300,7 @@ func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 		ID    uint64 `db:"user_id"`
 		Token string `db:"notification_token"`
 	}
-	err := FrontendDB.Select(&rows, "SELECT user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL GROUP BY user_id, notification_token ", pq.Array(ids))
+	err := FrontendDB.Select(&rows, "SELECT DISTINCT ON (user_id) user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL ORDER BY user_id, id DESC", pq.Array(ids))
 	if err != nil {
 		return nil, err
 	}
@@ -282,25 +359,119 @@ func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
 	return rows, err
 }
 
-func UserClientEntry(userID uint64, clientName string, clientVersion int64, notifyEnabled bool) error {
-	var updateClientVersion = ""
-	if clientVersion != 0 {
-		updateClientVersion = ", client_version = $3"
-	}
-
-	_, err := FrontendDB.Exec(
-		"INSERT INTO users_clients (user_id, client, client_version, notify_enabled, created_ts) VALUES($1, $2, $3, $4, 'NOW()')"+
-			"ON CONFLICT (user_id, client) "+
-			"DO UPDATE SET notify_enabled = $4"+updateClientVersion+";",
-		userID, clientName, clientVersion, notifyEnabled,
+func GetStatsMachineCount(tx *sql.Tx, userID uint64) (uint64, error) {
+	var count uint64
+	row := tx.QueryRow(
+		"SELECT COUNT(DISTINCT sub.machine) as count FROM (SELECT machine from stats_meta WHERE user_id = $1 AND created_trunc + '15 minutes'::INTERVAL > 'now' order by id desc LIMIT 15) sub",
+		userID,
 	)
-
-	return err
+	err := row.Scan(&count)
+	return count, err
 }
 
-func UserClientDelete(userID uint64, clientName string) error {
-	_, err := FrontendDB.Exec("DELETE FROM users_clients WHERE user_id = $1 AND client = $2 ", userID, clientName)
-	return err
+func InsertStatsMeta(tx *sql.Tx, userID uint64, data *types.StatsMeta) (uint64, error) {
+	now := time.Now()
+	nowTs := now.Unix()
+
+	var id uint64
+	row := tx.QueryRow(
+		"INSERT INTO stats_meta (user_id, machine, ts, version, process, created_trunc) VALUES($1, $2, TO_TIMESTAMP($3), $4, $5, date_trunc('minute', TO_TIMESTAMP($6))) RETURNING id",
+		userID, data.Machine, data.Timestamp, data.Version, data.Process, nowTs,
+	)
+	err := row.Scan(&id)
+	return id, err
+}
+
+func InsertStatsSystem(tx *sql.Tx, meta_id uint64, data *types.StatsSystem) (uint64, error) {
+	var id uint64
+	row := tx.QueryRow(
+		"INSERT INTO stats_system (meta_id, cpu_cores, cpu_threads, cpu_node_system_seconds_total, "+
+			"cpu_node_user_seconds_total, cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total,"+
+			"memory_node_bytes_total, memory_node_bytes_free, memory_node_bytes_cached, memory_node_bytes_buffers,"+
+			"disk_node_bytes_total, disk_node_bytes_free, disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total,"+
+			"network_node_bytes_total_receive, network_node_bytes_total_transmit, misc_node_boot_ts_seconds, misc_os"+
+			") "+
+			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id",
+		meta_id, data.CPUCores, data.CPUThreads, data.CPUNodeSystemSecondsTotal, data.CPUNodeUserSecondsTotal,
+		data.CPUNodeIowaitSecondsTotal, data.CPUNodeIdleSecondsTotal, data.MemoryNodeBytesTotal, data.MemoryNodeBytesFree,
+		data.MemoryNodeBytesCached, data.MemoryNodeBytesBuffers, data.DiskNodeBytesTotal, data.DiskNodeBytesFree,
+		data.DiskNodeIoSeconds, data.DiskNodeReadsTotal, data.DiskNodeWritesTotal, data.NetworkNodeBytesTotalReceive,
+		data.NetworkNodeBytesTotalTransmit, data.MiscNodeBootTsSeconds, data.MiscOS,
+	)
+	err := row.Scan(&id)
+	return id, err
+}
+
+func InsertStatsProcessGeneral(tx *sql.Tx, meta_id uint64, data *types.StatsProcess) (uint64, error) {
+	var id uint64
+	row := tx.QueryRow(
+		"INSERT INTO stats_process (meta_id, cpu_process_seconds_total, memory_process_bytes, client_name, client_version,"+
+			"client_build, sync_eth2_fallback_configured,"+
+			"sync_eth2_fallback_connected"+
+			") "+
+			"VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+		meta_id, data.CPUProcessSecondsTotal, data.MemoryProcessBytes, data.ClientName, data.ClientVersion, data.ClientBuild,
+		data.SyncEth2FallbackConfigured, data.SyncEth2FallbackConnected,
+	)
+	err := row.Scan(&id)
+	return id, err
+}
+
+func InsertStatsValidator(tx *sql.Tx, general_id uint64, data *types.StatsAdditionalsValidator) (uint64, error) {
+	var id uint64
+	row := tx.QueryRow(
+		"INSERT INTO stats_add_validator (general_id, validator_total, validator_active) "+
+			"VALUES($1, $2, $3) RETURNING id",
+		general_id, data.ValidatorTotal, data.ValidatorActive,
+	)
+	err := row.Scan(&id)
+	return id, err
+}
+
+func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, data *types.StatsAdditionalsBeaconnode) (uint64, error) {
+	var id uint64
+	row := tx.QueryRow(
+		"INSERT INTO stats_add_beaconnode (general_id, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive,"+
+			"network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected, sync_eth2_synced,"+
+			"sync_beacon_head_slot, sync_eth1_fallback_configured, sync_eth1_fallback_connected"+
+			") "+
+			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
+		general_id, data.DiskBeaconchainBytesTotal, data.NetworkLibp2pBytesTotalReceive, data.NetworkLibp2pBytesTotalTransmit,
+		data.NetworkPeersConnected, data.SyncEth1Connected, data.SyncEth2Synced, data.SyncBeaconHeadSlot, data.SyncEth1FallbackConfigured, data.SyncEth1FallbackConnected,
+	)
+	err := row.Scan(&id)
+	return id, err
+}
+
+func NewTransaction() (*sql.Tx, error) {
+	return FrontendDB.Begin()
+}
+
+func GetStatsValidator(userID, limit, offset uint64) (*sql.Rows, error) {
+	row, err := FrontendDB.Query(
+		"SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, validator_active, validator_total FROM stats_add_validator LEFT JOIN stats_process ON stats_add_validator.general_id = stats_process.id "+
+			" LEFT JOIN stats_meta on stats_process.meta_id = stats_meta.id "+
+			"WHERE user_id = $1 AND process = 'validator' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
+	)
+	return row, err
+}
+
+func GetStatsNode(userID, limit, offset uint64) (*sql.Rows, error) {
+	row, err := FrontendDB.Query(
+		"SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive, network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected, sync_eth2_synced, sync_beacon_head_slot FROM stats_add_beaconnode left join stats_process on stats_process.id = stats_add_beaconnode.general_id "+
+			" LEFT JOIN stats_meta on stats_process.meta_id = stats_meta.id "+
+			"WHERE user_id = $1 AND process = 'beaconnode' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
+	)
+	return row, err
+}
+
+func GetStatsSystem(userID, limit, offset uint64) (*sql.Rows, error) {
+	row, err := FrontendDB.Query(
+		"SELECT  cpu_cores, cpu_threads, cpu_node_system_seconds_total, cpu_node_user_seconds_total, cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total, memory_node_bytes_total, memory_node_bytes_free, memory_node_bytes_cached, memory_node_bytes_buffers, disk_node_bytes_total, disk_node_bytes_free, disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total, network_node_bytes_total_receive, network_node_bytes_total_transmit, misc_os, misc_node_boot_ts_seconds, ts as timestamp, machine from stats_system"+
+			" LEFT JOIN stats_meta on stats_system.meta_id = stats_meta.id "+
+			"WHERE user_id = $1 AND process = 'system' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
+	)
+	return row, err
 }
 
 func GetHistoricPrices(currency string) (map[uint64]float64, error) {

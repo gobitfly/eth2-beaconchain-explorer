@@ -905,11 +905,12 @@ type CsrfData struct {
 type UserSettingsPageData struct {
 	CsrfField template.HTML
 	AuthData
-	Subscription  UserSubscription
-	PairedDevices []PairedDevice
-	Sapphire      *string
-	Emerald       *string
-	Diamond       *string
+	Subscription        UserSubscription
+	PairedDevices       []PairedDevice
+	Sapphire            *string
+	Emerald             *string
+	Diamond             *string
+	ShareMonitoringData bool
 }
 
 type PairedDevice struct {
