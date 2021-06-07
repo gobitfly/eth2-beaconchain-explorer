@@ -86,9 +86,7 @@ func SendMailMailgun(to, subject, msg string, attachment []types.EmailAttachment
 	defer cancel()
 	if len(attachment) > 0 {
 		for _, att := range attachment {
-			// if att != nil {
 			message.AddBufferAttachment(att.Name, att.Attachment)
-			// }
 		}
 	}
 
