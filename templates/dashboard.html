@@ -5,6 +5,13 @@
     <script src="/js/highcharts/offline-exporting.min.js"></script>
     <script src="/js/highcharts/highcharts-global-options.js"></script>
     <script src="/js/dashboard.js"></script>
+
+    <script>
+          const temp = "{{ .ValidatorLimit }}";
+          if(!isNaN(temp)) {
+            VALLIMIT = parseInt(temp);
+          }
+    </script>
 {{end}}
 
 {{ define "css"}}

@@ -34,7 +34,7 @@ function appendBlocks(blocks) {
 }
 
 var selectedBTNindex = null
-const VALLIMIT = 200
+var VALLIMIT = 280
 function showValidatorHist (index) {
   if ($.fn.dataTable.isDataTable('#dash-validator-history-table')){
         $('#dash-validator-history-table').DataTable().destroy();

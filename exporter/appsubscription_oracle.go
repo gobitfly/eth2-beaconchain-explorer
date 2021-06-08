@@ -33,7 +33,12 @@ func checkSubscriptions() {
 		googleClient := initGoogle()
 
 		for _, receipt := range receipts {
+
 			valid, err := VerifyReceipt(googleClient, receipt)
+
+			if receipt.Store == "manuall" {
+				valid, err = VerifyManuall(receipt)
+			}
 
 			if err != nil {
 				// error might indicate a connection problem, ignore validation response
@@ -46,6 +51,15 @@ func checkSubscriptions() {
 		logger.WithField("subscriptions", len(receipts)).WithField("duration", time.Since(start)).Info("subscription update completed")
 		time.Sleep(time.Second * 60 * 60 * 4) // 4h
 	}
+}
+
+func VerifyManuall(receipt *types.PremiumData) (*VerifyResponse, error) {
+	valid := receipt.ExpiresAt.Unix() > time.Now().Unix()
+	return &VerifyResponse{
+		Valid:          valid,
+		ExpirationDate: receipt.ExpiresAt.Unix(),
+		RejectReason:   rejectReason(valid),
+	}, nil
 }
 
 func VerifyReceipt(googleClient *playstore.Client, receipt *types.PremiumData) (*VerifyResponse, error) {

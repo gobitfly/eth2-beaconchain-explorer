@@ -276,10 +276,53 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 	data := []*types.PremiumData{}
 
 	err := FrontendDB.Select(&data,
-		"SELECT id, receipt, store, active from users_app_subscriptions WHERE validate_remotely = true order by id desc",
+		"SELECT id, receipt, store, active, expires_at from users_app_subscriptions WHERE validate_remotely = true order by id desc",
 	)
 
 	return data, err
+}
+
+func CleanupOldMachineStats() error {
+	deleteCondition := "created_trunc + interval '65 days' < 'now'"
+	allMeta := "( SELECT id FROM stats_meta WHERE " + deleteCondition + " )"
+	general := "( SELECT stats_process.id FROM stats_meta LEFT JOIN stats_process on stats_meta.id = meta_id WHERE " + deleteCondition + " )"
+
+	tx, err := FrontendDB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("DELETE FROM stats_system WHERE meta_id IN " + allMeta)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_add_beaconnode WHERE general_id IN " + general)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_add_validator WHERE general_id IN " + general)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_process WHERE meta_id IN " + allMeta)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_meta WHERE " + deleteCondition)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func UpdateUserSubscription(id uint64, valid bool, expiration int64, rejectReason string) error {
