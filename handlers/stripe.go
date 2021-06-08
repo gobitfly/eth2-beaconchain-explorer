@@ -393,9 +393,9 @@ func emailCustomerAboutFailedPayment(email string) {
 	msg := fmt.Sprintf("Payment processing failed. Could not provision your API key. Please contact support at support@beaconcha.in. Manage Subscription: https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
-  
+
 	err := mail.SendMail(email, "Failed Payment", msg, []types.EmailAttachment{})
-  
+
 	if err != nil {
 		logger.Errorf("error sending failed payment mail: %v", err)
 		return

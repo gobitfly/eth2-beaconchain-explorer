@@ -1072,17 +1072,17 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
 
 	re := regexp.MustCompile(`currency=[A-Za-z]{3,}?`)
-	currency := fmt.Sprintf("%q\n", re.Find([]byte(n.EventFilter)))
 
+	currency := fmt.Sprintf("%s", re.Find([]byte(n.EventFilter)))
 	if curSlice := strings.Split(currency, "="); len(curSlice) >= 2 {
 
 		currency = curSlice[1]
 	}
 
 	re = regexp.MustCompile(`validators=.*?&`)
-	validatorsStr := fmt.Sprintf("%q\n", strings.Replace(string(re.Find([]byte(n.EventFilter))), "&", "", -1))
 
-	// validatorsStr = strings.Replace(validatorsStr, "&", "", -1)
+	validatorsStr := fmt.Sprintf("%s", strings.Replace(string(re.Find([]byte(n.EventFilter))), "&", "", -1))
+
 	valSlice := strings.Split(validatorsStr, "=")
 	validators := []uint64{}
 	if len(valSlice) >= 2 {
@@ -1160,21 +1160,21 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 		return err
 	}
 
+
 	for _, r := range dbResult {
 		n := &taxReportNotification{
 			SubscriptionID: r.SubscriptionID,
 			UserID:         r.UserID,
 			Epoch:          r.Epoch,
 			EventFilter:    r.EventFilter,
-
 		}
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
 			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
 		}
-
 		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
 			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 		}
+
 		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 	}
 	// }
