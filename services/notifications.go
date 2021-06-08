@@ -256,7 +256,9 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 			sentSubsByEpoch := map[uint64][]uint64{}
 			subject := fmt.Sprintf("%s: Notification", utils.Config.Frontend.SiteDomain)
 			msg := ""
+
 			attachments := []types.EmailAttachment{}
+
 			for event, ns := range userNotifications {
 				if len(msg) > 0 {
 					msg += "\n"
@@ -270,6 +272,7 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 					} else {
 						sentSubsByEpoch[e] = append(sentSubsByEpoch[e], n.GetSubscriptionID())
 					}
+
 					if att := n.GetEmailAttachment(); att != nil {
 						attachments = append(attachments, *att)
 					}
@@ -1069,13 +1072,17 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
 
 	re := regexp.MustCompile(`currency=[A-Za-z]{3,}?`)
+
 	currency := fmt.Sprintf("%s", re.Find([]byte(n.EventFilter)))
 	if curSlice := strings.Split(currency, "="); len(curSlice) >= 2 {
+
 		currency = curSlice[1]
 	}
 
 	re = regexp.MustCompile(`validators=.*?&`)
+
 	validatorsStr := fmt.Sprintf("%s", strings.Replace(string(re.Find([]byte(n.EventFilter))), "&", "", -1))
+
 	valSlice := strings.Split(validatorsStr, "=")
 	validators := []uint64{}
 	if len(valSlice) >= 2 {
@@ -1153,6 +1160,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 		return err
 	}
 
+
 	for _, r := range dbResult {
 		n := &taxReportNotification{
 			SubscriptionID: r.SubscriptionID,
@@ -1166,6 +1174,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
 			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 		}
+
 		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 	}
 	// }
