@@ -327,7 +327,15 @@ function updateSubscriptionTable(data, container){
                 data: '2',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `<textarea readonly style="height: 50px; width: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark">${data}</textarea>`
+                    if (type==="display"){
+                        l = data.split(",")
+                        l.sort((a,b)=>parseInt(a)-parseInt(b))
+                        data = ""
+                        for (i of l){
+                            data += `<li style="flex: 1 0 8%; list-style-type : none;" class="p-1"><a href="/validator/${i}"><i class="fas fa-male mr-1"></i>${i}</a></li>`
+                        }
+                    }
+                    return `<ul style="display: flex; flex-wrap: wrap; height: 50px; width: 98%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark pl-0 ml-0">${data}</ul>`
                 }
             }, {
                 targets: 3,
@@ -360,6 +368,8 @@ $(document).ready(function () {
         $(this).val($(this).val().replace(/([a-zA-Z ])/g, ""))
     })
 
+    $("#days").val(`${moment().startOf('month').unix()}-${moment().unix()}`)
+    
     $('input[id="datepicker"]').daterangepicker({
         pens: 'left',
         minDate: moment.unix(MIN_TIMESTAMP), 
@@ -376,7 +386,9 @@ $(document).ready(function () {
             format: 'DD/MM/YYYY'
         },
         singleDatePicker: false,
-        alwaysShowCalendars: false
+        alwaysShowCalendars: false,
+        startDate: moment().startOf('month'), 
+        endDate: moment()
     }, function(start, end, label) {
         // let end_d = moment()
         $("#days").val(`${moment(start).unix()}-${moment(end).unix()}`)

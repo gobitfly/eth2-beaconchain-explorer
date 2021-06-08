@@ -1067,7 +1067,7 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 	tNow := time.Now()
 	firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
 	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
-
+	// q, err := url.ParseQuery(n.EventFilter)
 	re := regexp.MustCompile(`currency=[A-Za-z]{3,}?`)
 	currency := fmt.Sprintf("%s", re.Find([]byte(n.EventFilter)))
 	if curSlice := strings.Split(currency, "="); len(curSlice) >= 2 {
