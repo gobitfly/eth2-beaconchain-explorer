@@ -23,9 +23,10 @@ var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewa
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub"}
 
 type rewardsResp struct {
-	Currencies    []string
-	CsrfField     template.HTML
-	Subscriptions [][]string
+	Currencies       []string
+	CsrfField        template.HTML
+	Subscriptions    [][]string
+	MinDateTimestamp uint64
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
@@ -44,13 +45,20 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
 	}
 
+	var minTime time.Time
+	err = db.DB.Get(&minTime,
+		`select ts from price order by ts asc limit 1`)
+	if err != nil {
+		logger.Errorf("error getting min ts: %w", err)
+	}
+
 	var subs = [][]string{}
 
 	if data.User.Authenticated {
 		subs = getUserRewardSubscriptions(data.User.UserID)
 	}
 
-	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), Subscriptions: subs}
+	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), Subscriptions: subs, MinDateTimestamp: uint64(minTime.Unix())}
 
 	err = validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -85,13 +93,13 @@ func getUserRewardSubscriptions(uid uint64) [][]string {
 	return res
 }
 
-func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]string {
+func getValidatorHist(validatorArr []uint64, currency string, start uint64, end uint64) [][]string {
 	var err error
 	validatorFilter := pq.Array(validatorArr)
 
 	var pricesDb []types.Price
 	err = db.DB.Select(&pricesDb,
-		`select * from price order by ts desc limit $1`, days)
+		`select * from price where ts >= TO_TIMESTAMP($1) and ts <= TO_TIMESTAMP($2) order by ts desc`, start, end)
 	if err != nil {
 		logger.Errorf("error getting prices: %w", err)
 	}
@@ -103,19 +111,15 @@ func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]s
 		logger.Errorf("error getting max day: %w", err)
 	}
 
-	if days > 365 {
-		days = 365
-	}
-	var lowerBound uint64 = 0
-	if maxDay > days {
-		lowerBound = maxDay - days
-	}
+	lowerBound := utils.TimeToDay(start)
+	upperBound := utils.TimeToDay(end)
+
 	var income []types.ValidatorStatsTableRow
 	err = db.DB.Select(&income,
 		`select day, start_balance, end_balance
 		 from validator_stats 
-		 where validatorindex=ANY($1) AND day > $2
-		 order by day desc`, validatorFilter, lowerBound)
+		 where validatorindex=ANY($1) AND day > $2 AND day < $3
+		 order by day desc`, validatorFilter, lowerBound, upperBound)
 	if err != nil {
 		logger.Errorf("error getting incomes: %w", err)
 	}
@@ -176,15 +180,6 @@ func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]s
 		i++
 	}
 
-	sort.Slice(data, func(p, q int) bool {
-		i, err := time.Parse("2006-01-02", data[p][0])
-		i2, err := time.Parse("2006-01-02", data[q][0])
-		if err != nil {
-			return false
-		}
-		return i2.Before(i)
-	})
-
 	return data
 }
 
@@ -220,14 +215,22 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	currency := q.Get("currency")
 
-	days, err := strconv.ParseUint(q.Get("days"), 10, 64)
-	if err != nil {
-		logger.Errorf("error retrieving days %v", err)
-		http.Error(w, "Invalid query", 400)
-		return
+	var start uint64 = 0
+	var end uint64 = 0
+	dateRange := strings.Split(q.Get("days"), "-")
+	if len(dateRange) == 2 {
+		start, err = strconv.ParseUint(dateRange[0], 10, 64)
+		end, err = strconv.ParseUint(dateRange[1], 10, 64)
+		if err != nil {
+			logger.Errorf("error retrieving days range %v", err)
+			http.Error(w, "Invalid query", 400)
+			return
+		}
 	}
 
-	data := getValidatorHist(validatorArr, currency, days)
+	// days, err := strconv.ParseUint(q.Get("days"), 10, 64)
+
+	data := getValidatorHist(validatorArr, currency, start, end)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
@@ -239,7 +242,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 }
 
 func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Disposition", "attachment; filename=beaconcah_in-income-report.csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=beaconcha_in-rewards-history.csv")
 	w.Header().Set("Content-Type", "text/csv")
 
 	q := r.URL.Query()
@@ -253,19 +256,35 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	currency := q.Get("currency")
 
-	days, err := strconv.ParseUint(q.Get("days"), 10, 64)
-	if err != nil {
-		logger.Errorf("error retrieving days %v", err)
-		http.Error(w, "Invalid query", 400)
-		return
+	var start uint64 = 0
+	var end uint64 = 0
+	dateRange := strings.Split(q.Get("days"), "-")
+	if len(dateRange) == 2 {
+		start, err = strconv.ParseUint(dateRange[0], 10, 64)
+		end, err = strconv.ParseUint(dateRange[1], 10, 64)
+		if err != nil {
+			logger.Errorf("error retrieving days range %v", err)
+			http.Error(w, "Invalid query", 400)
+			return
+		}
 	}
 
-	data := getValidatorHist(validatorArr, currency, days)
+	data := getValidatorHist(validatorArr, currency, start, end)
 
 	if len(data) == 0 {
 		w.Write([]byte("No data available"))
 		return
 	}
+
+	sort.Slice(data, func(p, q int) bool {
+		i, err := time.Parse("2006-01-02", data[p][0])
+		i2, err := time.Parse("2006-01-02", data[q][0])
+		if err != nil {
+			return false
+		}
+		return i2.Before(i)
+	})
+
 	cur := data[0][len(data[0])-1]
 	cur = strings.ToUpper(cur)
 	csv := fmt.Sprintf("Date,End-of-date balance ETH,Income for date ETH,Price of ETH for date %s, Income for date %s", cur, cur)

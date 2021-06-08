@@ -1,4 +1,3 @@
-
 function createBlock(x, y) {
   use = document.createElementNS("http://www.w3.org/2000/svg","use")
   // use.setAttributeNS(null, "style", `transform: translate(calc(${x} * var(--disperse-factor)), calc(${y} * var(--disperse-factor)));`)
@@ -318,6 +317,10 @@ function switchFrom(el1, el2, el3, el4){
 var firstSwitch=true
 
 $(document).ready(function() {
+  $("#rewards-button").on("click", ()=>{
+    localStorage.setItem("load_dashboard_validators", true)
+    window.location.href = "/rewards"
+  })
   
   $('.proposal-switch').on('click', ()=>{
     if ($('.switch-chart').hasClass("proposal-switch-selected")){
@@ -430,7 +433,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data
           // return '<a href="/validator/' + data + '">' + data + '</a>'
-          return `<span class="m-0 p-1 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">
+          return `<span class="m-0 p-2 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">
                       ${data}
                   </span>
                  `
@@ -915,7 +918,7 @@ $(document).ready(function() {
           document.querySelector('#earnings-day').innerHTML = (result.lastDayFormatted || '0.000') 
           document.querySelector('#earnings-week').innerHTML = (result.lastWeekFormatted || '0.000') 
           document.querySelector('#earnings-month').innerHTML = (result.lastMonthFormatted || '0.000')
-          document.querySelector('#earnings-total').innerHTML = (result.totalChangeFormatted || '0.000') + ` | <span id="earnings-total-change">${result.totalFormatted}</span>`
+          document.querySelector('#earnings-total').innerHTML = (result.totalChangeFormatted || '0.000') + ` <span class="d-block" id="earnings-total-change">${result.totalFormatted}</span>`
           $("#earnings-total span:first").removeClass("text-success").removeClass("text-danger")
           $("#earnings-total span:first").html($("#earnings-total span:first").html().replace("+", ""))
           // addChange("#earnings-total-change", result.total)

@@ -102,7 +102,8 @@
                 }
             })
 
-            window.addEventListener('load', function () {
+            window.addEventListener('DOMContentLoaded', function () {
+                document.getElementById('initialPrice').textContent = ''
                 switch (getCookie('currency')) {
                     case 'AUD':
                         document.getElementById('currentCurrencySymbol').textContent = 'A$'
@@ -202,7 +203,8 @@
                         </div>
                         <div class="info-item-body">
                             <a id="banner-eth-price-data">
-                                <span id="currentCurrencySymbol" class="currency-symbol"></span>
+                                <span id="currentCurrencySymbol" class="currency-symbol">{{.CurrentSymbol}}</span>
+                                <span id="initialPrice">{{.CurrentPriceFormatted}}</span>
                                 <span id="currentKFormattedPrice" class="k-formatted-price"></span>
                                 <span id="currentCurencyPrice" class="price"></span>
                             </a>
