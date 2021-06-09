@@ -182,7 +182,7 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 	pdf.Ln(-1)
 	pdf.CellFormat(0, maxHt, fmt.Sprintf("Total Reward: ETH %s | %s", hist.TotalETH, hist.TotalCurrency), "1", 0, "CM", true, 0, "")
 
-	header := [colCount]string{"Date", "End-of-date balance ETH", "Income for date ETH", "Price of ETH for date", "Income for date"}
+	header := [colCount]string{"Date", "End-of-date balance ETH", "Reward for date ETH", "Price of ETH for date", "Reward for date"}
 
 	// pdf.SetMargins(marginH, marginH, marginH)
 	pdf.Ln(10)
