@@ -729,7 +729,8 @@ type DashboardData struct {
 	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
 	// Earnings       ValidatorEarnings                `json:"earnings"`
 	// Validators     [][]interface{}                  `json:"validators"`
-	Csrf string `json:"csrf"`
+	Csrf           string `json:"csrf"`
+	ValidatorLimit int    `json:"valLimit"`
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page

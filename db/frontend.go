@@ -276,10 +276,53 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 	data := []*types.PremiumData{}
 
 	err := FrontendDB.Select(&data,
-		"SELECT id, receipt, store, active from users_app_subscriptions WHERE validate_remotely = true order by id desc",
+		"SELECT id, receipt, store, active, expires_at, product_id from users_app_subscriptions WHERE validate_remotely = true order by id desc",
 	)
 
 	return data, err
+}
+
+func CleanupOldMachineStats() error {
+	deleteCondition := "created_trunc + interval '65 days' < 'now'"
+	allMeta := "( SELECT id FROM stats_meta WHERE " + deleteCondition + " )"
+	general := "( SELECT stats_process.id FROM stats_meta LEFT JOIN stats_process on stats_meta.id = meta_id WHERE " + deleteCondition + " )"
+
+	tx, err := FrontendDB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("DELETE FROM stats_system WHERE meta_id IN " + allMeta)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_add_beaconnode WHERE general_id IN " + general)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_add_validator WHERE general_id IN " + general)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_process WHERE meta_id IN " + allMeta)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_meta WHERE " + deleteCondition)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func UpdateUserSubscription(id uint64, valid bool, expiration int64, rejectReason string) error {
@@ -300,7 +343,8 @@ func GetUserPushTokenByIds(ids []uint64) (map[uint64][]string, error) {
 		ID    uint64 `db:"user_id"`
 		Token string `db:"notification_token"`
 	}
-	err := FrontendDB.Select(&rows, "SELECT DISTINCT ON (user_id) user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL ORDER BY user_id, id DESC", pq.Array(ids))
+
+	err := FrontendDB.Select(&rows, "SELECT DISTINCT ON (user_id, notification_token) user_id, notification_token FROM users_devices WHERE user_id = ANY($1) AND notify_enabled = true AND active = true AND notification_token IS NOT NULL AND LENGTH(notification_token) > 20 ORDER BY user_id, notification_token, id DESC", pq.Array(ids))
 	if err != nil {
 		return nil, err
 	}

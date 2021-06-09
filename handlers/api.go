@@ -1071,6 +1071,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 		Store:     parsedBase.Transaction.Type,
 		Active:    false,
 		ProductID: parsedBase.ProductID,
+		ExpiresAt: time.Now(),
 	}
 
 	// we can ignore this error since it always returns a result object and err
