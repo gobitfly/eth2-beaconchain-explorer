@@ -63,4 +63,7 @@
      background-color: var(--light);
  }
 
+ td.available{
+   color: black;
+ }
 
