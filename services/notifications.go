@@ -9,7 +9,9 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+
 	"net/url"
+
 	"strconv"
 	"strings"
 	"time"
@@ -256,7 +258,9 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 			sentSubsByEpoch := map[uint64][]uint64{}
 			subject := fmt.Sprintf("%s: Notification", utils.Config.Frontend.SiteDomain)
 			msg := ""
+
 			attachments := []types.EmailAttachment{}
+
 			for event, ns := range userNotifications {
 				if len(msg) > 0 {
 					msg += "\n"
@@ -270,6 +274,7 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 					} else {
 						sentSubsByEpoch[e] = append(sentSubsByEpoch[e], n.GetSubscriptionID())
 					}
+
 					if att := n.GetEmailAttachment(); att != nil {
 						attachments = append(attachments, *att)
 					}
@@ -1068,6 +1073,7 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 	firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
 	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
 
+
 	q, err := url.ParseQuery(n.EventFilter)
 
 	if err != nil {
@@ -1090,6 +1096,7 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 	} else {
 		logger.Warn("Validators Not found in rewards report eventfilter")
 		return nil
+
 	}
 
 	pdf := GetMonthlyPdf(validators, currency, uint64(firstDay.Unix()), uint64(lastDay.Unix()))
@@ -1154,12 +1161,14 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 		return err
 	}
 
+
 	for _, r := range dbResult {
 		n := &taxReportNotification{
 			SubscriptionID: r.SubscriptionID,
 			UserID:         r.UserID,
 			Epoch:          r.Epoch,
 			EventFilter:    r.EventFilter,
+
 		}
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
 			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
@@ -1167,6 +1176,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
 			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
 		}
+
 		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 	}
 	// }

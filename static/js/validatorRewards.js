@@ -166,11 +166,13 @@ function hideSpinner(){
 }
 
 
+
 function addCommas(number) {
     return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
 
 function showTable(data){
+
     
     $('#tax-table').DataTable({
         processing: true,
