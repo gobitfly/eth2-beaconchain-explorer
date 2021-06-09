@@ -739,10 +739,10 @@ end;
 $$
 language plpgsql;
 
-drop table if exists pools_rocketpool_minipools;
-create table pools_rocketpool_minipools
+drop table if exists rocketpool_minipools;
+create table rocketpool_minipools
 (
-    rocketpool_address bytea not null,
+    rocketpool_storage_address bytea not null,
 
     address bytea not null,
     exists bool not null,
@@ -763,26 +763,26 @@ create table pools_rocketpool_minipools
     staking_start_balance bigint not null,
     staking_end_balance bigint not null,
 
-    primary key(address)
+    primary key(rocketpool_storage_address, address)
 );
 
-drop table if exists pools_rocketpool_nodes;
-create table pools_rocketpool_nodes
+drop table if exists rocketpool_nodes;
+create table rocketpool_nodes
 (
-    rocketpool_address bytea not null,
+    rocketpool_storage_address bytea not null,
 
     address bytea not null,
     exists bool not null,
     trusted bool not null,
     timezone_location varchar(200) not null,
 
-    primary key(address)
+    primary key(rocketpool_storage_address, address)
 );
 
-drop table if exists pools_rocketpool_stats;
-create table pools_rocketpool_stats
+drop table if exists rocketpool_stats;
+create table rocketpool_stats
 (
-    rocketpool_address bytea not null,
+    rocketpool_storage_address bytea not null,
 
     ----------------------- network
     -- rocketNetworkBalances
@@ -816,13 +816,13 @@ create table pools_rocketpool_stats
     total_queue_capacity bigint not null,
     effective_queue_capacity bigint not null,
     next_minipool_queue_capacity bigint not null,
-    primary key(rocketpool_address, block)
+    primary key(rocketpool_storage_address, block)
 );
 
-drop table if exists pools_rocketpool_settings;
-create table pools_rocketpool_settings
+drop table if exists rocketpool_settings;
+create table rocketpool_settings
 (
-    rocketpool_address bytea not null,
+    rocketpool_storage_address bytea not null,
 
     ----------------------- settings
     -- rocketDepositSettings
@@ -856,5 +856,5 @@ create table pools_rocketpool_settings
     node_registration_enabled bool not null,
     node_deposit_enabled bool not null,
 
-    primary key(rocketpool_address, block)
+    primary key(rocketpool_storage_address, block)
 );
