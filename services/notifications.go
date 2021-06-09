@@ -9,7 +9,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"regexp"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -1067,28 +1067,29 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 	tNow := time.Now()
 	firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
 	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
-	// q, err := url.ParseQuery(n.EventFilter)
-	re := regexp.MustCompile(`currency=[A-Za-z]{3,}?`)
-	currency := fmt.Sprintf("%s", re.Find([]byte(n.EventFilter)))
-	if curSlice := strings.Split(currency, "="); len(curSlice) >= 2 {
-		currency = curSlice[1]
+
+	q, err := url.ParseQuery(n.EventFilter)
+
+	if err != nil {
+		logger.Warn("Failed to parse rewards report eventfilter")
+		return nil
 	}
 
-	re = regexp.MustCompile(`validators=.*?&`)
-	validatorsStr := fmt.Sprintf("%s", strings.Replace(string(re.Find([]byte(n.EventFilter))), "&", "", -1))
-	valSlice := strings.Split(validatorsStr, "=")
+	currency := q.Get("currency")
+
 	validators := []uint64{}
-	if len(valSlice) >= 2 {
-		valSlice = strings.Split(valSlice[1], ",")
-		if len(valSlice) > 0 {
-			for _, val := range valSlice {
-				v, err := strconv.ParseUint(val, 10, 64)
-				if err != nil {
-					continue
-				}
-				validators = append(validators, v)
+	valSlice := strings.Split(q.Get("validators"), ",")
+	if len(valSlice) > 0 {
+		for _, val := range valSlice {
+			v, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				continue
 			}
+			validators = append(validators, v)
 		}
+	} else {
+		logger.Warn("Validators Not found in rewards report eventfilter")
+		return nil
 	}
 
 	pdf := GetMonthlyPdf(validators, currency, uint64(firstDay.Unix()), uint64(lastDay.Unix()))

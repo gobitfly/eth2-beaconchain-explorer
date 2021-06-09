@@ -141,6 +141,11 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 
 	data := hist.History
 
+	if !(len(data) > 0) {
+		logger.Warn("Can't generate PDF for Empty Slice")
+		return []byte{}
+	}
+
 	sort.Slice(data, func(p, q int) bool {
 		i, err := time.Parse("2006-01-02", data[p][0])
 		i2, err := time.Parse("2006-01-02", data[q][0])
@@ -154,9 +159,9 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 	pdf.SetTopMargin(15)
 	pdf.SetHeaderFuncMode(func() {
 		pdf.SetY(5)
-		pdf.SetFont("Arial", "B", 15)
+		pdf.SetFont("Arial", "B", 12)
 		pdf.Cell(80, 0, "")
-		pdf.CellFormat(30, 10, "Beaconcha.in Monthly Reward History", "", 0, "C", false, 0, "")
+		pdf.CellFormat(30, 10, fmt.Sprintf("Beaconcha.in Reward History (%s - %s)", data[len(data)-1][0], data[0][0]), "", 0, "C", false, 0, "")
 		// pdf.Ln(-1)
 	}, true)
 
@@ -172,10 +177,15 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 		maxHt    = 5
 	)
 
+	pdf.SetTextColor(24, 24, 24)
+	pdf.SetFillColor(255, 255, 255)
+	pdf.Ln(-1)
+	pdf.CellFormat(0, maxHt, fmt.Sprintf("Total Reward: ETH %s | %s", hist.TotalETH, hist.TotalCurrency), "1", 0, "CM", true, 0, "")
+
 	header := [colCount]string{"Date", "End-of-date balance ETH", "Income for date ETH", "Price of ETH for date", "Income for date"}
 
 	// pdf.SetMargins(marginH, marginH, marginH)
-
+	pdf.Ln(10)
 	pdf.SetTextColor(224, 224, 224)
 	pdf.SetFillColor(64, 64, 64)
 	pdf.Cell(-5, 0, "")
@@ -202,9 +212,6 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 		}
 		y += maxHt
 	}
-
-	pdf.Ln(10)
-	pdf.CellFormat(0, maxHt, fmt.Sprintf("Total ETH %s | Total %s", hist.TotalETH, hist.TotalCurrency), "1", 0, "CM", true, 0, "")
 
 	// adding a footer
 	pdf.AliasNbPages("")
