@@ -1092,7 +1092,7 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 		return nil
 	}
 
-	pdf := GetMonthlyPdf(validators, currency, uint64(firstDay.Unix()), uint64(lastDay.Unix()))
+	pdf := GetPdfReport(validators, currency, uint64(firstDay.Unix()), uint64(lastDay.Unix()))
 
 	return &types.EmailAttachment{Attachment: pdf, Name: "beaconcha_in-rewards-history.pdf"}
 }
