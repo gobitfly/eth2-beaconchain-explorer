@@ -61,9 +61,9 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		taxRates = utils.StripeDynamicRatesTest
 	}
 
-	if req.Price != utils.Config.Frontend.Stripe.Sapphire || req.Price != utils.Config.Frontend.Stripe.Emerald || req.Price != utils.Config.Frontend.Stripe.Diamond {
+	if req.Price != utils.Config.Frontend.Stripe.Sapphire && req.Price != utils.Config.Frontend.Stripe.Emerald && req.Price != utils.Config.Frontend.Stripe.Diamond {
 		http.Error(w, "Error invalid price item provided. Must be the price ID of Sapphire, Emerald or Diamond", http.StatusBadRequest)
-		logger.Errorf("error invalid stripe price id provided")
+		logger.Errorf("error invalid stripe price id provided: %v, expected one of [%v, %v, %v]", req.Price, utils.Config.Frontend.Stripe.Sapphire, utils.Config.Frontend.Stripe.Emerald, utils.Config.Frontend.Stripe.Diamond)
 		return
 	}
 
@@ -92,15 +92,15 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		TaxIDCollection: &stripe.CheckoutSessionTaxIDCollectionParams{
 			Enabled: &taxIDCollection,
 		},
-		CustomerUpdate: &stripe.CheckoutSessionCustomerUpdateParams{
-			Name:    &auto,
-			Address: &auto,
-		},
 	}
 
 	if subscription.CustomerID != nil {
 		params.CustomerEmail = nil
 		params.Customer = subscription.CustomerID
+		params.CustomerUpdate = &stripe.CheckoutSessionCustomerUpdateParams{
+			Name:    &auto,
+			Address: &auto,
+		}
 	}
 
 	s, err := session.New(params)
