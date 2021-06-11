@@ -37,15 +37,16 @@
                 </ol>
             </nav>
         </div>
+        <h5 class="mb-4">With this service you can get the reward history of your validators for a given period</h5>
     </div>
 
     <div class="d-flex justify-content-center align-items-center my-3" style="width: 100%;">
         <div id="totals-div" class="card d-none" style="border-radius: 20px; border-style: none;">
             <div class="card-body">
-                <span>Total</span>       
-                <span id="total-income-eth-span"></span>
+                <span>Total Reward: </span>       
+                <span id="total-income-eth-span" class="ml-1"></span>
                 <span class="mx-2">|</span>
-                <span>Total</span> 
+                <!-- <span>Total</span>  -->
                 <span id="total-income-currency-span"></span>
             </div>
         </div>
@@ -62,9 +63,10 @@
                             <tr>
                                 <th>Date</th>
                                 <th>End-of-date balance ETH</th>
-                                <th>Income for date ETH</th>
+                                <th>Reward for date ETH</th>
                                 <th>Price of ETH for date</th>
-                                <th>Income for date</th>
+                                <th>Reward for date</th>
+
                                 <!-- <th>Currency</th> -->
                             </tr>
                         </thead>
@@ -98,9 +100,10 @@
                         </div>
                     </div>
 
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="checkbox" name="checkbox" {{if not .User.Authenticated}}disabled{{end}}>
-                        <label class="form-check-label" for="checkbox">Subscribe to receive monthly reports {{if not .User.Authenticated}}(<a style="color: red;" href="/login">Please sign in to use this feature</a>){{end}}</label>
+                    <div class="">
+                        <!-- <input type="checkbox" class="form-check-input" id="checkbox" name="checkbox" {{if not .User.Authenticated}}disabled{{end}}> -->
+                        <button class="btn btn-sm btn-primary" id="report-sub-btn" type="button" {{if not .User.Authenticated}}disabled="true"{{end}}><i class="fas fa-envelope p-1"></i>Subscribe</button>
+                        <label class="" for=""> to receive monthly reports {{if not .User.Authenticated}}(<a style="color: red;" href="/login">Please sign in to use this feature</a>){{end}}</label>
                     </div>
                     <div class="d-flex justify-content-end align-items-stretch" style="width: 100%;">
                         <button type="submit" class="btn btn-primary mt-1">Submit</button>

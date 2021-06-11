@@ -165,28 +165,14 @@ function hideSpinner(){
     $("#loading-div").removeClass("d-flex")
 }
 
-// function updateTotals(data){
-//     totalEth = 0.0
-//     totalCurrency = 0.0
 
-//     for(let item of data){
-//         totalEth+=parseFloat(item[2])
-//         totalCurrency+=parseFloat(item[4])
-//     }
-
-//     $("#total-income-eth-span").html(`ETH: <b>${(totalEth.toFixed(DECIMAL_POINTS_ETH))}</b>`)
-//     $("#total-income-currency-span").html(`${currency}: <b>${addCommas(totalCurrency.toFixed(DECIMAL_POINTS_CURRENCY))}</b>`)
-//     $("#totals-div").removeClass("d-none")
-// }
 
 function addCommas(number) {
     return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
 
 function showTable(data){
-    // if (data.length > 0 && data[0].length === 6){
-    //     currency = data[0][5].toUpperCase()
-    // }
+
     
     $('#tax-table').DataTable({
         processing: true,
@@ -327,7 +313,15 @@ function updateSubscriptionTable(data, container){
                 data: '2',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `<textarea readonly style="height: 50px; width: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark">${data}</textarea>`
+                    if (type==="display"){
+                        l = data.split(",")
+                        l.sort((a,b)=>parseInt(a)-parseInt(b))
+                        data = ""
+                        for (i of l){
+                            data += `<li style="flex: 1 0 8%; list-style-type : none;" class="p-1"><a href="/validator/${i}"><i class="fas fa-male mr-1"></i>${i}</a></li>`
+                        }
+                    }
+                    return `<ul style="display: flex; flex-wrap: wrap; height: 50px; width: 98%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark pl-0 ml-0">${data}</ul>`
                 }
             }, {
                 targets: 3,
@@ -360,6 +354,8 @@ $(document).ready(function () {
         $(this).val($(this).val().replace(/([a-zA-Z ])/g, ""))
     })
 
+    $("#days").val(`${moment().startOf('month').unix()}-${moment().unix()}`)
+
     $('input[id="datepicker"]').daterangepicker({
         pens: 'left',
         minDate: moment.unix(MIN_TIMESTAMP), 
@@ -376,7 +372,9 @@ $(document).ready(function () {
             format: 'DD/MM/YYYY'
         },
         singleDatePicker: false,
-        alwaysShowCalendars: false
+        alwaysShowCalendars: false,
+        startDate: moment().startOf('month'), 
+        endDate: moment()
     }, function(start, end, label) {
         // let end_d = moment()
         $("#days").val(`${moment(start).unix()}-${moment(end).unix()}`)
@@ -385,6 +383,38 @@ $(document).ready(function () {
     create_typeahead('.typeahead-validators');
     let qry = getValidatorQueryString()
     // console.log(qry, qry.length)
+
+    $("#report-sub-btn").on("click", function(){
+        if ($("#validator-index-view").val().length === 0) {
+            console.log("No Validators")
+            return
+        }
+        let btn_content = $(this).html()
+        $(this).html(`<div class="spinner-border text-dark spinner-border-sm" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>`)
+        
+        fetch(`/user/rewards/subscribe?validators=${$("#validator-index-view").val()}&currency=${$("#currency").val()}`, {
+            method: 'POST',
+            headers: {"X-CSRF-Token": csrfToken},
+            credentials: 'include',
+            body: "",
+        }).then((res)=>{
+            if (res.status == 200){
+                res.json().then((data)=>{
+                    // console.log(data.msg)
+                    location.reload();
+                })              
+            }else{
+                console.error("error subscribing", res)
+                $(this).html(btn_content)
+            }
+        }).catch((err)=>{
+            console.error("error subscribing", err)
+            $(this).html(btn_content)
+        })
+    })
+
     if (qry.length > 1){
         fetch(`/rewards/hist${qry}`,{
             method: "GET"
@@ -400,26 +430,6 @@ $(document).ready(function () {
             alert("Failed to fetch the data :(")
             hideSpinner()      
           })
-
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const reqBody = JSON.stringify({validators: urlParams.get('validators'), currency: urlParams.get('currency')})
-        // console.log(reqBody)
-        if (urlParams.get('checkbox')==="on"){
-            fetch(`/user/rewards/subscribe${qry}`, {
-                method: 'POST',
-                headers: {"X-CSRF-Token": csrfToken},
-                credentials: 'include',
-                body: reqBody,
-            }).then((res)=>{
-                if (res.status == 200){
-                    res.json().then((data)=>{
-                        console.log(data.msg)
-                    })              
-                }
-            })
-        }
-
 
     }else{
         hideSpinner()
