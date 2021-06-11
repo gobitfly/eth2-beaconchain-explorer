@@ -198,16 +198,20 @@ function showTable(data){
             $("#total-income-currency-span").html(data.total_currency)
             $("#totals-div").removeClass("d-none")
             $(".dt-button").addClass("ml-2 ")
+            // $("div.tax-table_filter label input").attr("placeholder", "Date")
             // $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
         },
         order: [[0,'desc']],
+        language: {
+            searchPlaceholder: "Enter Date"
+        },
         columnDefs: [
             {
                 targets: 0,
                 data: '0',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    if (type==="display") return data
+                    if (type==="filter" || type==="display") return data
                     return moment(data).unix()
                 }
             }, {
@@ -287,17 +291,23 @@ function updateSubscriptionTable(data, container){
             $("#subscriptions-table-art").removeClass("d-flex").addClass("d-none")
             $("#subscriptions-table-div").removeClass("invisible")
         },
+        language: {
+            searchPlaceholder: "Enter Date, Currency"
+        },
         columnDefs: [
             {
                 targets: 0,
                 data: '0',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    let date = data.split(" ")
-                    if (date.length >=2){
-                        return `${date[0]} ${date[1]}`
-                    }
-                    return data
+                    if (type==="filter" || type==="display"){
+                        let date = data.split(" ")
+                        if (date.length >=1){
+                            return `${date[0]}`
+                        }
+                        return data
+                    } 
+                    return moment(data).unix()
                 }
             }, {
                 targets: 1,
@@ -327,7 +337,7 @@ function updateSubscriptionTable(data, container){
                 "orderable": false,
                 render: function (data, type, row, meta) {
                     return `
-                        <div class="d-flex justify-content-center align-item-center">
+                        <div class="d-flex justify-content-start align-item-center">
                             <i class="fas fa-times text-danger" onClick='unSubUser("${data}")' style="cursor: pointer;"></i>
                         </div>
                         `
@@ -383,9 +393,13 @@ $(document).ready(function () {
     // console.log(qry, qry.length)
 
     $("#report-sub-btn").on("click", function(){
-        if ($("#validator-index-view").val().length === 0) {
-            console.log("No Validators")
-            return
+        // if ($("#validator-index-view").val().length === 0) {
+        //     console.log("No Validators")
+        //     return
+        // }
+        var form = document.getElementById('hits-form')
+        if(!form.reportValidity()) {
+                return
         }
         let btn_content = $(this).html()
         $(this).html(`<div class="spinner-border text-dark spinner-border-sm" role="status">
