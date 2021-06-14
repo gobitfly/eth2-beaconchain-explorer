@@ -34,13 +34,6 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 		logger.Errorf("error getting prices: %w", err)
 	}
 
-	var maxDay uint64
-	err = db.DB.Get(&maxDay,
-		`select MAX(day) from validator_stats`)
-	if err != nil {
-		logger.Errorf("error getting max day: %w", err)
-	}
-
 	lowerBound := utils.TimeToDay(start)
 	upperBound := utils.TimeToDay(end)
 
@@ -48,7 +41,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	err = db.DB.Select(&income,
 		`select day, start_balance, end_balance
 		 from validator_stats 
-		 where validatorindex=ANY($1) AND day > $2 AND day < $3
+		 where validatorindex=ANY($1) AND day > $2 AND day <= $3
 		 order by day desc`, validatorFilter, lowerBound, upperBound)
 	if err != nil {
 		logger.Errorf("error getting incomes: %w", err)
