@@ -1264,6 +1264,7 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 		sessionUser := getUser(w, r)
 		if !sessionUser.Authenticated {
 			sendErrorResponse(j, r.URL.String(), "not authenticated")
+			return
 		}
 		userID = sessionUser.UserID
 	} else {
@@ -1271,9 +1272,9 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 		userID = claims.UserID
 	}
 
-	rows, err2 := db.MobileDeviceSettingsUpdate(userID, userDeviceID, notifyEnabled, active)
-	if err2 != nil {
-		logger.Errorf("could not retrieve db results err: %v", err2)
+	rows, err := db.MobileDeviceSettingsUpdate(userID, userDeviceID, notifyEnabled, active)
+	if err != nil {
+		logger.Errorf("could not retrieve db results err: %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -1281,6 +1282,54 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	returnQueryResults(rows, j, r)
+}
+
+// MobileDeviceDeletePOST godoc
+// @Summary Delete a paired user device
+// @Tags User
+// @Produce json
+// @Success 200 {object} types.ApiResponse
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/mobile/delete [post]
+func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	claims := getAuthClaims(r)
+	var userDeviceID uint64
+	var userID uint64
+
+	if claims == nil {
+		customDeviceID := FormValueOrJSON(r, "id")
+		temp, err := strconv.ParseUint(customDeviceID, 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing id %v | err: %v", customDeviceID, err)
+			sendErrorResponse(j, r.URL.String(), "could not parse id")
+			return
+		}
+		userDeviceID = temp
+		sessionUser := getUser(w, r)
+		if !sessionUser.Authenticated {
+			sendErrorResponse(j, r.URL.String(), "not authenticated")
+			return
+		}
+		userID = sessionUser.UserID
+	} else {
+		sendErrorResponse(j, r.URL.String(), "you can not delete the device you are currently signed in with")
+		return
+	}
+
+	err := db.MobileDeviceDelete(userID, userDeviceID)
+	if err != nil {
+		logger.Errorf("could not retrieve db results err: %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	sendOKResponse(j, r.URL.String(), nil)
 }
 
 // MobileTagedValidators godoc
