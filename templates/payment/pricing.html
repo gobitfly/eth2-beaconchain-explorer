@@ -136,6 +136,9 @@
 
 {{ define "css" }}
     <style>
+        .box-shadow {
+            border: 1px solid var(--shadow-light);
+        }
         .hot-box {
             border: 1px solid #ee7112;
         }
@@ -193,7 +196,7 @@
 
         <div class="container mt-2 container-pricing">
             <section class="my-5">
-                <div class="card-deck mb-3 justify-content-center text-center">
+                <div class="card-deck mb-3 justify-content-center text-center position-relative">
                     <div style="margin: 0" class="row justify-content-center">
                         <div class="card mx-2 mb-4 box-shadow">
                             <div class="card-header">
@@ -216,8 +219,7 @@
                                             class="badge badge-hot">Popular</span></h4>
                             </div>
                             <div class="card-body">
-                                <h1 class="card-title pricing-card-title">59€ <small class="text-muted">/ mo</small>
-                                </h1>
+                                <h1 class="card-title pricing-card-title">59€* <small class="text-muted">/ mo</small></h1>
                                 <ul class="list-unstyled mt-3 mb-4">
                                     <li>Rate limit per minute:<br/> 100</li>
                                     <li>Requests per day:<br/> 100,000</li>
@@ -247,13 +249,13 @@
                             </div>
                         </div>
                     </div>
-                    <div style="margin: 0" class="row justify-content-center">
-                        <div class="card mx-2 mb-4 box-shadow">
+                    <div style="margin: 0" class="row justify-content-center position-relative">
+                        <div class="card mx-2 mb-4 box-shadow ">
                             <div class="card-header">
                                 <h4 class="my-0 font-weight-normal">Emerald</h4>
                             </div>
                             <div class="card-body">
-                                <h1 class="card-title pricing-card-title">99€ <small class="text-muted">/ mo</small>
+                                <h1 class="card-title pricing-card-title">99€* <small class="text-muted">/ mo</small>
                                 </h1>
                                 <ul class="list-unstyled mt-3 mb-4">
                                     <li>Rate limit per minute:<br/> <strong>Unlimited</strong></li>
@@ -287,7 +289,7 @@
                                 <h4 class="my-0 font-weight-normal">Diamond</h4>
                             </div>
                             <div class="card-body">
-                                <h1 class="card-title pricing-card-title">399€ <small class="text-muted">/ mo</small>
+                                <h1 class="card-title pricing-card-title">399€* <small class="text-muted">/ mo</small>
                                 </h1>
                                 <ul class="list-unstyled mt-3 mb-4">
                                     <li>Rate limit per minute:<br/> <strong>Unlimited</strong></li>
@@ -316,7 +318,12 @@
                                 {{end}}
                             </div>
                         </div>
+                        <div class="position-absolute" style="right: 1rem; bottom: -1rem;">
+                            <span class="text-muted">* All prices are excluding VAT</span>
+                        </div>
                     </div>
+                </div>
+                
             </section>
             <section class="my-5">
                 <div class="row">
