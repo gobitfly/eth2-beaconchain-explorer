@@ -20,7 +20,9 @@ type rewardHistory struct {
 	History       [][]string `json:"history"`
 	TotalETH      string     `json:"total_eth"`
 	TotalCurrency string     `json:"total_currency"`
+
 	Validators    []uint64   `json:"validators"`
+
 }
 
 func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end uint64) rewardHistory {
@@ -119,7 +121,9 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 		History:       data,
 		TotalETH:      addCommas(tETH, "%.5f"),
 		TotalCurrency: fmt.Sprintf("%s %s", strings.ToUpper(currency), addCommas(tCur, "%.2f")),
+
 		Validators:    validatorArr,
+
 	}
 }
 
@@ -143,10 +147,12 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 
 	data := hist.History
 
+
 	if !(len(data) > 0) {
 		logger.Warn("Can't generate PDF for Empty Slice")
 		return []byte{}
 	}
+
 
 	sort.Slice(data, func(p, q int) bool {
 		i, err := time.Parse("2006-01-02", data[p][0])
@@ -157,15 +163,19 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 		return i2.Before(i)
 	})
 
+
 	validators := hist.Validators
+
 
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.SetTopMargin(15)
 	pdf.SetHeaderFuncMode(func() {
 		pdf.SetY(5)
+
 		pdf.SetFont("Arial", "B", 12)
 		pdf.Cell(80, 0, "")
 		pdf.CellFormat(30, 10, fmt.Sprintf("Beaconcha.in Income History (%s - %s)", data[len(data)-1][0], data[0][0]), "", 0, "C", false, 0, "")
+
 		// pdf.Ln(-1)
 	}, true)
 
@@ -181,6 +191,7 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 		maxHt    = 5
 	)
 
+
 	pdf.SetTextColor(24, 24, 24)
 	pdf.SetFillColor(255, 255, 255)
 	// pdf.Ln(-1)
@@ -190,6 +201,7 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 
 	// pdf.SetMargins(marginH, marginH, marginH)
 	pdf.Ln(10)
+
 	pdf.SetTextColor(224, 224, 224)
 	pdf.SetFillColor(64, 64, 64)
 	pdf.Cell(-5, 0, "")
@@ -203,6 +215,7 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 	// Rows
 	y := pdf.GetY()
 
+
 	for i, row := range data {
 		pdf.SetTextColor(24, 24, 24)
 		pdf.SetFillColor(255, 255, 255)
@@ -215,16 +228,20 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 			if i%2 != 0 {
 				pdf.SetFillColor(191, 191, 191)
 			}
+
 			pdf.Rect(x, y, colWd, maxHt, "D")
 			cellY := y
 			pdf.SetXY(x, cellY)
 			pdf.CellFormat(colWd, maxHt, row[col], "", 0,
+
 				"LM", true, 0, "")
+
 			cellY += lineHt
 			x += colWd
 		}
 		y += maxHt
 	}
+
 
 	// adding a footer
 	pdf.AliasNbPages("")
@@ -285,6 +302,7 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 		y += maxHt
 	}
 
+
 	// adding a footer
 	pdf.AliasNbPages("")
 	pdf.SetFooterFunc(func() {
@@ -300,6 +318,7 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 	return buf.Bytes()
 
 }
+
 
 func GetPdfReport(validatorArr []uint64, currency string, start uint64, end uint64) []byte {
 	hist := GetValidatorHist(validatorArr, currency, start, end)
@@ -338,3 +357,4 @@ func getValidatorDetails(validators []uint64) [][]string {
 
 	return result
 }
+

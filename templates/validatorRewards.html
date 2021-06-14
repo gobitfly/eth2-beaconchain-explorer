@@ -37,13 +37,17 @@
                 </ol>
             </nav>
         </div>
+
         <p class="mb-4">With this service you can get the Income history of your validators for a given period and subscribe for a monthly report</p>
+
     </div>
 
     <div class="d-flex justify-content-center align-items-center my-3" style="width: 100%;">
         <div id="totals-div" class="card d-none" style="border-radius: 20px; border-style: none;">
             <div class="card-body">
+
                 <span>Total Income </span>       
+
                 <span id="total-income-eth-span" class="ml-1"></span>
                 <span class="mx-2">|</span>
                 <!-- <span>Total</span>  -->
@@ -63,9 +67,11 @@
                             <tr>
                                 <th>Date</th>
                                 <th>End-of-date balance ETH</th>
-                                <th>Income for date ETH</th>
+                                <th>Reward for date ETH</th>
                                 <th>Price of ETH for date</th>
+
                                 <th>Income for date</th>
+
                                 <!-- <th>Currency</th> -->
                             </tr>
                         </thead>
@@ -102,7 +108,9 @@
                     <div class="">
                         <!-- <input type="checkbox" class="form-check-input" id="checkbox" name="checkbox" {{if not .User.Authenticated}}disabled{{end}}> -->
                         <button class="btn btn-sm btn-primary" id="report-sub-btn" type="button" {{if not .User.Authenticated}}disabled="true"{{end}}><i class="fas fa-envelope p-1"></i>Subscribe</button>
+
                         <label class="" for=""> to receive a monthly report {{if not .User.Authenticated}}(<a style="color: red;" href="/login">Please sign in to use this feature</a>){{end}}</label>
+
                     </div>
                     <div class="d-flex justify-content-end align-items-stretch" style="width: 100%;">
                         <button type="submit" class="btn btn-primary mt-1">Submit</button>

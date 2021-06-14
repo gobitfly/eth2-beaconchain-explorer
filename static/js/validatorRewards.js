@@ -166,11 +166,13 @@ function hideSpinner(){
 }
 
 
+
 function addCommas(number) {
     return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
 
 function showTable(data){
+
     
     $('#tax-table').DataTable({
         processing: true,
@@ -393,6 +395,7 @@ $(document).ready(function () {
     // console.log(qry, qry.length)
 
     $("#report-sub-btn").on("click", function(){
+
         // if ($("#validator-index-view").val().length === 0) {
         //     console.log("No Validators")
         //     return
@@ -400,6 +403,7 @@ $(document).ready(function () {
         var form = document.getElementById('hits-form')
         if(!form.reportValidity()) {
                 return
+
         }
         let btn_content = $(this).html()
         $(this).html(`<div class="spinner-border text-dark spinner-border-sm" role="status">

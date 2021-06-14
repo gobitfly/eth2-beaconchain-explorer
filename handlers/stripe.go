@@ -54,16 +54,26 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rq := "required"
+
+	// taxRates := utils.StripeDynamicRatesLive
+	// if strings.HasPrefix(utils.Config.Frontend.Stripe.SecretKey, "sk_test") {
+	// 	taxRates = utils.StripeDynamicRatesTest
+	// }
+
+	if req.Price != utils.Config.Frontend.Stripe.Sapphire && req.Price != utils.Config.Frontend.Stripe.Emerald && req.Price != utils.Config.Frontend.Stripe.Diamond {
+		http.Error(w, "Error invalid price item provided. Must be the price ID of Sapphire, Emerald or Diamond", http.StatusBadRequest)
+		logger.Errorf("error invalid stripe price id provided: %v, expected one of [%v, %v, %v]", req.Price, utils.Config.Frontend.Stripe.Sapphire, utils.Config.Frontend.Stripe.Emerald, utils.Config.Frontend.Stripe.Diamond)
+		return
+	}
+
+	taxIDCollection := true
+	auto := "auto"
+
 	params := &stripe.CheckoutSessionParams{
 		SuccessURL: stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings"),
 		CancelURL:  stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/pricing"),
 		// if the customer exists use the existing customer
-		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
-			// DefaultTaxRates: stripe.StringSlice([]string{
-			// "txr_1HqcFcBiORp9oTlKnyNWVp4r",
-			// "txr_1HqdWaBiORp9oTlKkij8L6dU",
-			// }),
-		},
+		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{},
 
 		BillingAddressCollection: &rq,
 		CustomerEmail:            &subscription.Email,
@@ -73,16 +83,23 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			&stripe.CheckoutSessionLineItemParams{
-				Price:           stripe.String(req.Price),
-				Quantity:        stripe.Int64(1),
-				DynamicTaxRates: utils.StripeDynamicRatesLive,
+				Price:    stripe.String(req.Price),
+				Quantity: stripe.Int64(1),
+				// DynamicTaxRates: taxRates,
 			},
+		},
+		TaxIDCollection: &stripe.CheckoutSessionTaxIDCollectionParams{
+			Enabled: &taxIDCollection,
 		},
 	}
 
 	if subscription.CustomerID != nil {
 		params.CustomerEmail = nil
 		params.Customer = subscription.CustomerID
+		params.CustomerUpdate = &stripe.CheckoutSessionCustomerUpdateParams{
+			Name:    &auto,
+			Address: &auto,
+		}
 	}
 
 	s, err := session.New(params)
@@ -393,7 +410,9 @@ func emailCustomerAboutFailedPayment(email string) {
 	msg := fmt.Sprintf("Payment processing failed. Could not provision your API key. Please contact support at support@beaconcha.in. Manage Subscription: https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
+
 	err := mail.SendMail(email, "Failed Payment", msg, []types.EmailAttachment{})
+
 	if err != nil {
 		logger.Errorf("error sending failed payment mail: %v", err)
 		return
@@ -410,6 +429,7 @@ func emailCustomerAboutPlanChange(email, plan string) {
 	msg := fmt.Sprintf("You have successfully changed your payment plan to " + p + " to manage your subscription go to https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
+
 	err := mail.SendMail(email, "Payment Plan Change", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending order fulfillment email: %v", err)
