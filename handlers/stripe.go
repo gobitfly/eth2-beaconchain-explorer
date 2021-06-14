@@ -13,7 +13,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/stripe/stripe-go/v72"
 	portalsession "github.com/stripe/stripe-go/v72/billingportal/session"
@@ -56,10 +55,10 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 	rq := "required"
 
-	taxRates := utils.StripeDynamicRatesLive
-	if strings.HasPrefix(utils.Config.Frontend.Stripe.SecretKey, "sk_test") {
-		taxRates = utils.StripeDynamicRatesTest
-	}
+	// taxRates := utils.StripeDynamicRatesLive
+	// if strings.HasPrefix(utils.Config.Frontend.Stripe.SecretKey, "sk_test") {
+	// 	taxRates = utils.StripeDynamicRatesTest
+	// }
 
 	if req.Price != utils.Config.Frontend.Stripe.Sapphire && req.Price != utils.Config.Frontend.Stripe.Emerald && req.Price != utils.Config.Frontend.Stripe.Diamond {
 		http.Error(w, "Error invalid price item provided. Must be the price ID of Sapphire, Emerald or Diamond", http.StatusBadRequest)
@@ -84,9 +83,9 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			&stripe.CheckoutSessionLineItemParams{
-				Price:           stripe.String(req.Price),
-				Quantity:        stripe.Int64(1),
-				DynamicTaxRates: taxRates,
+				Price:    stripe.String(req.Price),
+				Quantity: stripe.Int64(1),
+				// DynamicTaxRates: taxRates,
 			},
 		},
 		TaxIDCollection: &stripe.CheckoutSessionTaxIDCollectionParams{
