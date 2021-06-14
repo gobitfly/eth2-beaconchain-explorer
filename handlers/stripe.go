@@ -66,7 +66,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taxIDCollection := true
+	enabled := true
 	auto := "auto"
 
 	params := &stripe.CheckoutSessionParams{
@@ -88,11 +88,13 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 				// DynamicTaxRates: taxRates,
 			},
 		},
+		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{
+			Enabled: &enabled,
+		},
 		TaxIDCollection: &stripe.CheckoutSessionTaxIDCollectionParams{
-			Enabled: &taxIDCollection,
+			Enabled: &enabled,
 		},
 	}
-
 	if subscription.CustomerID != nil {
 		params.CustomerEmail = nil
 		params.Customer = subscription.CustomerID
