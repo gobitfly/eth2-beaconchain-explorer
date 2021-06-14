@@ -159,8 +159,6 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 
 	validators := hist.Validators
 
-	sort.Slice(validators, func(i, j int) bool { return validators[i] < validators[j] })
-
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.SetTopMargin(15)
 	pdf.SetHeaderFuncMode(func() {
@@ -209,7 +207,10 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 		pdf.SetTextColor(24, 24, 24)
 		pdf.SetFillColor(255, 255, 255)
 		x := marginH
-
+		if i%47 == 0 && i != 0 {
+			pdf.AddPage()
+			y = pdf.GetY()
+		}
 		for col := 0; col < colCount; col++ {
 			if i%2 != 0 {
 				pdf.SetFillColor(191, 191, 191)
@@ -237,25 +238,51 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 	pdf.AddPage()
 	pdf.SetTextColor(24, 24, 24)
 	pdf.SetFillColor(255, 255, 255)
-	pdf.Ln(10)
+	// pdf.Ln(10)
 	pdf.SetFont("Arial", "B", 12)
 	pdf.CellFormat(0, maxHt, "Validators", "", 0, "CM", true, 0, "")
 	pdf.Ln(10)
 	pdf.SetFont("Times", "", 9)
+
+	header = [colCount]string{"Index", "Balance Activation ETH", "Balance ETH", "Income ETH", "Last Attestation"}
+
+	// pdf.SetMargins(marginH, marginH, marginH)
+	// pdf.Ln(10)
+	pdf.SetTextColor(224, 224, 224)
+	pdf.SetFillColor(64, 64, 64)
+	pdf.Cell(-5, 0, "")
+	for col := 0; col < colCount; col++ {
+		pdf.CellFormat(colWd, maxHt, header[col], "1", 0, "CM", true, 0, "")
+	}
+	pdf.Ln(-1)
+	pdf.SetTextColor(24, 24, 24)
+	pdf.SetFillColor(255, 255, 255)
+
 	y = pdf.GetY()
 
-	x := 7.5
-	const valCellSize = 13
-	for i, val := range validators {
-		if i%15 == 0 && i != 0 {
-			y += maxHt
-			x = 7.5
+	for i, row := range getValidatorDetails(validators) {
+		pdf.SetTextColor(24, 24, 24)
+		pdf.SetFillColor(255, 255, 255)
+		x := marginH
+
+		if i%47 == 0 && i != 0 {
+			pdf.AddPage()
+			y = pdf.GetY()
 		}
-		pdf.Rect(x, y, valCellSize, maxHt, "D")
-		pdf.SetXY(x, y)
-		pdf.CellFormat(valCellSize, maxHt, fmt.Sprintf("%d", val), "", 0,
-			"CM", false, 0, "")
-		x += valCellSize
+
+		for col := 0; col < colCount; col++ {
+			if i%2 != 0 {
+				pdf.SetFillColor(191, 191, 191)
+			}
+			pdf.Rect(x, y, colWd, maxHt, "D")
+			cellY := y
+			pdf.SetXY(x, cellY)
+			pdf.CellFormat(colWd, maxHt, row[col], "", 0,
+				"LM", true, 0, "")
+			cellY += lineHt
+			x += colWd
+		}
+		y += maxHt
 	}
 
 	// adding a footer
@@ -277,4 +304,37 @@ func GeneratePdfReport(hist rewardHistory) []byte {
 func GetPdfReport(validatorArr []uint64, currency string, start uint64, end uint64) []byte {
 	hist := GetValidatorHist(validatorArr, currency, start, end)
 	return GeneratePdfReport(hist)
+}
+
+func getValidatorDetails(validators []uint64) [][]string {
+	validatorFilter := pq.Array(validators)
+	var data []types.ValidatorPageData
+	err := db.DB.Select(&data,
+		`select validatorindex, balanceactivation, balance, lastattestationslot
+		 from validators 
+		 where validatorindex=ANY($1)
+		 order by validatorindex asc`, validatorFilter)
+	if err != nil {
+		logger.Errorf("error getting validators Data: %w", err)
+		return [][]string{}
+	}
+
+	result := [][]string{}
+	for _, item := range data {
+		// row := []string{}
+		la_date := "N/a"
+		if item.LastAttestationSlot != nil {
+			la_time := utils.SlotToTime(*item.LastAttestationSlot)
+			la_date = la_time.Format(time.RFC822)
+		}
+		result = append(result, []string{
+			fmt.Sprintf("%d", item.ValidatorIndex),
+			addCommas(float64(item.BalanceActivation)/float64(1e9), "%.5f"),
+			addCommas(float64(item.CurrentBalance)/float64(1e9), "%.5f"),
+			addCommas(float64(item.CurrentBalance)/float64(1e9)-float64(item.BalanceActivation)/float64(1e9), "%.5f"),
+			la_date,
+		})
+	}
+
+	return result
 }
