@@ -1264,6 +1264,7 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 		sessionUser := getUser(w, r)
 		if !sessionUser.Authenticated {
 			sendErrorResponse(j, r.URL.String(), "not authenticated")
+			return
 		}
 		userID = sessionUser.UserID
 	} else {
@@ -1271,9 +1272,9 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 		userID = claims.UserID
 	}
 
-	rows, err2 := db.MobileDeviceSettingsUpdate(userID, userDeviceID, notifyEnabled, active)
-	if err2 != nil {
-		logger.Errorf("could not retrieve db results err: %v", err2)
+	rows, err := db.MobileDeviceSettingsUpdate(userID, userDeviceID, notifyEnabled, active)
+	if err != nil {
+		logger.Errorf("could not retrieve db results err: %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
 	}

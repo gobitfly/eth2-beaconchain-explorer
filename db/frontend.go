@@ -387,6 +387,11 @@ func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled, active s
 	return rows, err
 }
 
+func MobileDeviceDelete(userID, deviceID uint64) error {
+	_, err := FrontendDB.Exec("DELETE FROM users_devices WHERE user_id = $1 AND id = $2;", userID, deviceID)
+	return err
+}
+
 func addParamToQuery(query, param string) string {
 	var result = query
 	if result != "" {

@@ -114,8 +114,6 @@
                 
                 let postData = new FormData();
                 postData.append("shareStats", value);
-                
-                console.log("postData", postData, value)
 
                 // subscribe
                 fetch('/user/settings/flags', {
@@ -194,6 +192,37 @@
                 })
             }, 300)
         }
+    }
+    var CURRENT_DELETE_DEVICE_ID = -1
+
+    function deleteDevicePairConfirm() {
+        var id = CURRENT_DELETE_DEVICE_ID
+        if(id == -1) return;
+
+        let csrfToken = document.getElementsByName("CsrfField")[0].value
+
+        let postData = new FormData();
+        postData.append("id", id);
+
+        // subscribe
+        fetch('/user/mobile/delete', {
+            method: 'POST',
+            headers: { "X-CSRF-Token": csrfToken },
+            credentials: 'include',
+            body: postData
+        }).then(function (response) {
+            if (response.status === 200) {
+                // $('#subscriptions').DataTable().ajax.reload()
+
+                document.getElementById("device_container_" + id).style = "display:none;"
+                CURRENT_DELETE_DEVICE_ID = -1;
+            } else {
+                console.log('unexpected status', response.status)
+            }
+            
+        }).catch(function (err) {
+            console.log(err)
+        })
     }
 </script>
 {{end}}
@@ -465,8 +494,28 @@
                         <div class="card-body">
                             <div>
                                 {{ range $key, $value := .PairedDevices }}
-                                <h5>Device: {{ $value.DeviceName }}</h5>
-                                <h6>Linked App: {{ $value.AppName }}</h6>
+                                <div id="device_container_{{ $value.ID }}">
+                                <div style="display: flex;justify-content: space-between;">
+                                    <div >
+                                        <h5>Device: {{ $value.DeviceName }}</h5>
+                                        <h6>Linked App: {{ $value.AppName }}</h6>
+                                    </div>
+                                    <div >
+                                        <a style="color: #fff" id="active_{{ $value.ID }}" data-deviceid="{{ $value.ID }}"
+                                            class="btn btn-danger ml-2 btn-icon-inside btn-sm text-white device-delete-btn"
+                                            data-toggle="modal"
+                                            data-target="#deleteDevicePair">
+                                            <span class="fas fa-trash icon-inside"></span>
+                                        </a>
+                                    </div>
+                                    <script src="/js/jquery.min.js"></script>
+                                    <script>
+                                        $(document).on("click", ".device-delete-btn", function () {
+                                            var deviceId = $(this).data('deviceid');
+                                            CURRENT_DELETE_DEVICE_ID = deviceId;
+                                        });
+                                    </script>
+                                </div>
                                 <br />
                                 <span style="margin-left:4%;">
                                     <input id="notify_enabled_{{ $value.ID }}" data-event="notify_enabled"
@@ -491,8 +540,10 @@
                                 {{ if lt $key $lastPairedElement }}
                                 <hr style="width: 98%; margin-top:28px;margin-bottom:28px;" />
                                 {{ end }}
+                                </div>
                                 {{ end }}
                             </div>
+                           
                         </div>
                     </div>
                     {{end}}
@@ -586,7 +637,7 @@
     </div>
 
 
-    <!-- Modal -->
+    <!-- Modals -->
     <div class="modal fade" id="deleteAccountModal" data-backdrop="static" data-keyboard="false" tabindex="-1"
         role="dialog" aria-labelledby="deleteAccountLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -615,6 +666,31 @@
                         document.getElementById('delete-form').submit()
                     })
                 </script>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteDevicePair" data-backdrop="static" data-keyboard="false" tabindex="-1"
+        role="dialog" aria-labelledby="deleteAccountLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteAccountLabel">Remove Device</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <i class="text-warning fas fa-exclamation-triangle"></i> Do you want to remove this device from your account?
+                </div>
+                <div class="modal-footer">
+                 
+                        {{ .CsrfField }}
+                        <button id="delete-device-button" onclick="deleteDevicePairConfirm(this)" class="btn btn-outline-danger btn-sm"
+                            data-dismiss="modal">Delete
+                        </button>
+                    
+                </div>
             </div>
         </div>
     </div>
