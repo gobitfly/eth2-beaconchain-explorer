@@ -492,18 +492,15 @@ func NewTransaction() (*sql.Tx, error) {
 }
 
 func getMachineStatsGap(resultCount uint64) int {
-	if resultCount > 20160 {
+	if resultCount > 20160 { // more than 14 (31)
 		return 5
-	} // more than 14 (31)
-	if resultCount > 10080 {
+	}
+	if resultCount > 10080 { // more than 7 (14)
 		return 4
-	} // more than 7 (14)
-	if resultCount > 2880 {
+	}
+	if resultCount > 2880 { // more than 2 (7)
 		return 3
-	} // more than 2 (7)
-	if resultCount > 1440 {
-		return 2
-	} // more than 1 (2)
+	}
 	return 1
 }
 
