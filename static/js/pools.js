@@ -19,9 +19,9 @@ function getActive(poolValidators) {
     }
 
     return [(active / poolValidators.length) * 100, {
-        active: `<i class="fas fa-male ${active > 0 ? "text-success" : ""} mr-1"><span style="font-size: 12px;">${addCommas(active)}</span></i>`,
-        slashed: `<i class="fas fa-user-slash ${slashed > 0 ? "text-danger" : ""} fa-sm mx-1"><span style="font-size: 12px;">${addCommas(slashed)}</span></i>`,
-        pending: `<i class="fas fa-male ${pending > 0 ? "text-info" : ""} mr-1"></i> <span style="font-size: 12px;">${addCommas(pending)}</span>`,
+        active: `<span style="font-size: 10px;" class="${active > 0 ? "text-success" : ''}"><i class="fas fa-male  mr-1"></i>${addCommas(active)}</span>`,
+        slashed: `<span style="font-size: 10px;" class="${slashed > 0 ? "text-danger" : ''}"><i class="fas fa-user-slash fa-sm mx-1"></i>${addCommas(slashed)}</span>`,
+        pending: `<span style="font-size: 10px;" class="${pending > 0 ? "text-info" : ''}"><i class="fas fa-male mr-1"></i>${addCommas(pending)}</span>`,
         total: `${addCommas(poolValidators.length)}`
     },
         slashed]
@@ -318,7 +318,7 @@ function randerTable(tableData) {
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-center">
-                                    <span style="font-size: 12px;">${info[1].total}</span>
+                                    <span style="font-size: 10px;">${info[1].total}</span>
                                 </div>
                             </div>
                             `

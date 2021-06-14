@@ -29,6 +29,7 @@ func Start(client rpc.Client) error {
 	go eth1DepositsExporter()
 	go genesisDepositsExporter()
 	go checkSubscriptions()
+	go cleanupOldMachineStats()
 
 	// wait until the beacon-node is available
 	for {
