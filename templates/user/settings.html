@@ -198,7 +198,6 @@
     function deleteDevicePairConfirm() {
         var id = CURRENT_DELETE_DEVICE_ID
         if(id == -1) return;
-        id = encodeURI(id)
 
         let csrfToken = document.getElementsByName("CsrfField")[0].value
 
