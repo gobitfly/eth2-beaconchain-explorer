@@ -491,29 +491,48 @@ func NewTransaction() (*sql.Tx, error) {
 	return FrontendDB.Begin()
 }
 
+func getMachineStatsGap(resultCount uint64) int {
+	if resultCount > 20160 {
+		return 5
+	} // more than 14 (31)
+	if resultCount > 10080 {
+		return 4
+	} // more than 7 (14)
+	if resultCount > 2880 {
+		return 3
+	} // more than 2 (7)
+	if resultCount > 1440 {
+		return 2
+	} // more than 1 (2)
+	return 1
+}
+
 func GetStatsValidator(userID, limit, offset uint64) (*sql.Rows, error) {
+	gapSize := getMachineStatsGap(limit)
 	row, err := FrontendDB.Query(
-		"SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, validator_active, validator_total FROM stats_add_validator LEFT JOIN stats_process ON stats_add_validator.general_id = stats_process.id "+
+		"SELECT t.* FROM (SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, validator_active, validator_total, row_number() OVER(ORDER BY stats_meta.id desc) as row FROM stats_add_validator LEFT JOIN stats_process ON stats_add_validator.general_id = stats_process.id "+
 			" LEFT JOIN stats_meta on stats_process.meta_id = stats_meta.id "+
-			"WHERE user_id = $1 AND process = 'validator' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
+			"WHERE user_id = $1 AND process = 'validator' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3) t where t.row % $4 = 0", userID, limit, offset, gapSize,
 	)
 	return row, err
 }
 
 func GetStatsNode(userID, limit, offset uint64) (*sql.Rows, error) {
+	gapSize := getMachineStatsGap(limit)
 	row, err := FrontendDB.Query(
-		"SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive, network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected, sync_eth2_synced, sync_beacon_head_slot FROM stats_add_beaconnode left join stats_process on stats_process.id = stats_add_beaconnode.general_id "+
+		"SELECT t.* FROM (SELECT client_name, client_version, cpu_process_seconds_total, machine, memory_process_bytes, sync_eth1_fallback_configured, sync_eth1_fallback_connected, sync_eth2_fallback_configured, sync_eth2_fallback_connected, ts as timestamp, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive, network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected, sync_eth2_synced, sync_beacon_head_slot, row_number() OVER(ORDER BY stats_meta.id desc) as row FROM stats_add_beaconnode left join stats_process on stats_process.id = stats_add_beaconnode.general_id "+
 			" LEFT JOIN stats_meta on stats_process.meta_id = stats_meta.id "+
-			"WHERE user_id = $1 AND process = 'beaconnode' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
+			"WHERE user_id = $1 AND process = 'beaconnode' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3) t where t.row % $4 = 0", userID, limit, offset, gapSize,
 	)
 	return row, err
 }
 
 func GetStatsSystem(userID, limit, offset uint64) (*sql.Rows, error) {
+	gapSize := getMachineStatsGap(limit)
 	row, err := FrontendDB.Query(
-		"SELECT  cpu_cores, cpu_threads, cpu_node_system_seconds_total, cpu_node_user_seconds_total, cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total, memory_node_bytes_total, memory_node_bytes_free, memory_node_bytes_cached, memory_node_bytes_buffers, disk_node_bytes_total, disk_node_bytes_free, disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total, network_node_bytes_total_receive, network_node_bytes_total_transmit, misc_os, misc_node_boot_ts_seconds, ts as timestamp, machine from stats_system"+
+		"SELECT t.* FROM (SELECT cpu_cores, cpu_threads, cpu_node_system_seconds_total, cpu_node_user_seconds_total, cpu_node_iowait_seconds_total, cpu_node_idle_seconds_total, memory_node_bytes_total, memory_node_bytes_free, memory_node_bytes_cached, memory_node_bytes_buffers, disk_node_bytes_total, disk_node_bytes_free, disk_node_io_seconds, disk_node_reads_total, disk_node_writes_total, network_node_bytes_total_receive, network_node_bytes_total_transmit, misc_os, misc_node_boot_ts_seconds, ts as timestamp, machine, row_number() OVER(ORDER BY stats_meta.id desc) as row from stats_system"+
 			" LEFT JOIN stats_meta on stats_system.meta_id = stats_meta.id "+
-			"WHERE user_id = $1 AND process = 'system' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3", userID, limit, offset,
+			"WHERE user_id = $1 AND process = 'system' ORDER BY stats_meta.id desc LIMIT $2 OFFSET $3) t where t.row % $4 = 0", userID, limit, offset, gapSize,
 	)
 	return row, err
 }
