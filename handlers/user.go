@@ -1135,3 +1135,42 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 	OKResponse(w, r)
 }
+
+func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	claims := getAuthClaims(r)
+	var userDeviceID uint64
+	var userID uint64
+
+	if claims == nil {
+		customDeviceID := FormValueOrJSON(r, "id")
+		temp, err := strconv.ParseUint(customDeviceID, 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing id %v | err: %v", customDeviceID, err)
+			sendErrorResponse(j, r.URL.String(), "could not parse id")
+			return
+		}
+		userDeviceID = temp
+		sessionUser := getUser(w, r)
+		if !sessionUser.Authenticated {
+			sendErrorResponse(j, r.URL.String(), "not authenticated")
+			return
+		}
+		userID = sessionUser.UserID
+	} else {
+		sendErrorResponse(j, r.URL.String(), "you can not delete the device you are currently signed in with")
+		return
+	}
+
+	err := db.MobileDeviceDelete(userID, userDeviceID)
+	if err != nil {
+		logger.Errorf("could not retrieve db results err: %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	sendOKResponse(j, r.URL.String(), nil)
+}
