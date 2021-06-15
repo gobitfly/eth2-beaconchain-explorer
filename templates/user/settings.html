@@ -144,12 +144,9 @@
     }
 
     function generateApiKey() {
-
         let csrfToken = document.getElementsByName("CsrfField")[0].value
-
         let postData = new FormData();
 
-        // subscribe
         fetch('/user/generateKey', {
             method: 'POST',
             headers: { "X-CSRF-Token": csrfToken },
@@ -157,13 +154,10 @@
             body: postData
         }).then(function (response) {
             if (response.status === 200) {
-                // $('#subscriptions').DataTable().ajax.reload()
-
                 window.location.reload(false); 
             } else {
                 console.log('unexpected status', response.status)
             }
-            
         }).catch(function (err) {
             console.log(err)
         })
