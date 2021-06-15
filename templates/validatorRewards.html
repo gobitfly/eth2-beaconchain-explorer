@@ -28,24 +28,25 @@
 <div class="container mt-2">
     <div class="my-3">
         <div class="d-md-flex py-2 justify-content-md-between">
-            <h1 class="h4 mb-1 mb-md-0"><i class="far fa-money-bill-alt"></i> Validator Reward History</h1>
+            <h1 class="h4 mb-1 mb-md-0"><i class="far fa-money-bill-alt"></i> Validator Income History</h1>
             
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
                     <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Reward History</li>
+                    <li class="breadcrumb-item active" aria-current="page">Income History</li>
                 </ol>
             </nav>
         </div>
+        <p class="mb-4">With this service you can get the Income history of your validators for a given period and subscribe for a monthly report</p>
     </div>
 
     <div class="d-flex justify-content-center align-items-center my-3" style="width: 100%;">
         <div id="totals-div" class="card d-none" style="border-radius: 20px; border-style: none;">
             <div class="card-body">
-                <span>Total</span>       
-                <span id="total-income-eth-span"></span>
+                <span>Total Income </span>       
+                <span id="total-income-eth-span" class="ml-1"></span>
                 <span class="mx-2">|</span>
-                <span>Total</span> 
+                <!-- <span>Total</span>  -->
                 <span id="total-income-currency-span"></span>
             </div>
         </div>
@@ -65,14 +66,14 @@
                                 <th>Income for date ETH</th>
                                 <th>Price of ETH for date</th>
                                 <th>Income for date</th>
-                                <th>Currency</th>
+                                <!-- <th>Currency</th> -->
                             </tr>
                         </thead>
                     </table>
                 </div>
             </div>
             <div id="form-div" class="p-3">
-                <form>
+                <form id="hits-form">
                     <div class="form-group">
                         <label for="validators">Validators</label>
                         <input class="form-control typeahead-validators" type="text"
@@ -98,9 +99,10 @@
                         </div>
                     </div>
 
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="checkbox" name="checkbox" {{if not .User.Authenticated}}disabled{{end}}>
-                        <label class="form-check-label" for="checkbox">Subscribe to receive monthly reports {{if not .User.Authenticated}}(<a style="color: red;" href="/login">Please sign in to use this feature</a>){{end}}</label>
+                    <div class="">
+                        <!-- <input type="checkbox" class="form-check-input" id="checkbox" name="checkbox" {{if not .User.Authenticated}}disabled{{end}}> -->
+                        <button class="btn btn-sm btn-primary" id="report-sub-btn" type="button" {{if not .User.Authenticated}}disabled="true"{{end}}><i class="fas fa-envelope p-1"></i>Subscribe</button>
+                        <label class="" for=""> to receive a monthly report {{if not .User.Authenticated}}(<a style="color: red;" href="/login">Please sign in to use this feature</a>){{end}}</label>
                     </div>
                     <div class="d-flex justify-content-end align-items-stretch" style="width: 100%;">
                         <button type="submit" class="btn btn-primary mt-1">Submit</button>
@@ -233,7 +235,7 @@
                                 <th>Date</th>
                                 <th>Currency</th>
                                 <th>Validators</th>
-                                <th> </th>
+                                <th>Unsubscribe</th>
                             </tr>
                         </thead>
                     </table>
