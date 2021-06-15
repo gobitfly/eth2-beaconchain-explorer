@@ -250,7 +250,6 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
 	} else {
 		// for perfomance-reasons we combine multiple search results with `union`
-		// instead of finding results by using one `where` clause with multiple disjunct (or) conditions
 		args := []interface{}{}
 		args = append(args, "%"+dataQuery.Search+"%")
 		searchQry := fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE name ILIKE $%d `, len(args))
