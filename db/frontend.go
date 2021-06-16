@@ -564,3 +564,31 @@ func GetHistoricPrices(currency string) (map[uint64]float64, error) {
 
 	return dataMap, nil
 }
+
+func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
+	stats := &types.ApiStatistics{}
+
+	query := fmt.Sprintf(`
+	SELECT (
+		SELECT 
+			COALESCE(SUM(count), 0) as daily 
+		FROM 
+			api_statistics 
+		WHERE 
+			ts > NOW() - INTERVAL '1 day' AND apikey = $1
+	), (
+		SELECT 
+			COALESCE(SUM(count),0) as monthly 
+		FROM 
+			api_statistics 
+		WHERE 
+			ts > NOW() - INTERVAL '1 month' AND apikey = $1
+	)`)
+
+	err := FrontendDB.Get(stats, query, apikey)
+	if err != nil {
+		return nil, err
+	}
+
+	return stats, nil
+}
