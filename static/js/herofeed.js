@@ -93,7 +93,9 @@ function updateFeed() {
 $(document).ready(function () {
     updateFeed()
     feedInterval = setInterval(() => {
-        updateFeed()
+        if (document.hasFocus()){
+            updateFeed()
+        }
     }, 2000)
 
     $(".donate-btn").on("click", () => {
