@@ -72,8 +72,8 @@ var poolInfoTemp []PoolsInfo
 var poolInfoTempTime time.Time
 var ethSupply interface{}
 var updateMux = &sync.RWMutex{}
-var firstReq = true
 var idEthSeriesTemp = idEthSeriesDrill{}
+var idEthMux = &sync.RWMutex{}
 
 func updatePoolInfo() {
 	start := time.Now()
@@ -91,11 +91,15 @@ func updatePoolInfo() {
 		idEthSeriesTempLocal := getIDEthChartSeries()
 
 		updateMux.Lock()
-		defer updateMux.Unlock()
 		poolInfoTemp = poolInfoTempLocal
 		ethSupply = ethSupplyLocal
-		idEthSeriesTemp = idEthSeriesTempLocal
 		poolInfoTempTime = time.Now()
+		updateMux.Unlock()
+
+		idEthMux.Lock()
+		idEthSeriesTemp = idEthSeriesTempLocal
+		idEthMux.Unlock()
+
 		logger.Infoln("Updated Pool Info")
 	}
 
@@ -111,10 +115,16 @@ func InitPools() {
 	}()
 }
 
-func GetPoolsData() ([]PoolsInfo, interface{}, int64, idEthSeriesDrill) {
+func GetPoolsData() ([]PoolsInfo, interface{}, int64) {
 	updateMux.Lock()
 	defer updateMux.Unlock()
-	return poolInfoTemp, ethSupply, poolInfoTempTime.Unix(), idEthSeriesTemp
+	return poolInfoTemp, ethSupply, poolInfoTempTime.Unix()
+}
+
+func GetIncomePerDepositedETHChart() idEthSeriesDrill {
+	idEthMux.Lock()
+	defer idEthMux.Unlock()
+	return idEthSeriesTemp
 }
 
 func getPoolInfo() []PoolsInfo {
