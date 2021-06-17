@@ -253,127 +253,151 @@
 
 {{ define "content" }}
   {{ with .Data }}
-		<div class="container" style="box-sizing: border-box; min-width: 320px;">
-      <div class="row d-flex align-items-center justify-content-between my-2 heading-section" style="min-width: 320px; height: 100px;">
-        <div class="col-md-8 heading-text">
+    <!-- to remove style from here and include in custom style file -->
+		<div class="container" style="min-width: 320px;"> 
+      <!-- to remove style from here and include in custom style file -->
+      <div class="d-flex row align-items-center justify-content-between my-5 heading-section" style="min-width: 320px; height: 60px; margin-left: 0; margin-right: 0;">
+        <div class="col-12 col-md-4 heading">
+          <!-- to remove style from here and include in custom style file -->
           <h1 style="font-size: 1.8rem; white-space: nowrap;">Validators Watchlist</h1>
         </div>
-        <div class="col-md-4 add-btn">
-          <div class="row">
-            <div class="col">
+        <div class="col-12 col-md-8 add-validators">
+          <div class="d-flex flex-nowrap row align-items-center justify-content-md-end">
+            <div class="my-2 my-md-0">
+              <!-- to remove style from here and include in custom style file -->
               <input 
                 type="text" 
                 placeholder="Search by index, grafitti or address" 
                 aria-label="Search" 
-                style="background-color: #f2f2f2; border: none; border-radius: .5rem; padding: .7rem 1.1rem;" 
+                style="background-color: #f5f5f5; border: none; border-radius: .5rem 0 0 .5rem; padding: .75rem;" 
               />
             </div>
-            <div class="col">
-              <button type="button" title="Add Validators" class="btn btn-lg" style="background-color: #ee7112; color: #ffffff; white-space: nowrap;">
+            <div>
+              <!-- to remove style from here and include in custom style file -->
+              <button type="button" title="Add Validators" class="btn btn-primary btn-lg" style="color: #f8f8ff; border-radius: 0 .5rem .5rem 0;">
                 <i class="fas fa-plus"></i>
-                Add Validators
+                <span class="d-none d-lg-inline-block" style="white-space: nowrap;">Add Validators</span>
               </button>
             </div>
           </div>
         </div>
       </div>
-      <div class="row flex-sm-nowrap my-2 metrics-section" style="min-width: 320px; min-height: 120px;">
-        <div class="col-12 col-sm col-xl mr-3 mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; background-color: #f5f5f5; border-radius: .25rem;">
+      <div class="row flex-sm-nowrap my-2 metrics-section" style="min-width: 320px; min-height: 120px; margin-left: 0; margin-right: 0;">
+        <div class="col-12 col-sm col-xl mr-3 mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; max-width: 320px; background-color: #f8f8ff; border-radius: .25rem;">
           <div class="row d-flex align-items-center mx-1" style="height: 100%;">
-            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 3rem; color: #3e4461;">
-              <i class="fas fa-clipboard-list"></i>
+            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 2.8rem; color: #665C76;">
+              <i class="fas fa-user"></i>
             </div>
-            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; text-align: left;">
+            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; color: #52506C; text-align: left;">
               12
-              <span style="display: block; font-size: .75rem; font-weight: 300;">validators in your list</span>
+              <span style="display: block; font-size: .75rem; font-weight: 400;">validators in your list</span>
             </div>
           </div>
         </div>
-        <div class="col-12 col-sm col-xl mr-3 mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; background-color: #f5f5f5; border-radius: .25rem;">
+        <div class="col-12 col-sm col-xl mr-3 mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; max-width: 320px; background-color: #f8f8ff; border-radius: .25rem;">
           <div class="row d-flex align-items-center mx-1" style="height: 100%;">
-            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 3rem; color: #3e4461;">
+            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 2.8rem; color: #665C76;">
               <i class="fas fa-bell"></i>
             </div>
-            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; text-align: left;">
+            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; color: #52506C; text-align: left;">
               9
-              <span style="display: block; font-size: .75rem; font-weight: 300;">notifications in past 24h</span>
+              <span style="display: block; font-size: .75rem; font-weight: 400;">notifications in the past 24h</span>
             </div>
           </div>
         </div>
-        <div class="col d-none d-xl-block mr-3 mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; background-color: #f5f5f5; border-radius: .25rem;">
+        <div class="col d-none d-xl-block mr-3 mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; max-width: 320px; background-color: #f8f8ff; border-radius: .25rem;">
           <div class="row d-flex align-items-center mx-1" style="height: 100%;">
-            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 3rem; color: #3e4461;">
-              <i class="fas fa-file-alt"></i>
+            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 2.8rem; color: #665C76;">
+              <i class="fas fa-bullseye"></i>
             </div>
-            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; text-align: left;">
+            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; color: #52506C; text-align: left;">
               14
-              <span style="display: block; font-size: .75rem; font-weight: 300;">attestations missed in past 24h</span>
+              <span style="display: block; font-size: .75rem; font-weight: 400;">attestations missed in the past 24h</span>
             </div>
           </div>
         </div>
-        <div class="col d-none d-xl-block mr-3 mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; background-color: #f5f5f5; border-radius: .25rem;">
+        <div class="col d-none d-xl-block mr-3 mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; max-width: 320px; background-color: #f8f8ff; border-radius: .25rem;">
           <div class="row d-flex align-items-center mx-1" style="height: 100%;">
-            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 3rem; color: #3e4461;">
-              <i class="fas fa-file-alt"></i>
+            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 2.8rem; color: #665C76;">
+              <i class="fas fa-user-slash"></i>
             </div>
-            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; text-align: left;">
+            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; color: #52506C; text-align: left;">
               19
-              <span style="display: block; font-size: .75rem; font-weight: 300;">validators slashed in past 24h</span>
+              <span style="display: block; font-size: .75rem; font-weight: 400;">validators slashed in the past 24h</span>
             </div>
           </div>
         </div>
-        <div class="col d-none d-xl-block mr-3 mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; background-color: #f5f5f5; border-radius: .25rem;">
+        <div class="col d-none d-xl-block mr-3 mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; max-width: 320px; background-color: #f8f8ff; border-radius: .25rem;">
           <div class="row d-flex align-items-center mx-1" style="height: 100%;">
-            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 3rem; color: #3e4461;">
-              <i class="fas fa-file-alt"></i>
+            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 2.8rem; color: #665C76;">
+              <i class="fas fa-envelope-open-text"></i>
             </div>
-            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; text-align: left;">
+            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; color: #52506C; text-align: left;">
               21
-              <span style="display: block; font-size: .75rem; font-weight: 300;">proposals submitted in past 24h</span>
+              <span style="display: block; font-size: .75rem; font-weight: 400;">proposals submitted in the past 24h</span>
             </div>
           </div>
         </div>
-        <div class="col d-none d-xl-block mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; background-color: #f5f5f5; border-radius: .25rem;">
+        <div class="col d-none d-xl-block mt-1 shadow-lg p-1 mb-3 metric" style="width: auto; max-width: 320px; background-color: #f8f8ff; border-radius: .25rem;">
           <div class="row d-flex align-items-center mx-1" style="height: 100%;">
-            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 3rem; color: #3e4461;">
-              <i class="fas fa-file-alt"></i>
+            <div class="col-3 col-sm-4 col-xl-4 my-auto" style="font-size: 2.8rem; color: #665C76;">
+              <i class="fas fa-bullseye"></i>
             </div>
-            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; text-align: left;">
+            <div class="col-9 col-sm-8 col-xl-8" style="font-size: 2.2rem; font-weight: 600; color: #52506C; text-align: left;">
               18
-              <span style="display: block; font-size: .75rem; font-weight: 300;">proposals missed in past 24h</span>
+              <span style="display: block; font-size: .75rem; font-weight: 400;">proposals missed in the past 24h</span>
             </div>
           </div>
         </div>
       </div>
-      <div class="row flex-lg-nowrap my-3 notifications-section">
+      <div class="row flex-lg-nowrap my-3 notifications-section" style="margin-left: 0; margin-right: 0;">
         <div class="col-12 col-lg shadow p-1 mb-3 latest-notifications" style="min-height: 450px; border-radius: .25rem;">
-          <div class="ml-sm-3 mt-3">
-            <h2 style="font-size: 1.6rem; white-space: nowrap;">Most recent notifications</h2>
+          <div class="ml-3 mt-3">
+            <h2 style="font-size: 1.6rem; white-space: wrap;">Most recent notifications</h2>
             <h6 style="font-size: .85rem; font-weight: 200;">Your latest 5 notifications in the past hour</h5>
           </div>
-          <div class="mx-sm-auto mt-5 text-sm-center" style="max-width: 320px; height: 200px;">
-            <i class="far fa-frown fa-2x mb-3"></i>
+          <div class="ml-3 mx-sm-auto mt-5 text-sm-center" style="max-width: 320px; height: 200px;">
+            <i class="far fa-frown fa-2x mb-3" style="color: #665C76;"></i>
             <h4 style="font-size: 1.1rem; white-space: wrap;">You have no notifications for the past hour</h4>
           </div>
         </div>
         <div class="col-12 col-lg mt-3 mt-lg-0 ml-lg-3 shadow p-1 mb-3 events" style="min-height: 450px; border-radius: .25rem;">
-          <div class="ml-sm-3 mt-3">
+          <div class="ml-3 mt-3">
             <h2 style="font-size: 1.6rem; white-space: nowrap;">Events</h2>
             <h6 style="font-size: .85rem; font-weight: 200;">All events you are subscribed to from the Validators in your list</h5>
           </div>
-          <div class="mx-sm-auto mt-5 text-sm-center" style="max-width: 320px; height: 200px;">
-            <i class="far fa-frown fa-2x mb-3"></i>
+          <div class="ml-3 mx-sm-auto mt-5 text-sm-center" style="max-width: 320px; height: 200px;">
+            <i class="far fa-sad-tear fa-2x mb-3" style="color: #665C76;"></i>
             <h4 style="font-size: 1.1rem; white-space: wrap;">Add Validators to your list and subscribe to events to receive notifications</h4>
           </div>
         </div>
       </div>
-      <div class="row my-3 shadow p-1 mb-3 validators-section" style="min-height: 450px; border-radius: .25rem;">
+      <div class="row my-3 shadow p-1 mb-3 validators-section" style="min-height: 450px; border-radius: .25rem; margin-left: 0; margin-right: 0;">
         <div class="col-12 mt-3">
           <h2 style="font-size: 1.6rem; white-space: nowrap;">Validators</h2>
         </div>
-        <div class="col-12 mx-sm-auto mb-auto text-sm-center" style="max-width: 320px; height: 200px;">
+        <div class="col-12 mx-sm-auto mb-auto text-sm-center" style="height: 200px;">
           <h4 style="font-size: 1.1rem; white-space: wrap;">Start adding Validators to your Watchlist</h4>
-          <div>BUTTON</div>
+          <div class="col-12 my-2 my-md-4 add-validators">
+            <div class="d-flex flex-nowrap row align-items-center justify-content-start justify-content-sm-center">
+              <div class="my-2 my-md-0">
+                <!-- to remove style from here and include in custom style file -->
+                <input 
+                  type="text" 
+                  placeholder="Search by index, grafitti or address" 
+                  aria-label="Search" 
+                  style="background-color: #f2f2f2; border: none; border-radius: .5rem 0 0 .5rem; padding: .75rem;" 
+                />
+              </div>
+              <div>
+                <!-- to remove style from here and include in custom style file -->
+                <button type="button" title="Add Validators" class="btn btn-primary btn-lg" style="color: #ffffff; border-radius: 0 .5rem .5rem 0;">
+                  <i class="fas fa-plus"></i>
+                  <span class="d-none d-lg-inline-block" style="white-space: nowrap;">Add Validators</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
