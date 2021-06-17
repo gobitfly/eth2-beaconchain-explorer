@@ -574,7 +574,7 @@ $(document).ready(function () {
         switchCharts()
     })
 
-    $("#totalmsg").html(`"Total Income" and "Average Income Per Deposited ETH" are based on top ${POOL_INFO.length} pools by number of validators`)
+    $("#totalmsg").html(`"Total Income" and "Average Income Per Deposited ETH" are based on top 100 pools by number of validators`)
     $(window).on('resize', function(){
         showChartSwitch(poolchart)
     })
