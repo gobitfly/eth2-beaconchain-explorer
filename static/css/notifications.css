@@ -1,0 +1,70 @@
+.container-min-width { min-width: 320px }
+
+.container-max-width { max-width: 320px }
+
+.container-min-height { min-height: 450px }
+
+.row-margin-reset { 
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.icon { 
+  font-size: 2.8rem;
+  color: #665C76;
+}
+
+.heading-section { height: 60px }
+
+.heading { 
+  font-size: 1.8rem;
+  white-space: nowrap;
+}
+
+.input-search { 
+  background-color: #f5f5f5;
+  border: none;
+  border-radius: .5rem 0 0 .5rem;
+  padding: .75rem;
+}
+
+.btn-custom { 
+  color: #f8f8ff;
+  border-radius: 0 .5rem .5rem 0;
+}
+
+.metrics-section { min-height: 120px }
+
+.metric-card { 
+  width: auto;
+  background-color: #f8f8ff;
+  border-radius: .25rem;
+}
+
+.metric-card-row { height: 100% }
+
+.metric-value { 
+  text-align: left;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #52506C;
+}
+
+.metric-description { 
+  display: block;
+  font-size: .75rem;
+  font-weight: 400;
+}
+
+.notifications-section { border-radius: .25rem }
+
+.heading-l2 { font-size: 1.6rem }
+
+.heading-l4 { font-size: 1.1rem }
+
+.heading-l6 { 
+  font-size: .85rem;
+  font-weight: 200;
+}
+
+.text-empty-section { height: 200px }
