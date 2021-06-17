@@ -77,7 +77,7 @@ function updateFeed() {
                     $(".hover-shadow").hover(function(){
                         $(this).addClass("shadow color-shift-anim border-rounded");
                         }, function(){
-                        $(this).removeClass("shadow color-shift-anim border-rounded");
+                        $(this).removeClass("shadow color-shift-anim border-rounded fade-in");
                     });
                 }else{
                     $("#hero-feed ul").html("")
