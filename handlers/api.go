@@ -31,7 +31,9 @@ import (
 // @description 10 requests / 1 minute / IP. All API results are cached for 1 minute.
 // @description If you required a higher usage plan please checkout https://beaconcha.in/pricing.
 // @description The API key can be provided in the Header or as a query string parameter.
+// @description
 // @description Key as a query string parameter: `curl https://beaconcha.in/api/v1/block/1?apikey=<your_key>`
+// @description
 // @description Key in a request header:  `curl -H 'apikey: <your_key>' https://beaconcha.in/api/v1/block/1`
 // @securitydefinitions.oauth2.accessCode OAuthAccessCode
 // @tokenurl https://beaconcha.in/user/token
