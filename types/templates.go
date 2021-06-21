@@ -912,6 +912,7 @@ type UserSettingsPageData struct {
 	Emerald             *string
 	Diamond             *string
 	ShareMonitoringData bool
+	ApiStatistics       *ApiStatistics
 }
 
 type PairedDevice struct {
@@ -1011,4 +1012,11 @@ type Price struct {
 	JPY float64   `db:"jpy"`
 	CNY float64   `db:"cny"`
 	RUB float64   `db:"rub"`
+}
+
+type ApiStatistics struct {
+	Daily      *int `db:"daily"`
+	Monthly    *int `db:"monthly"`
+	MaxDaily   *int
+	MaxMonthly *int
 }

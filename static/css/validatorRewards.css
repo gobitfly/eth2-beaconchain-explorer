@@ -63,4 +63,12 @@
      background-color: var(--light);
  }
 
+ td.available{
+   color: black;
+ }
 
+ div.ranges ul li{
+   color: var(--primary);
+ }
+
+ 

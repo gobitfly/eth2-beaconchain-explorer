@@ -70,7 +70,11 @@
                 if (possibleStates[hashState]) state = hashState
             }
 
+            var usp = new URLSearchParams(window.location.search)
+            var q = usp.get('q')
+
             validatorsDataTable = $('#validators').DataTable({
+                search: q ? {search:q} : null,
                 pageLength: 25,
                 processing: true,
                 serverSide: true,
@@ -195,6 +199,14 @@
                         }
                     },
                 ]
+            })
+            $("#validators_filter > label > input").on('input', function (ev) {
+                if (ev && ev.target && ev.target.value) {
+                    var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+                    window.history.replaceState(null, 'Validators Overview', newUrl)
+                } else {
+                    window.history.replaceState(null, 'Validators Overview', window.location.pathname)
+                }
             })
         })
     </script>
