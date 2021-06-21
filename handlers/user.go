@@ -1073,6 +1073,8 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		maxValidators := getUserPremium(r).MaxValidators
+
 		// not quite happy performance wise, placing a TODO here for future me
 		for i, v := range myValidators {
 			err = db.AddSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
@@ -1082,7 +1084,7 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if i >= 100 {
+			if i >= maxValidators {
 				break
 			}
 		}
@@ -1139,6 +1141,8 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		maxValidators := getUserPremium(r).MaxValidators
+
 		// not quite happy performance wise, placing a TODO here for future me
 		for i, v := range myValidators {
 			err = db.DeleteSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
@@ -1148,7 +1152,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if i >= 100 {
+			if i >= maxValidators {
 				break
 			}
 		}
