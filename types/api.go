@@ -55,10 +55,11 @@ type StatsAdditionalsBeaconnode struct {
 }
 
 type StatsMeta struct {
-	Version   uint64 `mapstructure:"version"`
-	Timestamp uint64 `mapstructure:"timestamp"`
-	Process   string `mapstructure:"process"`
-	Machine   string
+	Version         uint64 `mapstructure:"version"`
+	Timestamp       uint64 `mapstructure:"timestamp"`
+	Process         string `mapstructure:"process"`
+	Machine         string
+	ExporterVersion uint64 `mapstructure:"exporter_version"`
 }
 
 type StatsDataStruct struct {

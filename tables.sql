@@ -569,6 +569,7 @@ CREATE TABLE stats_meta (
 	process 			character varying(20) 		not null,
 	machine 		 	character varying(50),
     created_trunc       timestamp   not null,
+    exporter_version          integer,
 	
 	user_id 		 	bigint	 	 		not null,
     foreign key(user_id) references users(id),
