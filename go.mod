@@ -31,7 +31,7 @@ require (
 	github.com/jackc/pgx/v4 v4.6.0
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/juliangruber/go-intersect v1.0.1-0.20200323101606-4bd944a17692
-	github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5 // indirect
+	github.com/jung-kurt/gofpdf v1.0.3-0.20190309125859-24315acbbda5
 	github.com/kataras/i18n v0.0.5
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.2.0
