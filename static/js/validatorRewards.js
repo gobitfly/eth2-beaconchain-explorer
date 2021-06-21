@@ -165,28 +165,12 @@ function hideSpinner(){
     $("#loading-div").removeClass("d-flex")
 }
 
-function updateTotals(data){
-    totalEth = 0.0
-    totalCurrency = 0.0
-
-    for(let item of data){
-        totalEth+=parseFloat(item[2])
-        totalCurrency+=parseFloat(item[4])
-    }
-
-    $("#total-income-eth-span").html(`ETH: <b>${(totalEth.toFixed(DECIMAL_POINTS_ETH))}</b>`)
-    $("#total-income-currency-span").html(`${currency}: <b>${addCommas(totalCurrency.toFixed(DECIMAL_POINTS_CURRENCY))}</b>`)
-    $("#totals-div").removeClass("d-none")
-}
 
 function addCommas(number) {
     return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
 
 function showTable(data){
-    if (data.length > 0 && data[0].length === 6){
-        currency = data[0][5].toUpperCase()
-    }
     
     $('#tax-table').DataTable({
         processing: true,
@@ -196,7 +180,7 @@ function showTable(data){
         pagingType: 'full_numbers',
         pageLength: 100,
         lengthChange: false,
-        data: data,
+        data: data.history,
         dom: 'Bfrtip',
         buttons: [
             'copyHtml5',
@@ -209,18 +193,25 @@ function showTable(data){
             $("#form-div").addClass("d-none")
             $("#table-div").removeClass("d-none")
             $("#subscriptions-div").addClass("d-none")
-            updateTotals(data)
+            // updateTotals(data)
+            $("#total-income-eth-span").html("ETH "+data.total_eth)
+            $("#total-income-currency-span").html(data.total_currency)
+            $("#totals-div").removeClass("d-none")
             $(".dt-button").addClass("ml-2 ")
+            // $("div.tax-table_filter label input").attr("placeholder", "Date")
             // $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
         },
         order: [[0,'desc']],
+        language: {
+            searchPlaceholder: "Enter Date"
+        },
         columnDefs: [
             {
                 targets: 0,
                 data: '0',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    if (type==="display") return data
+                    if (type==="filter" || type==="display") return data
                     return moment(data).unix()
                 }
             }, {
@@ -228,37 +219,41 @@ function showTable(data){
                 data: '1',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    // return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    return data
                 }
             }, {
                 targets: 2,
                 data: '2',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    // return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    return data
                 }
             }, {
                 targets: 3,
                 data: '3',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                    // return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                    return data
                 }
             }, {
                 targets: 4,
                 data: '4',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                   return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                //    return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                    return data
                 }
-            }, {
-                targets: 5,
-                data: '5',
-                "orderable": false,
-                visible: false,
-                render: function (data, type, row, meta) {
-                    return data.toUpperCase()
-                }
+            // }, {
+            //     targets: 5,
+            //     data: '5',
+            //     "orderable": false,
+            //     visible: false,
+            //     render: function (data, type, row, meta) {
+            //         return data.toUpperCase()
+            //     }
             }]
     });
 }
@@ -296,17 +291,23 @@ function updateSubscriptionTable(data, container){
             $("#subscriptions-table-art").removeClass("d-flex").addClass("d-none")
             $("#subscriptions-table-div").removeClass("invisible")
         },
+        language: {
+            searchPlaceholder: "Enter Date, Currency"
+        },
         columnDefs: [
             {
                 targets: 0,
                 data: '0',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    let date = data.split(" ")
-                    if (date.length >=2){
-                        return `${date[0]} ${date[1]}`
-                    }
-                    return data
+                    if (type==="filter" || type==="display"){
+                        let date = data.split(" ")
+                        if (date.length >=1){
+                            return `${date[0]}`
+                        }
+                        return data
+                    } 
+                    return moment(data).unix()
                 }
             }, {
                 targets: 1,
@@ -320,7 +321,15 @@ function updateSubscriptionTable(data, container){
                 data: '2',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `<textarea readonly style="height: 50px; width: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark">${data}</textarea>`
+                    if (type==="display"){
+                        l = data.split(",")
+                        l.sort((a,b)=>parseInt(a)-parseInt(b))
+                        data = ""
+                        for (i of l){
+                            data += `<li style="flex: 1 0 8%; list-style-type : none;" class="p-1"><a href="/validator/${i}"><i class="fas fa-male mr-1"></i>${i}</a></li>`
+                        }
+                    }
+                    return `<ul style="display: flex; flex-wrap: wrap; height: 50px; width: 98%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark pl-0 ml-0">${data}</ul>`
                 }
             }, {
                 targets: 3,
@@ -328,7 +337,7 @@ function updateSubscriptionTable(data, container){
                 "orderable": false,
                 render: function (data, type, row, meta) {
                     return `
-                        <div class="d-flex justify-content-center align-item-center">
+                        <div class="d-flex justify-content-start align-item-center">
                             <i class="fas fa-times text-danger" onClick='unSubUser("${data}")' style="cursor: pointer;"></i>
                         </div>
                         `
@@ -353,6 +362,8 @@ $(document).ready(function () {
         $(this).val($(this).val().replace(/([a-zA-Z ])/g, ""))
     })
 
+    $("#days").val(`${moment().startOf('month').unix()}-${moment().unix()}`)
+
     $('input[id="datepicker"]').daterangepicker({
         pens: 'left',
         minDate: moment.unix(MIN_TIMESTAMP), 
@@ -369,7 +380,9 @@ $(document).ready(function () {
             format: 'DD/MM/YYYY'
         },
         singleDatePicker: false,
-        alwaysShowCalendars: false
+        alwaysShowCalendars: false,
+        startDate: moment().startOf('month'), 
+        endDate: moment()
     }, function(start, end, label) {
         // let end_d = moment()
         $("#days").val(`${moment(start).unix()}-${moment(end).unix()}`)
@@ -378,6 +391,42 @@ $(document).ready(function () {
     create_typeahead('.typeahead-validators');
     let qry = getValidatorQueryString()
     // console.log(qry, qry.length)
+
+    $("#report-sub-btn").on("click", function(){
+        // if ($("#validator-index-view").val().length === 0) {
+        //     console.log("No Validators")
+        //     return
+        // }
+        var form = document.getElementById('hits-form')
+        if(!form.reportValidity()) {
+                return
+        }
+        let btn_content = $(this).html()
+        $(this).html(`<div class="spinner-border text-dark spinner-border-sm" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>`)
+        
+        fetch(`/user/rewards/subscribe?validators=${$("#validator-index-view").val()}&currency=${$("#currency").val()}`, {
+            method: 'POST',
+            headers: {"X-CSRF-Token": csrfToken},
+            credentials: 'include',
+            body: "",
+        }).then((res)=>{
+            if (res.status == 200){
+                res.json().then((data)=>{
+                    // console.log(data.msg)
+                    location.reload();
+                })              
+            }else{
+                console.error("error subscribing", res)
+                $(this).html(btn_content)
+            }
+        }).catch((err)=>{
+            console.error("error subscribing", err)
+            $(this).html(btn_content)
+        })
+    })
+
     if (qry.length > 1){
         fetch(`/rewards/hist${qry}`,{
             method: "GET"
@@ -393,26 +442,6 @@ $(document).ready(function () {
             alert("Failed to fetch the data :(")
             hideSpinner()      
           })
-
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const reqBody = JSON.stringify({validators: urlParams.get('validators'), currency: urlParams.get('currency')})
-        // console.log(reqBody)
-        if (urlParams.get('checkbox')==="on"){
-            fetch(`/user/rewards/subscribe${qry}`, {
-                method: 'POST',
-                headers: {"X-CSRF-Token": csrfToken},
-                credentials: 'include',
-                body: reqBody,
-            }).then((res)=>{
-                if (res.status == 200){
-                    res.json().then((data)=>{
-                        console.log(data.msg)
-                    })              
-                }
-            })
-        }
-
 
     }else{
         hideSpinner()

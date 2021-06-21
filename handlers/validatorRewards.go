@@ -3,19 +3,18 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gorilla/csrf"
-	"github.com/lib/pq"
 )
 
 var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validatorRewards.html"))
@@ -93,96 +92,6 @@ func getUserRewardSubscriptions(uid uint64) [][]string {
 	return res
 }
 
-func getValidatorHist(validatorArr []uint64, currency string, start uint64, end uint64) [][]string {
-	var err error
-	validatorFilter := pq.Array(validatorArr)
-
-	var pricesDb []types.Price
-	err = db.DB.Select(&pricesDb,
-		`select * from price where ts >= TO_TIMESTAMP($1) and ts <= TO_TIMESTAMP($2) order by ts desc`, start, end)
-	if err != nil {
-		logger.Errorf("error getting prices: %w", err)
-	}
-
-	var maxDay uint64
-	err = db.DB.Get(&maxDay,
-		`select MAX(day) from validator_stats`)
-	if err != nil {
-		logger.Errorf("error getting max day: %w", err)
-	}
-
-	lowerBound := utils.TimeToDay(start)
-	upperBound := utils.TimeToDay(end)
-
-	var income []types.ValidatorStatsTableRow
-	err = db.DB.Select(&income,
-		`select day, start_balance, end_balance
-		 from validator_stats 
-		 where validatorindex=ANY($1) AND day > $2 AND day < $3
-		 order by day desc`, validatorFilter, lowerBound, upperBound)
-	if err != nil {
-		logger.Errorf("error getting incomes: %w", err)
-	}
-
-	prices := map[string]float64{}
-	for _, item := range pricesDb {
-		date := fmt.Sprintf("%v", item.TS)
-		date = strings.Split(date, " ")[0]
-		switch currency {
-		case "eur":
-			prices[date] = item.EUR
-		case "usd":
-			prices[date] = item.USD
-		case "gbp":
-			prices[date] = item.GBP
-		case "cad":
-			prices[date] = item.CAD
-		case "cny":
-			prices[date] = item.CNY
-		case "jpy":
-			prices[date] = item.JPY
-		case "rub":
-			prices[date] = item.RUB
-		default:
-			prices[date] = item.USD
-			currency = "usd"
-		}
-	}
-
-	totalIncomePerDay := map[string][2]int64{}
-	for _, item := range income {
-		date := fmt.Sprintf("%v", utils.DayToTime(item.Day))
-		date = strings.Split(date, " ")[0]
-		if _, exist := totalIncomePerDay[date]; !exist {
-			totalIncomePerDay[date] = [2]int64{item.StartBalance.Int64, item.EndBalance.Int64}
-			continue
-		}
-		state := totalIncomePerDay[date]
-		state[0] += item.StartBalance.Int64
-		state[1] += item.EndBalance.Int64
-		totalIncomePerDay[date] = state
-	}
-
-	data := make([][]string, len(totalIncomePerDay))
-	i := 0
-	for key, item := range totalIncomePerDay {
-		if len(item) < 2 {
-			continue
-		}
-		data[i] = []string{
-			key,
-			fmt.Sprintf("%f", float64(item[1])/1e9), // end of day balance
-			fmt.Sprintf("%f", (float64(item[1])/1e9)-(float64(item[0])/1e9)),               // income of day ETH
-			fmt.Sprintf("%f", prices[key]),                                                 //price will default to 0 if key does not exist
-			fmt.Sprintf("%f", ((float64(item[1])/1e9)-(float64(item[0])/1e9))*prices[key]), // income of day Currency
-			currency,
-		}
-		i++
-	}
-
-	return data
-}
-
 func isValidCurrency(currency string) bool {
 	var count uint64
 	err := db.DB.Get(&count,
@@ -230,7 +139,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	// days, err := strconv.ParseUint(q.Get("days"), 10, 64)
 
-	data := getValidatorHist(validatorArr, currency, start, end)
+	data := services.GetValidatorHist(validatorArr, currency, start, end)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
@@ -242,7 +151,7 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 }
 
 func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Disposition", "attachment; filename=beaconcha_in-rewards-history.csv")
+	w.Header().Set("Content-Disposition", "attachment; filename=beaconcha_in-rewards-history.pdf")
 	w.Header().Set("Content-Type", "text/csv")
 
 	q := r.URL.Query()
@@ -269,49 +178,41 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data := getValidatorHist(validatorArr, currency, start, end)
+	hist := services.GetValidatorHist(validatorArr, currency, start, end)
+	// data := hist.History
 
-	if len(data) == 0 {
+	if len(hist.History) == 0 {
 		w.Write([]byte("No data available"))
 		return
 	}
 
-	sort.Slice(data, func(p, q int) bool {
-		i, err := time.Parse("2006-01-02", data[p][0])
-		i2, err := time.Parse("2006-01-02", data[q][0])
-		if err != nil {
-			return false
-		}
-		return i2.Before(i)
-	})
+	// cur := data[0][len(data[0])-1]
+	// cur = strings.ToUpper(cur)
+	// csv := fmt.Sprintf("Date,End-of-date balance ETH,Income for date ETH,Price of ETH for date %s, Income for date %s", cur, cur)
 
-	cur := data[0][len(data[0])-1]
-	cur = strings.ToUpper(cur)
-	csv := fmt.Sprintf("Date,End-of-date balance ETH,Income for date ETH,Price of ETH for date %s, Income for date %s", cur, cur)
+	// totalIncomeEth := 0.0
+	// totalIncomeCur := 0.0
 
-	totalIncomeEth := 0.0
-	totalIncomeCur := 0.0
+	// for _, item := range data {
+	// 	if len(item) < 5 {
+	// 		csv += "\n0,0,0,0,0"
+	// 		continue
+	// 	}
+	// 	csv += fmt.Sprintf("\n%s,%s,%s,%s,%s", item[0], item[1], item[2], item[3], item[4])
+	// 	tEth, err := strconv.ParseFloat(item[2], 64)
+	// 	tCur, err := strconv.ParseFloat(item[4], 64)
 
-	for _, item := range data {
-		if len(item) < 5 {
-			csv += "\n0,0,0,0,0"
-			continue
-		}
-		csv += fmt.Sprintf("\n%s,%s,%s,%s,%s", item[0], item[1], item[2], item[3], item[4])
-		tEth, err := strconv.ParseFloat(item[2], 64)
-		tCur, err := strconv.ParseFloat(item[4], 64)
+	// 	if err != nil {
+	// 		continue
+	// 	}
 
-		if err != nil {
-			continue
-		}
+	// 	totalIncomeEth += tEth
+	// 	totalIncomeCur += tCur
+	// }
 
-		totalIncomeEth += tEth
-		totalIncomeCur += tCur
-	}
+	// csv += fmt.Sprintf("\nTotal, ,%f, ,%f", totalIncomeEth, totalIncomeCur)
 
-	csv += fmt.Sprintf("\nTotal, ,%f, ,%f", totalIncomeEth, totalIncomeCur)
-
-	_, err = w.Write([]byte(csv))
+	_, err = w.Write(services.GeneratePdfReport(hist))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
 		http.Error(w, "Internal server error", 503)
