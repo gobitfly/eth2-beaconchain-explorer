@@ -1,17 +1,12 @@
-.container-min-width { min-width: 320px }
+.container-min-width { min-width: 300px }
 
-.container-max-width { max-width: 320px }
+.container-max-width { max-width: 300px }
 
 .container-height { height: 400px }
 
-.row-margin-reset { 
-  margin-left: 0;
-  margin-right: 0;
-}
-
 .icon { 
   font-size: 2.4rem;
-  color: #665C76;
+  color: #5E3F6B;
 }
 
 .breadcrumb-custom {
@@ -35,7 +30,7 @@
 }
 
 .btn-custom { 
-  color: #f8f8ff;
+  color: #fdfdfd;
   border-radius: 0 .5rem .5rem 0;
 }
 
@@ -43,42 +38,49 @@
 
 .metric-card { 
   width: auto;
-  background-color: #f8f8ff;
+  background-color: #fdfdfd;
   border-radius: .25rem;
 }
 
 .metric-card-row { height: 100% }
 
+/* #8186F1 for dark theme */
 .metric-value { 
   text-align: left;
   font-size: 2.2rem;
   font-weight: 700;
-  color: #52506C;
+  color: #5E3F6B
 }
 
+/* replace with color variable */
 .metric-description { 
   display: block;
   font-size: .75rem;
   font-weight: 400;
+  color: #343a40;
 }
 
 .notifications-section { 
   border-radius: .25rem;
-  background-color: #f8f8ff;
+  background-color: #fdfdfd;
 }
 
 .validators-section { 
   border-radius: .25rem; 
-  background-color: #f8f8ff;
+  background-color: #fdfdfd;
 }
 
 .heading-l2 { font-size: 1.6rem }
 
-.heading-l4 { font-size: 1.1rem }
+.heading-l3 { font-size: 1.1rem }
 
-.heading-l6 { 
+.heading-l4 { 
   font-size: .85rem;
   font-weight: 200;
 }
 
 .text-empty-section { height: 200px }
+
+@media screen and (max-width: 576px) {
+  .container-custom { padding: 0 2px }
+}

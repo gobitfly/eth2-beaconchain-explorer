@@ -254,7 +254,7 @@
 
 {{ define "content" }}
   {{ with .Data }}
-		<div class="container-fluid container-xl container-min-width"> 
+		<div class="container-fluid container-xl container-min-width container-custom"> 
       <div class="row d-flex align-items-center justify-content-start ml-1 my-2">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb font-size-1 mb-0 breadcrumb-custom">
@@ -263,12 +263,12 @@
           </ol>
         </nav>
       </div>
-      <div class="row d-flex align-items-center justify-content-between my-5 container-min-width row-margin-reset heading-section">
+      <div class="row d-flex align-items-center justify-content-between mx-0 my-5 container-min-width heading-section">
         <div class="col-12 col-md pl-0 heading">
           <h1 class="heading">Validators Watchlist</h1>
         </div>
         <div class="col-12 col-md pr-0 add-validators">
-          <div class="row d-flex flex-nowrap align-items-center justify-content-md-end mr-0">
+          <div class="row d-flex flex-nowrap align-items-center justify-content-md-end mr-1 mr-sm-0">
             <div class="flex-fill">
               <input type="text" placeholder="Search validators.." aria-label="Search" class="input-search" />
             </div>
@@ -281,7 +281,7 @@
           </div>
         </div>
       </div>
-      <div class="row flex-sm-nowrap my-2 container-min-width row-margin-reset metrics-section">
+      <div class="row flex-sm-nowrap mx-0 my-2 container-min-width metrics-section">
         <div class="col-12 col-sm col-xl mr-3 mt-1 shadow-lg p-1 mb-3 container-max-width metric-card">
           <div class="row d-flex align-items-center mx-1 metric-card-row">
             <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
@@ -349,41 +349,43 @@
           </div>
         </div>
       </div>
-      <div class="row flex-lg-nowrap my-3 container-min-width row-margin-reset">
+      <div class="row flex-lg-nowrap mx-0my-3 container-min-width">
         <div class="col-12 col-lg shadow p-1 mb-3 container-min-height notifications-section">
           <div class="ml-3 mt-3">
             <h2 class="heading-l2">Most recent notifications</h2>
-            <h6 class="heading-l6">Your most recent 5 notifications</h5>
+            <h4 class="heading-l4">Your most recent 5 notifications</h5>
           </div>
           {{ if false }}
             <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
               <i class="far fa-frown fa-2x mb-3 icon"></i>
-              <h4 class="heading-l4">You had no notifications in the past hour</h4>
+              <h3 class="heading-l3">You had no notifications in the past hour</h4>
             </div>
           {{ else }}
+
             <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
               <i class="far fa-smile-wink fa-2x mb-3 icon"></i>
-              <h4 class="heading-l4">BOOM</h4>
+              <h3 class="heading-l3">BOOM</h4>
             </div>
+
           {{ end }}
         </div>
         <div class="col-12 col-lg mt-3 mt-lg-0 ml-lg-3 shadow p-1 mb-3 container-height notifications-section">
           <div class="ml-3 mt-3">
             <h2 class="heading-l2">Events</h2>
-            <h6 class="heading-l6">All events you are subscribed to from the Validators in your list</h5>
+            <h4 class="heading-l4">All events you are subscribed to from the Validators in your list</h5>
           </div>
           <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
             <i class="far fa-frown fa-2x mb-3 icon"></i>
-            <h4 class="heading-l4">You are not subscribed to any events yet</h4>
+            <h3 class="heading-l3">You are not subscribed to any events yet</h4>
           </div>
         </div>
       </div>
-      <div class="row my-3 shadow p-1 mb-3 container-min-width container-height row-margin-reset validators-section">
+      <div class="row mx-0 my-3 shadow p-1 mb-3 container-min-width container-height validators-section">
         <div class="col-12 mt-3">
           <h2 class="heading-l2">Validators</h2>
         </div>
         <div class="col-12 mx-sm-auto mb-auto text-sm-center text-empty-section">
-          <h4 class="heading-l4">Start adding Validators to your Watchlist</h4>
+          <h3 class="heading-l3">Start adding Validators to your Watchlist</h4>
           <div class="col-12 my-2 my-md-4 add-validators">
             <div class="d-flex flex-nowrap row align-items-center justify-content-start justify-content-sm-center mr-0">
               <div class="my-2 my-md-0">
