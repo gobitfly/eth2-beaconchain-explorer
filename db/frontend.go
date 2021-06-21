@@ -424,8 +424,8 @@ func InsertStatsMeta(tx *sql.Tx, userID uint64, data *types.StatsMeta) (uint64, 
 
 	var id uint64
 	row := tx.QueryRow(
-		"INSERT INTO stats_meta (user_id, machine, ts, version, process, created_trunc) VALUES($1, $2, TO_TIMESTAMP($3), $4, $5, date_trunc('minute', TO_TIMESTAMP($6))) RETURNING id",
-		userID, data.Machine, data.Timestamp, data.Version, data.Process, nowTs,
+		"INSERT INTO stats_meta (user_id, machine, ts, version, process, created_trunc, exporter_version) VALUES($1, $2, TO_TIMESTAMP($3), $4, $5, date_trunc('minute', TO_TIMESTAMP($6)), $7) RETURNING id",
+		userID, data.Machine, data.Timestamp, data.Version, data.Process, nowTs, data.ExporterVersion,
 	)
 	err := row.Scan(&id)
 	return id, err
