@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lib/pq"
@@ -47,7 +47,7 @@ type PoolsResp struct {
 	DepositDistribution types.ChartsPageDataChart
 	StakedEther         string
 	PoolInfo            []PoolsInfo
-	EthSupply           interface{}
+	EthSupply           ethPriceResp
 	LastUpdate          int64
 	IdEthSeries         idEthSeriesDrill
 	TotalValidators     uint64
@@ -68,21 +68,24 @@ type idEthSeriesDrill struct {
 	DrillSeries []idEthSeries `json:"drillSeries"`
 }
 
-var poolInfoTemp []PoolsInfo
-var poolInfoTempTime time.Time
-var ethSupply interface{}
-var updateMux = &sync.RWMutex{}
-var idEthSeriesTemp = idEthSeriesDrill{}
-var idEthMux = &sync.RWMutex{}
+type ethPriceResp struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+	Result  string `json:"result"`
+}
+
+var poolInfoTemp atomic.Value     //[]PoolsInfo
+var poolInfoTempTime atomic.Value //time.Time
+var ethSupply atomic.Value        //interface{}
+var idEthSeriesTemp atomic.Value  //= idEthSeriesDrill{}
 
 func updatePoolInfo() {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("service_pools_updater").Observe(time.Since(start).Seconds())
 	}()
-	updateMux.Lock()
-	lastUpdateTime := poolInfoTempTime
-	updateMux.Unlock()
+
+	lastUpdateTime := poolInfoTempTime.Load().(time.Time)
 
 	if time.Now().Sub(lastUpdateTime).Hours() > 3 { // query db every 3 hour
 		// deleteOldChartEntries()
@@ -90,15 +93,13 @@ func updatePoolInfo() {
 		ethSupplyLocal := getEthSupply()
 		idEthSeriesTempLocal := getIDEthChartSeries()
 
-		updateMux.Lock()
-		poolInfoTemp = poolInfoTempLocal
-		ethSupply = ethSupplyLocal
-		poolInfoTempTime = time.Now()
-		updateMux.Unlock()
+		poolInfoTemp.Store(poolInfoTempLocal)
+		if ethSupplyLocal != nil {
+			ethSupply.Store(*ethSupplyLocal)
+		}
+		poolInfoTempTime.Store(time.Now())
 
-		idEthMux.Lock()
-		idEthSeriesTemp = idEthSeriesTempLocal
-		idEthMux.Unlock()
+		idEthSeriesTemp.Store(idEthSeriesTempLocal)
 
 		logger.Infoln("Updated Pool Info")
 	}
@@ -107,6 +108,10 @@ func updatePoolInfo() {
 
 func InitPools() {
 	// updatePoolInfo()
+	poolInfoTemp.Store([]PoolsInfo{})
+	poolInfoTempTime.Store(time.Time{})
+	ethSupply.Store(ethPriceResp{})
+	idEthSeriesTemp.Store(idEthSeriesDrill{})
 	go func() {
 		for true {
 			updatePoolInfo()
@@ -115,16 +120,17 @@ func InitPools() {
 	}()
 }
 
-func GetPoolsData() ([]PoolsInfo, interface{}, int64) {
-	updateMux.Lock()
-	defer updateMux.Unlock()
-	return poolInfoTemp, ethSupply, poolInfoTempTime.Unix()
+func GetPoolsData() ([]PoolsInfo, ethPriceResp, int64) {
+	// updateMux.Lock()
+	// defer updateMux.Unlock()
+	unix := poolInfoTempTime.Load().(time.Time).Unix()
+	return poolInfoTemp.Load().([]PoolsInfo), ethSupply.Load().(ethPriceResp), unix
 }
 
 func GetIncomePerDepositedETHChart() idEthSeriesDrill {
-	idEthMux.Lock()
-	defer idEthMux.Unlock()
-	return idEthSeriesTemp
+	// idEthMux.Lock()
+	// defer idEthMux.Unlock()
+	return idEthSeriesTemp.Load().(idEthSeriesDrill)
 }
 
 func getPoolInfo() []PoolsInfo {
@@ -445,8 +451,8 @@ func GetTotalValidators() uint64 {
 	return activeValidators
 }
 
-func getEthSupply() interface{} {
-	var respjson interface{}
+func getEthSupply() *ethPriceResp {
+	var respjson *ethPriceResp
 	resp, err := http.Get("https://api.etherscan.io/api?module=stats&action=ethsupply&apikey=")
 
 	if err != nil {
