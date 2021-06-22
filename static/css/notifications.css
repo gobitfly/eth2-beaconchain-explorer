@@ -4,6 +4,8 @@
 
 .container-height { height: 400px }
 
+.container-min-height { height: 400px }
+
 .icon { 
   font-size: 2.4rem;
   color: #5E3F6B;
@@ -60,10 +62,22 @@
   color: #343a40;
 }
 
+.notification-row-max-width { max-width: 550px }
+
 .notifications-section { 
   border-radius: .25rem;
   background-color: #fdfdfd;
 }
+
+.notification-description { letter-spacing: .03rem }
+
+.notification-status { 
+  font-size: .5rem;
+  color: #2d7533;
+  color: #f0952d;
+}
+
+.notification-info { font-size: .8rem }
 
 .validators-section { 
   border-radius: .25rem; 
@@ -83,4 +97,8 @@
 
 @media screen and (max-width: 576px) {
   .container-custom { padding: 0 2px }
+}
+
+@media screen and (max-width: 576px) {
+  .row-max-width { max-width: 300px }
 }
