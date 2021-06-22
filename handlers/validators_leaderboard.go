@@ -47,10 +47,15 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		searchIndex = &index
 	}
-	var searchPubkey *string
-	if searchPubkeyRE.MatchString(search) {
-		pubkey := strings.Replace(search, "0x", "", -1)
-		searchPubkey = &pubkey
+
+	var searchPubkeyExact *string
+	var searchPubkeyLike *string
+	if searchPubkeyExactRE.MatchString(search) {
+		pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+		searchPubkeyExact = &pubkey
+	} else if searchPubkeyLikeRE.MatchString(search) {
+		pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+		searchPubkeyLike = &pubkey
 	}
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
@@ -116,16 +121,21 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// for perfomance-reasons we combine multiple search results with `union`
 		args := []interface{}{}
-		args = append(args, "%"+search+"%")
-		searchQry := fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE name ILIKE $%d `, len(args))
+		args = append(args, "%"+strings.ToLower(search)+"%")
+		searchQry := fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%d `, len(args))
 		if searchIndex != nil {
 			args = append(args, *searchIndex)
 			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE validatorindex = $%d `, len(args))
 		}
-		if searchPubkey != nil {
-			args = append(args, *searchPubkey+"%")
-			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex ILIKE $%d `, len(args))
+
+		if searchPubkeyExact != nil {
+			args = append(args, *searchPubkeyExact)
+			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex = $%d `, len(args))
+		} else if searchPubkeyLike != nil {
+			args = append(args, *searchPubkeyLike+"%")
+			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex LIKE $%d `, len(args))
 		}
+
 		args = append(args, length)
 		args = append(args, start)
 		qry := fmt.Sprintf(`
