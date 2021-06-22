@@ -42,15 +42,17 @@ function updatePoolShare(arr) {
 
 function getValidatorCard(val) {
     if (val === undefined) return ""
-    let bg = "danger"
+    let color = "danger"
     if (val.status === "active_online") {
-        bg = "success"
+        color = "success"
+    }else if(val.status==="pending"){
+        color = "dark"
     }
     return `
     <div class="col-sm-12 col-md-6 col-lg-4 col-xl-2 card shadow-sm p-2 m-1" style="min-height: 100px; max-height: 100px">
         <div class="d-flex flex-row justify-content-between">
             <a href="/validator/${val.validatorindex}"><i class="fas fa-male mr-1"></i> ${val.validatorindex}</a>
-            <span class="text-${bg}">${val.status.replace("_", " ")}</span>
+            <span class="text-${color}">${val.status.replace("_", " ")}</span>
         </div>
         <hr/>
         <span data-toggle="tooltip" title="31 Day Balance">${(val.balance31d / 1e9).toFixed(4)} ETH</span>
@@ -69,12 +71,12 @@ function showPoolInfo(data) {
     }
     let data2ShowOnScroll = []
     if (data2Show.length > 100) {
-        data2ShowOnScroll = data2Show.slice(100, data.length - 1)
+        data2ShowOnScroll = data2Show.slice(100, data2Show.length - 1)
         data2Show = data2Show.slice(0, 100)
     } else if (data2Show.length === 0) {
         $(".popupMain").html(`All Validators are active <i class="fas fa-rocket"></i>`)
     }
-
+    // console.log(data2Show[0], "data2Show")
     for (let item of data2Show) {
         $(".popupMain").append(getValidatorCard(item))
     }
@@ -566,6 +568,7 @@ $(document).ready(function () {
     }
 
     randerTable(tableData)
+    // console.log(tableData[0], "tableData")
 
     fetch(`/pools/chart/income_per_eth`, {
         method: "GET"
