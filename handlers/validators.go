@@ -76,18 +76,20 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 }
 
 type ValidatorsDataQueryParams struct {
-	Search       string
-	SearchIndex  *uint64
-	SearchPubkey *string
-	OrderBy      string
-	OrderDir     string
-	Draw         uint64
-	Start        uint64
-	Length       int64
-	StateFilter  string
+	Search            string
+	SearchIndex       *uint64
+	SearchPubkeyExact *string
+	SearchPubkeyLike  *string
+	OrderBy           string
+	OrderDir          string
+	Draw              uint64
+	Start             uint64
+	Length            int64
+	StateFilter       string
 }
 
-var searchPubkeyRE = regexp.MustCompile(`^0?x?[0-9a-fA-F]{96}`) // only search for pubkeys if string consists of 96 hex-chars
+var searchPubkeyExactRE = regexp.MustCompile(`^0?x?[0-9a-fA-F]{96}`)  // only search for pubkeys if string consists of 96 hex-chars
+var searchPubkeyLikeRE = regexp.MustCompile(`^0?x?[0-9a-fA-F]{2,96}`) // only search for pubkeys if string consists of 96 hex-chars
 
 func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams, error) {
 	q := r.URL.Query()
@@ -101,10 +103,15 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	if err == nil {
 		searchIndex = &index
 	}
-	var searchPubkey *string
-	if searchPubkeyRE.MatchString(search) {
-		pubkey := strings.Replace(search, "0x", "", -1)
-		searchPubkey = &pubkey
+
+	var searchPubkeyExact *string
+	var searchPubkeyLike *string
+	if searchPubkeyExactRE.MatchString(search) {
+		pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+		searchPubkeyExact = &pubkey
+	} else if searchPubkeyLikeRE.MatchString(search) {
+		pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+		searchPubkeyLike = &pubkey
 	}
 
 	filterByState := q.Get("filterByState")
@@ -193,15 +200,16 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	}
 
 	res := &ValidatorsDataQueryParams{
-		Search:       search,
-		SearchIndex:  searchIndex,
-		SearchPubkey: searchPubkey,
-		OrderBy:      orderBy,
-		OrderDir:     orderDir,
-		Draw:         draw,
-		Start:        start,
-		Length:       length,
-		StateFilter:  qryStateFilter,
+		Search:            search,
+		SearchIndex:       searchIndex,
+		SearchPubkeyExact: searchPubkeyExact,
+		SearchPubkeyLike:  searchPubkeyLike,
+		OrderBy:           orderBy,
+		OrderDir:          orderDir,
+		Draw:              draw,
+		Start:             start,
+		Length:            length,
+		StateFilter:       qryStateFilter,
 	}
 
 	return res, nil
@@ -252,19 +260,22 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		// for perfomance-reasons we combine multiple search results with `union`
 		args := []interface{}{}
 		args = append(args, "%"+dataQuery.Search+"%")
-		searchQry := fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE name ILIKE $%d `, len(args))
+		searchQry := fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%d `, len(args))
 		if dataQuery.SearchIndex != nil {
 			args = append(args, *dataQuery.SearchIndex)
 			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE validatorindex = $%d `, len(args))
 		}
-		if dataQuery.SearchPubkey != nil {
-			args = append(args, *dataQuery.SearchPubkey+"%")
-			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex ILIKE $%d `, len(args))
+		if dataQuery.SearchPubkeyExact != nil {
+			args = append(args, *dataQuery.SearchPubkeyExact)
+			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex = $%d `, len(args))
+		} else if dataQuery.SearchPubkeyLike != nil {
+			args = append(args, *dataQuery.SearchPubkeyLike+"%")
+			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex LIKE $%d `, len(args))
 		}
 		args = append(args, dataQuery.Length)
 		args = append(args, dataQuery.Start)
 		qry = fmt.Sprintf(`
-			WITH matchings AS (%v)
+			WITH matched_validators AS (%v)
 			SELECT
 				validators.validatorindex,
 				validators.pubkey,
@@ -278,7 +289,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 				COALESCE(validator_names.name, '') AS name,
 				validators.status AS state
 			FROM validators
-			INNER JOIN matchings ON validators.pubkey = matchings.pubkey
+			INNER JOIN matched_validators ON validators.pubkey = matched_validators.pubkey
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			%s
 			ORDER BY %s %s
