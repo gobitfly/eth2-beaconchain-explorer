@@ -419,7 +419,7 @@
               <h3 class="heading-l3">You are not subscribed to any events</h3>
             </div>
           {{ else }}
-            <div class="table-responsive px-3 py-1">
+            <div class="table-responsive px-0 px-md-3 py-1">
               <table class="table table-borderless table-hover events-table">
                 <thead>
                   <tr>
@@ -450,7 +450,7 @@
                 </button>
               </div>
             </div>
-            <button type="button" class="btn btn-outline-danger btn-sm ml-md-2 ml-lg-4 mt-2 mt-md-0 btn-custom-width">Clear Validators from List</button>
+            <button type="button" class="btn btn-outline-danger btn-sm ml-md-2 ml-lg-4 mt-2 mt-md-0 btn-custom-width">Remove Validators from List</button>
             <a href="{{ .DashboardLink }}" class="btn btn-outline-primary btn-sm ml-md-2 ml-lg-4 mt-2 mt-md-0 btn-custom-width">View in Dashboard</a>
           </div>
         </div>
@@ -472,13 +472,24 @@
             </div>
           </div>
         {{ else }}
-          <div class="table-responsive px-3 py-3">
+          <div class="d-none d-lg-block table-responsive px-3 py-3">
             <table class="table table-borderless table-hover events-table">
               <thead>
                 <tr>
                   <th scope="col">Index</th>
                   <th scope="col">Public Key</th>
                   <th scope="col">Balance</th>
+                  <th scope="col">Notifications</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="d-block d-lg-none table-responsive px-0 px-md-3 py-3">
+            <table class="table table-borderless table-hover events-table">
+              <thead>
+                <tr>
+                  <th scope="col">Index</th>
                   <th scope="col">Notifications</th>
                 </tr>
               </thead>
