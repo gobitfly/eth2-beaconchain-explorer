@@ -181,10 +181,12 @@ create table validator_stats_status
 drop table if exists validator_attestation_streaks;
 create table validator_attestation_streaks
 (
-    validatorindex int not null,
-    status         int not null,
-    start          int not null,
-    length         int not null,
+    validatorindex int     not null,
+    status         int     not null,
+    start          int     not null,
+    length         int     not null,
+    longest        boolean not null,
+    current        boolean not null,
     primary key (validatorindex, status, start)
 );
 create index idx_validator_attestation_streaks_validatorindex on validator_attestation_streaks (validatorindex);

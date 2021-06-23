@@ -74,6 +74,8 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 		Status         int
 		Start          int
 		Length         int
+		Longest        bool
+		Current        bool
 	}
 
 	boundingsQry := ``
@@ -150,8 +152,12 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 					select validatorindex, status, start, length from validator_attestation_streaks
 				) a
 			)
-		select validatorindex, status, start, length
-		from rankedstreaks where r = 1 or start+length = $2+1 order by validatorindex, start`, boundingsQry)
+		select 
+			validatorindex, status, start, length, 
+			case when r = 1 then true else false as longest, 
+			case when start+length = $2+1 then true else false as current
+		from rankedstreaks where r = 1 or start+length = $2+1 
+		order by validatorindex, start`, boundingsQry)
 
 	// fmt.Println(strings.ReplaceAll(strings.ReplaceAll(qry, "$1", fmt.Sprintf("%d", startEpoch)), "$2", fmt.Sprintf("%d", endEpoch)))
 
@@ -180,17 +186,19 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 		if len(streaks) < end {
 			end = len(streaks)
 		}
-		n := 4
+		n := 6
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*n)
 		for i, d := range streaks[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*n+1, i*n+2, i*n+3, i*n+4))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)", i*n+1, i*n+2, i*n+3, i*n+4, i*n+5, i*n+6))
 			valueArgs = append(valueArgs, d.Validatorindex)
 			valueArgs = append(valueArgs, d.Status)
 			valueArgs = append(valueArgs, d.Start)
 			valueArgs = append(valueArgs, d.Length)
+			valueArgs = append(valueArgs, d.Longest)
+			valueArgs = append(valueArgs, d.Current)
 		}
-		stmt := fmt.Sprintf(`insert into validator_attestation_streaks (validatorindex, status, start, length) values %s`, strings.Join(valueStrings, ","))
+		stmt := fmt.Sprintf(`insert into validator_attestation_streaks (validatorindex, status, start, length, longest, current) values %s`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return false, fmt.Errorf("error inserting streaks %w", err)
