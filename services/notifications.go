@@ -8,12 +8,12 @@ import (
 	"eth2-exporter/notify"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"firebase.google.com/go/messaging"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"firebase.google.com/go/messaging"
 )
 
 func notificationsSender() {
@@ -26,8 +26,17 @@ func notificationsSender() {
 			continue
 		}
 		start := time.Now()
+
+		// Network DB Notifications (validator related)
 		notifications := collectNotifications()
-		sendNotifications(notifications)
+		sendNotifications(notifications, db.DB)
+
+		// Network DB Notifications (validator related)
+		if utils.Config.Notifications.UserDBNotifications {
+			userNotifications := collectUserDbNotifications()
+			sendNotifications(userNotifications, db.FrontendDB)
+		}
+
 		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
 		metrics.TaskDuration.WithLabelValues("service_notifications").Observe(time.Since(start).Seconds())
 		time.Sleep(time.Second * 120)
@@ -70,36 +79,6 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting Eth client notifications: %v", err)
 	}
 
-	// Monitoring (premium): machine offline
-	err = collectMonitoringMachineOffline(notificationsByUserID)
-	if err != nil {
-		logger.Errorf("error collecting Eth client notifications: %v", err)
-	}
-
-	// Monitoring (premium): disk full warnings
-	err = collectMonitoringMachineDiskAlmostFull(notificationsByUserID)
-	if err != nil {
-		logger.Errorf("error collecting Eth client notifications: %v", err)
-	}
-
-	// Monitoring (premium): cpu load
-	err = collectMonitoringMachineCPULoad(notificationsByUserID)
-	if err != nil {
-		logger.Errorf("error collecting Eth client notifications: %v", err)
-	}
-
-	// Monitoring (premium): ETH2 fallback in use
-	err = collectMonitoringMachineETH2FallbackActive(notificationsByUserID)
-	if err != nil {
-		logger.Errorf("error collecting Eth client notifications: %v", err)
-	}
-
-	// Monitoring (premium): ETH1 fallback in use
-	err = collectMonitoringMachineETH1FallbackActive(notificationsByUserID)
-	if err != nil {
-		logger.Errorf("error collecting Eth client notifications: %v", err)
-	}
-
 	//Tax Report
 	err = collectTaxReportNotificationNotifications(notificationsByUserID, types.TaxReportEventName)
 	if err != nil {
@@ -109,15 +88,40 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	return notificationsByUserID
 }
 
-func sendNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
-	sendEmailNotifications(notificationsByUserID)
-	sendPushNotifications(notificationsByUserID)
+func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notification {
+	notificationsByUserID := map[uint64]map[types.EventName][]types.Notification{}
+	var err error
+
+	// Monitoring (premium): machine offline
+	err = collectMonitoringMachineOffline(notificationsByUserID)
+	if err != nil {
+		logger.Errorf("error collecting Eth client offline notifications: %v", err)
+	}
+
+	// Monitoring (premium): disk full warnings
+	err = collectMonitoringMachineDiskAlmostFull(notificationsByUserID)
+	if err != nil {
+		logger.Errorf("error collecting Eth client disk full notifications: %v", err)
+	}
+
+	// Monitoring (premium): cpu load
+	err = collectMonitoringMachineCPULoad(notificationsByUserID)
+	if err != nil {
+		logger.Errorf("error collecting Eth client cpu notifications: %v", err)
+	}
+
+	return notificationsByUserID
+}
+
+func sendNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
+	sendEmailNotifications(notificationsByUserID, useDB)
+	sendPushNotifications(notificationsByUserID, useDB)
 	sendFrontEndEthClientNotifications(notificationsByUserID)
-	saveNotifications(notificationsByUserID)
+	saveNotifications(notificationsByUserID, useDB)
 	// sendWebhookNotifications(notificationsByUserID)
 }
 
-func saveNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
+func saveNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
 	for userID, userNotifications := range notificationsByUserID {
 		for _, ns := range userNotifications {
 			for _, n := range ns {
@@ -137,7 +141,7 @@ func saveNotifications(notificationsByUserID map[uint64]map[types.EventName][]ty
 					logger.Errorf("skipping ... received string with invalid encoding %s", filter)
 					continue
 				}
-				_, err := db.DB.Exec(`
+				_, err := useDB.Exec(`
 					INSERT INTO users_notifications (user_id, event_name, event_filter, sent_ts, epoch)
 					VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5)`,
 					userID, event, filter, time.Now().Unix(), n.GetEpoch())
@@ -170,7 +174,7 @@ func getNetwork() string {
 	return ""
 }
 
-func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
+func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
 	userIDs := []uint64{}
 	for userID := range notificationsByUserID {
 		userIDs = append(userIDs, userID)
@@ -223,7 +227,7 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 			}
 
 			for epoch, subIDs := range sentSubsByEpoch {
-				err = db.UpdateSubscriptionsLastSent(subIDs, time.Now(), epoch)
+				err = db.UpdateSubscriptionsLastSent(subIDs, time.Now(), epoch, useDB)
 				if err != nil {
 					logger.Errorf("error updating sent-time of sent notifications: %v", err)
 				}
@@ -233,7 +237,7 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 
 }
 
-func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
+func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
 	userIDs := []uint64{}
 	for userID := range notificationsByUserID {
 		userIDs = append(userIDs, userID)
@@ -281,7 +285,7 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 			}
 
 			for epoch, subIDs := range sentSubsByEpoch {
-				err = db.UpdateSubscriptionsLastSent(subIDs, time.Now(), epoch)
+				err = db.UpdateSubscriptionsLastSent(subIDs, time.Now(), epoch, useDB)
 				if err != nil {
 					logger.Errorf("error updating sent-time of sent notifications: %v", err)
 				}
@@ -850,85 +854,64 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName,
 		`SELECT 
-			us.id, 
-			us.user_id
-		FROM users_subscriptions us
-		INNER JOIN stats_meta v ON us.user_id = v.user_id
-		WHERE us.event_name = $1 AND us.created_epoch <= $2 
-		AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
-		AND v.ts < now() - interval '3 minutes' AND v.ts > now() - interval '6 hours'
-		AND machine 
-		NOT IN 
-		(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '6 hours')
+		DISTINCT(v.user_id), 
+		us.id,
+		machine  
+	FROM users_subscriptions us
+	INNER JOIN stats_meta v ON us.user_id = v.user_id
+	WHERE us.event_name = $1 AND us.created_epoch <= $2 
+	AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
+	AND v.created_trunc < now() - interval '4 minutes' AND v.created_trunc > now() - interval '3 hours'
+	AND v.id = (SELECT MAX(id) from stats_meta v2 where v.user_id = v2.user_id)
+	AND machine 
+	NOT IN 
+	(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '3 hours');
 	`)
 }
 
 func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName,
 		`SELECT 
-			us.id, 
-			us.user_id 
-		FROM users_subscriptions us
+			DISTINCT(us.user_id), 
+			us.id,
+			machine 
+		FROM users_subscriptions us 
 		INNER JOIN stats_meta v ON us.user_id = v.user_id
 		INNER JOIN stats_system sy ON v.id = sy.meta_id
 		WHERE us.event_name = $1 AND us.created_epoch <= $2 
-		AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
-		AND sy.disk_node_bytes_free / sy.disk_node_bytes_total < 0.05
-		AND machine 
+		AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL) AND event_filter<>'' 
+		AND sy.disk_node_bytes_free::decimal / sy.disk_node_bytes_total < try_cast_numeric(us.event_filter, 0)
+		AND us.event_filter 
 		NOT IN 
-		(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '6 hours')
+		(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '3 hours')
 	`)
 }
 
 func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName,
 		`SELECT 
-			us.id, 
-			us.user_id 
-		FROM users_subscriptions us
-		INNER JOIN stats_meta v ON us.user_id = v.user_id
-		INNER JOIN stats_system sy ON v.id = sy.meta_id
-		WHERE us.event_name = $1 AND us.created_epoch <= $2 
-		AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
-		AND sy.cpu_node_idle_seconds_total / sy.cpu_node_system_seconds_total < 0.10
+			DISTINCT(us.id), 
+			us.user_id,
+			machine 
+		FROM users_subscriptions us 
+		INNER JOIN stats_meta v ON us.user_id = v.user_id 
+		WHERE v.id = (SELECT MAX(id) from stats_meta v2 where v.user_id = v2.user_id) AND process = 'system' 
+		AND us.event_name = $1 AND us.created_epoch <= $2 
+		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
+		AND v.created_trunc > now() - interval '3 hours' 
+		AND try_cast_numeric(us.event_filter, 1) < (SELECT 
+			1 - (cpu_node_idle_seconds_total::decimal - lag(cpu_node_idle_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) / (cpu_node_system_seconds_total::decimal - lag(cpu_node_system_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) as cpu_load 
+			FROM stats_system as sy 
+			INNER JOIN stats_meta m on meta_id = m.id 
+			WHERE m.id = meta_id
+			AND m.user_id = v.user_id
+			ORDER BY sy.id desc
+			LIMIT 1
+		) 
 		AND machine 
 		NOT IN 
-		(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '6 hours')
-	`)
-}
-
-func collectMonitoringMachineETH2FallbackActive(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineSwitchedToETH2FallbackEventName,
-		`SELECT 
-			us.id, 
-			us.user_id 
-		FROM users_subscriptions us
-		INNER JOIN stats_meta v ON us.user_id = v.user_id
-		INNER JOIN stats_process sy ON v.id = sy.meta_id
-		WHERE us.event_name = $1 AND us.created_epoch <= $2 
-		AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
-		AND sync_eth2_fallback_connected = true AND sync_eth2_fallback_configured = true
-		AND machine 
-		NOT IN 
-		(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '6 hours')
-	`)
-}
-
-func collectMonitoringMachineETH1FallbackActive(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
-	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineSwitchedToETH1FallbackEventName,
-		`SELECT 
-			us.id, 
-			us.user_id 
-		FROM users_subscriptions us
-		INNER JOIN stats_meta v ON us.user_id = v.user_id
-		INNER JOIN stats_process sy ON v.id = sy.meta_id
-		INNER JOIN stats_add_beaconnode bn ON sy.id = bn.general_id
-		WHERE us.event_name = $1 AND us.created_epoch <= $2 
-		AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
-		AND sync_eth1_fallback_connected = true AND sync_eth1_fallback_configured = true
-		AND machine 
-		NOT IN 
-		(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '6 hours')
+		(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '3 hours')
+		group by us.id, us.user_id, machine;
 	`)
 }
 
@@ -948,7 +931,7 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 	if err != nil {
 		return err
 	}
-
+	logger.Infof("collectMonitoringMachine result %v", dbResult)
 	for _, r := range dbResult {
 
 		n := &monitorMachineNotification{

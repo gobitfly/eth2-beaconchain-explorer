@@ -119,6 +119,7 @@ type Config struct {
 	} `yaml:"metrics"`
 	Notifications struct {
 		Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+		UserDBNotifications     bool   `yaml:"userDbNotifications" envconfig:"FRONTEND_USERDB_NOTIFICATIONS_ENABLED"`
 		FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
 	} `yaml:"notifications"`
 }

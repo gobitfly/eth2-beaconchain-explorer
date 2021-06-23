@@ -1059,7 +1059,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	claims := getAuthClaims(r)
 
 	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
-	if err != nil || subscriptionCount >= 4 {
+	if err != nil || subscriptionCount >= 5 {
 		sendErrorResponse(j, r.URL.String(), "reached max subscription limit")
 		return
 	}

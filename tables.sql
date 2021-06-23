@@ -706,3 +706,18 @@ CREATE TABLE stats_sharing (
 	user_id 		 	bigint	 	 		not null,
     foreign key(user_id) references users(id)
 );
+
+create function try_cast_numeric(p_in text, p_default numeric default null)
+   returns numeric
+as
+$$
+begin
+  begin
+    return $1::numeric;
+  exception 
+    when others then
+       return p_default;
+  end;
+end;
+$$
+language plpgsql;

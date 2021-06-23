@@ -6,24 +6,34 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"strings"
 	"time"
-
-	"github.com/lib/pq"
 )
+
+// Special case for all monitoring events to be stored in users db
+func getSubscriptionDB(eventName types.EventName) *sqlx.DB {
+	if strings.HasPrefix(string(eventName), "monitoring_") {
+		return FrontendDB
+	} else {
+		return DB
+	}
+}
 
 // AddSubscription adds a new subscription to the database.
 func AddSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
 	now := time.Now()
 	nowTs := now.Unix()
 	nowEpoch := utils.TimeToEpoch(now)
-	_, err := DB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5) ON CONFLICT DO NOTHING", userID, eventName, eventFilter, nowTs, nowEpoch)
+	_, err := getSubscriptionDB(eventName).Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5) ON CONFLICT DO NOTHING", userID, eventName, eventFilter, nowTs, nowEpoch)
 	return err
 }
 
 // DeleteSubscription removes a subscription from the database.
 func DeleteSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
-	_, err := DB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, eventName, eventFilter)
+	_, err := getSubscriptionDB(eventName).Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, eventName, eventFilter)
+
 	return err
 }
 
@@ -202,8 +212,8 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 }
 
 // UpdateSubscriptionsLastSent upates `last_sent_ts` column of the `users_subscriptions` table.
-func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time, epoch uint64) error {
-	_, err := DB.Exec(`
+func UpdateSubscriptionsLastSent(subscriptionIDs []uint64, sent time.Time, epoch uint64, useDB *sqlx.DB) error {
+	_, err := useDB.Exec(`
 		UPDATE users_subscriptions
 		SET last_sent_ts = TO_TIMESTAMP($1), last_sent_epoch = $2
 		WHERE id = ANY($3)`, sent.Unix(), epoch, pq.Array(subscriptionIDs))

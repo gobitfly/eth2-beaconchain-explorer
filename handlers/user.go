@@ -1029,7 +1029,7 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if filterLen == 0 { // no filter = add all my watched validators (max 100)
+	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") { // no filter = add all my watched validators
 
 		filter := db.WatchlistFilter{
 			UserId:         user.UserID,
@@ -1097,7 +1097,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if filterLen == 0 { // no filter = add all my watched validators (max 100)
+	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") { // no filter = add all my watched validators
 
 		filter := db.WatchlistFilter{
 			UserId:         user.UserID,
