@@ -1008,11 +1008,11 @@ func (n *monitorMachineNotification) GetEventName() types.EventName {
 func (n *monitorMachineNotification) GetInfo(includeUrl bool) string {
 	switch n.EventName {
 	case types.MonitoringMachineDiskAlmostFullEventName:
-		return fmt.Sprintf(`Your staking machine "%v" has less than 5%% free disk space.`, n.MachineName)
+		return fmt.Sprintf(`Your staking machine "%v" storage space is running low.`, n.MachineName)
 	case types.MonitoringMachineOfflineEventName:
 		return fmt.Sprintf(`Your staking machine "%v" has not been seen for a couple minutes now. Is it offline?`, n.MachineName)
 	case types.MonitoringMachineCpuLoadEventName:
-		return fmt.Sprintf(`Your staking machine "%v" has a very high CPU usage`, n.MachineName)
+		return fmt.Sprintf(`Your staking machine "%v" has high CPU usage.`, n.MachineName)
 	case types.MonitoringMachineSwitchedToETH1FallbackEventName:
 		return fmt.Sprintf(`Your staking machine "%v" has switched to your configured ETH1 fallback`, n.MachineName)
 	case types.MonitoringMachineSwitchedToETH2FallbackEventName:
@@ -1027,6 +1027,8 @@ func (n *monitorMachineNotification) GetTitle() string {
 		return "Storage Warning"
 	case types.MonitoringMachineOfflineEventName:
 		return "Staking Machine Offline"
+	case types.MonitoringMachineCpuLoadEventName:
+		return "High CPU Load"
 	case types.MonitoringMachineSwitchedToETH1FallbackEventName:
 		return "ETH1 Fallback Active"
 	case types.MonitoringMachineSwitchedToETH2FallbackEventName:
