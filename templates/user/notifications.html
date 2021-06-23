@@ -419,19 +419,34 @@
               <h3 class="heading-l3">You are not subscribed to any events yet</h3>
             </div>
           {{ else }}
-            <p>BOOM</p>
+            <div class="table-responsive px-3 py-1">
+              <table class="table table-borderless table-hover events-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Validator</th>
+                    <th scope="col">Event</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
           {{ end }}
         </div>
       </div>
-      <div class="row mx-0 my-3 shadow p-1 mb-3 container-min-width container-min-height validators-section">
-        <div class="col-12 mt-3">
-          <h2 class="heading-l2">Validators</h2>
+      <div class="mx-0 my-3 shadow p-1 mb-3 container-min-width container-min-height validators-section">
+        <div class="row mx-0 mt-3">
+          <div class="col-12 col-md-6 ml-3">
+            <h2 class="heading-l2">Validators</h2>
+          </div>
+          <div class="col-12 col-md-6 mr-3">
+            <h2 class="heading-l2">Buttons</h2>
+          </div>
         </div>
         {{ if false }}
-          <div class="col-12 mx-sm-auto mb-auto text-sm-center text-empty-section">
+          <div class="mx-sm-auto mb-auto text-sm-center text-empty-section">
             <h3 class="heading-l3">Start adding Validators to your Watchlist</h3>
-            <div class="col-12 my-2 my-md-4 add-validators">
-              <div class="d-flex flex-nowrap row align-items-center justify-content-start justify-content-sm-center mr-0">
+            <div class="my-2 my-md-4 add-validators">
+              <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mr-0">
                 <div class="my-2 my-md-0">
                   <input type="text" placeholder="Search validators..." aria-label="Search" class="input-search" />
                 </div>
@@ -445,7 +460,19 @@
             </div>
           </div>
         {{ else }}
-        <p>MEGA BOOM</p>
+          <div class="table-responsive px-3 py-1">
+            <table class="table table-borderless table-hover events-table">
+              <thead>
+                <tr>
+                  <th scope="col">Index</th>
+                  <th scope="col">Public Key</th>
+                  <th scope="col">Balance</th>
+                  <th scope="col">Notifications</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         {{ end }}
       </div>
     </div>
