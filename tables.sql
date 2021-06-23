@@ -28,6 +28,7 @@ create table validators
 );
 create index idx_validators_pubkey on validators (pubkey);
 create index idx_validators_pubkeyhex on validators (pubkeyhex);
+create index idx_validators_pubkeyhex_pattern_pos on validators (pubkeyhex varchar_pattern_ops);
 create index idx_validators_status on validators (status);
 create index idx_validators_balanceactivation on validators (balanceactivation);
 create index idx_validators_activationepoch on validators (activationepoch);
@@ -568,6 +569,7 @@ CREATE TABLE stats_meta (
 	process 			character varying(20) 		not null,
 	machine 		 	character varying(50),
     created_trunc       timestamp   not null,
+    exporter_version          integer,
 	
 	user_id 		 	bigint	 	 		not null,
     foreign key(user_id) references users(id),

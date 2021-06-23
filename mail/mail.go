@@ -15,12 +15,13 @@ import (
 
 // SendMail sends an email to the given address with the given message.
 // It will use smtp if configured otherwise it will use gunmail if configured.
-func SendMail(to, subject, msg string) error {
+func SendMail(to, subject, msg string, attachment []types.EmailAttachment) error {
 	var err error
 	if utils.Config.Frontend.Mail.SMTP.User != "" {
+		fmt.Println("Email Attachments will not work with SMTP server")
 		err = SendMailSMTP(to, subject, msg)
 	} else if utils.Config.Frontend.Mail.Mailgun.PrivateKey != "" {
-		err = SendMailMailgun(to, subject, msg)
+		err = SendMailMailgun(to, subject, msg, attachment)
 	} else {
 		err = fmt.Errorf("invalid config for mail-service")
 	}
@@ -29,7 +30,7 @@ func SendMail(to, subject, msg string) error {
 
 // SendMailRateLimited sends an email to a given address with the given message.
 // It will return a ratelimit-error if the configured ratelimit is exceeded.
-func SendMailRateLimited(to, subject, msg string) error {
+func SendMailRateLimited(to, subject, msg string, attachment []types.EmailAttachment) error {
 	if utils.Config.Frontend.MaxMailsPerEmailPerDay > 0 {
 		now := time.Now()
 		count, err := db.GetMailsSentCount(to, now)
@@ -48,7 +49,7 @@ func SendMailRateLimited(to, subject, msg string) error {
 		return fmt.Errorf("error counting sent email: %v", err)
 	}
 
-	err = SendMail(to, subject, msg)
+	err = SendMail(to, subject, msg, attachment)
 	if err != nil {
 		return err
 	}
@@ -74,7 +75,7 @@ func SendMailSMTP(to, subject, body string) error {
 }
 
 // SendMailMailgun sends an email to the given address with the given message, using mailgun.
-func SendMailMailgun(to, subject, msg string) error {
+func SendMailMailgun(to, subject, msg string, attachment []types.EmailAttachment) error {
 	mg := mailgun.NewMailgun(
 		utils.Config.Frontend.Mail.Mailgun.Domain,
 		utils.Config.Frontend.Mail.Mailgun.PrivateKey,
@@ -83,6 +84,11 @@ func SendMailMailgun(to, subject, msg string) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
+	if len(attachment) > 0 {
+		for _, att := range attachment {
+			message.AddBufferAttachment(att.Name, att.Attachment)
+		}
+	}
 
 	// Send the message with a 10 second timeout
 	resp, id, err := mg.Send(ctx, message)

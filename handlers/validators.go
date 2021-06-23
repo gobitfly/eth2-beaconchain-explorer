@@ -11,6 +11,7 @@ import (
 	"html"
 	"html/template"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -75,14 +76,20 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 }
 
 type ValidatorsDataQueryParams struct {
-	Search      string
-	OrderBy     string
-	OrderDir    string
-	Draw        uint64
-	Start       uint64
-	Length      int64
-	StateFilter string
+	Search            string
+	SearchIndex       *uint64
+	SearchPubkeyExact *string
+	SearchPubkeyLike  *string
+	OrderBy           string
+	OrderDir          string
+	Draw              uint64
+	Start             uint64
+	Length            int64
+	StateFilter       string
 }
+
+var searchPubkeyExactRE = regexp.MustCompile(`^0?x?[0-9a-fA-F]{96}`)  // only search for pubkeys if string consists of 96 hex-chars
+var searchPubkeyLikeRE = regexp.MustCompile(`^0?x?[0-9a-fA-F]{2,96}`) // only search for pubkeys if string consists of 96 hex-chars
 
 func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams, error) {
 	q := r.URL.Query()
@@ -90,6 +97,21 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
 	if len(search) > 128 {
 		search = search[:128]
+	}
+	var searchIndex *uint64
+	index, err := strconv.ParseUint(search, 10, 64)
+	if err == nil {
+		searchIndex = &index
+	}
+
+	var searchPubkeyExact *string
+	var searchPubkeyLike *string
+	if searchPubkeyExactRE.MatchString(search) {
+		pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+		searchPubkeyExact = &pubkey
+	} else if searchPubkeyLikeRE.MatchString(search) {
+		pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+		searchPubkeyLike = &pubkey
 	}
 
 	filterByState := q.Get("filterByState")
@@ -178,13 +200,16 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	}
 
 	res := &ValidatorsDataQueryParams{
-		search,
-		orderBy,
-		orderDir,
-		draw,
-		start,
-		length,
-		qryStateFilter,
+		Search:            search,
+		SearchIndex:       searchIndex,
+		SearchPubkeyExact: searchPubkeyExact,
+		SearchPubkeyLike:  searchPubkeyLike,
+		OrderBy:           orderBy,
+		OrderDir:          orderDir,
+		Draw:              draw,
+		Start:             start,
+		Length:            length,
+		StateFilter:       qryStateFilter,
 	}
 
 	return res, nil
@@ -232,7 +257,25 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			LIMIT $1 OFFSET $2`, dataQuery.OrderBy, dataQuery.OrderDir)
 		err = db.DB.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
 	} else {
+		// for perfomance-reasons we combine multiple search results with `union`
+		args := []interface{}{}
+		args = append(args, "%"+strings.ToLower(dataQuery.Search)+"%")
+		searchQry := fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%d `, len(args))
+		if dataQuery.SearchIndex != nil {
+			args = append(args, *dataQuery.SearchIndex)
+			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE validatorindex = $%d `, len(args))
+		}
+		if dataQuery.SearchPubkeyExact != nil {
+			args = append(args, *dataQuery.SearchPubkeyExact)
+			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex = $%d `, len(args))
+		} else if dataQuery.SearchPubkeyLike != nil {
+			args = append(args, *dataQuery.SearchPubkeyLike+"%")
+			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex LIKE $%d `, len(args))
+		}
+		args = append(args, dataQuery.Length)
+		args = append(args, dataQuery.Start)
 		qry = fmt.Sprintf(`
+			WITH matched_validators AS (%v)
 			SELECT
 				validators.validatorindex,
 				validators.pubkey,
@@ -246,14 +289,12 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 				COALESCE(validator_names.name, '') AS name,
 				validators.status AS state
 			FROM validators
+			INNER JOIN matched_validators ON validators.pubkey = matched_validators.pubkey
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE (pubkeyhex LIKE $1
-				OR CAST(validators.validatorindex AS text) LIKE $1
-				OR LOWER(validator_names.name) LIKE LOWER($1))
 			%s
 			ORDER BY %s %s
-			LIMIT $2 OFFSET $3`, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir)
-		err = db.DB.Select(&validators, qry, "%"+dataQuery.Search+"%", dataQuery.Length, dataQuery.Start)
+			LIMIT $%d OFFSET $%d`, searchQry, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
+		err = db.DB.Select(&validators, qry, args...)
 	}
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)

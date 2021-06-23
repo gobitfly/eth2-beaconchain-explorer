@@ -11,6 +11,8 @@ import (
 	"firebase.google.com/go/messaging"
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -258,6 +260,7 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 			sentSubsByEpoch := map[uint64][]uint64{}
 			subject := fmt.Sprintf("%s: Notification", utils.Config.Frontend.SiteDomain)
 			msg := ""
+			attachments := []types.EmailAttachment{}
 			for event, ns := range userNotifications {
 				if len(msg) > 0 {
 					msg += "\n"
@@ -271,6 +274,10 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 					} else {
 						sentSubsByEpoch[e] = append(sentSubsByEpoch[e], n.GetSubscriptionID())
 					}
+					if att := n.GetEmailAttachment(); att != nil {
+						attachments = append(attachments, *att)
+					}
+
 				}
 				if event == "validator_balance_decreased" {
 					msg += "\nYou will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.\n"
@@ -278,7 +285,7 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 			}
 			msg += fmt.Sprintf("\nBest regards\n\n%s", utils.Config.Frontend.SiteDomain)
 
-			err := mail.SendMailRateLimited(userEmail, subject, msg)
+			err := mail.SendMailRateLimited(userEmail, subject, msg, attachments)
 			if err != nil {
 				logger.Errorf("error sending notification-email: %v", err)
 				return
@@ -303,6 +310,10 @@ type validatorBalanceDecreasedNotification struct {
 	EndBalance         uint64
 	SubscriptionID     uint64
 	EventFilter        string
+}
+
+func (n *validatorBalanceDecreasedNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
 }
 
 func (n *validatorBalanceDecreasedNotification) GetSubscriptionID() uint64 {
@@ -472,6 +483,10 @@ type validatorProposalNotification struct {
 	EventFilter        string
 }
 
+func (n *validatorProposalNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
+}
+
 func (n *validatorProposalNotification) GetSubscriptionID() uint64 {
 	return n.SubscriptionID
 }
@@ -591,6 +606,10 @@ type validatorAttestationNotification struct {
 	EventFilter        string
 }
 
+func (n *validatorAttestationNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
+}
+
 func (n *validatorAttestationNotification) GetSubscriptionID() uint64 {
 	return n.SubscriptionID
 }
@@ -640,6 +659,10 @@ type validatorGotSlashedNotification struct {
 	Slasher        uint64
 	Reason         string
 	EventFilter    string
+}
+
+func (n *validatorGotSlashedNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
 }
 
 func (n *validatorGotSlashedNotification) GetSubscriptionID() uint64 {
@@ -753,6 +776,10 @@ type ethClientNotification struct {
 	Epoch          uint64
 	EthClient      string
 	EventFilter    string
+}
+
+func (n *ethClientNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
 }
 
 func (n *ethClientNotification) GetSubscriptionID() uint64 {
@@ -962,6 +989,10 @@ type monitorMachineNotification struct {
 	EventName      types.EventName
 }
 
+func (n *monitorMachineNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
+}
+
 func (n *monitorMachineNotification) GetSubscriptionID() uint64 {
 	return n.SubscriptionID
 }
@@ -1015,6 +1046,40 @@ type taxReportNotification struct {
 	EventFilter    string
 }
 
+func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
+	tNow := time.Now()
+	firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
+
+	q, err := url.ParseQuery(n.EventFilter)
+
+	if err != nil {
+		logger.Warn("Failed to parse rewards report eventfilter")
+		return nil
+	}
+
+	currency := q.Get("currency")
+
+	validators := []uint64{}
+	valSlice := strings.Split(q.Get("validators"), ",")
+	if len(valSlice) > 0 {
+		for _, val := range valSlice {
+			v, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				continue
+			}
+			validators = append(validators, v)
+		}
+	} else {
+		logger.Warn("Validators Not found in rewards report eventfilter")
+		return nil
+	}
+
+	pdf := GetPdfReport(validators, currency, uint64(firstDay.Unix()), uint64(lastDay.Unix()))
+
+	return &types.EmailAttachment{Attachment: pdf, Name: "beaconcha_in-rewards-history.pdf"}
+}
+
 func (n *taxReportNotification) GetSubscriptionID() uint64 {
 	return n.SubscriptionID
 }
@@ -1028,16 +1093,16 @@ func (n *taxReportNotification) GetEventName() types.EventName {
 }
 
 func (n *taxReportNotification) GetInfo(includeUrl bool) string {
-	tNow := time.Now()
-	firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
-	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
-	dateRange := fmt.Sprintf("days=%d-%d", firstDay.Unix(), lastDay.Unix())
-	generalPart := fmt.Sprint(`New monthly report is ready to download`)
-	if includeUrl {
-		url := fmt.Sprintf("https://%s/rewards/hist/download?%s", utils.Config.Frontend.SiteDomain, n.EventFilter)
-		url = strings.Replace(url, "days=30", dateRange, -1)
-		return generalPart + " " + url
-	}
+	// tNow := time.Now()
+	// firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	// lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
+	// dateRange := fmt.Sprintf("days=%d-%d", firstDay.Unix(), lastDay.Unix())
+	generalPart := fmt.Sprint(`Monthly report is ready to download`)
+	// if includeUrl {
+	// 	url := fmt.Sprintf("https://%s/rewards/hist/download?%s", utils.Config.Frontend.SiteDomain, n.EventFilter)
+	// 	url = strings.Replace(url, "days=30", dateRange, -1)
+	// 	return generalPart + " " + url
+	// }
 	return generalPart
 }
 

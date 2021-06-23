@@ -68,12 +68,41 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("Error retrieving the paired devices for user: %v %v", user.UserID, err)
 		pairedDevices = nil
 	}
-
 	statsSharing, err := db.GetUserMonitorSharingSetting(user.UserID)
 	if err != nil {
 		logger.Errorf("Error retrieving stats sharing setting: %v %v", user.UserID, err)
 		statsSharing = false
 	}
+
+	maxDaily := 10000
+	maxMonthly := 30000
+	if subscription.PriceID != nil {
+		if *subscription.PriceID == utils.Config.Frontend.Stripe.Sapphire {
+			maxDaily = 100000
+			maxMonthly = 500000
+		} else if *subscription.PriceID == utils.Config.Frontend.Stripe.Emerald {
+			maxDaily = 200000
+			maxMonthly = 1000000
+		} else if *subscription.PriceID == utils.Config.Frontend.Stripe.Diamond {
+			maxDaily = -1
+			maxMonthly = 4000000
+		}
+	}
+
+	userSettingsData.ApiStatistics = &types.ApiStatistics{}
+
+	if subscription.ApiKey != nil && len(*subscription.ApiKey) > 0 {
+		apiStats, err := db.GetUserAPIKeyStatistics(subscription.ApiKey)
+		if err != nil {
+			logger.Errorf("Error retrieving user api key usage: %v %v", user.UserID, err)
+		}
+		if apiStats != nil {
+			userSettingsData.ApiStatistics = apiStats
+		}
+	}
+
+	userSettingsData.ApiStatistics.MaxDaily = &maxDaily
+	userSettingsData.ApiStatistics.MaxMonthly = &maxMonthly
 
 	userSettingsData.PairedDevices = pairedDevices
 	userSettingsData.Subscription = subscription
@@ -769,7 +798,7 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, emailConfirmationHash, url.QueryEscape(newEmail))
-	err = mail.SendMail(newEmail, subject, msg)
+	err = mail.SendMail(newEmail, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
 	}
@@ -1138,4 +1167,43 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	OKResponse(w, r)
+}
+
+func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	claims := getAuthClaims(r)
+	var userDeviceID uint64
+	var userID uint64
+
+	if claims == nil {
+		customDeviceID := FormValueOrJSON(r, "id")
+		temp, err := strconv.ParseUint(customDeviceID, 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing id %v | err: %v", customDeviceID, err)
+			sendErrorResponse(j, r.URL.String(), "could not parse id")
+			return
+		}
+		userDeviceID = temp
+		sessionUser := getUser(w, r)
+		if !sessionUser.Authenticated {
+			sendErrorResponse(j, r.URL.String(), "not authenticated")
+			return
+		}
+		userID = sessionUser.UserID
+	} else {
+		sendErrorResponse(j, r.URL.String(), "you can not delete the device you are currently signed in with")
+		return
+	}
+
+	err := db.MobileDeviceDelete(userID, userDeviceID)
+	if err != nil {
+		logger.Errorf("could not retrieve db results err: %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+
+	sendOKResponse(j, r.URL.String(), nil)
 }
