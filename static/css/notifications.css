@@ -1,104 +1,79 @@
 .container-min-width { min-width: 300px }
-
-.container-max-width { max-width: 300px }
-
-.container-height { height: 400px }
-
-.container-min-height { height: 400px }
-
-.icon { 
-  font-size: 2.4rem;
-  color: #5E3F6B;
-}
-
 .breadcrumb-custom {
   background-color: transparent;
   padding: 0;
 }
-
 .heading-section { height: 60px }
-
-.heading { 
-  font-size: 1.8rem;
-  white-space: nowrap;
-}
-
+.heading { font-size: 1.8rem }
 .input-search { 
   width: 100%;
   background-color: #f1f1f1;
   border: none;
   border-radius: .5rem 0 0 .5rem;
-  padding: .75rem 1rem;
 }
-
+.add-input-custom { padding: .75rem 1rem }
 .btn-custom { 
   color: #fdfdfd;
   border-radius: 0 .5rem .5rem 0;
 }
-
 .metrics-section { min-height: 120px }
-
+.container-max-width { max-width: 300px }
 .metric-card { 
   width: auto;
   background-color: #fdfdfd;
   border-radius: .25rem;
 }
-
 .metric-card-row { height: 100% }
-
-/* #8186F1 for dark theme */
+.icon { 
+  font-size: 2.4rem;
+  color: #5E3F6B;
+}
+/* TODO: make coor #8186F1 on dark theme */
 .metric-value { 
   text-align: left;
   font-size: 2.2rem;
   font-weight: 700;
   color: #5E3F6B
 }
-
-/* replace with color variable */
+/* TODO: replace with defined color variable */
 .metric-description { 
   display: block;
   font-size: .75rem;
   font-weight: 400;
   color: #343a40;
 }
-
-.notification-row-max-width { max-width: 550px }
-
+.container-height { height: 400px }
 .notifications-section { 
   border-radius: .25rem;
   background-color: #fdfdfd;
 }
-
+.heading-l2 { font-size: 1.6rem }
+.heading-l3 { font-size: 1.1rem }
+.heading-l4 { 
+  font-size: .85rem;
+  font-weight: 200;
+}
+.text-empty-section { height: 200px }
+.notifications-row-max-width { max-width: 550px }
 .notification-description { letter-spacing: .03rem }
-
 .notification-status { 
   font-size: .5rem;
   color: #2d7533;
   color: #f0952d;
 }
-
 .notification-info { font-size: .8rem }
-
+.container-min-height { height: 400px }
 .validators-section { 
   border-radius: .25rem; 
   background-color: #fdfdfd;
 }
-
-.heading-l2 { font-size: 1.6rem }
-
-.heading-l3 { font-size: 1.1rem }
-
-.heading-l4 { 
-  font-size: .85rem;
-  font-weight: 200;
+.btn-custom-width { width: 240px }
+.search-input-custom { padding: .215rem 1rem }
+@media screen and (max-width: 820px) {
+  .btn-custom-width { width: 280px }
 }
-
-.text-empty-section { height: 200px }
-
 @media screen and (max-width: 576px) {
   .container-custom { padding: 0 2px }
-}
-
-@media screen and (max-width: 576px) {
   .row-max-width { max-width: 300px }
+  .notification-description { letter-spacing: 0 }
 }

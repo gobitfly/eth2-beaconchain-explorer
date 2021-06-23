@@ -265,12 +265,12 @@
       </div>
       <div class="row d-flex align-items-center justify-content-between mx-0 my-5 container-min-width heading-section">
         <div class="col-12 col-md pl-0 heading">
-          <h1 class="heading">Validators Watchlist</h1>
+          <h1 class="heading text-nowrap">Validators Watchlist</h1>
         </div>
-        <div class="col-12 col-md pr-0 add-validators">
+        <div class="col-12 col-md pr-0">
           <div class="row d-flex flex-nowrap align-items-center justify-content-md-end mr-1 mr-sm-0">
             <div class="flex-fill">
-              <input type="text" placeholder="Search validators..." aria-label="Search" class="input-search" />
+              <input type="text" placeholder="Search and add validators..." aria-label="Search" class="input-search add-input-custom" />
             </div>
             <div>
               <button type="button" title="Add Validators" class="btn btn-primary btn-lg btn-custom">
@@ -357,12 +357,12 @@
           </div>
           {{ if false }}
             <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
-              <i class="far fa-frown fa-2x mb-3 icon"></i>
-              <h3 class="heading-l3">You had no notifications in the past hour</h3>
+              <i class="far fa-frown mb-3 icon"></i>
+              <h3 class="heading-l3">You have no notifications</h3>
             </div>
           {{ else }}
-            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notification-row-max-width">
-              <div class="col-12 col-sm-9 d-flex align-items-center justify-content-center justify-content-sm-start px-2 text-nowrap notification-description">
+            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notifications-row-max-width">
+              <div class="col-12 col-sm-9 d-flex align-items-center justify-content-sm-start px-2 text-nowrap notification-description">
                 <span class="mr-2 mr-sm-4 notification-status"><i class="fas fa-circle"></i></span>
                 <b>Validator 1</b>&nbsp; proposed a new block
               </div>
@@ -370,8 +370,8 @@
                 1 day ago
               </div>
             </div>
-            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notification-row-max-width">
-              <div class="col-12 col-sm-9 d-flex align-items-center justify-content-center justify-content-sm-start px-2 text-nowrap notification-description">
+            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notifications-row-max-width">
+              <div class="col-12 col-sm-9 d-flex align-items-center justify-content-sm-start px-2 text-nowrap notification-description">
                 <span class="mr-2 mr-sm-4 notification-status"><i class="fas fa-circle"></i></span>
                 <b>Validator 2</b>&nbsp; proposed a new block
               </div>
@@ -379,8 +379,8 @@
                 1 day ago
               </div>
             </div>
-            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notification-row-max-width">
-              <div class="col-12 col-sm-9 d-flex align-items-center justify-content-center justify-content-sm-start px-2 text-nowrap notification-description">
+            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notifications-row-max-width">
+              <div class="col-12 col-sm-9 d-flex align-items-center justify-content-sm-start px-2 text-nowrap notification-description">
                 <span class="mr-2 mr-sm-4 notification-status"><i class="fas fa-circle"></i></span>
                 <b>Validator 3</b>&nbsp; proposed a new block
               </div>
@@ -388,8 +388,8 @@
                 1 day ago
               </div>
             </div>
-            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notification-row-max-width">
-              <div class="col-12 col-sm-9 d-flex align-items-center justify-content-center justify-content-sm-start px-2 text-nowrap notification-description">
+            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notifications-row-max-width">
+              <div class="col-12 col-sm-9 d-flex align-items-center justify-content-sm-start px-2 text-nowrap notification-description">
                 <span class="mr-2 mr-sm-4 notification-status"><i class="fas fa-circle"></i></span>
                 <b>Validator 4</b>&nbsp; proposed a new block
               </div>
@@ -397,8 +397,8 @@
                 1 day ago
               </div>
             </div>
-            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notification-row-max-width">
-              <div class="col-12 col-sm-9 d-flex align-items-center justify-content-center justify-content-sm-start px-2 text-nowrap notification-description">
+            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notifications-row-max-width">
+              <div class="col-12 col-sm-9 d-flex align-items-center justify-content-sm-start px-2 text-nowrap notification-description">
                 <span class="mr-2 mr-sm-4 notification-status"><i class="fas fa-circle"></i></span>
                 <b>Validator 5</b>&nbsp; proposed a new block
               </div>
@@ -415,8 +415,8 @@
           </div>
           {{ if false }}
             <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
-              <i class="far fa-frown fa-2x mb-3 icon"></i>
-              <h3 class="heading-l3">You are not subscribed to any events yet</h3>
+              <i class="far fa-frown mb-3 icon"></i>
+              <h3 class="heading-l3">You are not subscribed to any events</h3>
             </div>
           {{ else }}
             <div class="table-responsive px-3 py-1">
@@ -434,21 +434,33 @@
         </div>
       </div>
       <div class="mx-0 my-3 shadow p-1 mb-3 container-min-width container-min-height validators-section">
-        <div class="row mx-0 mt-3">
-          <div class="col-12 col-md-6 ml-3">
+        <div class="row d-flex flex-lg-nowrap align-items-center mx-3 mt-3 py-2">
+          <div class="col-12 col-lg-3 d-flex justify-content-start px-0">
             <h2 class="heading-l2">Validators</h2>
           </div>
-          <div class="col-12 col-md-6 mr-3">
-            <h2 class="heading-l2">Buttons</h2>
+          <!-- TODO: add class in JavaScript for cursor not allowed when no data -->
+          <div class="col-12 col-lg-9 d-flex flex-column align-items-start flex-md-row justify-content-md-end px-0">
+            <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0 btn-custom-width">
+              <div>
+                <input type="text" placeholder="Search in the list..." aria-label="Search" class="input-search search-input-custom" />
+              </div>
+              <div>
+                <button type="button" title="Search Validators" class="btn btn-primary btn-sm btn-custom">
+                  <i class="fas fa-search"></i>
+                </button>
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-sm ml-md-2 ml-lg-4 mt-2 mt-md-0 btn-custom-width">Clear Validators from List</button>
+            <a href="{{ .DashboardLink }}" class="btn btn-outline-primary btn-sm ml-md-2 ml-lg-4 mt-2 mt-md-0 btn-custom-width">View in Dashboard</a>
           </div>
         </div>
         {{ if false }}
-          <div class="mx-sm-auto mb-auto text-sm-center text-empty-section">
+          <div class="mx-sm-auto mt-5 text-sm-center text-empty-section">
             <h3 class="heading-l3">Start adding Validators to your Watchlist</h3>
-            <div class="my-2 my-md-4 add-validators">
-              <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mr-0">
+            <div class="my-2 my-md-4">
+              <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0">
                 <div class="my-2 my-md-0">
-                  <input type="text" placeholder="Search validators..." aria-label="Search" class="input-search" />
+                  <input type="text" placeholder="Search and add validators..." aria-label="Search" class="input-search add-input-custom" />
                 </div>
                 <div>
                   <button type="button" title="Add Validators" class="btn btn-primary btn-lg btn-custom">
@@ -460,7 +472,7 @@
             </div>
           </div>
         {{ else }}
-          <div class="table-responsive px-3 py-1">
+          <div class="table-responsive px-3 py-3">
             <table class="table table-borderless table-hover events-table">
               <thead>
                 <tr>
