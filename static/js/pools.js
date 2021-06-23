@@ -42,26 +42,37 @@ function updatePoolShare(arr) {
 
 function getValidatorCard(val) {
     if (val === undefined) return ""
-    let color = "danger"
-    if (val.status === "active_online") {
-        color = "success"
+    let color = ""
+        note = `Activated on epoch <a href="/epoch/${val.activationepoch}">${val.activationepoch}</a>` 
+        animate = ""
+        tooltip = ''
+    if (val.status === "slashed") {
+        color = "text-danger"
+        note = `Exit epoch <a href="/epoch/${val.exitepoch}">${val.exitepoch}</a>`
     }else if(val.status==="pending"){
-        color = "dark"
+        // color = "dark"
+        note = `Will activate on epoch ${val.activationepoch}`
+        animate = "fade-in-out"
+    }else if (val.status==="active_offline"){
+        tooltip = `data-toggle="tooltip" title="Validator is considered offline if there where no attestations in the last two epochs"`
     }
     return `
-    <div class="col-sm-12 col-md-6 col-lg-4 col-xl-2 card shadow-sm p-2 m-1" style="min-height: 100px; max-height: 100px">
+    <div class="col-sm-12 col-md-6 col-lg-4 col-xl-2 card shadow-sm p-2 m-1" style="min-height: 100px; max-height: 120px">
         <div class="d-flex flex-row justify-content-between">
             <a href="/validator/${val.validatorindex}"><i class="fas fa-male mr-1"></i> ${val.validatorindex}</a>
-            <span class="text-${color}">${val.status.replace("_", " ")}</span>
+            <span ${tooltip} class="${color} ${animate}">${val.status.replace("_", " ").replace("offline", '<i class="fas fa-power-off fa-sm text-danger"></i>')}</span>
         </div>
         <hr/>
-        <span data-toggle="tooltip" title="31 Day Balance">${(val.balance31d / 1e9).toFixed(4)} ETH</span>
+        <div class="d-flex flex-row justify-content-between">
+            <span data-toggle="tooltip" title="31 Day Balance" style="font-size: 12px;">${(val.balance31d / 1e9).toFixed(4)} ETH</span>
+            <span style="font-size: 12px;">${note}</span>
+        </div>
     </div>
     `
 }
 
-function showPoolInfo(data) {
-    $(".popupMain").html("")
+function showPoolInfo(poolName, data) {
+    $(".popupMain").html(`<div class="col-12 w-100 d-flex justify-content-center">Displaying inactive validators of ${poolName}</div>`)
     let data2Show = []
     for (let d of data) {
         if (d.status === "active_online") {
@@ -100,12 +111,13 @@ function showPoolInfo(data) {
 }
 
 function addHandlers(tableData) {
+    // console.log(tableData)
     for (let item of Object.keys(tableData)) {
         if (isNaN(parseInt(item, 10))) continue
 
         $("#" + tableData[item][2]).off("click")
         $("#" + tableData[item][2]).on("click", () => {
-            showPoolInfo(tableData[item][7])
+            showPoolInfo(tableData[item][0], tableData[item][7])
         })
         getPoolEffectiveness(tableData[item][2] + "eff", tableData[item][7])
         // getAvgCurrentStreak(tableData[item][2])
