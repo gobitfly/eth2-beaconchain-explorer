@@ -72,7 +72,8 @@ function getValidatorCard(val) {
 }
 
 function showPoolInfo(poolName, data) {
-    $(".popupMain").html(`<div class="col-12 w-100 d-flex justify-content-center">Displaying inactive validators of ${poolName}</div>`)
+    $(".popupMain").html('')
+    $("#poolPopUpTitle").html(`Displaying inactive validators of ${poolName}`)
     let data2Show = []
     for (let d of data) {
         if (d.status === "active_online") {
@@ -196,7 +197,7 @@ function randerTable(tableData) {
         serverSide: false,
         ordering: true,
         searching: true,
-        pagingType: 'full_numbers',
+        pagingType: 'first_last_numbers',
         data: tableData,
         lengthMenu: [10, 25],
         preDrawCallback: function () {
