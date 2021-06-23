@@ -5,6 +5,7 @@ let totalDeposited = 0,
     totalIperEth = 0;
 var IDETH_SERIES = {}
 var totalValidatorsPI = 0
+var poolInfoTable = null
 function getActive(poolValidators) {
     let active = 0
     let slashed = 0
@@ -192,7 +193,7 @@ function getAvgCurrentStreak(id) {
 }
 
 function randerTable(tableData) {
-    $('#staking-pool-table').DataTable({
+    poolInfoTable = $('#staking-pool-table').DataTable({
         processing: true,
         serverSide: false,
         ordering: true,
