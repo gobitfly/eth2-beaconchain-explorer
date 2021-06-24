@@ -8,7 +8,9 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+
 	"net/url"
+
 	"strconv"
 	"strings"
 	"time"
@@ -207,7 +209,9 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 			sentSubsByEpoch := map[uint64][]uint64{}
 			subject := fmt.Sprintf("%s: Notification", utils.Config.Frontend.SiteDomain)
 			msg := ""
+
 			attachments := []types.EmailAttachment{}
+
 			for event, ns := range userNotifications {
 				if len(msg) > 0 {
 					msg += "\n"
@@ -221,6 +225,7 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 					} else {
 						sentSubsByEpoch[e] = append(sentSubsByEpoch[e], n.GetSubscriptionID())
 					}
+
 					if att := n.GetEmailAttachment(); att != nil {
 						attachments = append(attachments, *att)
 					}
@@ -1017,6 +1022,7 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 	firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
 	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
 
+
 	q, err := url.ParseQuery(n.EventFilter)
 
 	if err != nil {
@@ -1039,9 +1045,11 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 	} else {
 		logger.Warn("Validators Not found in rewards report eventfilter")
 		return nil
+
 	}
 
 	pdf := GetPdfReport(validators, currency, uint64(firstDay.Unix()), uint64(lastDay.Unix()))
+
 
 	return &types.EmailAttachment{Attachment: pdf, Name: "beaconcha_in-rewards-history.pdf"}
 }
@@ -1081,44 +1089,47 @@ func (n *taxReportNotification) GetEventFilter() string {
 }
 
 func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
-	tNow := time.Now()
-	firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
-	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
-	if tNow.Year() == lastDay.Year() && tNow.Month() == lastDay.Month() && tNow.Day() == lastDay.Day() { // Send the reports at the end of the month
-		var dbResult []struct {
-			SubscriptionID uint64 `db:"id"`
-			UserID         uint64 `db:"user_id"`
-			Epoch          uint64 `db:"created_epoch"`
-			EventFilter    string `db:"event_filter"`
-		}
+	// tNow := time.Now()
+	// firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	// lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
+	// if tNow.Year() == lastDay.Year() && tNow.Month() == lastDay.Month() && tNow.Day() == lastDay.Day() { // Send the reports at the end of the month
+	var dbResult []struct {
+		SubscriptionID uint64 `db:"id"`
+		UserID         uint64 `db:"user_id"`
+		Epoch          uint64 `db:"created_epoch"`
+		EventFilter    string `db:"event_filter"`
+	}
 
-		err := db.DB.Select(&dbResult, `
+	err := db.DB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '2 DAY' OR us.last_sent_ts IS NULL);
 			`,
-			eventName)
+		eventName)
 
-		if err != nil {
-			return err
-		}
-
-		for _, r := range dbResult {
-			n := &taxReportNotification{
-				SubscriptionID: r.SubscriptionID,
-				UserID:         r.UserID,
-				Epoch:          r.Epoch,
-				EventFilter:    r.EventFilter,
-			}
-			if _, exists := notificationsByUserID[r.UserID]; !exists {
-				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
-			}
-			if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
-				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
-			}
-			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
-		}
+	if err != nil {
+		return err
 	}
+
+
+	for _, r := range dbResult {
+		n := &taxReportNotification{
+			SubscriptionID: r.SubscriptionID,
+			UserID:         r.UserID,
+			Epoch:          r.Epoch,
+			EventFilter:    r.EventFilter,
+
+		}
+		if _, exists := notificationsByUserID[r.UserID]; !exists {
+			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+		}
+		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+		}
+
+		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+	}
+	// }
 
 	return nil
 }
