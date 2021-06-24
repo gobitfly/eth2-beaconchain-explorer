@@ -1,3 +1,5 @@
+.custom-border-radius { border-radius: .5rem }
+.custom-background-color { background-color: #fdfdfd }
 .container-min-width { min-width: 300px }
 .breadcrumb-custom {
   background-color: transparent;
@@ -18,11 +20,7 @@
 }
 .metrics-section { min-height: 120px }
 .container-max-width { max-width: 300px }
-.metric-card { 
-  width: auto;
-  background-color: #fdfdfd;
-  border-radius: .25rem;
-}
+.metric-card { width: auto }
 .metric-card-row { height: 100% }
 .icon { 
   font-size: 2.4rem;
@@ -43,10 +41,6 @@
   color: #343a40;
 }
 .container-height { height: 400px }
-.notifications-section { 
-  border-radius: .25rem;
-  background-color: #fdfdfd;
-}
 .heading-l2 { font-size: 1.6rem }
 .heading-l3 { font-size: 1.1rem }
 .heading-l4 { 
@@ -63,14 +57,10 @@
 }
 .notification-info { font-size: .8rem }
 .container-min-height { height: 400px }
-.validators-section { 
-  border-radius: .25rem; 
-  background-color: #fdfdfd;
-}
-.btn-custom-width { width: 240px }
+.btn-custom-width { width: 180px }
 .search-input-custom { padding: .215rem 1rem }
-@media screen and (max-width: 820px) {
-  .btn-custom-width { width: 280px }
+@media screen and (max-width: 1140px) {
+  .btn-custom-width { width: 60px }
 }
 @media screen and (max-width: 576px) {
   .container-custom { padding: 0 2px }

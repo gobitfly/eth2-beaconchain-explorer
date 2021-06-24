@@ -282,7 +282,7 @@
         </div>
       </div>
       <div class="row flex-sm-nowrap mx-0 my-2 container-min-width metrics-section">
-        <div class="col-12 col-sm col-xl mr-3 mt-1 shadow-lg p-1 mb-3 container-max-width metric-card">
+        <div class="col-12 col-sm col-xl mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
           <div class="row d-flex align-items-center mx-1 metric-card-row">
             <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
               <i class="fas fa-user"></i>
@@ -293,7 +293,7 @@
             </div>
           </div>
         </div>
-        <div class="col-12 col-sm col-xl mr-3 mt-1 shadow-lg p-1 mb-3 container-max-width metric-card">
+        <div class="col-12 col-sm col-xl mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
           <div class="row d-flex align-items-center mx-1 metric-card-row">
             <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
               <i class="fas fa-bell"></i>
@@ -304,7 +304,7 @@
             </div>
           </div>
         </div>
-        <div class="col d-none d-lg-block mr-3 mt-1 shadow-lg p-1 mb-3 container-max-width metric-card">
+        <div class="col d-none d-lg-block mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
           <div class="row d-flex align-items-center mx-1 metric-card-row">
             <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
               <i class="fas fa-bullseye"></i>
@@ -315,7 +315,7 @@
             </div>
           </div>
         </div>
-        <div class="col d-none d-lg-block mr-3 mt-1 shadow-lg p-1 mb-3 container-max-width metric-card">
+        <div class="col d-none d-lg-block mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
           <div class="row d-flex align-items-center mx-1 metric-card-row">
             <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
               <i class="fas fa-user-slash"></i>
@@ -326,7 +326,7 @@
             </div>
           </div>
         </div>
-        <div class="col d-none d-lg-block mr-3 mt-1 shadow-lg p-1 mb-3 container-max-width metric-card">
+        <div class="col d-none d-lg-block mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
           <div class="row d-flex align-items-center mx-1 metric-card-row">
             <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
               <i class="fas fa-envelope-open-text"></i>
@@ -337,7 +337,7 @@
             </div>
           </div>
         </div>
-        <div class="col d-none d-lg-block mt-1 shadow-lg p-1 mb-3 container-max-width metric-card">
+        <div class="col d-none d-lg-block mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
           <div class="row d-flex align-items-center mx-1 metric-card-row">
             <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
               <i class="fas fa-bullseye"></i>
@@ -350,7 +350,7 @@
         </div>
       </div>
       <div class="row flex-lg-nowrap mx-0 my-3 container-min-width">
-        <div class="col-12 col-lg shadow p-1 mb-3 container-height notifications-section">
+        <div class="col-12 col-lg shadow p-1 mb-3 container-height custom-border-radius custom-background-color">
           <div class="ml-3 mt-3">
             <h2 class="heading-l2">Most recent notifications</h2>
             <h4 class="heading-l4 mb-3 mb-md-5 text-muted">Your most recent 5 notifications</h4>
@@ -419,12 +419,12 @@
               <h3 class="heading-l3">You are not subscribed to any events</h3>
             </div>
           {{ else }}
-            <div class="table-responsive px-0 px-md-3 py-1">
-              <table class="table table-borderless table-hover events-table">
-                <thead>
+            <div class="px-0 px-md-3 py-1">
+              <table class="table table-borderless table-hover">
+                <thead bgcolor="#fdfdfd">
                   <tr>
-                    <th scope="col">Validator</th>
-                    <th scope="col">Event</th>
+                    <th scope="col" class="h6 border-bottom-0">Validator</th>
+                    <th scope="col" class="h6 border-bottom-0">Event</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -433,14 +433,14 @@
           {{ end }}
         </div>
       </div>
-      <div class="mx-0 my-3 shadow p-1 mb-3 container-min-width container-min-height validators-section">
+      <div class="mx-0 my-3 shadow p-1 mb-3 container-min-width container-min-height custom-border-radius custom-background-color">
         <div class="row d-flex flex-lg-nowrap align-items-center mx-3 mt-3 py-2">
           <div class="col-12 col-lg-3 d-flex justify-content-start px-0">
             <h2 class="heading-l2">Validators</h2>
           </div>
           <!-- TODO: add class in JavaScript for cursor not allowed when no data -->
-          <div class="col-12 col-lg-9 d-flex flex-column align-items-start flex-md-row justify-content-md-end px-0">
-            <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0 btn-custom-width">
+          <div class="col-12 col-lg-9 d-flex justify-content-end px-0">
+            <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0">
               <div>
                 <input type="text" placeholder="Search in the list..." aria-label="Search" class="input-search search-input-custom" />
               </div>
@@ -450,8 +450,14 @@
                 </button>
               </div>
             </div>
-            <button type="button" class="btn btn-outline-danger btn-sm ml-md-2 ml-lg-4 mt-2 mt-md-0 btn-custom-width">Remove Validators from List</button>
-            <a href="{{ .DashboardLink }}" class="btn btn-outline-primary btn-sm ml-md-2 ml-lg-4 mt-2 mt-md-0 btn-custom-width">View in Dashboard</a>
+            <button type="button" class="btn btn-outline-danger btn-sm ml-2 ml-lg-4 btn-custom-width">
+              <i class="fas fa-trash-alt fa-lg"></i>
+              <span class="d-none d-lg-inline-block">&nbsp; Remove from List</span>
+            </button>
+            <a href="{{ .DashboardLink }}" class="btn btn-outline-primary btn-sm ml-2 ml-lg-4 btn-custom-width">
+              <i class="fas fa-desktop fa-lg"></i>
+              <span class="d-none d-lg-inline-block">&nbsp; View in Dashboard</span>
+            </a>
           </div>
         </div>
         {{ if false }}
@@ -472,25 +478,25 @@
             </div>
           </div>
         {{ else }}
-          <div class="d-none d-lg-block table-responsive px-3 py-3">
-            <table class="table table-borderless table-hover events-table">
-              <thead>
+          <div class="d-none d-lg-block px-3 py-3">
+            <table class="table table-borderless table-hover border-0">
+              <thead bgcolor="#fdfdfd">
                 <tr>
-                  <th scope="col">Index</th>
-                  <th scope="col">Public Key</th>
-                  <th scope="col">Balance</th>
-                  <th scope="col">Notifications</th>
+                  <th scope="col" class="h6 border-bottom-0">Index</th>
+                  <th scope="col" class="h6 border-bottom-0">Public Key</th>
+                  <th scope="col" class="h6 border-bottom-0">Balance</th>
+                  <th scope="col" class="h6 border-bottom-0">Notifications</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
-          <div class="d-block d-lg-none table-responsive px-0 px-md-3 py-3">
-            <table class="table table-borderless table-hover events-table">
-              <thead>
+          <div class="d-block d-lg-none px-0 px-md-3 py-3">
+            <table class="table table-borderless table-hover">
+              <thead bgcolor="#fdfdfd">
                 <tr>
-                  <th scope="col">Index</th>
-                  <th scope="col">Notifications</th>
+                  <th scope="col" class="h6 border-bottom-0">Index</th>
+                  <th scope="col" class="h6 border-bottom-0">Notifications</th>
                 </tr>
               </thead>
               <tbody></tbody>
