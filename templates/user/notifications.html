@@ -413,7 +413,8 @@
             <div class="col-12 col-sm px-0">
               <h2 class="heading-l2">Events</h2>
             </div>
-            <!-- TODO: add class in JavaScript for cursor not allowed when no data or maybe hide -->
+            <!-- TODO: still to decide if this is best -->
+            {{ if true }}
             <div class="d-flex align-items-center justify-content-end col-12 col-sm px-0">
               <div class="dropdown">
                 <button 
@@ -454,6 +455,7 @@
               </div>
             </div>
           </div>
+          {{ end }}
           {{ if false }}
             <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
               <i class="far fa-frown mb-3 icon"></i>
@@ -479,28 +481,30 @@
           <div class="col-12 col-lg-3 d-flex justify-content-start px-0">
             <h2 class="heading-l2">Validators</h2>
           </div>
-          <!-- TODO: add class in JavaScript for cursor not allowed when no data or maybe hide -->
-          <div class="col-12 col-lg-9 d-flex justify-content-end px-0">
-            <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0">
-              <div>
-                <input type="text" placeholder="Search in the list..." aria-label="Search" class="input-search search-input-custom" />
+          <!-- TODO: still to decide if this is best -->
+          {{ if true }}
+            <div class="col-12 col-lg-9 d-flex justify-content-end px-0">
+              <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0">
+                <div>
+                  <input type="text" placeholder="Search in the list..." aria-label="Search" class="input-search search-input-custom" />
+                </div>
+                <div>
+                  <button type="button" title="Search Validators" class="btn btn-primary btn-sm btn-custom">
+                    <i class="fas fa-search"></i>
+                  </button>
+                </div>
               </div>
-              <div>
-                <button type="button" title="Search Validators" class="btn btn-primary btn-sm btn-custom">
-                  <i class="fas fa-search"></i>
-                </button>
-              </div>
+              <button type="button" class="btn btn-outline-danger btn-sm ml-2 ml-lg-4 btn-custom-width">
+                <i class="fas fa-trash-alt fa-lg"></i>
+                <span class="d-none d-lg-inline-block">&nbsp; Remove from List</span>
+              </button>
+              <a href="{{ .DashboardLink }}" class="btn btn-outline-primary btn-sm ml-2 ml-lg-4 btn-custom-width">
+                <i class="fas fa-desktop fa-lg"></i>
+                <span class="d-none d-lg-inline-block">&nbsp; View in Dashboard</span>
+              </a>
             </div>
-            <button type="button" class="btn btn-outline-danger btn-sm ml-2 ml-lg-4 btn-custom-width">
-              <i class="fas fa-trash-alt fa-lg"></i>
-              <span class="d-none d-lg-inline-block">&nbsp; Remove from List</span>
-            </button>
-            <a href="{{ .DashboardLink }}" class="btn btn-outline-primary btn-sm ml-2 ml-lg-4 btn-custom-width">
-              <i class="fas fa-desktop fa-lg"></i>
-              <span class="d-none d-lg-inline-block">&nbsp; View in Dashboard</span>
-            </a>
           </div>
-        </div>
+        {{ end }}
         {{ if false }}
           <div class="mx-sm-auto mt-5 text-sm-center text-empty-section">
             <h3 class="heading-l3">Start adding Validators to your Watchlist</h3>
