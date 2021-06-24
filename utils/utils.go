@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	securerand "crypto/rand"
 	"crypto/sha256"
 	"database/sql"
@@ -138,6 +139,10 @@ func IncludeHTML(path string) template.HTML {
 		return ""
 	}
 	return template.HTML(string(b))
+}
+
+func GraffitiToSring(graffiti []byte) string {
+	return strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
 }
 
 // FormatGraffitiString formats (and escapes) the graffiti

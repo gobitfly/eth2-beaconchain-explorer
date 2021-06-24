@@ -1176,8 +1176,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 	}()
 
 	stmtBlock, err := tx.Prepare(`
-		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, proposer, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, proposer, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 		ON CONFLICT (slot, blockroot) DO NOTHING`)
 	if err != nil {
 		return err
@@ -1278,7 +1278,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			n := time.Now()
 
 			logger.Tracef("writing block data: %v", b.Eth1Data.DepositRoot)
-			_, err = stmtBlock.Exec(b.Slot/utils.Config.Chain.SlotsPerEpoch,
+			_, err = stmtBlock.Exec(
+				b.Slot/utils.Config.Chain.SlotsPerEpoch,
 				b.Slot,
 				b.BlockRoot,
 				b.ParentRoot,
@@ -1286,6 +1287,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				b.Signature,
 				b.RandaoReveal,
 				b.Graffiti,
+				utils.GraffitiToSring(b.Graffiti),
 				b.Eth1Data.DepositRoot,
 				b.Eth1Data.DepositCount,
 				b.Eth1Data.BlockHash,
@@ -1295,7 +1297,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				len(b.Deposits),
 				len(b.VoluntaryExits),
 				b.Proposer,
-				strconv.FormatUint(b.Status, 10))
+				strconv.FormatUint(b.Status, 10),
+			)
 			if err != nil {
 				return fmt.Errorf("error executing stmtBlocks for block %v: %v", b.Slot, err)
 			}
