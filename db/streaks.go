@@ -154,8 +154,8 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 			)
 		select 
 			validatorindex, status, start, length, 
-			case when r = 1 then true else false as longest, 
-			case when start+length = $2+1 then true else false as current
+			case when r = 1 then true else false end as longest, 
+			case when start+length = $2+1 then true else false end as current
 		from rankedstreaks where r = 1 or start+length = $2+1 
 		order by validatorindex, start`, boundingsQry)
 
