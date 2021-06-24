@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/hex"
 	"eth2-exporter/db"
-	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
 	"eth2-exporter/metrics"
@@ -45,7 +44,6 @@ func initStripe(http *mux.Router) error {
 }
 
 func main() {
-	ethclients.SetIsUserSubscribedCallback(db.IsUserSubscribed)
 	configPath := flag.String("config", "config.yml", "Path to the config file")
 	flag.Parse()
 
@@ -191,7 +189,6 @@ func main() {
 
 		services.Init() // Init frontend services
 		price.Init()
-		ethclients.Init()
 
 		logrus.Infof("frontend services initiated")
 
@@ -401,6 +398,10 @@ func main() {
 
 	if utils.Config.Notifications.Enabled {
 		services.InitNotifications()
+	}
+
+	if utils.Config.EthClientsUpdater.Enabled {
+		services.InitEthClients()
 	}
 
 	if utils.Config.Metrics.Enabled {

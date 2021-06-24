@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
@@ -58,7 +57,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		Currency:              GetCurrency(r),
 		CurrentPriceFormatted: GetCurrentPriceFormatted(r),
 		CurrentSymbol:         GetCurrencySymbol(r),
-		ClientsUpdated:        ethclients.ClientsUpdated(),
+		ClientsUpdated:        services.ClientsUpdated(),
 		Phase0:                utils.Config.Chain.Phase0,
 		Lang:                  "en-US",
 		// InfoBanner:            ethclients.GetBannerClients(),

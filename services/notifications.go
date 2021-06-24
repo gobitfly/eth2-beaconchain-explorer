@@ -2,7 +2,6 @@ package services
 
 import (
 	"eth2-exporter/db"
-	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/mail"
 	"eth2-exporter/metrics"
 	"eth2-exporter/notify"
@@ -114,7 +113,6 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 func sendNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
 	sendEmailNotifications(notificationsByUserID)
 	sendPushNotifications(notificationsByUserID)
-	sendFrontEndEthClientNotifications(notificationsByUserID)
 	saveNotifications(notificationsByUserID)
 	// sendWebhookNotifications(notificationsByUserID)
 }
@@ -150,18 +148,6 @@ func saveNotifications(notificationsByUserID map[uint64]map[types.EventName][]ty
 			}
 		}
 	}
-}
-
-func sendFrontEndEthClientNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
-	uids := map[uint64][]types.Notification{}
-	for userID, userNotifications := range notificationsByUserID {
-		for eventName, ns := range userNotifications {
-			if eventName == types.EthClientUpdateEventName {
-				uids[userID] = ns
-			}
-		}
-	}
-	ethclients.SetUsersToNotify(uids)
 }
 
 func getNetwork() string {
@@ -827,7 +813,7 @@ func (n *ethClientNotification) GetEventFilter() string {
 }
 
 func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
-	updatedClients := ethclients.GetUpdatedClients() //only check if there are new updates
+	updatedClients := GetUpdatedClients() //only check if there are new updates
 	for _, client := range updatedClients {
 		var dbResult []struct {
 			SubscriptionID uint64 `db:"id"`

@@ -121,6 +121,9 @@ type Config struct {
 		Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
 		FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
 	} `yaml:"notifications"`
+	EthClientsUpdater struct {
+		Enabled bool `yaml:"enabled" envconfig:"ETH_CLIENTS_UPDATER_ENABLED"`
+	} `yaml:"ethClientsUpdater"`
 }
 
 // Phase0 is the config for beacon chain phase0
