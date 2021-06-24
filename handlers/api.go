@@ -1412,18 +1412,6 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
-func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	apiKey := q.Get("apikey")
-	machine := q.Get("machine")
-
-	if apiKey == "" {
-		apiKey = r.Header.Get("apikey")
-	}
-
-	clientStatsPost(w, r, apiKey, machine)
-}
-
 // ClientStatsPost godoc
 // @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
 // @Tags User
@@ -1435,21 +1423,19 @@ func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} types.ApiResponse
 // @Security ApiKeyAuth
 // @Router /api/v1/stats/{apiKey}/{machine} [get]
-func ClientStatsPostOld(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+func ClientStatsPost(w http.ResponseWriter, r *http.Request) {
 
-	clientStatsPost(w, r, vars["apiKey"], vars["machine"])
-}
-
-func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine string) {
 	w.Header().Set("Content-Type", "application/json")
 	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
 
-	userData, err := db.GetUserIdByApiKey(apiKey)
+	userData, err := db.GetUserIdByApiKey(vars["apiKey"])
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "no user found with api key")
 		return
 	}
+
+	machine := vars["machine"]
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {

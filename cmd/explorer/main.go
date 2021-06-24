@@ -164,10 +164,8 @@ func main() {
 		apiV1Router.HandleFunc("/dashboard/data/balance", handlers.APIDashboardDataBalance).Methods("GET", "OPTIONS") // old app versions
 		apiV1Router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/stripe/webhook", handlers.StripeWebhook).Methods("POST")
-		apiV1Router.HandleFunc("/stats/{apiKey}/{machine}", handlers.ClientStatsPostOld).Methods("POST", "OPTIONS")
-		apiV1Router.HandleFunc("/stats/{apiKey}", handlers.ClientStatsPostOld).Methods("POST", "OPTIONS")
-		apiV1Router.HandleFunc("/client/metrics", handlers.ClientStatsPostNew).Methods("POST", "OPTIONS")
-
+		apiV1Router.HandleFunc("/stats/{apiKey}/{machine}", handlers.ClientStatsPost).Methods("POST", "OPTIONS")
+		apiV1Router.HandleFunc("/stats/{apiKey}", handlers.ClientStatsPost).Methods("POST", "OPTIONS")
 		apiV1Router.HandleFunc("/validator/{indexOrPubkey}/widget", handlers.GetMobileWidgetStats).Methods("GET")
 		apiV1Router.Use(utils.CORSMiddleware)
 
