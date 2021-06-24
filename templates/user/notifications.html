@@ -352,7 +352,7 @@
       <div class="row flex-lg-nowrap mx-0 my-3 container-min-width">
         <div class="col-12 col-lg shadow p-1 mb-3 container-height custom-border-radius custom-background-color">
           <div class="ml-3 mt-3">
-            <h2 class="heading-l2">Most recent notifications</h2>
+            <h2 class="heading-l2">Recent notifications</h2>
             <h4 class="heading-l4 mb-3 mb-md-5 text-muted">Your most recent 5 notifications</h4>
           </div>
           {{ if false }}
@@ -408,10 +408,24 @@
             </div>
           {{ end }}
         </div>
-        <div class="col-12 col-lg mt-3 mt-lg-0 ml-lg-3 shadow p-1 mb-3 container-height notifications-section">
-          <div class="ml-3 mt-3">
-            <h2 class="heading-l2">Events</h2>
-            <h4 class="heading-l4 text-muted">All events you are subscribed to from the Validators in your list</h4>
+        <div class="col-12 col-lg mt-3 mt-lg-0 ml-lg-3 shadow p-1 mb-3 container-height custom-border-radius custom-background-color">
+          <div class="row align-items-center mx-3 mt-3">
+            <div class="col-12 col-sm px-0">
+              <h2 class="heading-l2">Events</h2>
+            </div>
+            <!-- TODO: add class in JavaScript for cursor not allowed when no data or maybe hide -->
+            <div class="d-flex align-items-center justify-content-end col-12 col-sm px-0">
+              <!-- TODO: add filter dropdown -->
+              <button type="button" class="d-flex align-items-center justify-content-between mr-3 btn btn-outline-dark btn-sm filter-btn-custom-width">
+                <span>Type &nbsp;</span>
+                <i class="fas fa-caret-down"></i>
+              </button>
+              <!-- TODO: add filter dropdown -->
+              <button type="button" class="d-flex align-items-center justify-content-between btn btn-outline-dark btn-sm filter-btn-custom-width">
+                <span>Created &nbsp;</span>
+                <i class="fas fa-caret-down"></i>
+              </button>
+            </div>
           </div>
           {{ if false }}
             <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
@@ -438,7 +452,7 @@
           <div class="col-12 col-lg-3 d-flex justify-content-start px-0">
             <h2 class="heading-l2">Validators</h2>
           </div>
-          <!-- TODO: add class in JavaScript for cursor not allowed when no data -->
+          <!-- TODO: add class in JavaScript for cursor not allowed when no data or maybe hide -->
           <div class="col-12 col-lg-9 d-flex justify-content-end px-0">
             <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0">
               <div>

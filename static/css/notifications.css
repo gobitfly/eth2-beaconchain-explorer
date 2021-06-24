@@ -26,7 +26,7 @@
   font-size: 2.4rem;
   color: #5E3F6B;
 }
-/* TODO: make coor #8186F1 on dark theme */
+/* TODO: make color #8186F1 on dark theme */
 .metric-value { 
   text-align: left;
   font-size: 2.2rem;
@@ -44,7 +44,7 @@
 .heading-l2 { font-size: 1.6rem }
 .heading-l3 { font-size: 1.1rem }
 .heading-l4 { 
-  font-size: .85rem;
+  font-size: .9rem;
   font-weight: 200;
 }
 .text-empty-section { height: 200px }
@@ -58,6 +58,7 @@
 .notification-info { font-size: .8rem }
 .container-min-height { height: 400px }
 .btn-custom-width { width: 180px }
+.filter-btn-custom-width { width: 90px }
 .search-input-custom { padding: .215rem 1rem }
 @media screen and (max-width: 1140px) {
   .btn-custom-width { width: 60px }
