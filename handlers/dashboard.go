@@ -19,7 +19,7 @@ import (
 )
 
 var dashboardTemplate = template.Must(template.New("dashboard").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/dashboard.html"))
-var validatorLimit = 300
+var validatorLimit = 280
 
 func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 	if str == "" {
@@ -57,6 +57,7 @@ func Dashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
 	dashboardData := types.DashboardData{}
+	dashboardData.ValidatorLimit = validatorLimit
 
 	data := InitPageData(w, r, "dashboard", "/dashboard", "Dashboard")
 	data.HeaderAd = true

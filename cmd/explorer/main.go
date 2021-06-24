@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/hex"
 	"eth2-exporter/db"
-	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/exporter"
 	"eth2-exporter/handlers"
 	"eth2-exporter/metrics"
@@ -45,7 +44,6 @@ func initStripe(http *mux.Router) error {
 }
 
 func main() {
-	ethclients.SetIsUserSubscribedCallback(db.IsUserSubscribed)
 	configPath := flag.String("config", "config.yml", "Path to the config file")
 	flag.Parse()
 
@@ -160,7 +158,8 @@ func main() {
 		apiV1Router.HandleFunc("/graffitiwall", handlers.ApiGraffitiwall).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/chart/{chart}", handlers.ApiChart).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/user/token", handlers.APIGetToken).Methods("POST", "OPTIONS")
-		apiV1Router.HandleFunc("/dashboard/data/balance", handlers.APIDashboardDataBalance).Methods("GET", "OPTIONS")
+		apiV1Router.HandleFunc("/dashboard/data/balances", handlers.DashboardDataBalance).Methods("GET", "OPTIONS")   // new app versions
+		apiV1Router.HandleFunc("/dashboard/data/balance", handlers.APIDashboardDataBalance).Methods("GET", "OPTIONS") // old app versions
 		apiV1Router.HandleFunc("/dashboard/data/proposals", handlers.DashboardDataProposals).Methods("GET", "OPTIONS")
 		apiV1Router.HandleFunc("/stripe/webhook", handlers.StripeWebhook).Methods("POST")
 		apiV1Router.HandleFunc("/stats/{apiKey}/{machine}", handlers.ClientStatsPost).Methods("POST", "OPTIONS")
@@ -190,7 +189,6 @@ func main() {
 
 		services.Init() // Init frontend services
 		price.Init()
-		ethclients.Init()
 
 		logrus.Infof("frontend services initiated")
 
@@ -285,6 +283,7 @@ func main() {
 			router.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
 			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
 			router.HandleFunc("/pools/streak/current", handlers.GetAvgCurrentStreak).Methods("GET")
+			router.HandleFunc("/pools/chart/income_per_eth", handlers.GetIncomePerEthChart).Methods("GET")
 
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
@@ -323,6 +322,7 @@ func main() {
 
 			authRouter := router.PathPrefix("/user").Subrouter()
 			authRouter.HandleFunc("/mobile/settings", handlers.MobileDeviceSettingsPOST).Methods("POST")
+			authRouter.HandleFunc("/mobile/delete", handlers.MobileDeviceDeletePOST).Methods("POST", "OPTIONS")
 			authRouter.HandleFunc("/authorize", handlers.UserAuthorizeConfirmPost).Methods("POST")
 			authRouter.HandleFunc("/settings", handlers.UserSettings).Methods("GET")
 			authRouter.HandleFunc("/settings/password", handlers.UserUpdatePasswordPost).Methods("POST")
@@ -398,6 +398,10 @@ func main() {
 
 	if utils.Config.Notifications.Enabled {
 		services.InitNotifications()
+	}
+
+	if utils.Config.EthClientsUpdater.Enabled {
+		services.InitEthClients()
 	}
 
 	if utils.Config.Metrics.Enabled {

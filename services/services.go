@@ -61,6 +61,11 @@ func InitNotifications() {
 	go notificationsSender()
 }
 
+func InitEthClients() {
+	logger.Infof("starting Eth clients updater")
+	go updateClients()
+}
+
 func epochUpdater() {
 	firstRun := true
 

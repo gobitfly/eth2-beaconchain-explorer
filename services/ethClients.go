@@ -1,19 +1,40 @@
-package ethclients
+package services
 
 import (
 	"encoding/json"
+	"eth2-exporter/db"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
-var logger = logrus.New().WithField("module", "ethClients")
+// var logger = logrus.New().WithField("module", "ethClients")
+type EthClients struct {
+	ClientReleaseVersion string
+	ClientReleaseDate    uint64
+	NetworkShare         string
+	IsUserSubscribed     bool
+}
+
+type EthClientServicesPageData struct {
+	LastUpdate   time.Time
+	Geth         EthClients
+	Nethermind   EthClients
+	OpenEthereum EthClients
+	Besu         EthClients
+	Teku         EthClients
+	Prysm        EthClients
+	Nimbus       EthClients
+	Lighthouse   EthClients
+	Banner       string
+	CsrfField    template.HTML
+}
 
 type ethernodesAPIStruct struct {
 	Client string `json:"client"`
@@ -45,17 +66,12 @@ type clientUpdateInfo struct {
 	Date time.Time
 }
 
-var ethClients = new(types.EthClientServicesPageData)
+var ethClients = EthClientServicesPageData{}
 var ethClientsMux = &sync.RWMutex{}
 var bannerClients = []clientUpdateInfo{}
 var bannerClientsMux = &sync.RWMutex{}
-var usersToNotify = map[uint64][]types.Notification{}
-var usersToNotifyMux = &sync.RWMutex{}
 
-// Init starts a go routine to update the ETH Clients Info
-func Init() {
-	go update()
-}
+var updateMap = map[string]string{}
 
 func fetchClientData(repo string) *gitAPIResponse {
 	var gitAPI = new(gitAPIResponse)
@@ -131,20 +147,13 @@ func getRepoTime(date string, dTime string) (time.Time, error) {
 	return time.Date(int(year), time.Month(int(month)), int(day), int(hour), int(min), 0, 0, time.UTC), nil
 }
 
-func ymdTodmy(date string) string {
-	dateDays := strings.Split(date, "-")
-	if len(dateDays) < 3 {
-		logger.Errorf("error wrong date string %s", date)
-		return ""
-	}
-	return fmt.Sprintf("%s-%s-%s", dateDays[2], dateDays[1], dateDays[0])
-}
-
-func prepareEthClientData(repo string, name string, curTime time.Time) (string, string) {
+func prepareEthClientData(repo string, name string, curTime time.Time) EthClients {
+	resp := EthClients{ClientReleaseVersion: "Github"}
 
 	client := fetchClientData(repo)
+
 	if client == nil {
-		return "Github", "searching"
+		return resp
 	}
 	date := strings.Split(client.PublishedDate, "T")
 
@@ -152,26 +161,42 @@ func prepareEthClientData(repo string, name string, curTime time.Time) (string, 
 		rTime, err := getRepoTime(date[0], date[1])
 		if err != nil {
 			logger.Errorf("error parsing git repo. time: %v", err)
-			return client.Name, "GitHub" // client.Name is client version from github api
+			resp.ClientReleaseVersion = client.Name // client.Name is client version from github api
+			resp.ClientReleaseDate = uint64(time.Time{}.Unix())
+			return resp
 		}
-		timeDiff := (curTime.Sub(rTime).Hours() / 24.0)
-		if timeDiff < 1.0 { // show banner if update was less than 2 days ago
+
+		if curTime.Sub(rTime).Hours()/24.0 < 1.0 && updateMap[name] != client.Name {
+			if utils.Config.Frontend.Enabled {
+				var dbData []uint64
+				err = db.DB.Select(&dbData,
+					`select user_id
+					 from users_subscriptions 
+					 where event_filter = $1 AND event_name=$2 AND last_sent_ts <= NOW() - INTERVAL '2 DAY'
+					`, strings.ToLower(name), types.EthClientUpdateEventName)
+				if err != nil {
+					logger.Errorf("error getting user id subscriptions, can't create frontend notifications: %v", err)
+				} else {
+					for _, uid := range dbData {
+						db.AddUserNotification(uid, types.EthClientUpdateEventName, strings.ToLower(name))
+					}
+				}
+			}
+
 			update := clientUpdateInfo{Name: name, Date: rTime}
+
+			bannerClientsMux.Lock()
 			bannerClients = append(bannerClients, update)
-			return client.Name, "Recently"
+			bannerClientsMux.Unlock()
+			updateMap[name] = client.Name
 		}
 
-		if timeDiff <= 1.5 && timeDiff >= 1.0 {
-			return client.Name, fmt.Sprintf("1 day ago")
-		}
-
-		if timeDiff > 30 {
-			return client.Name, fmt.Sprintf("On %s", ymdTodmy(date[0]))
-		}
-
-		return client.Name, fmt.Sprintf("%.0f days ago", timeDiff) // can sub. -0.5 to round down the days but github is rounding up
+		resp.ClientReleaseVersion = client.Name // client.Name is client version from github api
+		resp.ClientReleaseDate = uint64(rTime.Unix())
+		return resp
 	}
-	return "Github", "searching" // If API limit is exceeded
+
+	return resp // If API limit is exceeded
 }
 
 func updateEthClientNetShare() {
@@ -201,31 +226,35 @@ func updateEthClient() {
 	curTime := time.Now()
 	// sending 8 requests to github per call
 	// git api rate-limit 60 per hour : 60/8 = 7.5 minutes minimum
+	ethClientsMux.Lock()
+	defer ethClientsMux.Unlock()
+
 	if curTime.Sub(ethClients.LastUpdate) < time.Hour { // LastUpdate is initialized at January 1, year 1 so no need to check for nil
 		return
 	}
 
 	logger.Println("Updating ETH Clients Information")
-	ethClientsMux.Lock()
-	defer ethClientsMux.Unlock()
-	bannerClientsMux.Lock()
-	defer bannerClientsMux.Unlock()
-	bannerClients = []clientUpdateInfo{}
-	updateEthClientNetShare()
-	ethClients.Geth.ClientReleaseVersion, ethClients.Geth.ClientReleaseDate = prepareEthClientData("/ethereum/go-ethereum", "Geth", curTime)
-	ethClients.Nethermind.ClientReleaseVersion, ethClients.Nethermind.ClientReleaseDate = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
-	ethClients.OpenEthereum.ClientReleaseVersion, ethClients.OpenEthereum.ClientReleaseDate = prepareEthClientData("/openethereum/openethereum", "OpenEthereum", curTime)
-	ethClients.Besu.ClientReleaseVersion, ethClients.Besu.ClientReleaseDate = prepareEthClientData("/hyperledger/besu", "Besu", curTime)
 
-	ethClients.Teku.ClientReleaseVersion, ethClients.Teku.ClientReleaseDate = prepareEthClientData("/ConsenSys/teku", "Teku", curTime)
-	ethClients.Prysm.ClientReleaseVersion, ethClients.Prysm.ClientReleaseDate = prepareEthClientData("/prysmaticlabs/prysm", "Prysm", curTime)
-	ethClients.Nimbus.ClientReleaseVersion, ethClients.Nimbus.ClientReleaseDate = prepareEthClientData("/status-im/nimbus-eth2", "Nimbus", curTime)
-	ethClients.Lighthouse.ClientReleaseVersion, ethClients.Lighthouse.ClientReleaseDate = prepareEthClientData("/sigp/lighthouse", "Lighthouse", curTime)
+	bannerClientsMux.Lock()
+	bannerClients = []clientUpdateInfo{}
+	bannerClientsMux.Unlock()
+
+	ethClients.Geth = prepareEthClientData("/ethereum/go-ethereum", "Geth", curTime)
+	ethClients.Nethermind = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
+	ethClients.OpenEthereum = prepareEthClientData("/openethereum/openethereum", "OpenEthereum", curTime)
+	ethClients.Besu = prepareEthClientData("/hyperledger/besu", "Besu", curTime)
+
+	ethClients.Teku = prepareEthClientData("/ConsenSys/teku", "Teku", curTime)
+	ethClients.Prysm = prepareEthClientData("/prysmaticlabs/prysm", "Prysm", curTime)
+	ethClients.Nimbus = prepareEthClientData("/status-im/nimbus-eth2", "Nimbus", curTime)
+	ethClients.Lighthouse = prepareEthClientData("/sigp/lighthouse", "Lighthouse", curTime)
+
+	updateEthClientNetShare()
 
 	ethClients.LastUpdate = curTime
 }
 
-func update() {
+func updateClients() {
 	for true {
 		updateEthClient()
 		time.Sleep(time.Minute * 5)
@@ -233,7 +262,7 @@ func update() {
 }
 
 // GetEthClientData returns a pointer of EthClientServicesPageData
-func GetEthClientData() *types.EthClientServicesPageData {
+func GetEthClientData() EthClientServicesPageData {
 	ethClientsMux.Lock()
 	defer ethClientsMux.Unlock()
 	return ethClients
@@ -255,57 +284,4 @@ func GetUpdatedClients() []clientUpdateInfo {
 	defer bannerClientsMux.Unlock()
 	return bannerClients
 	// return []string{"Prysm", "Teku"}
-}
-
-func SetUsersToNotify(uids map[uint64][]types.Notification) {
-	usersToNotifyMux.Lock()
-	defer usersToNotifyMux.Unlock()
-	for uid, n := range uids {
-		if _, exists := usersToNotify[uid]; !exists {
-			usersToNotify[uid] = n
-			continue
-		}
-
-		if len(usersToNotify[uid]) == 0 {
-			usersToNotify[uid] = n
-		}
-
-	}
-}
-
-func DismissClientNotification(uid uint64) bool {
-	usersToNotifyMux.Lock()
-	defer usersToNotifyMux.Unlock()
-	if _, exists := usersToNotify[uid]; exists {
-		usersToNotify[uid] = []types.Notification{}
-		return true
-	}
-	return false
-}
-
-func IsUserClientUpdated(uid uint64) bool {
-	usersToNotifyMux.Lock()
-	defer usersToNotifyMux.Unlock()
-	if _, exists := usersToNotify[uid]; exists {
-		if len(usersToNotify[uid]) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-var isUserSubscribedCallback func(uint64, string) bool
-
-// can't import 'db' in this package
-// because this pkg is imported in 'utils' and 'utils'  is imported in 'db'
-// so a function from a db is set here via callback
-func SetIsUserSubscribedCallback(callback func(uint64, string) bool) {
-	isUserSubscribedCallback = callback
-}
-
-func IsUserSubscribed(uid uint64, client string) bool {
-	if isUserSubscribedCallback == nil {
-		return false
-	}
-	return isUserSubscribedCallback(uid, client)
 }

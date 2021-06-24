@@ -42,6 +42,21 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 	if len(search) > 128 {
 		search = search[:128]
 	}
+	var searchIndex *uint64
+	index, err := strconv.ParseUint(search, 10, 64)
+	if err == nil {
+		searchIndex = &index
+	}
+
+	var searchPubkeyExact *string
+	var searchPubkeyLike *string
+	if searchPubkeyExactRE.MatchString(search) {
+		pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+		searchPubkeyExact = &pubkey
+	} else if searchPubkeyLikeRE.MatchString(search) {
+		pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+		searchPubkeyLike = &pubkey
+	}
 
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
@@ -104,30 +119,42 @@ func ValidatorsLeaderboardData(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			LEFT JOIN (SELECT COUNT(*) FROM validator_performance) cnt(total_count) ON true`, length, start)
 	} else {
-		err = db.DB.Select(&performanceData, `
-			WITH 
-				matched_validators AS (
-					SELECT v.validatorindex, v.pubkey, COALESCE(vn.name,'') as name
-					FROM validators v
-					LEFT JOIN validator_names vn ON vn.publickey = v.pubkey
-					WHERE (pubkeyhex LIKE $3
-						OR CAST(v.validatorindex AS text) LIKE $3)
-						OR LOWER(vn.name) LIKE LOWER($3)
-				)
+		// for perfomance-reasons we combine multiple search results with `union`
+		args := []interface{}{}
+		args = append(args, "%"+strings.ToLower(search)+"%")
+		searchQry := fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%d `, len(args))
+		if searchIndex != nil {
+			args = append(args, *searchIndex)
+			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE validatorindex = $%d `, len(args))
+		}
+
+		if searchPubkeyExact != nil {
+			args = append(args, *searchPubkeyExact)
+			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex = $%d `, len(args))
+		} else if searchPubkeyLike != nil {
+			args = append(args, *searchPubkeyLike+"%")
+			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex LIKE $%d `, len(args))
+		}
+
+		args = append(args, length)
+		args = append(args, start)
+		qry := fmt.Sprintf(`
+			WITH matched_validators AS (%v)
 			SELECT 
-				mv.*, 
+				v.validatorindex, mv.pubkey, COALESCE(vn.name, '') as name,
 				perf.rank, perf.balance, perf.performance1d, perf.performance7d, perf.performance31d, perf.performance365d, 
 				cnt.total_count
 			FROM matched_validators mv
+			INNER JOIN validators v ON v.pubkey = mv.pubkey
+			LEFT JOIN validator_names vn ON vn.publickey = mv.pubkey
 			LEFT JOIN (SELECT COUNT(*) FROM matched_validators) cnt(total_count) ON true
 			LEFT JOIN (
-				SELECT
-					ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank,
-					validator_performance.*
+				SELECT ROW_NUMBER() OVER (ORDER BY `+orderBy+` DESC) AS rank, validator_performance.*
 				FROM validator_performance
 				ORDER BY `+orderBy+` `+orderDir+`
-			) perf ON perf.validatorindex = mv.validatorindex
-			limit $1 OFFSET $2`, length, start, "%"+search+"%")
+			) perf ON perf.validatorindex = v.validatorindex
+			LIMIT $%d OFFSET $%d`, searchQry, len(args)-1, len(args))
+		err = db.DB.Select(&performanceData, qry, args...)
 	}
 	if err != nil {
 		logger.Errorf("error retrieving performanceData data (search=%v): %v", search != "", err)

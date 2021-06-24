@@ -35,9 +35,9 @@
     animation: bounce 2s 1;
 }
 
-.chart-pi, .chart-line {
+/* .chart-pi, .chart-line {
     animation: fadein 0.15s 1;
-}
+} */
 
 .chart-switch-btn i{
     cursor: pointer;

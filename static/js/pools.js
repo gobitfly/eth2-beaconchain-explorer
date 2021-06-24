@@ -3,7 +3,8 @@ let poolchart = null
 let totalDeposited = 0,
     totalIncome = 0,
     totalIperEth = 0;
-
+var IDETH_SERIES = {}
+var totalValidatorsPI = 0
 function getActive(poolValidators) {
     let active = 0
     let slashed = 0
@@ -19,9 +20,9 @@ function getActive(poolValidators) {
     }
 
     return [(active / poolValidators.length) * 100, {
-        active: `<i class="fas fa-male ${active > 0 ? "text-success" : ""} mr-1"><span style="font-size: 12px;">${addCommas(active)}</span></i>`,
-        slashed: `<i class="fas fa-user-slash ${slashed > 0 ? "text-danger" : ""} fa-sm mx-1"><span style="font-size: 12px;">${addCommas(slashed)}</span></i>`,
-        pending: `<i class="fas fa-male ${pending > 0 ? "text-info" : ""} mr-1"></i> <span style="font-size: 12px;">${addCommas(pending)}</span>`,
+        active: `<span style="font-size: 10px;" class="${active > 0 ? "text-success" : ''}"><i class="fas fa-male  mr-1"></i>${addCommas(active)}</span>`,
+        slashed: `<span style="font-size: 10px;" class="${slashed > 0 ? "text-danger" : ''}"><i class="fas fa-user-slash fa-sm mx-1"></i>${addCommas(slashed)}</span>`,
+        pending: `<span style="font-size: 10px;" class="${pending > 0 ? "text-info" : ''}"><i class="fas fa-male mr-1"></i>${addCommas(pending)}</span>`,
         total: `${addCommas(poolValidators.length)}`
     },
         slashed]
@@ -34,7 +35,7 @@ function updatePoolShare(arr) {
             updatePoolShare(item.data)
         } else {
             poolShare[item[0]] = item[1]
-            // totalValidators += item[1]
+            totalValidatorsPI += item[1]
         }
     }
 }
@@ -232,7 +233,7 @@ function randerTable(tableData) {
                 data: '3',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    let val = parseFloat((poolShare[data] / TOTAL_VALIDATORS) * 100).toFixed(3)
+                    let val = ((parseFloat(poolShare[data]) / totalValidatorsPI) * 100).toFixed(3)
 
                     if (type === 'display') {
                         if (isNaN(val)) return "0.00%"
@@ -318,7 +319,7 @@ function randerTable(tableData) {
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-center">
-                                    <span style="font-size: 12px;">${info[1].total}</span>
+                                    <span style="font-size: 10px;">${info[1].total}</span>
                                 </div>
                             </div>
                             `
@@ -363,35 +364,35 @@ function randerTable(tableData) {
 function showChartSwitch(chart) {
     $("#uncheckAllSeriesbtn").remove()
     $("#returnOriginalSeriesbtn").remove()
-    chart.renderer.text('<i id="uncheckAllSeriesbtn" style="cursor: pointer; font-size: 20px;" class="fas fa-eye-slash"></i>', 
-    chart.chartWidth-50, 22, true)
-    .attr({ zIndex: 3 })
-    .on('click', function () {
-        let option = $('#uncheckAllSeriesbtn').hasClass("text-primary")
-        let series = chart.series;
-        for (i = 0; i < chart.series.length; i++) {
-            series[i].setVisible(option, option);
-        }
-        chart.redraw();
+    chart.renderer.text('<i id="uncheckAllSeriesbtn" style="cursor: pointer; font-size: 20px;" class="fas fa-eye-slash"></i>',
+        chart.chartWidth - 50, 22, true)
+        .attr({ zIndex: 3 })
+        .on('click', function () {
+            let option = $('#uncheckAllSeriesbtn').hasClass("text-primary")
+            let series = chart.series;
+            for (i = 0; i < chart.series.length; i++) {
+                series[i].setVisible(option, option);
+            }
+            chart.redraw();
 
-        if (option){
+            if (option) {
+                $('#uncheckAllSeriesbtn').removeClass("text-primary")
+            } else {
+                $('#uncheckAllSeriesbtn').addClass("text-primary")
+            }
+        })
+        .add();
+
+    chart.renderer.text('<i id="returnOriginalSeriesbtn" style="cursor: pointer; font-size: 20px;" class="fas fa-long-arrow-alt-left"></i>',
+        chart.chartWidth - 80, 22, true)
+        .attr({ zIndex: 3 })
+        .on('click', function () {
+            // let option = $('#uncheckAllSeries').hasClass("text-primary")
+            updateChartSeries(IDETH_SERIES.mainSeries, null)
+            $("#returnOriginalSeriesbtn").removeClass("text-primary")
             $('#uncheckAllSeriesbtn').removeClass("text-primary")
-        }else{
-            $('#uncheckAllSeriesbtn').addClass("text-primary")
-        }
-    })
-    .add();
-
-    chart.renderer.text('<i id="returnOriginalSeriesbtn" style="cursor: pointer; font-size: 20px;" class="fas fa-long-arrow-alt-left"></i>', 
-    chart.chartWidth-80, 22, true)
-    .attr({ zIndex: 3 })
-    .on('click', function () {
-        // let option = $('#uncheckAllSeries').hasClass("text-primary")
-        updateChartSeries(IDETH_SERIES.mainSeries, null)
-        $("#returnOriginalSeriesbtn").removeClass("text-primary")
-        $('#uncheckAllSeriesbtn').removeClass("text-primary")
-    })
-    .add();
+        })
+        .add();
 
     if (parseInt(localStorage.getItem("chartWelcomeAnimatoin")) !== 1) {
         switchCharts()
@@ -403,12 +404,12 @@ function showChartSwitch(chart) {
 }
 
 function updateChartSeries(pseries, name) {
-    while( poolchart.series.length > 0 ) {
+    while (poolchart.series.length > 0) {
         poolchart.series[0].remove(false);
     }
 
-    for (let item of pseries){
-        if (item.name.includes(name) || name===null){
+    for (let item of pseries) {
+        if (item.name.includes(name) || name === null) {
             // console.log(item.name, name)
             poolchart.addSeries(item)
         }
@@ -449,13 +450,13 @@ function randerChart(dataSeries) {
             useHTML: true,
             formatter: function (tooltip) {
                 return this.points.reduce(function (s, point) {
-                    return s+ `<tr>
+                    return s + `<tr>
                                     <td><span style="color: ${point.series.color};">\u25CF</span></td>
                                     <td>${point.series.name}</td> 
                                     <td><b>${point.y.toFixed(5)}</b></td> 
                                     <td>ETH</td>
                                 </tr>`;
-                }, `<div style="font-weight:bold; text-align:center;">${this.x}</div><table>`)+'</table>';
+                }, `<div style="font-weight:bold; text-align:center;">${this.x}</div><table>`) + '</table>';
             },
         },
         legend: {
@@ -482,7 +483,7 @@ function randerChart(dataSeries) {
             series: {
                 cursor: 'pointer',
                 events: {
-                    click: function (event){
+                    click: function (event) {
                         updateChartSeries(dataSeries.drillSeries, this.name)
                         $("#returnOriginalSeriesbtn").addClass("text-primary")
                     }
@@ -541,9 +542,6 @@ function switchCharts() {
 }
 
 $(document).ready(function () {
-    // $(window).on("resize", () => {
-    //     updateTableType()
-    // })
     $("#poolPopUpBtn").on("click", () => { $("#poolPopUP").addClass("d-none") })
 
     updatePoolShare(drill.series)
@@ -568,14 +566,27 @@ $(document).ready(function () {
     }
 
     randerTable(tableData)
-    randerChart(IDETH_SERIES)
+
+    fetch(`/pools/chart/income_per_eth`, {
+        method: "GET"
+    }).then((res) => {
+        if (res.status !== 200) {
+            alert("Chart Request failed :(")
+        }
+        res.json().then((data) => {
+            IDETH_SERIES = data
+            randerChart(IDETH_SERIES)
+        })
+    }).catch(() => {
+        alert("Failed to fetch the chart data :(")
+    })
 
     $(".chart-switch-btn").on("click", () => {
         switchCharts()
     })
 
-    $("#totalmsg").html(`"Total Income" and "Average Income Per Deposited ETH" are based on top ${POOL_INFO.length} pools by number of validators`)
-    $(window).on('resize', function(){
+    $("#totalmsg").html(`"Total Income" and "Average Income Per Deposited ETH" are based on top 100 pools by number of validators`)
+    $(window).on('resize', function () {
         showChartSwitch(poolchart)
     })
 })

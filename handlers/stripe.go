@@ -70,7 +70,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	auto := "auto"
 
 	params := &stripe.CheckoutSessionParams{
-		SuccessURL: stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings"),
+		SuccessURL: stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api"),
 		CancelURL:  stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/pricing"),
 		// if the customer exists use the existing customer
 		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{},
@@ -428,7 +428,7 @@ func emailCustomerAboutPlanChange(email, plan string) {
 	} else if plan == utils.Config.Frontend.Stripe.Diamond {
 		p = "Diamond"
 	}
-	msg := fmt.Sprintf("You have successfully changed your payment plan to " + p + " to manage your subscription go to https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
+	msg := fmt.Sprintf("You have successfully changed your payment plan to " + p + " to manage your subscription go to https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 

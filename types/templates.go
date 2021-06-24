@@ -12,49 +12,50 @@ import (
 
 // PageData is a struct to hold web page data
 type PageData struct {
-	Active                string
-	HeaderAd              bool
-	Meta                  *Meta
-	ShowSyncingMessage    bool
-	User                  *User
-	Data                  interface{}
-	Version               string
-	ChainSlotsPerEpoch    uint64
-	ChainSecondsPerSlot   uint64
-	ChainGenesisTimestamp uint64
-	CurrentEpoch          uint64
-	CurrentSlot           uint64
-	FinalizationDelay     uint64
-	Mainnet               bool
-	DepositContract       string
-	EthPrice              float64
-	EthRoundPrice         int
-	EthTruncPrice         string
-	UsdRoundPrice         int
-	UsdTruncPrice         string
-	EurRoundPrice         int
-	EurTruncPrice         string
-	GbpRoundPrice         int
-	GbpTruncPrice         string
-	CnyRoundPrice         int
-	CnyTruncPrice         string
-	RubRoundPrice         int
-	RubTruncPrice         string
-	CadRoundPrice         int
-	CadTruncPrice         string
-	AudRoundPrice         int
-	AudTruncPrice         string
-	JpyRoundPrice         int
-	JpyTruncPrice         string
-	Currency              string
-	CurrentPriceFormatted string
-	CurrentSymbol         string
-	ExchangeRate          float64
-	InfoBanner            *template.HTML
-	ClientsUpdated        bool
-	IsUserClientUpdated   func(uint64) bool
-	Phase0                Phase0
-	Lang                  string
+	Active                    string
+	HeaderAd                  bool
+	Meta                      *Meta
+	ShowSyncingMessage        bool
+	User                      *User
+	Data                      interface{}
+	Version                   string
+	ChainSlotsPerEpoch        uint64
+	ChainSecondsPerSlot       uint64
+	ChainGenesisTimestamp     uint64
+	CurrentEpoch              uint64
+	CurrentSlot               uint64
+	FinalizationDelay         uint64
+	Mainnet                   bool
+	DepositContract           string
+	EthPrice                  float64
+	EthRoundPrice             int
+	EthTruncPrice             string
+	UsdRoundPrice             int
+	UsdTruncPrice             string
+	EurRoundPrice             int
+	EurTruncPrice             string
+	GbpRoundPrice             int
+	GbpTruncPrice             string
+	CnyRoundPrice             int
+	CnyTruncPrice             string
+	RubRoundPrice             int
+	RubTruncPrice             string
+	CadRoundPrice             int
+	CadTruncPrice             string
+	AudRoundPrice             int
+	AudTruncPrice             string
+	JpyRoundPrice             int
+	JpyTruncPrice             string
+	Currency                  string
+	CurrentPriceFormatted     string
+	CurrentSymbol             string
+	ExchangeRate              float64
+	InfoBanner                *template.HTML
+	ClientsUpdated            bool
+	IsUserClientUpdated       func(uint64) bool
+	Phase0                    Phase0
+	Lang                      string
+	ShowEthClientNotification bool
 }
 
 // Meta is a struct to hold metadata about the page
@@ -729,7 +730,8 @@ type DashboardData struct {
 	// BalanceHistory DashboardValidatorBalanceHistory `json:"balance_history"`
 	// Earnings       ValidatorEarnings                `json:"earnings"`
 	// Validators     [][]interface{}                  `json:"validators"`
-	Csrf string `json:"csrf"`
+	Csrf           string `json:"csrf"`
+	ValidatorLimit int    `json:"valLimit"`
 }
 
 // DashboardValidatorBalanceHistory is a struct to hold data for the balance-history on the dashboard-page
@@ -911,6 +913,7 @@ type UserSettingsPageData struct {
 	Emerald             *string
 	Diamond             *string
 	ShareMonitoringData bool
+	ApiStatistics       *ApiStatistics
 }
 
 type PairedDevice struct {
@@ -960,26 +963,6 @@ type StakeWithUsPageData struct {
 	RecaptchaKey string
 }
 
-type EthClients struct {
-	ClientReleaseVersion string
-	ClientReleaseDate    string
-	NetworkShare         string
-}
-
-type EthClientServicesPageData struct {
-	LastUpdate   time.Time
-	Geth         EthClients
-	Nethermind   EthClients
-	OpenEthereum EthClients
-	Besu         EthClients
-	Teku         EthClients
-	Prysm        EthClients
-	Nimbus       EthClients
-	Lighthouse   EthClients
-	Banner       string
-	CsrfField    template.HTML
-}
-
 type RateLimitError struct {
 	TimeLeft time.Duration
 }
@@ -1010,4 +993,11 @@ type Price struct {
 	JPY float64   `db:"jpy"`
 	CNY float64   `db:"cny"`
 	RUB float64   `db:"rub"`
+}
+
+type ApiStatistics struct {
+	Daily      *int `db:"daily"`
+	Monthly    *int `db:"monthly"`
+	MaxDaily   *int
+	MaxMonthly *int
 }

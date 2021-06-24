@@ -103,11 +103,12 @@ type Config struct {
 				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
 			} `yaml:"mailgun"`
 		} `yaml:"mail"`
-		GATag                 string `yaml:"gatag" envconfig:"GATAG"`
-		VerifyAppSubs         bool   `yaml:"verifyAppSubscriptions" envconfig:"FRONTEND_VERIFY_APP_SUBSCRIPTIONS"`
-		AppSubsAppleSecret    string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
-		AppSubsGoogleJSONPath string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
-		ShowDonors            struct {
+		GATag                  string `yaml:"gatag" envconfig:"GATAG"`
+		VerifyAppSubs          bool   `yaml:"verifyAppSubscriptions" envconfig:"FRONTEND_VERIFY_APP_SUBSCRIPTIONS"`
+		AppSubsAppleSecret     string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
+		AppSubsGoogleJSONPath  string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
+		CleanupOldMachineStats bool   `yaml:"cleanupOldMachineStats" envconfig:"FRONTEND_CLEANUP_OLD_MACHINE_STATS"`
+		ShowDonors             struct {
 			Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
 			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
 		} `yaml:"showDonors"`
@@ -120,6 +121,9 @@ type Config struct {
 		Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
 		FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
 	} `yaml:"notifications"`
+	EthClientsUpdater struct {
+		Enabled bool `yaml:"enabled" envconfig:"ETH_CLIENTS_UPDATER_ENABLED"`
+	} `yaml:"ethClientsUpdater"`
 }
 
 // Phase0 is the config for beacon chain phase0
