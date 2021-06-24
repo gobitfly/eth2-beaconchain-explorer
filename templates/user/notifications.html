@@ -415,16 +415,43 @@
             </div>
             <!-- TODO: add class in JavaScript for cursor not allowed when no data or maybe hide -->
             <div class="d-flex align-items-center justify-content-end col-12 col-sm px-0">
-              <!-- TODO: add filter dropdown -->
-              <button type="button" class="d-flex align-items-center justify-content-between mr-3 btn btn-outline-dark btn-sm filter-btn-custom-width">
-                <span>Type &nbsp;</span>
-                <i class="fas fa-caret-down"></i>
-              </button>
-              <!-- TODO: add filter dropdown -->
-              <button type="button" class="d-flex align-items-center justify-content-between btn btn-outline-dark btn-sm filter-btn-custom-width">
-                <span>Created &nbsp;</span>
-                <i class="fas fa-caret-down"></i>
-              </button>
+              <div class="dropdown">
+                <button 
+                  type="button" 
+                  class="btn btn-outline-dark btn-sm dropdown-toggle mr-3 filter-btn-custom-width"
+                  id="dropdownMenuButton"
+                  data-toggle="dropdown"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                >
+                  Type
+                </button>
+                <div class="dropdown-menu dropdown-menu-right border-0 custom-border-radius custom-background-color" aria-labelledby="dropdownMenuButton">
+                  <a class="dropdown-item" href="#">Attestations missed</a>
+                  <a class="dropdown-item" href="#">Balance decrease</a>
+                  <a class="dropdown-item" href="#">Proposals missed</a>
+                  <a class="dropdown-item" href="#">Proposals submitted</a>
+                  <a class="dropdown-item" href="#">Validator slashed</a>
+                </div>
+              </div>
+              <div class="dropdown">
+                <button 
+                  type="button" 
+                  class="btn btn-outline-dark btn-sm dropdown-toggle filter-btn-custom-width mr-3"
+                  id="dropdownMenuButton"
+                  data-toggle="dropdown"
+                  aria-haspopup="true"
+                  aria-expanded="false"
+                >
+                  Created
+                </button>
+                <div class="dropdown-menu dropdown-menu-right border-0 custom-border-radius custom-background-color" aria-labelledby="dropdownMenuButton">
+                  <a class="dropdown-item" href="#">Past 24h</a>
+                  <a class="dropdown-item" href="#">Past week</a>
+                  <a class="dropdown-item" href="#">Past month</a>
+                  <a class="dropdown-item" href="#">Past year</a>
+                </div>
+              </div>
             </div>
           </div>
           {{ if false }}

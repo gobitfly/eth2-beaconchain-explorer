@@ -61,7 +61,7 @@
 .filter-btn-custom-width { width: 90px }
 .search-input-custom { padding: .215rem 1rem }
 @media screen and (max-width: 1140px) {
-  .btn-custom-width { width: 60px }
+  .btn-custom-width { width: 70px }
 }
 @media screen and (max-width: 576px) {
   .container-custom { padding: 0 2px }
