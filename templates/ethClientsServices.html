@@ -365,6 +365,8 @@
             }
         }
 
-        $(".time_moment").html(luxon.DateTime.fromMillis(parseInt($(".time_moment").html())*1000).toRelative())
+        $(".time_moment").each(function(){
+            $(this).html(luxon.DateTime.fromMillis(parseInt($(this).html())*1000).toRelative())
+        }) 
     </script>
 {{end}}

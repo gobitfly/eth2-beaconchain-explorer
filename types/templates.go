@@ -12,49 +12,50 @@ import (
 
 // PageData is a struct to hold web page data
 type PageData struct {
-	Active                string
-	HeaderAd              bool
-	Meta                  *Meta
-	ShowSyncingMessage    bool
-	User                  *User
-	Data                  interface{}
-	Version               string
-	ChainSlotsPerEpoch    uint64
-	ChainSecondsPerSlot   uint64
-	ChainGenesisTimestamp uint64
-	CurrentEpoch          uint64
-	CurrentSlot           uint64
-	FinalizationDelay     uint64
-	Mainnet               bool
-	DepositContract       string
-	EthPrice              float64
-	EthRoundPrice         int
-	EthTruncPrice         string
-	UsdRoundPrice         int
-	UsdTruncPrice         string
-	EurRoundPrice         int
-	EurTruncPrice         string
-	GbpRoundPrice         int
-	GbpTruncPrice         string
-	CnyRoundPrice         int
-	CnyTruncPrice         string
-	RubRoundPrice         int
-	RubTruncPrice         string
-	CadRoundPrice         int
-	CadTruncPrice         string
-	AudRoundPrice         int
-	AudTruncPrice         string
-	JpyRoundPrice         int
-	JpyTruncPrice         string
-	Currency              string
-	CurrentPriceFormatted string
-	CurrentSymbol         string
-	ExchangeRate          float64
-	InfoBanner            *template.HTML
-	ClientsUpdated        bool
-	IsUserClientUpdated   func(uint64) bool
-	Phase0                Phase0
-	Lang                  string
+	Active                    string
+	HeaderAd                  bool
+	Meta                      *Meta
+	ShowSyncingMessage        bool
+	User                      *User
+	Data                      interface{}
+	Version                   string
+	ChainSlotsPerEpoch        uint64
+	ChainSecondsPerSlot       uint64
+	ChainGenesisTimestamp     uint64
+	CurrentEpoch              uint64
+	CurrentSlot               uint64
+	FinalizationDelay         uint64
+	Mainnet                   bool
+	DepositContract           string
+	EthPrice                  float64
+	EthRoundPrice             int
+	EthTruncPrice             string
+	UsdRoundPrice             int
+	UsdTruncPrice             string
+	EurRoundPrice             int
+	EurTruncPrice             string
+	GbpRoundPrice             int
+	GbpTruncPrice             string
+	CnyRoundPrice             int
+	CnyTruncPrice             string
+	RubRoundPrice             int
+	RubTruncPrice             string
+	CadRoundPrice             int
+	CadTruncPrice             string
+	AudRoundPrice             int
+	AudTruncPrice             string
+	JpyRoundPrice             int
+	JpyTruncPrice             string
+	Currency                  string
+	CurrentPriceFormatted     string
+	CurrentSymbol             string
+	ExchangeRate              float64
+	InfoBanner                *template.HTML
+	ClientsUpdated            bool
+	IsUserClientUpdated       func(uint64) bool
+	Phase0                    Phase0
+	Lang                      string
+	ShowEthClientNotification bool
 }
 
 // Meta is a struct to hold metadata about the page

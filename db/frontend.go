@@ -592,3 +592,19 @@ func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 
 	return stats, nil
 }
+
+func AddUserNotification(userID uint64, eventName types.EventName, eventFilter string) error {
+	nowEpoch := utils.TimeToEpoch(time.Now())
+	_, err := DB.Exec("INSERT INTO users_notifications (user_id, event_name, event_filter, epoch) VALUES ($1, $2, $3, $5) ON CONFLICT DO NOTHING", userID, eventName, eventFilter, nowEpoch)
+	return err
+}
+
+func DeleteUserNotification(userID uint64, eventName types.EventName, eventFilter string) error {
+	if eventFilter == "" {
+		_, err := DB.Exec("DELETE FROM users_notifications WHERE user_id = $1 and event_name = $2", userID, eventName)
+		return err
+	}
+
+	_, err := DB.Exec("DELETE FROM users_notifications WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, eventName, eventFilter)
+	return err
+}

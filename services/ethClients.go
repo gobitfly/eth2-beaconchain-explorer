@@ -2,6 +2,9 @@ package services
 
 import (
 	"encoding/json"
+	"eth2-exporter/db"
+	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -67,6 +70,8 @@ var ethClients = EthClientServicesPageData{}
 var ethClientsMux = &sync.RWMutex{}
 var bannerClients = []clientUpdateInfo{}
 var bannerClientsMux = &sync.RWMutex{}
+
+var updateMap = map[string]string{}
 
 func fetchClientData(repo string) *gitAPIResponse {
 	var gitAPI = new(gitAPIResponse)
@@ -142,7 +147,7 @@ func getRepoTime(date string, dTime string) (time.Time, error) {
 	return time.Date(int(year), time.Month(int(month)), int(day), int(hour), int(min), 0, 0, time.UTC), nil
 }
 
-func prepareEthClientData(repo string, name string) EthClients {
+func prepareEthClientData(repo string, name string, curTime time.Time) EthClients {
 	resp := EthClients{ClientReleaseVersion: "Github"}
 
 	client := fetchClientData(repo)
@@ -161,8 +166,30 @@ func prepareEthClientData(repo string, name string) EthClients {
 			return resp
 		}
 
-		update := clientUpdateInfo{Name: name, Date: rTime}
-		bannerClients = append(bannerClients, update)
+		if curTime.Sub(rTime).Hours()/24.0 < 1.0 && updateMap[name] != client.Name {
+			if utils.Config.Frontend.Enabled {
+				var dbData []uint64
+				err = db.DB.Select(&dbData,
+					`select user_id
+					 from users_subscriptions 
+					 where event_filter = $1 AND event_name=$2 AND last_sent_ts <= NOW() - INTERVAL '2 DAY'
+					`, strings.ToLower(name), types.EthClientUpdateEventName)
+				if err != nil {
+					logger.Errorf("error getting user id subscriptions, can't create frontend notifications: %v", err)
+				} else {
+					for _, uid := range dbData {
+						db.AddUserNotification(uid, types.EthClientUpdateEventName, strings.ToLower(name))
+					}
+				}
+			}
+
+			update := clientUpdateInfo{Name: name, Date: rTime}
+
+			bannerClientsMux.Lock()
+			bannerClients = append(bannerClients, update)
+			bannerClientsMux.Unlock()
+			updateMap[name] = client.Name
+		}
 
 		resp.ClientReleaseVersion = client.Name // client.Name is client version from github api
 		resp.ClientReleaseDate = uint64(rTime.Unix())
@@ -199,26 +226,28 @@ func updateEthClient() {
 	curTime := time.Now()
 	// sending 8 requests to github per call
 	// git api rate-limit 60 per hour : 60/8 = 7.5 minutes minimum
+	ethClientsMux.Lock()
+	defer ethClientsMux.Unlock()
+
 	if curTime.Sub(ethClients.LastUpdate) < time.Hour { // LastUpdate is initialized at January 1, year 1 so no need to check for nil
 		return
 	}
 
 	logger.Println("Updating ETH Clients Information")
-	ethClientsMux.Lock()
-	defer ethClientsMux.Unlock()
+
 	bannerClientsMux.Lock()
-	defer bannerClientsMux.Unlock()
 	bannerClients = []clientUpdateInfo{}
+	bannerClientsMux.Unlock()
 
-	ethClients.Geth = prepareEthClientData("/ethereum/go-ethereum", "Geth")
-	ethClients.Nethermind = prepareEthClientData("/NethermindEth/nethermind", "Nethermind")
-	ethClients.OpenEthereum = prepareEthClientData("/openethereum/openethereum", "OpenEthereum")
-	ethClients.Besu = prepareEthClientData("/hyperledger/besu", "Besu")
+	ethClients.Geth = prepareEthClientData("/ethereum/go-ethereum", "Geth", curTime)
+	ethClients.Nethermind = prepareEthClientData("/NethermindEth/nethermind", "Nethermind", curTime)
+	ethClients.OpenEthereum = prepareEthClientData("/openethereum/openethereum", "OpenEthereum", curTime)
+	ethClients.Besu = prepareEthClientData("/hyperledger/besu", "Besu", curTime)
 
-	ethClients.Teku = prepareEthClientData("/ConsenSys/teku", "Teku")
-	ethClients.Prysm = prepareEthClientData("/prysmaticlabs/prysm", "Prysm")
-	ethClients.Nimbus = prepareEthClientData("/status-im/nimbus-eth2", "Nimbus")
-	ethClients.Lighthouse = prepareEthClientData("/sigp/lighthouse", "Lighthouse")
+	ethClients.Teku = prepareEthClientData("/ConsenSys/teku", "Teku", curTime)
+	ethClients.Prysm = prepareEthClientData("/prysmaticlabs/prysm", "Prysm", curTime)
+	ethClients.Nimbus = prepareEthClientData("/status-im/nimbus-eth2", "Nimbus", curTime)
+	ethClients.Lighthouse = prepareEthClientData("/sigp/lighthouse", "Lighthouse", curTime)
 
 	updateEthClientNetShare()
 

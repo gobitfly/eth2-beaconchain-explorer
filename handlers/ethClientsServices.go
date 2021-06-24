@@ -57,6 +57,8 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 		}
+
+		db.DeleteUserNotification(data.User.UserID, types.EthClientUpdateEventName, "")
 	}
 
 	data.Data = pageData
