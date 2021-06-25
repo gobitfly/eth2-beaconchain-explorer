@@ -20,7 +20,7 @@
         },
         {
             id: 'lighthouse-graffiti',
-            config: "--monitoring-endpoint https://beaconcha.in/api/v1/stats/{apiKey}{machineName}"
+            config: "--monitoring-endpoint https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}"
         },
         {
             id: 'teku-graffiti',
@@ -45,7 +45,7 @@
 
             let res = /^[a-zA-Z0-9]+$/.test(name);
             if (name.length > 0 && name.length < 50 && res) {
-                config = config.replace("{machineName}", "/" + name.replaceAll(" ", ""))
+                config = config.replace("{machineName}", "&machine=" + name.replaceAll(" ", ""))
             } else {
                 config = config.replace("{machineName}", "")
             }
