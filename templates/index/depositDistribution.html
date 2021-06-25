@@ -19,7 +19,14 @@
             type: {{.DepositDistribution.Data.Type}}, 
             borderColor: null,
             backgroundColor: "rgba(0,0,0,0.0)",
-            height: parseInt({{.DepositDistribution.Height}})? parseInt({{.DepositDistribution.Height}}) : 300
+            height: parseInt({{.DepositDistribution.Height}})? parseInt({{.DepositDistribution.Height}}) : 300,
+            events: {
+              drillup: function (e) {
+                  if (poolInfoTable){
+                    poolInfoTable.search("").draw();
+                  }
+                }
+            }
             },
             rangeSelector: {  enabled: false },
             title: { 
@@ -34,6 +41,17 @@
                 column: { stacking: {{.DepositDistribution.Data.StackingMode}} }, 
                 {{ if .DepositDistribution.Data.PlotOptionsPie }}pie: {{.DepositDistribution.Data.PlotOptionsPie}},{{ end }}
                 series: {
+                  events:{
+                    click: function (event) {
+                          if (event.point.name==="Others") return
+                          
+                          if (poolInfoTable){
+                            if (event.point.name==="Whales"){
+                              poolInfoTable.search("Whale").draw();  
+                            }else poolInfoTable.search(event.point.name).draw();
+                          }
+                        }
+                  },
                     {{ if .DepositDistribution.Data.PlotOptionsSeriesCursor }}cursor: {{.DepositDistribution.Data.PlotOptionsSeriesCursor}},{{end}}
                     
                 },
