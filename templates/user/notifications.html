@@ -300,7 +300,7 @@
             </div>
             <div class="col-9 col-sm-8 col-xl-8 metric-value">
               9
-              <span class="metric-description">notifications in the past 24h</span>
+              <span class="metric-description">events in the past 24h</span>
             </div>
           </div>
         </div>
@@ -352,13 +352,13 @@
       <div class="row flex-lg-nowrap mx-0 my-3 container-min-width">
         <div class="col-12 col-lg shadow p-1 mb-3 container-height custom-border-radius custom-background-color">
           <div class="ml-3 mt-3">
-            <h2 class="heading-l2">Recent notifications</h2>
-            <h4 class="heading-l4 mb-3 mb-md-5 text-muted">Your most recent 5 notifications</h4>
+            <h2 class="heading-l2">Recent events</h2>
+            <h4 class="heading-l4 mb-3 mb-md-5 text-muted">5 most recent</h4>
           </div>
-          {{ if true }}
+          {{ if false }}
             <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
               <i class="far fa-frown mb-3 icon"></i>
-              <h3 class="heading-l3">You have no notifications</h3>
+              <h3 class="heading-l3">No recent notifications</h3>
             </div>
           {{ else }}
             <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notifications-row-max-width">
@@ -413,18 +413,10 @@
             <div class="col-12 col-sm px-0">
               <h2 class="heading-l2">Events</h2>
             </div>
-            <!-- TODO: still to decide if this is best -->
-            {{ if false }}
+            {{ if true }}
               <div class="d-flex align-items-center justify-content-end col-12 col-sm px-0">
                 <div class="dropdown">
-                  <button 
-                    type="button" 
-                    class="btn btn-outline-dark btn-sm dropdown-toggle mr-3 filter-btn-custom-width"
-                    id="dropdownMenuButton"
-                    data-toggle="dropdown"
-                    aria-haspopup="true"
-                    aria-expanded="false"
-                  >
+                  <button type="button" class="btn btn-outline-dark btn-sm dropdown-toggle mr-3 filter-btn-custom-width" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     Type
                   </button>
                   <div class="dropdown-menu dropdown-menu-right border-0 custom-border-radius custom-background-color" aria-labelledby="dropdownMenuButton">
@@ -436,14 +428,7 @@
                   </div>
                 </div>
                 <div class="dropdown">
-                  <button 
-                    type="button" 
-                    class="btn btn-outline-dark btn-sm dropdown-toggle filter-btn-custom-width mr-3"
-                    id="dropdownMenuButton"
-                    data-toggle="dropdown"
-                    aria-haspopup="true"
-                    aria-expanded="false"
-                  >
+                  <button type="button" class="btn btn-outline-dark btn-sm dropdown-toggle filter-btn-custom-width mr-3" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     Created
                   </button>
                   <div class="dropdown-menu dropdown-menu-right border-0 custom-border-radius custom-background-color" aria-labelledby="dropdownMenuButton">
@@ -456,7 +441,7 @@
               </div>
             {{ end }}
           </div>
-          {{ if true }}
+          {{ if false }}
             <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
               <i class="far fa-frown mb-3 icon"></i>
               <h3 class="heading-l3">You are not subscribed to any events</h3>
@@ -481,8 +466,7 @@
           <div class="col-12 col-lg-3 d-flex justify-content-start px-0">
             <h2 class="heading-l2">Validators</h2>
           </div>
-          <!-- TODO: still to decide if this is best -->
-          {{ if false }}
+          {{ if true }}
             <div class="col-12 col-lg-9 d-flex justify-content-end px-0">
               <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0">
                 <div>
@@ -494,7 +478,7 @@
                   </button>
                 </div>
               </div>
-              <button type="button" class="btn btn-outline-danger btn-sm ml-2 ml-lg-4 btn-custom-width">
+              <button type="button" class="btn btn-outline-danger btn-sm ml-2 ml-lg-4 btn-custom-width" id="removeValidators" data-toggle="modal" data-target="#removeValidatorsModal">
                 <i class="fas fa-trash-alt fa-lg"></i>
                 <span class="d-none d-lg-inline-block">&nbsp; Remove from List</span>
               </button>
@@ -505,7 +489,7 @@
             </div>
           {{ end }}
         </div>
-        {{ if true }}
+        {{ if false }}
           <div class="mx-sm-auto mt-5 text-sm-center text-empty-section">
             <h3 class="heading-l3">Start adding Validators to your Watchlist</h3>
             <div class="my-2 my-md-4">
@@ -548,6 +532,23 @@
             </table>
           </div>
         {{ end }}
+      </div>
+    </div>
+    <div class="modal fade" id="removeValidatorsModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="removeValidatorsLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content custom-delete-modal row mx-0">
+          <div class="col-12 d-flex align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
+            Are you sure you want to remove all validators from your Watchlist?
+          </div>
+          <div class="col-12 d-flex align-items-center justify-content-between px-0">
+            <button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">
+              Cancel
+            </button>
+            <button id="remove-button" type="button" class="btn btn-primary btn-danger btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">
+              Delete
+            </button>
+          </div>
+        </div>
       </div>
     </div>
     <!-- <div class="container mt-2">

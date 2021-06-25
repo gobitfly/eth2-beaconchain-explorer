@@ -60,6 +60,10 @@
 .btn-custom-width { width: 180px }
 .filter-btn-custom-width { width: 90px }
 .search-input-custom { padding: .215rem 1rem }
+.custom-delete-modal { 
+  min-width: 280px;
+  padding: 3.5rem 4rem 3rem;
+}
 @media screen and (max-width: 1140px) {
   .btn-custom-width { width: 70px }
 }
