@@ -1098,7 +1098,7 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 
 	pdf := GetPdfReport(validators, currency, uint64(firstDay.Unix()), uint64(lastDay.Unix()))
 
-	return &types.EmailAttachment{Attachment: pdf, Name: "beaconcha_in-income-history.pdf"}
+	return &types.EmailAttachment{Attachment: pdf, Name: fmt.Sprintf("income_history_%v_%v.pdf", firstDay.Format("20060102"), lastDay.Format("20060102"))}
 }
 
 func (n *taxReportNotification) GetSubscriptionID() uint64 {
