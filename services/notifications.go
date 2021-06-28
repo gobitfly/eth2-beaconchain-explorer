@@ -261,7 +261,11 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 				if len(msg) > 0 {
 					msg += "\n"
 				}
-				msg += fmt.Sprintf("%s\n====\n\n", event)
+				event_title := event
+				if event == types.TaxReportEventName {
+					event_title = "income_history"
+				}
+				msg += fmt.Sprintf("%s\n====\n\n", event_title)
 				for _, n := range ns {
 					msg += fmt.Sprintf("%s\n", n.GetInfo(true))
 					e := n.GetEpoch()
@@ -1094,7 +1098,7 @@ func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 
 	pdf := GetPdfReport(validators, currency, uint64(firstDay.Unix()), uint64(lastDay.Unix()))
 
-	return &types.EmailAttachment{Attachment: pdf, Name: "beaconcha_in-rewards-history.pdf"}
+	return &types.EmailAttachment{Attachment: pdf, Name: fmt.Sprintf("income_history_%v_%v.pdf", firstDay.Format("20060102"), lastDay.Format("20060102"))}
 }
 
 func (n *taxReportNotification) GetSubscriptionID() uint64 {
@@ -1110,16 +1114,7 @@ func (n *taxReportNotification) GetEventName() types.EventName {
 }
 
 func (n *taxReportNotification) GetInfo(includeUrl bool) string {
-	// tNow := time.Now()
-	// firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
-	// lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
-	// dateRange := fmt.Sprintf("days=%d-%d", firstDay.Unix(), lastDay.Unix())
-	generalPart := fmt.Sprint(`Monthly report is ready to download`)
-	// if includeUrl {
-	// 	url := fmt.Sprintf("https://%s/rewards/hist/download?%s", utils.Config.Frontend.SiteDomain, n.EventFilter)
-	// 	url = strings.Replace(url, "days=30", dateRange, -1)
-	// 	return generalPart + " " + url
-	// }
+	generalPart := fmt.Sprint(`Please find attached the income history of your selected validators.`)
 	return generalPart
 }
 
