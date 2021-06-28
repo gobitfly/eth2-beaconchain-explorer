@@ -54,6 +54,12 @@
 		#chartTabs .nav-link {
 			padding: .5rem .8rem;
 		}
+
+		@media screen and (max-width: 450px) {
+  		.validator-content {
+    		padding-left: 5px;
+				padding-right: 5px;
+  	}
 		/* .overview-container {
 			max-width: 600px;
 		}
@@ -71,7 +77,7 @@
 	{{ $validating := or (or (or (eq .Status "active_online") (eq .Status "active_offline")) (or (eq .Status "slashing_online") (eq .Status "slashing_offline"))) (or (eq .Status "exiting_online") (eq .Status "exiting_offline")) }}
 	{{ $exited := or (eq .Status "exited") (eq .Status "slashed") }}
 
-	<div class="container mt-2 validator-content">
+	<div class="container mt-4 validator-content" style="min-width: 300px; background-color: pink;">
 		{{ template "flashMessage" . }}
 			{{ template "validatorHeading" . }}
 				<div class="row align-items-stretch">
