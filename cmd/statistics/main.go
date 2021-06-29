@@ -96,9 +96,9 @@ func streaksLoop() {
 		}
 		if done {
 			// updated streaks up to the current finalized epoch
-			time.Sleep(time.Hour)
+			time.Sleep(time.Second * 3600)
 		} else {
-			// go gaster until streaks are upated to the current finalized epoch
+			// go faster until streaks are upated to the current finalized epoch
 			time.Sleep(time.Second * 10)
 		}
 	}

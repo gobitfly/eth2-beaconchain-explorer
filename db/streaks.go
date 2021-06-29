@@ -55,25 +55,27 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 		return false, nil
 	}
 
-	lastStatsDay := 0
-	err = DB.Get(&lastStatsDay, `select coalesce(max(day),0) from validator_stats`)
+	var statsExist bool
+	err = DB.Get(&statsExist, `select coalesce((select status from validator_stats_status where day = $1),false)`, day)
 	if err != nil {
-		return false, fmt.Errorf("error getting lastStatsDay: %w", err)
+		return false, fmt.Errorf("error getting statsExist: %w", err)
 	}
 
-	if lastStatsDay < day {
+	if !statsExist {
 		// only do streaks once per day for now
-		logger.Infof("skipping streaks, last day: %v", day)
+		logger.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "statsExist": statsExist}).Infof("skipping streaks")
 		return true, nil
 	}
 
-	logger.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "lastStatsDay": lastStatsDay}).Infof("updating streaks")
+	logger.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "statsExist": statsExist}).Infof("updating streaks")
 
 	var streaks []struct {
 		Validatorindex int
 		Status         int
 		Start          int
 		Length         int
+		Longest        bool
+		Current        bool
 	}
 
 	boundingsQry := ``
@@ -82,10 +84,10 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 		boundingsQry = `boundings as (select validatorindex, $2+1 as epoch, status from attestation_assignments_p where week = $2/255/7 and epoch = $2),`
 	} else {
 		// use validator_stats table to limit search-space
-		nomissesQry := "select validatorindex, $2+1 as epoch, 1 as status from validator_stats where day = $1/225 and (missed_attestations = 0 or missed_attestations is null) and validatorindex != 2147483647"
-		if lastStatsDay < day {
+		nomissesQry := `select validatorindex, $2+1 as epoch, 1 as status from validator_stats where day = $1/225 and (missed_attestations = 0 or missed_attestations is null) and validatorindex != 2147483647`
+		if !statsExist {
 			// if the validator_stats table has no entry for this day we find validators with only misses or no misses
-			nomissesQry = "select validatorindex, $2+1 as epoch, status from attestation_assignments_p where week = $1/225/7 and epoch >= $1 and epoch <= $2 group by validatorindex, status having count(*) = $2-$1+1"
+			nomissesQry = `select validatorindex, $2+1 as epoch, status from attestation_assignments_p where week = $1/225/7 and epoch >= $1 and epoch <= $2 group by validatorindex, status having count(*) = $2-$1+1`
 		}
 		boundingsQry = fmt.Sprintf(`
 			-- limit search-space
@@ -150,8 +152,12 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 					select validatorindex, status, start, length from validator_attestation_streaks
 				) a
 			)
-		select validatorindex, status, start, length
-		from rankedstreaks where r = 1 or start+length = $2+1 order by validatorindex, start`, boundingsQry)
+		select 
+			validatorindex, status, start, length, 
+			case when r = 1 then true else false end as longest, 
+			case when start+length = $2+1 then true else false end as current
+		from rankedstreaks where r = 1 or start+length = $2+1 
+		order by validatorindex, start`, boundingsQry)
 
 	// fmt.Println(strings.ReplaceAll(strings.ReplaceAll(qry, "$1", fmt.Sprintf("%d", startEpoch)), "$2", fmt.Sprintf("%d", endEpoch)))
 
@@ -180,17 +186,19 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 		if len(streaks) < end {
 			end = len(streaks)
 		}
-		n := 4
+		n := 6
 		valueStrings := make([]string, 0, batchSize)
 		valueArgs := make([]interface{}, 0, batchSize*n)
 		for i, d := range streaks[start:end] {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d)", i*n+1, i*n+2, i*n+3, i*n+4))
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)", i*n+1, i*n+2, i*n+3, i*n+4, i*n+5, i*n+6))
 			valueArgs = append(valueArgs, d.Validatorindex)
 			valueArgs = append(valueArgs, d.Status)
 			valueArgs = append(valueArgs, d.Start)
 			valueArgs = append(valueArgs, d.Length)
+			valueArgs = append(valueArgs, d.Longest)
+			valueArgs = append(valueArgs, d.Current)
 		}
-		stmt := fmt.Sprintf(`insert into validator_attestation_streaks (validatorindex, status, start, length) values %s`, strings.Join(valueStrings, ","))
+		stmt := fmt.Sprintf(`insert into validator_attestation_streaks (validatorindex, status, start, length, longest, current) values %s`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return false, fmt.Errorf("error inserting streaks %w", err)
@@ -203,7 +211,7 @@ func UpdateAttestationStreaks() (updatedToLastFinalizedEpoch bool, err error) {
 	}
 
 	t2 := time.Now()
-	logger.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "lastStatsDay": lastStatsDay, "calculate": t1.Sub(t0), "save": t2.Sub(t1), "all": t2.Sub(t0), "count": len(streaks)}).Info("updating streaks completed")
+	logger.WithFields(logrus.Fields{"day": day, "lastStreaksEpoch": lastStreaksEpoch, "startEpoch": startEpoch, "endEpoch": endEpoch, "lastFinalizedEpoch": lastFinalizedEpoch, "statsExist": statsExist, "calculate": t1.Sub(t0), "save": t2.Sub(t1), "all": t2.Sub(t0), "count": len(streaks)}).Info("updating streaks completed")
 
 	return lastFinalizedEpoch == endEpoch, nil
 }

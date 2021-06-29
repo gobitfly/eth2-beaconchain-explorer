@@ -1,3 +1,5 @@
+create extension pg_trgm; /* trigram extension for faster text-search */
+
 /*
 This table is used to store the current state (latest exported epoch) of all validators
 It also acts as a lookup-table to store the index-pubkey association
@@ -181,10 +183,12 @@ create table validator_stats_status
 drop table if exists validator_attestation_streaks;
 create table validator_attestation_streaks
 (
-    validatorindex int not null,
-    status         int not null,
-    start          int not null,
-    length         int not null,
+    validatorindex int     not null,
+    status         int     not null,
+    start          int     not null,
+    length         int     not null,
+    longest        boolean not null,
+    current        boolean not null,
     primary key (validatorindex, status, start)
 );
 create index idx_validator_attestation_streaks_validatorindex on validator_attestation_streaks (validatorindex);
@@ -263,6 +267,7 @@ create table blocks
 );
 create index idx_blocks_proposer on blocks (proposer);
 create index idx_blocks_epoch on blocks (epoch);
+create index idx_blocks_graffiti_text on blocks using gin (graffiti_text gin_trgm_ops);
 
 drop table if exists blocks_proposerslashings;
 create table blocks_proposerslashings
