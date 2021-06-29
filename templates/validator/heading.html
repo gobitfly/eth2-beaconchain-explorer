@@ -12,34 +12,20 @@
     <div class="row d-flex align-items-center justify-content-between mx-0 my-3">
       <div class="col-12 col-sm px-0">
         <h1 class="h3 mb-1 mb-md-0">Validator{{ if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid") }} {{ .Index }}{{ end }}{{ if ne .Name "" }} ({{ formatValidatorName .Name }}){{ end }}</h1>
-         
       </div>
-      <div class="col-12 col-sm d-flex justify-content-start justify-content-sm-end px-0" style="background-color: red;">
-        <button 
-          class="btn btn-dark text-white btn-sm ml-sm-2" 
-          type="button" id="copy-button" 
-          data-toggle="tooltip" 
-          title="Copy public key to clipboard" 
-          data-clipboard-text="0x{{printf "%x" .PublicKey}}"
-          style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;"
-        >
+      <div class="col-12 col-sm d-flex justify-content-start justify-content-sm-end px-0">
+        <button class="btn btn-dark text-white btn-sm ml-sm-3" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}" style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;">
           <i class="fa fa-copy"></i>
         </button>
         <span data-toggle="tooltip" title="Edit validator name">
-          <button 
-            class="btn btn-dark text-white btn-sm ml-2" 
-            type="button" id="edit-button" 
-            data-toggle="modal" 
-            data-target="#edit-validator-modal"
-            style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;"
-          >
+          <button class="btn btn-dark text-white btn-sm ml-3" type="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;">
             <i  class="fa fa-edit"></i>
           </button>
         </span>
         {{ if len .Watchlist }}
-          <span data-toggle="tooltip" title="Stop receiving updates for this validator.">
+          <span data-toggle="tooltip" title="Stop receiving updates for this validator">
             <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
-              <button class="btn btn-dark text-white btn-sm ml-2" type="submit" id="unfollow-button" style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;">
+              <button class="btn btn-dark text-white btn-sm ml-3" type="submit" id="unfollow-button" style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;">
                 <i class="fas fa-bookmark"></i>
               </button>
             </form>
@@ -47,14 +33,14 @@
         {{ else }}
           {{ if .User.Authenticated }}
             <span data-toggle="tooltip" title="Follow this validator and receive email notifications">
-              <button class="btn btn-dark text-white btn-sm ml-2" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;">
+              <button class="btn btn-dark text-white btn-sm ml-3" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;">
                 <i class="far fa-bookmark"></i>
               </button>
             </span>
           {{ else }}
             <span data-toggle="tooltip" title="Follow this validator and receive email notifications">
               <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
-                <button class="btn btn-dark text-white btn-sm ml-2" id="follow-button" style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;">
+                <button class="btn btn-dark text-white btn-sm ml-3" id="follow-button" style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;">
                   <i class="far fa-bookmark"></i>
                 </button>
               </form>
@@ -62,7 +48,7 @@
           {{ end }}
         {{ end }}
         <span data-toggle="tooltip" title="View daily statistics">
-          <a class="btn btn-dark text-white btn-sm ml-2" href="/validator/{{.Index}}/stats" style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;">
+          <a class="btn btn-dark text-white btn-sm ml-3" href="/validator/{{.Index}}/stats" style="max-width: 48px; font-size: 1rem !important; padding: .5rem 1rem;">
             <i class="fas fa-table"></i>
           </a>
         </span>
