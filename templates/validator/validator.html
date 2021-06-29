@@ -71,7 +71,7 @@
 	{{$validating := or (or (or (eq .Status "active_online") (eq .Status "active_offline")) (or (eq .Status "slashing_online") (eq .Status "slashing_offline"))) (or (eq .Status "exiting_online") (eq .Status "exiting_offline"))}}
 	{{$exited := or (eq .Status "exited") (eq .Status "slashed")}}
 
-	<div class="container mt-4 validator-content" style="min-width: 300px; background-color: pink;">
+	<div class="container mt-4 validator-content">
 		{{template "flashMessage" .}}
 			{{template "validatorHeading" .}}
 				<div class="row align-items-stretch">
