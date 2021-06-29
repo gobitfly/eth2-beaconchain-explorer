@@ -955,7 +955,7 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 	if err != nil {
 		return err
 	}
-	logger.Infof("collectMonitoringMachine result %v", dbResult)
+
 	for _, r := range dbResult {
 
 		n := &monitorMachineNotification{
