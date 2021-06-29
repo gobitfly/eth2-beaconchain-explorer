@@ -8,14 +8,15 @@ import (
 	"eth2-exporter/notify"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"firebase.google.com/go/messaging"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"firebase.google.com/go/messaging"
+	"github.com/jmoiron/sqlx"
 )
 
 func notificationsSender() {
@@ -881,7 +882,8 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName,
 		`SELECT 
-		DISTINCT(v.user_id), 
+		DISTINCT(us.user_id, machine), 
+		us.user_id,
 		us.id,
 		machine  
 	FROM users_subscriptions us
@@ -889,44 +891,42 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 	WHERE us.event_name = $1 AND us.created_epoch <= $2 
 	AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
 	AND v.created_trunc < now() - interval '4 minutes' AND v.created_trunc > now() - interval '3 hours'
-	AND v.id = (SELECT MAX(id) from stats_meta v2 where v.user_id = v2.user_id)
-	AND machine 
-	NOT IN 
-	(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '3 hours');
+	AND v.id = (SELECT MAX(id) from stats_meta v2 where v.user_id = v2.user_id AND machine = us.event_filter)
 	`)
 }
 
 func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName,
 		`SELECT 
-			DISTINCT(us.user_id), 
+			DISTINCT(us.user_id, machine), 
+			us.user_id,
 			us.id,
 			machine 
 		FROM users_subscriptions us 
 		INNER JOIN stats_meta v ON us.user_id = v.user_id
 		INNER JOIN stats_system sy ON v.id = sy.meta_id
 		WHERE us.event_name = $1 AND us.created_epoch <= $2 
-		AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL) AND event_filter<>'' 
-		AND sy.disk_node_bytes_free::decimal / sy.disk_node_bytes_total < try_cast_numeric(us.event_filter, 0)
-		AND us.event_filter 
-		NOT IN 
-		(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '3 hours')
+		AND v.machine = us.event_filter 
+		AND (us.last_sent_epoch < ($2 - 750) OR us.last_sent_epoch IS NULL)
+		AND sy.disk_node_bytes_free::decimal / sy.disk_node_bytes_total < event_threshold
+		AND v.created_trunc > NOW() - INTERVAL '1 hours'
 	`)
 }
 
 func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName,
 		`SELECT 
-			DISTINCT(us.id), 
+			DISTINCT(us.user_id, machine), 
+			max(us.id), 
 			us.user_id,
 			machine 
 		FROM users_subscriptions us 
 		INNER JOIN stats_meta v ON us.user_id = v.user_id 
-		WHERE v.id = (SELECT MAX(id) from stats_meta v2 where v.user_id = v2.user_id) AND process = 'system' 
+		WHERE v.id = (SELECT MAX(id) from stats_meta v2 where v.user_id = v2.user_id AND process = 'system' AND machine = us.event_filter) 
 		AND us.event_name = $1 AND us.created_epoch <= $2 
 		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
 		AND v.created_trunc > now() - interval '3 hours' 
-		AND try_cast_numeric(us.event_filter, 1) < (SELECT 
+		AND event_threshold < (SELECT 
 			1 - (cpu_node_idle_seconds_total::decimal - lag(cpu_node_idle_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) / (cpu_node_system_seconds_total::decimal - lag(cpu_node_system_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) as cpu_load 
 			FROM stats_system as sy 
 			INNER JOIN stats_meta m on meta_id = m.id 
@@ -935,10 +935,7 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 			ORDER BY sy.id desc
 			LIMIT 1
 		) 
-		AND machine 
-		NOT IN 
-		(SELECT event_filter FROM users_notifications as un WHERE un.event_name=$1 AND un.user_id = us.user_id AND un.sent_ts > NOW() - INTERVAL '3 hours')
-		group by us.id, us.user_id, machine;
+		group by us.user_id, machine;
 	`)
 }
 

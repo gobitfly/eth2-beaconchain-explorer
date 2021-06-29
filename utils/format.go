@@ -460,6 +460,13 @@ func FormatPublicKey(validator []byte) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
 }
 
+func FormatMachineName(machineName string) template.HTML {
+	if machineName == "" {
+		machineName = "Default"
+	}
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-hdd\"></i> %v", machineName))
+}
+
 // FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTimestamp(ts int64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))

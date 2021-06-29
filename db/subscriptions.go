@@ -6,10 +6,11 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
 	"strings"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 // Special case for all monitoring events to be stored in users db
@@ -22,18 +23,23 @@ func getSubscriptionDB(eventName types.EventName) *sqlx.DB {
 }
 
 // AddSubscription adds a new subscription to the database.
-func AddSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
+func AddSubscription(userID uint64, eventName types.EventName, eventFilter string, eventThreshold float64) error {
 	now := time.Now()
 	nowTs := now.Unix()
 	nowEpoch := utils.TimeToEpoch(now)
-	_, err := getSubscriptionDB(eventName).Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5) ON CONFLICT DO NOTHING", userID, eventName, eventFilter, nowTs, nowEpoch)
+
+	var onConflictDo string = "NOTHING"
+	if strings.HasPrefix(string(eventName), "monitoring_") {
+		onConflictDo = "UPDATE SET event_threshold = $6"
+	}
+
+	_, err := getSubscriptionDB(eventName).Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, eventName, eventFilter, nowTs, nowEpoch, eventThreshold)
 	return err
 }
 
 // DeleteSubscription removes a subscription from the database.
 func DeleteSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
 	_, err := getSubscriptionDB(eventName).Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, eventName, eventFilter)
-
 	return err
 }
 

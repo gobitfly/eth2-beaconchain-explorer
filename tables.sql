@@ -507,6 +507,7 @@ create table users_subscriptions
     user_id         int                         not null,
     event_name      character varying(100)      not null,
     event_filter    text                        not null default '',
+    event_threshold real                        default 0,
     last_sent_ts    timestamp without time zone,
     last_sent_epoch int,
     created_ts      timestamp without time zone not null,
