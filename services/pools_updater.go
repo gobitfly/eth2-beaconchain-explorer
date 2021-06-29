@@ -25,9 +25,11 @@ type Pools struct {
 }
 
 type PoolStatsData struct {
-	Status         string `db:"status" json:"status"`
-	ValidatorIndex uint64 `db:"validatorindex" json:"validatorindex"`
-	Balance31d     uint64 `db:"balance31d" json:"balance31d"`
+	Status          string `db:"status" json:"status"`
+	ValidatorIndex  uint64 `db:"validatorindex" json:"validatorindex"`
+	Balance31d      uint64 `db:"balance31d" json:"balance31d"`
+	Activationepoch uint64 `db:"activationepoch" json:"activationepoch"`
+	Exitepoch       uint64 `db:"exitepoch" json:"exitepoch"`
 }
 
 type PoolStats struct {
@@ -181,7 +183,7 @@ func getPoolInfo() []PoolsInfo {
 		// li := time.Now()
 		var stats []PoolStatsData
 		err := db.DB.Select(&stats,
-			`SELECT status, validatorindex, balance31d
+			`SELECT status, validatorindex, balance31d, activationepoch, exitepoch
 			 FROM validators 
 			 WHERE pubkey = ANY(
 								SELECT publickey 
