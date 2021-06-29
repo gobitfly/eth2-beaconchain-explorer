@@ -259,15 +259,15 @@
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb font-size-1 mb-0 breadcrumb-custom">
             <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Watchlist</li>
+            <li class="breadcrumb-item active" aria-current="page">Notification Center</li>
           </ol>
         </nav>
       </div>
       <div class="row d-flex align-items-center justify-content-between mx-0 my-5 container-min-width heading-section">
         <div class="col-12 col-md pl-0 heading">
-          <h1 class="heading text-nowrap">Validators Watchlist</h1>
+          <h1 class="heading text-nowrap">Notification Center</h1>
         </div>
-        <div class="col-12 col-md pr-0">
+        <!-- <div class="col-12 col-md pr-0">
           <div class="row d-flex flex-nowrap align-items-center justify-content-md-end mr-1 mr-sm-0">
             <div class="flex-fill">
               <input type="text" placeholder="Search and add validators..." aria-label="Search" class="input-search add-input-custom" />
@@ -279,7 +279,7 @@
               </button>
             </div>
           </div>
-        </div>
+        </div> -->
       </div>
       <div class="row flex-sm-nowrap mx-0 my-2 container-min-width metrics-section">
         <div class="col-12 col-sm col-xl mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
@@ -352,8 +352,8 @@
       <div class="row flex-lg-nowrap mx-0 my-3 container-min-width">
         <div class="col-12 col-lg shadow p-1 mb-3 container-height custom-border-radius custom-background-color">
           <div class="ml-3 mt-3">
-            <h2 class="heading-l2">Recent events</h2>
-            <h4 class="heading-l4 mb-3 mb-md-5 text-muted">5 most recent</h4>
+            <h2 class="heading-l2">Monitoring Notifications</h2>
+            <!-- <h4 class="heading-l4 mb-3 mb-md-5 text-muted">5 most recent</h4> -->
           </div>
           {{ if false }}
             <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
@@ -361,7 +361,22 @@
               <h3 class="heading-l3">No recent notifications</h3>
             </div>
           {{ else }}
-            <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notifications-row-max-width">
+            <div class="px-0 px-md-3 py-1">
+              <table class="table table-borderless table-hover">
+                <thead bgcolor="#fdfdfd">
+                  <tr>
+                    <th scope="col" class="h6 border-bottom-0">Notification</th>
+                    <th scope="col" class="h6 border-bottom-0">Network</th>
+                    <th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile-alt"></i></th>
+                    <th scope="col" class="h6 border-bottom-0"><i class="far fa-envelope"></i></th>
+                    <th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe"></i></th>
+                    <th scope="col" class="h6 border-bottom-0">Last Notification</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <!-- <div class="row d-flex align-items-center mx-auto my-2 my-sm-4 notifications-row-max-width">
               <div class="col-12 col-sm-9 d-flex align-items-center justify-content-sm-start px-2 text-nowrap notification-description">
                 <span class="mr-2 mr-sm-4 notification-status"><i class="fas fa-circle"></i></span>
                 <b>Validator 1</b>&nbsp; proposed a new block
@@ -405,15 +420,15 @@
               <div class="col-12 col-sm-3 d-flex justify-content-end mt-1 mt-sm-0 font-weight-light text-muted notification-info">
                 1 day ago
               </div>
-            </div>
+            </div> -->
           {{ end }}
         </div>
         <div class="col-12 col-lg mt-3 mt-lg-0 ml-lg-3 shadow p-1 mb-3 container-height custom-border-radius custom-background-color">
           <div class="row align-items-center mx-3 mt-3">
             <div class="col-12 col-sm px-0">
-              <h2 class="heading-l2">Events</h2>
+              <h2 class="heading-l2">Network Notifications</h2>
             </div>
-            {{ if true }}
+            <!-- {{ if true }}
               <div class="d-flex align-items-center justify-content-end col-12 col-sm px-0">
                 <div class="dropdown">
                   <button type="button" class="btn btn-outline-dark btn-sm dropdown-toggle mr-3 filter-btn-custom-width" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -439,7 +454,7 @@
                   </div>
                 </div>
               </div>
-            {{ end }}
+            {{ end }} -->
           </div>
           {{ if false }}
             <div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
@@ -451,8 +466,12 @@
               <table class="table table-borderless table-hover">
                 <thead bgcolor="#fdfdfd">
                   <tr>
-                    <th scope="col" class="h6 border-bottom-0">Validator</th>
-                    <th scope="col" class="h6 border-bottom-0">Event</th>
+                    <th scope="col" class="h6 border-bottom-0">Notification</th>
+                    <th scope="col" class="h6 border-bottom-0">Network</th>
+                    <th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile-alt"></i></th>
+                    <th scope="col" class="h6 border-bottom-0"><i class="far fa-envelope"></i></th>
+                    <th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe"></i></th>
+                    <th scope="col" class="h6 border-bottom-0">Last Notification</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -464,11 +483,22 @@
       <div class="mx-0 my-3 shadow p-1 mb-3 container-min-width container-min-height custom-border-radius custom-background-color">
         <div class="row d-flex flex-lg-nowrap align-items-center mx-3 mt-3 py-2">
           <div class="col-12 col-lg-3 d-flex justify-content-start px-0">
-            <h2 class="heading-l2">Validators</h2>
+            <h2 class="heading-l2">Validator Notifications</h2>
           </div>
           {{ if true }}
             <div class="col-12 col-lg-9 d-flex justify-content-end px-0">
-              <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0">
+              <div class="row d-flex flex-nowrap align-items-center justify-content-md-end mr-1 mr-sm-0">
+                <div class="flex-fill">
+                  <input type="text" placeholder="Search and add validators..." aria-label="Search" class="input-search add-input-custom" />
+                </div>
+                <div>
+                  <button type="button" title="Add Validators" class="btn btn-primary btn-lg btn-custom">
+                    <i class="fas fa-plus"></i>
+                    <span class="d-none d-lg-inline-block text-nowrap">Add Validators</span>
+                  </button>
+                </div>
+              </div>
+              <!-- <div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0">
                 <div>
                   <input type="text" placeholder="Search in the list..." aria-label="Search" class="input-search search-input-custom" />
                 </div>
@@ -485,7 +515,7 @@
               <a href="{{ .DashboardLink }}" class="btn btn-outline-primary btn-sm ml-2 ml-lg-4 btn-custom-width">
                 <i class="fas fa-desktop fa-lg"></i>
                 <span class="d-none d-lg-inline-block">&nbsp; View in Dashboard</span>
-              </a>
+              </a> -->
             </div>
           {{ end }}
         </div>
@@ -513,8 +543,12 @@
                 <tr>
                   <th scope="col" class="h6 border-bottom-0">Index</th>
                   <th scope="col" class="h6 border-bottom-0">Public Key</th>
-                  <th scope="col" class="h6 border-bottom-0">Balance</th>
-                  <th scope="col" class="h6 border-bottom-0">Notifications</th>
+                  <th scope="col" class="h6 border-bottom-0">Notification</th>
+                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile-alt"></i></th>
+                  <th scope="col" class="h6 border-bottom-0"><i class="far fa-envelope"></i></th>
+                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe"></i></th>
+                  <th scope="col" class="h6 border-bottom-0">Latest Notification</th>
+                  <th scope="col" class="h6 border-bottom-0">Buttons</th>
                 </tr>
               </thead>
               <tbody></tbody>
