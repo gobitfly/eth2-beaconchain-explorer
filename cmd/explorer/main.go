@@ -79,6 +79,15 @@ func main() {
 	db.MustInitFrontendDB(cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name, cfg.Frontend.SessionSecret)
 	defer db.FrontendDB.Close()
 
+	if utils.Config.Metrics.Enabled {
+		go metrics.MonitorDB(db.DB)
+		DBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
+		frontendDBStr := fmt.Sprintf("%v-%v-%v-%v-%v", cfg.Frontend.Database.Username, cfg.Frontend.Database.Password, cfg.Frontend.Database.Host, cfg.Frontend.Database.Port, cfg.Frontend.Database.Name)
+		if DBStr != frontendDBStr {
+			go metrics.MonitorDB(db.FrontendDB)
+		}
+	}
+
 	logrus.Infof("database connection established")
 	if utils.Config.Chain.SlotsPerEpoch == 0 || utils.Config.Chain.SecondsPerSlot == 0 {
 		logrus.Fatal("invalid chain configuration specified, you must specify the slots per epoch, seconds per slot and genesis timestamp in the config file")
