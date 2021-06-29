@@ -512,6 +512,7 @@ create table users_subscriptions
     user_id         int                         not null,
     event_name      character varying(100)      not null,
     event_filter    text                        not null default '',
+    event_threshold real                        default 0,
     last_sent_ts    timestamp without time zone,
     last_sent_epoch int,
     created_ts      timestamp without time zone not null,
@@ -713,3 +714,18 @@ CREATE TABLE stats_sharing (
 	user_id 		 	bigint	 	 		not null,
     foreign key(user_id) references users(id)
 );
+
+create function try_cast_numeric(p_in text, p_default numeric default null)
+   returns numeric
+as
+$$
+begin
+  begin
+    return $1::numeric;
+  exception 
+    when others then
+       return p_default;
+  end;
+end;
+$$
+language plpgsql;

@@ -1064,7 +1064,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	claims := getAuthClaims(r)
 
 	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
-	if err != nil || subscriptionCount >= 4 {
+	if err != nil || subscriptionCount >= 5 {
 		sendErrorResponse(j, r.URL.String(), "reached max subscription limit")
 		return
 	}
@@ -1100,15 +1100,16 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	OKResponse(w, r)
 }
 
-type PremiumData struct {
-	Package       string
-	MaxValidators int
-	MaxStats      uint64
-	MaxNodes      uint64
-	WidgetSupport bool
+type PremiumUser struct {
+	Package                string
+	MaxValidators          int
+	MaxStats               uint64
+	MaxNodes               uint64
+	WidgetSupport          bool
+	NotificationThresholds bool
 }
 
-func getUserPremium(r *http.Request) PremiumData {
+func getUserPremium(r *http.Request) PremiumUser {
 	claims := getAuthClaims(r)
 
 	if claims == nil {
@@ -1118,13 +1119,14 @@ func getUserPremium(r *http.Request) PremiumData {
 	return getUserPremiumByPackage(claims.Package)
 }
 
-func getUserPremiumByPackage(pkg string) PremiumData {
-	result := PremiumData{
-		Package:       "standard",
-		MaxValidators: 100,
-		MaxStats:      180,
-		MaxNodes:      1,
-		WidgetSupport: false,
+func getUserPremiumByPackage(pkg string) PremiumUser {
+	result := PremiumUser{
+		Package:                "standard",
+		MaxValidators:          100,
+		MaxStats:               180,
+		MaxNodes:               1,
+		WidgetSupport:          false,
+		NotificationThresholds: false,
 	}
 
 	if pkg == "" {
@@ -1133,7 +1135,12 @@ func getUserPremiumByPackage(pkg string) PremiumData {
 
 	result.Package = pkg
 	result.MaxStats = 43200
-	result.WidgetSupport = true
+
+	if result.Package != "plankton" {
+		result.WidgetSupport = true
+		result.NotificationThresholds = true
+	}
+
 	if result.Package == "goldfish" {
 		result.MaxNodes = 2
 	}

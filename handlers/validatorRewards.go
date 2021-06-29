@@ -225,7 +225,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	err = db.AddSubscription(user.UserID,
 		types.TaxReportEventName,
-		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency))
+		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency), 0)
 
 	if err != nil {
 		logger.Errorf("error updating user subscriptions: %v", err)
