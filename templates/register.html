@@ -1,5 +1,30 @@
 {{ define "js"}}
     <script>
+        function validateEmail(email) {
+            var tester = /^[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~](\.?[-!#$%&'*+\/0-9=?A-Z^_a-z`{|}~])*@[a-zA-Z0-9](-*\.?[a-zA-Z0-9])*\.[a-zA-Z](-?[a-zA-Z0-9])+$/;
+            if (!email) return false;
+
+            var emailParts = email.split('@');
+
+            if (emailParts.length !== 2) return false
+
+            var account = emailParts[0];
+            var address = emailParts[1];
+
+            if (account.length > 64) return false
+
+            else if (address.length > 255) return false
+
+            var domainParts = address.split('.');
+            if (domainParts.some(function (part) {
+                return part.length > 63;
+            })) return false;
+
+
+            if (!tester.test(email)) return false;
+
+            return true;
+        };
         // form validations
         function checkPasswordsMatch(input) {
             var pass = document.getElementById('password')
@@ -17,6 +42,50 @@
                 input.setCustomValidity('Please accept the Terms and Conditions before creating an account');
             } else {
                 input.setCustomValidity('');
+            }
+        }
+        var passwordInput = document.getElementById('password')
+        togglePasswordHelp(passwordInput.value)
+        passwordInput.addEventListener('input', function(e) {
+            togglePasswordHelp(e.target.value)
+            toggleConfirmPasswordHelp()
+        })
+
+        function togglePasswordHelp(value) {
+            if (value && value.length >= 5) {
+                document.getElementById('passwordHelp').classList.add('invisible')
+            } else {
+                document.getElementById('passwordHelp').classList.remove('invisible')
+            }
+        }
+
+        var confirmPasswordInput = document.getElementById('pw-confirm')
+        toggleConfirmPasswordHelp(confirmPasswordInput.value)
+        confirmPasswordInput.addEventListener('input', function(e) {
+            toggleConfirmPasswordHelp(e.target.value)
+        })
+
+        function toggleConfirmPasswordHelp() {
+            var password = document.getElementById('password')
+            var confirmPassword = document.getElementById('pw-confirm')
+            if (confirmPassword && confirmPassword.value && password.value && confirmPassword.value === password.value) {
+                document.getElementById('confirmPasswordHelp').classList.add('invisible')
+            } else {
+                document.getElementById('confirmPasswordHelp').classList.remove('invisible')
+            }
+        }
+
+        var emailInput = document.getElementById('email')
+        toggleEmailHelp(emailInput.value)
+        emailInput.addEventListener('input', function(e) {
+           toggleEmailHelp(e.target.value)
+        })
+
+        function toggleEmailHelp(value) {
+            if (value && validateEmail(value)) {
+                document.getElementById('emailHelp').classList.add('invisible')
+            } else {
+                document.getElementById('emailHelp').classList.remove('invisible')
             }
         }
     </script>
@@ -46,32 +115,41 @@
                     {{end}}
                     <form action="/register" method="post">
                         {{.CsrfField}}
-                        <div class="form-group">
+                        <div class="form-group mb-2">
                             <label for="email">Email address</label>
-                            <input required inputmode="email" type="text" maxlength="100" class="form-control"
-                                   autocomplete="email" id="email" name="email">
+                            <input tabindex="1" required inputmode="email" type="text" maxlength="100" class="form-control"
+                                   autocomplete="email" id="email" name="email" autofocus>
+                            <small id="emailHelp" class="form-text text-muted">Please provide a valid email.</small>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group mb-2">
                             <label for="password">Password</label>
-                            <input required type="password" minlength="5" maxlength="256" class="form-control"
+                            <input tabindex="2" required type="password" minlength="5" maxlength="256" class="form-control"
                                    autocomplete="new-password" id="password" name="password">
+                            <small id="passwordHelp" class="form-text text-muted">Provide at least <span id="passwordHelpCount">5</span> characters.</small>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group mb-2">
                             <label for="pw-confirm">Confirm Password</label>
-                            <input oninput="checkPasswordsMatch(this)" required type="password" minlength="5"
+                            <input tabindex="3" oninput="checkPasswordsMatch(this)" required type="password" minlength="5"
                                    maxlength="256" class="form-control" autocomplete="new-password" id="pw-confirm"
                                    name="pw-confirm">
+                            <small id="confirmPasswordHelp" class="form-text text-muted">Passwords do not yet match</small>
                         </div>
                         <div class="custom-control custom-checkbox d-flex align-items-center text-muted mb-2">
-                            <input oninput="tosAccepted(this)" type="checkbox" id="tos-checkbox" class="custom-control-input" required>
+                            <input tabindex="4"  oninput="tosAccepted(this)" type="checkbox" id="tos-checkbox" class="custom-control-input" required>
                             <label class="custom-control-label active" for="tos-checkbox">
-                               <span>I agree to the <a class="link-muted" href="/legal/tos.pdf" target="_blank">Terms and Conditions</a> and <a class="link-muted" href="/legal/privacy.pdf" target="_blank">Privacy Policy</a>
+                               <span>I agree to the <a tabindex="7" class="link-muted" href="/legal/tos.pdf" target="_blank">Terms and Conditions</a> and <a tabindex="8" class="link-muted" href="/legal/privacy.pdf" target="_blank">Privacy Policy</a>
                             </span>
                             </label>
                         </div>
-                        <button type="submit" class="btn btn-primary float-right">Register</button>
+                        <div style="text-align: right;">
+                            <button tabindex="5" type="submit" class="btn btn-primary">Register</button>
+                        </div>
                     </form>
-                    <span style="font-size: 90%;" class="text-muted">Already have an account?</span> <a href="/login">Login</a>
+
+                    <div class="mt-1">
+                        <!-- <hr> -->
+                        <span style="font-size: 90%;" class="text-muted mt-3">Already have an account?</span> <a tabindex="6" href="/login">Login</a>
+                    </div>
                 </div>
             </div>
         </div>
