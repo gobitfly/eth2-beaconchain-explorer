@@ -94,8 +94,10 @@
                 </div>
                 {{if not $.User.Authenticated}}
                 <div class="d-flex align-items-center justify-content-center pb-2">
-                    <button class="btn btn-sm bg-primary mr-3" type="button" onclick='window.location.replace("/register")'>SignUp</button>
-                    <div>to receive notifications about your favorite ETH clients </div>
+                    <a href="/register" class="btn btn-primary btn-sm d-flex mr-2">
+                        <span class="text-white"><b>Sign Up</b></span>
+                    </a>
+                    <span>to receive notifications about your favorite ETH clients </span>
                 </div>
                 {{end}}
             </div>
