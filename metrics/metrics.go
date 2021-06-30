@@ -3,14 +3,17 @@ package metrics
 import (
 	"eth2-exporter/version"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/jmoiron/sqlx"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -35,10 +38,38 @@ var (
 		Help:    "Duration of tasks",
 		Buckets: []float64{.05, .1, .5, 1, 5, 10, 20, 60, 90, 120, 180, 300},
 	}, []string{"task"})
+	DBSLongRunningQueries = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "db_long_running_queries",
+		Help: "Counter of long-running-queries with datbase and query in labels",
+	}, []string{"database", "query"})
 )
+
+var logger = logrus.New().WithField("module", "metrics")
 
 func init() {
 	Version.WithLabelValues(version.Version).Set(1)
+}
+
+func MonitorDB(db *sqlx.DB) {
+	var multiWhitespaceRE = regexp.MustCompile(`[\t\r\n\s{2,}]+`)
+	t := time.NewTicker(time.Minute)
+	defer t.Stop()
+	for ; true; <-t.C {
+		longRunningQueries := []struct {
+			Datname  string
+			Duration float64
+			Query    string
+		}{}
+		err := db.Select(&longRunningQueries, `select datname, extract(epoch from clock_timestamp()) - extract(epoch from query_start) as duration, query from pg_stat_activity where query != '<IDLE>' and query not ilike '%pg_stat_activity%' and query_start is not null and state = 'active' and age(clock_timestamp(), query_start) >= interval '1 minutes'`)
+		if err != nil {
+			logger.WithError(err).Errorf("error when monitoring db")
+			continue
+		}
+		for _, q := range longRunningQueries {
+			normedQuery := multiWhitespaceRE.ReplaceAllString(strings.Trim(q.Query, "\t\r\n "), " ")
+			DBSLongRunningQueries.WithLabelValues(q.Datname, normedQuery).Inc()
+		}
+	}
 }
 
 // HttpMiddleware implements mux.MiddlewareFunc.
