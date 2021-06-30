@@ -290,6 +290,7 @@ function updateSubscriptionTable(data, container){
         drawCallback: function(settings){
             $("#subscriptions-table-art").removeClass("d-flex").addClass("d-none")
             $("#subscriptions-table-div").removeClass("invisible")
+            $("#subscriptions-div").removeClass("d-none")
         },
         language: {
             searchPlaceholder: "Enter Date, Currency"

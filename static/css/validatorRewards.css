@@ -55,8 +55,8 @@
   }
 
 .form-group label:after { 
-    content:"*";
-    color:red;
+    content:" *";
+    color: var(--danger);
  }
 
  .daterangepicker{
