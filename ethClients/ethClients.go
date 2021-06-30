@@ -2,8 +2,8 @@ package ethclients
 
 import (
 	"encoding/json"
-	"eth2-exporter/types"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
@@ -45,12 +45,31 @@ type clientUpdateInfo struct {
 	Date time.Time
 }
 
-var ethClients = new(types.EthClientServicesPageData)
+type EthClients struct {
+	ClientReleaseVersion string
+	ClientReleaseDate    string
+	NetworkShare         string
+	IsUserSubscribed     bool
+}
+
+type EthClientServicesPageData struct {
+	LastUpdate   time.Time
+	Geth         EthClients
+	Nethermind   EthClients
+	OpenEthereum EthClients
+	Besu         EthClients
+	Teku         EthClients
+	Prysm        EthClients
+	Nimbus       EthClients
+	Lighthouse   EthClients
+	Banner       string
+	CsrfField    template.HTML
+}
+
+var ethClients = EthClientServicesPageData{}
 var ethClientsMux = &sync.RWMutex{}
 var bannerClients = []clientUpdateInfo{}
 var bannerClientsMux = &sync.RWMutex{}
-var usersToNotify = map[uint64][]types.Notification{}
-var usersToNotifyMux = &sync.RWMutex{}
 
 // Init starts a go routine to update the ETH Clients Info
 func Init() {
@@ -233,7 +252,7 @@ func update() {
 }
 
 // GetEthClientData returns a pointer of EthClientServicesPageData
-func GetEthClientData() *types.EthClientServicesPageData {
+func GetEthClientData() EthClientServicesPageData {
 	ethClientsMux.Lock()
 	defer ethClientsMux.Unlock()
 	return ethClients
@@ -255,57 +274,4 @@ func GetUpdatedClients() []clientUpdateInfo {
 	defer bannerClientsMux.Unlock()
 	return bannerClients
 	// return []string{"Prysm", "Teku"}
-}
-
-func SetUsersToNotify(uids map[uint64][]types.Notification) {
-	usersToNotifyMux.Lock()
-	defer usersToNotifyMux.Unlock()
-	for uid, n := range uids {
-		if _, exists := usersToNotify[uid]; !exists {
-			usersToNotify[uid] = n
-			continue
-		}
-
-		if len(usersToNotify[uid]) == 0 {
-			usersToNotify[uid] = n
-		}
-
-	}
-}
-
-func DismissClientNotification(uid uint64) bool {
-	usersToNotifyMux.Lock()
-	defer usersToNotifyMux.Unlock()
-	if _, exists := usersToNotify[uid]; exists {
-		usersToNotify[uid] = []types.Notification{}
-		return true
-	}
-	return false
-}
-
-func IsUserClientUpdated(uid uint64) bool {
-	usersToNotifyMux.Lock()
-	defer usersToNotifyMux.Unlock()
-	if _, exists := usersToNotify[uid]; exists {
-		if len(usersToNotify[uid]) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-var isUserSubscribedCallback func(uint64, string) bool
-
-// can't import 'db' in this package
-// because this pkg is imported in 'utils' and 'utils'  is imported in 'db'
-// so a function from a db is set here via callback
-func SetIsUserSubscribedCallback(callback func(uint64, string) bool) {
-	isUserSubscribedCallback = callback
-}
-
-func IsUserSubscribed(uid uint64, client string) bool {
-	if isUserSubscribedCallback == nil {
-		return false
-	}
-	return isUserSubscribedCallback(uid, client)
 }

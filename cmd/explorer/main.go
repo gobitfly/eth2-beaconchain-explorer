@@ -45,7 +45,7 @@ func initStripe(http *mux.Router) error {
 }
 
 func main() {
-	ethclients.SetIsUserSubscribedCallback(db.IsUserSubscribed)
+
 	configPath := flag.String("config", "config.yml", "Path to the config file")
 	flag.Parse()
 
