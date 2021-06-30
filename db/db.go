@@ -1544,27 +1544,3 @@ func GetDepositThresholdTime() (*time.Time, error) {
 	}
 	return threshold, nil
 }
-
-func IsUserSubscribed(uid uint64, client string) bool {
-	var dbResult []struct {
-		UserID      uint64 `db:"user_id"`
-		EventFilter string `db:"event_filter"`
-	}
-
-	err := DB.Select(&dbResult, `
-		SELECT user_id, event_filter
-		FROM users_subscriptions
-		WHERE user_id=$1 AND event_filter=$2
-		`,
-		uid, strings.ToLower(client)) // was last notification sent 2 days ago for this client
-
-	if err != nil {
-		return false
-	}
-
-	if len(dbResult) > 0 {
-		return true
-	}
-
-	return false
-}
