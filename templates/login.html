@@ -16,7 +16,11 @@
         updateEmailLink(emailInput.value)
     }
     function updateEmailLink(value) {
-        forgotPWLink.setAttribute('href', '/requestReset?email='+ encodeURI(value))
+        if(value && value.length) {
+            forgotPWLink.setAttribute('href', '/requestReset?email='+ encodeURI(value))
+        } else {
+            forgotPWLink.setAttribute('href', '/requestReset')
+        }
     }
 </script>
 {{end}}
