@@ -3,6 +3,23 @@
 
 {{ define "css"}}
 {{end}}
+{{ define "js" }}
+<script>
+    var forgotPWLink = document.getElementById('forgotPasswordLink')
+    var emailInput = document.getElementById('email')
+    emailInput.addEventListener('input', function(ev) {
+        if(ev.target.value && ev.target.value.length) {
+            updateEmailLink(ev.target.value)
+        }
+    })
+    if(emailInput && emailInput.value && emailInput.value.length) {
+        updateEmailLink(emailInput.value)
+    }
+    function updateEmailLink(value) {
+        forgotPWLink.setAttribute('href', '/requestReset?email='+ encodeURI(value))
+    }
+</script>
+{{end}}
 
 {{ define "content"}}
     {{with .Data}}
@@ -32,7 +49,7 @@
                         <div class="form-group">
                             <label class="d-flex justify-content-between align-items-center" for="password">
                                 <span>Password</span>
-                                <a tabindex="5" href="/requestReset">Forgot Password?</a>
+                                <a id="forgotPasswordLink" tabindex="5" href="/requestReset">Forgot Password?</a>
                             </label>
                             <input tabindex="2" required type="password" maxlength="256" class="form-control"
                                    autocomplete="current-password" id="password" name="password">
