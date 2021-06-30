@@ -48,6 +48,7 @@
         togglePasswordHelp(passwordInput.value)
         passwordInput.addEventListener('input', function(e) {
             togglePasswordHelp(e.target.value)
+            toggleConfirmPasswordHelp()
         })
 
         function togglePasswordHelp(value) {
@@ -64,9 +65,10 @@
             toggleConfirmPasswordHelp(e.target.value)
         })
 
-        function toggleConfirmPasswordHelp(value) {
+        function toggleConfirmPasswordHelp() {
             var password = document.getElementById('password')
-            if (value && password.value && value === password.value) {
+            var confirmPassword = document.getElementById('pw-confirm')
+            if (confirmPassword && confirmPassword.value && password.value && confirmPassword.value === password.value) {
                 document.getElementById('confirmPasswordHelp').classList.add('invisible')
             } else {
                 document.getElementById('confirmPasswordHelp').classList.remove('invisible')

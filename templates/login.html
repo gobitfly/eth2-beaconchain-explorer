@@ -5,8 +5,15 @@
 {{end}}
 {{ define "js" }}
 <script>
-    var forgotPWLink = document.getElementById('forgotPasswordLink')
+    var params = new URLSearchParams(window.location.search)
+    var emailParam = params.get('email')
     var emailInput = document.getElementById('email')
+
+    if(emailParam && emailParam.length && emailInput && !emailInput.value) {
+        emailInput.value = emailParam
+    }
+
+    var forgotPWLink = document.getElementById('forgotPasswordLink')
     emailInput.addEventListener('input', function(ev) {
         if(ev.target.value && ev.target.value.length) {
             updateEmailLink(ev.target.value)
