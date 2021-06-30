@@ -81,7 +81,7 @@
                     <form id="hits-form">
                         <div class="form-group">
                             <label for="validators">Validators</label>
-                            <input class="form-control typeahead-validators" type="text"
+                            <input class="form-control typeahead-validators mb-2" type="text"
                                 placeholder="Find Validator via Validator index, Graffiti or Eth1 Address"
                                 aria-label="Search" />
                             <textarea id="validator-index-view" name="validators" class="form-control mt-2"
@@ -90,12 +90,7 @@
                                 required></textarea>
 
                         </div>
-                        <div class="d-flex justify-content-end align-items-center mb-1">
-                            {{if not .User.Authenticated}}<i class="fas fa-info-circle mr-1" style="color: gray; font-size: 12px;" data-toggle="tooltip" data-placement="top" title="Sign in to use this feature"></i> {{end}}
-                            <span class="mr-1" style="color: gray; font-size: 12px;">To receive a monthly report for listed validators</span>
-                            <button class="btn btn-sm btn-secondary text-white" id="report-sub-btn" type="button" {{if not .User.Authenticated}}disabled="true" {{end}}>
-                                <i class="fas fa-envelope p-1"></i>Subscribe</button>
-                        </div>
+                        
 
                         <div class="form-group">
                             <label for="currency">Currency</label>
@@ -106,16 +101,22 @@
                         <div class="form-group">
                             <label for="days">Date Range</label>
                             <div class="d-flex flex-row align-items-center">
-                                <i class="far fa-calendar-alt"></i>
                                 <input id="datepicker" type="text" class="m-1 form-control" />
+                                <i class="far fa-calendar-alt"></i>
                             </div>
                             <input id="days" type="text" name="days" class="form-control" style="visibility: hidden;"
                                 value="0-0"/>
                         </div>
 
 
-                        <div class="d-flex justify-content-end align-items-stretch" style="width: 100%;">
-                            <button type="submit" class="btn btn-primary mt-1">Generate</button>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-end align-items-center">
+                                <button class="btn btn-secondary text-white" id="report-sub-btn" type="button" {{if not .User.Authenticated}}disabled="true" {{end}}>
+                                    <i class="fas fa-envelope p-1"></i>Subscribe</button>
+                                    <span class="ml-1 d-none d-md-flex" style="color: gray; font-size: 12px;">to receive a monthly report for listed validators</span>
+                                    {{if not .User.Authenticated}}<i class="fas fa-info-circle ml-1" style="color: gray; font-size: 12px;" data-toggle="tooltip" data-placement="top" title="Sign in to use this feature"></i> {{end}}
+                            </div>
+                            <button type="submit" class="btn btn-primary">Generate</button>
                         </div>
                     </form>
                 </div>

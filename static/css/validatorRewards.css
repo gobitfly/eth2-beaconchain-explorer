@@ -40,6 +40,7 @@
     cursor: pointer;
     width: 100%;
     color: var(--banner-text);
+    padding: 2%;
   }
   
 .tt-query {
