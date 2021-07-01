@@ -836,25 +836,24 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName,
 		`SELECT 
-		DISTINCT(us.user_id, machine), 
 		us.user_id,
-		us.id,
+		max(us.id),
 		machine  
 	FROM users_subscriptions us
 	INNER JOIN stats_meta v ON us.user_id = v.user_id
 	WHERE us.event_name = $1 AND us.created_epoch <= $2 
 	AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
 	AND v.created_trunc < now() - interval '4 minutes' AND v.created_trunc > now() - interval '3 hours'
-	AND v.id = (SELECT MAX(id) from stats_meta v2 where v.user_id = v2.user_id AND machine = us.event_filter)
+	AND v.id = (SELECT MAX(id) from stats_meta v2 where v.user_id = v2.user_id AND machine = us.event_filter) 
+	group by us.user_id, machine
 	`)
 }
 
 func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName,
 		`SELECT 
-			DISTINCT(us.user_id, machine), 
 			us.user_id,
-			us.id,
+			max(us.id),
 			machine 
 		FROM users_subscriptions us 
 		INNER JOIN stats_meta v ON us.user_id = v.user_id
@@ -863,14 +862,14 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 		AND v.machine = us.event_filter 
 		AND (us.last_sent_epoch < ($2 - 750) OR us.last_sent_epoch IS NULL)
 		AND sy.disk_node_bytes_free::decimal / sy.disk_node_bytes_total < event_threshold
-		AND v.created_trunc > NOW() - INTERVAL '1 hours'
+		AND v.created_trunc > NOW() - INTERVAL '1 hours' 
+		group by us.user_id, machine
 	`)
 }
 
 func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName,
 		`SELECT 
-			DISTINCT(us.user_id, machine), 
 			max(us.id), 
 			us.user_id,
 			machine 
