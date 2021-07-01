@@ -541,6 +541,14 @@ create table users_validators_tags
     primary key (user_id, validator_publickey, tag)
 );
 
+drop table if exists validator_tags;
+create table validator_tags
+(
+    publickey bytea                  not null,
+    tag       character varying(100) not null,
+    primary key (publickey, tag)
+);
+
 drop table if exists mails_sent;
 create table mails_sent
 (
