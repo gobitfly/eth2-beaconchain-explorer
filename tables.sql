@@ -581,7 +581,8 @@ CREATE TABLE stats_meta (
     foreign key(user_id) references users(id),
     UNIQUE (user_id, created_trunc, process, machine)
 );
-
+create index idx_stats_created_trunc on stats_meta (created_trunc);
+create index idx_stats_process on stats_meta (process);
 create index idx_stats_machine on stats_meta (machine);
 create index idx_stats_user on stats_meta (user_id);
 
@@ -670,6 +671,8 @@ CREATE TABLE stats_system (
 	
 	foreign key(meta_id) references stats_meta(id)
 );
+
+create index idx_stats_system_meta_id on stats_system (meta_id);
 
 drop table if exists stake_pools_stats;
 create table stake_pools_stats
