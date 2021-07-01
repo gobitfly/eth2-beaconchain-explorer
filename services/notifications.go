@@ -878,13 +878,14 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 		WHERE v.id = (SELECT MAX(id) from stats_meta v2 where v.user_id = v2.user_id AND process = 'system' AND machine = us.event_filter) 
 		AND us.event_name = $1 AND us.created_epoch <= $2 
 		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
-		AND v.created_trunc > now() - interval '3 hours' 
+		AND v.created_trunc > now() - interval '1 hours' 
 		AND event_threshold < (SELECT 
 			1 - (cpu_node_idle_seconds_total::decimal - lag(cpu_node_idle_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) / (cpu_node_system_seconds_total::decimal - lag(cpu_node_system_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) as cpu_load 
 			FROM stats_system as sy 
 			INNER JOIN stats_meta m on meta_id = m.id 
 			WHERE m.id = meta_id
-			AND m.user_id = v.user_id
+			AND m.user_id = v.user_id 
+			AND m.machine = us.event_filter 
 			ORDER BY sy.id desc
 			LIMIT 1
 		) 
@@ -958,11 +959,11 @@ func (n *monitorMachineNotification) GetEventName() types.EventName {
 func (n *monitorMachineNotification) GetInfo(includeUrl bool) string {
 	switch n.EventName {
 	case types.MonitoringMachineDiskAlmostFullEventName:
-		return fmt.Sprintf(`Your staking machine "%v" storage space is running low.`, n.MachineName)
+		return fmt.Sprintf(`Your staking machine "%v" is running low on storage space.`, n.MachineName)
 	case types.MonitoringMachineOfflineEventName:
-		return fmt.Sprintf(`Your staking machine "%v" has not been seen for a couple minutes now. Is it offline?`, n.MachineName)
+		return fmt.Sprintf(`Your staking machine "%v" might be offline. It has not been seen for a couple minutes now.`, n.MachineName)
 	case types.MonitoringMachineCpuLoadEventName:
-		return fmt.Sprintf(`Your staking machine "%v" has high CPU usage.`, n.MachineName)
+		return fmt.Sprintf(`Your staking machine "%v" has reached your configured threshold CPU usage.`, n.MachineName)
 	case types.MonitoringMachineSwitchedToETH1FallbackEventName:
 		return fmt.Sprintf(`Your staking machine "%v" has switched to your configured ETH1 fallback`, n.MachineName)
 	case types.MonitoringMachineSwitchedToETH2FallbackEventName:
