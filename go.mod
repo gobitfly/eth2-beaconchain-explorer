@@ -7,7 +7,6 @@ require (
 	cloud.google.com/go/firestore v1.4.0 // indirect
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/Gurpartap/storekit-go v0.0.0-20201205024111-36b6cd5c6a21
-	github.com/PuerkitoBio/goquery v1.6.1
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/awa/go-iap v1.3.7
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
@@ -23,8 +22,8 @@ require (
 	github.com/gorilla/csrf v1.7.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.0
-	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/hashicorp/golang-lru v0.5.4
+	github.com/gorilla/websocket v1.4.2
+	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/jackc/pgx/v4 v4.6.0
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/juliangruber/go-intersect v1.0.1-0.20200323101606-4bd944a17692
@@ -34,7 +33,7 @@ require (
 	github.com/lib/pq v1.2.0
 	github.com/mailgun/mailgun-go/v4 v4.1.3
 	github.com/mailru/easyjson v0.7.6 // indirect
-	github.com/mitchellh/mapstructure v1.3.2
+	github.com/mitchellh/mapstructure v1.4.1
 	github.com/mssola/user_agent v0.5.2
 	github.com/phyber/negroni-gzip v0.0.0-20180113114010-ef6356a5d029
 	github.com/pkg/errors v0.9.1
@@ -50,7 +49,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stripe/stripe-go/v72 v72.50.0
 	github.com/swaggo/http-swagger v0.0.0-20200308142732-58ac5e232fba
-	github.com/swaggo/swag v1.7.0 // indirect
+	github.com/swaggo/swag v1.7.0
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83
