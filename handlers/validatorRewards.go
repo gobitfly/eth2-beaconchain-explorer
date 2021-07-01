@@ -22,10 +22,10 @@ var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewa
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub"}
 
 type rewardsResp struct {
-	Currencies       []string
-	CsrfField        template.HTML
-	Subscriptions    [][]string
-	MinDateTimestamp uint64
+	Currencies        []string
+	CsrfField         template.HTML
+	ShowSubscriptions bool
+	MinDateTimestamp  uint64
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
@@ -51,13 +51,13 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error getting min ts: %w", err)
 	}
 
-	var subs = [][]string{}
+	// var subs = [][]string{}
 
-	if data.User.Authenticated {
-		subs = getUserRewardSubscriptions(data.User.UserID)
-	}
+	// if data.User.Authenticated {
+	// 	subs = getUserRewardSubscriptions(data.User.UserID)
+	// }
 
-	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), Subscriptions: subs, MinDateTimestamp: uint64(minTime.Unix())}
+	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), MinDateTimestamp: uint64(minTime.Unix()), ShowSubscriptions: data.User.Authenticated}
 
 	err = validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -279,6 +279,28 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(struct {
 		Msg string `json:"msg"`
 	}{Msg: "Subscription Deleted"})
+
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	user := getUser(w, r)
+	if !user.Authenticated {
+		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
+		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		return
+	}
+
+	data := getUserRewardSubscriptions(user.UserID)
+
+	err := json.NewEncoder(w).Encode(struct {
+		Data [][]string `json:"data"`
+	}{Data: data})
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")

@@ -11,8 +11,12 @@
 <script> const MIN_TIMESTAMP = {{.MinDateTimestamp }}</script>
 <script src="/js/validatorRewards.js"></script>
 <script>
-    updateCurrencies({{.Currencies }}, "currency")
-    updateSubscriptionTable({{.Subscriptions }}, "subscriptions-table")
+    $(document).ready(function () {
+        updateCurrencies({{.Currencies }}, "currency")
+        {{if .ShowSubscriptions}}
+        fetchSubscriptions()
+        {{end}}
+    })
 </script>
 {{end}}
 
@@ -259,7 +263,7 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Currency</th>
-                                <th>Validators</th>
+                                <th id="sub-validator">Validators</th>
                                 <th>Unsubscribe</th>
                             </tr>
                         </thead>

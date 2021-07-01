@@ -3,6 +3,7 @@ const DECIMAL_POINTS_ETH = 6
 const DECIMAL_POINTS_CURRENCY = 3
 var csrfToken = ""
 var currency = ""
+var subsTable = null
 // let validators = []
 
 function create_typeahead(input_container) {
@@ -165,6 +166,11 @@ function hideSpinner(){
     $("#loading-div").removeClass("d-flex")
 }
 
+function showSpinner(){
+    $("#loading-div").removeClass("d-none")
+    $("#loading-div").addClass("d-flex")
+}
+
 
 function addCommas(number) {
     return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
@@ -261,6 +267,7 @@ function showTable(data){
 
 function unSubUser(filter){
     // console.log(filter)
+    showSpinner()
     fetch(`/user/rewards/unsubscribe?${filter}`, {
         method: 'POST',
         headers: {"X-CSRF-Token": csrfToken},
@@ -270,15 +277,27 @@ function unSubUser(filter){
         if (res.status == 200){
             res.json().then((data)=>{
                 console.log(data.msg)
-                window.location.reload(true)
+                fetchSubscriptions()
             })              
         }
     })
 }
 
 function updateSubscriptionTable(data, container){
-    if (data.length===0)return
-    $('#'+container).DataTable({
+    if (data.length===0){
+        $("#subscriptions-div").addClass("d-none")
+        hideSpinner()
+        return
+    }
+    if (subsTable !== null){
+        // subsTable.clear()
+        // subsTable.empty()
+        // subsTable.destroy()
+        $('#'+container).DataTable().clear().destroy();
+        // $('#'+container+" tbody").empty()
+        // $('#'+container+" thead").empty()
+    }
+    subsTable = $('#'+container).DataTable({
         processing: true,
         serverSide: false,
         ordering: true,
@@ -291,6 +310,7 @@ function updateSubscriptionTable(data, container){
             $("#subscriptions-table-art").removeClass("d-flex").addClass("d-none")
             $("#subscriptions-table-div").removeClass("invisible")
             $("#subscriptions-div").removeClass("d-none")
+            hideSpinner()
         },
         language: {
             searchPlaceholder: "Enter Date, Currency"
@@ -329,8 +349,9 @@ function updateSubscriptionTable(data, container){
                         for (i of l){
                             data += `<li style="flex: 1 0 8%; list-style-type : none;" class="p-1"><a href="/validator/${i}"><i class="fas fa-male mr-1"></i>${i}</a></li>`
                         }
+                        return `<ul style="display: flex; flex-wrap: wrap; height: 50px; width: 98%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark pl-0 ml-0">${data}</ul>`
                     }
-                    return `<ul style="display: flex; flex-wrap: wrap; height: 50px; width: 98%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark pl-0 ml-0">${data}</ul>`
+                    return data
                 }
             }, {
                 targets: 3,
@@ -347,10 +368,28 @@ function updateSubscriptionTable(data, container){
     });
 }
 
+function fetchSubscriptions(){
+    fetch(`/user/rewards/subscriptions/data`, {
+        method: 'POST',
+        headers: {"X-CSRF-Token": csrfToken},
+        credentials: 'include',
+        body: "",
+    }).then((res)=>{
+        if (res.status == 200){
+            res.json().then((data)=>{
+                // console.log(data.msg)
+                updateSubscriptionTable(data.data, "subscriptions-table")
+            })              
+        }else{
+            console.error("error getting subscriptions", res)
+        }
+    }).catch((err)=>{
+        console.error("error getting subscriptions", err)
+    })
+}
+
 $(document).ready(function () {
-    if (document.getElementsByName("CsrfField")[0]===undefined){
-        console.error("Auth error")
-    }else{
+    if (document.getElementsByName("CsrfField")[0]!==undefined){
         csrfToken = document.getElementsByName("CsrfField")[0].value
     }
 
@@ -416,7 +455,8 @@ $(document).ready(function () {
             if (res.status == 200){
                 res.json().then((data)=>{
                     // console.log(data.msg)
-                    location.reload();
+                    fetchSubscriptions()
+                    $(this).html(btn_content)
                 })              
             }else{
                 console.error("error subscribing", res)
