@@ -837,7 +837,7 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineOfflineEventName,
 		`SELECT 
 		us.user_id,
-		max(us.id),
+		max(us.id) as id,
 		machine  
 	FROM users_subscriptions us
 	INNER JOIN stats_meta v ON us.user_id = v.user_id
@@ -853,7 +853,7 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineDiskAlmostFullEventName,
 		`SELECT 
 			us.user_id,
-			max(us.id),
+			max(us.id) as id,
 			machine 
 		FROM users_subscriptions us 
 		INNER JOIN stats_meta v ON us.user_id = v.user_id
@@ -870,7 +870,7 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
 	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineCpuLoadEventName,
 		`SELECT 
-			max(us.id), 
+			max(us.id) as id, 
 			us.user_id,
 			machine 
 		FROM users_subscriptions us 
