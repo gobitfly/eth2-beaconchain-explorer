@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
@@ -123,9 +122,6 @@ func GetTemplateFuncs() template.FuncMap {
 			}
 			return false
 		},
-		"isUserClientUpdated":       ethclients.IsUserClientUpdated,
-		"dismissClientNotification": ethclients.DismissClientNotification,
-		"isUserSubscribed":          ethclients.IsUserSubscribed,
 	}
 }
 

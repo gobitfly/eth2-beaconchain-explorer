@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"firebase.google.com/go/messaging"
 	"github.com/jmoiron/sqlx"
@@ -119,54 +118,7 @@ func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notific
 func sendNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
 	sendEmailNotifications(notificationsByUserID, useDB)
 	sendPushNotifications(notificationsByUserID, useDB)
-	sendFrontEndEthClientNotifications(notificationsByUserID)
-	saveNotifications(notificationsByUserID, useDB)
 	// sendWebhookNotifications(notificationsByUserID)
-}
-
-func saveNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
-	for userID, userNotifications := range notificationsByUserID {
-		for _, ns := range userNotifications {
-			for _, n := range ns {
-				if n.GetEventName() != types.EthClientUpdateEventName {
-					continue // only store eth client notifications
-				}
-
-				event := fmt.Sprintf("%s", n.GetEventName())
-				filter := n.GetEventFilter()
-
-				if !utf8.ValidString(event) {
-					logger.Errorf("skipping ... received string with invalid encoding %s", event)
-					continue // if one piece of data fails, continue for other data types that may not fail
-				}
-
-				if !utf8.ValidString(filter) {
-					logger.Errorf("skipping ... received string with invalid encoding %s", filter)
-					continue
-				}
-				_, err := useDB.Exec(`
-					INSERT INTO users_notifications (user_id, event_name, event_filter, sent_ts, epoch)
-					VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5)`,
-					userID, event, filter, time.Now().Unix(), n.GetEpoch())
-
-				if err != nil {
-					logger.Errorf("error when Inserting data to 'users_notifications' table: %v", err)
-				}
-			}
-		}
-	}
-}
-
-func sendFrontEndEthClientNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) {
-	uids := map[uint64][]types.Notification{}
-	for userID, userNotifications := range notificationsByUserID {
-		for eventName, ns := range userNotifications {
-			if eventName == types.EthClientUpdateEventName {
-				uids[userID] = ns
-			}
-		}
-	}
-	ethclients.SetUsersToNotify(uids)
 }
 
 func getNetwork() string {
@@ -853,9 +805,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 			AND 
 				us.event_filter=$2 
 			AND 
-				us.user_id 
-			NOT IN 
-				(SELECT user_id FROM users_notifications as un WHERE un.event_name=$1 AND un.event_filter=$2 AND TO_TIMESTAMP($3) <= un.sent_ts AND un.sent_ts <= NOW() + INTERVAL '2 DAYS')
+				((us.last_sent_ts <= NOW() - INTERVAL '2 DAY' AND TO_TIMESTAMP($3) > us.last_sent_ts) OR us.last_sent_ts IS NULL)
 			`,
 			eventName, strings.ToLower(client.Name), client.Date.Unix()) // was last notification sent 2 days ago for this client
 
