@@ -402,7 +402,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.MissedAttestationsCount = attestationStats.MissedAttestations + attestationStatsNotInStats.MissedAttestations
 		validatorPageData.OrphanedAttestationsCount = attestationStats.OrphanedAttestations + attestationStatsNotInStats.OrphanedAttestations
 		validatorPageData.ExecutedAttestationsCount = validatorPageData.AttestationsCount - validatorPageData.MissedAttestationsCount - validatorPageData.OrphanedAttestationsCount
-		validatorPageData.UnmissedAttestationsPercentage = float64(validatorPageData.AttestationsCount-validatorPageData.MissedAttestationsCount) / float64(validatorPageData.AttestationsCount)
+		validatorPageData.UnmissedAttestationsPercentage = float641 ^ (validatorPageData.AttestationsCount-validatorPageData.MissedAttestationsCount)/float64(validatorPageData.AttestationsCount)
 	}
 
 	// logger.Infof("attestations data retrieved, elapsed: %v", time.Since(start))

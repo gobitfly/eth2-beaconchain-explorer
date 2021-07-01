@@ -146,12 +146,22 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 		return nil, fmt.Errorf("error retrieving validator queue data: %v", err)
 	}
 
+	validatorsActivationValidatorIndicesU64 := make([]uint64, len(validators.ActivationValidatorIndices))
+	validatorsExitValidatorIndicesU64 := make([]uint64, len(validators.ExitValidatorIndices))
+
+	for i, v := range validators.ActivationValidatorIndices {
+		validatorsActivationValidatorIndicesU64[i] = uint64(v)
+	}
+	for i, v := range validators.ExitValidatorIndices {
+		validatorsExitValidatorIndicesU64[i] = uint64(v)
+	}
+
 	return &types.ValidatorQueue{
 		ChurnLimit:                 validators.ChurnLimit,
 		ActivationPublicKeys:       validators.ActivationPublicKeys,
 		ExitPublicKeys:             validators.ExitPublicKeys,
-		ActivationValidatorIndices: validators.ActivationValidatorIndices,
-		ExitValidatorIndices:       validators.ExitValidatorIndices,
+		ActivationValidatorIndices: validatorsActivationValidatorIndicesU64,
+		ExitValidatorIndices:       validatorsExitValidatorIndicesU64,
 	}, nil
 }
 
@@ -245,11 +255,11 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	// Attestation assignments are cached by the slot & committee key
 	for _, assignment := range validatorAssignmentes {
 		for _, slot := range assignment.ProposerSlots {
-			assignments.ProposerAssignments[uint64(slot)] = assignment.ValidatorIndex
+			assignments.ProposerAssignments[uint64(slot)] = uint64(assignment.ValidatorIndex)
 		}
 
 		for memberIndex, validatorIndex := range assignment.BeaconCommittees {
-			assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(uint64(assignment.AttesterSlot), uint64(assignment.CommitteeIndex), uint64(memberIndex))] = validatorIndex
+			assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(uint64(assignment.AttesterSlot), uint64(assignment.CommitteeIndex), uint64(memberIndex))] = uint64(validatorIndex)
 		}
 	}
 
@@ -271,29 +281,41 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 	// Retrieve the validator balances for the requested epoch
 	start := time.Now()
 	validatorBalances, err := pc.getBalancesForEpoch(int64(epoch))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving balances for epoch %v: %w", epoch, err)
+	}
 	logger.Printf("retrieved data for %v validator balances for epoch %v took %v", len(validatorBalances), epoch, time.Since(start))
 
 	// Retrieve the validator balances for the n-1d epoch
 	start = time.Now()
 	epoch1d := int64(epoch) - 225
 	validatorBalances1d, err := pc.getBalancesForEpoch(epoch1d)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving balances 1d for epoch %v: %w", epoch, err)
+	}
 	logger.Printf("retrieved data for %v validator balances for 1d epoch %v took %v", len(validatorBalances), epoch1d, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
 	epoch7d := int64(epoch) - 225*7
 	validatorBalances7d, err := pc.getBalancesForEpoch(epoch7d)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving balances 7d for epoch %v: %w", epoch, err)
+	}
 	logger.Printf("retrieved data for %v validator balances for 7d epoch %v took %v", len(validatorBalances), epoch7d, time.Since(start))
 
 	// Retrieve the validator balances for the n-7d epoch
 	start = time.Now()
 	epoch31d := int64(epoch) - 225*31
 	validatorBalances31d, err := pc.getBalancesForEpoch(epoch31d)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving balances 31d for epoch %v: %w", epoch, err)
+	}
 	logger.Printf("retrieved data for %v validator balances for 31d epoch %v took %v", len(validatorBalances), epoch31d, time.Since(start))
 
 	data.ValidatorAssignmentes, err = pc.GetEpochAssignments(epoch)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
+		return nil, fmt.Errorf("error retrieving assignments for epoch %v: %w", epoch, err)
 	}
 	logger.Printf("retrieved validator assignment data for epoch %v", epoch)
 
@@ -373,14 +395,14 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 		for _, validator := range validatorResponse.ValidatorList {
 
-			balance, exists := validatorBalances[validator.Index]
+			balance, exists := validatorBalances[uint64(validator.Index)]
 			if !exists {
 				logger.WithField("pubkey", fmt.Sprintf("%x", validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
 				continue
 			}
 
 			val := &types.Validator{
-				Index:                      validator.Index,
+				Index:                      uint64(validator.Index),
 				PublicKey:                  validator.Validator.PublicKey,
 				WithdrawalCredentials:      validator.Validator.WithdrawalCredentials,
 				Balance:                    balance,
@@ -392,9 +414,9 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 				WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
 			}
 
-			val.Balance1d = validatorBalances1d[validator.Index]
-			val.Balance7d = validatorBalances7d[validator.Index]
-			val.Balance31d = validatorBalances31d[validator.Index]
+			val.Balance1d = validatorBalances1d[uint64(validator.Index)]
+			val.Balance7d = validatorBalances7d[uint64(validator.Index)]
+			val.Balance31d = validatorBalances31d[uint64(validator.Index)]
 
 			data.Validators = append(data.Validators, val)
 
@@ -441,7 +463,7 @@ func (pc *PrysmClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, erro
 		}
 
 		for _, balance := range validatorBalancesResponse.Balances {
-			validatorBalances[balance.Index] = balance.Balance
+			validatorBalances[uint64(balance.Index)] = balance.Balance
 		}
 
 		if validatorBalancesResponse.NextPageToken == "" {
@@ -541,12 +563,12 @@ func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.
 		Attestations:      make([]*types.Attestation, len(block.Block.Block.Body.Attestations)),
 		Deposits:          make([]*types.Deposit, len(block.Block.Block.Body.Deposits)),
 		VoluntaryExits:    make([]*types.VoluntaryExit, len(block.Block.Block.Body.VoluntaryExits)),
-		Proposer:          block.Block.Block.ProposerIndex,
+		Proposer:          uint64(block.Block.Block.ProposerIndex),
 	}
 
 	for i, proposerSlashing := range block.Block.Block.Body.ProposerSlashings {
 		b.ProposerSlashings[i] = &types.ProposerSlashing{
-			ProposerIndex: proposerSlashing.Header_1.Header.ProposerIndex,
+			ProposerIndex: uint64(proposerSlashing.Header_1.Header.ProposerIndex),
 			Header1: &types.Block{
 				Slot:       uint64(proposerSlashing.Header_1.Header.Slot),
 				ParentRoot: proposerSlashing.Header_1.Header.ParentRoot,
@@ -655,7 +677,7 @@ func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.
 	for i, voluntaryExit := range block.Block.Block.Body.VoluntaryExits {
 		b.VoluntaryExits[i] = &types.VoluntaryExit{
 			Epoch:          uint64(voluntaryExit.Exit.Epoch),
-			ValidatorIndex: voluntaryExit.Exit.ValidatorIndex,
+			ValidatorIndex: uint64(voluntaryExit.Exit.ValidatorIndex),
 			Signature:      voluntaryExit.Signature,
 		}
 	}

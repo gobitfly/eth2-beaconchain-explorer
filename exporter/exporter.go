@@ -28,11 +28,7 @@ func Start(client rpc.Client) error {
 	go networkLivenessUpdater(client)
 	go eth1DepositsExporter()
 	go genesisDepositsExporter()
-	go checkSubscriptions()
-	go cleanupOldMachineStats()
-	if utils.Config.SSVExporter.Enabled {
-		go ssvExporter()
-	}
+	go rocketpoolExporter()
 
 	// wait until the beacon-node is available
 	for {

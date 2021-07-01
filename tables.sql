@@ -145,6 +145,7 @@ create table validator_balances_recent
 );
 create index idx_validator_balances_recent_epoch on validator_balances_recent (epoch);
 create index idx_validator_balances_recent_validatorindex on validator_balances_recent (validatorindex);
+create index idx_validator_balances_recent_balance on validator_balances_recent (balance);
 
 drop table if exists validator_stats;
 create table validator_stats
@@ -737,3 +738,123 @@ begin
 end;
 $$
 language plpgsql;
+
+drop table if exists rocketpool_minipools;
+create table rocketpool_minipools
+(
+    rocketpool_storage_address bytea not null,
+
+    address bytea not null,
+    exists bool not null,
+    pubkey bytea not null,
+    withdrawal_total_balance bigint not null,
+    withdrawal_node_balance bigint not null,
+    withdrawable bool not null,
+    withdrawal_processed bool not null,
+
+    node_address bytea not null,
+    node_fee bigint not null, -- set and frozen at minipool-creation
+    node_deposit_balance bigint not null,
+    node_refund_balance bigint not null,
+    node_deposit_assigned bool not null,
+    node_deposit_balance bigint not null,
+    user_deposit_assigned bool not null,
+    user_deposit_assigned_time timestamp without time zone not null,
+    staking_start_balance bigint not null,
+    staking_end_balance bigint not null,
+
+    primary key(rocketpool_storage_address, address)
+);
+
+drop table if exists rocketpool_nodes;
+create table rocketpool_nodes
+(
+    rocketpool_storage_address bytea not null,
+
+    address bytea not null,
+    exists bool not null,
+    trusted bool not null,
+    timezone_location varchar(200) not null,
+
+    primary key(rocketpool_storage_address, address)
+);
+
+drop table if exists rocketpool_stats;
+create table rocketpool_stats
+(
+    rocketpool_storage_address bytea not null,
+
+    ----------------------- network
+    -- rocketNetworkBalances
+    block int not null,
+    total_eth_balance bigint not null,
+    staking_eth_balance bigint not null,
+    total_reth_supply bigint not null,
+    eth_utilization_rate float not null,
+    -- rocketNetworkFees
+    node_demand bigint not null,
+    node_fee bigint not null,
+    node_fee_by_demand bigint not null,
+    -- rocketNetworkWithdrawal
+    withdrawal_balance bigint not null,
+    withdrawal_credentials bytea not null,
+
+    ----------------------- node
+    -- rocketNodeManager
+    node_count int not null,
+    trusted_node_count int not null,
+
+    ----------------------- minipool
+    -- rocketMinipoolManager
+    minipool_count int not null,
+    unprocessed_minipool_count int not null,
+    -- rocketMinipoolQueue
+    total_queue_length int not null,
+    full_deposit_queue_length int not null,
+    half_deposit_queue_length int not null,
+    empty_deposit_queue_length int not null,
+    total_queue_capacity bigint not null,
+    effective_queue_capacity bigint not null,
+    next_minipool_queue_capacity bigint not null,
+    primary key(rocketpool_storage_address, block)
+);
+
+drop table if exists rocketpool_settings;
+create table rocketpool_settings
+(
+    rocketpool_storage_address bytea not null,
+
+    ----------------------- settings
+    -- rocketDepositSettings
+    maximum_deposit_assignments bigint not null,
+    maximum_deposit_pool_size bigint not null,
+    minimum_deposit bigint not null,
+    assign_deposits_enabled bool not null,
+    deposit_enabled bool not null,
+    -- rocketMinipoolSettings
+    minipool_launch_balance bigint not null,
+    minipool_full_deposit_node_amount bigint not null,
+    minipool_half_deposit_node_amount bigint not null,
+    minipool_empty_deposit_node_amount bigint not null,
+    minipool_full_deposit_user_amount bigint not null,
+    minipool_half_deposit_user_amount bigint not null,
+    minipool_empty_deposit_user_amount bigint not null,
+    minipool_submit_withdrawable_enabled bool not null,
+    minipool_launch_timeout int not null,
+    minipool_withdrawal_delay int not null,
+    -- rocketNetworkSettings
+    node_consensus_threshold bigint not null,
+    submit_balances_enabled bool not null,
+    submit_balances_frequency int not null,
+    process_withdrawals_enabled bool not null,
+    minimum_node_fee bigint not null,
+    target_node_fee bigint not null,
+    maximum_node_fee bigint not null,
+    node_fee_demand_range bigint not null,
+    target_reth_collateral_rate bigint not null,
+    -- rocketNodeSettings
+    node_registration_enabled bool not null,
+    node_deposit_enabled bool not null,
+
+    primary key(rocketpool_storage_address, block)
+);

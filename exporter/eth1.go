@@ -381,13 +381,6 @@ func computeForkDataRoot(version []byte, root []byte) ([32]byte, error) {
 
 func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
 	cfg := params.BeaconConfig()
-	if utils.Config.Chain.Network == "altona" {
-		cfg = params.AltonaConfig()
-	} else if utils.Config.Chain.Network == "medalla" {
-		cfg = params.MedallaConfig()
-	} else if utils.Config.Chain.Network == "spadina" {
-		cfg = params.SpadinaConfig()
-	}
 	domain, err := ComputeDomain(
 		cfg.DomainDeposit,
 		cfg.GenesisForkVersion,
