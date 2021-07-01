@@ -284,7 +284,7 @@ function unSubUser(filter){
 }
 
 function updateSubscriptionTable(data, container){
-    if (data.length===0){
+    if (data.data.length===0){
         $("#subscriptions-div").addClass("d-none")
         hideSpinner()
         return
@@ -305,11 +305,12 @@ function updateSubscriptionTable(data, container){
         pagingType: 'full_numbers',
         pageLength: 100,
         lengthChange: false,
-        data: data,
+        data: data.data,
         drawCallback: function(settings){
             $("#subscriptions-table-art").removeClass("d-flex").addClass("d-none")
             $("#subscriptions-table-div").removeClass("invisible")
             $("#subscriptions-div").removeClass("d-none")
+            $("#subs-header").html(`Subscriptions (${data.count}/5)`)
             hideSpinner()
         },
         language: {
@@ -378,7 +379,7 @@ function fetchSubscriptions(){
         if (res.status == 200){
             res.json().then((data)=>{
                 // console.log(data.msg)
-                updateSubscriptionTable(data.data, "subscriptions-table")
+                updateSubscriptionTable(data, "subscriptions-table")
             })              
         }else{
             console.error("error getting subscriptions", res)
@@ -460,6 +461,7 @@ $(document).ready(function () {
                 })              
             }else{
                 console.error("error subscribing", res)
+                alert("Subscription limit is reached")
                 $(this).html(btn_content)
             }
         }).catch((err)=>{

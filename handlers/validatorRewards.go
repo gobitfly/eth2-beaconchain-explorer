@@ -51,12 +51,6 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error getting min ts: %w", err)
 	}
 
-	// var subs = [][]string{}
-
-	// if data.User.Authenticated {
-	// 	subs = getUserRewardSubscriptions(data.User.UserID)
-	// }
-
 	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), MinDateTimestamp: uint64(minTime.Unix()), ShowSubscriptions: data.User.Authenticated}
 
 	err = validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)
@@ -137,8 +131,6 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// days, err := strconv.ParseUint(q.Get("days"), 10, 64)
-
 	data := services.GetValidatorHist(validatorArr, currency, start, end)
 
 	err = json.NewEncoder(w).Encode(data)
@@ -206,10 +198,22 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var count uint64
+	err := db.DB.Get(&count,
+		`select count(event_name) 
+		from users_subscriptions 
+		where user_id=$1 AND event_name=$2;`, user.UserID, types.TaxReportEventName)
+
+	if err != nil || count >= 5 {
+		logger.WithField("route", r.URL.String()).Info(fmt.Sprintf("User Subscription limit (%v) reached %v", count, err))
+		http.Error(w, "Internal server error, User Subscription limit reached", http.StatusInternalServerError)
+		return
+	}
+
 	q := r.URL.Query()
 
 	validatorArr := q.Get("validators")
-	_, err := parseValidatorsFromQueryString(validatorArr)
+	_, err = parseValidatorsFromQueryString(validatorArr)
 	if err != nil {
 		http.Error(w, "Invalid query, Invalid Validators", 400)
 		return
@@ -296,11 +300,24 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var count uint64
+	err := db.DB.Get(&count,
+		`select count(event_name) 
+		from users_subscriptions 
+		where user_id=$1 AND event_name=$2;`, user.UserID, types.TaxReportEventName)
+
+	if err != nil {
+		logger.WithField("route", r.URL.String()).Error("Failed to get User Subscriptions Count")
+		http.Error(w, "Internal server error, Failed to get User Subscriptions Count", http.StatusInternalServerError)
+		return
+	}
+
 	data := getUserRewardSubscriptions(user.UserID)
 
-	err := json.NewEncoder(w).Encode(struct {
-		Data [][]string `json:"data"`
-	}{Data: data})
+	err = json.NewEncoder(w).Encode(struct {
+		Data  [][]string `json:"data"`
+		Count uint64     `json:"count"`
+	}{Data: data, Count: count})
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
