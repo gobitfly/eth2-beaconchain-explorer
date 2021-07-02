@@ -30,6 +30,9 @@ func Start(client rpc.Client) error {
 	go genesisDepositsExporter()
 	go checkSubscriptions()
 	go cleanupOldMachineStats()
+	if utils.Config.SSVExporter.Enabled {
+		go ssvExporter()
+	}
 
 	// wait until the beacon-node is available
 	for {

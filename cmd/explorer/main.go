@@ -355,6 +355,7 @@ func main() {
 			authRouter.HandleFunc("/rewards", handlers.ValidatorRewards).Methods("GET")
 			authRouter.HandleFunc("/rewards/subscribe", handlers.RewardNotificationSubscribe).Methods("POST")
 			authRouter.HandleFunc("/rewards/unsubscribe", handlers.RewardNotificationUnsubscribe).Methods("POST")
+			authRouter.HandleFunc("/rewards/subscriptions/data", handlers.RewardGetUserSubscriptions).Methods("POST")
 
 			err = initStripe(authRouter)
 			if err != nil {
