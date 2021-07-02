@@ -91,6 +91,8 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatTimestampTs":                       FormatTimestampTs,
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
+		"formatValidatorTags":                     FormatValidatorTags,
+		"formatValidatorTag":                      FormatValidatorTag,
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
@@ -122,6 +124,7 @@ func GetTemplateFuncs() template.FuncMap {
 			}
 			return false
 		},
+		"stringsJoin": strings.Join,
 	}
 }
 

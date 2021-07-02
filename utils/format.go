@@ -510,6 +510,29 @@ func FormatValidatorStatus(status string) template.HTML {
 	return "<b>Unknown</b>"
 }
 
+// FormatValidatorTag will return html formated text of a validator-tag.
+// Depending on the tag it will describe the tag in a tooltip and link to more information regarding the tag.
+func FormatValidatorTag(tag string) template.HTML {
+	var result string
+	switch tag {
+	case "rocketpool":
+		result = fmt.Sprintf(`<span style="background:yellow;" class="badge text-dark" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
+	case "ssv":
+		result = fmt.Sprintf(`<span style="background:orange;" class="badge text-dark" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
+	default:
+		result = fmt.Sprintf(`<span class="badge bg-dark text-light">%s</span>`, tag)
+	}
+	return template.HTML(result)
+}
+
+func FormatValidatorTags(tags []string) template.HTML {
+	str := ""
+	for _, tag := range tags {
+		str += string(FormatValidatorTag(tag)) + " "
+	}
+	return template.HTML(str)
+}
+
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
