@@ -195,17 +195,15 @@ function showTable(data){
             'pdfHtml5'
         ],
         drawCallback: function (settings) {
-            hideSpinner()
-            $("#form-div").addClass("d-none")
+            $("#form-div").removeClass("d-flex").addClass("d-none")
             $("#table-div").removeClass("d-none")
             $("#subscriptions-div").addClass("d-none")
-            // updateTotals(data)
             $("#total-income-eth-span").html("ETH "+data.total_eth)
             $("#total-income-currency-span").html(data.total_currency)
             $("#totals-div").removeClass("d-none")
             $(".dt-button").addClass("ml-2 ")
-            // $("div.tax-table_filter label input").attr("placeholder", "Date")
-            // $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
+            hideSpinner()
+
         },
         order: [[0,'desc']],
         language: {
