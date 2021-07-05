@@ -845,6 +845,7 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 		group by user_id, machine
 	) v on v.user_id = us.user_id 
 	WHERE us.event_name = $1 AND us.created_epoch <= $2 
+	AND us.event_filter = v.machine 
 	AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
 	AND v.created_trunc < now() - interval '4 minutes' AND v.created_trunc > now() - interval '3 hours'
 	group by us.user_id, machine
