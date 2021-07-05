@@ -372,16 +372,6 @@ function updateSubscriptionTable(data, container){
     });
 }
 
-function openLinkOnNewTab(link){
-    // fetch(link, {method: "GET"})
-    // .then( res => res.blob() )
-    // .then( blob => {
-    //     var file = window.URL.createObjectURL(blob);
-    //     window.location.assign(file);
-    // });
-    window.open(link, "_blank")
-}
-
 function loadValInForm(val){
     $('#validator-index-view').val(val.replace(/([a-zA-Z ])/g, ""))
 }
