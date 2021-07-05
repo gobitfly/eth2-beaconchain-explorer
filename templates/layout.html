@@ -101,52 +101,7 @@
                     document.getElementById('currencyFlagDropdown').innerHTML = "<img class='currency-flag-dropdown-image' src='/img/" + currentCurrency +  ".svg'>"
                 }
             })
-
-            window.addEventListener('DOMContentLoaded', function () {
-                document.getElementById('initialPrice').textContent = ''
-                switch (getCookie('currency')) {
-                    case 'AUD':
-                        document.getElementById('currentCurrencySymbol').textContent = 'A$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.AudTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.AudRoundPrice}}
-                        break
-	                case 'CAD':
-                        document.getElementById('currentCurrencySymbol').textContent = 'C$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.CadTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.CadRoundPrice}}
-		                break
-	                case 'CNY':
-                        document.getElementById('currentCurrencySymbol').textContent = '¥'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.CnyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.CnyRoundPrice}}
-		                break
-	                case 'EUR':
-                        document.getElementById('currentCurrencySymbol').textContent = '€'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.EurTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.EurRoundPrice}}
-		                break
-	                case 'GBP':
-                        document.getElementById('currentCurrencySymbol').textContent = '£'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.GbpTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.GbpRoundPrice}}
-		                break
-	                case 'JPY':
-                        document.getElementById('currentCurrencySymbol').textContent = '¥'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.JpyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.JpyRoundPrice}}
-		                break
-	                case 'RUB':
-                        document.getElementById('currentCurrencySymbol').textContent = '₽'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.RubTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.RubRoundPrice}}
-		                break
-                    default:
-                        document.getElementById('currentCurrencySymbol').textContent = '$'
-                        document.getElementById('currentKFormattedPrice').textContent = {{.UsdTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.UsdRoundPrice}}
-		                break
-                }
-            })
+   
         </script>
 
     </head>
@@ -174,7 +129,7 @@
                         <span class="item-text">Ep<span class="d-none d-md-inline">och</span>:</span>
                     </div>
                     <div class="info-item-body">
-                        <a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a>
+                        <a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{addCommasUint64 .CurrentEpoch}}</a>
                     </div>
                 </div>
 
@@ -188,7 +143,7 @@
                             <span class="item-text">Slot:</span>
                         </div>
                         <div class="info-item-body">
-                            <a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a>
+                            <a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{addCommasUint64 .CurrentSlot}}</a>
                         </div>
                     </div>
                 </div>
