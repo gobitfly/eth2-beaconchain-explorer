@@ -185,7 +185,7 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 func AddCommasUint64(n uint64) template.HTML {
 	p := message.NewPrinter(language.English)
 	rb := []rune(p.Sprintf("%d", n))
-	// remove trailing zeros
+
 	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
 		if rb[len(rb)-1] == '.' {
 			rb = rb[:len(rb)-1]
