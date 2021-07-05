@@ -359,14 +359,31 @@ function updateSubscriptionTable(data, container){
                 data: '3',
                 "orderable": false,
                 render: function (data, type, row, meta) {
+                    downloadQueryUrl = `${window.location.origin}/rewards/hist/download?validators=${row[2]}&currency=${row[1]}&days=${moment().subtract(1, 'month').startOf('month').unix()}-${moment().subtract(1, 'month').endOf('month').unix()}`
                     return `
-                        <div class="d-flex justify-content-start align-item-center">
-                            <i class="fas fa-times text-danger" onClick='unSubUser("${data}")' style="cursor: pointer;"></i>
+                        <div class="d-flex justify-content-between align-item-center">
+                            <i class="far fa-clone mr-2" style="cursor: pointer;" onClick='loadValInForm("${row[2]}")' data-toggle="tooltip" data-placement="top" title="Load validators in the form"></i>
+                            <a href="${downloadQueryUrl}" download><i class="fas fa-file-download mr-2" style="cursor: pointer;" data-toggle="tooltip" data-placement="top" title="Download the last month report"></i></a>
+                            <i class="fas fa-times text-danger mr-2" onClick='unSubUser("${data}")' style="cursor: pointer;" data-toggle="tooltip" data-placement="top" title="Unsubscribe"></i>
                         </div>
                         `
                 }
             }]
     });
+}
+
+function openLinkOnNewTab(link){
+    // fetch(link, {method: "GET"})
+    // .then( res => res.blob() )
+    // .then( blob => {
+    //     var file = window.URL.createObjectURL(blob);
+    //     window.location.assign(file);
+    // });
+    window.open(link, "_blank")
+}
+
+function loadValInForm(val){
+    $('#validator-index-view').val(val.replace(/([a-zA-Z ])/g, ""))
 }
 
 function fetchSubscriptions(){
@@ -434,10 +451,6 @@ $(document).ready(function () {
     // console.log(qry, qry.length)
 
     $("#report-sub-btn").on("click", function(){
-        // if ($("#validator-index-view").val().length === 0) {
-        //     console.log("No Validators")
-        //     return
-        // }
         var form = document.getElementById('hits-form')
         if(!form.reportValidity()) {
                 return
