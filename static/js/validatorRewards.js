@@ -195,17 +195,15 @@ function showTable(data){
             'pdfHtml5'
         ],
         drawCallback: function (settings) {
-            hideSpinner()
-            $("#form-div").addClass("d-none")
+            $("#form-div").removeClass("d-flex").addClass("d-none")
             $("#table-div").removeClass("d-none")
             $("#subscriptions-div").addClass("d-none")
-            // updateTotals(data)
             $("#total-income-eth-span").html("ETH "+data.total_eth)
             $("#total-income-currency-span").html(data.total_currency)
             $("#totals-div").removeClass("d-none")
             $(".dt-button").addClass("ml-2 ")
-            // $("div.tax-table_filter label input").attr("placeholder", "Date")
-            // $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
+            hideSpinner()
+
         },
         order: [[0,'desc']],
         language: {
@@ -359,14 +357,21 @@ function updateSubscriptionTable(data, container){
                 data: '3',
                 "orderable": false,
                 render: function (data, type, row, meta) {
+                    downloadQueryUrl = `${window.location.origin}/rewards/hist/download?validators=${row[2]}&currency=${row[1]}&days=${moment().subtract(1, 'month').startOf('month').unix()}-${moment().subtract(1, 'month').endOf('month').unix()}`
                     return `
-                        <div class="d-flex justify-content-start align-item-center">
-                            <i class="fas fa-times text-danger" onClick='unSubUser("${data}")' style="cursor: pointer;"></i>
+                        <div class="d-flex justify-content-between align-item-center">
+                            <i class="far fa-clone mr-2" style="cursor: pointer;" onClick='loadValInForm("${row[2]}")' data-toggle="tooltip" data-placement="top" title="Load validators in the form"></i>
+                            <a href="${downloadQueryUrl}" download><i class="fas fa-file-download mr-2" style="cursor: pointer;" data-toggle="tooltip" data-placement="top" title="Download the last month report"></i></a>
+                            <i class="fas fa-times text-danger mr-2" onClick='unSubUser("${data}")' style="cursor: pointer;" data-toggle="tooltip" data-placement="top" title="Unsubscribe"></i>
                         </div>
                         `
                 }
             }]
     });
+}
+
+function loadValInForm(val){
+    $('#validator-index-view').val(val.replace(/([a-zA-Z ])/g, ""))
 }
 
 function fetchSubscriptions(){
@@ -434,10 +439,6 @@ $(document).ready(function () {
     // console.log(qry, qry.length)
 
     $("#report-sub-btn").on("click", function(){
-        // if ($("#validator-index-view").val().length === 0) {
-        //     console.log("No Validators")
-        //     return
-        // }
         var form = document.getElementById('hits-form')
         if(!form.reportValidity()) {
                 return
