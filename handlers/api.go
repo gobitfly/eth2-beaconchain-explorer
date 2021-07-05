@@ -1135,10 +1135,10 @@ func getUserPremiumByPackage(pkg string) PremiumUser {
 
 	result.Package = pkg
 	result.MaxStats = 43200
+	result.NotificationThresholds = true
 
 	if result.Package != "plankton" {
 		result.WidgetSupport = true
-		result.NotificationThresholds = true
 	}
 
 	if result.Package == "goldfish" {
