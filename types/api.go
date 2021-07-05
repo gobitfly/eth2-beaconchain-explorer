@@ -59,7 +59,7 @@ type StatsMeta struct {
 	Timestamp       uint64 `mapstructure:"timestamp"`
 	Process         string `mapstructure:"process"`
 	Machine         string
-	ExporterVersion uint64 `mapstructure:"exporter_version"`
+	ExporterVersion string `mapstructure:"exporter_version"`
 }
 
 type StatsDataStruct struct {

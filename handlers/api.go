@@ -1510,7 +1510,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 
 	parsedMeta.Machine = machine
 
-	if parsedMeta.Version != 1 {
+	if parsedMeta.Version > 2 || parsedMeta.Version <= 0 {
 		sendErrorResponse(j, r.URL.String(), "this version is not supported")
 		return false
 	}
