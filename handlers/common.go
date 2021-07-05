@@ -202,7 +202,7 @@ func GetCurrencySymbol(r *http.Request) string {
 	}
 }
 
-func GetCurrentPrice(r *http.Request) int {
+func GetCurrentPrice(r *http.Request) uint64 {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
 		return price.GetEthRoundPrice(price.GetEthPrice("USD"))

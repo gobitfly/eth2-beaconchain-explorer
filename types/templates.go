@@ -28,23 +28,23 @@ type PageData struct {
 	Mainnet               bool
 	DepositContract       string
 	EthPrice              float64
-	EthRoundPrice         int
+	EthRoundPrice         uint64
 	EthTruncPrice         string
-	UsdRoundPrice         int
+	UsdRoundPrice         uint64
 	UsdTruncPrice         string
-	EurRoundPrice         int
+	EurRoundPrice         uint64
 	EurTruncPrice         string
-	GbpRoundPrice         int
+	GbpRoundPrice         uint64
 	GbpTruncPrice         string
-	CnyRoundPrice         int
+	CnyRoundPrice         uint64
 	CnyTruncPrice         string
-	RubRoundPrice         int
+	RubRoundPrice         uint64
 	RubTruncPrice         string
-	CadRoundPrice         int
+	CadRoundPrice         uint64
 	CadTruncPrice         string
-	AudRoundPrice         int
+	AudRoundPrice         uint64
 	AudTruncPrice         string
-	JpyRoundPrice         int
+	JpyRoundPrice         uint64
 	JpyTruncPrice         string
 	Currency              string
 	CurrentPriceFormatted string
@@ -78,23 +78,23 @@ type LatestState struct {
 	FinalityDelay         uint64  `json:"finalityDelay"`
 	IsSyncing             bool    `json:"syncing"`
 	EthPrice              float64 `json:"ethPrice"`
-	EthRoundPrice         int     `json:"ethRoundPrice"`
+	EthRoundPrice         uint64  `json:"ethRoundPrice"`
 	EthTruncPrice         string  `json:"ethTruncPrice"`
-	UsdRoundPrice         int     `json:"usdRoundPrice"`
+	UsdRoundPrice         uint64  `json:"usdRoundPrice"`
 	UsdTruncPrice         string  `json:"usdTruncPrice"`
-	EurRoundPrice         int     `json:"eurRoundPrice"`
+	EurRoundPrice         uint64  `json:"eurRoundPrice"`
 	EurTruncPrice         string  `json:"eurTruncPrice"`
-	GbpRoundPrice         int     `json:"gbpRoundPrice"`
+	GbpRoundPrice         uint64  `json:"gbpRoundPrice"`
 	GbpTruncPrice         string  `json:"gbpTruncPrice"`
-	CnyRoundPrice         int     `json:"cnyRoundPrice"`
+	CnyRoundPrice         uint64  `json:"cnyRoundPrice"`
 	CnyTruncPrice         string  `json:"cnyTruncPrice"`
-	RubRoundPrice         int     `json:"rubRoundPrice"`
+	RubRoundPrice         uint64  `json:"rubRoundPrice"`
 	RubTruncPrice         string  `json:"rubTruncPrice"`
-	CadRoundPrice         int     `json:"cadRoundPrice"`
+	CadRoundPrice         uint64  `json:"cadRoundPrice"`
 	CadTruncPrice         string  `json:"cadTruncPrice"`
-	AudRoundPrice         int     `json:"audRoundPrice"`
+	AudRoundPrice         uint64  `json:"audRoundPrice"`
 	AudTruncPrice         string  `json:"audTruncPrice"`
-	JpyRoundPrice         int     `json:"jpyRoundPrice"`
+	JpyRoundPrice         uint64  `json:"jpyRoundPrice"`
 	JpyTruncPrice         string  `json:"jpyTruncPrice"`
 	Currency              string  `json:"currency"`
 }

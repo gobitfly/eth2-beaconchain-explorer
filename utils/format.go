@@ -689,10 +689,10 @@ func TrLang(lang string, key string) template.HTML {
 	return template.HTML(I18n.Tr(lang, key))
 }
 
-func KFormatterEthPrice(currency int) string {
-	if currency > 999 {
-		ethTruncPrice := fmt.Sprint(float64(int((float64(currency)/float64(1000))*10))/float64(10)) + "k"
+func KFormatterEthPrice(price uint64) string {
+	if price > 999 {
+		ethTruncPrice := fmt.Sprint(float64(int((float64(price)/float64(1000))*10))/float64(10)) + "k"
 		return ethTruncPrice
 	}
-	return fmt.Sprint(currency)
+	return fmt.Sprint(price)
 }

@@ -101,7 +101,52 @@
                     document.getElementById('currencyFlagDropdown').innerHTML = "<img class='currency-flag-dropdown-image' src='/img/" + currentCurrency +  ".svg'>"
                 }
             })
-   
+
+            window.addEventListener('DOMContentLoaded', function () {
+                document.getElementById('initialPrice').textContent = ''
+                switch (getCookie('currency')) {
+                    case 'AUD':
+                        document.getElementById('currentCurrencySymbol').textContent = 'A$'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.AudTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .AudRoundPrice}}
+                        break
+	                case 'CAD':
+                        document.getElementById('currentCurrencySymbol').textContent = 'C$'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.CadTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .CadRoundPrice}}
+		                break
+	                case 'CNY':
+                        document.getElementById('currentCurrencySymbol').textContent = '¥'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.CnyTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .CnyRoundPrice}}
+		                break
+	                case 'EUR':
+                        document.getElementById('currentCurrencySymbol').textContent = '€'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.EurTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .EurRoundPrice}}
+		                break
+	                case 'GBP':
+                        document.getElementById('currentCurrencySymbol').textContent = '£'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.GbpTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .GbpRoundPrice}}
+		                break
+	                case 'JPY':
+                        document.getElementById('currentCurrencySymbol').textContent = '¥'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.JpyTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .JpyRoundPrice}}
+		                break
+	                case 'RUB':
+                        document.getElementById('currentCurrencySymbol').textContent = '₽'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.RubTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .RubRoundPrice}}
+		                break
+                    default:
+                        document.getElementById('currentCurrencySymbol').textContent = '$'
+                        document.getElementById('currentKFormattedPrice').textContent = {{.UsdTruncPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .UsdRoundPrice}}
+		                break
+                }
+            })
         </script>
 
     </head>
