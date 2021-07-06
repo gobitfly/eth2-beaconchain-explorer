@@ -113,20 +113,22 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	incomeHistoryChartData := make([]*types.ChartDataPoint, len(incomeHistory))
+	incomeHistoryChartData := make([]*types.ChartDataPoint, len(incomeHistory)+1)
 
 	if len(incomeHistory) > 0 {
-		for i := 0; i < len(incomeHistory)-1; i++ {
-			income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance
-			if income >= incomeHistory[i].Deposits {
-				income = income - incomeHistory[i].Deposits
+		for i := 0; i < len(incomeHistory); i++ {
+			var income int64
+			if i == len(incomeHistory)-1 {
+				income = incomeHistory[i].EndBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
+			} else {
+				income = incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
 			}
 			color := "#7cb5ec"
 			if income < 0 {
 				color = "#f7a35c"
 			}
 			change := utils.ExchangeRateForCurrency(currency) * (float64(income) / 1000000000)
-			balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
+			balanceTs := utils.DayToTime(incomeHistory[i].Day)
 			incomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: change, Color: color}
 		}
 
