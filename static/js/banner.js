@@ -27,10 +27,6 @@ function getCookie(cname) {
   return ''
 }
 
-function addCommas(number) {
-  return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-}
-
 function updateBanner() {
   fetch('/latestState').then(function (res) {
     return res.json()

@@ -185,11 +185,12 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 func AddCommasUint64(n uint64) template.HTML {
 	p := message.NewPrinter(language.English)
 	rb := []rune(p.Sprintf("%d", n))
+	if len(rb) >= 3 {
+		if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+			if rb[len(rb)-1] == '.' {
+				rb = rb[:len(rb)-1]
 
-	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
-		if rb[len(rb)-1] == '.' {
-			rb = rb[:len(rb)-1]
-
+			}
 		}
 	}
 
@@ -298,7 +299,7 @@ func FormatEffectiveBalance(balanceInt uint64, currency string) template.HTML {
 
 // FormatEpoch will return the epoch formated as html
 func FormatEpoch(epoch uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%[1]d\">%[1]d</a>", epoch))
+	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%d\">%s</a>", epoch, AddCommasUint64(epoch)))
 }
 
 // FormatEth1AddressString will return the eth1-address formated as html string
