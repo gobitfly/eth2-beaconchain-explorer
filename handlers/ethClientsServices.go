@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
+	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
@@ -21,6 +23,41 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 	pageData := ethclients.GetEthClientData()
 	pageData.CsrfField = csrf.TemplateField(r)
 	// pageData.Banner = ethclients.GetBannerClients()
+	if data.User.Authenticated {
+		var dbData []string
+		err = db.DB.Select(&dbData,
+			`select event_filter
+			 from users_subscriptions 
+			 where user_id = $1 AND event_name=$2
+			`, data.User.UserID, types.EthClientUpdateEventName)
+		if err != nil {
+			logger.Errorf("error getting user subscriptions: %v route: %v", r.URL.String(), err)
+		}
+
+		for _, item := range dbData {
+			switch item {
+			case "geth":
+				pageData.Geth.IsUserSubscribed = true
+			case "openethereum":
+				pageData.OpenEthereum.IsUserSubscribed = true
+			case "nethermind":
+				pageData.Nethermind.IsUserSubscribed = true
+			case "besu":
+				pageData.Besu.IsUserSubscribed = true
+			case "lighthouse":
+				pageData.Lighthouse.IsUserSubscribed = true
+			case "prysm":
+				pageData.Prysm.IsUserSubscribed = true
+			case "teku":
+				pageData.Teku.IsUserSubscribed = true
+			case "nimbus":
+				pageData.Nimbus.IsUserSubscribed = true
+			default:
+				continue
+			}
+		}
+
+	}
 
 	data.Data = pageData
 

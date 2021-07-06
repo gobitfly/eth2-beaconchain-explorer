@@ -268,12 +268,13 @@ type ValidatorPageData struct {
 	SlashedBy                           uint64
 	SlashedAt                           uint64
 	SlashedFor                          string
-	ActivationEligibilityEpoch          uint64  `db:"activationeligibilityepoch"`
-	ActivationEpoch                     uint64  `db:"activationepoch"`
-	ExitEpoch                           uint64  `db:"exitepoch"`
-	Index                               uint64  `db:"index"`
-	LastAttestationSlot                 *uint64 `db:"lastattestationslot"`
-	Name                                string  `db:"name"`
+	ActivationEligibilityEpoch          uint64         `db:"activationeligibilityepoch"`
+	ActivationEpoch                     uint64         `db:"activationepoch"`
+	ExitEpoch                           uint64         `db:"exitepoch"`
+	Index                               uint64         `db:"index"`
+	LastAttestationSlot                 *uint64        `db:"lastattestationslot"`
+	Name                                string         `db:"name"`
+	Tags                                pq.StringArray `db:"tags"`
 	WithdrawableTs                      time.Time
 	ActivationEligibilityTs             time.Time
 	ActivationTs                        time.Time
@@ -984,27 +985,6 @@ type StakeWithUsPageData struct {
 	FlashMessage string
 	RecaptchaKey string
 }
-
-type EthClients struct {
-	ClientReleaseVersion string
-	ClientReleaseDate    string
-	NetworkShare         string
-}
-
-type EthClientServicesPageData struct {
-	LastUpdate   time.Time
-	Geth         EthClients
-	Nethermind   EthClients
-	OpenEthereum EthClients
-	Besu         EthClients
-	Teku         EthClients
-	Prysm        EthClients
-	Nimbus       EthClients
-	Lighthouse   EthClients
-	Banner       string
-	CsrfField    template.HTML
-}
-
 type RateLimitError struct {
 	TimeLeft time.Duration
 }

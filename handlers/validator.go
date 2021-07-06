@@ -199,8 +199,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		// Request came with a validator index number
 		index, err = strconv.ParseUint(vars["index"], 10, 64)
 		if err != nil {
-			logger.Errorf("error parsing validator index: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Validator not found", 404)
 			return
 		}
 	}
@@ -214,39 +213,42 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// start = time.Now()
 
 	err = db.DB.Get(&validatorPageData, `
-		SELECT 
-			validators.pubkey, 
-			validators.validatorindex, 
-			validators.withdrawableepoch, 
-			validators.effectivebalance, 
-			validators.slashed, 
-			validators.activationeligibilityepoch, 
-			validators.activationepoch, 
-			validators.exitepoch, 
-			validators.lastattestationslot, 
+		SELECT
+			validators.pubkey,
+			validators.validatorindex,
+			validators.withdrawableepoch,
+			validators.effectivebalance,
+			validators.slashed,
+			validators.activationeligibilityepoch,
+			validators.activationepoch,
+			validators.exitepoch,
+			validators.lastattestationslot,
 			COALESCE(validator_names.name, '') AS name,
 			COALESCE(validators.balance, 0) AS balance,
 			COALESCE(validator_performance.rank7d, 0) AS rank7d,
-		    validators.status,
-		    COALESCE(validators.balanceactivation, 0) AS balanceactivation,
-		    COALESCE(validators.balance7d, 0) AS balance7d,
-		    COALESCE(validators.balance31d, 0) AS balance31d
-		FROM validators 
-		LEFT JOIN validator_names 
+			validators.status,
+			COALESCE(validators.balanceactivation, 0) AS balanceactivation,
+			COALESCE(validators.balance7d, 0) AS balance7d,
+			COALESCE(validators.balance31d, 0) AS balance31d,
+			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') as tags
+		FROM validators
+		LEFT JOIN validator_names
 			ON validators.pubkey = validator_names.publickey
 		LEFT JOIN validator_performance 
 			ON validators.validatorindex = validator_performance.validatorindex
 		WHERE validators.validatorindex = $1`, index)
-	if err != nil {
-		//logger.Errorf("error retrieving validator page data: %v", err)
 
-		err := validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
-
+	if err == sql.ErrNoRows {
+		err = validatorNotFoundTemplate.ExecuteTemplate(w, "layout", data)
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
+		return
+	} else if err != nil {
+		logger.Errorf("error getting validator for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
 		return
 	}
 
@@ -416,16 +418,21 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory))
+	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory)+1)
 
 	if len(incomeHistory) > 0 {
-		for i := 0; i < len(incomeHistory)-1; i++ {
-			income := incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
+		for i := 0; i < len(incomeHistory); i++ {
+			var income int64
+			if i == len(incomeHistory)-1 {
+				income = incomeHistory[i].EndBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
+			} else {
+				income = incomeHistory[i+1].StartBalance - incomeHistory[i].StartBalance - incomeHistory[i].Deposits
+			}
 			color := "#7cb5ec"
 			if income < 0 {
 				color = "#f7a35c"
 			}
-			balanceTs := utils.DayToTime(incomeHistory[i+1].Day)
+			balanceTs := utils.DayToTime(incomeHistory[i].Day)
 			validatorPageData.IncomeHistoryChartData[i] = &types.ChartDataPoint{X: float64(balanceTs.Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(income) / 1000000000), Color: color}
 		}
 

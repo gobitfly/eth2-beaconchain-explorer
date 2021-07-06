@@ -8,10 +8,6 @@
 {{end}}
 
 {{ define "content"}}
-        {{if .User.Authenticated}}
-            {{if dismissClientNotification .User.UserID}}
-            {{end}} 
-        {{end}}
     {{with .Data}}
         <section style="background: var(--bg-color-light)">
             <div class="container">
@@ -98,8 +94,10 @@
                 </div>
                 {{if not $.User.Authenticated}}
                 <div class="d-flex align-items-center justify-content-center pb-2">
-                    <button class="btn btn-sm bg-primary mr-3" type="button" onclick='window.location.replace("/register")'>SignUp</button>
-                    <div>to receive notifications about your favorite ETH clients </div>
+                    <a href="/register" class="btn btn-primary btn-sm d-flex mr-2">
+                        <span class="text-white"><b>Sign Up</b></span>
+                    </a>
+                    <span>to receive notifications about your favorite ETH clients </span>
                 </div>
                 {{end}}
             </div>
@@ -141,7 +139,7 @@
                                                 class="fab fa-twitter ml-1 mr-1"></i></a></td>
                                         <td data-column="Support">N/A</td>
                                         {{if $.User.Authenticated}}
-                                        <td><input id="geth-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "geth"}} checked {{end}} onchange="updateUserSubscription('geth-checkbox', 'eth_client_update', 'geth')"/></td>
+                                        <td><input id="geth-checkbox" type="checkbox" data-toggle="toggle" {{if .Geth.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('geth-checkbox', 'eth_client_update', 'geth')"/></td>
                                         {{end}}
                                     </tr>
                                     <tr>
@@ -161,7 +159,7 @@
                                         <td data-column="Support"><a
                                                     href="https://gitcoin.co/grants/142/nethermind">Gitcoin</a></td>
                                         {{if $.User.Authenticated}}
-                                        <td><input id="nethermind-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "nethermind"}} checked {{end}} onchange="updateUserSubscription('nethermind-checkbox', 'eth_client_update', 'nethermind')"/></td>
+                                        <td><input id="nethermind-checkbox" type="checkbox" data-toggle="toggle" {{if .Nethermind.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('nethermind-checkbox', 'eth_client_update', 'nethermind')"/></td>
                                         {{end}}
                                     </tr>
                                     <tr>
@@ -181,7 +179,7 @@
                                         <td data-column="Support"><a
                                                     href="https://gitcoin.co/grants/1415/openethereum-ex-parity-client">Gitcoin</a></td>
                                         {{if $.User.Authenticated}}
-                                        <td><input id="openethereum-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "openethereum"}} checked {{end}} onchange="updateUserSubscription('openethereum-checkbox', 'eth_client_update', 'openethereum')"/></td>
+                                        <td><input id="openethereum-checkbox" type="checkbox" data-toggle="toggle" {{if .OpenEthereum.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('openethereum-checkbox', 'eth_client_update', 'openethereum')"/></td>
                                         {{end}}
                                     </tr>
                                     <tr>
@@ -200,7 +198,7 @@
                                         </td>
                                         <td data-column="Support">N/A</td>
                                         {{if $.User.Authenticated}}
-                                        <td><input id="besu-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "besu"}} checked {{end}} onchange="updateUserSubscription('besu-checkbox', 'eth_client_update', 'besu')"/></td>
+                                        <td><input id="besu-checkbox" type="checkbox" data-toggle="toggle" {{if .Besu.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('besu-checkbox', 'eth_client_update', 'besu')"/></td>
                                         {{end}}
                                     </tr>
                                 </tbody>
@@ -244,7 +242,7 @@
                                                                 </td>
                                         <td data-column="Support">N/A</td>
                                         {{if $.User.Authenticated}}
-                                        <td><input id="teku-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "teku"}} checked {{end}} onchange="updateUserSubscription('teku-checkbox', 'eth_client_update', 'teku')"/></td>
+                                        <td><input id="teku-checkbox" type="checkbox" data-toggle="toggle" {{if .Teku.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('teku-checkbox', 'eth_client_update', 'teku')"/></td>
                                         {{end}}
                                     </tr>
                                     <tr>
@@ -262,7 +260,7 @@
                                         <td data-column="Support"><a
                                                     href="https://gitcoin.co/grants/24/prysm-by-prysmatic-labs">Gitcoin</a></td>
                                         {{if $.User.Authenticated}}
-                                        <td><input id="prysm-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "prysm"}} checked {{end}} onchange="updateUserSubscription('prysm-checkbox', 'eth_client_update', 'prysm')"/></td>
+                                        <td><input id="prysm-checkbox" type="checkbox" data-toggle="toggle" {{if .Prysm.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('prysm-checkbox', 'eth_client_update', 'prysm')"/></td>
                                         {{end}}
                                     </tr>
                                     <tr>
@@ -280,7 +278,7 @@
                                         <td data-column="Support"><a
                                                     href="https://gitcoin.co/grants/137/nimbus">Gitcoin</a></td>
                                         {{if $.User.Authenticated}}
-                                        <td><input id="nimbus-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "nimbus"}} checked {{end}} onchange="updateUserSubscription('nimbus-checkbox', 'eth_client_update', 'nimbus')"/></td>
+                                        <td><input id="nimbus-checkbox" type="checkbox" data-toggle="toggle" {{if .Nimbus.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('nimbus-checkbox', 'eth_client_update', 'nimbus')"/></td>
                                         {{end}}
                                     </tr>
                                     <tr>
@@ -298,7 +296,7 @@
                                         <td data-column="Support"><a
                                                     href="https://gitcoin.co/grants/25/lighthouse-ethereum-20-client">Gitcoin</a></td>
                                         {{if $.User.Authenticated}}
-                                        <td><input id="lighthouse-checkbox" type="checkbox" data-toggle="toggle" {{if isUserSubscribed $.User.UserID "lighthouse"}} checked {{end}} onchange="updateUserSubscription('lighthouse-checkbox', 'eth_client_update', 'lighthouse')"/></td>
+                                        <td><input id="lighthouse-checkbox" type="checkbox" data-toggle="toggle" {{if .Lighthouse.IsUserSubscribed}} checked {{end}} onchange="updateUserSubscription('lighthouse-checkbox', 'eth_client_update', 'lighthouse')"/></td>
                                         {{end}}
                                     </tr>
                                 </tbody>

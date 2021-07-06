@@ -10,6 +10,7 @@
 
 .tt-open::-webkit-scrollbar, #validator-index-view::-webkit-scrollbar, .nice-scroll::-webkit-scrollbar{
     width: 5px;
+    height: 5px;
 }
 
 .tt-open::-webkit-scrollbar-thumb, #validator-index-view::-webkit-scrollbar-thumb, .nice-scroll::-webkit-scrollbar-thumb{
@@ -40,6 +41,7 @@
     cursor: pointer;
     width: 100%;
     color: var(--banner-text);
+    padding: 2%;
   }
   
 .tt-query {
@@ -55,8 +57,8 @@
   }
 
 .form-group label:after { 
-    content:"*";
-    color:red;
+    content:" *";
+    color: var(--danger);
  }
 
  .daterangepicker{
@@ -69,6 +71,11 @@
 
  div.ranges ul li{
    color: var(--primary);
+ }
+
+ #sub-validator{
+   width: 60%;
+   min-width: 60%;
  }
 
  

@@ -22,10 +22,10 @@ var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewa
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub"}
 
 type rewardsResp struct {
-	Currencies       []string
-	CsrfField        template.HTML
-	Subscriptions    [][]string
-	MinDateTimestamp uint64
+	Currencies        []string
+	CsrfField         template.HTML
+	ShowSubscriptions bool
+	MinDateTimestamp  uint64
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
@@ -51,13 +51,7 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error getting min ts: %w", err)
 	}
 
-	var subs = [][]string{}
-
-	if data.User.Authenticated {
-		subs = getUserRewardSubscriptions(data.User.UserID)
-	}
-
-	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), Subscriptions: subs, MinDateTimestamp: uint64(minTime.Unix())}
+	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), MinDateTimestamp: uint64(minTime.Unix()), ShowSubscriptions: data.User.Authenticated}
 
 	err = validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -137,8 +131,6 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// days, err := strconv.ParseUint(q.Get("days"), 10, 64)
-
 	data := services.GetValidatorHist(validatorArr, currency, start, end)
 
 	err = json.NewEncoder(w).Encode(data)
@@ -151,9 +143,6 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 }
 
 func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Disposition", "attachment; filename=beaconcha_in-rewards-history.pdf")
-	w.Header().Set("Content-Type", "text/csv")
-
 	q := r.URL.Query()
 
 	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"))
@@ -179,38 +168,17 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hist := services.GetValidatorHist(validatorArr, currency, start, end)
-	// data := hist.History
 
 	if len(hist.History) == 0 {
 		w.Write([]byte("No data available"))
 		return
 	}
 
-	// cur := data[0][len(data[0])-1]
-	// cur = strings.ToUpper(cur)
-	// csv := fmt.Sprintf("Date,End-of-date balance ETH,Income for date ETH,Price of ETH for date %s, Income for date %s", cur, cur)
+	s := time.Unix(int64(start), 0)
+	e := time.Unix(int64(end), 0)
 
-	// totalIncomeEth := 0.0
-	// totalIncomeCur := 0.0
-
-	// for _, item := range data {
-	// 	if len(item) < 5 {
-	// 		csv += "\n0,0,0,0,0"
-	// 		continue
-	// 	}
-	// 	csv += fmt.Sprintf("\n%s,%s,%s,%s,%s", item[0], item[1], item[2], item[3], item[4])
-	// 	tEth, err := strconv.ParseFloat(item[2], 64)
-	// 	tCur, err := strconv.ParseFloat(item[4], 64)
-
-	// 	if err != nil {
-	// 		continue
-	// 	}
-
-	// 	totalIncomeEth += tEth
-	// 	totalIncomeCur += tCur
-	// }
-
-	// csv += fmt.Sprintf("\nTotal, ,%f, ,%f", totalIncomeEth, totalIncomeCur)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=income_history_%v_%v.pdf", s.Format("20060102"), e.Format("20060102")))
+	w.Header().Set("Content-Type", "text/csv")
 
 	_, err = w.Write(services.GeneratePdfReport(hist))
 	if err != nil {
@@ -230,10 +198,22 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var count uint64
+	err := db.DB.Get(&count,
+		`select count(event_name) 
+		from users_subscriptions 
+		where user_id=$1 AND event_name=$2;`, user.UserID, types.TaxReportEventName)
+
+	if err != nil || count >= 5 {
+		logger.WithField("route", r.URL.String()).Info(fmt.Sprintf("User Subscription limit (%v) reached %v", count, err))
+		http.Error(w, "Internal server error, User Subscription limit reached", http.StatusInternalServerError)
+		return
+	}
+
 	q := r.URL.Query()
 
 	validatorArr := q.Get("validators")
-	_, err := parseValidatorsFromQueryString(validatorArr)
+	_, err = parseValidatorsFromQueryString(validatorArr)
 	if err != nil {
 		http.Error(w, "Invalid query, Invalid Validators", 400)
 		return
@@ -249,7 +229,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	err = db.AddSubscription(user.UserID,
 		types.TaxReportEventName,
-		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency))
+		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency), 0)
 
 	if err != nil {
 		logger.Errorf("error updating user subscriptions: %v", err)
@@ -303,6 +283,41 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(struct {
 		Msg string `json:"msg"`
 	}{Msg: "Subscription Deleted"})
+
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	user := getUser(w, r)
+	if !user.Authenticated {
+		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
+		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		return
+	}
+
+	var count uint64
+	err := db.DB.Get(&count,
+		`select count(event_name) 
+		from users_subscriptions 
+		where user_id=$1 AND event_name=$2;`, user.UserID, types.TaxReportEventName)
+
+	if err != nil {
+		logger.WithField("route", r.URL.String()).Error("Failed to get User Subscriptions Count")
+		http.Error(w, "Internal server error, Failed to get User Subscriptions Count", http.StatusInternalServerError)
+		return
+	}
+
+	data := getUserRewardSubscriptions(user.UserID)
+
+	err = json.NewEncoder(w).Encode(struct {
+		Data  [][]string `json:"data"`
+		Count uint64     `json:"count"`
+	}{Data: data, Count: count})
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")

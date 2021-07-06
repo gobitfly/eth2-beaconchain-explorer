@@ -460,6 +460,13 @@ func FormatPublicKey(validator []byte) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
 }
 
+func FormatMachineName(machineName string) template.HTML {
+	if machineName == "" {
+		machineName = "Default"
+	}
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-hdd\"></i> %v", machineName))
+}
+
 // FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTimestamp(ts int64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))
@@ -501,6 +508,29 @@ func FormatValidatorStatus(status string) template.HTML {
 		return "<span><b>Slashed</b></span>"
 	}
 	return "<b>Unknown</b>"
+}
+
+// FormatValidatorTag will return html formated text of a validator-tag.
+// Depending on the tag it will describe the tag in a tooltip and link to more information regarding the tag.
+func FormatValidatorTag(tag string) template.HTML {
+	var result string
+	switch tag {
+	case "rocketpool":
+		result = fmt.Sprintf(`<span style="background:yellow;" class="badge text-dark" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
+	case "ssv":
+		result = fmt.Sprintf(`<span style="background:orange;" class="badge text-dark" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
+	default:
+		result = fmt.Sprintf(`<span class="badge bg-dark text-light">%s</span>`, tag)
+	}
+	return template.HTML(result)
+}
+
+func FormatValidatorTags(tags []string) template.HTML {
+	str := ""
+	for _, tag := range tags {
+		str += string(FormatValidatorTag(tag)) + " "
+	}
+	return template.HTML(str)
 }
 
 // FormatValidator will return html formatted text for a validator

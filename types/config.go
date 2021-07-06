@@ -119,8 +119,13 @@ type Config struct {
 	} `yaml:"metrics"`
 	Notifications struct {
 		Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+		UserDBNotifications     bool   `yaml:"userDbNotifications" envconfig:"FRONTEND_USERDB_NOTIFICATIONS_ENABLED"`
 		FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
 	} `yaml:"notifications"`
+	SSVExporter struct {
+		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
+		Address string `yaml:"address" envconfig:"SSV_EXPORTER_ADDRESS"`
+	} `yaml:"SSVExporter"`
 }
 
 // Phase0 is the config for beacon chain phase0
