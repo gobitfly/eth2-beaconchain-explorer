@@ -25,8 +25,8 @@
         </thead>
         <tbody v-if="page && page.blocks && page.blocks.length">
         <tr v-for="block in page.blocks">
-          <td><a v-bind:href="'/epoch/' + block.epoch">${ block.epoch }</a></td>
-          <td><a v-bind:href="'/block/' + block.slot">${ block.slot }</a></td>
+          <td><a v-bind:href="'/epoch/' + block.epoch">${ addCommas(block.epoch) }</a></td>
+          <td><a v-bind:href="'/block/' + block.slot">${ addCommas(block.slot) }</a></td>
           <td v-if="block.slot === 0">
             <span style="background: rgba(179, 159, 70, 0.8)" class="badge text-dark">Genesis</span>
           </td>

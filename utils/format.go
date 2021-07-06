@@ -207,7 +207,7 @@ func FormatBlockRoot(blockRoot []byte) template.HTML {
 
 // FormatBlockSlot will return the block-slot formated as html
 func FormatBlockSlot(blockSlot uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", blockSlot))
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%d\">%s</a>", blockSlot, AddCommasUint64(blockSlot)))
 }
 
 // FormatAttestationInclusionSlot will return the block-slot formated as html
