@@ -182,7 +182,7 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 	return template.HTML(rb)
 }
 
-func AddCommasUint64(n uint64) template.HTML {
+func FormatAddCommas(n uint64) template.HTML {
 	p := message.NewPrinter(language.English)
 	rb := []rune(p.Sprintf("%d", n))
 	if len(rb) >= 3 {
@@ -207,7 +207,7 @@ func FormatBlockRoot(blockRoot []byte) template.HTML {
 
 // FormatBlockSlot will return the block-slot formated as html
 func FormatBlockSlot(blockSlot uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%d\">%s</a>", blockSlot, AddCommasUint64(blockSlot)))
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%d\">%s</a>", blockSlot, FormatAddCommas(blockSlot)))
 }
 
 // FormatAttestationInclusionSlot will return the block-slot formated as html
@@ -299,7 +299,7 @@ func FormatEffectiveBalance(balanceInt uint64, currency string) template.HTML {
 
 // FormatEpoch will return the epoch formated as html
 func FormatEpoch(epoch uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%d\">%s</a>", epoch, AddCommasUint64(epoch)))
+	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%d\">%s</a>", epoch, FormatAddCommas(epoch)))
 }
 
 // FormatEth1AddressString will return the eth1-address formated as html string

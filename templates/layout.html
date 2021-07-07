@@ -108,42 +108,42 @@
                     case 'AUD':
                         document.getElementById('currentCurrencySymbol').textContent = 'A$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.AudTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .AudRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .AudRoundPrice}}
                         break
 	                case 'CAD':
                         document.getElementById('currentCurrencySymbol').textContent = 'C$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.CadTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .CadRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .CadRoundPrice}}
 		                break
 	                case 'CNY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
                         document.getElementById('currentKFormattedPrice').textContent = {{.CnyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .CnyRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .CnyRoundPrice}}
 		                break
 	                case 'EUR':
                         document.getElementById('currentCurrencySymbol').textContent = '€'
                         document.getElementById('currentKFormattedPrice').textContent = {{.EurTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .EurRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .EurRoundPrice}}
 		                break
 	                case 'GBP':
                         document.getElementById('currentCurrencySymbol').textContent = '£'
                         document.getElementById('currentKFormattedPrice').textContent = {{.GbpTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .GbpRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .GbpRoundPrice}}
 		                break
 	                case 'JPY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
                         document.getElementById('currentKFormattedPrice').textContent = {{.JpyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .JpyRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .JpyRoundPrice}}
 		                break
 	                case 'RUB':
                         document.getElementById('currentCurrencySymbol').textContent = '₽'
                         document.getElementById('currentKFormattedPrice').textContent = {{.RubTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .RubRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .RubRoundPrice}}
 		                break
                     default:
                         document.getElementById('currentCurrencySymbol').textContent = '$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.UsdTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{addCommasUint64 .UsdRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .UsdRoundPrice}}
 		                break
                 }
             })
@@ -174,7 +174,7 @@
                         <span class="item-text">Ep<span class="d-none d-md-inline">och</span>:</span>
                     </div>
                     <div class="info-item-body">
-                        <a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{addCommasUint64 .CurrentEpoch}}</a>
+                        <a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{formatAddCommas .CurrentEpoch}}</a>
                     </div>
                 </div>
 
@@ -188,7 +188,7 @@
                             <span class="item-text">Slot:</span>
                         </div>
                         <div class="info-item-body">
-                            <a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{addCommasUint64 .CurrentSlot}}</a>
+                            <a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{formatAddCommas .CurrentSlot}}</a>
                         </div>
                     </div>
                 </div>

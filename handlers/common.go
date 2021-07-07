@@ -221,7 +221,7 @@ func GetCurrentPriceFormatted(r *http.Request) string {
 	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
 		return fmt.Sprintf("%s", utils.KFormatterEthPrice(price))
 	}
-	return fmt.Sprintf("%s", utils.AddCommasUint64(uint64(price)))
+	return fmt.Sprintf("%s", utils.FormatAddCommas(uint64(price)))
 }
 
 func GetTruncCurrentPriceFormatted(r *http.Request) string {
