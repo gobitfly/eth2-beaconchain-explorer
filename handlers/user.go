@@ -1069,15 +1069,24 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if len(jsonObjects) >= 25 {
-		logger.Errorf("Max number bundle subscribe is 25", err)
-		sendErrorResponse(j, r.URL.String(), "Max number bundle subscribe is 25")
+	if len(jsonObjects) > 100 {
+		logger.Errorf("Max number bundle subscribe is 100", err)
+		sendErrorResponse(j, r.URL.String(), "Max number bundle subscribe is 100")
 		return
 	}
 
 	var result bool = true
+	m := make(map[string]bool)
 	for i := 0; i < len(jsonObjects); i++ {
-		result = result && internUserNotificationsSubscribe(jsonObjects[i].EventName, jsonObjects[i].EventFilter, jsonObjects[i].EventThreshold, w, r)
+		obj := jsonObjects[i]
+
+		// make sure expensive operations without filter can only be done once per request
+		if m[obj.EventName] && obj.EventFilter == "" {
+			continue
+		}
+
+		result = result && internUserNotificationsSubscribe(obj.EventName, obj.EventFilter, obj.EventThreshold, w, r)
+		m[obj.EventName] = true
 		if !result {
 			break
 		}
@@ -1179,15 +1188,25 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if len(jsonObjects) >= 25 {
-		logger.Errorf("Max number bundle unsubscribe is 25", err)
-		sendErrorResponse(j, r.URL.String(), "Max number bundle unsubscribe is 25")
+	if len(jsonObjects) > 100 {
+		logger.Errorf("Max number bundle unsubscribe is 100", err)
+		sendErrorResponse(j, r.URL.String(), "Max number bundle unsubscribe is 100")
 		return
 	}
 
 	var result bool = true
+	m := make(map[string]bool)
 	for i := 0; i < len(jsonObjects); i++ {
+		obj := jsonObjects[i]
+
+		// make sure expensive operations without filter can only be done once per request
+		if m[obj.EventName] && obj.EventFilter == "" {
+			continue
+		}
+
 		result = result && internUserNotificationsUnsubscribe(jsonObjects[i].EventName, jsonObjects[i].EventFilter, w, r)
+		m[obj.EventName] = true
+
 		if !result {
 			break
 		}
