@@ -124,7 +124,8 @@ func GetTemplateFuncs() template.FuncMap {
 			}
 			return false
 		},
-		"stringsJoin": strings.Join,
+		"stringsJoin":     strings.Join,
+		"formatAddCommas": FormatAddCommas,
 	}
 }
 

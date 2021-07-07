@@ -182,6 +182,21 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 	return template.HTML(rb)
 }
 
+func FormatAddCommas(n uint64) template.HTML {
+	p := message.NewPrinter(language.English)
+	rb := []rune(p.Sprintf("%d", n))
+	if len(rb) >= 3 {
+		if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+			if rb[len(rb)-1] == '.' {
+				rb = rb[:len(rb)-1]
+
+			}
+		}
+	}
+
+	return template.HTML(rb)
+}
+
 // FormatBlockRoot will return the block-root formated as html
 func FormatBlockRoot(blockRoot []byte) template.HTML {
 	if len(blockRoot) < 32 {
@@ -192,7 +207,7 @@ func FormatBlockRoot(blockRoot []byte) template.HTML {
 
 // FormatBlockSlot will return the block-slot formated as html
 func FormatBlockSlot(blockSlot uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", blockSlot))
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%d\">%s</a>", blockSlot, FormatAddCommas(blockSlot)))
 }
 
 // FormatAttestationInclusionSlot will return the block-slot formated as html
@@ -284,7 +299,7 @@ func FormatEffectiveBalance(balanceInt uint64, currency string) template.HTML {
 
 // FormatEpoch will return the epoch formated as html
 func FormatEpoch(epoch uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%[1]d\">%[1]d</a>", epoch))
+	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%d\">%s</a>", epoch, FormatAddCommas(epoch)))
 }
 
 // FormatEth1AddressString will return the eth1-address formated as html string
@@ -675,10 +690,10 @@ func TrLang(lang string, key string) template.HTML {
 	return template.HTML(I18n.Tr(lang, key))
 }
 
-func KFormatterEthPrice(currency int) string {
-	if currency > 999 {
-		ethTruncPrice := fmt.Sprint(float64(int((float64(currency)/float64(1000))*10))/float64(10)) + "k"
+func KFormatterEthPrice(price uint64) string {
+	if price > 999 {
+		ethTruncPrice := fmt.Sprint(float64(int((float64(price)/float64(1000))*10))/float64(10)) + "k"
 		return ethTruncPrice
 	}
-	return fmt.Sprint(currency)
+	return fmt.Sprint(price)
 }

@@ -140,10 +140,6 @@ function updateTableType() {
     $("#tableValidatorsTotal").html(addCommas(TOTAL_VALIDATORS))
 }
 
-function addCommas(number) {
-    return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-}
-
 function updateEthSupply() {
     let circulatingETH = parseInt(ETH_SUPPLY.result / 1e18);
     let stakedEth = STAKED_ETH;
