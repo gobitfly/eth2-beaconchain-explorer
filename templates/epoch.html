@@ -119,7 +119,7 @@
                     <a href="/epoch/{{.PreviousEpoch}}">
                         <div class="epoch__pervious">
                             <img src="/img/apps.png" alt="">
-                            <span>{{.PreviousEpoch}}</span>
+                            <span>{{formatAddCommas .PreviousEpoch}}</span>
                         </div>
                     </a>
                     <i class="fas fa-arrow-left"></i>
@@ -127,21 +127,21 @@
                     <a style="visibility: hidden;" href="/epoch/{{.PreviousEpoch}}">
                         <div class="epoch__pervious">
                             <img src="/img/apps.png" alt="">
-                            <span>{{.PreviousEpoch}}</span>
+                            <span>{{formatAddCommas .PreviousEpoch}}</span>
                         </div>
                     </a>
                     <i style="visibility: hidden;" class="fas fa-arrow-left"></i>
                 {{end}}
                 <div class="epoch__current">
                     <img src="/img/apps.png" alt="">
-                    <span>{{.Epoch}}</span>
+                    <span>{{formatAddCommas .Epoch}}</span>
                 </div>
                 <i class="fas fa-arrow-right"></i>
                 {{if gt .NextEpoch 0}}
                     <a href="/epoch/{{.NextEpoch}}">
                         <div class="epoch__next">
                             <img src="/img/apps.png" alt="">
-                            <span>{{.NextEpoch}}</span>
+                            <span>{{formatAddCommas .NextEpoch}}</span>
                         </div>
                     </a>
                 {{else}}
@@ -155,7 +155,7 @@
                 <div class="card-body px-0 py-1">
                     <div class="row border-bottom p-3 mx-0">
                         <div class="col-md-3">Epoch:</div>
-                        <div class="col-md-9">{{.Epoch}}</div>
+                        <div class="col-md-9">{{formatAddCommas .Epoch}}</div>
                     </div>
                     <div class="row border-bottom p-3 mx-0">
                         <div class="col-md-3">Finalized:</div>
@@ -177,7 +177,7 @@
                         <div class="col-md-3">
                             <span class=>Attestations:</span>
                         </div>
-                        <div class="col-md-9">{{.AttestationsCount}}</div>
+                        <div class="col-md-9">{{formatAddCommas .AttestationsCount}}</div>
                     </div>
                     <div class="row border-bottom p-3 mx-0">
                         <div class="col-md-3">Deposits:</div>
@@ -207,7 +207,7 @@
                     </div>
                     <div class="row border-bottom p-3 mx-0">
                         <div class="col-md-3">Validators:</div>
-                        <div class="col-md-9">{{.ValidatorsCount}}</div>
+                        <div class="col-md-9">{{formatAddCommas .ValidatorsCount}}</div>
                     </div>
                     <div class="row border-bottom p-3 mx-0">
                         <div class="col-md-3">Avg. Validator Balance:</div>
@@ -246,11 +246,11 @@
                             <tbody>
                             {{range .Blocks}}
                                 <tr>
-                                    <td><a href="/block/{{.Slot}}">{{.Slot}}</a></td>
+                                    <td><a href="/block/{{.Slot}}">{{formatAddCommas .Slot}}</a></td>
                                     <td class="text-capitalize">{{formatBlockStatus .Status}}</td>
                                     <td aria-ethereum-date="{{.Ts.Unix}}"
                                         aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
-                                    <td><a href="/validator/{{.Proposer}}">{{.Proposer}}</a></td>
+                                    <td><a href="/validator/{{.Proposer}}">{{formatAddCommas .Proposer}}</a></td>
                                     <td class="text-monospace">
                                         {{ if eq .Status 1}}
                                             <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}
