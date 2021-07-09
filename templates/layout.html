@@ -757,9 +757,15 @@
                     <div class="col">
                         <span>By using our site you agree to our <a href="/legal/privacy.pdf">use of cookies</a> to deliver a better user experience.</span>
                     </div>
-                    <div class="col-3 d-flex justify-content-center align-items-center">
-                        <button class="btn btn-primary btn" style="margin-left: 1%" onclick="acceptCookieBanner()">Got it</button>
-                    <div>
+                    
+                </div>
+                <div class="row">
+                    
+                    <div class="col d-flex justify-content-end align-items-end">
+                        <button class="btn btn-secondary btn" style="margin-left: 1%" onclick="acceptOnlyNecessaryCookies()">Only Necesarry</button>
+                        <button class="btn btn-primary btn" style="margin-left: 1%" onclick="acceptCookieBanner()">Accept All Cookies</button>
+                        <div>
+   
                 </div>
             </div>
         </div>
@@ -902,6 +908,10 @@
                 document.cookie = "cookie=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
                 hideCookieBanner()
         }
+        function acceptOnlyNecessaryCookies() {
+                document.cookie = "cookie=accepted-necessary;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+                hideCookieBanner()
+        }
         
         if (document.cookie.indexOf("cookie=accepted")!=-1){
             hideCookieBanner()
@@ -917,8 +927,16 @@
     <script src="/js/instant.min.js" type="module"></script>
     {{ if ne .Meta.GATag ""}}
         <!-- Global site tag (gtag.js) - Google Analytics -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>
+        
         <script>
+            if (document.cookie.indexOf("cookie=accepted-necessary") == -1){
+                document.write('<script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>');
+            } 
+        </script>
+
+
+        <script>
+
             window.dataLayer = window.dataLayer || [];
 
             function gtag() {
