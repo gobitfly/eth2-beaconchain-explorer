@@ -930,7 +930,8 @@
         
         <script>
             if (document.cookie.indexOf("cookie=accepted-necessary") == -1){
-                document.write('<script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>');
+                let src = 'https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}';
+                document.write('<script async src="'+src+'"><\/script>');
             } 
         </script>
 
