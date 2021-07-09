@@ -933,7 +933,7 @@
                 let src = 'https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}';
                 let a = document.createElement('script');
                 a.src = src;
-                document.appendChild(a);
+                document.body.appendChild(a);
             } 
         </script>
 
