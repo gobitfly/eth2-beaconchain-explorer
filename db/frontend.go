@@ -426,7 +426,7 @@ func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
 func GetStatsMachineCount(tx *sql.Tx, userID uint64) (uint64, error) {
 	var count uint64
 	row := tx.QueryRow(
-		"SELECT COUNT(DISTINCT sub.machine) as count FROM (SELECT machine from stats_meta WHERE user_id = $1 AND created_trunc + '15 minutes'::INTERVAL > 'now' order by id desc LIMIT 15) sub",
+		"SELECT COUNT(DISTINCT sub.machine) as count FROM (SELECT machine from stats_meta WHERE user_id = $1 AND created_trunc + '15 minutes'::INTERVAL > 'now' LIMIT 15) sub",
 		userID,
 	)
 	err := row.Scan(&count)
