@@ -108,6 +108,7 @@ type Config struct {
 		AppSubsAppleSecret     string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
 		AppSubsGoogleJSONPath  string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
 		CleanupOldMachineStats bool   `yaml:"cleanupOldMachineStats" envconfig:"FRONTEND_CLEANUP_OLD_MACHINE_STATS"`
+		DisableStatsInserts    bool   `yaml:"disableStatsInserts" envconfig:"FRONTEND_DISABLE_STATS_INSERTS"`
 		ShowDonors             struct {
 			Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
 			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`

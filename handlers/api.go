@@ -1452,6 +1452,11 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 	w.Header().Set("Content-Type", "application/json")
 	j := json.NewEncoder(w)
 
+	if utils.Config.Frontend.DisableStatsInserts {
+		sendErrorResponse(j, r.URL.String(), "service temporarily unavailable")
+		return
+	}
+
 	userData, err := db.GetUserIdByApiKey(apiKey)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "no user found with api key")
@@ -1472,7 +1477,7 @@ func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine str
 		err = json.Unmarshal(body, &jsonObject)
 		if err != nil {
 			logger.Errorf("Could not parse stats (meta stats) general | %v ", err)
-			sendErrorResponse(j, r.URL.String(), "could not parse meta")
+			sendErrorResponse(j, r.URL.String(), "capi rate limit reached, one process per machine per user each minute is allowed.")
 			return
 		}
 		jsonObjects = []map[string]interface{}{jsonObject}
