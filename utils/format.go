@@ -525,6 +525,18 @@ func FormatValidatorStatus(status string) template.HTML {
 	return "<b>Unknown</b>"
 }
 
+func formatSpecialTag(tag []string) string {
+	tagType := tag[len(tag)-1]
+	tagName := strings.Split(tag[0], " ")
+	if len(tagName) > 1 {
+		_, err := strconv.ParseInt(tagName[len(tagName)-1], 10, 64)
+		if err == nil {
+			return fmt.Sprintf(`<span class="badge bg-dark text-light">%s | %s</span>`, tagName[0], tagType)
+		}
+	}
+	return fmt.Sprintf(`<span class="badge bg-dark text-light">%s | %s</span>`, tag[0], tagType)
+}
+
 // FormatValidatorTag will return html formated text of a validator-tag.
 // Depending on the tag it will describe the tag in a tooltip and link to more information regarding the tag.
 func FormatValidatorTag(tag string) template.HTML {
@@ -535,7 +547,12 @@ func FormatValidatorTag(tag string) template.HTML {
 	case "ssv":
 		result = fmt.Sprintf(`<span style="background:orange;" class="badge text-dark" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
 	default:
-		result = fmt.Sprintf(`<span class="badge bg-dark text-light">%s</span>`, tag)
+		tagType := strings.Split(tag, ":")
+		if len(tagType) > 1 {
+			result = formatSpecialTag(tagType)
+		} else {
+			result = fmt.Sprintf(`<span class="badge bg-dark text-light">%s</span>`, tag)
+		}
 	}
 	return template.HTML(result)
 }
