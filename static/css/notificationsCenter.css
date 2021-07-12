@@ -1,0 +1,93 @@
+.badge-custom-size { font-size: .82rem }
+.breadcrumb-custom {
+  background-color: transparent;
+  padding: 0;
+}
+.checkbox-custom-size { 
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.container-height { height: 650px }
+.container-max-width { max-width: 300px }
+.container-min-width { min-width: 300px }
+/* TODO: replace with defined color variable */
+.custom-background-color { background-color: #fdfdfd }
+.custom-border-radius { border-radius: .5rem }
+.custom-delete-modal { 
+  min-width: 280px;
+  padding: 3.5rem 4rem 3rem;
+}
+.heading { font-size: 1.8rem }
+.heading-l2 { font-size: 1.6rem }
+.heading-l3 { font-size: 1.1rem }
+.heading-l4 { 
+  font-size: .85rem;
+  font-weight: 300;
+}
+.heading-section { height: 60px }
+.icon { 
+  font-size: 2.4rem;
+  color: #5E3F6B;
+}
+.input-search { 
+  width: 100%;
+  background-color: #f1f1f1;
+  border: none;
+  border-radius: .5rem 0 0 .5rem;
+}
+.input-search::placeholder { 
+  font-size: .9rem;
+  font-weight: 400;
+}
+.metrics-section { min-height: 120px }
+.metric-card { width: auto }
+.metric-card-row { height: 100% }
+/* TODO: make the color #8186F1 on dark theme */
+.metric-value { 
+  text-align: left;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #5E3F6B
+}
+/* TODO: same, replace with defined color variable */
+.metric-description { 
+  display: block;
+  font-size: .75rem;
+  font-weight: 400;
+  color: #343a40;
+}
+.text-empty-section { height: 200px }
+.validators-container-min-height { min-height: 900px }
+/* tables */
+div.dataTables_info {
+  padding-top: 2.15rem !important;
+  font-size: .9rem;
+  text-align: left !important;
+}
+div.dataTables_filter {
+  padding-right: 0 !important;
+  text-align: right !important;
+}
+div.dataTables_scrollBody {
+  background: none !important;
+}
+.row-selected {
+  background-color: #e6e6e6 !important;
+}
+/* custom scrollbar */
+.scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar::-webkit-scrollbar-track {
+  background-color: #ebebeb;
+  -webkit-border-radius: 10px;
+  border-radius: 10px;
+}
+.scrollbar::-webkit-scrollbar-thumb {
+  -webkit-border-radius: 10px;
+  border-radius: 10px;
+  background: #6d6d6d; 
+}
+.scrollbar {
+  scrollbar-color: #6d6d6d #ebebeb;
+}

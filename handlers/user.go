@@ -28,6 +28,7 @@ import (
 
 var userTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/settings.html"))
 var notificationTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notifications.html"))
+var notificationsCenterTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/notificationsCenter.html"))
 var authorizeTemplate = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/authorize.html"))
 
 func UserAuthMiddleware(next http.Handler) http.Handler {
@@ -264,6 +265,28 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	data.User = user
 
 	err = notificationTemplate.ExecuteTemplate(w, "layout", data)
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+}
+
+// UserNotificationsCenter renders the notificationsCenter template
+func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	userNotificationsCenterData := &types.UserNotificationsPageData{}
+
+	user := getUser(w, r)
+
+	userNotificationsCenterData.Flashes = utils.GetFlashes(w, r, authSessionName)
+	userNotificationsCenterData.CsrfField = csrf.TemplateField(r)
+
+	data := InitPageData(w, r, "user", "/user", "")
+	data.Data = userNotificationsCenterData
+	data.User = user
+
+	err := notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

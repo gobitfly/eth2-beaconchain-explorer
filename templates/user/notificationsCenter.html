@@ -1,0 +1,782 @@
+{{ define "js" }}
+<!-- 
+	<script type="text/javascript" src="/js/datatables.min.js"></script> -->
+
+	<!-- used for testing. go to https://datatables.net/download/ , create and download min.js file -->
+	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.25/fh-3.1.9/r-2.2.9/sc-2.0.4/sl-1.3.3/datatables.min.css" />
+	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.25/fh-3.1.9/r-2.2.9/sc-2.0.4/sl-1.3.3/datatables.min.js"></script>
+
+	<script>
+		const data = {
+			metrics: {
+				validators: 5,
+				notifications: 10,
+				attestationsSubmitted: 1,
+				attestationsMissed: 1,
+				proposalsSubmitted: 2,
+				proposalsMissed: 0
+			},
+			monitoring: [
+				{
+					id: 1,
+					notification: "CPU",
+					threshold: 0.8,
+					machine: "machine1",
+					mostRecent: 1626078050
+				},
+				{
+					id: 2,
+					notification: "HDD",
+					threshold: 0.8,
+					machine: "machine1",
+					mostRecent: 1625894270
+				},
+				{
+					id: 3,
+					notification: "Offline",
+					threshold: 0.8,
+					machine: "machine1",
+					mostRecent: 1625627930
+				},
+				{
+					id: 4,
+					notification: "CPU",
+					threshold: 0.9,
+					machine: "machine2",
+					mostRecent: 1625721407
+				},
+				{
+					id: 5,
+					notification: "HDD",
+					threshold: 0.9,
+					machine: "machine2",
+					mostRecent: 1625721527
+				},
+				{
+					id: 6,
+					notification: "Offline",
+					threshold: 0.9,
+					machine: "machine2",
+					mostRecent: 1625807927
+				},
+				{
+					id: 7,
+					notification: "CPU",
+					threshold: 0.7,
+					machine: "machine3",
+					mostRecent: 1625808407
+				},
+				{
+					id: 8,
+					notification: "HDD",
+					threshold: 0.7,
+					machine: "machine3",
+					mostRecent: 1625203607
+				},
+				{
+					id: 9,
+					notification: "Offline",
+					threshold: 0.7,
+					machine: "machine3",
+					mostRecent: 1622615145
+				},
+				{
+					id: 10,
+					notification: "CPU",
+					threshold: 0.6,
+					machine: "machine4",
+					mostRecent: 1622615148
+				}
+			],
+			network: [
+				{
+					notification: "Finality issues",
+					network: "Beaconchain",
+					mostRecent: 1622615148
+				},
+				{
+					notification: "Finality issues",
+					network: "Beaconchain",
+					mostRecent: 1622615145
+				},
+				{
+					notification: "Finality issues",
+					network: "Beaconchain",
+					mostRecent: 1625203607
+				},
+				{
+					notification: "Finality issues",
+					network: "Beaconchain",
+					mostRecent: 1625808407
+				},
+				{
+					notification: "Finality issues",
+					network: "Beaconchain",
+					mostRecent: 1625807927
+				},
+				{
+					notification: "Finality issues",
+					network: "Beaconchain",
+					mostRecent: 1625721527
+				},
+				{
+					notification: "Finality issues",
+					network: "Beaconchain",
+					mostRecent: 1625721407
+				},
+				{
+					notification: "Finality issues",
+					network: "Beaconchain",
+					mostRecent: 1625627930
+				},
+				{
+					notification: "Finality issues",
+					network: "Beaconchain",
+					mostRecent: 1625894270
+				},
+				{
+					notification: "Finality issues",
+					network: "Beaconchain",
+					mostRecent: 1626078050
+				}
+			],
+			validators: [
+				{
+					validator: { index: 1, pubkey: "0xa1d1ad ..." },
+					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed" ],
+					mostRecent: { notification: "Attestations missed", timestamp: 1617427430 }
+				},
+				{
+					validator: { index: 2, pubkey: "0xb2ff47 ..." },
+					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted" ],
+					mostRecent: { notification: "Balance decrease", timestamp: 1620030169 }
+				},
+				{
+					validator: { index: 3, pubkey: "0x8e323f ..." },
+					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed" ],
+					mostRecent: { notification: "Proposals missed", timestamp: 1614687712 }
+				},
+				{
+					validator: { index: 4, pubkey: "0xa62420 ..." },
+					notifications: [ "Attestations missed",  "Balance decrease" ],
+					mostRecent: { notification: "Proposals submitted", timestamp: 1622557312 }
+				},
+				{
+					validator: { index: 5, pubkey: "0xb2ce0f ..." },
+					notifications: [ "Attestations missed" ],
+					mostRecent: { notification: "Validator slashed", timestamp: 1619878855 }
+				},
+				{
+					validator: { index: 6, pubkey: "0xa16c53 ..." },
+					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed" ],
+					mostRecent: { notification: "Validator slashed", timestamp: 	1612617898 }
+				},
+				{
+					validator: { index: 7, pubkey: "0xa25da1..." },
+					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted" ],
+					mostRecent: { notification: "Proposals submitted", timestamp: 1626006179 }
+				},
+				{
+					validator: { index: 8, pubkey: "0x8078c7 ..." },
+					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed" ],
+      		mostRecent: { notification: "Proposals missed", timestamp: 1626031079 }
+				},
+				{
+					validator: { index: 9, pubkey: "0xb016e3 ..." },
+					notifications: [ "Attestations missed",  "Balance decrease" ],
+					mostRecent: { notification: "Balance decrease", timestamp: 1620677579 }
+				},
+				{
+					validator: { index: 10, pubkey: "0x8efba2 ..." },
+					notifications: [ "Validator slashed" ],
+					mostRecent: { notification: "Attestations missed", timestamp: 1619878855 }
+				}
+			]
+		};
+
+
+		for (let key in data.metrics) {
+			if (data.metrics.hasOwnProperty(key)) document.getElementById(key).innerHTML = data.metrics[key]
+		}
+
+		function loadMonitoringData(data) {
+			let monitoringTable = $('#monitoringNotifications');
+
+			monitoringTable.DataTable ({
+				language: {
+					info: '_TOTAL_ records',
+					infoEmpty: 'No records match',
+					infoFiltered: '(from _MAX_ records)',
+					zeroRecords: 'No records match',
+					searchPlaceholder: 'Search ...',
+					search: ''
+				},
+				rowId: 'id',
+				processing: true,
+				responsive: true,
+				scroller: true,
+				scrollY: 380,
+				paging: true,
+				data: data,
+				initComplete: function(settings, json) {
+					$('body').find('.dataTables_scrollBody').addClass('scrollbar');
+
+
+					// add on click event to edit button
+					$('#monitoringNotifications .edit-btn').on('click',  function(e) {
+						const threshold_editable_placeholder = $(this).parent().find('.threshold_non_editable_text').text();
+			
+						$(this).parent().parent().find('.threshold_non_editable').css('display', 'none');
+						$(this).parent().parent().find('.threshold_editable').removeAttr('hidden');
+						$(this).parent().parent().find('.threshold_editable:text').attr('placeholder', threshold_editable_placeholder);
+					});
+
+					// add on enter press event to threshold input
+					$('.threshold_editable').on('keypress', function(e){
+						if (e.which == 13) {
+							var rowId = $(this).parent().parent().attr('id');
+							var newThreshold = $(this).val();
+							
+							// validate input
+							var isValid = false;
+							if (isNaN(newThreshold) == false) {
+								const parsed = parseInt(newThreshold, 10);
+								if (isNaN(parsed)) {
+									isValid = false;
+								} else {
+									if (parsed > 0 && parsed <= 100) {
+										newThreshold =  parsed/100;
+										isValid = true;
+									}else {
+										isValid = false;
+									}
+								}
+							} else {
+								isValid = false;
+							}
+
+							
+							if (isValid) {
+								
+								index = data.findIndex(function(item) {
+									return item.id.toString() == rowId.toString();
+								});
+
+								data[index].threshold = newThreshold;
+
+								// destroy and reload datatable
+								$('#monitoringNotifications').DataTable().clear().destroy();
+								loadMonitoringData(data);
+							} else {
+								// show error message
+								alert("Please enter an integer between 1 and 100.")
+							}
+
+						}
+					});
+
+				},
+				columnDefs: [
+					{
+						targets: '_all',
+						createdCell: function (td, cellData, rowData, row, col) {
+							$(td).css('padding-top', '20px');
+							$(td).css('padding-bottom', '20px');
+            }
+					},
+					{
+						targets: 0,
+						responsivePriority: 1,
+    				data: 'notification',
+						render: function (data, type, row, meta) {
+							return '<span class="badge badge-pill badge-primary badge-custom-size">' + data + '</span>';
+						}
+					},
+					{
+						targets: 1,
+						responsivePriority: 3,
+    				data: 'threshold',
+						render: function (data, type, row, meta) { 
+							return '<input type="text" class="form-control input-sm threshold_editable" name="monitoringNotifications_threshold" id="monitoringNotifications_threshold" value="" title="Numbers only, please." style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + data*100 + '%</span> <i class="fas fa-pen fa-xs text-muted edit-btn" title="Click to edit" style="cursor: pointer;"></i></span>';
+						}
+					},
+					{
+						targets: 2,
+						responsivePriority: 2,
+    				data: 'machine'
+					},
+					{
+						targets: 3,
+						responsivePriority: 1,
+    				data: 'mostRecent',
+						render: function (data, type, row, meta) {
+							// for sorting and type checking use the original data (unformatted)
+							if (type == 'sort' || type == 'type'){
+								return data;
+							}
+							return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" })}</span>`;
+						}
+					},
+					{
+						targets: 4,
+						orderable: false,
+						responsivePriority: 3,
+						data: null,
+						defaultContent: '<i class="fas fa-times fa-lg" title="Remove notification" style="color: #f82e2e; cursor: pointer;"></i>'
+        	}
+				]
+			});
+		}
+
+		function loadNetworkData(data) {
+			let networkTable = $('#networkNotifications');
+
+			networkTable.DataTable ({
+				language: {
+					info: '_TOTAL_ records',
+					infoEmpty: 'No records match',
+					infoFiltered: '(from _MAX_ records)',
+					zeroRecords: 'No records match',
+					searchPlaceholder: 'Search ...',
+					search: ''
+				},
+				processing: true,
+				responsive: true,
+				scroller: true,
+  			scrollY: 380,
+				paging: true,
+				data: data,
+				initComplete: function(settings, json) {
+					$('body').find('.dataTables_scrollBody').addClass('scrollbar');
+				},
+				columnDefs: [
+					{
+						targets: '_all',
+						createdCell: function (td, cellData, rowData, row, col) {
+              $(td).css('padding-top', '20px');
+							$(td).css('padding-bottom', '20px');
+            }
+					},
+					{
+						targets: 0,
+						responsivePriority: 1,
+    				data: 'notification',
+						render: function (data, type, row, meta) {
+							return '<span class="badge badge-pill badge-primary badge-custom-size">' + data + '</span>';
+						}
+					},
+					{
+						targets: 1,
+						responsivePriority: 2,
+    				data: 'network'
+					},
+					{
+						targets: 2,
+						orderable: false,
+						responsivePriority: 3,
+    				data: null,
+						defaultContent: `
+						<div class="form-check">
+  						<input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
+  						<label class="form-check-label" for=""></label>
+						</div>
+						`
+					},
+					{
+						targets: 3,
+						orderable: false,
+						responsivePriority: 3,
+    				data: null,
+						defaultContent: `
+						<div class="form-check">
+  						<input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
+  						<label class="form-check-label" for=""></label>
+						</div>
+						`
+					},
+					{
+						targets: 4,
+						orderable: false,
+						responsivePriority: 3,
+    				data: null,
+						defaultContent: `
+						<div class="form-check">
+  						<input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
+  						<label class="form-check-label" for=""></label>
+						</div>
+						`
+					},
+					{
+						targets: 5,
+						responsivePriority: 1,
+    				data: 'mostRecent',
+						render: function (data, type, row, meta) {
+							// for sorting and type checking use the original data (unformatted)
+							if (type == 'sort' || type == 'type'){
+								return data;
+							}
+							return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" })}</span>`;
+						}
+					}
+				]
+			});
+		}
+
+		function loadValidatorsData(data) {
+			let validatorsTable = $('#validatorsNotifications');
+	
+			validatorsTable.DataTable ({
+				language: {
+					info: '_TOTAL_ entries',
+					infoEmpty: 'No entries match',
+					infoFiltered: '(from _MAX_ entries)',
+					zeroRecords: 'No entries match',
+					searchPlaceholder: 'Search ...',
+					search: ''
+				},
+				processing: true,
+				responsive: true,
+				// scroller: true,
+  			// scrollY: 610,
+				paging: true,
+				pagingType: 'first_last_numbers',
+				select: {
+					items: 'row',
+					blurable: true,
+					className: 'row-selected'
+				},
+				fixedHeader: true,
+				data: data,
+				initComplete: function(settings, json) {
+					$('body').find('.dataTables_scrollBody').addClass('scrollbar');
+
+				},
+				columnDefs: [
+					{
+						targets: '_all',
+						createdCell: function (td, cellData, rowData, row, col) {
+              $(td).css('padding-top', '20px');
+							$(td).css('padding-bottom', '20px');
+            }
+					},
+					{
+						targets: 0,
+						responsivePriority: 1,
+						data: 'validator',
+						render: function (data, type, row, meta) {
+							return '<span>' + data.index + '</span>' + '<span class="heading-l4 d-block mt-2">' + data.pubkey + '</span>';
+						}
+					},
+					{
+						targets: 1,
+						responsivePriority: 2,
+						data: 'notifications',
+						render: function (data, type, row, meta) {
+							let result = '';
+							for(let notification in data) {
+								result += '<span class="badge badge-pill badge-primary badge-custom-size my-1 mr-1">' + data[notification] + '</span>' 
+							}
+							return '<div style="white-space: normal; max-width: 400px;">' + result + '</div>' + ' <i class="fas fa-pen fa-xs text-muted" title="Click to edit validator notifications" style="cursor: pointer;"></i>';
+						}
+					},
+					{
+						targets: 2,
+						orderable: false,
+						responsivePriority: 4,
+						data: null,
+						defaultContent: `
+						<div class="form-check">
+  						<input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
+  						<label class="form-check-label" for=""></label>
+						</div>
+						`
+					},
+					{
+						targets: 3,
+						orderable: false,
+						responsivePriority: 4,
+						data: null,
+						defaultContent: `
+						<div class="form-check">
+  						<input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
+  						<label class="form-check-label" for=""></label>
+						</div>
+						`
+					},
+					{
+						targets: 4,
+						orderable: false,
+						responsivePriority: 4,
+						data: null,
+						defaultContent: `
+						<div class="form-check">
+  						<input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
+  						<label class="form-check-label" for=""></label>
+						</div>
+						`
+					},
+					{
+						targets: 5,
+						responsivePriority: 1,
+						data: 'mostRecent',
+						render: function (data, type, row, meta) {
+							// for sorting and type checking use the original data (unformatted)
+							if (type == 'sort' || type == 'type'){
+								return data.timestamp;
+							}
+							return '<span class="badge badge-pill badge-primary badge-custom-size mr-1 mr-sm-3">' + data.notification + '</span>' + `<span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data.timestamp * 1000).toRelative({ style: "long" })}</span>`;
+						}
+					},
+					{
+						targets: 6,
+						orderable: false,
+						responsivePriority: 3,
+						data: null,
+						defaultContent: '<i class="fas fa-times fa-lg  row-btn" title="Remove validator" style="color: #f82e2e; cursor: pointer;"></i>'
+        	}
+				]
+			});
+		}
+
+		$(document).ready(function () {
+			loadMonitoringData(data.monitoring);
+			loadNetworkData(data.network);
+			loadValidatorsData(data.validators);
+
+
+
+			$('.row-btn').on('click', function () {
+        alert('BOOM');
+    	});
+		});
+	</script>
+{{ end }} 
+
+{{ define "css" }}<link rel="stylesheet" type="text/css" href="/css/notificationsCenter.css" />{{ end }}
+
+{{ define "content" }}
+	<div class="container-fluid container-xl container-min-width container-custom"> 
+		<div class="row d-flex align-items-center justify-content-start ml-1 my-2">
+			<nav aria-label="breadcrumb">
+				<ol class="breadcrumb font-size-1 mb-0 breadcrumb-custom">
+					<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+					<li class="breadcrumb-item active" aria-current="page">Notifications</li>
+				</ol>
+			</nav>
+		</div>
+		<div class="row d-flex align-items-center justify-content-between mx-0 my-5 container-min-width heading-section">
+			<div class="col-12 col-md pl-0 heading">
+				<h1 class="heading text-nowrap">Notifications Center</h1>
+        <h2 class="heading-l3 text-muted">Manage the notifications you want to receive</h2>
+			</div>
+		</div>
+		<div class="row flex-sm-nowrap mx-0 my-2 container-min-width metrics-section">
+		  <div class="col-12 col-sm col-xl mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
+			  <div class="row d-flex align-items-center mx-1 metric-card-row">
+				  <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
+					  <i class="fas fa-user"></i>
+				  </div>
+				  <div class="col-9 col-sm-8 col-xl-8 metric-value">
+						<span id="validators"></span>
+					  <span class="metric-description">validators in your list</span>
+				  </div>
+			  </div>
+		  </div>
+			<div class="col-12 col-sm col-xl mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
+				<div class="row d-flex align-items-center mx-1 metric-card-row">
+					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
+						<i class="fas fa-bell"></i>
+					</div>
+					<div class="col-9 col-sm-8 col-xl-8 metric-value">
+						<span id="notifications"></span>
+						<span class="metric-description">notifications received / 24h</span>
+					</div>
+				</div>
+			</div>
+			<div class="col d-none d-lg-block mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
+				<div class="row d-flex align-items-center mx-1 metric-card-row">
+					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
+						<i class="fas fa-envelope-open-text"></i>
+					</div>
+					<div class="col-9 col-sm-8 col-xl-8 metric-value">
+						<span id="attestationsSubmitted"></span>
+						<span class="metric-description">attestations submitted / 24h</span>
+					</div>
+				</div>
+			</div>
+			<div class="col d-none d-lg-block mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
+				<div class="row d-flex align-items-center mx-1 metric-card-row">
+					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
+						<i class="fas fa-bullseye"></i>
+					</div>
+					<div class="col-9 col-sm-8 col-xl-8 metric-value">
+						<span id="attestationsMissed"></span>
+						<span class="metric-description">attestations missed / 24h</span>
+					</div>
+				</div>
+			</div>
+			<div class="col d-none d-lg-block mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
+				<div class="row d-flex align-items-center mx-1 metric-card-row">
+					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
+						<i class="fas fa-envelope-open-text"></i>
+					</div>
+					<div class="col-9 col-sm-8 col-xl-8 metric-value">
+						<span id="proposalsSubmitted"></span>
+						<span class="metric-description">proposals submitted / 24h</span>
+					</div>
+				</div>
+			</div>
+			<div class="col d-none d-lg-block mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
+				<div class="row d-flex align-items-center mx-1 metric-card-row">
+					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
+						<i class="fas fa-bullseye"></i>
+					</div>
+					<div class="col-9 col-sm-8 col-xl-8 metric-value">
+						<span id="proposalsMissed"></span>
+						<span class="metric-description">proposals missed / 24h</span>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="row flex-xl-nowrap mx-0 my-3 container-min-width">
+			<div class="col-12 col-xl shadow p-1 mb-3 container-height custom-border-radius custom-background-color">
+				<div class="d-flex flex-column align-items-start flex-sm-row align-items-sm-center justify-content-sm-between mx-3 mb-2">
+					<div class="mt-3">
+						<h2 class="heading-l2">Monitoring Notifications</h2>
+					</div>
+					<button type="button" class="btn btn-primary btn-sm ml-sm-3">
+						<i class="fas fa-plus"></i>
+						<span class="text-nowrap">Add event</span>
+					</button>
+				</div>
+				{{ if false }}
+					<!-- TODO: add button redirecting to app?! -->
+					<div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
+						<i class="far fa-frown mb-3 icon"></i>
+						<h3 class="heading-l3">No recent notifications</h3>
+					</div>
+				{{ else }}
+					<div class="px-0 px-md-3 py-1">
+						<table class="table table-borderless table-hover" id="monitoringNotifications">
+							<thead bgcolor="#fdfdfd">
+								<tr>
+									<th scope="col" class="h6 border-bottom-0">Notification</th>
+									<th scope="col" class="h6 border-bottom-0">Threshold</th>
+                  <th scope="col" class="h6 border-bottom-0">Machine</th>
+									<th scope="col" class="h6 border-bottom-0">Most Recent</th>
+									<th scope="col" class="h6 border-bottom-0"></th>
+								</tr>
+							</thead>
+							<tbody></tbody>
+						</table>
+					</div>
+				{{ end }}
+			</div>
+			<div class="col-12 col-xl mt-3 mt-xl-0 ml-xl-3 shadow p-1 mb-3 container-height custom-border-radius custom-background-color">
+				<div class="row align-items-center mx-3 mt-3">
+					<div class="col-12 col-sm px-0">
+						<h2 class="heading-l2">Network</h2>
+					</div>
+				</div>
+				{{ if false }}
+					<div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
+						<i class="far fa-frown mb-3 icon"></i>
+						<h3 class="heading-l3">You don't have any notifications</h3>
+					</div>
+				{{ else }}
+					<div class="px-0 px-md-3 py-1">
+						<table class="table table-borderless table-hover" id="networkNotifications">
+							<thead bgcolor="#fdfdfd">
+								<tr>
+									<th scope="col" class="h6 border-bottom-0">Notification</th>
+									<th scope="col" class="h6 border-bottom-0">Network</th>
+                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
+                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-envelope fa-lg"></i></th>
+                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
+									<th scope="col" class="h6 border-bottom-0">Most Recent</th>
+								</tr>
+							</thead>
+							<tbody></tbody>
+						</table>
+					</div>
+				{{ end }}
+			</div>
+		</div>
+		<div class="mx-0 my-3 shadow p-1 mb-3 container-min-width validators-container-min-height custom-border-radius custom-background-color">
+			<div class="row d-flex flex-lg-nowrap align-items-center mx-3 mt-3 py-2">
+				<div class="col-12 col-md-3 d-flex justify-content-start px-0">
+					<h2 class="heading-l2 mb-2 mb-md-0">Validators</h2>
+				</div>
+				<div class="col-12 col-md-9 d-flex justify-content-end px-0">
+					<button type="button" class="btn btn-outline-dark btn-sm ml-3" title="Manage the notifications you receive">
+						<i class="fas fa-cog"></i>
+						<span class="d-none d-sm-inline-block text-nowrap">Manage notifications</span>
+					</button>
+					<button type="button" class="btn btn-outline-danger btn-sm ml-3" data-toggle="modal" data-target="#removeValidatorsModal" title="Remove all validators from your list">
+						<i class="fas fa-times"></i>
+						<span class="d-none d-sm-inline-block text-nowrap">Remove all</span>
+					</button>
+					<button type="button" class="btn btn-primary btn-sm ml-3">
+						<i class="fas fa-plus"></i>
+						<span class="d-none d-sm-inline-block text-nowrap">Add validator</span>
+					</button>
+				</div>
+			</div>
+			{{ if false }}
+				<!-- TODO: modify according to new design -->
+				<div class="mx-sm-auto mt-5 text-sm-center text-empty-section">
+					<h3 class="heading-l3">Start adding Validators to your Watchlist</h3>
+					<div class="my-2 my-md-4">
+						<div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0">
+							<div class="my-2 my-md-0">
+								<input type="text" placeholder="Search and add validators..." aria-label="Search" class="input-search add-input-custom" />
+							</div>
+							<div>
+								<button type="button" class="btn btn-primary btn-lg btn-custom">
+									<i class="fas fa-plus"></i>
+									<span class="d-none d-lg-inline-block text-nowrap">Add Validators</span>
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			{{ else }}
+				<div class="px-3 py-3">
+					<table class="table table-borderless table-hover border-0" id="validatorsNotifications">
+						<thead bgcolor="#fdfdfd">
+							<tr>
+								<th scope="col" class="h6 border-bottom-0">Validator</th>
+								<th scope="col" class="h6 border-bottom-0">Notifications</th>
+                <th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
+                <th scope="col" class="h6 border-bottom-0"><i class="fas fa-envelope fa-lg"></i></th>
+                <th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
+								<th scope="col" class="h6 border-bottom-0">Most Recent</th>
+								<th scope="col" class="h6 border-bottom-0"></th>
+							</tr>
+						</thead>
+						<tbody></tbody>
+					</table>
+				</div>
+			{{ end }}
+		</div>
+	</div>
+	
+  <!-- TODO: add x button to close the modal -->
+  <div class="modal fade" id="removeValidatorsModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="removeValidatorsLabel" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered" role="document">
+			<div class="modal-content custom-delete-modal row mx-0">
+				<div class="col-12 d-flex align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
+					Are you sure you want to remove all validators from your Watchlist?
+				</div>
+				<div class="col-12 d-flex align-items-center justify-content-between px-0">
+					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">
+						Cancel
+					</button>
+					<button id="remove-button" type="button" class="btn btn-primary btn-danger btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">
+						Delete
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{{ end }}

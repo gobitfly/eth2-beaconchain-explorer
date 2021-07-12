@@ -349,6 +349,7 @@ func main() {
 			authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
 			authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
+			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
 			authRouter.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
