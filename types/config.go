@@ -50,6 +50,9 @@ type Config struct {
 			EndEpoch   uint64   `yaml:"endEpoch" envconfig:"INDEXER_ONETIMEEXPORT_END_EPOCH"`
 			Epochs     []uint64 `yaml:"epochs" envconfig:"INDEXER_ONETIMEEXPORT_EPOCHS"`
 		} `yaml:"onetimeexport"`
+		PubKeyTagsExporter struct {
+			Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
+		} `yaml:"pubkeyTagsExporter"`
 	} `yaml:"indexer"`
 	Frontend struct {
 		Kong               string `yaml:"kong" envconfig:"FRONTEND_KONG"`
@@ -126,9 +129,6 @@ type Config struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
 		Address string `yaml:"address" envconfig:"SSV_EXPORTER_ADDRESS"`
 	} `yaml:"SSVExporter"`
-	PubKeyTagsExporter struct {
-		Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
-	} `yaml:"pubkeyTagsExporter"`
 }
 
 // Phase0 is the config for beacon chain phase0

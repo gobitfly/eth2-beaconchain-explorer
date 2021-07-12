@@ -6,6 +6,7 @@ import (
 )
 
 func UpdatePubkeyTag() {
+	logger.Infoln("Starting Pubkey Tag updater")
 	for true {
 		tx, err := db.DB.Beginx()
 		if err != nil {

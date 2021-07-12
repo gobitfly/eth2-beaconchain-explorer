@@ -34,7 +34,7 @@ func Start(client rpc.Client) error {
 		go ssvExporter()
 	}
 
-	if utils.Config.PubKeyTagsExporter.Enabled {
+	if utils.Config.Indexer.PubKeyTagsExporter.Enabled {
 		go UpdatePubkeyTag()
 	}
 
