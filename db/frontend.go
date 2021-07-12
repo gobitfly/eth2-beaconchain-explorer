@@ -283,42 +283,57 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 }
 
 func CleanupOldMachineStats() error {
-	deleteCondition := "created_trunc + interval '65 days' < 'now'"
-	allMeta := "( SELECT id FROM stats_meta WHERE " + deleteCondition + " )"
-	general := "( SELECT stats_process.id FROM stats_meta LEFT JOIN stats_process on stats_meta.id = meta_id WHERE " + deleteCondition + " )"
+	deleteCondition := "SELECT max(id) from stats_meta where created_trunc + interval '65 days' < 'now'"
+	deleteConditionGeneral := "SELECT max(id) from stats_process where meta_id <= $1"
+
+	var metaID uint64
+	row := FrontendDB.QueryRow(deleteCondition)
+	err := row.Scan(&metaID)
+	if err != nil {
+		return err
+	}
+
+	var generalID uint64
+	row = FrontendDB.QueryRow(deleteConditionGeneral, metaID)
+	err = row.Scan(&generalID)
+	if err != nil {
+		return err
+	}
 
 	tx, err := FrontendDB.Begin()
+
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec("DELETE FROM stats_system WHERE meta_id IN " + allMeta)
+	_, err = tx.Exec("DELETE FROM stats_system WHERE meta_id <= $1", metaID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_add_beaconnode WHERE general_id IN " + general)
+	_, err = tx.Exec("DELETE FROM stats_add_beaconnode WHERE general_id <= $1", generalID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_add_validator WHERE general_id IN " + general)
+	_, err = tx.Exec("DELETE FROM stats_add_validator WHERE general_id <= $1", generalID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_process WHERE meta_id IN " + allMeta)
+	_, err = tx.Exec("DELETE FROM stats_process WHERE meta_id <= $1", metaID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_meta WHERE " + deleteCondition)
+	_, err = tx.Exec("DELETE FROM stats_meta WHERE id <= $1", metaID)
 	if err != nil {
 		return err
 	}
 
 	err = tx.Commit()
+
 	if err != nil {
 		return err
 	}
