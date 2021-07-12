@@ -126,6 +126,9 @@ type Config struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
 		Address string `yaml:"address" envconfig:"SSV_EXPORTER_ADDRESS"`
 	} `yaml:"SSVExporter"`
+	PubKeyTagsExporter struct {
+		Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
+	} `yaml:"pubkeyTagsExporter"`
 }
 
 // Phase0 is the config for beacon chain phase0

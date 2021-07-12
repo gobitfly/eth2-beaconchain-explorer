@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func UpdatePoolValidatorsTag() {
+func UpdatePubkeyTag() {
 	for true {
 		tx, err := db.DB.Beginx()
 		if err != nil {
@@ -27,6 +27,6 @@ func UpdatePoolValidatorsTag() {
 			logger.WithError(err).Error("Error commiting transaction")
 		}
 		tx.Rollback()
-		time.Sleep(time.Minute * 5)
+		time.Sleep(time.Minute * 10)
 	}
 }
