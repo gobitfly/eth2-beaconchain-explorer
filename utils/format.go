@@ -525,16 +525,28 @@ func FormatValidatorStatus(status string) template.HTML {
 	return "<b>Unknown</b>"
 }
 
-func formatSpecialTag(tag []string) string {
-	tagType := tag[len(tag)-1]
-	tagName := strings.Split(tag[0], " ")
-	if len(tagName) > 1 {
-		_, err := strconv.ParseInt(tagName[len(tagName)-1], 10, 64)
-		if err == nil {
-			return fmt.Sprintf(`<span class="badge bg-dark text-light">%s | %s</span>`, tagName[0], tagType)
+func formatSpecialTag(tag string) string {
+	special_tag := strings.Split(tag, ":")
+	if len(special_tag) > 1 {
+		tagType := special_tag[len(special_tag)-1]
+		if tagType == "Whale" {
+			return fmt.Sprintf(`<span style="font-size: 12px;" class="badge bg-dark text-light">%s</span>`, tagType)
 		}
+		tagName := strings.Split(special_tag[0], " ")
+		if len(tagName) > 1 {
+			_, err := strconv.ParseInt(tagName[len(tagName)-1], 10, 64)
+			if err == nil {
+				name := ""
+				for _, s := range tagName[:len(tagName)-1] {
+					name += s + " "
+				}
+				return fmt.Sprintf(`<span style="font-size: 12px;" class="bg-light text-dark badge px-0"><span class="bg-dark text-light rounded mx-1 px-1">%s</span> %s</span>`, name, tagType)
+			}
+		}
+		return fmt.Sprintf(`<span style="font-size: 12px;" class="bg-light text-dark badge px-0"><span class="bg-dark text-light rounded mx-1 px-1">%s</span> %s</span>`, special_tag[0], tagType)
+	} else {
+		return fmt.Sprintf(`<span style="font-size: 12px;" class="badge bg-dark text-light">%s</span>`, tag)
 	}
-	return fmt.Sprintf(`<span class="badge bg-dark text-light">%s | %s</span>`, tag[0], tagType)
 }
 
 // FormatValidatorTag will return html formated text of a validator-tag.
@@ -543,16 +555,11 @@ func FormatValidatorTag(tag string) template.HTML {
 	var result string
 	switch tag {
 	case "rocketpool":
-		result = fmt.Sprintf(`<span style="background:yellow;" class="badge text-dark" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
+		result = fmt.Sprintf(`<span style="background:yellow; font-size: 12px;" class="badge text-dark" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
 	case "ssv":
-		result = fmt.Sprintf(`<span style="background:orange;" class="badge text-dark" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
+		result = fmt.Sprintf(`<span style="background:orange; font-size: 12px;" class="badge text-dark" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
 	default:
-		tagType := strings.Split(tag, ":")
-		if len(tagType) > 1 {
-			result = formatSpecialTag(tagType)
-		} else {
-			result = fmt.Sprintf(`<span class="badge bg-dark text-light">%s</span>`, tag)
-		}
+		result = formatSpecialTag(tag)
 	}
 	return template.HTML(result)
 }
