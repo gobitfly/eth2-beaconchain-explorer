@@ -76,7 +76,7 @@
 				{
 					id: 9,
 					notification: "Offline",
-					threshold: 0.7,
+					threshold: null,
 					machine: "machine3",
 					mostRecent: 1622615145
 				},
@@ -229,19 +229,27 @@
 				paging: true,
 				data: data,
 				initComplete: function(settings, json) {
+					console.log ('initComplete')
 					$('body').find('.dataTables_scrollBody').addClass('scrollbar');
 
 					// add on click event to table edit button
 					$('#monitoringNotifications .edit-btn').on('click',  function(e) {
-						const threshold_editable_placeholder = $(this).parent().find('#threshold_non_editable_text').text();
+						const threshold_editable_placeholder = $(this).parent().find('.threshold_non_editable_text').text().slice(0, -1);
 			
-						$(this).parent().parent().find('#threshold_non_editable').css('display', 'none');
-						$(this).parent().parent().find('#threshold_editable').removeAttr('hidden');
-						$(this).parent().parent().find('#threshold_editable:text').attr('placeholder', threshold_editable_placeholder);
+						// close all other editable rows
+						$('.threshold_editable').each(function() {
+								$(this).attr('hidden', true);
+								$(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
+						});
+
+
+						$(this).parent().parent().find('.threshold_non_editable').css('display', 'none');
+						$(this).parent().parent().find('.threshold_editable').removeAttr('hidden');
+						$(this).parent().parent().find('.threshold_editable:text').attr('value', threshold_editable_placeholder);
 					});
 
 					// add on enter press event to threshold input
-					$('#threshold_editable').on('keypress', function(e){
+					$('.threshold_editable').on('keypress', function(e){
 						if (e.which == 13) {
 							const rowId = $(this).parent().parent().attr('id');
 							let newThreshold = $(this).val();
@@ -311,7 +319,11 @@
 						responsivePriority: 3,
     				data: 'threshold',
 						render: function (data, type, row, meta) { 
-							return '<input type="text" class="form-control input-sm" name="monitoringNotifications_threshold" id="threshold_editable" value="" title="Numbers only" style="width: 60px; height: 30px;" hidden /><span id="threshold_non_editable"><span id="threshold_non_editable_text">' + data*100 + '%</span> <i class="fas fa-pen fa-xs text-muted edit-btn" title="Click to edit" style="cursor: pointer;"></i></span>';
+							if (!data){
+								return '<span class="threshold_non_editable"> N/A </span>';
+						
+							}
+							return '<input type="text" class="form-control input-sm threshold_editable" name="monitoringNotifications_threshold" value="" title="Numbers only" style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + data*100 + '%</span> <i class="fas fa-pen fa-xs text-muted edit-btn" title="Click to edit" style="cursor: pointer;"></i></span>';
 						}
 					},
 					{
@@ -608,7 +620,6 @@
 					$('#validatorsNotifications').DataTable().clear().destroy();
 				  loadValidatorsData(data.validators);					
 				}
-
 
 			});
 		});
