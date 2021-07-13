@@ -14,7 +14,7 @@ func UpdatePubkeyTag() {
 			// return err
 		}
 		_, err = tx.Exec(`INSERT INTO validator_tags (publickey, tag)
-		SELECT publickey, FORMAT('%s:%s', sps.name, sps.category) tag
+		SELECT publickey, FORMAT('pool:%s', sps.name) tag
 		FROM eth1_deposits
 		inner join stake_pools_stats as sps on ENCODE(from_address::bytea, 'hex')=sps.address
 		ON CONFLICT (publickey, tag) DO NOTHING;`)
