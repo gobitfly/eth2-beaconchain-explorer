@@ -6,8 +6,8 @@ import (
 )
 
 func UpdatePubkeyTag() {
-	logger.Infoln("Starting Pubkey Tag updater")
 	for true {
+		logger.Infoln("Updating Pubkey Tags")
 		tx, err := db.DB.Beginx()
 		if err != nil {
 			logger.WithError(err).Error("Error connecting to DB")
