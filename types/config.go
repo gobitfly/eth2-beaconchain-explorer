@@ -119,9 +119,10 @@ type Config struct {
 		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
 	} `yaml:"metrics"`
 	Notifications struct {
-		Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
-		UserDBNotifications     bool   `yaml:"userDbNotifications" envconfig:"FRONTEND_USERDB_NOTIFICATIONS_ENABLED"`
-		FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
+		Enabled                                       bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"FRONTEND_USERDB_NOTIFICATIONS_ENABLED"`
+		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
+		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"FRONTEND_VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
 	} `yaml:"notifications"`
 	SSVExporter struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
