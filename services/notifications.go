@@ -164,6 +164,8 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 						message := new(messaging.Message)
 						message.Notification = notification
 						message.Token = userToken
+						message.APNS.Payload.Aps.Sound = "default"
+						message.Android.Notification.Sound = "default"
 
 						batch = append(batch, message)
 					}
