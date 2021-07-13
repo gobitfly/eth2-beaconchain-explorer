@@ -534,6 +534,9 @@ func formatPool(tag []string) string {
 			if err == nil {
 				name := ""
 				for _, s := range tagName[:len(tagName)-1] {
+					if s == "-" {
+						continue
+					}
 					name += s + " "
 				}
 				return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 12px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, name)
