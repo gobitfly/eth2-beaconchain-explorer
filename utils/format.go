@@ -540,10 +540,10 @@ func formatSpecialTag(tag string) string {
 				for _, s := range tagName[:len(tagName)-1] {
 					name += s + " "
 				}
-				return fmt.Sprintf(`<span style="font-size: 12px;" class="bg-light text-dark badge px-0"><span class="bg-dark text-light rounded mx-1 px-1">%s</span> %s</span>`, name, tagType)
+				return fmt.Sprintf(`<span style="font-size: 12px;" class="bg-light text-dark badge-pill pr-2 pl-0"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span>`, tagType, name)
 			}
 		}
-		return fmt.Sprintf(`<span style="font-size: 12px;" class="bg-light text-dark badge px-0"><span class="bg-dark text-light rounded mx-1 px-1">%s</span> %s</span>`, special_tag[0], tagType)
+		return fmt.Sprintf(`<span style="font-size: 12px;" class="bg-light text-dark badge-pill pr-2 pl-0"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span>`, tagType, special_tag[0])
 	} else {
 		return fmt.Sprintf(`<span style="font-size: 12px;" class="badge bg-dark text-light">%s</span>`, tag)
 	}
