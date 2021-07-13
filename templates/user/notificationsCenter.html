@@ -229,11 +229,11 @@
 				paging: true,
 				data: data,
 				initComplete: function(settings, json) {
-					console.log ('initComplete')
 					$('body').find('.dataTables_scrollBody').addClass('scrollbar');
 
 					// add on click event to table edit button
 					$('#monitoringNotifications .edit-btn').on('click',  function(e) {
+						e.stopPropagation();
 						const threshold_editable_placeholder = $(this).parent().find('.threshold_non_editable_text').text().slice(0, -1);
 			
 						// close all other editable rows
@@ -247,6 +247,7 @@
 						$(this).parent().parent().find('.threshold_editable').removeAttr('hidden');
 						$(this).parent().parent().find('.threshold_editable:text').attr('value', threshold_editable_placeholder);
 					});
+
 
 					// add on enter press event to threshold input
 					$('.threshold_editable').on('keypress', function(e){
@@ -578,6 +579,18 @@
 			loadMonitoringData(data.monitoring);
 			loadNetworkData(data.network);
 			loadValidatorsData(data.validators);
+
+			$(document).on('click', function(e) {
+					// if click outside input while any threshold input visible
+					// reset value and toggle  non_editable
+					if (e.target.className.indexOf('threshold_editable') < 0){
+						// close all other editable rows
+						$('.threshold_editable').each(function() {
+								$(this).attr('hidden', true);
+								$(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
+						});
+					}
+			});
 
 			$('#remove-all-btn').on('click',  function(e) {
 				$('#modaltext').text($(this).data('modaltext'));
