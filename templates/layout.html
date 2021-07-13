@@ -899,98 +899,101 @@
         }
     </script>
 
-    {{if not .User.Authenticated}}
-    <script>
-        function hideCookieBanner(){
-            $('#cookie-banner').attr("class", "d-none");
-        }
-        function acceptCookieBanner() {
-                document.cookie = "cookie=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+    {{ if not .Meta.NoTrack }}
+        {{if not .User.Authenticated}}
+        <script>
+            function hideCookieBanner(){
+                $('#cookie-banner').attr("class", "d-none");
+            }
+            function acceptCookieBanner() {
+                    document.cookie = "cookie=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+                    hideCookieBanner()
+            }
+            function acceptOnlyNecessaryCookies() {
+                    document.cookie = "cookie=accepted-necessary;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+                    hideCookieBanner()
+            }
+            
+            if (document.cookie.indexOf("cookie=accepted")!=-1){
                 hideCookieBanner()
-        }
-        function acceptOnlyNecessaryCookies() {
-                document.cookie = "cookie=accepted-necessary;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
-                hideCookieBanner()
-        }
-        
-        if (document.cookie.indexOf("cookie=accepted")!=-1){
-            hideCookieBanner()
-        }else{
-            $('#cookie-banner').attr("class", "");
-        }
-    </script>
+            }else{
+                $('#cookie-banner').attr("class", "");
+            }
+        </script>
+        {{end}}
     {{end}}
-
     <script src="/js/clipboard.min.js"></script>
     {{ template "js" .Data }}
 
     <script src="/js/instant.min.js" type="module"></script>
-    {{ if ne .Meta.GATag ""}}
-        <!-- Global site tag (gtag.js) - Google Analytics -->
-        
-        <script>
-            if (document.cookie.indexOf("cookie=accepted-necessary") == -1){
-                let src = 'https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}';
-                let a = document.createElement('script');
-                a.src = src;
-                document.body.appendChild(a);
-            } 
-        </script>
+    {{ if not .Meta.NoTrack }}
+        {{ if ne .Meta.GATag "" }}
+            <!-- Global site tag (gtag.js) - Google Analytics -->
+            
+            <script>
+                if (document.cookie.indexOf("cookie=accepted-necessary") == -1){
+                    let src = 'https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}';
+                    let a = document.createElement('script');
+                    a.src = src;
+                    document.body.appendChild(a);
+                } 
+            </script>
 
 
-        <script>
+            <script>
 
-            window.dataLayer = window.dataLayer || [];
+                window.dataLayer = window.dataLayer || [];
 
-            function gtag() {
-                dataLayer.push(arguments);
-            }
-
-            gtag('js', new Date());
-
-            gtag('config', {{.Meta.GATag}});
-
-            function createFunctionWithTimeout(callback, opt_timeout) {
-                var called = false;
-
-                function fn() {
-                    if (!called) {
-                        called = true;
-                        callback();
-                    }
+                function gtag() {
+                    dataLayer.push(arguments);
                 }
 
-                setTimeout(fn, opt_timeout || 1000);
-                return fn;
-            }
+                gtag('js', new Date());
 
-            function handleOutboundLinkClicks(event) {
-                var link = event.currentTarget.href
-                event.preventDefault();
+                gtag('config', {{.Meta.GATag}});
 
-                var fallback = setTimeout(function () {
-                    window.location = link
-                }, 1000)
+                function createFunctionWithTimeout(callback, opt_timeout) {
+                    var called = false;
 
-                gtag('event', "click", {
-                    event_category: 'Outbound Link',
-                    event_label: link,
-                    event_callback: function () {
-                        clearTimeout(fallback)
-                        window.location = link
+                    function fn() {
+                        if (!called) {
+                            called = true;
+                            callback();
+                        }
                     }
-                });
-            }
 
-            // add event handler for outbound links tagged with ga-outbound
-            var outbounds = document.querySelectorAll('[ga-outbound]')
+                    setTimeout(fn, opt_timeout || 1000);
+                    return fn;
+                }
 
-            for (var i = 0; i < outbounds.length; i++) {
-                var element = outbounds[i];
-                element.addEventListener('click', handleOutboundLinkClicks)
-            }
+                function handleOutboundLinkClicks(event) {
+                    var link = event.currentTarget.href
+                    event.preventDefault();
 
-        </script>
+                    var fallback = setTimeout(function () {
+                        window.location = link
+                    }, 1000)
+
+                    gtag('event', "click", {
+                        event_category: 'Outbound Link',
+                        event_label: link,
+                        event_callback: function () {
+                            clearTimeout(fallback)
+                            window.location = link
+                        }
+                    });
+                }
+
+                // add event handler for outbound links tagged with ga-outbound
+                var outbounds = document.querySelectorAll('[ga-outbound]')
+
+                for (var i = 0; i < outbounds.length; i++) {
+                    var element = outbounds[i];
+                    element.addEventListener('click', handleOutboundLinkClicks)
+                }
+
+            </script>
+        {{end}}
     {{end}}
 
     <script type="text/javascript" async src="/js/revive.min.js"></script>

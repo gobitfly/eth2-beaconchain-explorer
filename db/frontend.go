@@ -283,42 +283,61 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 }
 
 func CleanupOldMachineStats() error {
-	deleteCondition := "created_trunc + interval '65 days' < 'now'"
-	allMeta := "( SELECT id FROM stats_meta WHERE " + deleteCondition + " )"
-	general := "( SELECT stats_process.id FROM stats_meta LEFT JOIN stats_process on stats_meta.id = meta_id WHERE " + deleteCondition + " )"
+	const deleteLIMIT uint64 = 50000 // 200 users make 36000 new inserts per hour
+
+	deleteCondition := "SELECT min(id) from stats_meta where created_trunc + interval '33 days' < 'now'"
+	deleteConditionGeneral := "SELECT min(id) from stats_process where meta_id <= $1"
+
+	var metaID uint64
+	row := FrontendDB.QueryRow(deleteCondition)
+	err := row.Scan(&metaID)
+	if err != nil {
+		return err
+	}
+
+	var generalID uint64
+	row = FrontendDB.QueryRow(deleteConditionGeneral, metaID)
+	err = row.Scan(&generalID)
+	if err != nil {
+		return err
+	}
+	metaID += deleteLIMIT
+	generalID += deleteLIMIT
 
 	tx, err := FrontendDB.Begin()
+
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec("DELETE FROM stats_system WHERE meta_id IN " + allMeta)
+	_, err = tx.Exec("DELETE FROM stats_system WHERE meta_id <= $1", metaID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_add_beaconnode WHERE general_id IN " + general)
+	_, err = tx.Exec("DELETE FROM stats_add_beaconnode WHERE general_id <= $1", generalID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_add_validator WHERE general_id IN " + general)
+	_, err = tx.Exec("DELETE FROM stats_add_validator WHERE general_id <= $1", generalID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_process WHERE meta_id IN " + allMeta)
+	_, err = tx.Exec("DELETE FROM stats_process WHERE meta_id <= $1", metaID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_meta WHERE " + deleteCondition)
+	_, err = tx.Exec("DELETE FROM stats_meta WHERE id <= $1", metaID)
 	if err != nil {
 		return err
 	}
 
 	err = tx.Commit()
+
 	if err != nil {
 		return err
 	}
@@ -411,7 +430,7 @@ func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
 func GetStatsMachineCount(tx *sql.Tx, userID uint64) (uint64, error) {
 	var count uint64
 	row := tx.QueryRow(
-		"SELECT COUNT(DISTINCT sub.machine) as count FROM (SELECT machine from stats_meta WHERE user_id = $1 AND created_trunc + '15 minutes'::INTERVAL > 'now' order by id desc LIMIT 15) sub",
+		"SELECT COUNT(DISTINCT sub.machine) as count FROM (SELECT machine from stats_meta WHERE user_id = $1 AND created_trunc + '15 minutes'::INTERVAL > 'now' LIMIT 15) sub",
 		userID,
 	)
 	err := row.Scan(&count)
