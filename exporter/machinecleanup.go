@@ -21,6 +21,6 @@ func cleanupOldMachineStats() {
 		}
 
 		logger.WithField("duration", time.Since(start)).Info("machineclean completed")
-		time.Sleep(time.Second * 60 * 60 * 12)
+		time.Sleep(time.Second * 60 * 60 * 1)
 	}
 }

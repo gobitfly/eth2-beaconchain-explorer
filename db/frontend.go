@@ -283,8 +283,10 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 }
 
 func CleanupOldMachineStats() error {
-	deleteCondition := "SELECT max(id) from stats_meta where created_trunc + interval '65 days' < 'now'"
-	deleteConditionGeneral := "SELECT max(id) from stats_process where meta_id <= $1"
+	const deleteLIMIT uint64 = 50000 // 200 users make 36000 new inserts per hour
+
+	deleteCondition := "SELECT min(id) from stats_meta where created_trunc + interval '65 days' < 'now'"
+	deleteConditionGeneral := "SELECT min(id) from stats_process where meta_id <= $1"
 
 	var metaID uint64
 	row := FrontendDB.QueryRow(deleteCondition)
@@ -299,6 +301,8 @@ func CleanupOldMachineStats() error {
 	if err != nil {
 		return err
 	}
+	metaID += deleteLIMIT
+	generalID += deleteLIMIT
 
 	tx, err := FrontendDB.Begin()
 
