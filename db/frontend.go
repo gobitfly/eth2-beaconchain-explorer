@@ -285,7 +285,7 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 func CleanupOldMachineStats() error {
 	const deleteLIMIT uint64 = 50000 // 200 users make 36000 new inserts per hour
 
-	deleteCondition := "SELECT min(id) from stats_meta where created_trunc + interval '65 days' < 'now'"
+	deleteCondition := "SELECT min(id) from stats_meta where created_trunc + interval '33 days' < 'now'"
 	deleteConditionGeneral := "SELECT min(id) from stats_process where meta_id <= $1"
 
 	var metaID uint64
