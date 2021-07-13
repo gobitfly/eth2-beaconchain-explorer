@@ -142,51 +142,61 @@
 			],
 			validators: [
 				{
+					id: 1,
 					validator: { index: 1, pubkey: "0xa1d1ad ..." },
 					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed" ],
 					mostRecent: { notification: "Attestations missed", timestamp: 1617427430 }
 				},
 				{
+					id: 2,
 					validator: { index: 2, pubkey: "0xb2ff47 ..." },
 					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted" ],
 					mostRecent: { notification: "Balance decrease", timestamp: 1620030169 }
 				},
 				{
+					id: 3,
 					validator: { index: 3, pubkey: "0x8e323f ..." },
 					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed" ],
 					mostRecent: { notification: "Proposals missed", timestamp: 1614687712 }
 				},
 				{
+					id: 4,
 					validator: { index: 4, pubkey: "0xa62420 ..." },
 					notifications: [ "Attestations missed",  "Balance decrease" ],
 					mostRecent: { notification: "Proposals submitted", timestamp: 1622557312 }
 				},
 				{
+					id: 5,
 					validator: { index: 5, pubkey: "0xb2ce0f ..." },
 					notifications: [ "Attestations missed" ],
 					mostRecent: { notification: "Validator slashed", timestamp: 1619878855 }
 				},
 				{
+					id: 6,
 					validator: { index: 6, pubkey: "0xa16c53 ..." },
 					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed" ],
 					mostRecent: { notification: "Validator slashed", timestamp: 	1612617898 }
 				},
 				{
+					id: 7,
 					validator: { index: 7, pubkey: "0xa25da1..." },
 					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted" ],
 					mostRecent: { notification: "Proposals submitted", timestamp: 1626006179 }
 				},
 				{
+					id: 8,
 					validator: { index: 8, pubkey: "0x8078c7 ..." },
 					notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed" ],
       		mostRecent: { notification: "Proposals missed", timestamp: 1626031079 }
 				},
 				{
+					id: 9,
 					validator: { index: 9, pubkey: "0xb016e3 ..." },
 					notifications: [ "Attestations missed",  "Balance decrease" ],
 					mostRecent: { notification: "Balance decrease", timestamp: 1620677579 }
 				},
 				{
+					id: 10,
 					validator: { index: 10, pubkey: "0x8efba2 ..." },
 					notifications: [ "Validator slashed" ],
 					mostRecent: { notification: "Attestations missed", timestamp: 1619878855 }
@@ -221,21 +231,20 @@
 				initComplete: function(settings, json) {
 					$('body').find('.dataTables_scrollBody').addClass('scrollbar');
 
-
-					// add on click event to edit button
+					// add on click event to table edit button
 					$('#monitoringNotifications .edit-btn').on('click',  function(e) {
-						const threshold_editable_placeholder = $(this).parent().find('.threshold_non_editable_text').text();
+						const threshold_editable_placeholder = $(this).parent().find('#threshold_non_editable_text').text();
 			
-						$(this).parent().parent().find('.threshold_non_editable').css('display', 'none');
-						$(this).parent().parent().find('.threshold_editable').removeAttr('hidden');
-						$(this).parent().parent().find('.threshold_editable:text').attr('placeholder', threshold_editable_placeholder);
+						$(this).parent().parent().find('#threshold_non_editable').css('display', 'none');
+						$(this).parent().parent().find('#threshold_editable').removeAttr('hidden');
+						$(this).parent().parent().find('#threshold_editable:text').attr('placeholder', threshold_editable_placeholder);
 					});
 
 					// add on enter press event to threshold input
-					$('.threshold_editable').on('keypress', function(e){
+					$('#threshold_editable').on('keypress', function(e){
 						if (e.which == 13) {
-							var rowId = $(this).parent().parent().attr('id');
-							var newThreshold = $(this).val();
+							const rowId = $(this).parent().parent().attr('id');
+							let newThreshold = $(this).val();
 							
 							// validate input
 							var isValid = false;
@@ -247,7 +256,7 @@
 									if (parsed > 0 && parsed <= 100) {
 										newThreshold =  parsed/100;
 										isValid = true;
-									}else {
+									} else {
 										isValid = false;
 									}
 								}
@@ -255,26 +264,31 @@
 								isValid = false;
 							}
 
-							
 							if (isValid) {
-								
 								index = data.findIndex(function(item) {
 									return item.id.toString() == rowId.toString();
 								});
 
 								data[index].threshold = newThreshold;
 
-								// destroy and reload datatable
+								// destroy and reload table
 								$('#monitoringNotifications').DataTable().clear().destroy();
 								loadMonitoringData(data);
 							} else {
 								// show error message
-								alert("Please enter an integer between 1 and 100.")
+								alert('Enter an integer between 1 and 100')
 							}
-
 						}
 					});
 
+					// add on click event to table remove button
+					$('#monitoringNotifications #remove-btn').on('click',  function(e) {
+						$('#modaltext').text($(this).data('modaltext'));
+						// set the row id 
+						const rowId = $(this).parent().parent().attr('id');
+						$('#confirmDeleteModal').attr('rowId', rowId);
+						$('#confirmDeleteModal').attr('tablename', 'monitoring');
+					});
 				},
 				columnDefs: [
 					{
@@ -297,7 +311,7 @@
 						responsivePriority: 3,
     				data: 'threshold',
 						render: function (data, type, row, meta) { 
-							return '<input type="text" class="form-control input-sm threshold_editable" name="monitoringNotifications_threshold" id="monitoringNotifications_threshold" value="" title="Numbers only, please." style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + data*100 + '%</span> <i class="fas fa-pen fa-xs text-muted edit-btn" title="Click to edit" style="cursor: pointer;"></i></span>';
+							return '<input type="text" class="form-control input-sm" name="monitoringNotifications_threshold" id="threshold_editable" value="" title="Numbers only" style="width: 60px; height: 30px;" hidden /><span id="threshold_non_editable"><span id="threshold_non_editable_text">' + data*100 + '%</span> <i class="fas fa-pen fa-xs text-muted edit-btn" title="Click to edit" style="cursor: pointer;"></i></span>';
 						}
 					},
 					{
@@ -322,7 +336,7 @@
 						orderable: false,
 						responsivePriority: 3,
 						data: null,
-						defaultContent: '<i class="fas fa-times fa-lg" title="Remove notification" style="color: #f82e2e; cursor: pointer;"></i>'
+						defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove notification" style="color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmDeleteModal" data-modaltext="Are you sure you want to remove the record?"></i>'
         	}
 				]
 			});
@@ -434,6 +448,7 @@
 					searchPlaceholder: 'Search ...',
 					search: ''
 				},
+				rowId: 'id',
 				processing: true,
 				responsive: true,
 				// scroller: true,
@@ -449,7 +464,16 @@
 				data: data,
 				initComplete: function(settings, json) {
 					$('body').find('.dataTables_scrollBody').addClass('scrollbar');
+					
 
+					// add on click event to remove button
+					$('#validatorsNotifications #remove-btn').on('click',  function(e) {
+						const rowId = $(this).parent().parent().attr('id');
+						$('#modaltext').text($(this).data('modaltext'));
+						// set the row id 
+						$('#confirmDeleteModal').attr('rowId', rowId);
+						$('#confirmDeleteModal').attr('tablename', 'validators');
+					});
 				},
 				columnDefs: [
 					{
@@ -532,7 +556,7 @@
 						orderable: false,
 						responsivePriority: 3,
 						data: null,
-						defaultContent: '<i class="fas fa-times fa-lg  row-btn" title="Remove validator" style="color: #f82e2e; cursor: pointer;"></i>'
+						defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove validator" style="color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmDeleteModal" data-modaltext="Are you sure you want to remove the record?"></i>'
         	}
 				]
 			});
@@ -543,14 +567,53 @@
 			loadNetworkData(data.network);
 			loadValidatorsData(data.validators);
 
+			$('#remove-all-btn').on('click',  function(e) {
+				$('#modaltext').text($(this).data('modaltext'));
+				$('#confirmDeleteModal').removeAttr('rowId');
+
+				console.log($('#confirmDeleteModal').removeAttr('rowId'));
+			});
+
+			// add on click event to modal remove button
+			$('#remove-button').on('click',  function(e) {
+				const rowId = $('#confirmDeleteModal').attr('rowId');
+				const tablename = $('#confirmDeleteModal').attr('tablename');
+				
+				// if rowId also check tablename then delete row in corresponding data section
+				// if no row id delete directly in correponding data section
+				if (rowId !== undefined) {
+					if (tablename === 'monitoring'){
+						data.monitoring = data.monitoring.filter(function( item ) {
+							return item.id.toString() !== rowId.toString();
+						});
+					}
+
+					if (tablename === 'validators'){
+						data.validators = data.validators.filter(function( item ) {
+							return item.id.toString() !== rowId.toString();
+						});						
+					}
+				} else {
+					if (tablename === 'validators'){
+						data.validators = [];
+					}
+				}
+
+				if (tablename === 'monitoring'){
+					$('#monitoringNotifications').DataTable().clear().destroy();
+				  loadMonitoringData(data.monitoring);
+				}
+
+				if (tablename === 'validators'){
+					$('#validatorsNotifications').DataTable().clear().destroy();
+				  loadValidatorsData(data.validators);					
+				}
 
 
-			$('.row-btn').on('click', function () {
-        alert('BOOM');
-    	});
+			});
 		});
 	</script>
-{{ end }} 
+{{ end }}
 
 {{ define "css" }}<link rel="stylesheet" type="text/css" href="/css/notificationsCenter.css" />{{ end }}
 
@@ -712,7 +775,7 @@
 						<i class="fas fa-cog"></i>
 						<span class="d-none d-sm-inline-block text-nowrap">Manage notifications</span>
 					</button>
-					<button type="button" class="btn btn-outline-danger btn-sm ml-3" data-toggle="modal" data-target="#removeValidatorsModal" title="Remove all validators from your list">
+					<button type="button" class="btn btn-outline-danger btn-sm ml-3" id="remove-all-btn" data-toggle="modal" data-target="#confirmDeleteModal" title="Remove all validators from your list" data-modaltext="Are you sure you want to remove all validators from your list?">
 						<i class="fas fa-times"></i>
 						<span class="d-none d-sm-inline-block text-nowrap">Remove all</span>
 					</button>
@@ -762,18 +825,21 @@
 	</div>
 	
   <!-- TODO: add x button to close the modal -->
-  <div class="modal fade" id="removeValidatorsModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="removeValidatorsLabel" aria-hidden="true">
+  <div class="modal fade" id="confirmDeleteModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered" role="document">
 			<div class="modal-content custom-delete-modal row mx-0">
+				<div class="mb-4">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+				</div>
 				<div class="col-12 d-flex align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
-					Are you sure you want to remove all validators from your Watchlist?
+					<span id="modaltext"></span> 
 				</div>
 				<div class="col-12 d-flex align-items-center justify-content-between px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">
 						Cancel
 					</button>
 					<button id="remove-button" type="button" class="btn btn-primary btn-danger btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">
-						Delete
+						Remove
 					</button>
 				</div>
 			</div>
