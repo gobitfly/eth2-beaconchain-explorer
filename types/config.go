@@ -50,6 +50,9 @@ type Config struct {
 			EndEpoch   uint64   `yaml:"endEpoch" envconfig:"INDEXER_ONETIMEEXPORT_END_EPOCH"`
 			Epochs     []uint64 `yaml:"epochs" envconfig:"INDEXER_ONETIMEEXPORT_EPOCHS"`
 		} `yaml:"onetimeexport"`
+		PubKeyTagsExporter struct {
+			Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
+		} `yaml:"pubkeyTagsExporter"`
 	} `yaml:"indexer"`
 	Frontend struct {
 		Kong               string `yaml:"kong" envconfig:"FRONTEND_KONG"`
