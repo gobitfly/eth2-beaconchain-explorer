@@ -284,17 +284,18 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 }
 
 func CleanupOldMachineStats() error {
-	const deleteLIMIT uint64 = 50000 // 200 users make 36000 new inserts per hour
+	const deleteLIMIT uint64 = 80000 // 200 users make 36000 new inserts per hour
 
 	now := time.Now()
 	nowTs := now.Unix()
 	var today int = int(nowTs / 86400)
 
-	dayRange := 33
+	dayRange := 12
 	day := int(today - dayRange)
+	logger.Infof("day range is %v", day)
 
-	deleteCondition := "SELECT min(id) from stats_meta_p where day < $1"
-	deleteConditionGeneral := "SELECT min(id) from stats_process where meta_id <= $1"
+	deleteCondition := "SELECT COALESCE(min(id), 0) from stats_meta_p where day <= $1"
+	deleteConditionGeneral := "SELECT COALESCE(min(id), 0) from stats_process where meta_id <= $1"
 
 	var metaID uint64
 	row := FrontendDB.QueryRow(deleteCondition, day)
@@ -319,36 +320,41 @@ func CleanupOldMachineStats() error {
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec("DELETE FROM stats_system WHERE meta_id <= $1", metaID)
+	_, err = tx.Exec("DELETE FROM stats_system WHERE id IN (SELECT id from stats_system where meta_id <= $1 ORDER BY meta_id asc)", metaID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_add_beaconnode WHERE general_id <= $1", generalID)
+	_, err = tx.Exec("DELETE FROM stats_add_beaconnode WHERE id IN (SELECT id from stats_add_beaconnode WHERE general_id <= $1 ORDER BY general_id asc)", generalID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_add_validator WHERE general_id <= $1", generalID)
+	_, err = tx.Exec("DELETE FROM stats_add_validator WHERE id IN (SELECT id from stats_add_validator WHERE general_id <= $1 ORDER BY general_id asc)", generalID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_process WHERE meta_id <= $1", metaID)
+	_, err = tx.Exec("DELETE FROM stats_process WHERE id IN (SELECT id FROM stats_process WHERE meta_id <= $1 ORDER BY meta_id asc)", metaID)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_meta_p WHERE day < $2 AND id <= $1", metaID, day)
+	_, err = tx.Exec("DELETE FROM stats_meta_p WHERE day < $2 AND id IN (SELECT id from stats_meta_p where day < $2 AND id <= $1 ORDER BY id asc)", metaID, day)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DROP TABLE IF EXISTS stats_meta_" + strconv.Itoa(day-2))
 	if err != nil {
 		return err
 	}
 
 	err = tx.Commit()
-
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -524,27 +530,26 @@ func InsertStatsProcessGeneral(tx *sql.Tx, meta_id uint64, data *types.StatsProc
 
 func InsertStatsValidator(tx *sql.Tx, general_id uint64, data *types.StatsAdditionalsValidator) (uint64, error) {
 	var id uint64
-	row := tx.QueryRow(
+	_, err := tx.Exec(
 		"INSERT INTO stats_add_validator (general_id, validator_total, validator_active) "+
-			"VALUES($1, $2, $3) RETURNING id",
+			"VALUES($1, $2, $3)",
 		general_id, data.ValidatorTotal, data.ValidatorActive,
 	)
-	err := row.Scan(&id)
+
 	return id, err
 }
 
 func InsertStatsBeaconnode(tx *sql.Tx, general_id uint64, data *types.StatsAdditionalsBeaconnode) (uint64, error) {
 	var id uint64
-	row := tx.QueryRow(
+	_, err := tx.Exec(
 		"INSERT INTO stats_add_beaconnode (general_id, disk_beaconchain_bytes_total, network_libp2p_bytes_total_receive,"+
 			"network_libp2p_bytes_total_transmit, network_peers_connected, sync_eth1_connected, sync_eth2_synced,"+
 			"sync_beacon_head_slot, sync_eth1_fallback_configured, sync_eth1_fallback_connected"+
 			") "+
-			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id",
+			"VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
 		general_id, data.DiskBeaconchainBytesTotal, data.NetworkLibp2pBytesTotalReceive, data.NetworkLibp2pBytesTotalTransmit,
 		data.NetworkPeersConnected, data.SyncEth1Connected, data.SyncEth2Synced, data.SyncBeaconHeadSlot, data.SyncEth1FallbackConfigured, data.SyncEth1FallbackConnected,
 	)
-	err := row.Scan(&id)
 	return id, err
 }
 
@@ -554,13 +559,19 @@ func NewTransaction() (*sql.Tx, error) {
 
 func getMachineStatsGap(resultCount uint64) int {
 	if resultCount > 20160 { // more than 14 (31)
-		return 5
+		return 6
 	}
 	if resultCount > 10080 { // more than 7 (14)
-		return 4
+		return 5
 	}
 	if resultCount > 2880 { // more than 2 (7)
+		return 4
+	}
+	if resultCount > 1440 { // more than 1 (2)
 		return 3
+	}
+	if resultCount > 770 { // more than 12h
+		return 2
 	}
 	return 1
 }
