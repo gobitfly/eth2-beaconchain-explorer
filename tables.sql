@@ -591,12 +591,6 @@ CREATE TABLE stats_meta_p (
     primary key (id, day)
     
 ) PARTITION BY LIST (day);
-create index idx_stats_created_trunc on stats_meta_p (stats_meta_p);
-create index idx_stats_user on stats_meta_p (user_id);
-
-CREATE TABLE stats_meta_p_0 PARTITION OF stats_meta_p FOR VALUES IN (0);
-CREATE UNIQUE INDEX stats_meta_0_user_id_created_trunc_process_machine_key ON public.stats_meta USING btree (user_id, created_trunc, process, machine)
-CREATE TABLE stats_meta_p_1 PARTITION OF stats_meta_p FOR VALUES IN (1);
 
 drop table if exists stats_process;
 CREATE TABLE stats_process (
