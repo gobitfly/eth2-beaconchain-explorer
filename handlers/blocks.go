@@ -71,7 +71,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if search == "" {
+	if search == "" || len(search) < 8 {
 		filteredCount = totalCount
 		startSlot := totalCount - start
 		endSlot := totalCount - start - length + 1
