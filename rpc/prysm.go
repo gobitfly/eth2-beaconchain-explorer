@@ -9,11 +9,12 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
-	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
+	ethpb "github.com/prysmaticlabs/prysm/proto/eth/v1alpha1"
+
 	"github.com/prysmaticlabs/go-bitfield"
 	"google.golang.org/grpc"
 
-	ptypes "github.com/gogo/protobuf/types"
+	"github.com/golang/protobuf/ptypes/empty"
 	eth2types "github.com/prysmaticlabs/eth2-types"
 )
 
@@ -53,7 +54,7 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 	}
 	client.assignmentsCache, _ = lru.New(10)
 
-	streamChainHeadClient, err := chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
+	streamChainHeadClient, err := chainClient.StreamChainHead(context.Background(), &empty.Empty{})
 	if err != nil {
 		return nil, err
 	}
@@ -67,11 +68,11 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 
 				// in order to recover from a stream error we wait for a second and then re-create the stream
 				time.Sleep(time.Second)
-				streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
+				streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &empty.Empty{})
 				for err != nil {
 					logger.Errorf("error initializing chain head stream: %v. retrying in 1s...", err)
 					time.Sleep(time.Second)
-					streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
+					streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &empty.Empty{})
 				}
 				continue
 			}
@@ -103,7 +104,7 @@ func (pc *PrysmClient) GetNewBlockChan() chan *types.Block {
 
 // GetGenesisTimestamp returns the genesis timestamp of the beacon chain
 func (pc *PrysmClient) GetGenesisTimestamp() (int64, error) {
-	genesis, err := pc.nodeClient.GetGenesis(context.Background(), &ptypes.Empty{})
+	genesis, err := pc.nodeClient.GetGenesis(context.Background(), &empty.Empty{})
 
 	if err != nil {
 		return 0, err
@@ -114,7 +115,7 @@ func (pc *PrysmClient) GetGenesisTimestamp() (int64, error) {
 
 // GetChainHead will get the chain head from a Prysm client
 func (pc *PrysmClient) GetChainHead() (*types.ChainHead, error) {
-	headResponse, err := pc.client.GetChainHead(context.Background(), &ptypes.Empty{})
+	headResponse, err := pc.client.GetChainHead(context.Background(), &empty.Empty{})
 
 	if err != nil {
 		return nil, err
@@ -140,7 +141,7 @@ func (pc *PrysmClient) GetChainHead() (*types.ChainHead, error) {
 func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	var err error
 
-	validators, err := pc.client.GetValidatorQueue(context.Background(), &ptypes.Empty{})
+	validators, err := pc.client.GetValidatorQueue(context.Background(), &empty.Empty{})
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator queue data: %v", err)
@@ -150,9 +151,18 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 		ChurnLimit:                 validators.ChurnLimit,
 		ActivationPublicKeys:       validators.ActivationPublicKeys,
 		ExitPublicKeys:             validators.ExitPublicKeys,
-		ActivationValidatorIndices: validators.ActivationValidatorIndices,
-		ExitValidatorIndices:       validators.ExitValidatorIndices,
+		ActivationValidatorIndices: untypeValidatorIndicesList(validators.ActivationValidatorIndices),
+		ExitValidatorIndices:       untypeValidatorIndicesList(validators.ExitValidatorIndices),
 	}, nil
+}
+
+// temporary hack until the explorer starts using typed integers
+func untypeValidatorIndicesList(li []eth2types.ValidatorIndex) []uint64 {
+	out := make([]uint64, len(li), len(li))
+	for i := 0; i < len(li); i++ {
+		out[i] = uint64(li[i])
+	}
+	return out
 }
 
 // GetAttestationPool will get the attestation pool from a Prysm client
@@ -164,7 +174,12 @@ func (pc *PrysmClient) GetAttestationPool() ([]*types.Attestation, error) {
 	attestations := []*types.Attestation{}
 
 	for {
-		attestationPoolResponse, err = pc.client.AttestationPool(context.Background(), &ethpb.AttestationPoolRequest{PageSize: utils.Config.Indexer.Node.PageSize, PageToken: attestationPoolResponse.NextPageToken})
+		attestationPoolResponse, err = pc.client.AttestationPool(context.Background(),
+			&ethpb.AttestationPoolRequest{
+				PageSize:  utils.Config.Indexer.Node.PageSize,
+				PageToken: attestationPoolResponse.NextPageToken,
+			},
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -245,11 +260,11 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	// Attestation assignments are cached by the slot & committee key
 	for _, assignment := range validatorAssignmentes {
 		for _, slot := range assignment.ProposerSlots {
-			assignments.ProposerAssignments[uint64(slot)] = assignment.ValidatorIndex
+			assignments.ProposerAssignments[uint64(slot)] = uint64(assignment.ValidatorIndex)
 		}
 
 		for memberIndex, validatorIndex := range assignment.BeaconCommittees {
-			assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(uint64(assignment.AttesterSlot), uint64(assignment.CommitteeIndex), uint64(memberIndex))] = validatorIndex
+			assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(uint64(assignment.AttesterSlot), uint64(assignment.CommitteeIndex), uint64(memberIndex))] = uint64(validatorIndex)
 		}
 	}
 
@@ -373,14 +388,14 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 		for _, validator := range validatorResponse.ValidatorList {
 
-			balance, exists := validatorBalances[validator.Index]
+			balance, exists := validatorBalances[uint64(validator.Index)]
 			if !exists {
 				logger.WithField("pubkey", fmt.Sprintf("%x", validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
 				continue
 			}
 
 			val := &types.Validator{
-				Index:                      validator.Index,
+				Index:                      uint64(validator.Index),
 				PublicKey:                  validator.Validator.PublicKey,
 				WithdrawalCredentials:      validator.Validator.WithdrawalCredentials,
 				Balance:                    balance,
@@ -392,9 +407,9 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 				WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
 			}
 
-			val.Balance1d = validatorBalances1d[validator.Index]
-			val.Balance7d = validatorBalances7d[validator.Index]
-			val.Balance31d = validatorBalances31d[validator.Index]
+			val.Balance1d = validatorBalances1d[uint64(validator.Index)]
+			val.Balance7d = validatorBalances7d[uint64(validator.Index)]
+			val.Balance31d = validatorBalances31d[uint64(validator.Index)]
 
 			data.Validators = append(data.Validators, val)
 
@@ -441,7 +456,7 @@ func (pc *PrysmClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, erro
 		}
 
 		for _, balance := range validatorBalancesResponse.Balances {
-			validatorBalances[balance.Index] = balance.Balance
+			validatorBalances[uint64(balance.Index)] = balance.Balance
 		}
 
 		if validatorBalancesResponse.NextPageToken == "" {
@@ -541,12 +556,12 @@ func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.
 		Attestations:      make([]*types.Attestation, len(block.Block.Block.Body.Attestations)),
 		Deposits:          make([]*types.Deposit, len(block.Block.Block.Body.Deposits)),
 		VoluntaryExits:    make([]*types.VoluntaryExit, len(block.Block.Block.Body.VoluntaryExits)),
-		Proposer:          block.Block.Block.ProposerIndex,
+		Proposer:          uint64(block.Block.Block.ProposerIndex),
 	}
 
 	for i, proposerSlashing := range block.Block.Block.Body.ProposerSlashings {
 		b.ProposerSlashings[i] = &types.ProposerSlashing{
-			ProposerIndex: proposerSlashing.Header_1.Header.ProposerIndex,
+			ProposerIndex: uint64(proposerSlashing.Header_1.Header.ProposerIndex),
 			Header1: &types.Block{
 				Slot:       uint64(proposerSlashing.Header_1.Header.Slot),
 				ParentRoot: proposerSlashing.Header_1.Header.ParentRoot,
@@ -655,7 +670,7 @@ func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.
 	for i, voluntaryExit := range block.Block.Block.Body.VoluntaryExits {
 		b.VoluntaryExits[i] = &types.VoluntaryExit{
 			Epoch:          uint64(voluntaryExit.Exit.Epoch),
-			ValidatorIndex: voluntaryExit.Exit.ValidatorIndex,
+			ValidatorIndex: uint64(voluntaryExit.Exit.ValidatorIndex),
 			Signature:      voluntaryExit.Signature,
 		}
 	}

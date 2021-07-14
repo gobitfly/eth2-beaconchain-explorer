@@ -23,7 +23,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	_ "eth2-exporter/docs"
+	//_ "eth2-exporter/docs"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
