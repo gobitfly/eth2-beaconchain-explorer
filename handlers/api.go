@@ -1527,15 +1527,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 
 	maxNodes := getUserPremiumByPackage(userData.Product.String).MaxNodes
 
-	tx, err := db.NewTransaction()
-	if err != nil {
-		logger.Errorf("Could not transact | %v", err)
-		sendErrorResponse(j, r.URL.String(), "could not store")
-		return false
-	}
-	defer tx.Rollback()
-
-	count, err := db.GetStatsMachineCount(tx, userData.ID)
+	count, err := db.GetStatsMachineCount(userData.ID)
 	if err != nil {
 		logger.Errorf("Could not get max machine count| %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not get machine count")
@@ -1548,11 +1540,27 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		return false
 	}
 
+	tx, err := db.NewTransaction()
+	if err != nil {
+		logger.Errorf("Could not transact | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not store")
+		return false
+	}
+	defer tx.Rollback()
+
 	id, err := db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 	if err != nil {
-		logger.Errorf("Could not store stats (meta stats) | %v", err)
-		sendErrorResponse(j, r.URL.String(), "could not store meta")
-		return false
+		if strings.Contains(err.Error(), "no partition of relation") {
+			db.CreateNewStatsMetaPartition()
+			tx.Rollback()
+			tx, err = db.NewTransaction()
+			id, err = db.InsertStatsMeta(tx, userData.ID, parsedMeta)
+		}
+		if err != nil {
+			logger.Errorf("Could not store stats (meta stats) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not store meta")
+			return false
+		}
 	}
 
 	// Special case for system
