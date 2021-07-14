@@ -13,9 +13,15 @@
 /* TODO: replace with defined color variable */
 .custom-background-color { background-color: #fdfdfd }
 .custom-border-radius { border-radius: .5rem }
-.custom-delete-modal { 
+.custom-remove-modal { 
+  position: relative;
   min-width: 280px;
   padding: 2rem 4rem 3rem;
+}
+.custom-remove-modal-close { 
+  position: relative; 
+  top: -1rem; 
+  right: -2.5rem;
 }
 .heading { font-size: 1.8rem }
 .heading-l2 { font-size: 1.6rem }
