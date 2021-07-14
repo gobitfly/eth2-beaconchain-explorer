@@ -131,32 +131,32 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		// note: we use union instead of disjunct or-queries for performance-reasons
 		args := []interface{}{}
 
-		searchLimit := 10000
+		searchLimit := 1000
 
 		searchBlocksQrys := []string{}
 		searchProposersQrys := []string{}
 
 		args = append(args, "%"+search+"%")
-		searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`select slot from blocks where graffiti_text ilike $%d`, len(args)))
-		searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`select publickey as pubkey from validator_names where name ilike $%d limit %d`, len(args), searchLimit))
+		searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where graffiti_text ilike $%d limit %d)`, len(args), searchLimit))
+		searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select publickey as pubkey from validator_names where name ilike $%d limit %d)`, len(args), searchLimit))
 
 		searchNumber, err := strconv.ParseUint(search, 10, 64)
 		if err == nil {
 			// if the search-string is a number we can look for exact matchings
 			args = append(args, searchNumber)
-			searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`select slot from blocks where slot = $%d`, len(args)))
-			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`select pubkey from validators where validatorindex = $%d limit %d`, len(args), searchLimit))
+			searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where slot = $%d limit %d)`, len(args), searchLimit))
+			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where validatorindex = $%d limit %d)`, len(args), searchLimit))
 		}
 		if searchPubkeyExactRE.MatchString(search) {
 			// if the search-string is a valid hex-string but not long enough for a full publickey we look for prefix
 			pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
 			args = append(args, pubkey)
-			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`select pubkey from validators where pubkeyhex = $%d limit %d`, len(args), searchLimit))
-		} else if searchPubkeyLikeRE.MatchString(search) {
+			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where pubkeyhex = $%d limit %d)`, len(args), searchLimit))
+		} else if len(search) > 2 && searchPubkeyLikeRE.MatchString(search) {
 			// if the search-string looks like a publickey we look for exact match
 			pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
 			args = append(args, pubkey+"%")
-			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`select pubkey from validators where pubkeyhex like $%d limit %d`, len(args), searchLimit))
+			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where pubkeyhex like $%d limit %d)`, len(args), searchLimit))
 		}
 
 		// join proposer-queries and append to block-queries looking for proposers
