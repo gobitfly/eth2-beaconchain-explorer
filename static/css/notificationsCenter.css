@@ -68,6 +68,10 @@ div.dataTables_filter {
   padding-right: 0 !important;
   text-align: right !important;
 }
+div.dataTables_length {
+  padding-left: 0 !important;
+  font-size: .9rem;
+}
 div.dataTables_scrollBody {
   background: none !important;
 }
