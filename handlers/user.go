@@ -187,6 +187,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "user", "/user", "")
 	data.Data = authorizeData
+	data.Meta.NoTrack = true
 
 	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

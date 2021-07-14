@@ -35,6 +35,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "register", "/register", "Register new account")
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
+	data.Meta.NoTrack = true
 
 	err := registerTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -151,6 +152,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "login", "/login", "Login")
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
+	data.Meta.NoTrack = true
 
 	err := loginTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -313,6 +315,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "requestReset", "/requestReset", "Reset Password")
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), Email: dbUser.Email, CsrfField: csrf.TemplateField(r)}
+	data.Meta.NoTrack = true
 
 	err = resetPasswordTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -382,6 +385,7 @@ func RequestResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	data := InitPageData(w, r, "register", "/register", "Reset Password")
 	data.Data = types.AuthData{Flashes: utils.GetFlashes(w, r, authSessionName), CsrfField: csrf.TemplateField(r)}
+	data.Meta.NoTrack = true
 	err := requestResetPaswordTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)

@@ -36,6 +36,7 @@ func Confirmation(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "confirmation", "/blocks", "Blocks")
 	data.Data = pageData
+	data.Meta.NoTrack = true
 
 	err := confirmationTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {

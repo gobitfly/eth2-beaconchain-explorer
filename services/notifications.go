@@ -48,9 +48,11 @@ func notificationsSender() {
 func collectNotifications() map[uint64]map[types.EventName][]types.Notification {
 	notificationsByUserID := map[uint64]map[types.EventName][]types.Notification{}
 	var err error
-	err = collectValidatorBalanceDecreasedNotifications(notificationsByUserID)
-	if err != nil {
-		logger.Errorf("error collecting validator_balance_decreased notifications: %v", err)
+	if utils.Config.Notifications.ValidatorBalanceDecreasedNotificationsEnabled {
+		err = collectValidatorBalanceDecreasedNotifications(notificationsByUserID)
+		if err != nil {
+			logger.Errorf("error collecting validator_balance_decreased notifications: %v", err)
+		}
 	}
 	err = collectValidatorGotSlashedNotifications(notificationsByUserID)
 	if err != nil {
@@ -162,6 +164,11 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 						message := new(messaging.Message)
 						message.Notification = notification
 						message.Token = userToken
+
+						message.APNS = new(messaging.APNSConfig)
+						message.APNS.Payload = new(messaging.APNSPayload)
+						message.APNS.Payload.Aps = new(messaging.Aps)
+						message.APNS.Payload.Aps.Sound = "default"
 
 						batch = append(batch, message)
 					}
