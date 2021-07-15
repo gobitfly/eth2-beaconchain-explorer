@@ -548,13 +548,13 @@
 			loadValidatorsData(data.validators);
 
 			$(document).on('click', function(e) {
-					// if click outside input while any threshold input visible, reset value and hide input
-					if (e.target.className.indexOf('threshold_editable') < 0){
-						$('.threshold_editable').each(function() {
-							$(this).attr('hidden', true);
-							$(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
-						});
-					}
+				// if click outside input while any threshold input visible, reset value and hide input
+				if (e.target.className.indexOf('threshold_editable') < 0){
+					$('.threshold_editable').each(function() {
+						$(this).attr('hidden', true);
+						$(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
+					});
+				}
 			});
 
 			$('#remove-all-btn').on('click',  function(e) {
@@ -598,6 +598,20 @@
 				  loadValidatorsData(data.validators);					
 				}
 			});
+			const rangeInput = $('.custom-range');
+			const numberInput = $('.custom-range-input');
+			function handleInputChange(e) {
+  			let target = e.target;
+  			if (e.target.type !== 'range') {
+    			target = $('range');
+  			} 
+  			const min = target.min;
+  			const max = target.max;
+  			const val = target.value;
+  			target.style.backgroundSize = (val - min) * 100 / (max - min) + '% 100%';
+			}
+			$(rangeInput).on('input', handleInputChange);
+			$(numberInput).on('input', handleInputChange);
 		});
 	</script>
 {{ end }}
@@ -850,16 +864,37 @@
 						</span>
 					</div> 
 					<div class="w-100 my-3">
-						<div class="form-check form-check-inline w-100 my-2">
-							<label class="form-check-label mr-auto font-weight-normal" for="cpu">CPU</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="cpu" value="">
+						<div class="mb-3">
+							<div class="form-check form-check-inline w-100 mb-2">
+								<label class="form-check-label mr-auto font-weight-normal" for="cpu">
+									<i class="fas fa-microchip fa-sm d-inline-block mr-2"></i>
+									CPU Usage
+								</label>
+								<input class="form-check-input checkbox-custom-size" type="checkbox" id="cpu" value="">
+							</div>
+							<div class="w-100 d-flex align-items-center pl-2">
+								<input class="w-75 mr-5 custom-range" type="range" value="80" min="0" max="100" id="range" oninput="rangenumber.value=value" />
+								<input class="custom-range-input" type="number" id="rangenumber" min="0" max="100" value="80" oninput="range.value=value" />
+							</div>
 						</div>
-						<div class="form-check form-check-inline w-100 my-2">
-							<label class="form-check-label mr-auto font-weight-normal" for="hdd">HDD</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="hdd" value="">
+						<div class="mb-3">
+							<div class="form-check form-check-inline w-100 mb-2">
+								<label class="form-check-label mr-auto font-weight-normal" for="hdd">
+									<i class="fas fa-hdd fa-sm d-inline-block mr-2"></i>
+									HDD Usage
+								</label>
+								<input class="form-check-input checkbox-custom-size" type="checkbox" id="hdd" value="">
+							</div>
+							<div class="w-100 d-flex align-items-center pl-2">
+								<input class="w-75 mr-5 custom-range" type="range" value="80" min="0" max="100" id="range" oninput="rangenumber.value=value" />
+								<input class="custom-range-input" type="number" id="rangenumber" min="0" max="100" value="80" oninput="range.value=value" />
+							</div>
 						</div>
-						<div class="form-check form-check-inline w-100 my-2">
-							<label class="form-check-label mr-auto font-weight-normal" for="offline">Offline</label>
+						<div class="form-check form-check-inline w-100">
+							<label class="form-check-label mr-auto font-weight-normal" for="offline">
+								<i class="fas fa-battery-full fa-sm d-inline-block mr-2"></i>
+								Machine Offline
+							</label>
 							<input class="form-check-input checkbox-custom-size" type="checkbox" id="offline" value="">
 						</div>
 					</div>  
