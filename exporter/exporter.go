@@ -34,6 +34,10 @@ func Start(client rpc.Client) error {
 		go ssvExporter()
 	}
 
+	if utils.Config.Indexer.PubKeyTagsExporter.Enabled {
+		go UpdatePubkeyTag()
+	}
+
 	// wait until the beacon-node is available
 	for {
 		_, err := client.GetChainHead()

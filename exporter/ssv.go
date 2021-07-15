@@ -57,6 +57,7 @@ func exportSSV() error {
 				logger.WithError(err).Error("error reading message from ssv-exporter")
 				return
 			}
+
 			t0 := time.Now()
 			res := SSVExporterResponse{}
 			err = json.Unmarshal(message, &res)
@@ -64,12 +65,12 @@ func exportSSV() error {
 				logger.WithError(err).Error("error unmarshaling json from ssv-exporter")
 				continue
 			}
+			logger.WithFields(logrus.Fields{"number": len(res.Data)}).Infof("exporting ssv validators")
 			err = saveSSV(&res)
 			if err != nil {
 				logger.WithError(err).Error("error tagging ssv validators")
 				continue
 			}
-
 			logger.WithFields(logrus.Fields{"number": len(res.Data), "duration": time.Since(t0)}).Infof("tagged ssv validators")
 		}
 	}()
@@ -100,9 +101,20 @@ func saveSSV(res *SSVExporterResponse) error {
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec(`delete from validator_tags where tag = 'ssv'`)
-	if err != nil {
-		return err
+	// for now make sure to correct wrongly marked validators
+	for {
+		res, err := tx.Exec(`delete from validator_tags where publickey in (select publickey from validator_tags where tag = 'ssv' limit 1000)`)
+		if err != nil {
+			return err
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows == 0 {
+			break
+		}
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	batchSize := 5000
@@ -128,6 +140,22 @@ func saveSSV(res *SSVExporterResponse) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// currently the ssv-exporter also exports publickeys that are not actually part of the network
+	for {
+		res, err := tx.Exec(`delete from validator_tags where publickey in (select publickey from validator_tags where publickey not in (select pubkey from validators) limit 1000)`)
+		if err != nil {
+			return err
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows == 0 {
+			break
+		}
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	err = tx.Commit()
