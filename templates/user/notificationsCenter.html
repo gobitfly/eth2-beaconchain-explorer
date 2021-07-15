@@ -482,6 +482,7 @@
 							for (let notification in data) {
 								notifications += '<span class="badge badge-pill badge-primary badge-custom-size mr-1 my-1">' + data[notification] + '</span>';
 							}
+							// TODO: add functionality for edit button
 							return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted" id="edit-btn" title="Click to edit validator notifications" style="cursor: pointer;"></i>';
 						}
 					},
@@ -559,6 +560,7 @@
 			$('#remove-all-btn').on('click',  function(e) {
 				$('#modaltext').text($(this).data('modaltext'));
 				$('#confirmRemoveModal').removeAttr('rowId');
+				$('#confirmRemoveModal').attr('tablename', 'validators');
 			});
 
 			// click event to modal remove button
@@ -618,6 +620,7 @@
         <h2 class="heading-l3 text-muted">Manage the notifications you want to receive</h2>
 			</div>
 		</div>
+		<!-- TODO: redesign metrics section -->
 		<div class="row flex-sm-nowrap mx-0 my-2 container-min-width metrics-section">
 		  <div class="col-12 col-sm col-xl mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
 			  <div class="row d-flex align-items-center mx-1 metric-card-row">
@@ -814,6 +817,7 @@
 	</div>
 	
 	<!-- Modals -->
+	<!-- Confirm Remove modal -->
   <div class="modal fade" id="confirmRemoveModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="confirmRemoveLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered" role="document">
 			<div class="modal-content custom-remove-modal row mx-0">
@@ -830,6 +834,8 @@
 			</div>
 		</div>
 	</div>
+	<!-- Add Monitoring events modal -->
+	<!-- TODO: add thresholds for options -->
 	<div class="modal fade" id="addMonitoringEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addMonitoringEventLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered" role="document">
 			<div class="modal-content custom-remove-modal row mx-0">
@@ -865,6 +871,7 @@
 			</div>
 		</div>
 	</div>
+	<!-- Add Network events modal -->
 	<div class="modal fade" id="addNetworkEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addNetworkEventLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered" role="document">
 			<div class="modal-content custom-remove-modal row mx-0">
@@ -897,6 +904,8 @@
 			</div>
 		</div>
 	</div>
+	<!-- Manage notifications modal -->
+	<!-- TODO: add content -->
 	<div class="modal fade" id="manageNotificationsModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="manageNotificationsLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered" role="document">
 			<div class="modal-content custom-remove-modal row mx-0">
@@ -911,7 +920,6 @@
 						</span>
 					</div> 
 					<div class="w-100 my-3">
-						<!-- TODO: decide on structure  -->
 					</div>   
 				</div>
 				<div class="col-12 d-flex align-items-center justify-content-between px-0">
@@ -921,6 +929,8 @@
 			</div>
 		</div>
 	</div>
+	<!-- Add Validator modal -->
+	<!-- TODO: add search box -->
 	<div class="modal fade" id="addValidatorModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addValidatorLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered" role="document">
 			<div class="modal-content custom-remove-modal row mx-0">
