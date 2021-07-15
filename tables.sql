@@ -587,7 +587,6 @@ CREATE TABLE stats_meta_p (
     day                 int,
 	
 	user_id 		 	bigint	 	 		        not null,
-    foreign key(user_id) references users(id),
     primary key (id, day)
     
 ) PARTITION BY LIST (day);

@@ -284,15 +284,14 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 }
 
 func CleanupOldMachineStats() error {
-	const deleteLIMIT uint64 = 80000 // 200 users make 36000 new inserts per hour
+	const deleteLIMIT uint64 = 60000 // 200 users make 36000 new inserts per hour
 
 	now := time.Now()
 	nowTs := now.Unix()
 	var today int = int(nowTs / 86400)
 
-	dayRange := 12
+	dayRange := 30
 	day := int(today - dayRange)
-	logger.Infof("day range is %v", day)
 
 	deleteCondition := "SELECT COALESCE(min(id), 0) from stats_meta_p where day <= $1"
 	deleteConditionGeneral := "SELECT COALESCE(min(id), 0) from stats_process where meta_id <= $1"
