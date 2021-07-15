@@ -849,7 +849,7 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 	FROM users_subscriptions us
 	JOIN (
 		SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p 
-		WHERE v.day >= $3 
+		WHERE day >= $3 
 		group by user_id, machine
 	) v on v.user_id = us.user_id 
 	WHERE us.event_name = $1 AND us.created_epoch <= $2 
@@ -899,8 +899,8 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 			1 - (cpu_node_idle_seconds_total::decimal - lag(cpu_node_idle_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) / (cpu_node_system_seconds_total::decimal - lag(cpu_node_system_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) as cpu_load 
 			FROM stats_system as sy 
 			INNER JOIN stats_meta_p m on meta_id = m.id 
-			WHERE m.id = meta_id
-			WHERE day >= $3 
+			WHERE m.id = meta_id 
+			AND m.day >= $3 
 			AND m.user_id = v.user_id 
 			AND m.machine = us.event_filter 
 			ORDER BY sy.id desc
