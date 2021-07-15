@@ -562,15 +562,13 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 
 // SaveValidatorQueue will save the validator queue into the database
 func SaveValidatorQueue(validators *types.ValidatorQueue) error {
-	enteringValidatorsCount := len(validators.ActivationPublicKeys)
-	exitingValidatorsCount := len(validators.ExitPublicKeys)
 	_, err := DB.Exec(`
 		INSERT INTO queue (ts, entering_validators_count, exiting_validators_count)
 		VALUES (date_trunc('hour', now()), $1, $2)
 		ON CONFLICT (ts) DO UPDATE SET
 			entering_validators_count = excluded.entering_validators_count, 
 			exiting_validators_count = excluded.exiting_validators_count`,
-		enteringValidatorsCount, exitingValidatorsCount)
+		validators.Activating, validators.Exititing)
 	return err
 }
 

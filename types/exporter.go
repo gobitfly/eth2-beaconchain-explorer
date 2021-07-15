@@ -65,11 +65,13 @@ type Validator struct {
 
 // ValidatorQueue is a struct to hold validator queue data
 type ValidatorQueue struct {
-	ChurnLimit                 uint64
-	ActivationPublicKeys       [][]byte
-	ExitPublicKeys             [][]byte
-	ActivationValidatorIndices []uint64
-	ExitValidatorIndices       []uint64
+	Activating uint64
+	Exititing  uint64
+}
+
+type SyncAggregate struct {
+	SyncCommitteeBits      []byte
+	SyncCommitteeSignature []byte
 }
 
 // Block is a struct to hold block data
@@ -90,7 +92,9 @@ type Block struct {
 	Attestations      []*Attestation
 	Deposits          []*Deposit
 	VoluntaryExits    []*VoluntaryExit
-	Canonical         bool
+	// warning: sync aggregate may be nil, for phase0 blocks
+	SyncAggregate *SyncAggregate
+	Canonical     bool
 }
 
 // Eth1Data is a struct to hold the ETH1 data

@@ -148,21 +148,9 @@ func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	}
 
 	return &types.ValidatorQueue{
-		ChurnLimit:                 validators.ChurnLimit,
-		ActivationPublicKeys:       validators.ActivationPublicKeys,
-		ExitPublicKeys:             validators.ExitPublicKeys,
-		ActivationValidatorIndices: untypeValidatorIndicesList(validators.ActivationValidatorIndices),
-		ExitValidatorIndices:       untypeValidatorIndicesList(validators.ExitValidatorIndices),
+		Activating: uint64(len(validators.ActivationPublicKeys)),
+		Exititing:  uint64(len(validators.ExitPublicKeys)),
 	}, nil
-}
-
-// temporary hack until the explorer starts using typed integers
-func untypeValidatorIndicesList(li []eth2types.ValidatorIndex) []uint64 {
-	out := make([]uint64, len(li), len(li))
-	for i := 0; i < len(li); i++ {
-		out[i] = uint64(li[i])
-	}
-	return out
 }
 
 // GetAttestationPool will get the attestation pool from a Prysm client

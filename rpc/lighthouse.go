@@ -2,12 +2,13 @@ package rpc
 
 import (
 	"encoding/json"
+	"errors"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
+	"strconv"
 	"sync"
 	"time"
 
@@ -34,48 +35,131 @@ func NewLighthouseClient(endpoint string) (*LighthouseClient, error) {
 }
 
 func (lc *LighthouseClient) GetNewBlockChan() chan *types.Block {
-	return nil
+	blkCh := make(chan *types.Block, 10)
+	go func() {
+		// poll sync status 2 times per slot
+		t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot) / 2)
+
+		lastHeadSlot := uint64(0)
+		headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/head", lc.endpoint))
+		if err == nil {
+			var parsedHead StandardBeaconHeaderResponse
+			err = json.Unmarshal(headResp, &parsedHead)
+			if err != nil {
+				logger.Warnf("failed to decode head, starting blocks channel at slot 0")
+			} else {
+				lastHeadSlot = uint64(parsedHead.Data.Header.Message.Slot)
+			}
+		} else {
+			logger.Warnf("failed to fetch head, starting blocks channel at slot 0")
+		}
+
+		for {
+			<-t.C
+			syncingResp, err := lc.get(fmt.Sprintf("%s/eth/v1/node/syncing", lc.endpoint))
+			if err != nil {
+				logger.Warnf("failed to retrieve syncing status: %v", err)
+				continue
+			}
+			var parsedSyncing StandardSyncingResponse
+			err = json.Unmarshal(syncingResp, &parsedSyncing)
+			if err != nil {
+				logger.Warnf("failed to decode syncing status: %v", err)
+				continue
+			}
+			for slot := lastHeadSlot; slot < uint64(parsedSyncing.Data.HeadSlot); slot++ {
+				blks, err := lc.GetBlocksBySlot(slot)
+				if err != nil {
+					logger.Warnf("failed to fetch block(s) for slot %d: %v", slot, err)
+					continue
+				}
+				for _, blk := range blks {
+					blkCh <- blk
+				}
+				lastHeadSlot = slot
+			}
+		}
+	}()
+	return blkCh
 }
 
 // GetChainHead gets the chain head from Lighthouse
 func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
-	resp, err := lc.get(fmt.Sprintf("%v%v", lc.endpoint, "/beacon/head"))
-
+	headResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/head", lc.endpoint))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving chain head: %v", err)
 	}
 
-	var parsedResponse lighthouseBeaconHeadResponse
-	err = json.Unmarshal(resp, &parsedResponse)
-
+	var parsedHead StandardBeaconHeaderResponse
+	err = json.Unmarshal(headResp, &parsedHead)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing chain head: %v", err)
 	}
 
+	stateRoot := parsedHead.Data.Header.Message.StateRoot
+	finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, stateRoot))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
+	}
+
+	var parsedFinality StandardFinalityCheckpointsResponse
+	err = json.Unmarshal(finalityResp, &parsedFinality)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing finality checkpoints of head: %v", err)
+	}
+
 	return &types.ChainHead{
-		HeadSlot:                   parsedResponse.Slot,
-		HeadEpoch:                  parsedResponse.Slot / utils.Config.Chain.SlotsPerEpoch,
-		HeadBlockRoot:              utils.MustParseHex(parsedResponse.BlockRoot),
-		FinalizedSlot:              parsedResponse.FinalizedSlot,
-		FinalizedEpoch:             parsedResponse.FinalizedSlot / utils.Config.Chain.SlotsPerEpoch,
-		FinalizedBlockRoot:         utils.MustParseHex(parsedResponse.FinalizedBlockRoot),
-		JustifiedSlot:              parsedResponse.JustifiedSlot,
-		JustifiedEpoch:             parsedResponse.JustifiedSlot / utils.Config.Chain.SlotsPerEpoch,
-		JustifiedBlockRoot:         utils.MustParseHex(parsedResponse.JustifiedBlockRoot),
-		PreviousJustifiedSlot:      parsedResponse.PreviousJustifiedSlot,
-		PreviousJustifiedEpoch:     parsedResponse.PreviousJustifiedSlot / utils.Config.Chain.SlotsPerEpoch,
-		PreviousJustifiedBlockRoot: utils.MustParseHex(parsedResponse.PreviousJustifiedBlockRoot),
+		HeadSlot:                   uint64(parsedHead.Data.Header.Message.Slot),
+		HeadEpoch:                  uint64(parsedHead.Data.Header.Message.Slot) / utils.Config.Chain.SlotsPerEpoch,
+		HeadBlockRoot:              utils.MustParseHex(parsedHead.Data.Root),
+		FinalizedSlot:              uint64(parsedFinality.Data.Finalized.Epoch) * utils.Config.Chain.SlotsPerEpoch,
+		FinalizedEpoch:             uint64(parsedFinality.Data.Finalized.Epoch),
+		FinalizedBlockRoot:         utils.MustParseHex(parsedFinality.Data.Finalized.Root),
+		JustifiedSlot:              uint64(parsedFinality.Data.CurrentJustified.Epoch) * utils.Config.Chain.SlotsPerEpoch,
+		JustifiedEpoch:             uint64(parsedFinality.Data.CurrentJustified.Epoch),
+		JustifiedBlockRoot:         utils.MustParseHex(parsedFinality.Data.CurrentJustified.Root),
+		PreviousJustifiedSlot:      uint64(parsedFinality.Data.PreviousJustified.Epoch) * utils.Config.Chain.SlotsPerEpoch,
+		PreviousJustifiedEpoch:     uint64(parsedFinality.Data.PreviousJustified.Epoch),
+		PreviousJustifiedBlockRoot: utils.MustParseHex(parsedFinality.Data.PreviousJustified.Root),
 	}, nil
 }
 
-// GetValidatorQueue returns an empty validator queue as the Lighthouse RPC api does not support receiving the validator queue.
 func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
+	// pre-filter the status, to return much less validators, thus much faster!
+	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/head/validators?status=pending_queued,exited", lc.endpoint))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving validator for head valiqdator queue check: %v", err)
+	}
+
+	var parsedValidators StandardValidatorsResponse
+	err = json.Unmarshal(validatorsResp, &parsedValidators)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing queue validators: %v", err)
+	}
+	// TODO: maybe track more status counts in the future?
+	activatingValidatorCount := uint64(0)
+	exitingValidatorCount := uint64(0)
+	for _, validator := range parsedValidators.Data {
+		switch validator.Status {
+		case "pending_initialized":
+			break
+		case "pending_queued":
+			activatingValidatorCount += 1
+			break
+		case "active_ongoing", "active_exiting", "active_slashed":
+			break
+		case "exited_unslashed", "exited_slashed":
+			exitingValidatorCount += exitingValidatorCount
+			break
+		case "withdrawal_possible", "withdrawal_done":
+			break
+		default:
+			return nil, fmt.Errorf("unrecognized validator status (validator %d): %s", validator.Index, validator.Status)
+		}
+	}
 	return &types.ValidatorQueue{
-		ChurnLimit:                 0,
-		ActivationPublicKeys:       [][]byte{},
-		ExitPublicKeys:             [][]byte{},
-		ActivationValidatorIndices: []uint64{},
-		ExitValidatorIndices:       []uint64{},
+		Activating: activatingValidatorCount,
+		Exititing:  exitingValidatorCount,
 	}, nil
 }
 
@@ -96,31 +180,56 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 		return cachedValue.(*types.EpochAssignments), nil
 	}
 
-	resp, err := lc.get(fmt.Sprintf("%v%v?epoch=%v", lc.endpoint, "/validator/duties/active", epoch))
-
+	proposerResp, err := lc.get(fmt.Sprintf("%s/eth/v1/validator/duties/proposer/%d", lc.endpoint, epoch))
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving validator duties: %v", err)
+		return nil, fmt.Errorf("error retrieving proposer duties: %v", err)
+	}
+	var parsedProposerResponse StandardProposerDutiesResponse
+	err = json.Unmarshal(proposerResp, &parsedProposerResponse)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing proposer duties: %v", err)
 	}
 
-	var parsedResponse []*lighthouseValidatorDutiesResponse
-
-	err = json.Unmarshal(resp, &parsedResponse)
-
+	// fetch the block root that the proposer data is dependent on
+	headerResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/%s", lc.endpoint, parsedProposerResponse.DependentRoot))
 	if err != nil {
-		return nil, fmt.Errorf("error parsing validator duties: %v", err)
+		return nil, fmt.Errorf("error retrieving chain header: %v", err)
+	}
+	var parsedHeader StandardBeaconHeaderResponse
+	err = json.Unmarshal(headerResp, &parsedHeader)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing chain header: %v", err)
+	}
+	depStateRoot := parsedHeader.Data.Header.Message.StateRoot
+
+	// Now use the state root to make a consistent committee query
+	committeesResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/committees?epoch=%d", lc.endpoint, depStateRoot, epoch))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving chain header: %v", err)
+	}
+	var parsedCommittees StandardCommitteesResponse
+	err = json.Unmarshal(committeesResp, &parsedCommittees)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing committees data: %v", err)
 	}
 
 	assignments := &types.EpochAssignments{
 		ProposerAssignments: make(map[uint64]uint64),
 		AttestorAssignments: make(map[string]uint64),
 	}
+	for _, duty := range parsedProposerResponse.Data {
+		assignments.ProposerAssignments[uint64(duty.Slot)] = uint64(duty.ValidatorIndex)
+	}
 
-	for _, assignment := range parsedResponse {
-		for _, proposerSlot := range assignment.BlockProposalSlots {
-			assignments.ProposerAssignments[proposerSlot] = assignment.ValidatorIndex
+	for _, committee := range parsedCommittees.Data {
+		for i, valIndex := range committee.Validators {
+			valIndexU64, err := strconv.ParseUint(valIndex, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("epoch %d committee %d index %d has bad validator index %q", epoch, committee.Index, i, valIndex)
+			}
+			k := utils.FormatAttestorAssignmentKey(uint64(committee.Slot), uint64(committee.Index), uint64(i))
+			assignments.AttestorAssignments[k] = valIndexU64
 		}
-
-		assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(assignment.AttestationSlot, assignment.AttestationCommitteeIndex, assignment.AttestationCommitteePosition)] = assignment.ValidatorIndex
 	}
 
 	if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 {
@@ -137,42 +246,30 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	data := &types.EpochData{}
 	data.Epoch = epoch
 
-	stateRoot, err := lc.get(fmt.Sprintf("%v%v?slot=%v", lc.endpoint, "/beacon/state_root", epoch*utils.Config.Chain.SlotsPerEpoch))
+	validatorsResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validators", lc.endpoint, epoch*utils.Config.Chain.SlotsPerEpoch))
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving state root for epoch %v: %v", epoch, err)
+		return nil, fmt.Errorf("error retrieving validators for epoch %v: %v", epoch, err)
 	}
 
-	stateRootString := strings.Replace(string(stateRoot), "\"", "", -1)
-	data.Validators = make([]*types.Validator, 0)
-
-	var parsedResponse []*lighthouseValidatorResponse
-
-	resp, err := lc.get(fmt.Sprintf("%v%v?state_root=%v", lc.endpoint, "/beacon/validators/all", stateRootString))
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving epoch validators: %v", err)
-	}
-
-	err = json.Unmarshal(resp, &parsedResponse)
+	var parsedValidators StandardValidatorsResponse
+	err = json.Unmarshal(validatorsResp, &parsedValidators)
 
 	if err != nil {
 		return nil, fmt.Errorf("error parsing epoch validators: %v", err)
 	}
 
-	for _, validator := range parsedResponse {
-
-		pubKey := utils.MustParseHex(validator.Pubkey)
-
+	for _, validator := range parsedValidators.Data {
 		data.Validators = append(data.Validators, &types.Validator{
-			Index:                      validator.ValidatorIndex,
-			PublicKey:                  pubKey,
+			Index:                      uint64(validator.Index),
+			PublicKey:                  utils.MustParseHex(validator.Validator.Pubkey),
 			WithdrawalCredentials:      utils.MustParseHex(validator.Validator.WithdrawalCredentials),
-			Balance:                    validator.Balance,
-			EffectiveBalance:           validator.Validator.EffectiveBalance,
+			Balance:                    uint64(validator.Balance),
+			EffectiveBalance:           uint64(validator.Validator.EffectiveBalance),
 			Slashed:                    validator.Validator.Slashed,
-			ActivationEligibilityEpoch: validator.Validator.ActivationEligibilityEpoch,
-			ActivationEpoch:            validator.Validator.ActivationEpoch,
-			ExitEpoch:                  validator.Validator.ExitEpoch,
-			WithdrawableEpoch:          validator.Validator.WithdrawableEpoch,
+			ActivationEligibilityEpoch: uint64(validator.Validator.ActivationEligibilityEpoch),
+			ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
+			ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
+			WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
 		})
 	}
 
@@ -234,6 +331,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 				Attestations:      make([]*types.Attestation, 0),
 				Deposits:          make([]*types.Deposit, 0),
 				VoluntaryExits:    make([]*types.VoluntaryExit, 0),
+				SyncAggregate:     nil,
 			}
 
 			if utils.SlotToTime(slot).After(time.Now().Add(time.Second * -60)) {
@@ -270,60 +368,82 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 
 // GetBlocksBySlot will get the blocks by slot from Lighthouse RPC api
 func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
-	resp, err := lc.get(fmt.Sprintf("%v%v?slot=%v", lc.endpoint, "/beacon/block", slot))
+	respRoot, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%d/root", lc.endpoint, slot))
+	if err != nil {
+		if err == notFoundErr {
+			// no block in this slot
+			return []*types.Block{}, nil
+		}
+		return nil, fmt.Errorf("error retrieving block root at slot %v: %v", slot, err)
+	}
+	var parsedRoot StandardV1BlockRootResponse
+	err = json.Unmarshal(respRoot, &parsedRoot)
+	if err != nil {
+		logger.Errorf("error parsing block root at slot %v: %v", slot, err)
+		return []*types.Block{}, nil
+	}
 
+	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%s", lc.endpoint, parsedRoot.Data.Root))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block data at slot %v: %v", slot, err)
 	}
 
-	var parsedResponse *lighthouseBlockResponse
-
+	var parsedResponse StandardV2BlockResponse
 	err = json.Unmarshal(resp, &parsedResponse)
-
 	if err != nil {
 		logger.Errorf("error parsing block data at slot %v: %v", slot, err)
 		return []*types.Block{}, nil
 	}
 
+	parsedBlock := parsedResponse.Data
+
 	block := &types.Block{
 		Status:       1,
-		BlockRoot:    utils.MustParseHex(parsedResponse.Root),
+		BlockRoot:    utils.MustParseHex(parsedRoot.Data.Root),
 		Slot:         slot,
-		ParentRoot:   utils.MustParseHex(parsedResponse.BeaconBlock.Message.ParentRoot),
-		StateRoot:    utils.MustParseHex(parsedResponse.BeaconBlock.Message.StateRoot),
-		Signature:    utils.MustParseHex(parsedResponse.BeaconBlock.Signature),
-		RandaoReveal: utils.MustParseHex(parsedResponse.BeaconBlock.Message.Body.RandaoReveal),
-		Graffiti:     utils.MustParseHex(parsedResponse.BeaconBlock.Message.Body.Graffiti),
+		ParentRoot:   utils.MustParseHex(parsedBlock.Message.ParentRoot),
+		StateRoot:    utils.MustParseHex(parsedBlock.Message.StateRoot),
+		Signature:    utils.MustParseHex(parsedBlock.Signature),
+		RandaoReveal: utils.MustParseHex(parsedBlock.Message.Body.RandaoReveal),
+		Graffiti:     utils.MustParseHex(parsedBlock.Message.Body.Graffiti),
 		Eth1Data: &types.Eth1Data{
-			DepositRoot:  utils.MustParseHex(parsedResponse.BeaconBlock.Message.Body.Eth1Data.DepositRoot),
-			DepositCount: parsedResponse.BeaconBlock.Message.Body.Eth1Data.DepositCount,
-			BlockHash:    utils.MustParseHex(parsedResponse.BeaconBlock.Message.Body.Eth1Data.BlockHash),
+			DepositRoot:  utils.MustParseHex(parsedBlock.Message.Body.Eth1Data.DepositRoot),
+			DepositCount: uint64(parsedBlock.Message.Body.Eth1Data.DepositCount),
+			BlockHash:    utils.MustParseHex(parsedBlock.Message.Body.Eth1Data.BlockHash),
 		},
-		ProposerSlashings: make([]*types.ProposerSlashing, len(parsedResponse.BeaconBlock.Message.Body.ProposerSlashings)),
-		AttesterSlashings: make([]*types.AttesterSlashing, len(parsedResponse.BeaconBlock.Message.Body.AttesterSlashings)),
-		Attestations:      make([]*types.Attestation, len(parsedResponse.BeaconBlock.Message.Body.Attestations)),
-		Deposits:          make([]*types.Deposit, len(parsedResponse.BeaconBlock.Message.Body.Deposits)),
-		VoluntaryExits:    make([]*types.VoluntaryExit, len(parsedResponse.BeaconBlock.Message.Body.VoluntaryExits)),
+		ProposerSlashings: make([]*types.ProposerSlashing, len(parsedBlock.Message.Body.ProposerSlashings)),
+		AttesterSlashings: make([]*types.AttesterSlashing, len(parsedBlock.Message.Body.AttesterSlashings)),
+		Attestations:      make([]*types.Attestation, len(parsedBlock.Message.Body.Attestations)),
+		Deposits:          make([]*types.Deposit, len(parsedBlock.Message.Body.Deposits)),
+		VoluntaryExits:    make([]*types.VoluntaryExit, len(parsedBlock.Message.Body.VoluntaryExits)),
 	}
 
+	if agg := parsedBlock.Message.Body.SyncAggregate; agg != nil {
+		block.SyncAggregate = &types.SyncAggregate{
+			SyncCommitteeBits:      utils.MustParseHex(agg.SyncCommitteeBits),
+			SyncCommitteeSignature: utils.MustParseHex(agg.SyncCommitteeSignature),
+		}
+	}
+
+	// TODO: this is legacy from old lighthouse API. Does it even still apply?
 	if block.Eth1Data.DepositCount > 2147483647 { // Sometimes the lighthouse node does return bogus data for the DepositCount value
 		block.Eth1Data.DepositCount = 0
 	}
 
-	for i, attestation := range parsedResponse.BeaconBlock.Message.Body.Attestations {
+	for i, attestation := range parsedBlock.Message.Body.Attestations {
 		a := &types.Attestation{
 			AggregationBits: utils.MustParseHex(attestation.AggregationBits),
 			Attesters:       []uint64{},
 			Data: &types.AttestationData{
-				Slot:            attestation.Data.Slot,
-				CommitteeIndex:  attestation.Data.Index,
+				Slot:            uint64(attestation.Data.Slot),
+				CommitteeIndex:  uint64(attestation.Data.Index),
 				BeaconBlockRoot: utils.MustParseHex(attestation.Data.BeaconBlockRoot),
 				Source: &types.Checkpoint{
-					Epoch: attestation.Data.Source.Epoch,
+					Epoch: uint64(attestation.Data.Source.Epoch),
 					Root:  utils.MustParseHex(attestation.Data.Source.Root),
 				},
 				Target: &types.Checkpoint{
-					Epoch: attestation.Data.Target.Epoch,
+					Epoch: uint64(attestation.Data.Target.Epoch),
 					Root:  utils.MustParseHex(attestation.Data.Target.Root),
 				},
 			},
@@ -350,7 +470,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		block.Attestations[i] = a
 	}
 
-	for i, deposit := range parsedResponse.BeaconBlock.Message.Body.Deposits {
+	for i, deposit := range parsedBlock.Message.Body.Deposits {
 		d := &types.Deposit{
 			Proof:                 nil,
 			PublicKey:             utils.MustParseHex(deposit.Data.Pubkey),
@@ -367,28 +487,28 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 
 // GetValidatorParticipation will get the validator participation from the Lighthouse RPC api
 func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error) {
-	resp, err := lc.get(fmt.Sprintf("%v%v?epoch=%v", lc.endpoint, "/consensus/global_votes", epoch))
-
+	resp, err := lc.get(fmt.Sprintf("%s/lighthouse/validator_inclusion/%d/global", lc.endpoint, epoch))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator participation data for epoch %v: %v", epoch, err)
 	}
 
-	var parsedResponse *lighthouseValidatorParticipationResponse
-
+	var parsedResponse LighthouseValidatorParticipationResponse
 	err = json.Unmarshal(resp, &parsedResponse)
-
 	if err != nil {
 		return nil, fmt.Errorf("error parsing validator participation data for epoch %v: %v", epoch, err)
 	}
 
 	return &types.ValidatorParticipation{
-		Epoch:                   epoch,
-		Finalized:               float32(parsedResponse.CurrentEpochTargetAttestingGwei)/float32(parsedResponse.CurrentEpochActiveGwei) > (float32(2) / float32(3)),
-		GlobalParticipationRate: float32(parsedResponse.CurrentEpochAttestingGwei) / float32(parsedResponse.CurrentEpochActiveGwei),
-		VotedEther:              parsedResponse.CurrentEpochActiveGwei,
-		EligibleEther:           parsedResponse.CurrentEpochAttestingGwei,
+		Epoch: epoch,
+		// technically there are rules for delayed finalization through previous epoch, applied only later. But good enough, this matches previous wonky behavior
+		Finalized:               float32(parsedResponse.Data.CurrentEpochTargetAttestingGwei)/float32(parsedResponse.Data.CurrentEpochActiveGwei) > (float32(2) / float32(3)),
+		GlobalParticipationRate: float32(parsedResponse.Data.CurrentEpochTargetAttestingGwei) / float32(parsedResponse.Data.CurrentEpochActiveGwei),
+		VotedEther:              uint64(parsedResponse.Data.PreviousEpochTargetAttestingGwei) / 1e9,
+		EligibleEther:           uint64(parsedResponse.Data.CurrentEpochActiveGwei) / 1e9,
 	}, nil
 }
+
+var notFoundErr = errors.New("not found 404")
 
 func (lc *LighthouseClient) get(url string) ([]byte, error) {
 	client := &http.Client{Timeout: time.Second * 60}
@@ -401,111 +521,278 @@ func (lc *LighthouseClient) get(url string) ([]byte, error) {
 	data, err := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, notFoundErr
+		}
 		return nil, fmt.Errorf("error-response: %s", data)
 	}
 
 	return data, err
-
 }
 
-type lighthouseBeaconHeadResponse struct {
-	BlockRoot                  string `json:"block_root"`
-	FinalizedBlockRoot         string `json:"finalized_block_root"`
-	FinalizedSlot              uint64 `json:"finalized_slot"`
-	JustifiedBlockRoot         string `json:"justified_block_root"`
-	JustifiedSlot              uint64 `json:"justified_slot"`
-	PreviousJustifiedBlockRoot string `json:"previous_justified_block_root"`
-	PreviousJustifiedSlot      uint64 `json:"previous_justified_slot"`
-	Slot                       uint64 `json:"slot"`
-	StateRoot                  string `json:"state_root"`
+type uint64Str uint64
+
+func (s *uint64Str) UnmarshalJSON(b []byte) error {
+	return Uint64Unmarshal((*uint64)(s), b)
 }
 
-type lighthouseValidatorDutiesResponse struct {
-	AttestationCommitteeIndex    uint64   `json:"attestation_committee_index"`
-	AttestationCommitteePosition uint64   `json:"attestation_committee_position"`
-	AttestationSlot              uint64   `json:"attestation_slot"`
-	BlockProposalSlots           []uint64 `json:"block_proposal_slots"`
-	ValidatorIndex               uint64   `json:"validator_index"`
-	ValidatorPubkey              string   `json:"validator_pubkey"`
+// Parse a uint64, with or without quotes, in any base, with common prefixes accepted to change base.
+func Uint64Unmarshal(v *uint64, b []byte) error {
+	if v == nil {
+		return errors.New("nil dest in uint64 decoding")
+	}
+	if len(b) == 0 {
+		return errors.New("empty uint64 input")
+	}
+	if b[0] == '"' || b[0] == '\'' {
+		if len(b) == 1 || b[len(b)-1] != b[0] {
+			return errors.New("uneven/missing quotes")
+		}
+		b = b[1 : len(b)-1]
+	}
+	n, err := strconv.ParseUint(string(b), 0, 64)
+	if err != nil {
+		return err
+	}
+	*v = n
+	return nil
 }
 
-type lighthouseValidatorParticipationResponse struct {
-	CurrentEpochActiveGwei           uint64 `json:"current_epoch_active_gwei"`
-	CurrentEpochAttestingGwei        uint64 `json:"current_epoch_attesting_gwei"`
-	CurrentEpochTargetAttestingGwei  uint64 `json:"current_epoch_target_attesting_gwei"`
-	PreviousEpochActiveGwei          uint64 `json:"previous_epoch_active_gwei"`
-	PreviousEpochAttestingGwei       uint64 `json:"previous_epoch_attesting_gwei"`
-	PreviousEpochHeadAttestingGwei   uint64 `json:"previous_epoch_head_attesting_gwei"`
-	PreviousEpochTargetAttestingGwei uint64 `json:"previous_epoch_target_attesting_gwei"`
+type StandardBeaconHeaderResponse struct {
+	Data struct {
+		Root      string `json:"root"`
+		Canonical bool   `json:"canonical"`
+		Header    struct {
+			Message struct {
+				Slot          uint64Str `json:"slot"`
+				ProposerIndex uint64Str `json:"proposer_index"`
+				ParentRoot    string    `json:"parent_root"`
+				StateRoot     string    `json:"state_root"`
+				BodyRoot      string    `json:"body_root"`
+			} `json:"message"`
+			Signature string `json:"signature"`
+		} `json:"header"`
+	} `json:"data"`
 }
 
-type lighthouseBlockResponse struct {
-	BeaconBlock struct {
+type StandardFinalityCheckpointsResponse struct {
+	Data struct {
+		PreviousJustified struct {
+			Epoch uint64Str `json:"epoch"`
+			Root  string    `json:"root"`
+		} `json:"previous_justified"`
+		CurrentJustified struct {
+			Epoch uint64Str `json:"epoch"`
+			Root  string    `json:"root"`
+		} `json:"current_justified"`
+		Finalized struct {
+			Epoch uint64Str `json:"epoch"`
+			Root  string    `json:"root"`
+		} `json:"finalized"`
+	} `json:"data"`
+}
+
+type StandardProposerDuty struct {
+	Pubkey         string    `json:"pubkey"`
+	ValidatorIndex uint64Str `json:"validator_index"`
+	Slot           uint64Str `json:"slot"`
+}
+
+type StandardProposerDutiesResponse struct {
+	DependentRoot string                 `json:"dependent_root"`
+	Data          []StandardProposerDuty `json:"data"`
+}
+
+type StandardCommitteeEntry struct {
+	Index      uint64Str `json:"index"`
+	Slot       uint64Str `json:"slot"`
+	Validators []string  `json:"validators"`
+}
+
+type StandardCommitteesResponse struct {
+	Data []StandardCommitteeEntry `json:"data"`
+}
+
+type LighthouseValidatorParticipationResponse struct {
+	Data struct {
+		CurrentEpochActiveGwei           uint64Str `json:"current_epoch_active_gwei"`
+		PreviousEpochActiveGwei          uint64Str `json:"previous_epoch_active_gwei"`
+		CurrentEpochTargetAttestingGwei  uint64Str `json:"current_epoch_target_attesting_gwei"`
+		PreviousEpochTargetAttestingGwei uint64Str `json:"previous_epoch_target_attesting_gwei"`
+		PreviousEpochHeadAttestingGwei   uint64Str `json:"previous_epoch_head_attesting_gwei"`
+	} `json:"data"`
+}
+
+type ProposerSlashing struct {
+	SignedHeader1 struct {
 		Message struct {
-			Body struct {
-				Attestations []struct {
-					AggregationBits string `json:"aggregation_bits"`
-					Data            struct {
-						BeaconBlockRoot string `json:"beacon_block_root"`
-						Index           uint64 `json:"index"`
-						Slot            uint64 `json:"slot"`
-						Source          struct {
-							Epoch uint64 `json:"epoch"`
-							Root  string `json:"root"`
-						} `json:"source"`
-						Target struct {
-							Epoch uint64 `json:"epoch"`
-							Root  string `json:"root"`
-						} `json:"target"`
-					} `json:"data"`
-					Signature string `json:"signature"`
-				} `json:"attestations"`
-				AttesterSlashings []interface{} `json:"attester_slashings"`
-				Deposits          []struct {
-					Data struct {
-						Amount                int    `json:"amount"`
-						Pubkey                string `json:"pubkey"`
-						Signature             string `json:"signature"`
-						WithdrawalCredentials string `json:"withdrawal_credentials"`
-					} `json:"data"`
-					Proof []string `json:"proof"`
-				} `json:"deposits"`
-				Eth1Data struct {
-					BlockHash    string `json:"block_hash"`
-					DepositCount uint64 `json:"deposit_count"`
-					DepositRoot  string `json:"deposit_root"`
-				} `json:"eth1_data"`
-				Graffiti          string        `json:"graffiti"`
-				ProposerSlashings []interface{} `json:"proposer_slashings"`
-				RandaoReveal      string        `json:"randao_reveal"`
-				VoluntaryExits    []interface{} `json:"voluntary_exits"`
-			} `json:"body"`
-			ParentRoot string `json:"parent_root"`
-			Slot       uint64 `json:"slot"`
-			StateRoot  string `json:"state_root"`
+			Slot          uint64Str `json:"slot"`
+			ProposerIndex uint64Str `json:"proposer_index"`
+			ParentRoot    string    `json:"parent_root"`
+			StateRoot     string    `json:"state_root"`
+			BodyRoot      string    `json:"body_root"`
 		} `json:"message"`
 		Signature string `json:"signature"`
-	} `json:"beacon_block"`
-	Root string `json:"root"`
+	} `json:"signed_header_1"`
+	SignedHeader2 struct {
+		Message struct {
+			Slot          uint64Str `json:"slot"`
+			ProposerIndex uint64Str `json:"proposer_index"`
+			ParentRoot    string    `json:"parent_root"`
+			StateRoot     string    `json:"state_root"`
+			BodyRoot      string    `json:"body_root"`
+		} `json:"message"`
+		Signature string `json:"signature"`
+	} `json:"signed_header_2"`
 }
 
-type lighthouseValidatorResponse struct {
-	Balance   uint64 `json:"balance"`
-	Pubkey    string `json:"pubkey"`
+type AttesterSlashing struct {
+	Attestation1 struct {
+		AttestingIndices []uint64Str `json:"attesting_indices"`
+		Signature        string      `json:"signature"`
+		Data             struct {
+			Slot            uint64Str `json:"slot"`
+			Index           uint64Str `json:"index"`
+			BeaconBlockRoot string    `json:"beacon_block_root"`
+			Source          struct {
+				Epoch uint64Str `json:"epoch"`
+				Root  string    `json:"root"`
+			} `json:"source"`
+			Target struct {
+				Epoch uint64Str `json:"epoch"`
+				Root  string    `json:"root"`
+			} `json:"target"`
+		} `json:"data"`
+	} `json:"attestation_1"`
+	Attestation2 struct {
+		AttestingIndices []uint64Str `json:"attesting_indices"`
+		Signature        string      `json:"signature"`
+		Data             struct {
+			Slot            uint64Str `json:"slot"`
+			Index           uint64Str `json:"index"`
+			BeaconBlockRoot string    `json:"beacon_block_root"`
+			Source          struct {
+				Epoch uint64Str `json:"epoch"`
+				Root  string    `json:"root"`
+			} `json:"source"`
+			Target struct {
+				Epoch uint64Str `json:"epoch"`
+				Root  string    `json:"root"`
+			} `json:"target"`
+		} `json:"data"`
+	} `json:"attestation_2"`
+}
+
+type Attestation struct {
+	AggregationBits string `json:"aggregation_bits"`
+	Signature       string `json:"signature"`
+	Data            struct {
+		Slot            uint64Str `json:"slot"`
+		Index           uint64Str `json:"index"`
+		BeaconBlockRoot string    `json:"beacon_block_root"`
+		Source          struct {
+			Epoch uint64Str `json:"epoch"`
+			Root  string    `json:"root"`
+		} `json:"source"`
+		Target struct {
+			Epoch uint64Str `json:"epoch"`
+			Root  string    `json:"root"`
+		} `json:"target"`
+	} `json:"data"`
+}
+
+type Deposit struct {
+	Proof []string `json:"proof"`
+	Data  struct {
+		Pubkey                string    `json:"pubkey"`
+		WithdrawalCredentials string    `json:"withdrawal_credentials"`
+		Amount                uint64Str `json:"amount"`
+		Signature             string    `json:"signature"`
+	} `json:"data"`
+}
+
+type VoluntaryExit struct {
+	Message struct {
+		Epoch          uint64Str `json:"epoch"`
+		ValidatorIndex uint64Str `json:"validator_index"`
+	} `json:"message"`
+	Signature string `json:"signature"`
+}
+
+type Eth1Data struct {
+	DepositRoot  string    `json:"deposit_root"`
+	DepositCount uint64Str `json:"deposit_count"`
+	BlockHash    string    `json:"block_hash"`
+}
+
+type SyncAggregate struct {
+	SyncCommitteeBits      string `json:"sync_committee_bits"`
+	SyncCommitteeSignature string `json:"sync_committee_signature"`
+}
+
+type AnySignedBlock struct {
+	Message struct {
+		Slot          uint64Str `json:"slot"`
+		ProposerIndex uint64Str `json:"proposer_index"`
+		ParentRoot    string    `json:"parent_root"`
+		StateRoot     string    `json:"state_root"`
+		Body          struct {
+			RandaoReveal      string             `json:"randao_reveal"`
+			Eth1Data          Eth1Data           `json:"eth1_data"`
+			Graffiti          string             `json:"graffiti"`
+			ProposerSlashings []ProposerSlashing `json:"proposer_slashings"`
+			AttesterSlashings []AttesterSlashing `json:"attester_slashings"`
+			Attestations      []Attestation      `json:"attestations"`
+			Deposits          []Deposit          `json:"deposits"`
+			VoluntaryExits    []VoluntaryExit    `json:"voluntary_exits"`
+
+			// not present in phase0 blocks
+			SyncAggregate *SyncAggregate `json:"sync_aggregate,omitempty"`
+		} `json:"body"`
+	} `json:"message"`
+	Signature string `json:"signature"`
+}
+
+type StandardV2BlockResponse struct {
+	Version string         `json:"version"`
+	Data    AnySignedBlock `json:"data"`
+}
+
+type StandardV1BlockRootResponse struct {
+	Data struct {
+		Root string `json:"root"`
+	} `json:"data"`
+}
+
+type StandardValidatorEntry struct {
+	Index     uint64Str `json:"index"`
+	Balance   uint64Str `json:"balance"`
+	Status    string    `json:"status"`
 	Validator struct {
-		ActivationEligibilityEpoch uint64 `json:"activation_eligibility_epoch"`
-		ActivationEpoch            uint64 `json:"activation_epoch"`
-		EffectiveBalance           uint64 `json:"effective_balance"`
-		ExitEpoch                  uint64 `json:"exit_epoch"`
-		Pubkey                     string `json:"pubkey"`
-		Slashed                    bool   `json:"slashed"`
-		WithdrawableEpoch          uint64 `json:"withdrawable_epoch"`
-		WithdrawalCredentials      string `json:"withdrawal_credentials"`
+		Pubkey                     string    `json:"pubkey"`
+		WithdrawalCredentials      string    `json:"withdrawal_credentials"`
+		EffectiveBalance           uint64Str `json:"effective_balance"`
+		Slashed                    bool      `json:"slashed"`
+		ActivationEligibilityEpoch uint64Str `json:"activation_eligibility_epoch"`
+		ActivationEpoch            uint64Str `json:"activation_epoch"`
+		ExitEpoch                  uint64Str `json:"exit_epoch"`
+		WithdrawableEpoch          uint64Str `json:"withdrawable_epoch"`
 	} `json:"validator"`
-	ValidatorIndex uint64 `json:"validator_index"`
+}
+
+type StandardValidatorsResponse struct {
+	Data []StandardValidatorEntry `json:"data"`
 }
 
 func (pc *LighthouseClient) GetBlockStatusByEpoch(epoch uint64) ([]*types.CanonBlock, error) {
 	blocks := make([]*types.CanonBlock, 0)
 	return blocks, nil
+}
+
+type StandardSyncingResponse struct {
+	Data struct {
+		IsSyncing    bool      `json:"is_syncing"`
+		HeadSlot     uint64Str `json:"head_slot"`
+		SyncDistance uint64Str `json:"sync_distance"`
+	} `json:"data"`
 }
