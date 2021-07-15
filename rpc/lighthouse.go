@@ -304,8 +304,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 			if data.Blocks[block.Slot] == nil {
 				data.Blocks[block.Slot] = make(map[string]*types.Block)
 			}
-
-			block.Proposer = data.ValidatorAssignmentes.ProposerAssignments[block.Slot]
 			data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
 		}
 	}
@@ -346,10 +344,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 				// Block is in the past, set status to missed
 				data.Blocks[slot]["0x0"].Status = 2
 				data.Blocks[slot]["0x0"].BlockRoot = []byte{0x1}
-			}
-		} else {
-			for _, block := range data.Blocks[slot] {
-				block.Proposer = proposer
 			}
 		}
 	}
@@ -404,6 +398,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 	block := &types.Block{
 		Status:       1,
 		Canonical:    true,
+		Proposer:     uint64(parsedBlock.Message.ProposerIndex),
 		BlockRoot:    utils.MustParseHex(parsedRoot.Data.Root),
 		Slot:         slot,
 		ParentRoot:   utils.MustParseHex(parsedBlock.Message.ParentRoot),
