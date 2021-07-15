@@ -290,7 +290,7 @@ func CleanupOldMachineStats() error {
 	nowTs := now.Unix()
 	var today int = int(nowTs / 86400)
 
-	dayRange := 30
+	dayRange := 32
 	day := int(today - dayRange)
 
 	deleteCondition := "SELECT COALESCE(min(id), 0) from stats_meta_p where day <= $1"
