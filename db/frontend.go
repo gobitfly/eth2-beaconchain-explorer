@@ -334,7 +334,7 @@ func CleanupOldMachineStats() error {
 		return err
 	}
 
-	_, err = tx.Exec("DELETE FROM stats_process WHERE id IN (SELECT id FROM stats_process WHERE meta_id <= $1 ORDER BY meta_id asc)", metaID)
+	_, err = tx.Exec("DELETE FROM stats_process WHERE id IN (SELECT id FROM stats_process WHERE id <= $1 ORDER BY id asc)", generalID)
 	if err != nil {
 		return err
 	}
