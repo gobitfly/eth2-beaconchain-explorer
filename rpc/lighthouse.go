@@ -319,6 +319,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 			data.Blocks[slot] = make(map[string]*types.Block)
 			data.Blocks[slot]["0x0"] = &types.Block{
 				Status:            0,
+				Canonical:         true,
 				Proposer:          proposer,
 				BlockRoot:         []byte{0x0},
 				Slot:              slot,
@@ -402,6 +403,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 
 	block := &types.Block{
 		Status:       1,
+		Canonical:    true,
 		BlockRoot:    utils.MustParseHex(parsedRoot.Data.Root),
 		Slot:         slot,
 		ParentRoot:   utils.MustParseHex(parsedBlock.Message.ParentRoot),
