@@ -96,8 +96,11 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 		return nil, fmt.Errorf("error parsing chain head: %v", err)
 	}
 
-	stateRoot := parsedHead.Data.Header.Message.StateRoot
-	finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, stateRoot))
+	id := parsedHead.Data.Header.Message.StateRoot
+	if parsedHead.Data.Header.Message.Slot == 0 {
+		id = "genesis"
+	}
+	finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, id))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
 	}
