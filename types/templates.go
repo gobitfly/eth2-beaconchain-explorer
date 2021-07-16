@@ -497,6 +497,8 @@ type BlockPageData struct {
 	Eth1dataDepositroot    []byte `db:"eth1data_depositroot"`
 	Eth1dataDepositcount   uint64 `db:"eth1data_depositcount"`
 	Eth1dataBlockhash      []byte `db:"eth1data_blockhash"`
+	SyncAggregateBits      []byte `db:"syncaggregate_bits"`
+	SyncAggregateSignature []byte `db:"syncaggregate_signature"`
 	ProposerSlashingsCount uint64 `db:"proposerslashingscount"`
 	AttesterSlashingsCount uint64 `db:"attesterslashingscount"`
 	AttestationsCount      uint64 `db:"attestationscount"`

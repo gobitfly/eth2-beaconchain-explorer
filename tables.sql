@@ -256,6 +256,8 @@ create table blocks
     eth1data_depositroot   bytea,
     eth1data_depositcount  int   not null,
     eth1data_blockhash     bytea,
+    syncaggregate_bits     bytea,
+    syncaggregate_signature bytea,
     proposerslashingscount int   not null,
     attesterslashingscount int   not null,
     attestationscount      int   not null,

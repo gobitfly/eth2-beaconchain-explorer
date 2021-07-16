@@ -77,6 +77,8 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			blocks.eth1data_depositroot,
 			blocks.eth1data_depositcount,
 			blocks.eth1data_blockhash,
+			blocks.syncaggregate_bits,
+			blocks.syncaggregate_signature,
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
 			blocks.attestationscount,
