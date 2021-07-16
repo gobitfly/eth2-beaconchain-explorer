@@ -263,7 +263,7 @@ create table blocks
     attestationscount      int   not null,
     depositscount          int   not null,
     voluntaryexitscount    int   not null,
-    syncaggregateparticipation float not null,
+    syncaggregate_participation float not null,
     proposer               int   not null,
     status                 text  not null, /* Can be 0 = scheduled, 1 proposed, 2 missed, 3 orphaned */
     primary key (slot, blockroot)

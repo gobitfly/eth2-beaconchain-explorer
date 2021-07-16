@@ -79,7 +79,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			blocks.eth1data_blockhash,
 			blocks.syncaggregate_bits,
 			blocks.syncaggregate_signature,
-			blocks.syncaggregateparticipation,
+			blocks.syncaggregate_participation,
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
 			blocks.attestationscount,

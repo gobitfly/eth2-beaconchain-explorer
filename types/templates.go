@@ -175,7 +175,7 @@ type IndexPageDataBlocks struct {
 	Exits                uint64        `db:"voluntaryexitscount" json:"exits"`
 	Proposerslashings    uint64        `db:"proposerslashingscount" json:"proposerslashings"`
 	Attesterslashings    uint64        `db:"attesterslashingscount" json:"attesterslashings"`
-	SyncAggParticipation float64       `db:"syncaggregateparticipation" json:"sync_aggregate_participation"`
+	SyncAggParticipation float64       `db:"syncaggregate_participation" json:"sync_aggregate_participation"`
 	Status               uint64        `db:"status" json:"status"`
 	StatusFormatted      template.HTML `json:"status_formatted"`
 	Votes                uint64        `db:"votes" json:"votes"`
@@ -207,7 +207,7 @@ type BlocksPageDataBlocks struct {
 	Exits                uint64        `db:"voluntaryexitscount" json:"exits"`
 	Proposerslashings    uint64        `db:"proposerslashingscount" json:"proposerslashings"`
 	Attesterslashings    uint64        `db:"attesterslashingscount" json:"attesterslashings"`
-	SyncAggParticipation float64       `db:"syncaggregateparticipation" json:"sync_aggregate_participation"`
+	SyncAggParticipation float64       `db:"syncaggregate_participation" json:"sync_aggregate_participation"`
 	Status               uint64        `db:"status" json:"status"`
 	StatusFormatted      template.HTML `json:"status_formatted"`
 	Votes                uint64        `db:"votes" json:"votes"`
