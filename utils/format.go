@@ -415,6 +415,10 @@ func FormatBitlist(bits []byte) template.HTML {
 	return template.HTML(buf.String())
 }
 
+func FormatParticipation(v float64) template.HTML {
+	return template.HTML(fmt.Sprintf("<span>%.2f %%</span>", v*100.0))
+}
+
 // FormatIncome will return a string for a balance
 func FormatIncome(balanceInt int64, currency string) template.HTML {
 

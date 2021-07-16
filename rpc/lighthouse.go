@@ -6,6 +6,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"github.com/protolambda/zssz/bitfields"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -364,6 +365,17 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	return data, nil
 }
 
+func bitlistParticipation(bits []byte) float64 {
+	bitLen := bitfields.BitlistLen(bits)
+	participating := uint64(0)
+	for i := uint64(0); i < bitLen; i++ {
+		if bitfields.GetBit(bits, i) {
+			participating += 1
+		}
+	}
+	return float64(participating) / float64(bitLen)
+}
+
 // GetBlocksBySlot will get the blocks by slot from Lighthouse RPC api
 func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 	respRoot, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%d/root", lc.endpoint, slot))
@@ -419,9 +431,11 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 	}
 
 	if agg := parsedBlock.Message.Body.SyncAggregate; agg != nil {
+		bits := utils.MustParseHex(agg.SyncCommitteeBits)
 		block.SyncAggregate = &types.SyncAggregate{
-			SyncCommitteeBits:      utils.MustParseHex(agg.SyncCommitteeBits),
-			SyncCommitteeSignature: utils.MustParseHex(agg.SyncCommitteeSignature),
+			SyncCommitteeBits:          bits,
+			SyncAggregateParticipation: bitlistParticipation(bits),
+			SyncCommitteeSignature:     utils.MustParseHex(agg.SyncCommitteeSignature),
 		}
 	}
 

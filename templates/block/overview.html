@@ -97,6 +97,12 @@
       <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Aggregate (Altair Light-Client support)">Sync Aggregate:</span></div>
       <div class="col-md-10">
         <div class="row p-1">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Aggregate Participation">Participation:</span></div>
+          <div class="col-md-10 text-break">
+              <span>{{ formatParticipation .SyncAggParticipation }}</span>
+          </div>
+        </div>
+        <div class="row p-1">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Committee Aggregation Bits">Bits:</span></div>
           <div class="col-md-10 text-monospace text-break">
               <span>{{ formatBitlist .SyncAggregateBits }}</span>

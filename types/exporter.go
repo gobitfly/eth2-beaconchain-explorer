@@ -70,8 +70,9 @@ type ValidatorQueue struct {
 }
 
 type SyncAggregate struct {
-	SyncCommitteeBits      []byte
-	SyncCommitteeSignature []byte
+	SyncCommitteeBits          []byte
+	SyncCommitteeSignature     []byte
+	SyncAggregateParticipation float64
 }
 
 // Block is a struct to hold block data
