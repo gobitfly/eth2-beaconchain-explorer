@@ -282,6 +282,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	userNotificationsCenterData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userNotificationsCenterData.CsrfField = csrf.TemplateField(r)
+	//add notification-center data
 
 	data := InitPageData(w, r, "user", "/user", "")
 	data.Data = userNotificationsCenterData
