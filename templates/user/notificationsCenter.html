@@ -598,20 +598,11 @@
 				  loadValidatorsData(data.validators);					
 				}
 			});
-			const rangeInput = $('.custom-range');
-			const numberInput = $('.custom-range-input');
-			function handleInputChange(e) {
-  			let target = e.target;
-  			if (e.target.type !== 'range') {
-    			target = $('range');
-  			} 
-  			const min = target.min;
-  			const max = target.max;
-  			const val = target.value;
-  			target.style.backgroundSize = (val - min) * 100 / (max - min) + '% 100%';
-			}
-			$(rangeInput).on('input', handleInputChange);
-			$(numberInput).on('input', handleInputChange);
+			$('.range').on('input', function(event) {
+        var target_id = $(this).data('target');
+        var target = $('#' + target_id);
+        target.val($(this).val());
+  		});
 		});
 	</script>
 {{ end }}
@@ -873,8 +864,8 @@
 								<input class="form-check-input checkbox-custom-size" type="checkbox" id="cpu" value="">
 							</div>
 							<div class="w-100 d-flex align-items-center pl-2">
-								<input class="w-75 mr-5 custom-range" type="range" value="80" min="0" max="100" id="range" oninput="rangenumber.value=value" />
-								<input class="custom-range-input" type="number" id="rangenumber" min="0" max="100" value="80" oninput="range.value=value" />
+								<input id="range1" class="w-75 mr-5 range custom-range" type="range" value="80" min="0" max="100" data-target="inputrange1" />
+ 								<input id="inputrange1" class="range custom-range-input" type="number" value="80" min="0" max="100" data-target="range1" />
 							</div>
 						</div>
 						<div class="mb-3">
@@ -886,8 +877,8 @@
 								<input class="form-check-input checkbox-custom-size" type="checkbox" id="hdd" value="">
 							</div>
 							<div class="w-100 d-flex align-items-center pl-2">
-								<input class="w-75 mr-5 custom-range" type="range" value="80" min="0" max="100" id="range" oninput="rangenumber.value=value" />
-								<input class="custom-range-input" type="number" id="rangenumber" min="0" max="100" value="80" oninput="range.value=value" />
+								<input id="range2" class="w-75 mr-5 range custom-range" type="range" value="80" min="0" max="100" data-target="inputrange2" />
+								<input id="inputrange2" class="range custom-range-input" type="number" value="80" min="0" max="100" data-target="range2" />
 							</div>
 						</div>
 						<div class="form-check form-check-inline w-100">
