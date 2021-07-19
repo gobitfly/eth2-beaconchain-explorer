@@ -234,6 +234,7 @@ type ValidatorsPageData struct {
 
 // ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
 type ValidatorsPageDataValidators struct {
+	TotalCount                 uint64 `db:"total_count"`
 	Epoch                      uint64 `db:"epoch"`
 	PublicKey                  []byte `db:"pubkey"`
 	ValidatorIndex             uint64 `db:"validatorindex"`
