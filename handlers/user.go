@@ -276,19 +276,44 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 // UserNotificationsCenter renders the notificationsCenter template
 func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	userNotificationsCenterData := &types.UserNotificationsPageData{}
+	userNotificationsCenterData := &types.UserNotificationsCenterPageData{}
 
 	user := getUser(w, r)
 
 	userNotificationsCenterData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userNotificationsCenterData.CsrfField = csrf.TemplateField(r)
 	//add notification-center data
+	type metrics struct {
+		Validators         uint64 `db:"validators"`
+		Notifications      uint64 `db:"notifications"`
+		AttestationsMissed uint64 `db:"attestations_missed"`
+		ProposalsMissed    uint64 `db:"proposals_missed"`
+		ProposalsSubmitted uint64 `db:"proposals_submitted"`
+	}
+
+	var metricsdb metrics
+	err := db.DB.Get(&metricsdb, `
+		SELECT COUNT(DISTINCT validatorindex) as validators,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY') AS notifications,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$2) AS attestations_missed,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$3) AS proposals_missed,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$4) AS proposals_submitted
+		FROM validators 
+		INNER JOIN users_subscriptions us ON pubkeyhex=us.event_filter 
+		WHERE us.user_id=$1;
+		`, user.UserID, types.ValidatorMissedAttestationEventName, types.ValidatorMissedProposalEventName, types.ValidatorExecutedProposalEventName)
+	if err != nil {
+		logger.Errorf("error retrieving metrics data for users: %v ", user.UserID, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
 	data := InitPageData(w, r, "user", "/user", "")
+	userNotificationsCenterData.Metrics = metricsdb
 	data.Data = userNotificationsCenterData
 	data.User = user
 
-	err := notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)
+	err = notificationsCenterTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

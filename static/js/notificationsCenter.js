@@ -107,74 +107,74 @@ const data = {
         {
             id: 1,
             validator: { index: 1, pubkey: "0xa1d1ad ..." },
-            notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed" ],
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed"],
             mostRecent: { notification: "Attestations missed", timestamp: 1617427430 }
         },
         {
             id: 2,
             validator: { index: 2, pubkey: "0xb2ff47 ..." },
-            notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted" ],
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted"],
             mostRecent: { notification: "Balance decrease", timestamp: 1620030169 }
         },
         {
             id: 3,
             validator: { index: 3, pubkey: "0x8e323f ..." },
-            notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed" ],
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed"],
             mostRecent: { notification: "Proposals missed", timestamp: 1614687712 }
         },
         {
             id: 4,
             validator: { index: 4, pubkey: "0xa62420 ..." },
-            notifications: [ "Attestations missed",  "Balance decrease" ],
+            notifications: ["Attestations missed", "Balance decrease"],
             mostRecent: { notification: "Proposals submitted", timestamp: 1622557312 }
         },
         {
             id: 5,
             validator: { index: 5, pubkey: "0xb2ce0f ..." },
-            notifications: [ "Attestations missed" ],
+            notifications: ["Attestations missed"],
             mostRecent: { notification: "Validator slashed", timestamp: 1619878855 }
         },
         {
             id: 6,
             validator: { index: 6, pubkey: "0xa16c53 ..." },
-            notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed" ],
-            mostRecent: { notification: "Validator slashed", timestamp: 	1612617898 }
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed"],
+            mostRecent: { notification: "Validator slashed", timestamp: 1612617898 }
         },
         {
             id: 7,
             validator: { index: 7, pubkey: "0xa25da1..." },
-            notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted" ],
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted"],
             mostRecent: { notification: "Proposals submitted", timestamp: 1626006179 }
         },
         {
             id: 8,
             validator: { index: 8, pubkey: "0x8078c7 ..." },
-            notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed" ],
-      mostRecent: { notification: "Proposals missed", timestamp: 1626031079 }
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed"],
+            mostRecent: { notification: "Proposals missed", timestamp: 1626031079 }
         },
         {
             id: 9,
             validator: { index: 9, pubkey: "0xb016e3 ..." },
-            notifications: [ "Attestations missed",  "Balance decrease" ],
+            notifications: ["Attestations missed", "Balance decrease"],
             mostRecent: { notification: "Balance decrease", timestamp: 1620677579 }
         },
         {
             id: 10,
             validator: { index: 10, pubkey: "0x8efba2 ..." },
-            notifications: [ "Validator slashed" ],
+            notifications: ["Validator slashed"],
             mostRecent: { notification: "Attestations missed", timestamp: 1619878855 }
         }
     ]
 };
 
-for (let key in data.metrics) {
-    if (data.metrics.hasOwnProperty(key)) document.getElementById(key).innerHTML = data.metrics[key];
-}
+// for (let key in data.metrics) {
+//     if (data.metrics.hasOwnProperty(key)) document.getElementById(key).innerHTML = data.metrics[key];
+// }
 
 function loadMonitoringData(data) {
     let monitoringTable = $('#monitoring-notifications');
 
-    monitoringTable.DataTable ({
+    monitoringTable.DataTable({
         language: {
             info: '_TOTAL_ entries',
             infoEmpty: 'No entries match',
@@ -191,16 +191,16 @@ function loadMonitoringData(data) {
         scrollY: 380,
         paging: true,
         data: data,
-        initComplete: function(settings, json) {
+        initComplete: function (settings, json) {
             $('body').find('.dataTables_scrollBody').addClass('scrollbar');
 
             // click event to table edit button
-            $('#monitoring-notifications #edit-btn').on('click',  function(e) {
+            $('#monitoring-notifications #edit-btn').on('click', function (e) {
                 e.stopPropagation();
                 const threshold_editable_placeholder = $(this).parent().find('.threshold_non_editable_text').text().slice(0, -1);
-    
+
                 // close all other editable rows
-                $('.threshold_editable').each(function() {
+                $('.threshold_editable').each(function () {
                     $(this).attr('hidden', true);
                     $(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
                 });
@@ -211,11 +211,11 @@ function loadMonitoringData(data) {
             });
 
             // enter event to threshold input
-            $('.threshold_editable').on('keypress', function(e) {
+            $('.threshold_editable').on('keypress', function (e) {
                 if (e.which == 13) {
                     const rowId = $(this).parent().parent().attr('id');
                     let newThreshold = $(this).val();
-                    
+
                     // validate input
                     let isValid = false;
                     if (isNaN(newThreshold) == false) {
@@ -224,7 +224,7 @@ function loadMonitoringData(data) {
                             isValid = false;
                         } else {
                             if (parsed > 0 && parsed <= 100) {
-                                newThreshold = parsed/100;
+                                newThreshold = parsed / 100;
                                 isValid = true;
                             } else {
                                 isValid = false;
@@ -235,7 +235,7 @@ function loadMonitoringData(data) {
                     }
 
                     if (isValid) {
-                        index = data.findIndex(function(item) {
+                        index = data.findIndex(function (item) {
                             return item.id.toString() === rowId.toString();
                         });
 
@@ -251,7 +251,7 @@ function loadMonitoringData(data) {
             });
 
             // click event to table remove button
-            $('#monitoring-notifications #remove-btn').on('click',  function(e) {
+            $('#monitoring-notifications #remove-btn').on('click', function (e) {
                 $('#modaltext').text($(this).data('modaltext'));
                 // set the row id 
                 const rowId = $(this).parent().parent().attr('id');
@@ -265,12 +265,12 @@ function loadMonitoringData(data) {
                 createdCell: function (td, cellData, rowData, row, col) {
                     $(td).css('padding-top', '20px');
                     $(td).css('padding-bottom', '20px');
-    }
+                }
             },
             {
                 targets: 0,
                 responsivePriority: 1,
-            data: 'notification',
+                data: 'notification',
                 render: function (data, type, row, meta) {
                     return '<span class="badge badge-pill badge-primary badge-custom-size">' + data + '</span>';
                 }
@@ -278,23 +278,23 @@ function loadMonitoringData(data) {
             {
                 targets: 1,
                 responsivePriority: 3,
-            data: 'threshold',
-                render: function (data, type, row, meta) { 
-                    if (!data){
+                data: 'threshold',
+                render: function (data, type, row, meta) {
+                    if (!data) {
                         return '<span class="threshold_non_editable">N/A</span>';
                     }
-                    return '<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + data*100 + '%</span> <i class="fas fa-pen fa-xs text-muted" id="edit-btn" title="Click to edit" style="cursor: pointer;"></i></span>';
+                    return '<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + data * 100 + '%</span> <i class="fas fa-pen fa-xs text-muted" id="edit-btn" title="Click to edit" style="cursor: pointer;"></i></span>';
                 }
             },
             {
                 targets: 2,
                 responsivePriority: 2,
-            data: 'machine'
+                data: 'machine'
             },
             {
                 targets: 3,
                 responsivePriority: 1,
-            data: 'mostRecent',
+                data: 'mostRecent',
                 render: function (data, type, row, meta) {
                     // for sorting and type checking use the original data (unformatted)
                     if (type === 'sort' || type === 'type') {
@@ -309,7 +309,7 @@ function loadMonitoringData(data) {
                 responsivePriority: 3,
                 data: null,
                 defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove notification" style="color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
-    }
+            }
         ]
     });
 }
@@ -317,7 +317,7 @@ function loadMonitoringData(data) {
 function loadNetworkData(data) {
     let networkTable = $('#network-notifications');
 
-    networkTable.DataTable ({
+    networkTable.DataTable({
         language: {
             info: '_TOTAL_ entries',
             infoEmpty: 'No entries match',
@@ -330,24 +330,24 @@ function loadNetworkData(data) {
         processing: true,
         responsive: true,
         scroller: true,
-      scrollY: 380,
+        scrollY: 380,
         paging: true,
         data: data,
-        initComplete: function(settings, json) {
+        initComplete: function (settings, json) {
             $('body').find('.dataTables_scrollBody').addClass('scrollbar');
         },
         columnDefs: [
             {
                 targets: '_all',
                 createdCell: function (td, cellData, rowData, row, col) {
-      $(td).css('padding-top', '20px');
+                    $(td).css('padding-top', '20px');
                     $(td).css('padding-bottom', '20px');
-    }
+                }
             },
             {
                 targets: 0,
                 responsivePriority: 1,
-            data: 'notification',
+                data: 'notification',
                 render: function (data, type, row, meta) {
                     return '<span class="badge badge-pill badge-primary badge-custom-size">' + data + '</span>';
                 }
@@ -355,13 +355,13 @@ function loadNetworkData(data) {
             {
                 targets: 1,
                 responsivePriority: 2,
-            data: 'network'
+                data: 'network'
             },
             {
                 targets: 2,
                 orderable: false,
                 responsivePriority: 3,
-            data: null,
+                data: null,
                 defaultContent: `
                 <div class="form-check">
                   <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
@@ -372,7 +372,7 @@ function loadNetworkData(data) {
                 targets: 3,
                 orderable: false,
                 responsivePriority: 3,
-            data: null,
+                data: null,
                 defaultContent: `
                 <div class="form-check">
                   <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
@@ -383,7 +383,7 @@ function loadNetworkData(data) {
                 targets: 4,
                 orderable: false,
                 responsivePriority: 3,
-            data: null,
+                data: null,
                 defaultContent: `
                 <div class="form-check">
                   <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
@@ -393,10 +393,10 @@ function loadNetworkData(data) {
             {
                 targets: 5,
                 responsivePriority: 1,
-            data: 'mostRecent',
+                data: 'mostRecent',
                 render: function (data, type, row, meta) {
                     // for sorting and type checking use the original data (unformatted)
-                    if (type === 'sort' || type === 'type'){
+                    if (type === 'sort' || type === 'type') {
                         return data;
                     }
                     return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" })}</span>`;
@@ -409,7 +409,7 @@ function loadNetworkData(data) {
 function loadValidatorsData(data) {
     let validatorsTable = $('#validators-notifications');
 
-    validatorsTable.DataTable ({
+    validatorsTable.DataTable({
         language: {
             info: '_TOTAL_ entries',
             // TODO: place at the bottom of the container
@@ -424,7 +424,7 @@ function loadValidatorsData(data) {
         processing: true,
         responsive: true,
         // scroller: true,
-      // scrollY: 610,
+        // scrollY: 610,
         paging: true,
         // TODO: place at the bottom of the container
         pagingType: 'first_last_numbers',
@@ -435,11 +435,11 @@ function loadValidatorsData(data) {
         },
         fixedHeader: true,
         data: data,
-        initComplete: function(settings, json) {
+        initComplete: function (settings, json) {
             $('body').find('.dataTables_scrollBody').addClass('scrollbar');
-            
+
             // click event to remove button
-            $('#validators-notifications #remove-btn').on('click',  function(e) {
+            $('#validators-notifications #remove-btn').on('click', function (e) {
                 const rowId = $(this).parent().parent().attr('id');
                 $('#modaltext').text($(this).data('modaltext'));
                 // set the row id 
@@ -451,9 +451,9 @@ function loadValidatorsData(data) {
             {
                 targets: '_all',
                 createdCell: function (td, cellData, rowData, row, col) {
-      $(td).css('padding-top', '20px');
+                    $(td).css('padding-top', '20px');
                     $(td).css('padding-bottom', '20px');
-    }
+                }
             },
             {
                 targets: 0,
@@ -515,7 +515,7 @@ function loadValidatorsData(data) {
                 data: 'mostRecent',
                 render: function (data, type, row, meta) {
                     // for sorting and type checking use the original data (unformatted)
-                    if (type === 'sort' || type === 'type'){
+                    if (type === 'sort' || type === 'type') {
                         return data.timestamp;
                     }
                     return '<span class="badge badge-pill badge-primary badge-custom-size mr-1 mr-sm-3">' + data.notification + '</span>' + `<span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data.timestamp * 1000).toRelative({ style: "long" })}</span>`;
@@ -527,7 +527,7 @@ function loadValidatorsData(data) {
                 responsivePriority: 3,
                 data: null,
                 defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove validator" style="color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
-    }
+            }
         ]
     });
 }
@@ -537,40 +537,40 @@ $(document).ready(function () {
     loadNetworkData(data.network);
     loadValidatorsData(data.validators);
 
-    $(document).on('click', function(e) {
+    $(document).on('click', function (e) {
         // if click outside input while any threshold input visible, reset value and hide input
-        if (e.target.className.indexOf('threshold_editable') < 0){
-            $('.threshold_editable').each(function() {
+        if (e.target.className.indexOf('threshold_editable') < 0) {
+            $('.threshold_editable').each(function () {
                 $(this).attr('hidden', true);
                 $(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
             });
         }
     });
 
-    $('#remove-all-btn').on('click',  function(e) {
+    $('#remove-all-btn').on('click', function (e) {
         $('#modaltext').text($(this).data('modaltext'));
         $('#confirmRemoveModal').removeAttr('rowId');
         $('#confirmRemoveModal').attr('tablename', 'validators');
     });
 
     // click event to modal remove button
-    $('#remove-button').on('click',  function(e) {
+    $('#remove-button').on('click', function (e) {
         const rowId = $('#confirmRemoveModal').attr('rowId');
         const tablename = $('#confirmRemoveModal').attr('tablename');
-        
+
         // if rowId also check tablename then delete row in corresponding data section
         // if no row id delete directly in correponding data section
         if (rowId !== undefined) {
             if (tablename === 'monitoring') {
-                data.monitoring = data.monitoring.filter(function( item ) {
+                data.monitoring = data.monitoring.filter(function (item) {
                     return item.id.toString() !== rowId.toString();
                 });
             }
 
             if (tablename === 'validators') {
-                data.validators = data.validators.filter(function( item ) {
+                data.validators = data.validators.filter(function (item) {
                     return item.id.toString() !== rowId.toString();
-                });						
+                });
             }
         } else {
             if (tablename === 'validators') {
@@ -580,17 +580,17 @@ $(document).ready(function () {
 
         if (tablename === 'monitoring') {
             $('#monitoring-notifications').DataTable().clear().destroy();
-          loadMonitoringData(data.monitoring);
+            loadMonitoringData(data.monitoring);
         }
 
         if (tablename === 'validators') {
             $('#validators-notifications').DataTable().clear().destroy();
-          loadValidatorsData(data.validators);					
+            loadValidatorsData(data.validators);
         }
     });
-    $('.range').on('input', function(event) {
-var target_id = $(this).data('target');
-var target = $('#' + target_id);
-target.val($(this).val());
-  });
+    $('.range').on('input', function (event) {
+        var target_id = $(this).data('target');
+        var target = $('#' + target_id);
+        target.val($(this).val());
+    });
 });
