@@ -13,6 +13,10 @@
 /* TODO: replace with defined color variable */
 .custom-background-color { background-color: #fdfdfd }
 .custom-border-radius { border-radius: .5rem }
+.custom-dropdown {
+  height: 10rem;
+  overflow-y: auto;
+}
 .custom-remove-modal { 
   position: relative;
   min-width: 280px;
@@ -78,12 +82,21 @@ div.dataTables_length {
   padding-left: 0 !important;
   font-size: .9rem;
 }
+.dataTables_wrapper .dataTables_length select {
+  margin: 0 .25rem;
+  padding: .25rem 1rem;
+}
 div.dataTables_scrollBody {
   background: none !important;
 }
 .row-selected {
   background-color: #e6e6e6 !important;
 }
+#monitoring-notifications_wrapper div.dataTables_length,
+#monitoring-notifications_wrapper div.dataTables_paginate,
+#network-notifications_wrapper div.dataTables_length,
+#network-notifications_wrapper div.dataTables_paginate { display: none }
+#validators-notifications { min-height: 610px }
 /* custom scrollbar */
 .scrollbar::-webkit-scrollbar {
   width: 8px;

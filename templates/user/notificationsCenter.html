@@ -1,16 +1,12 @@
 {{ define "js" }}
-<!-- 
-	<script type="text/javascript" src="/js/datatables.min.js"></script> -->
-
-	<!-- used for testing. go to https://datatables.net/download/ , create and download min.js file -->
-	<script type="text/javascript" src="/js/datatables.min.js"></script>
-    <script type="text/javascript" src="/js/datatable_input.js"></script>
 	<script src="/js/notificationsCenter.js"></script>
+	<script type="text/javascript" src="/js/datatables.min.js"></script>
+  <script type="text/javascript" src="/js/datatable_input.js"></script>
 {{ end }}
 
 {{ define "css" }}
-<link rel="stylesheet" type="text/css" href="/css/notificationsCenter.css" />
-<link rel="stylesheet" type="text/css" href="/css//datatables.min.css"/>
+	<link rel="stylesheet" type="text/css" href="/css/notificationsCenter.css" />
+	<link rel="stylesheet" type="text/css" href="/css//datatables.min.css"/>
 {{ end }}
 
 {{ define "content" }}
@@ -254,11 +250,22 @@
 				<div class="col-12 d-flex flex-column align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Monitoring Notifications
-						<span class="d-block mt-2 heading-l4 text-left">
+						<span class="d-block mt-3 heading-l4 text-left">
 							Select monitoring events to receive notifications about or turn notifications off
 						</span>
 					</div> 
 					<div class="w-100 my-3">
+						<div class="form-inline d-flex dropdown mt-2 mb-4">
+							<input class="form-control w-100" type="text" placeholder="Select your machine" id="menu1" data-toggle="dropdown">
+							<ul class="dropdown-menu w-100 custom-dropdown scrollbar" role="list" aria-labelledby="menu1">
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">machine 1</li>
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">machine 2</li>
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">machine 3</li>
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">machine 4</li>
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">machine 5</li>
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">machine 6</li>
+							</ul>
+						</div>
 						<div class="mb-3">
 							<div class="form-check form-check-inline w-100 mb-2">
 								<label class="form-check-label mr-auto font-weight-normal" for="cpu">
@@ -312,7 +319,7 @@
 				<div class="col-12 d-flex flex-column align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Network Notifications
-						<span class="d-block mt-2 heading-l4 text-left">
+						<span class="d-block mt-3 heading-l4 text-left">
 							Select network events to receive notifications about or turn notifications off
 						</span>
 					</div> 
@@ -345,7 +352,7 @@
 				<div class="col-12 d-flex flex-column align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Manage Notifications
-						<span class="d-block mt-2 heading-l4 text-left">
+						<span class="d-block mt-3 heading-l4 text-left">
 							Select your validators' events to receive notifications about or turn notifications off
 						</span>
 					</div> 
@@ -370,11 +377,23 @@
 				<div class="col-12 d-flex flex-column align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Add Validator
-						<span class="d-block mt-2 heading-l4 text-left">
+						<span class="d-block mt-3 heading-l4 text-left">
 							Add validators to your watchlist and select events to receive notifications about or turn notifications off
 						</span>
 					</div> 
 					<div class="w-100 my-3">
+						<div class="w-100 my-3">
+							<div class="form-inline d-flex dropdown mt-2 mb-4">
+							<input class="form-control w-100" type="text" placeholder="Search validator" id="menu1" data-toggle="dropdown">
+							<ul class="dropdown-menu w-100 custom-dropdown scrollbar" role="list" aria-labelledby="menu1">
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">validator 1</li>
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">validator 2</li>
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">validator 3</li>
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">validator 4</li>
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">validator 5</li>
+								<li role="listitem" class="dropdown-item px-3 py-2 font-weight-normal">validator 6</li>
+							</ul>
+						</div>
 						<div class="form-check form-check-inline w-100 my-2">
 							<label class="form-check-label mr-auto font-weight-normal" for="attestationsMissed">Attestations missed</label>
 							<input class="form-check-input checkbox-custom-size" type="checkbox" id="attestationsMissed" value="">
