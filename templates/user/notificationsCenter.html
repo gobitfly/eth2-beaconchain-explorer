@@ -5,8 +5,8 @@
 	<!-- used for testing. go to https://datatables.net/download/ , create and download min.js file -->
 	<script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
-
 	<script src="/js/notificationsCenter.js"></script>
+	{{ .CsrfField }}
 {{ end }}
 
 {{ define "css" }}
