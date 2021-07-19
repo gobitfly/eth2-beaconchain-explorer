@@ -1,0 +1,182 @@
+.badge-custom-size { font-size: .82rem }
+.breadcrumb-custom {
+  background-color: transparent;
+  padding: 0;
+}
+.checkbox-custom-size { 
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.container-height { height: 650px }
+.container-max-width { max-width: 300px }
+.container-min-width { min-width: 300px }
+/* TODO: replace with defined color variable */
+.custom-background-color { background-color: #fdfdfd }
+.custom-border-radius { border-radius: .5rem }
+.custom-remove-modal { 
+  position: relative;
+  min-width: 280px;
+  padding: 2rem 4rem 3rem;
+}
+.custom-remove-modal-close { 
+  position: relative; 
+  top: -1rem; 
+  right: -2.5rem;
+}
+.heading { font-size: 1.8rem }
+.heading-l2 { font-size: 1.6rem }
+.heading-l3 { font-size: 1.1rem }
+.heading-l4 { 
+  font-size: .85rem;
+  font-weight: 300;
+}
+.heading-section { height: 60px }
+.icon { 
+  font-size: 2.4rem;
+  color: #5E3F6B;
+}
+.input-search { 
+  width: 100%;
+  background-color: #f1f1f1;
+  border: none;
+  border-radius: .5rem 0 0 .5rem;
+}
+.input-search::placeholder { 
+  font-size: .9rem;
+  font-weight: 400;
+}
+.metrics-section { min-height: 120px }
+.metric-card { width: auto }
+.metric-card-row { height: 100% }
+/* TODO: make the color #8186F1 on dark theme */
+.metric-value { 
+  text-align: left;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #5E3F6B
+}
+/* TODO: same, replace with defined color variable */
+.metric-description { 
+  display: block;
+  font-size: .75rem;
+  font-weight: 400;
+  color: #343a40;
+}
+.text-empty-section { height: 200px }
+.validators-container-min-height { min-height: 900px }
+/* tables */
+div.dataTables_info {
+  padding-top: 2.15rem !important;
+  font-size: .9rem;
+  text-align: left !important;
+}
+div.dataTables_filter {
+  padding-right: 0 !important;
+  text-align: right !important;
+}
+div.dataTables_length {
+  padding-left: 0 !important;
+  font-size: .9rem;
+}
+div.dataTables_scrollBody {
+  background: none !important;
+}
+.row-selected {
+  background-color: #e6e6e6 !important;
+}
+/* custom scrollbar */
+.scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar::-webkit-scrollbar-track {
+  background-color: #ebebeb;
+  -webkit-border-radius: 10px;
+  border-radius: 10px;
+}
+.scrollbar::-webkit-scrollbar-thumb {
+  -webkit-border-radius: 10px;
+  border-radius: 10px;
+  background: #6d6d6d; 
+}
+.scrollbar {
+  scrollbar-color: #6d6d6d #ebebeb;
+}
+/* custom range in monitoring section modal */
+.custom-range-input {
+  width: 60px;
+  padding: 4px 5px;
+  border: .5px solid var(--input-border-color);
+  border-radius: 2px;
+}
+.custom-range {
+  -webkit-appearance: none;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.6);
+  background: var(--input-border-color);
+  border-radius: 5px;
+  background-image: linear-gradient(#6d6d6d, #6d6d6d);
+  background-size: 80% 100%;
+  background-repeat: no-repeat;
+}
+.custom-range-input:focus,
+.custom-range:focus {
+  box-shadow: 0 0 2px 1px var(--input-border-color);
+  outline: none;
+}
+.custom-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #6d6d6d;
+  cursor: ew-resize;
+  box-shadow: 0 0 2px 0 var(--input-border-color);
+  transition: background .3s ease-in-out;
+}
+.custom-range::-moz-range-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #6d6d6d;
+  cursor: ew-resize;
+  box-shadow: 0 0 2px 0 var(--input-border-color);
+  transition: background .3s ease-in-out;
+}
+.custom-range::-ms-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #6d6d6d;
+  cursor: ew-resize;
+  box-shadow: 0 0 2px 0 var(--input-border-color);
+  transition: background .3s ease-in-out;
+}
+.custom-range::-webkit-slider-thumb:hover {
+  background: #6d6d6d;
+}
+.custom-range::-moz-range-thumb:hover {
+  background: #6d6d6d;
+}
+.custom-range::-ms-thumb:hover {
+  background: #6d6d6d;
+}
+.custom-range::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  box-shadow: none;
+  border: none;
+  background: transparent;
+}
+.custom-range::-moz-range-track {
+  -webkit-appearance: none;
+  box-shadow: none;
+  border: none;
+  background: transparent;
+}
+.custom-range::-ms-track {
+  -webkit-appearance: none;
+  box-shadow: none;
+  border: none;
+  background: transparent;
+}
