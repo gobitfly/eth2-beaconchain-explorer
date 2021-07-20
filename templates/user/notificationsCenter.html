@@ -1,16 +1,16 @@
-{{ define "js" }}
+{{define "js"}}
 	<script src="/js/notificationsCenter.js"></script>
 	<script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
 	{{ .CsrfField }}
-{{ end }}
+{{end}}
 
-{{ define "css" }}
+{{define "css"}}
 	<link rel="stylesheet" type="text/css" href="/css/notificationsCenter.css" />
 	<link rel="stylesheet" type="text/css" href="/css//datatables.min.css"/>
-{{ end }}
+{{end}}
 
-{{ define "content" }}
+{{define "content"}}
 	{{with .Data}}
 	<div class="container-fluid container-xl container-min-width container-custom"> 
 		<div class="row d-flex align-items-center justify-content-start ml-1 my-2">
@@ -36,7 +36,7 @@
 				  </div>
 				  <div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="validators">{{.Metrics.Validators}}</span>
-					  <span class="metric-description">validators in your list</span>
+					  <span class="metric-description">validators in your watchlist</span>
 				  </div>
 			  </div>
 		  </div>
@@ -47,7 +47,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="notifications">{{.Metrics.Notifications}}</span>
-						<span class="metric-description">notifications received / 24h</span>
+						<span class="metric-description">notifications <span class="d-block">in the past 24h</span></span>
 					</div>
 				</div>
 			</div>
@@ -69,7 +69,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="attestationsMissed">{{.Metrics.AttestationsMissed}}</span>
-						<span class="metric-description">attestations missed / 24h</span>
+						<span class="metric-description">attestations missed <span class="d-block">in the past 24h</span></span>
 					</div>
 				</div>
 			</div>
@@ -80,7 +80,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsSubmitted">{{.Metrics.ProposalsSubmitted}}</span>
-						<span class="metric-description">proposals submitted / 24h</span>
+						<span class="metric-description">proposals <span class="d-block">in the past 24h</span></span>
 					</div>
 				</div>
 			</div>
@@ -91,7 +91,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsMissed">{{.Metrics.ProposalsMissed}}</span>
-						<span class="metric-description">proposals missed / 24h</span>
+						<span class="metric-description">proposals missed <span class="d-block">in the past 24h</span></span>
 					</div>
 				</div>
 			</div>
@@ -241,6 +241,7 @@
 			</div>
 		</div>
 	</div>
+	
 	<!-- Add Monitoring events modal -->
 	<!-- TODO: add thresholds for options -->
 	<div class="modal fade" id="addMonitoringEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addMonitoringEventLabel" aria-hidden="true">
@@ -305,11 +306,12 @@
 				</div>
 				<div class="col-12 d-flex align-items-center justify-content-between px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
-					<button id="remove-button" type="button" class="btn btn-primary btn-danger btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
+					<button id="remove-button" type="button" class="btn btn-primary btn-primary btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
 				</div>
 			</div>
 		</div>
 	</div>
+
 	<!-- Add Network events modal -->
 	<div class="modal fade" id="addNetworkEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addNetworkEventLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered" role="document">
@@ -338,45 +340,94 @@
 				</div>
 				<div class="col-12 d-flex align-items-center justify-content-between px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
-					<button id="remove-button" type="button" class="btn btn-primary btn-danger btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
+					<button id="remove-button" type="button" class="btn btn-primary btn-primary btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
 				</div>
 			</div>
 		</div>
 	</div>
+
 	<!-- Manage notifications modal -->
-	<!-- TODO: add content -->
 	<div class="modal fade" id="manageNotificationsModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="manageNotificationsLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered" role="document">
 			<div class="modal-content custom-remove-modal row mx-0">
 				<div class="mb-4 custom-remove-modal-close">
 					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>
-				<div class="col-12 d-flex flex-column align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
+				<div class="col-12 d-flex flex-column align-items-center justify-content-center mb-4 px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Manage Notifications
 						<span class="d-block mt-3 heading-l4 text-left">
-							Select your validators' events to receive notifications about or turn notifications off
+							Select events to receive notifications about or turn notifications off for the validators in your watchlist
 						</span>
 					</div> 
-					<div class="w-100 my-3">
+					<div class="w-100 my-4">
+						<div class="w-100 mb-4 custom-container scrollbar">
+							<!-- TODO: replace hardcoded content -->
+							<div class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal">Validator 1 <i class="fas fa-times" style="cursor: pointer;"></i></div>
+							<div class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal">Validator 2 <i class="fas fa-times" style="cursor: pointer;"></i></div>
+							<div class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal">Validator 3 <i class="fas fa-times" style="cursor: pointer;"></i></div>
+							<div class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal">Validator 4 <i class="fas fa-times" style="cursor: pointer;"></i></div>
+						</div>
+						<div class="d-flex align-items-center justify-content-end w-100 my-2">
+							<div class="mr-2">Push</div>
+							<div class="mr-2">Email</div>
+							<div class="mr-2">Web</div>
+						</div>
+						<div class="form-check form-check-inline w-100 my-2">
+							<label class="form-check-label mr-auto font-weight-normal" for="attestationsMissed">Attestations missed</label>
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="attestationsMissed" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="attestationsMissed" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="attestationsMissed" value="">
+						</div>
+						<div class="form-check form-check-inline w-100 my-2">
+							<label class="form-check-label mr-auto font-weight-normal" for="balanceDecrease">Balance decrease</label>
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="balanceDecrease" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="balanceDecrease" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="balanceDecrease" value="">
+						</div>
+						<div class="form-check form-check-inline w-100 my-2">
+							<label class="form-check-label mr-auto font-weight-normal" for="proposalsMissed">Proposals missed</label>
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="proposalsMissed" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="proposalsMissed" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="proposalsMissed" value="">
+						</div>
+						<div class="form-check form-check-inline w-100 my-2">
+							<label class="form-check-label mr-auto font-weight-normal" for="proposalsSubmitted">Proposals submitted</label>
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="proposalsSubmitted" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="proposalsSubmitted" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="proposalsSubmitted" value="">
+						</div>
+						<div class="form-check form-check-inline w-100 my-2">
+							<label class="form-check-label mr-auto font-weight-normal" for="validatorSlashed">Validator slashed</label>
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="validatorSlashed" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="validatorSlashed" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="validatorSlashed" value="">
+						</div>
+						<hr class="my-3" />
+						<div class="form-check form-check-inline w-100 my-2">
+							<label class="form-check-label mr-auto font-weight-normal" for="allEvents">All events</label>
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="allEvents" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="allEvents" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="allEvents" value="">
+						</div>
 					</div>   
 				</div>
 				<div class="col-12 d-flex align-items-center justify-content-between px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
-					<button id="remove-button" type="button" class="btn btn-primary btn-danger btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
+					<button id="remove-button" type="button" class="btn btn-primary btn-primary btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
 				</div>
 			</div>
 		</div>
 	</div>
+
 	<!-- Add Validator modal -->
-	<!-- TODO: add search box -->
 	<div class="modal fade" id="addValidatorModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addValidatorLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered" role="document">
 			<div class="modal-content custom-remove-modal row mx-0">
 				<div class="mb-4 custom-remove-modal-close">
 					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>
-				<div class="col-12 d-flex flex-column align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
+				<div class="col-12 d-flex flex-column align-items-center justify-content-center px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Add Validator
 						<span class="d-block mt-3 heading-l4 text-left">
@@ -420,10 +471,10 @@
 				</div>
 				<div class="col-12 d-flex align-items-center justify-content-between px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
-					<button id="remove-button" type="button" class="btn btn-primary btn-danger btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
+					<button id="remove-button" type="button" class="btn btn-primary btn-primary btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
 				</div>
 			</div>
 		</div>
 	</div>
 	{{end}}
-{{ end }}
+{{end}}
