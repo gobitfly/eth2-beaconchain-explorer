@@ -1158,6 +1158,8 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 				threshold = 0.1
 			} else if eventName == types.MonitoringMachineCpuLoadEventName {
 				threshold = 0.6
+			} else if eventName == types.MonitoringMachineMemoryUsageEventName {
+				threshold = 0.8
 			}
 		}
 
