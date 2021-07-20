@@ -234,6 +234,7 @@ type ValidatorsPageData struct {
 
 // ValidatorsPageDataValidators is a struct to hold data about validators for the validators page
 type ValidatorsPageDataValidators struct {
+	TotalCount                 uint64 `db:"total_count"`
 	Epoch                      uint64 `db:"epoch"`
 	PublicKey                  []byte `db:"pubkey"`
 	ValidatorIndex             uint64 `db:"validatorindex"`
@@ -961,6 +962,12 @@ type UserNotificationsPageData struct {
 	WatchlistIndices   []uint64 `json:"watchlistIndices"`
 	DashboardLink      string   `json:"dashboardLink"`
 	AuthData
+	// Subscriptions []*Subscription
+}
+
+type UserNotificationsCenterPageData struct {
+	AuthData
+	Metrics interface{}
 	// Subscriptions []*Subscription
 }
 

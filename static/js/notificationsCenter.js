@@ -1,183 +1,175 @@
 const data = {
-  metrics: {
-    validators: 5,
-    notifications: 10,
-    attestationsSubmitted: 1,
-    attestationsMissed: 1,
-    proposalsSubmitted: 2,
-    proposalsMissed: 0
-  },
-  monitoring: [
-    {
-      id: 1,
-      notification: "CPU",
-      threshold: 0.8,
-      machine: "machine1",
-      mostRecent: 1626078050
+    metrics: {
+        validators: 5,
+        notifications: 10,
+        attestationsSubmitted: 1,
+        attestationsMissed: 1,
+        proposalsSubmitted: 2,
+        proposalsMissed: 0
     },
-    {
-      id: 2,
-      notification: "HDD",
-      threshold: 0.8,
-      machine: "machine1",
-      mostRecent: 1625894270
-    },
-    {
-      id: 3,
-      notification: "Offline",
-      threshold: null,
-      machine: "machine1",
-      mostRecent: 1625627930
-    },
-    {
-      id: 4,
-      notification: "CPU",
-      threshold: 0.9,
-      machine: "machine2",
-      mostRecent: 1625721407
-    },
-    {
-      id: 5,
-      notification: "HDD",
-      threshold: 0.9,
-      machine: "machine2",
-      mostRecent: 1625721527
-    },
-    {
-      id: 6,
-      notification: "Offline",
-      threshold: null,
-      machine: "machine2",
-      mostRecent: 1625807927
-    }
-  ],
-  network: [
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1622615148
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1622615145
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625203607
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625808407
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625807927
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625721527
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625721407
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625627930
-    },
-    {
-      notification: "Finality issues",
-    	network: "Beaconchain",
-      mostRecent: 1625894270
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1626078050
-    }
-  ],
-  validators: [
-    {
-      id: 1,
-      validator: { index: 1, pubkey: "0xa1d1ad ..." },
-      notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed" ],
-      mostRecent: { notification: "Attestations missed", timestamp: 1617427430 }
-    },
-    {
-      id: 2,
-      validator: { index: 2, pubkey: "0xb2ff47 ..." },
-      notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted" ],
-      mostRecent: { notification: "Balance decrease", timestamp: 1620030169 }
-    },
-    {
-      id: 3,
-      validator: { index: 3, pubkey: "0x8e323f ..." },
-      notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed" ],
-      mostRecent: { notification: "Proposals missed", timestamp: 1614687712 }
-    },
-    {
-      id: 4,
-      validator: { index: 4, pubkey: "0xa62420 ..." },
-      notifications: [ "Attestations missed",  "Balance decrease" ],
-      mostRecent: { notification: "Proposals submitted", timestamp: 1622557312 }
-    },
-    {
-      id: 5,
-      validator: { index: 5, pubkey: "0xb2ce0f ..." },
-      notifications: [ "Attestations missed" ],
-      mostRecent: { notification: "Validator slashed", timestamp: 1619878855 }
-    },
-    {
-      id: 6,
-      validator: { index: 6, pubkey: "0xa16c53 ..." },
-      notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed" ],
-      mostRecent: { notification: "Validator slashed", timestamp: 	1612617898 }
-    },
-    {
-      id: 7,
-      validator: { index: 7, pubkey: "0xa25da1..." },
-      notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed", "Proposals submitted" ],
-      mostRecent: { notification: "Proposals submitted", timestamp: 1626006179 }
-    },
-    {
-      id: 8,
-      validator: { index: 8, pubkey: "0x8078c7 ..." },
-      notifications: [ "Attestations missed",  "Balance decrease", "Proposals missed" ],
-      mostRecent: { notification: "Proposals missed", timestamp: 1626031079 }
-    },
-    {
-      id: 9,
-    	validator: { index: 9, pubkey: "0xb016e3 ..." },
-      notifications: [ "Attestations missed",  "Balance decrease" ],
-      mostRecent: { notification: "Balance decrease", timestamp: 1620677579 }
-    },
-    {
-      id: 10,
-      validator: { index: 10, pubkey: "0x8efba2 ..." },
-      notifications: [ "Validator slashed" ],
-    	mostRecent: { notification: "Attestations missed", timestamp: 1619878855 }
-    },
-    {
-      id: 11,
-      validator: { index: 11, pubkey: "0x8efba2 ..." },
-      notifications: [ "Validator slashed" ],
-    	mostRecent: { notification: "Attestations missed", timestamp: 1619878855 }
-    }
-  ]
+    monitoring: [
+        {
+            id: 1,
+            notification: "CPU",
+            threshold: 0.8,
+            machine: "machine1",
+            mostRecent: 1626078050
+        },
+        {
+            id: 2,
+            notification: "HDD",
+            threshold: 0.8,
+            machine: "machine1",
+            mostRecent: 1625894270
+        },
+        {
+            id: 3,
+            notification: "Offline",
+            threshold: null,
+            machine: "machine1",
+            mostRecent: 1625627930
+        },
+        {
+            id: 4,
+            notification: "CPU",
+            threshold: 0.9,
+            machine: "machine2",
+            mostRecent: 1625721407
+        },
+        {
+            id: 5,
+            notification: "HDD",
+            threshold: 0.9,
+            machine: "machine2",
+            mostRecent: 1625721527
+        },
+        {
+            id: 6,
+            notification: "Offline",
+            threshold: null,
+            machine: "machine2",
+            mostRecent: 1625807927
+        }
+    ],
+    network: [
+        {
+            notification: "Finality issues",
+            network: "Beaconchain",
+            mostRecent: 1622615148
+        },
+        {
+            notification: "Finality issues",
+            network: "Beaconchain",
+            mostRecent: 1622615145
+        },
+        {
+            notification: "Finality issues",
+            network: "Beaconchain",
+            mostRecent: 1625203607
+        },
+        {
+            notification: "Finality issues",
+            network: "Beaconchain",
+            mostRecent: 1625808407
+        },
+        {
+            notification: "Finality issues",
+            network: "Beaconchain",
+            mostRecent: 1625807927
+        },
+        {
+            notification: "Finality issues",
+            network: "Beaconchain",
+            mostRecent: 1625721527
+        },
+        {
+            notification: "Finality issues",
+            network: "Beaconchain",
+            mostRecent: 1625721407
+        },
+        {
+            notification: "Finality issues",
+            network: "Beaconchain",
+            mostRecent: 1625627930
+        },
+        {
+            notification: "Finality issues",
+            network: "Beaconchain",
+            mostRecent: 1625894270
+        },
+        {
+            notification: "Finality issues",
+            network: "Beaconchain",
+            mostRecent: 1626078050
+        }
+    ],
+    validators: [
+        {
+            id: 1,
+            validator: { index: 1, pubkey: "0xa1d1ad ..." },
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed"],
+            mostRecent: { notification: "Attestations missed", timestamp: 1617427430 }
+        },
+        {
+            id: 2,
+            validator: { index: 2, pubkey: "0xb2ff47 ..." },
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted"],
+            mostRecent: { notification: "Balance decrease", timestamp: 1620030169 }
+        },
+        {
+            id: 3,
+            validator: { index: 3, pubkey: "0x8e323f ..." },
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed"],
+            mostRecent: { notification: "Proposals missed", timestamp: 1614687712 }
+        },
+        {
+            id: 4,
+            validator: { index: 4, pubkey: "0xa62420 ..." },
+            notifications: ["Attestations missed", "Balance decrease"],
+            mostRecent: { notification: "Proposals submitted", timestamp: 1622557312 }
+        },
+        {
+            id: 5,
+            validator: { index: 5, pubkey: "0xb2ce0f ..." },
+            notifications: ["Attestations missed"],
+            mostRecent: { notification: "Validator slashed", timestamp: 1619878855 }
+        },
+        {
+            id: 6,
+            validator: { index: 6, pubkey: "0xa16c53 ..." },
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed"],
+            mostRecent: { notification: "Validator slashed", timestamp: 1612617898 }
+        },
+        {
+            id: 7,
+            validator: { index: 7, pubkey: "0xa25da1..." },
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted"],
+            mostRecent: { notification: "Proposals submitted", timestamp: 1626006179 }
+        },
+        {
+            id: 8,
+            validator: { index: 8, pubkey: "0x8078c7 ..." },
+            notifications: ["Attestations missed", "Balance decrease", "Proposals missed"],
+            mostRecent: { notification: "Proposals missed", timestamp: 1626031079 }
+        },
+        {
+            id: 9,
+            validator: { index: 9, pubkey: "0xb016e3 ..." },
+            notifications: ["Attestations missed", "Balance decrease"],
+            mostRecent: { notification: "Balance decrease", timestamp: 1620677579 }
+        },
+        {
+            id: 10,
+            validator: { index: 10, pubkey: "0x8efba2 ..." },
+            notifications: ["Validator slashed"],
+            mostRecent: { notification: "Attestations missed", timestamp: 1619878855 }
+        }
+    ]
 };
 
-for (let key in data.metrics) {
-  if (data.metrics.hasOwnProperty(key)) {
-		document.getElementById(key).innerHTML = data.metrics[key];
-	}
-}
+// for (let key in data.metrics) {
+//     if (data.metrics.hasOwnProperty(key)) document.getElementById(key).innerHTML = data.metrics[key];
+// }
 
 function loadMonitoringData(data) {
   let monitoringTable = $('#monitoring-notifications');

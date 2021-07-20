@@ -2,6 +2,7 @@
 	<script src="/js/notificationsCenter.js"></script>
 	<script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
+	{{ .CsrfField }}
 {{ end }}
 
 {{ define "css" }}
@@ -10,6 +11,7 @@
 {{ end }}
 
 {{ define "content" }}
+	{{with .Data}}
 	<div class="container-fluid container-xl container-min-width container-custom"> 
 		<div class="row d-flex align-items-center justify-content-start ml-1 my-2">
 			<nav aria-label="breadcrumb">
@@ -33,7 +35,7 @@
 					  <i class="fas fa-user"></i>
 				  </div>
 				  <div class="col-9 col-sm-8 col-xl-8 metric-value">
-						<span id="validators"></span>
+						<span id="validators">{{.Metrics.Validators}}</span>
 					  <span class="metric-description">validators in your list</span>
 				  </div>
 			  </div>
@@ -44,12 +46,12 @@
 						<i class="fas fa-bell"></i>
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
-						<span id="notifications"></span>
+						<span id="notifications">{{.Metrics.Notifications}}</span>
 						<span class="metric-description">notifications received / 24h</span>
 					</div>
 				</div>
 			</div>
-			<div class="col d-none d-lg-block mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
+			<!-- <div class="col d-none d-lg-block mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
 				<div class="row d-flex align-items-center mx-1 metric-card-row">
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-envelope-open-text"></i>
@@ -59,14 +61,14 @@
 						<span class="metric-description">attestations submitted / 24h</span>
 					</div>
 				</div>
-			</div>
+			</div> -->
 			<div class="col d-none d-lg-block mr-3 mt-1 shadow p-1 mb-3 container-max-width metric-card custom-border-radius custom-background-color">
 				<div class="row d-flex align-items-center mx-1 metric-card-row">
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-bullseye"></i>
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
-						<span id="attestationsMissed"></span>
+						<span id="attestationsMissed">{{.Metrics.AttestationsMissed}}</span>
 						<span class="metric-description">attestations missed / 24h</span>
 					</div>
 				</div>
@@ -77,7 +79,7 @@
 						<i class="fas fa-envelope-open-text"></i>
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
-						<span id="proposalsSubmitted"></span>
+						<span id="proposalsSubmitted">{{.Metrics.ProposalsSubmitted}}</span>
 						<span class="metric-description">proposals submitted / 24h</span>
 					</div>
 				</div>
@@ -88,7 +90,7 @@
 						<i class="fas fa-bullseye"></i>
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
-						<span id="proposalsMissed"></span>
+						<span id="proposalsMissed">{{.Metrics.ProposalsMissed}}</span>
 						<span class="metric-description">proposals missed / 24h</span>
 					</div>
 				</div>
@@ -423,4 +425,5 @@
 			</div>
 		</div>
 	</div>
+	{{end}}
 {{ end }}
