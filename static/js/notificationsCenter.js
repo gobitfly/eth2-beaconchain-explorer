@@ -599,10 +599,16 @@ $(document).ready(function () {
 
   $('.range').on('input', function(event) {
     var target_id = $(this).data('target');
-    var target = $('#' + target_id);
+    var target = $(target_id);
     target.val($(this).val());
-
-    // target.css('background-size', `${$(this).val()}%`);
+    if ($(this).attr('type') === 'range') {
+      $(this).css('background-size', $(this).val() + '% 100%');
+    } else {
+      target.css('background-size', $(this).val() + '% 100%');
+    }
+    
+    console.log(target, target.val())
+    // target.cs('background-size', `${$(this).val()}%`);
     // target.css('background-size', $(this).val() + '%');
   });
 });
