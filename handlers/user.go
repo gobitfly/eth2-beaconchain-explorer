@@ -273,6 +273,84 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getUserMetrics(userId uint64) (interface{}, error) {
+	metricsdb := struct {
+		Validators         uint64 `db:"validators"`
+		Notifications      uint64 `db:"notifications"`
+		AttestationsMissed uint64 `db:"attestations_missed"`
+		ProposalsMissed    uint64 `db:"proposals_missed"`
+		ProposalsSubmitted uint64 `db:"proposals_submitted"`
+	}{}
+
+	err := db.DB.Get(&metricsdb, `
+		SELECT COUNT(user_id) as validators,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY') AS notifications,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$2) AS attestations_missed,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$3) AS proposals_missed,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$4) AS proposals_submitted
+		FROM users_validators_tags  
+		WHERE user_id=$1;
+		`, userId, types.ValidatorMissedAttestationEventName, types.ValidatorMissedProposalEventName, types.ValidatorExecutedProposalEventName)
+	return metricsdb, err
+}
+
+func getValidatorTableData(userId uint64) (interface{}, error) {
+	validatordb := []struct {
+		Index        uint64  `db:"index"`
+		Pubkey       string  `db:"pubkey"`
+		Notification *string `db:"event_name"`
+		LastSent     *uint64 `db:"last_sent_ts"`
+	}{}
+
+	err := db.DB.Select(&validatordb, `
+	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, a.last_sent_ts
+	FROM validators 
+	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, event_name, last_sent_ts FROM users_subscriptions 
+	RIGHT OUTER JOIN users_validators_tags uvt ON event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex')
+	WHERE uvt.user_id = $1) a ON a.pubkey=pubkeyhex;
+		`, userId)
+	if err != nil {
+		return validatordb, err
+	}
+
+	type notification struct {
+		Notification string
+		Timestamp    uint64
+	}
+
+	type validator struct {
+		Index         uint64
+		Pubkey        string
+		Notifications []notification
+	}
+
+	result_map := map[uint64]validator{}
+
+	for _, item := range validatordb {
+		if _, exists := result_map[item.Index]; !exists {
+			result_map[item.Index] = validator{Pubkey: item.Pubkey, Index: item.Index, Notifications: []notification{}}
+		}
+
+		if item.Notification != nil {
+			map_item := result_map[item.Index]
+			var ts uint64 = 0
+			if item.LastSent != nil {
+				ts = *item.LastSent
+			}
+			map_item.Notifications = append(map_item.Notifications, notification{Notification: *item.Notification, Timestamp: ts})
+			result_map[item.Index] = map_item
+		}
+
+	}
+
+	valiadtors := []validator{}
+	for _, item := range result_map {
+		valiadtors = append(valiadtors, item)
+	}
+
+	return valiadtors, err
+}
+
 // UserNotificationsCenter renders the notificationsCenter template
 func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -283,32 +361,24 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	userNotificationsCenterData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userNotificationsCenterData.CsrfField = csrf.TemplateField(r)
 	//add notification-center data
-	type metrics struct {
-		Validators         uint64 `db:"validators"`
-		Notifications      uint64 `db:"notifications"`
-		AttestationsMissed uint64 `db:"attestations_missed"`
-		ProposalsMissed    uint64 `db:"proposals_missed"`
-		ProposalsSubmitted uint64 `db:"proposals_submitted"`
-	}
-
-	var metricsdb metrics
-	err := db.DB.Get(&metricsdb, `
-		SELECT COUNT(user_id) as validators,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY') AS notifications,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$2) AS attestations_missed,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$3) AS proposals_missed,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$4) AS proposals_submitted
-		FROM users_validators_tags  
-		WHERE user_id=$1;
-		`, user.UserID, types.ValidatorMissedAttestationEventName, types.ValidatorMissedProposalEventName, types.ValidatorExecutedProposalEventName)
+	// type metrics
+	metricsdb, err := getUserMetrics(user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving metrics data for users: %v ", user.UserID, err)
 		http.Error(w, "Internal server error", 503)
 		return
 	}
 
+	validatorTableData, err := getValidatorTableData(user.UserID)
+	if err != nil {
+		logger.Errorf("error retrieving validators table data for users: %v ", user.UserID, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 	data := InitPageData(w, r, "user", "/user", "")
 	userNotificationsCenterData.Metrics = metricsdb
+	userNotificationsCenterData.Validators = validatorTableData
 	data.Data = userNotificationsCenterData
 	data.User = user
 
