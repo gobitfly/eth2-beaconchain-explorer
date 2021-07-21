@@ -967,7 +967,8 @@ type UserNotificationsPageData struct {
 
 type UserNotificationsCenterPageData struct {
 	AuthData
-	Metrics interface{}
+	Metrics    interface{}
+	Validators interface{}
 	// Subscriptions []*Subscription
 }
 

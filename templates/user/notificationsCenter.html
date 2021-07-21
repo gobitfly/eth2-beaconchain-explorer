@@ -3,6 +3,9 @@
 	<script type="text/javascript" src="/js/datatables.min.js"></script>
   <script type="text/javascript" src="/js/datatable_input.js"></script>
 	{{ .CsrfField }}
+	<script>
+		console.log({{.Validators}})
+	</script>
 {{end}}
 
 {{define "css"}}
