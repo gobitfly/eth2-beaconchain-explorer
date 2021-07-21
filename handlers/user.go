@@ -318,9 +318,13 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 		Timestamp    uint64
 	}
 
+	type validatorDetails struct {
+		Index  uint64
+		Pubkey string
+	}
+
 	type validator struct {
-		Index         uint64
-		Pubkey        string
+		Validator     validatorDetails
 		Notifications []notification
 	}
 
@@ -328,7 +332,7 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 
 	for _, item := range validatordb {
 		if _, exists := result_map[item.Index]; !exists {
-			result_map[item.Index] = validator{Pubkey: item.Pubkey, Index: item.Index, Notifications: []notification{}}
+			result_map[item.Index] = validator{Validator: validatorDetails{Pubkey: item.Pubkey, Index: item.Index}, Notifications: []notification{}}
 		}
 
 		if item.Notification != nil {

@@ -1,10 +1,10 @@
 {{define "js"}}
-	<script src="/js/notificationsCenter.js"></script>
 	<script type="text/javascript" src="/js/datatables.min.js"></script>
-  <script type="text/javascript" src="/js/datatable_input.js"></script>
+	<script type="text/javascript" src="/js/datatable_input.js"></script>
+	<script src="/js/notificationsCenter.js"></script>
 	{{ .CsrfField }}
 	<script>
-		console.log({{.Validators}})
+		loadValidatorsData({{.Validators}})
 	</script>
 {{end}}
 
