@@ -1,4 +1,6 @@
-.badge-custom-size { font-size: .82rem }
+.badge-custom-size { 
+  font-size: .82rem; 
+}
 .breadcrumb-custom {
   background-color: transparent;
   padding: 0;
@@ -7,12 +9,22 @@
   width: 1.1rem;
   height: 1.1rem;
 }
-.container-height { height: 650px }
-.container-max-width { max-width: 300px }
-.container-min-width { min-width: 300px }
+.container-height { 
+  height: 650px; 
+}
+.container-max-width { 
+  max-width: 300px; 
+}
+.container-min-width { 
+  min-width: 300px; 
+}
 /* TODO: replace with defined color variable */
-.custom-background-color { background-color: #fdfdfd }
-.custom-border-radius { border-radius: .5rem }
+.custom-background-color { 
+  background-color: #fdfdfd; 
+}
+.custom-border-radius { 
+  border-radius: .5rem; 
+}
 .custom-container {
   height: 6rem;
   overflow-y: auto;
@@ -34,14 +46,22 @@
   top: -1rem; 
   right: -2.5rem;
 }
-.heading { font-size: 1.8rem }
-.heading-l2 { font-size: 1.6rem }
-.heading-l3 { font-size: 1.1rem }
+.heading { 
+  font-size: 1.8rem; 
+}
+.heading-l2 { 
+  font-size: 1.6rem; 
+}
+.heading-l3 { 
+  font-size: 1.1rem;
+}
 .heading-l4 { 
   font-size: .85rem;
   font-weight: 300;
 }
-.heading-section { height: 60px }
+.heading-section { 
+  height: 60px; 
+}
 .icon { 
   font-size: 2.4rem;
   color: #5E3F6B;
@@ -56,9 +76,15 @@
   font-size: .9rem;
   font-weight: 400;
 }
-.metrics-section { min-height: 120px }
-.metric-card { width: auto }
-.metric-card-row { height: 100% }
+.metrics-section { 
+  min-height: 120px; 
+}
+.metric-card { 
+  width: auto; 
+}
+.metric-card-row { 
+  height: 100%; 
+}
 /* TODO: make the color #8186F1 on dark theme */
 .metric-value { 
   text-align: left;
@@ -73,8 +99,12 @@
   font-weight: 400;
   color: #343a40;
 }
-.text-empty-section { height: 200px }
-.validators-container-min-height { min-height: 900px }
+.text-empty-section { 
+  height: 200px; 
+}
+.validators-container-min-height { 
+  min-height: 900px; 
+}
 /* tables */
 div.dataTables_info {
   padding-top: 2.15rem !important;
@@ -88,9 +118,9 @@ div.dataTables_filter {
 div.dataTables_length {
   padding-left: 0 !important;
   font-size: .9rem;
+  text-align: left !important;
 }
 .dataTables_wrapper .dataTables_length select {
-  /* margin: 0 .25rem; */
   margin-left: .25rem;
   margin-right: .25rem;
   padding: .25rem 1rem;
@@ -104,8 +134,12 @@ div.dataTables_scrollBody {
 #monitoring-notifications_wrapper div.dataTables_length,
 #monitoring-notifications_wrapper div.dataTables_paginate,
 #network-notifications_wrapper div.dataTables_length,
-#network-notifications_wrapper div.dataTables_paginate { display: none }
-#validators-notifications { min-height: 610px }
+#network-notifications_wrapper div.dataTables_paginate { 
+  display: none; 
+}
+#validators-notifications { 
+  min-height: 610px; 
+}
 /* custom scrollbar */
 .scrollbar::-webkit-scrollbar {
   width: 8px;
@@ -201,4 +235,63 @@ div.dataTables_scrollBody {
   box-shadow: none;
   border: none;
   background: transparent;
+}
+@media screen and (max-width: 460px) {
+  .custom-remove-modal { 
+    padding: 1.8rem 1rem 2.5rem;
+  }
+  .custom-remove-modal-close {
+    right: -.25rem;
+  }
+}
+.twitter-typeahead {
+  width: 100%;
+}
+.tt-open, 
+#validator-index-view .nice-scroll {
+  background-color: #6d6d6d;
+  scrollbar-color: #ebebeb;
+  scrollbar-width: thin;
+}
+.tt-open::-webkit-scrollbar, 
+#validator-index-view::-webkit-scrollbar, 
+.nice-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.tt-open::-webkit-scrollbar-thumb, 
+#validator-index-view::-webkit-scrollbar-thumb, 
+.nice-scroll::-webkit-scrollbar-thumb {
+  background-color: #6d6d6d;
+  border-radius: 10px;
+  color: #ebebeb;
+}
+.tt-suggestion.tt-cursor,
+.tt-suggestion:hover {
+  background-color: var(--primary);
+  cursor: pointer;
+}
+.tt-menu {
+  width: 100%;
+  max-height: 19rem;
+  margin-top: 4px;
+  padding: .5rem;
+  background-color: #fdfdfd;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+  box-shadow: 0 1px 25px #6d6d6d;
+  overflow-y: auto;
+  cursor: pointer;
+}
+.tt-query {
+  -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+}
+.tt-suggestion {
+  line-height: 34px;
+  margin: 0;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }

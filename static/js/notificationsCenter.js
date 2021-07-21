@@ -647,4 +647,18 @@ $(document).ready(function () {
       target.css('background-size', $(this).val() + '% 100%');
     }
   });
+  
+  // initializing the typeahead
+  $('.typeahead').typeahead({
+    hint: true,
+    // enabling substring highlighting
+    highlight: true,
+    // minimum characters required to show suggesions
+    minLength: 1
+  });
+  $('.typeahead').typeahead({
+    hint: true,
+    highlight: true,
+    minLength: 1
+  });
 });
