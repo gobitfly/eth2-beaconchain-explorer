@@ -1,5 +1,6 @@
 {{define "js"}}
-	<script type="text/javascript" src="/js/datatables.min.js"></script>
+	<script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.25/fh-3.1.9/r-2.2.9/sc-2.0.4/sl-1.3.3/datatables.min.js"></script>
+	<!-- <script type="text/javascript" src="/js/datatables.min.js"></script> -->
 	<script type="text/javascript" src="/js/datatable_input.js"></script>
 	<script src="/js/notificationsCenter.js"></script>
 	{{ .CsrfField }}
@@ -10,8 +11,8 @@
 
 {{define "css"}}
 	<link rel="stylesheet" type="text/css" href="/css/notificationsCenter.css" />
-	<!-- <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.25/fh-3.1.9/r-2.2.9/sc-2.0.4/sl-1.3.3/datatables.min.css" /> -->
-	<link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.25/fh-3.1.9/r-2.2.9/sc-2.0.4/sl-1.3.3/datatables.min.css" />
+	<!-- <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" /> -->
 {{end}}
 
 {{define "content"}}
@@ -431,27 +432,49 @@
 						<div class="mb-5">
 							<input class="form-control w-100 typeahead tt-query" type="text" autocomplete="off" spellcheck="false" placeholder="Search validator...">
 						</div>
+						<div class="d-flex align-items-center justify-content-end w-100 my-2">
+							<div class="mr-2">Push</div>
+							<div class="mr-2">Email</div>
+							<div class="mr-2">Web</div>
+						</div>
 						<div class="form-check form-check-inline w-100 my-2">
 							<label class="form-check-label mr-auto font-weight-normal" for="attestationsMissed">Attestations missed</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="attestationsMissed" value="">
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="attestationsMissed" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="attestationsMissed" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="attestationsMissed" value="">
 						</div>
 						<div class="form-check form-check-inline w-100 my-2">
 							<label class="form-check-label mr-auto font-weight-normal" for="balanceDecrease">Balance decrease</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="balanceDecrease" value="">
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="balanceDecrease" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="balanceDecrease" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="balanceDecrease" value="">
 						</div>
 						<div class="form-check form-check-inline w-100 my-2">
 							<label class="form-check-label mr-auto font-weight-normal" for="proposalsMissed">Proposals missed</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="proposalsMissed" value="">
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="proposalsMissed" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="proposalsMissed" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="proposalsMissed" value="">
 						</div>
 						<div class="form-check form-check-inline w-100 my-2">
 							<label class="form-check-label mr-auto font-weight-normal" for="proposalsSubmitted">Proposals submitted</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="proposalsSubmitted" value="">
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="proposalsSubmitted" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="proposalsSubmitted" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="proposalsSubmitted" value="">
 						</div>
 						<div class="form-check form-check-inline w-100 my-2">
 							<label class="form-check-label mr-auto font-weight-normal" for="validatorSlashed">Validator slashed</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="validatorSlashed" value="">
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="validatorSlashed" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="validatorSlashed" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="validatorSlashed" value="">
 						</div>
-					</div>  
+						<hr class="my-3" />
+						<div class="form-check form-check-inline w-100 my-2">
+							<label class="form-check-label mr-auto font-weight-normal" for="allEvents">All events</label>
+							<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="allEvents" value="">
+							<input class="form-check-input checkbox-custom-size ml-2 mr-4" type="checkbox" id="allEvents" value="">
+							<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="allEvents" value="">
+						</div>
+					</div>
 				</div>
 				<div class="col-12 d-flex align-items-center justify-content-between px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>

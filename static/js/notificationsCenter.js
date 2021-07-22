@@ -434,11 +434,10 @@ function loadNetworkData(data) {
 
 function loadValidatorsData(data) {
   let validatorsTable = $('#validators-notifications');
-//   console.log("calling with", data)
+  //  console.log('calling with', data)
   validatorsTable.DataTable ({
     language: {
       info: '_TOTAL_ entries',
-      // TODO: place at the bottom of the container
       infoEmpty: 'No entries match',
       infoFiltered: '(from _MAX_ entries)',
       processing: 'Loading. Please wait...',
@@ -449,10 +448,7 @@ function loadValidatorsData(data) {
     rowId: 'id',
     processing: true,
     responsive: true,
-    // scroller: true,
-    // scrollY: 610,
     paging: true,
-    // TODO: place at the bottom of the container
     pagingType: 'first_last_numbers',
     select: {
       items: 'row',
@@ -487,8 +483,8 @@ function loadValidatorsData(data) {
         data: 'Validator',
         render: function (data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
-        //   console.log(data)
-          if (type === 'sort' || type === 'type'){
+          // console.log(data)
+          if (type === 'sort' || type === 'type') {
             return data.Index;
           }
           return `<span><a href="/validator/${data.Index}"><i class="fas fa-male mr-1"></i>` + data.Index + '</a></span>' + `<a class="heading-l4 d-none d-sm-block mt-2" href="/validator/${data.Pubkey}">0x` + data.Pubkey.substring(0, 6) + '...</a>';
@@ -500,8 +496,8 @@ function loadValidatorsData(data) {
         data: 'Notifications',
         render: function (data, type, row, meta) {
           let notifications = '';
-          if (data.length === 0){
-              return "<span> Validator is not subscribed to notifications</span>"
+          if (data.length === 0) {
+            return '<span>You are not subscribed to any validator events</span>';
           }
           for (let notification of data) {
             notifications += '<span class="badge badge-pill badge-primary badge-custom-size mr-1 my-1">' + notification.Notification.replaceAll("_", " ") + '</span>';
@@ -549,22 +545,22 @@ function loadValidatorsData(data) {
         data: 'Notifications',
         render: function (data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
-        //   data = data.Notifications
-          let no_time = "Never sent"  
-          if (data.length === 0){
-            return no_time
+          // data = data.Notifications
+          let no_time = 'Never sent';  
+          if (data.length === 0) {
+            return no_time;
           }
 
           data.sort((a, b) => {
             return a.age - b.age;
           });
           
-          if (type === 'sort' || type === 'type'){
+          if (type === 'sort' || type === 'type') {
             return data[0].Timestamp;
           }
           
-          if (data[0].Timestamp === 0){
-            return no_time
+          if (data[0].Timestamp === 0) {
+            return no_time;
           }
           return '<span class="badge badge-pill badge-primary badge-custom-size mr-1 mr-sm-3">' + data[0].Notification + '</span>' + `<span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`;
         }
