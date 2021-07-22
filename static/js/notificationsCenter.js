@@ -42,13 +42,6 @@ const data = {
       threshold: 0.9,
       machine: "machine2",
       mostRecent: 1625721527
-    },
-    {
-      id: 6,
-      notification: "Offline",
-      threshold: null,
-      machine: "machine2",
-      mostRecent: 1625807927
     }
   ],
   network: [
@@ -105,85 +98,71 @@ const data = {
   ],
   validators: [
     {
-      id: 1,
       validator: { index: 1, pubkey: "0xa1d1ad ..." },
       notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed"],
       mostRecent: { notification: "Attestations missed", timestamp: 1617427430 }
     },
     {
-      id: 2,
       validator: { index: 2, pubkey: "0xb2ff47 ..." },
       notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted"],
       mostRecent: { notification: "Balance decrease", timestamp: 1620030169 }
     },
     {
-      id: 3,
       validator: { index: 3, pubkey: "0x8e323f ..." },
       notifications: ["Attestations missed", "Balance decrease", "Proposals missed"],
       mostRecent: { notification: "Proposals missed", timestamp: 1614687712 }
     },
     {
-      id: 4,
       validator: { index: 4, pubkey: "0xa62420 ..." },
       notifications: ["Attestations missed", "Balance decrease"],
       mostRecent: { notification: "Proposals submitted", timestamp: 1622557312 }
     },
     {
-      id: 5,
       validator: { index: 5, pubkey: "0xb2ce0f ..." },
       notifications: ["Attestations missed"],
       mostRecent: { notification: "Validator slashed", timestamp: 1619878855 }
     },
     {
-      id: 6,
       validator: { index: 6, pubkey: "0xa16c53 ..." },
       notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed"],
       mostRecent: { notification: "Validator slashed", timestamp: 1612617898 }
     },
     {
-      id: 7,
       validator: { index: 7, pubkey: "0xa25da1..." },
       notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted"],
       mostRecent: { notification: "Proposals submitted", timestamp: 1626006179 }
     },
     {
-      id: 8,
       validator: { index: 8, pubkey: "0x8078c7 ..." },
       notifications: ["Attestations missed", "Balance decrease", "Proposals missed"],
       mostRecent: { notification: "Proposals missed", timestamp: 1626031079 }
     },
     {
-      id: 9,
       validator: { index: 9, pubkey: "0xb016e3 ..." },
       notifications: ["Attestations missed", "Balance decrease"],
       mostRecent: { notification: "Balance decrease", timestamp: 1620677579 }
     },
     {
-      id: 10,
       validator: { index: 10, pubkey: "0x8efba2 ..." },
       notifications: ["Validator slashed"],
       mostRecent: { notification: "Attestations missed", timestamp: 1619878855 }
     },
     {
-      id: 11,
       validator: { index: 11, pubkey: "0x8efba3 ..." },
       notifications: ["Validator slashed"],
       mostRecent: { notification: "Attestations missed", timestamp: 1619878856 }
     },
     {
-      id: 12,
       validator: { index: 12, pubkey: "0x8efba4 ..." },
       notifications: ["Validator slashed"],
       mostRecent: { notification: "Attestations missed", timestamp: 1619878857 }
     },
     {
-      id: 13,
       validator: { index: 13, pubkey: "0x8efba5 ..." },
       notifications: ["Validator slashed"],
       mostRecent: { notification: "Attestations missed", timestamp: 1619878858 }
     },
     {
-      id: 20,
       validator: { index: 20, pubkey: "0x8efba6 ..." },
       notifications: ["Validator slashed"],
       mostRecent: { notification: "Attestations missed", timestamp: 1619878859 }
@@ -200,7 +179,7 @@ const data = {
 function loadMonitoringData(data) {
   let monitoringTable = $('#monitoring-notifications');
 
-  monitoringTable.DataTable ({
+  monitoringTable.DataTable({
     language: {
       info: '_TOTAL_ entries',
       infoEmpty: 'No entries match',
@@ -210,18 +189,18 @@ function loadMonitoringData(data) {
       searchPlaceholder: 'Search...',
       zeroRecords: 'No entries match'
     },
-    rowId: 'id',
     processing: true,
     responsive: true,
     scroller: true,
     scrollY: 380,
     paging: true,
     data: data,
+    rowId: 'id',
     initComplete: function(settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar');
 
-      // click event to table edit button
-      $('#monitoring-notifications #edit-btn').on('click',  function(e) {
+      // click event to monitoring table edit button
+      $('#monitoring-notifications #edit-monitoring-events-btn').on('click', function(e) {
         e.stopPropagation();
         const threshold_editable_placeholder = $(this).parent().find('.threshold_non_editable_text').text().slice(0, -1);
     
@@ -258,92 +237,92 @@ function loadMonitoringData(data) {
             }
           } else {
             isValid = false;
+          }
+
+          if (isValid) {
+            index = data.findIndex(function(item) {
+              return item.id.toString() === rowId.toString();
+            });
+
+            data[index].threshold = newThreshold;
+
+            // destroy and reload table after edit
+            $('#monitoring-notifications').DataTable().clear().destroy();
+            loadMonitoringData(data);
+          } else {
+            alert('Enter an integer between 1 and 100')
+      	  }
+    	  }
+  	  });
+
+  	  // click event to table remove button
+  	  $('#monitoring-notifications #remove-btn').on('click', function(e) {
+    	  $('#modaltext').text($(this).data('modaltext'));
+    	  // set the row id 
+    	  const rowId = $(this).parent().parent().attr('id');
+    	  $('#confirmRemoveModal').attr('rowId', rowId);
+    	  $('#confirmRemoveModal').attr('tablename', 'monitoring');
+  	  });
+	  },
+    columnDefs: [
+      {
+        targets: '_all',
+        createdCell: function (td, cellData, rowData, row, col) {
+          $(td).css('padding-top', '20px');
+          $(td).css('padding-bottom', '20px');
+    	  }
+      },
+      {
+        targets: 0,
+        responsivePriority: 1,
+        data: 'notification',
+        render: function (data, type, row, meta) {
+          return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>';
         }
-
-        if (isValid) {
-          index = data.findIndex(function(item) {
-            return item.id.toString() === rowId.toString();
-          });
-
-          data[index].threshold = newThreshold;
-
-          // destroy and reload table after edit
-          $('#monitoring-notifications').DataTable().clear().destroy();
-          loadMonitoringData(data);
-        } else {
-          alert('Enter an integer between 1 and 100')
-      	}
-    	}
-  	});
-
-  	// click event to table remove button
-  	$('#monitoring-notifications #remove-btn').on('click',  function(e) {
-    	$('#modaltext').text($(this).data('modaltext'));
-    	// set the row id 
-    	const rowId = $(this).parent().parent().attr('id');
-    	$('#confirmRemoveModal').attr('rowId', rowId);
-    	$('#confirmRemoveModal').attr('tablename', 'monitoring');
-  	});
-	},
-  columnDefs: [
-    {
-      targets: '_all',
-      createdCell: function (td, cellData, rowData, row, col) {
-        $(td).css('padding-top', '20px');
-        $(td).css('padding-bottom', '20px');
-    	}
-    },
-    {
-      targets: 0,
-      responsivePriority: 1,
-      data: 'notification',
-      render: function (data, type, row, meta) {
-        return '<span class="badge badge-pill badge-primary badge-custom-size">' + data + '</span>';
-      }
-    },
-    {
-      targets: 1,
-      responsivePriority: 3,
-      data: 'threshold',
-      render: function (data, type, row, meta) { 
-        if (!data) {
-          return '<span class="threshold_non_editable">N/A</span>';
+      },
+      {
+        targets: 1,
+        responsivePriority: 3,
+        data: 'threshold',
+        render: function (data, type, row, meta) { 
+          if (!data) {
+            return '<span class="threshold_non_editable">N/A</span>';
+          }
+          return '<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + data*100 + '%</span> <i class="fas fa-pen fa-xs text-muted" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;"></i></span>';
         }
-        return '<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + data*100 + '%</span> <i class="fas fa-pen fa-xs text-muted" id="edit-btn" title="Click to edit" style="cursor: pointer;"></i></span>';
-      }
-    },
-    {
-      targets: 2,
-      responsivePriority: 2,
-    	data: 'machine'
-    },
-    {
-      targets: 3,
-      responsivePriority: 1,
-      data: 'mostRecent',
-      render: function (data, type, row, meta) {
-        // for sorting and type checking use the original data (unformatted)
-        if (type === 'sort' || type === 'type') {
-          return data;
+      },
+      {
+        targets: 2,
+        responsivePriority: 2,
+    	  data: 'machine'
+      },
+      {
+        targets: 3,
+        responsivePriority: 1,
+        data: 'mostRecent',
+        render: function (data, type, row, meta) {
+          // for sorting and type checking use the original data (unformatted)
+          if (type === 'sort' || type === 'type') {
+            return data;
+          }
+          return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" })}</span>`;
         }
-        return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" })}</span>`;
+      },
+      {
+        targets: 4,
+        orderable: false,
+        responsivePriority: 3,
+        data: null,
+        defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove notification" style="padding: .5rem; color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
       }
-    },
-    {
-      targets: 4,
-      orderable: false,
-      responsivePriority: 3,
-      data: null,
-      defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove notification" style="color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
-    }
-  ]
+    ],
 	});
 }
 
 function loadNetworkData(data) {
   let networkTable = $('#network-notifications');
 
-  networkTable.DataTable ({
+  networkTable.DataTable({
     language: {
       info: '_TOTAL_ entries',
     	infoEmpty: 'No entries match',
@@ -375,7 +354,7 @@ function loadNetworkData(data) {
         responsivePriority: 1,
         data: 'notification',
         render: function (data, type, row, meta) {
-          return '<span class="badge badge-pill badge-primary badge-custom-size">' + data + '</span>';
+          return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>';
         }
       },
       {
@@ -434,8 +413,8 @@ function loadNetworkData(data) {
 
 function loadValidatorsData(data) {
   let validatorsTable = $('#validators-notifications');
-  //  console.log('calling with', data)
-  validatorsTable.DataTable ({
+  // console.log('calling with', data);
+  validatorsTable.DataTable({
     language: {
       info: '_TOTAL_ entries',
       infoEmpty: 'No entries match',
@@ -445,7 +424,6 @@ function loadValidatorsData(data) {
       searchPlaceholder: 'Search...',
       zeroRecords: 'No entries match'
     },
-    rowId: 'id',
     processing: true,
     responsive: true,
     paging: true,
@@ -459,9 +437,14 @@ function loadValidatorsData(data) {
     data: data,
     initComplete: function(settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar');
+
+      // click event to validators table edit button
+      $('#validators-notifications #edit-validator-events-btn').on('click', function(e) {
+        $('#manageNotificationsModal').attr('rowId', $(this).parent().parent().attr('id'));
+      });
             
       // click event to remove button
-      $('#validators-notifications #remove-btn').on('click',  function(e) {
+      $('#validators-notifications #remove-btn').on('click', function(e) {
       	const rowId = $(this).parent().parent().attr('id');
         $('#modaltext').text($(this).data('modaltext'));
         // set the row id 
@@ -483,11 +466,10 @@ function loadValidatorsData(data) {
         data: 'Validator',
         render: function (data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
-          // console.log(data);
           if (type === 'sort' || type === 'type') {
             return data.Index;
           }
-          return `<span><a href="/validator/${data.Index}"><i class="fas fa-male mr-1"></i>` + data.Index + '</a></span>' + `<a class="heading-l4 d-none d-sm-block mt-2" href="/validator/${data.Pubkey}">0x` + data.Pubkey.substring(0, 6) + '...</a>';
+          return `<span class="font-weight-bold"><a href="/validator/${data.Index}"><i class="fas fa-male mr-1"></i>` + data.Index + '</a></span>' + `<a class="heading-l4 d-none d-sm-block mt-2" style="width: 5rem;" href="/validator/${data.Pubkey}">0x` + data.Pubkey.substring(0, 6) + '...</a>';
         }
     	},
       {
@@ -501,27 +483,27 @@ function loadValidatorsData(data) {
           }
           for (let notification of data) {
             let badgeColor = '';
-            switch(notification.Notification.replaceAll("_", " ")) {
-              case 'validator balance decreased':
+            switch(notification.Notification) {
+              case 'validator_balance_decreased':
                 badgeColor = 'badge-light';
                 break;
-              case 'validator proposal submitted':
+              case 'validator_attestation_missed':
+                badgeColor = 'badge-warning';
+                break;
+              case 'validator_proposal_submitted':
                 badgeColor = 'badge-light';
                 break;
-              case 'validator attestation missed':
+              case 'validator_proposal_missed':
                 badgeColor = 'badge-warning';
                 break;
-              case 'validator proposal missed':
-                badgeColor = 'badge-warning';
-                break;
-              case 'validator got slashed':
+              case 'validator_got_slashed':
                 badgeColor = 'badge-light';
                 break;
             }
             notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + notification.Notification.replaceAll("_", " ") + '</span>';
           }
           // TODO: add functionality for edit button
-          return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted" id="edit-btn" title="Click to edit validator notifications" style="cursor: pointer;"></i>';
+          return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted" id="edit-validator-events-btn" title="Click to edit validator notifications" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
         }
       },
       {
@@ -580,7 +562,7 @@ function loadValidatorsData(data) {
           if (data[0].Timestamp === 0) {
             return no_time;
           }
-          return '<span class="badge badge-pill badge-primary badge-custom-size mr-1 mr-sm-3">' + data[0].Notification + '</span>' + `<span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`;
+          return '<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-3">' + data[0].Notification + '</span>' + `<span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`;
         }
     	},
       {
@@ -588,20 +570,23 @@ function loadValidatorsData(data) {
         orderable: false,
         responsivePriority: 3,
         data: null,
-        defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove validator" style="color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
+        defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove validator" style="padding: .5rem; color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
     	}
-    ]
+    ],
+    rowId: function(data, type, row, meta) {
+      return data.Validator.Pubkey;
+    }
   });
 }
 
 $(document).ready(function () {
   loadMonitoringData(data.monitoring);
   loadNetworkData(data.network);
-//   loadValidatorsData(data.validators);
+  // loadValidatorsData(data.validators);
 
   $(document).on('click', function(e) {
     // if click outside input while any threshold input visible, reset value and hide input
-    if (e.target.className.indexOf('threshold_editable') < 0){
+    if (e.target.className.indexOf('threshold_editable') < 0) {
       $('.threshold_editable').each(function() {
         $(this).attr('hidden', true);
       	$(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
@@ -609,14 +594,14 @@ $(document).ready(function () {
     }
   });
 
-  $('#remove-all-btn').on('click',  function(e) {
+  $('#remove-all-btn').on('click', function(e) {
     $('#modaltext').text($(this).data('modaltext'));
     $('#confirmRemoveModal').removeAttr('rowId');
     $('#confirmRemoveModal').attr('tablename', 'validators');
   });
 
   // click event to modal remove button
-  $('#remove-button').on('click',  function(e) {
+  $('#remove-button').on('click', function(e) {
     const rowId = $('#confirmRemoveModal').attr('rowId');
     const tablename = $('#confirmRemoveModal').attr('tablename');
         
@@ -624,16 +609,16 @@ $(document).ready(function () {
     // if no row id delete directly in correponding data section
     if (rowId !== undefined) {
     	if (tablename === 'monitoring') {
-        data.monitoring = data.monitoring.filter(function( item ) {
+        data.monitoring = data.monitoring.filter(function(item) {
           return item.id.toString() !== rowId.toString();
         });
       }
 
-      if (tablename === 'validators') {
-        data.validators = data.validators.filter(function( item ) {
-          return item.id.toString() !== rowId.toString();
+      /* if (tablename === 'validators') {
+        data.validators = data.validators.filter(function(item) {
+          return item.Validator.PubKey.toString() !== rowId.toString();
         });						
-      }
+      } */
     } else {
       if (tablename === 'validators') {
         data.validators = [];
@@ -645,13 +630,13 @@ $(document).ready(function () {
     	loadMonitoringData(data.monitoring);
     }
 
-  	if (tablename === 'validators') {
+   	/* if (tablename === 'validators') {
       $('#validators-notifications').DataTable().clear().destroy();
       loadValidatorsData(data.validators);					
-    }
+    } */
   });
 
-  $('.range').on('input', function(event) {
+  $('.range').on('input', function(e) {
     var target_id = $(this).data('target');
     var target = $(target_id);
     target.val($(this).val());
@@ -670,4 +655,55 @@ $(document).ready(function () {
     // minimum characters required to show suggesions
     minLength: 1,
   });
+
+  // on modal open after click event to validators table edit button
+  $('#manageNotificationsModal').on('show.bs.modal', function (e) {
+    let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data();
+    if (rowData) {
+      console.log(rowData);
+      $('#selected-validators-events-container').append(
+        `<div id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal">
+          Validator ${rowData.Validator.Index}
+          <i class="fas fa-times ml-2" style="cursor: pointer;"></i>
+        </div> `
+      );
+
+      rowData.Notifications.forEach(function(notification) {
+        if (notification.Notification === 'validator_balance_decreased') {
+          $('#balanceDecreasePush').attr('checked', true);
+          $('#balanceDecreaseEmail').attr('checked', true);
+          $('#balanceDecreaseWeb').attr('checked', true);
+        }
+        if (notification.Notification === 'validator_attestation_missed') {
+          $('#attestationsMissedPush').attr('checked', true);
+          $('#attestationsMissedEmail').attr('checked', true);
+          $('#attestationsMissedWeb').attr('checked', true);
+        }
+        if (notification.Notification === 'validator_proposal_submitted') {
+          $('#proposalsSubmittedPush').attr('checked', true);
+          $('#proposalsSubmittedEmail').attr('checked', true);
+          $('#proposalsSubmittedWeb').attr('checked', true);
+        }
+        if (notification.Notification === 'validator_proposal_missed') {
+          $('#proposalsMissedPush').attr('checked', true);
+          $('#proposalsMissedEmail').attr('checked', true);
+          $('#proposalsMissedWeb').attr('checked', true);
+        }
+        if (notification.Notification === 'validator_got_slashed') {
+          $('#validatorSlashedPush').attr('checked', true);
+          $('#validatorSlashedEmail').attr('checked', true);
+          $('#validatorSlashedWeb').attr('checked', true);
+        }
+      });
+    }
+  });
+  // on modal close
+  $('#manageNotificationsModal').on('hide.bs.modal', function (e) {
+    $('#selected-validators-events-container #validator-event-badge').remove();
+  });
+
+
+  // TODO: listener on allEvents checkboxes toggle, select multiple rows, add min.js just for table expandable extension
+
+  
 });
