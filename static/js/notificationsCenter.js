@@ -497,7 +497,7 @@ function loadValidatorsData(data) {
         render: function (data, type, row, meta) {
           let notifications = '';
           if (data.length === 0) {
-            return '<span>You are not subscribed to any validator events</span>';
+            return '<span>Not subscribed to any events</span>';
           }
           for (let notification of data) {
             notifications += '<span class="badge badge-pill badge-primary badge-custom-size mr-1 my-1">' + notification.Notification.replaceAll("_", " ") + '</span>';
@@ -546,7 +546,7 @@ function loadValidatorsData(data) {
         render: function (data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
           // data = data.Notifications
-          let no_time = 'Never sent';  
+          let no_time = 'N/A';  
           if (data.length === 0) {
             return no_time;
           }
@@ -650,11 +650,6 @@ $(document).ready(function () {
     // enabling substring highlighting
     highlight: true,
     // minimum characters required to show suggesions
-    minLength: 1
-  });
-  $('.typeahead').typeahead({
-    hint: true,
-    highlight: true,
-    minLength: 1
+    minLength: 1,
   });
 });
