@@ -483,7 +483,7 @@ function loadValidatorsData(data) {
         data: 'Validator',
         render: function (data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
-          // console.log(data)
+          // console.log(data);
           if (type === 'sort' || type === 'type') {
             return data.Index;
           }
@@ -500,7 +500,25 @@ function loadValidatorsData(data) {
             return '<span>Not subscribed to any events</span>';
           }
           for (let notification of data) {
-            notifications += '<span class="badge badge-pill badge-primary badge-custom-size mr-1 my-1">' + notification.Notification.replaceAll("_", " ") + '</span>';
+            let badgeColor = '';
+            switch(notification.Notification.replaceAll("_", " ")) {
+              case 'validator balance decreased':
+                badgeColor = 'badge-light';
+                break;
+              case 'validator proposal submitted':
+                badgeColor = 'badge-light';
+                break;
+              case 'validator attestation missed':
+                badgeColor = 'badge-warning';
+                break;
+              case 'validator proposal missed':
+                badgeColor = 'badge-warning';
+                break;
+              case 'validator got slashed':
+                badgeColor = 'badge-light';
+                break;
+            }
+            notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + notification.Notification.replaceAll("_", " ") + '</span>';
           }
           // TODO: add functionality for edit button
           return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted" id="edit-btn" title="Click to edit validator notifications" style="cursor: pointer;"></i>';
