@@ -422,6 +422,13 @@ function loadValidatorsData(data) {
       processing: 'Loading. Please wait...',
       search: '',
       searchPlaceholder: 'Search...',
+      select: {
+        rows: {
+          _: '%d rows selected',
+          0: 'Click a row to select it',
+          1: '1 row selected'
+        }
+      },
       zeroRecords: 'No entries match'
     },
     processing: true,
@@ -431,7 +438,8 @@ function loadValidatorsData(data) {
     select: {
       items: 'row',
       blurable: true,
-      className: 'row-selected'
+      className: 'row-selected',
+      toggleable: false
     },
     fixedHeader: true,
     data: data,
@@ -502,8 +510,7 @@ function loadValidatorsData(data) {
             }
             notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + notification.Notification.replaceAll("_", " ") + '</span>';
           }
-          // TODO: add functionality for edit button
-          return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted" id="edit-validator-events-btn" title="Manage the events notifications you receive for the selected row in the table" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
+          return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
         }
       },
       {
@@ -703,5 +710,48 @@ $(document).ready(function () {
   // on modal close
   $('#manageNotificationsModal').on('hide.bs.modal', function (e) {
     $('#selected-validators-events-container #validator-event-badge').remove();
+    $('#balanceDecreasePush').attr('checked', false);
+    $('#balanceDecreaseEmail').attr('checked', false);
+    $('#balanceDecreaseWeb').attr('checked', false);
+    $('#attestationsMissedPush').attr('checked', false); 
+    $('#attestationsMissedEmail').attr('checked', false);
+    $('#attestationsMissedWeb').attr('checked', false);
+    $('#proposalsSubmittedPush').attr('checked', false);
+    $('#proposalsSubmittedEmail').attr('checked', false);
+    $('#proposalsSubmittedWeb').attr('checked', false);
+    $('#proposalsMissedPush').attr('checked', false);
+    $('#proposalsMissedEmail').attr('checked', false);
+    $('#proposalsMissedWeb').attr('checked', false);
+    $('#validatorSlashedPush').attr('checked', false);
+    $('#validatorSlashedEmail').attr('checked', false);
+    $('#validatorSlashedWeb').attr('checked', false);
   });
+
+  $('#manage-notifications-btn').on('click', function(e) {
+    $('#manageNotificationsModal').on('show.bs.modal', function (e) {
+      $('#selected-validators-events-container #validator-event-badge').remove();
+      $('#balanceDecreasePush').attr('checked', false);
+      $('#balanceDecreaseEmail').attr('checked', false);
+      $('#balanceDecreaseWeb').attr('checked', false);
+      $('#attestationsMissedPush').attr('checked', false); 
+      $('#attestationsMissedEmail').attr('checked', false);
+      $('#attestationsMissedWeb').attr('checked', false);
+      $('#proposalsSubmittedPush').attr('checked', false);
+      $('#proposalsSubmittedEmail').attr('checked', false);
+      $('#proposalsSubmittedWeb').attr('checked', false);
+      $('#proposalsMissedPush').attr('checked', false);
+      $('#proposalsMissedEmail').attr('checked', false);
+      $('#proposalsMissedWeb').attr('checked', false);
+      $('#validatorSlashedPush').attr('checked', false);
+      $('#validatorSlashedEmail').attr('checked', false);
+      $('#validatorSlashedWeb').attr('checked', false);
+    });
+  });
+
+  /* TODO: Step1. get rowsData from selected rows
+  Step2. JSON stringify rowsData
+  Step3. set modal attribute rowsData to stringified data (from step 2)
+  Step4. in the modal get stringified data from the rowsData attribute
+  Step5. parse stringfied data back to array of objects
+  Step6. display and edit the data in the modal */
 });
