@@ -503,7 +503,7 @@ function loadValidatorsData(data) {
             notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + notification.Notification.replaceAll("_", " ") + '</span>';
           }
           // TODO: add functionality for edit button
-          return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted" id="edit-validator-events-btn" title="Click to edit validator notifications" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
+          return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted" id="edit-validator-events-btn" title="Manage the events notifications you receive for the selected row in the table" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
         }
       },
       {
@@ -573,6 +573,9 @@ function loadValidatorsData(data) {
         defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove validator" style="padding: .5rem; color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
     	}
     ],
+    rowCallback: function(row, data, displayNum, displayIndex, dataIndex) {
+      $(row).attr('title', 'Click the table row to select it or hold down the "Shift" key and click multiple rows to select them');
+    },
     rowId: function(data, type, row, meta) {
       return data.Validator.Pubkey;
     }
@@ -701,9 +704,4 @@ $(document).ready(function () {
   $('#manageNotificationsModal').on('hide.bs.modal', function (e) {
     $('#selected-validators-events-container #validator-event-badge').remove();
   });
-
-
-  // TODO: listener on allEvents checkboxes toggle, select multiple rows, add min.js just for table expandable extension
-
-  
 });
