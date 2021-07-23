@@ -425,7 +425,7 @@ function loadValidatorsData(data) {
       select: {
         rows: {
           _: '%d rows selected',
-          0: 'Click a row to select it',
+          0: 'Click on a row to select it',
           1: '1 row selected'
         }
       },
