@@ -170,6 +170,79 @@ const data = {
   ]
 };
 
+var csrfToken = ""
+
+function create_typeahead(input_container) {
+    var bhValidators = new Bloodhound({
+        datumTokenizer: Bloodhound.tokenizers.whitespace,
+        queryTokenizer: Bloodhound.tokenizers.whitespace,
+        identify: function (obj) {
+            return obj.index
+        },
+        remote: {
+            url: '/search/indexed_validators/%QUERY',
+            wildcard: '%QUERY'
+        }
+    })
+    var bhName = new Bloodhound({
+        datumTokenizer: Bloodhound.tokenizers.whitespace,
+        queryTokenizer: Bloodhound.tokenizers.whitespace,
+        identify: function (obj) {
+            return obj.name
+        },
+        remote: {
+            url: '/search/indexed_validators_by_name/%QUERY',
+            wildcard: '%QUERY'
+        }
+    })
+
+    $(input_container).typeahead(
+        {
+            minLength: 1,
+            highlight: true,
+            hint: false,
+            autoselect: false
+        },
+        {
+            limit: 5,
+            name: 'validators',
+            source: bhValidators,
+            display: 'index',
+            templates: {
+                header: '<h3>Validators</h3>',
+                suggestion: function (data) {
+                    return `<div class="text-monospace text-truncate high-contrast">${data.index}</div>`
+                }
+            }
+        },
+        {
+            limit: 5,
+            name: 'name',
+            source: bhName,
+            display: 'name',
+            templates: {
+                header: '<h3>Validators by Name</h3>',
+                suggestion: function (data) {
+                    var len = data.validator_indices.length > VALLIMIT ? VALLIMIT + '+' : data.validator_indices.length
+                    return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.name}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+                }
+            }
+        }
+    )
+
+    $(input_container).on('focus', function (event) {
+        if (event.target.value !== '') {
+            $(this).trigger($.Event('keydown', { keyCode: 40 }))
+        }
+    })
+    $(input_container).on('input', function () {
+        $('.tt-suggestion').first().addClass('tt-cursor')
+    })
+    $(input_container).on('typeahead:select', function (ev, sug) {
+        $(input_container).val(sug.index)
+    })
+}
+
 /* for (let key in data.metrics) {
   if (data.metrics.hasOwnProperty(key)) {
     document.getElementById(key).innerHTML = data.metrics[key];
@@ -590,6 +663,10 @@ function loadValidatorsData(data) {
 }
 
 $(document).ready(function () {
+    if (document.getElementsByName("CsrfField")[0]!==undefined){
+        csrfToken = document.getElementsByName("CsrfField")[0].value
+    }
+    create_typeahead(".validator-typeahead")
   loadMonitoringData(data.monitoring);
   loadNetworkData(data.network);
   // loadValidatorsData(data.validators);
@@ -614,7 +691,7 @@ $(document).ready(function () {
   $('#remove-button').on('click', function(e) {
     const rowId = $('#confirmRemoveModal').attr('rowId');
     const tablename = $('#confirmRemoveModal').attr('tablename');
-        
+    
     // if rowId also check tablename then delete row in corresponding data section
     // if no row id delete directly in correponding data section
     if (rowId !== undefined) {
@@ -624,11 +701,21 @@ $(document).ready(function () {
         });
       }
 
-      /* if (tablename === 'validators') {
-        data.validators = data.validators.filter(function(item) {
-          return item.Validator.PubKey.toString() !== rowId.toString();
-        });						
-      } */
+       if (tablename === 'validators') {
+        // console.log(rowId)
+        fetch(`/validator/${rowId}/remove`, {
+            method: 'POST',
+            headers: {"X-CSRF-Token": csrfToken},
+            credentials: 'include',
+            body: {pubkey: `0x${rowId}`},
+        }).then((res)=>{
+            if (res.status == 200){
+                 window.location.reload(false)             
+            }else{
+                alert("Error removing validator from Watchlist")
+            }
+        })					
+      } 
     } else {
       if (tablename === 'validators') {
         data.validators = [];
@@ -658,13 +745,13 @@ $(document).ready(function () {
   });
   
   // initializing the typeahead
-  $('.typeahead').typeahead({
-    hint: true,
-    // enabling substring highlighting
-    highlight: true,
-    // minimum characters required to show suggesions
-    minLength: 1,
-  });
+//   $('.typeahead').typeahead({
+//     hint: true,
+//     // enabling substring highlighting
+//     highlight: true,
+//     // minimum characters required to show suggesions
+//     minLength: 1,
+//   });
 
   $('#validators-notifications tbody').on('click', 'tr', function () {
     $(this).toggleClass('selected');
