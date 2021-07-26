@@ -666,8 +666,13 @@ $(document).ready(function () {
     minLength: 1,
   });
 
+  $('#validators-notifications tbody').on('click', 'tr', function () {
+    $(this).toggleClass('selected');
+  });
+
   // on modal open after click event to validators table edit button
   $('#manageNotificationsModal').on('show.bs.modal', function (e) {
+    // get the selected row (single row selected)
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data();
     if (rowData) {
       console.log(rowData);
@@ -695,6 +700,17 @@ $(document).ready(function () {
           $('[id^=validator_got_slashed]').attr('checked', true);
         }
       });
+    } else {
+      // get the selected rows (mutiple rows selected)
+      const rowsSelected = $('#validators-notifications').DataTable().rows('.selected').data();
+      for (let i = 0; i < rowsSelected.length; i++) {
+        $('#selected-validators-events-container').append(
+          `<div id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal">
+            Validator ${rowsSelected[i].Validator.Index}
+            <i class="fas fa-times ml-2" style="cursor: pointer;"></i>
+          </div> `
+        );
+      }
     }
   });
   // on modal close
@@ -707,10 +723,4 @@ $(document).ready(function () {
     $('[id^=validator_proposal_missed]').attr('checked', false);
     $('[id^=validator_got_slashed]').attr('checked', false);
   });
-  /* TODO: Step1. get rowsData from selected rows
-  Step2. JSON stringify rowsData
-  Step3. set modal attribute rowsData to stringified data (from step 2)
-  Step4. in the modal get stringified data from the rowsData attribute
-  Step5. parse stringfied data back to array of objects
-  Step6. display and edit the data in the modal */
 });
