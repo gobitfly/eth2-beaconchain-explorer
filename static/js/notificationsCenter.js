@@ -680,74 +680,33 @@ $(document).ready(function () {
 
       rowData.Notifications.forEach(function(notification) {
         if (notification.Notification === 'validator_balance_decreased') {
-          $('#balanceDecreasePush').attr('checked', true);
-          $('#balanceDecreaseEmail').attr('checked', true);
-          $('#balanceDecreaseWeb').attr('checked', true);
+          $('[id^=validator_balance_decreased]').attr('checked', true);
         }
         if (notification.Notification === 'validator_attestation_missed') {
-          $('#attestationsMissedPush').attr('checked', true);
-          $('#attestationsMissedEmail').attr('checked', true);
-          $('#attestationsMissedWeb').attr('checked', true);
+          $('[id^=validator_attestation_missed]').attr('checked', true);
         }
         if (notification.Notification === 'validator_proposal_submitted') {
-          $('#proposalsSubmittedPush').attr('checked', true);
-          $('#proposalsSubmittedEmail').attr('checked', true);
-          $('#proposalsSubmittedWeb').attr('checked', true);
+          $('[id^=validator_proposal_submitted]').attr('checked', true);
         }
         if (notification.Notification === 'validator_proposal_missed') {
-          $('#proposalsMissedPush').attr('checked', true);
-          $('#proposalsMissedEmail').attr('checked', true);
-          $('#proposalsMissedWeb').attr('checked', true);
+          $('[id^=validator_proposal_missed]').attr('checked', true);
         }
         if (notification.Notification === 'validator_got_slashed') {
-          $('#validatorSlashedPush').attr('checked', true);
-          $('#validatorSlashedEmail').attr('checked', true);
-          $('#validatorSlashedWeb').attr('checked', true);
+          $('[id^=validator_got_slashed]').attr('checked', true);
         }
       });
     }
   });
   // on modal close
   $('#manageNotificationsModal').on('hide.bs.modal', function (e) {
+    $(this).removeAttr('rowId');
     $('#selected-validators-events-container #validator-event-badge').remove();
-    $('#balanceDecreasePush').attr('checked', false);
-    $('#balanceDecreaseEmail').attr('checked', false);
-    $('#balanceDecreaseWeb').attr('checked', false);
-    $('#attestationsMissedPush').attr('checked', false); 
-    $('#attestationsMissedEmail').attr('checked', false);
-    $('#attestationsMissedWeb').attr('checked', false);
-    $('#proposalsSubmittedPush').attr('checked', false);
-    $('#proposalsSubmittedEmail').attr('checked', false);
-    $('#proposalsSubmittedWeb').attr('checked', false);
-    $('#proposalsMissedPush').attr('checked', false);
-    $('#proposalsMissedEmail').attr('checked', false);
-    $('#proposalsMissedWeb').attr('checked', false);
-    $('#validatorSlashedPush').attr('checked', false);
-    $('#validatorSlashedEmail').attr('checked', false);
-    $('#validatorSlashedWeb').attr('checked', false);
+    $('[id^=validator_balance_decreased]').attr('checked', false);
+    $('[id^=validator_attestation_missed]').attr('checked', false);
+    $('[id^=validator_proposal_submitted]').attr('checked', false);
+    $('[id^=validator_proposal_missed]').attr('checked', false);
+    $('[id^=validator_got_slashed]').attr('checked', false);
   });
-
-  $('#manage-notifications-btn').on('click', function(e) {
-    $('#manageNotificationsModal').on('show.bs.modal', function (e) {
-      $('#selected-validators-events-container #validator-event-badge').remove();
-      $('#balanceDecreasePush').attr('checked', false);
-      $('#balanceDecreaseEmail').attr('checked', false);
-      $('#balanceDecreaseWeb').attr('checked', false);
-      $('#attestationsMissedPush').attr('checked', false); 
-      $('#attestationsMissedEmail').attr('checked', false);
-      $('#attestationsMissedWeb').attr('checked', false);
-      $('#proposalsSubmittedPush').attr('checked', false);
-      $('#proposalsSubmittedEmail').attr('checked', false);
-      $('#proposalsSubmittedWeb').attr('checked', false);
-      $('#proposalsMissedPush').attr('checked', false);
-      $('#proposalsMissedEmail').attr('checked', false);
-      $('#proposalsMissedWeb').attr('checked', false);
-      $('#validatorSlashedPush').attr('checked', false);
-      $('#validatorSlashedEmail').attr('checked', false);
-      $('#validatorSlashedWeb').attr('checked', false);
-    });
-  });
-
   /* TODO: Step1. get rowsData from selected rows
   Step2. JSON stringify rowsData
   Step3. set modal attribute rowsData to stringified data (from step 2)
