@@ -710,9 +710,11 @@ $(document).ready(function () {
             body: {pubkey: `0x${rowId}`},
         }).then((res)=>{
             if (res.status == 200){
-                 window.location.reload(false)             
+                $('#confirmRemoveModal').modal('hide');            
+                 window.location.reload(false) 
             }else{
                 alert("Error removing validator from Watchlist")
+                $('#confirmRemoveModal').modal('hide');
             }
         })					
       } 
