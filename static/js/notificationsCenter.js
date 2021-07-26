@@ -170,84 +170,80 @@ const data = {
   ]
 };
 
-var csrfToken = ""
+var csrfToken = "";
 
 function create_typeahead(input_container) {
-    var bhValidators = new Bloodhound({
-        datumTokenizer: Bloodhound.tokenizers.whitespace,
-        queryTokenizer: Bloodhound.tokenizers.whitespace,
-        identify: function (obj) {
-            return obj.index
-        },
-        remote: {
-            url: '/search/indexed_validators/%QUERY',
-            wildcard: '%QUERY'
-        }
-    })
-    var bhName = new Bloodhound({
-        datumTokenizer: Bloodhound.tokenizers.whitespace,
-        queryTokenizer: Bloodhound.tokenizers.whitespace,
-        identify: function (obj) {
-            return obj.name
-        },
-        remote: {
-            url: '/search/indexed_validators_by_name/%QUERY',
-            wildcard: '%QUERY'
-        }
-    })
+  var bhValidators = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.index
+    },
+    remote: {
+      url: '/search/indexed_validators/%QUERY',
+      wildcard: '%QUERY'
+    }
+  });
 
-    $(input_container).typeahead(
-        {
-            minLength: 1,
-            highlight: true,
-            hint: false,
-            autoselect: false
-        },
-        {
-            limit: 5,
-            name: 'validators',
-            source: bhValidators,
-            display: 'index',
-            templates: {
-                header: '<h3>Validators</h3>',
-                suggestion: function (data) {
-                    return `<div class="text-monospace text-truncate high-contrast">${data.index}</div>`
-                }
-            }
-        },
-        {
-            limit: 5,
-            name: 'name',
-            source: bhName,
-            display: 'name',
-            templates: {
-                header: '<h3>Validators by Name</h3>',
-                suggestion: function (data) {
-                    var len = data.validator_indices.length > VALLIMIT ? VALLIMIT + '+' : data.validator_indices.length
-                    return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.name}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
-                }
-            }
-        }
-    )
+  var bhName = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function (obj) {
+      return obj.name
+    },
+    remote: {
+      url: '/search/indexed_validators_by_name/%QUERY',
+      wildcard: '%QUERY'
+    }
+  });
 
-    $(input_container).on('focus', function (event) {
-        if (event.target.value !== '') {
-            $(this).trigger($.Event('keydown', { keyCode: 40 }))
+  $(input_container).typeahead(
+    {
+      minLength: 1,
+      highlight: true,
+      hint: false,
+      autoselect: false
+    },
+    {
+      limit: 5,
+      name: 'validators',
+      source: bhValidators,
+      display: 'index',
+      templates: {
+        header: '<h3>Validators</h3>',
+        suggestion: function (data) {
+          return `<div class="text-monospace text-truncate high-contrast">${data.index}</div>`;
         }
-    })
-    $(input_container).on('input', function () {
-        $('.tt-suggestion').first().addClass('tt-cursor')
-    })
-    $(input_container).on('typeahead:select', function (ev, sug) {
-        $(input_container).val(sug.index)
-    })
+      }
+    },
+    {
+      limit: 5,
+      name: 'name',
+      source: bhName,
+      display: 'name',
+      templates: {
+      header: '<h3>Validators by Name</h3>',
+      suggestion: function (data) {
+        var len = data.validator_indices.length > VALLIMIT ? VALLIMIT + '+' : data.validator_indices.length;
+        return `<div class="text-monospace high-contrast" style="display: flex;"><div class="text-truncate" style="flex: 1 1 auto;">${data.name}</div><div style="max-width: fit-content; white-space: nowrap;">${len}</div></div>`;
+      }
+    }
+  });
+
+  $(input_container).on('focus', function (event) {
+    if (event.target.value !== "") {
+      $(this).trigger($.Event('keydown', { keyCode: 40 }));
+    }
+  });
+
+  $(input_container).on('input', function () {
+    $('.tt-suggestion').first().addClass('tt-cursor');
+  });
+
+  $(input_container).on('typeahead:select', function (ev, sug) {
+    $(input_container).val(sug.index);
+  });
 }
-
-/* for (let key in data.metrics) {
-  if (data.metrics.hasOwnProperty(key)) {
-    document.getElementById(key).innerHTML = data.metrics[key];
-  }
-} */
 
 function loadMonitoringData(data) {
   let monitoringTable = $('#monitoring-notifications');
@@ -510,8 +506,6 @@ function loadValidatorsData(data) {
     pagingType: 'first_last_numbers',
     select: {
       items: 'row',
-      blurable: true,
-      className: 'row-selected',
       toggleable: false
     },
     fixedHeader: true,
@@ -663,13 +657,13 @@ function loadValidatorsData(data) {
 }
 
 $(document).ready(function () {
-    if (document.getElementsByName("CsrfField")[0]!==undefined){
-        csrfToken = document.getElementsByName("CsrfField")[0].value
-    }
-    create_typeahead(".validator-typeahead")
+  if (document.getElementsByName("CsrfField")[0] !== undefined) {
+    csrfToken = document.getElementsByName('CsrfField')[0].value;
+  }
+  create_typeahead('.validator-typeahead');
+
   loadMonitoringData(data.monitoring);
   loadNetworkData(data.network);
-  // loadValidatorsData(data.validators);
 
   $(document).on('click', function(e) {
     // if click outside input while any threshold input visible, reset value and hide input
@@ -678,6 +672,11 @@ $(document).ready(function () {
         $(this).attr('hidden', true);
       	$(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
       });
+    }
+
+    // remove selected class from rows on click outside
+    if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
+      $('#validators-notifications .selected').removeClass('selected');
     }
   });
 
@@ -704,11 +703,12 @@ $(document).ready(function () {
        if (tablename === 'validators') {
         // console.log(rowId)
         fetch(`/validator/${rowId}/remove`, {
-            method: 'POST',
-            headers: {"X-CSRF-Token": csrfToken},
-            credentials: 'include',
-            body: {pubkey: `0x${rowId}`},
+          method: 'POST',
+          headers: {"X-CSRF-Token": csrfToken},
+          credentials: 'include',
+          body: {pubkey: `0x${rowId}`},
         }).then((res)=>{
+
             if (res.status == 200){
                 $('#confirmRemoveModal').modal('hide');            
                  window.location.reload(false) 
@@ -717,6 +717,7 @@ $(document).ready(function () {
                 $('#confirmRemoveModal').modal('hide');
             }
         })					
+
       } 
     } else {
       if (tablename === 'validators') {
@@ -745,18 +746,14 @@ $(document).ready(function () {
       target.css('background-size', $(this).val() + '% 100%');
     }
   });
-  
-  // initializing the typeahead
-//   $('.typeahead').typeahead({
-//     hint: true,
-//     // enabling substring highlighting
-//     highlight: true,
-//     // minimum characters required to show suggesions
-//     minLength: 1,
-//   });
+
+  $('#validators-notifications tbody').on('click', 'tr', function () {
+    $(this).addClass('selected');
+  });
 
   // on modal open after click event to validators table edit button
   $('#manageNotificationsModal').on('show.bs.modal', function (e) {
+    // get the selected row (single row selected)
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data();
     if (rowData) {
       console.log(rowData);
@@ -784,6 +781,17 @@ $(document).ready(function () {
           $('[id^=validator_got_slashed]').attr('checked', true);
         }
       });
+    } else {
+      // get the selected rows (mutiple rows selected)
+      const rowsSelected = $('#validators-notifications').DataTable().rows('.selected').data();
+      for (let i = 0; i < rowsSelected.length; i++) {
+        $('#selected-validators-events-container').append(
+          `<div id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal">
+            Validator ${rowsSelected[i].Validator.Index}
+            <i class="fas fa-times ml-2" style="cursor: pointer;"></i>
+          </div> `
+        );
+      }
     }
   });
   // on modal close
@@ -795,11 +803,8 @@ $(document).ready(function () {
     $('[id^=validator_proposal_submitted]').attr('checked', false);
     $('[id^=validator_proposal_missed]').attr('checked', false);
     $('[id^=validator_got_slashed]').attr('checked', false);
+
+    // remove selected class from rows when modal closed
+    $('#validators-notifications .selected').removeClass('selected');
   });
-  /* TODO: Step1. get rowsData from selected rows
-  Step2. JSON stringify rowsData
-  Step3. set modal attribute rowsData to stringified data (from step 2)
-  Step4. in the modal get stringified data from the rowsData attribute
-  Step5. parse stringfied data back to array of objects
-  Step6. display and edit the data in the modal */
 });
