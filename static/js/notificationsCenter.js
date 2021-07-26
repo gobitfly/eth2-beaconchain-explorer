@@ -506,8 +506,6 @@ function loadValidatorsData(data) {
     pagingType: 'first_last_numbers',
     select: {
       items: 'row',
-      blurable: true,
-      className: 'row-selected',
       toggleable: false
     },
     fixedHeader: true,
@@ -659,13 +657,13 @@ function loadValidatorsData(data) {
 }
 
 $(document).ready(function () {
-    if (document.getElementsByName("CsrfField")[0]!==undefined){
-        csrfToken = document.getElementsByName("CsrfField")[0].value
-    }
-    create_typeahead(".validator-typeahead")
+  if (document.getElementsByName("CsrfField")[0] !== undefined) {
+    csrfToken = document.getElementsByName('CsrfField')[0].value;
+  }
+  create_typeahead('.validator-typeahead');
+
   loadMonitoringData(data.monitoring);
   loadNetworkData(data.network);
-  // loadValidatorsData(data.validators);
 
   $(document).on('click', function(e) {
     // if click outside input while any threshold input visible, reset value and hide input
@@ -674,6 +672,11 @@ $(document).ready(function () {
         $(this).attr('hidden', true);
       	$(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
       });
+    }
+
+    // remove selected class from rows on click outside
+    if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
+      $('#validators-notifications .selected').removeClass('selected');
     }
   });
 
@@ -741,7 +744,7 @@ $(document).ready(function () {
   });
 
   $('#validators-notifications tbody').on('click', 'tr', function () {
-    $(this).toggleClass('selected');
+    $(this).addClass('selected');
   });
 
   // on modal open after click event to validators table edit button
@@ -796,5 +799,8 @@ $(document).ready(function () {
     $('[id^=validator_proposal_submitted]').attr('checked', false);
     $('[id^=validator_proposal_missed]').attr('checked', false);
     $('[id^=validator_got_slashed]').attr('checked', false);
+
+    // remove selected class from rows when modal closed
+    $('#validators-notifications .selected').removeClass('selected');
   });
 });

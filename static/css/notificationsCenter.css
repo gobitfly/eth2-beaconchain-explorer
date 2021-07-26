@@ -110,6 +110,20 @@ table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before,
 table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
   background-color: var(--banner-background) !important;
 }
+table.dataTable tbody tr.selected, 
+table.dataTable tbody th.selected, 
+table.dataTable tbody td.selected {
+  color: #343a40 !important;
+}
+table.dataTable tbody tr.selected a, 
+table.dataTable tbody th.selected a, 
+table.dataTable tbody td.selected a {
+  color: var(--link-color,#2d5986) !important;
+}
+table.dataTable tbody>tr.selected, 
+table.dataTable tbody>tr>.selected {
+  background-color: #ebebeb !important;
+}
 div.dataTables_info {
   padding-top: 2.15rem !important;
   font-size: .9rem;
