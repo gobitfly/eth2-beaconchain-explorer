@@ -170,6 +170,8 @@ const data = {
   ]
 };
 
+var csrfToken = ""
+
 /* for (let key in data.metrics) {
   if (data.metrics.hasOwnProperty(key)) {
     document.getElementById(key).innerHTML = data.metrics[key];
@@ -590,6 +592,9 @@ function loadValidatorsData(data) {
 }
 
 $(document).ready(function () {
+    if (document.getElementsByName("CsrfField")[0]!==undefined){
+        csrfToken = document.getElementsByName("CsrfField")[0].value
+    }
   loadMonitoringData(data.monitoring);
   loadNetworkData(data.network);
   // loadValidatorsData(data.validators);
@@ -614,7 +619,7 @@ $(document).ready(function () {
   $('#remove-button').on('click', function(e) {
     const rowId = $('#confirmRemoveModal').attr('rowId');
     const tablename = $('#confirmRemoveModal').attr('tablename');
-        
+    
     // if rowId also check tablename then delete row in corresponding data section
     // if no row id delete directly in correponding data section
     if (rowId !== undefined) {
@@ -624,11 +629,21 @@ $(document).ready(function () {
         });
       }
 
-      /* if (tablename === 'validators') {
-        data.validators = data.validators.filter(function(item) {
-          return item.Validator.PubKey.toString() !== rowId.toString();
-        });						
-      } */
+       if (tablename === 'validators') {
+        // console.log(rowId)
+        fetch(`/validator/${rowId}/remove`, {
+            method: 'POST',
+            headers: {"X-CSRF-Token": csrfToken},
+            credentials: 'include',
+            body: {pubkey: `0x${rowId}`},
+        }).then((res)=>{
+            if (res.status == 200){
+                 window.location.reload(false)             
+            }else{
+                alert("Error removing validator from Watchlist")
+            }
+        })					
+      } 
     } else {
       if (tablename === 'validators') {
         data.validators = [];
