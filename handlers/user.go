@@ -355,6 +355,34 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	return valiadtors, err
 }
 
+func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	pubkeys := make([]string, 0)
+	err = json.Unmarshal(body, &pubkeys)
+	if err != nil {
+		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	for _, item := range pubkeys {
+		err = db.RemoveFromWatchlist(user.UserID, item)
+		if err != nil {
+			logger.Errorf("error removing from  watchlist: %v, %v", r.URL.String(), err)
+			continue
+		}
+	}
+}
+
 // UserNotificationsCenter renders the notificationsCenter template
 func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
