@@ -101,71 +101,6 @@ const data = {
             validator: { index: 1, pubkey: "0xa1d1ad ..." },
             notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed"],
             mostRecent: { notification: "Attestations missed", timestamp: 1617427430 }
-        },
-        {
-            validator: { index: 2, pubkey: "0xb2ff47 ..." },
-            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted"],
-            mostRecent: { notification: "Balance decrease", timestamp: 1620030169 }
-        },
-        {
-            validator: { index: 3, pubkey: "0x8e323f ..." },
-            notifications: ["Attestations missed", "Balance decrease", "Proposals missed"],
-            mostRecent: { notification: "Proposals missed", timestamp: 1614687712 }
-        },
-        {
-            validator: { index: 4, pubkey: "0xa62420 ..." },
-            notifications: ["Attestations missed", "Balance decrease"],
-            mostRecent: { notification: "Proposals submitted", timestamp: 1622557312 }
-        },
-        {
-            validator: { index: 5, pubkey: "0xb2ce0f ..." },
-            notifications: ["Attestations missed"],
-            mostRecent: { notification: "Validator slashed", timestamp: 1619878855 }
-        },
-        {
-            validator: { index: 6, pubkey: "0xa16c53 ..." },
-            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed"],
-            mostRecent: { notification: "Validator slashed", timestamp: 1612617898 }
-        },
-        {
-            validator: { index: 7, pubkey: "0xa25da1..." },
-            notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted"],
-            mostRecent: { notification: "Proposals submitted", timestamp: 1626006179 }
-        },
-        {
-            validator: { index: 8, pubkey: "0x8078c7 ..." },
-            notifications: ["Attestations missed", "Balance decrease", "Proposals missed"],
-            mostRecent: { notification: "Proposals missed", timestamp: 1626031079 }
-        },
-        {
-            validator: { index: 9, pubkey: "0xb016e3 ..." },
-            notifications: ["Attestations missed", "Balance decrease"],
-            mostRecent: { notification: "Balance decrease", timestamp: 1620677579 }
-        },
-        {
-            validator: { index: 10, pubkey: "0x8efba2 ..." },
-            notifications: ["Validator slashed"],
-            mostRecent: { notification: "Attestations missed", timestamp: 1619878855 }
-        },
-        {
-            validator: { index: 11, pubkey: "0x8efba3 ..." },
-            notifications: ["Validator slashed"],
-            mostRecent: { notification: "Attestations missed", timestamp: 1619878856 }
-        },
-        {
-            validator: { index: 12, pubkey: "0x8efba4 ..." },
-            notifications: ["Validator slashed"],
-            mostRecent: { notification: "Attestations missed", timestamp: 1619878857 }
-        },
-        {
-            validator: { index: 13, pubkey: "0x8efba5 ..." },
-            notifications: ["Validator slashed"],
-            mostRecent: { notification: "Attestations missed", timestamp: 1619878858 }
-        },
-        {
-            validator: { index: 20, pubkey: "0x8efba6 ..." },
-            notifications: ["Validator slashed"],
-            mostRecent: { notification: "Attestations missed", timestamp: 1619878859 }
         }
     ]
 };
@@ -211,9 +146,9 @@ function create_typeahead(input_container) {
             source: bhValidators,
             display: 'index',
             templates: {
-                header: '<h3>Validators</h3>',
+                header: '<h5 class="font-weight-bold ml-3">Validators</h5>',
                 suggestion: function (data) {
-                    return `<div class="text-monospace text-truncate high-contrast">${data.index}</div>`;
+                    return `<div class="font-weight-normal text-truncate high-contrast">${data.index}</div>`;
                 }
             }
         },
@@ -223,10 +158,10 @@ function create_typeahead(input_container) {
             source: bhName,
             display: 'name',
             templates: {
-                header: '<h3>Validators by Name</h3>',
+                header: '<h5 class="font-weight-bold ml-3">Validators by Name</h5>',
                 suggestion: function (data) {
                     var len = data.validator_indices.length > VALLIMIT ? VALLIMIT + '+' : data.validator_indices.length;
-                    return `<div class="text-monospace high-contrast" style="display: flex;"><div class="text-truncate" style="flex: 1 1 auto;">${data.name}</div><div style="max-width: fit-content; white-space: nowrap;">${len}</div></div>`;
+                    return `<div class="font-weight-normal high-contrast" style="display: flex;"><div class="text-truncate" style="flex: 1 1 auto;">${data.name}</div><div style="max-width: fit-content; white-space: nowrap;">${len}</div></div>`;
                 }
             }
         });
@@ -324,7 +259,6 @@ function loadMonitoringData(data) {
                     }
                 }
             });
-
             // click event to table remove button
             $('#monitoring-notifications #remove-btn').on('click', function (e) {
                 $('#modaltext').text($(this).data('modaltext'));
@@ -556,10 +490,10 @@ function loadValidatorsData(data) {
                 render: function (data, type, row, meta) {
                     let notifications = '';
                     if (data.length === 0) {
-                        return '<span>Not subscribed to any events</span>';
+                        return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
                     }
                     for (let notification of data) {
-                        let badgeColor = '';
+                        let badgeColor = "";
                         switch (notification.Notification) {
                             case 'validator_balance_decreased':
                                 badgeColor = 'badge-light';
@@ -659,7 +593,7 @@ function loadValidatorsData(data) {
 }
 
 $(document).ready(function () {
-    if (document.getElementsByName("CsrfField")[0] !== undefined) {
+    if (document.getElementsByName('CsrfField')[0] !== undefined) {
         csrfToken = document.getElementsByName('CsrfField')[0].value;
     }
     create_typeahead('.validator-typeahead');
@@ -674,6 +608,57 @@ $(document).ready(function () {
                 $(this).attr('hidden', true);
                 $(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
             });
+        }
+        create_typeahead('.validator-typeahead');
+
+        // remove selected class from rows on click outside
+        if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
+            $('#validators-notifications .selected').removeClass('selected');
+        }
+    });
+
+    $('#remove-all-btn').on('click', function (e) {
+        $('#modaltext').text($(this).data('modaltext'));
+        $('#confirmRemoveModal').removeAttr('rowId');
+        $('#confirmRemoveModal').attr('tablename', 'validators');
+    });
+
+    // click event to modal remove button
+    $('#remove-button').on('click', function (e) {
+        const rowId = $('#confirmRemoveModal').attr('rowId');
+        const tablename = $('#confirmRemoveModal').attr('tablename');
+
+        // if rowId also check tablename then delete row in corresponding data section
+        // if no row id delete directly in correponding data section
+        if (rowId !== undefined) {
+            if (tablename === 'monitoring') {
+                data.monitoring = data.monitoring.filter(function (item) {
+                    return item.id.toString() !== rowId.toString();
+                });
+            }
+
+            if (tablename === 'validators') {
+                // console.log(rowId);
+                fetch(`/validator/${rowId}/remove`, {
+                    method: 'POST',
+                    headers: { "X-CSRF-Token": csrfToken },
+                    credentials: 'include',
+                    body: { pubkey: `0x${rowId}` },
+                }).then(res => {
+                    if (res.status == 200) {
+                        $('#confirmRemoveModal').modal('hide');
+                        // window.location.reload is deprecated        
+                        window.location.reload(false);
+                    } else {
+                        $('#confirmRemoveModal').modal('hide');
+                        alert('Error removing validator from Watchlist');
+                    }
+                })
+            }
+        } else {
+            if (tablename === 'validators') {
+                data.validators = [];
+            }
         }
 
         // remove selected class from rows on click outside
@@ -728,7 +713,7 @@ $(document).ready(function () {
                 // data.validators = [];
                 $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Loading...</span></div>')
                 let pubkeys = []
-                for (let item of validators){
+                for (let item of validators) {
                     pubkeys.push(item.Validator.Pubkey)
                 }
                 fetch(`/user/notifications-center/removeall`, {
@@ -819,6 +804,7 @@ $(document).ready(function () {
             }
         }
     });
+
     // on modal close
     $('#manageNotificationsModal').on('hide.bs.modal', function (e) {
         $(this).removeAttr('rowId');
@@ -832,4 +818,17 @@ $(document).ready(function () {
         // remove selected class from rows when modal closed
         $('#validators-notifications .selected').removeClass('selected');
     });
+
+    // all events checkboxes (push, email, web)
+    $('#all_events_push').on('click', function () {
+        $('[id$=push]').attr('checked', $(this).is(':checked'));
+    });
+    $('#all_events_email').on('change', function () {
+        $('[id$=email]').attr('checked', $(this).is(':checked'));
+    });
+    $('#all_events_web').on('change', function () {
+        $('[id$=web]').attr('checked', $(this).is(':checked'));
+    });
+
+    // TODO: if all events for push/email/web, all events checked is true
 });
