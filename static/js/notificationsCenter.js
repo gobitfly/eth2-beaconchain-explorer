@@ -644,14 +644,14 @@ $(document).ready(function() {
           body: {pubkey: `0x${rowId}`},
         }).then(res => {
             if (res.status == 200) {
-              $('#confirmRemoveModal').modal('hide');            
+              $('#confirmRemoveModal').modal('hide');
+              // window.location.reload is deprecated        
               window.location.reload(false);
             } else {
-              alert('Error removing validator from Watchlist');
               $('#confirmRemoveModal').modal('hide');
+              alert('Error removing validator from Watchlist');
             }
-        })					
-
+        })
       } 
     } else {
       if (tablename === 'validators') {
@@ -690,14 +690,13 @@ $(document).ready(function() {
     // get the selected row (single row selected)
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data();
     if (rowData) {
-      console.log(rowData);
       $('#selected-validators-events-container').append(
         `<div id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal">
           Validator ${rowData.Validator.Index}
           <i class="fas fa-times ml-2" style="cursor: pointer;"></i>
         </div> `
       );
-
+      
       rowData.Notifications.forEach(function(notification) {
         if (notification.Notification === 'validator_balance_decreased') {
           $('[id^=validator_balance_decreased]').attr('checked', true);
@@ -742,4 +741,17 @@ $(document).ready(function() {
     // remove selected class from rows when modal closed
     $('#validators-notifications .selected').removeClass('selected');
   });
+
+  // all events checkboxes (push, email, web)
+  $('#all_events_push').on('click', function() {
+    $('[id$=push]').attr('checked', $(this).is(':checked'));
+  });
+  $('#all_events_email').on('change', function() {
+    $('[id$=email]').attr('checked', $(this).is(':checked'));
+  });
+  $('#all_events_web').on('change', function() {
+    $('[id$=web]').attr('checked', $(this).is(':checked'));
+  });
+
+  // TODO: if all events for push/email/web, all events checked is true
 });
