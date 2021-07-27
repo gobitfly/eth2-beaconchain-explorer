@@ -101,71 +101,6 @@ const data = {
       validator: { index: 1, pubkey: "0xa1d1ad ..." },
       notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed"],
       mostRecent: { notification: "Attestations missed", timestamp: 1617427430 }
-    },
-    {
-      validator: { index: 2, pubkey: "0xb2ff47 ..." },
-      notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted"],
-      mostRecent: { notification: "Balance decrease", timestamp: 1620030169 }
-    },
-    {
-      validator: { index: 3, pubkey: "0x8e323f ..." },
-      notifications: ["Attestations missed", "Balance decrease", "Proposals missed"],
-      mostRecent: { notification: "Proposals missed", timestamp: 1614687712 }
-    },
-    {
-      validator: { index: 4, pubkey: "0xa62420 ..." },
-      notifications: ["Attestations missed", "Balance decrease"],
-      mostRecent: { notification: "Proposals submitted", timestamp: 1622557312 }
-    },
-    {
-      validator: { index: 5, pubkey: "0xb2ce0f ..." },
-      notifications: ["Attestations missed"],
-      mostRecent: { notification: "Validator slashed", timestamp: 1619878855 }
-    },
-    {
-      validator: { index: 6, pubkey: "0xa16c53 ..." },
-      notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted", "Validator slashed"],
-      mostRecent: { notification: "Validator slashed", timestamp: 1612617898 }
-    },
-    {
-      validator: { index: 7, pubkey: "0xa25da1..." },
-      notifications: ["Attestations missed", "Balance decrease", "Proposals missed", "Proposals submitted"],
-      mostRecent: { notification: "Proposals submitted", timestamp: 1626006179 }
-    },
-    {
-      validator: { index: 8, pubkey: "0x8078c7 ..." },
-      notifications: ["Attestations missed", "Balance decrease", "Proposals missed"],
-      mostRecent: { notification: "Proposals missed", timestamp: 1626031079 }
-    },
-    {
-      validator: { index: 9, pubkey: "0xb016e3 ..." },
-      notifications: ["Attestations missed", "Balance decrease"],
-      mostRecent: { notification: "Balance decrease", timestamp: 1620677579 }
-    },
-    {
-      validator: { index: 10, pubkey: "0x8efba2 ..." },
-      notifications: ["Validator slashed"],
-      mostRecent: { notification: "Attestations missed", timestamp: 1619878855 }
-    },
-    {
-      validator: { index: 11, pubkey: "0x8efba3 ..." },
-      notifications: ["Validator slashed"],
-      mostRecent: { notification: "Attestations missed", timestamp: 1619878856 }
-    },
-    {
-      validator: { index: 12, pubkey: "0x8efba4 ..." },
-      notifications: ["Validator slashed"],
-      mostRecent: { notification: "Attestations missed", timestamp: 1619878857 }
-    },
-    {
-      validator: { index: 13, pubkey: "0x8efba5 ..." },
-      notifications: ["Validator slashed"],
-      mostRecent: { notification: "Attestations missed", timestamp: 1619878858 }
-    },
-    {
-      validator: { index: 20, pubkey: "0x8efba6 ..." },
-      notifications: ["Validator slashed"],
-      mostRecent: { notification: "Attestations missed", timestamp: 1619878859 }
     }
   ]
 };
@@ -176,7 +111,7 @@ function create_typeahead(input_container) {
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
-    identify: function (obj) {
+    identify: function(obj) {
       return obj.index
     },
     remote: {
@@ -188,7 +123,7 @@ function create_typeahead(input_container) {
   var bhName = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
-    identify: function (obj) {
+    identify: function(obj) {
       return obj.name
     },
     remote: {
@@ -210,9 +145,9 @@ function create_typeahead(input_container) {
       source: bhValidators,
       display: 'index',
       templates: {
-        header: '<h3>Validators</h3>',
-        suggestion: function (data) {
-          return `<div class="text-monospace text-truncate high-contrast">${data.index}</div>`;
+        header: '<h5 class="font-weight-bold ml-3">Validators</h5>',
+        suggestion: function(data) {
+          return `<div class="font-weight-normal text-truncate high-contrast">${data.index}</div>`;
         }
       }
     },
@@ -222,25 +157,25 @@ function create_typeahead(input_container) {
       source: bhName,
       display: 'name',
       templates: {
-      header: '<h3>Validators by Name</h3>',
-      suggestion: function (data) {
+      header: '<h5 class="font-weight-bold ml-3">Validators by Name</h5>',
+      suggestion: function(data) {
         var len = data.validator_indices.length > VALLIMIT ? VALLIMIT + '+' : data.validator_indices.length;
-        return `<div class="text-monospace high-contrast" style="display: flex;"><div class="text-truncate" style="flex: 1 1 auto;">${data.name}</div><div style="max-width: fit-content; white-space: nowrap;">${len}</div></div>`;
+        return `<div class="font-weight-normal high-contrast" style="display: flex;"><div class="text-truncate" style="flex: 1 1 auto;">${data.name}</div><div style="max-width: fit-content; white-space: nowrap;">${len}</div></div>`;
       }
     }
   });
 
-  $(input_container).on('focus', function (event) {
+  $(input_container).on('focus', function(event) {
     if (event.target.value !== "") {
       $(this).trigger($.Event('keydown', { keyCode: 40 }));
     }
   });
 
-  $(input_container).on('input', function () {
+  $(input_container).on('input', function() {
     $('.tt-suggestion').first().addClass('tt-cursor');
   });
 
-  $(input_container).on('typeahead:select', function (ev, sug) {
+  $(input_container).on('typeahead:select', function(ev, sug) {
     $(input_container).val(sug.index);
   });
 }
@@ -319,7 +254,7 @@ function loadMonitoringData(data) {
             $('#monitoring-notifications').DataTable().clear().destroy();
             loadMonitoringData(data);
           } else {
-            alert('Enter an integer between 1 and 100')
+            alert('Enter an integer between 1 and 100');
       	  }
     	  }
   	  });
@@ -336,7 +271,7 @@ function loadMonitoringData(data) {
     columnDefs: [
       {
         targets: '_all',
-        createdCell: function (td, cellData, rowData, row, col) {
+        createdCell: function(td, cellData, rowData, row, col) {
           $(td).css('padding-top', '20px');
           $(td).css('padding-bottom', '20px');
     	  }
@@ -345,7 +280,7 @@ function loadMonitoringData(data) {
         targets: 0,
         responsivePriority: 1,
         data: 'notification',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>';
         }
       },
@@ -353,7 +288,7 @@ function loadMonitoringData(data) {
         targets: 1,
         responsivePriority: 3,
         data: 'threshold',
-        render: function (data, type, row, meta) { 
+        render: function(data, type, row, meta) { 
           if (!data) {
             return '<span class="threshold_non_editable">N/A</span>';
           }
@@ -369,7 +304,7 @@ function loadMonitoringData(data) {
         targets: 3,
         responsivePriority: 1,
         data: 'mostRecent',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
           if (type === 'sort' || type === 'type') {
             return data;
@@ -413,7 +348,7 @@ function loadNetworkData(data) {
     columnDefs: [
       {
         targets: '_all',
-        createdCell: function (td, cellData, rowData, row, col) {
+        createdCell: function(td, cellData, rowData, row, col) {
       		$(td).css('padding-top', '20px');
           $(td).css('padding-bottom', '20px');
     		}
@@ -422,7 +357,7 @@ function loadNetworkData(data) {
         targets: 0,
         responsivePriority: 1,
         data: 'notification',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>';
         }
       },
@@ -530,7 +465,7 @@ function loadValidatorsData(data) {
     columnDefs: [
     	{
         targets: '_all',
-        createdCell: function (td, cellData, rowData, row, col) {
+        createdCell: function(td, cellData, rowData, row, col) {
       		$(td).css('padding-top', '20px');
           $(td).css('padding-bottom', '20px');
     		}
@@ -539,7 +474,7 @@ function loadValidatorsData(data) {
         targets: 0,
         responsivePriority: 1,
         data: 'Validator',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
           if (type === 'sort' || type === 'type') {
             return data.Index;
@@ -551,13 +486,13 @@ function loadValidatorsData(data) {
         targets: 1,
         responsivePriority: 2,
         data: 'Notifications',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           let notifications = '';
           if (data.length === 0) {
-            return '<span>Not subscribed to any events</span>';
+            return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
           }
           for (let notification of data) {
-            let badgeColor = '';
+            let badgeColor = "";
             switch(notification.Notification) {
               case 'validator_balance_decreased':
                 badgeColor = 'badge-light';
@@ -617,7 +552,7 @@ function loadValidatorsData(data) {
         targets: 5,
         responsivePriority: 1,
         data: 'Notifications',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
           // data = data.Notifications
           let no_time = 'N/A';  
@@ -656,8 +591,8 @@ function loadValidatorsData(data) {
   });
 }
 
-$(document).ready(function () {
-  if (document.getElementsByName("CsrfField")[0] !== undefined) {
+$(document).ready(function() {
+  if (document.getElementsByName('CsrfField')[0] !== undefined) {
     csrfToken = document.getElementsByName('CsrfField')[0].value;
   }
   create_typeahead('.validator-typeahead');
@@ -701,20 +636,19 @@ $(document).ready(function () {
       }
 
        if (tablename === 'validators') {
-        // console.log(rowId)
+        // console.log(rowId);
         fetch(`/validator/${rowId}/remove`, {
           method: 'POST',
           headers: {"X-CSRF-Token": csrfToken},
           credentials: 'include',
           body: {pubkey: `0x${rowId}`},
-        }).then((res)=>{
-
-            if (res.status == 200){
-                $('#confirmRemoveModal').modal('hide');            
-                 window.location.reload(false) 
-            }else{
-                alert("Error removing validator from Watchlist")
-                $('#confirmRemoveModal').modal('hide');
+        }).then(res => {
+            if (res.status == 200) {
+              $('#confirmRemoveModal').modal('hide');            
+              window.location.reload(false);
+            } else {
+              alert('Error removing validator from Watchlist');
+              $('#confirmRemoveModal').modal('hide');
             }
         })					
 
@@ -747,12 +681,12 @@ $(document).ready(function () {
     }
   });
 
-  $('#validators-notifications tbody').on('click', 'tr', function () {
+  $('#validators-notifications tbody').on('click', 'tr', function() {
     $(this).addClass('selected');
   });
 
   // on modal open after click event to validators table edit button
-  $('#manageNotificationsModal').on('show.bs.modal', function (e) {
+  $('#manageNotificationsModal').on('show.bs.modal', function(e) {
     // get the selected row (single row selected)
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data();
     if (rowData) {
@@ -794,8 +728,9 @@ $(document).ready(function () {
       }
     }
   });
+
   // on modal close
-  $('#manageNotificationsModal').on('hide.bs.modal', function (e) {
+  $('#manageNotificationsModal').on('hide.bs.modal', function(e) {
     $(this).removeAttr('rowId');
     $('#selected-validators-events-container #validator-event-badge').remove();
     $('[id^=validator_balance_decreased]').attr('checked', false);
