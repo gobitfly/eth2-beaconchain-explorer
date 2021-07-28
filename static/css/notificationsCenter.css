@@ -103,6 +103,9 @@
 }
 .text-empty-section { 
   height: 200px; 
+  margin-top: 10rem;
+  margin-left: .5rem;
+  margin-right: .5rem;
 }
 .validators-container-min-height { 
   min-height: 900px; 

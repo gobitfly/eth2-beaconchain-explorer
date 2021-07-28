@@ -5,6 +5,7 @@
 	{{ .CsrfField }}
 	<script>
 		loadValidatorsData({{.Validators}});
+		console.log({{.Validators}});
 	</script>
 {{end}}
 
@@ -185,22 +186,10 @@
 					</button>
 				</div>
 			</div>
-			{{ if false }}
-				<div class="mx-sm-auto mt-5 text-sm-center text-empty-section">
-					<h3 class="heading-l3">Start adding Validators to your Watchlist</h3>
-					<div class="my-2 my-md-4">
-						<div class="row d-flex flex-nowrap align-items-center justify-content-start justify-content-sm-center mx-0">
-							<div class="my-2 my-md-0">
-								<input type="text" placeholder="Search and add validators..." aria-label="Search" class="input-search add-input-custom" />
-							</div>
-							<div>
-								<button type="button" class="btn btn-primary btn-lg btn-custom">
-									<i class="fas fa-plus"></i>
-									<span class="d-none d-lg-inline-block text-nowrap">Add Validators</span>
-								</button>
-							</div>
-						</div>
-					</div>
+			{{ if eq (len .Validators) 0 }}
+				<div class="mx-sm-auto text-sm-center text-empty-section">
+					<h3 class="mt-5 heading-l2">You have no Validators in your watchlist yet.</h3>
+					<h4 class="mt-2 heading-l3">Start adding Validators and subscribe to events to receive notifications.</h4>
 				</div>
 			{{ else }}
 				<div class="px-3 py-3">
