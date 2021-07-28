@@ -5,7 +5,6 @@
 	{{ .CsrfField }}
 	<script>
 		loadValidatorsData({{.Validators}});
-		console.log({{.Validators}});
 	</script>
 {{end}}
 
@@ -110,10 +109,20 @@
 						<span class="text-nowrap">Add monitoring event</span>
 					</button>
 				</div>
+				
+				<!-- if there is no data in the table -->
 				{{ if false }}
-					<div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
-						<i class="far fa-frown mb-3 icon"></i>
-						<h3 class="heading-l3">No recent notifications</h3>
+					<div class="mx-sm-auto text-sm-center text-empty-section">
+						<h3 class="mt-5 heading-l2">Get notified with our <span class="d-block font-weight-bold">Beaconchain Dashboard App</span></h3>
+						<h4 class="mt-2 heading-l3">Now available for Android and iOS</h4>
+						<div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-center mt-5">
+							<a class="mx-2 my-2" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121" target="_blank">
+								<img src="../img/ios.png" class="badge-button" />
+							</a>
+							<a class="mx-2 my-2" href="https://play.google.com/store/apps/details?id=in.beaconcha.mobile" target="_blank">
+								<img src="../img/android.png" class="badge-button" />
+							</a>
+						</div>
 					</div>
 				{{ else }}
 					<div class="px-0 px-md-3 py-1">
@@ -144,7 +153,7 @@
 					</button>
 				</div>
 				{{ if false }}
-					<div class="ml-3 mx-sm-auto mt-5 text-sm-center container-max-width text-empty-section">
+					<div class="ml-3 mx-sm-auto mt-5 text-sm-center text-empty-section">
 						<i class="far fa-frown mb-3 icon"></i>
 						<h3 class="heading-l3">You don't have any notifications</h3>
 					</div>
@@ -190,8 +199,8 @@
 			</div>
 			{{ if eq (len .Validators) 0 }}
 				<div class="mx-sm-auto text-sm-center text-empty-section">
-					<h3 class="mt-5 heading-l2">You have no Validators in your watchlist yet.</h3>
-					<h4 class="mt-2 heading-l3">Start adding Validators and subscribe to events to receive notifications.</h4>
+					<h3 class="mt-5 heading-l2">No Validators in your watchlist yet</h3>
+					<h4 class="mt-2 heading-l3">Start adding Validators and subscribe to events to receive notifications</h4>
 				</div>
 			{{ else }}
 				<div class="px-3 py-3">
