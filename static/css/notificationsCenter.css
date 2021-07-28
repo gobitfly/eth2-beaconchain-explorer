@@ -63,6 +63,12 @@
 .heading-section { 
   height: 60px; 
 }
+.i-custom:hover {
+  display: inline-block;
+  border-radius: 50%;
+  box-shadow: 0px 0px 2px #6d6d6d;
+  padding: .6em;
+}
 .icon { 
   font-size: 2.4rem;
   color: #5E3F6B;

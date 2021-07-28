@@ -294,7 +294,7 @@ function loadMonitoringData(data) {
           if (!data) {
             return '<span class="threshold_non_editable">N/A</span>';
           }
-          return '<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + data * 100 + '%</span> <i class="fas fa-pen fa-xs text-muted" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;"></i></span>';
+          return '<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + data * 100 + '%</span> <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;"></i></span>';
         }
       },
       {
@@ -319,7 +319,7 @@ function loadMonitoringData(data) {
         orderable: false,
         responsivePriority: 3,
         data: null,
-        defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove notification" style="padding: .5rem; color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
+        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove notification" style="padding: .5rem; color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
       }
     ],
   });
@@ -492,7 +492,7 @@ function loadValidatorsData(data) {
         render: function(data, type, row, meta) {
           let notifications = "";
           if (data.length === 0) {
-            return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
+            return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
           }
           for (let notification of data) {
             let badgeColor = "";
@@ -515,7 +515,7 @@ function loadValidatorsData(data) {
             }
             notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + notification.Notification.replaceAll("_", " ") + '</span>';
           }
-          return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
+          return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
         }
       },
       {
@@ -582,16 +582,22 @@ function loadValidatorsData(data) {
         orderable: false,
         responsivePriority: 3,
         data: null,
-        defaultContent: '<i class="fas fa-times fa-lg" id="remove-btn" title="Remove validator" style="padding: .5rem; color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
+        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
       }
     ],
     rowCallback: function(row, data, displayNum, displayIndex, dataIndex) {
-      $(row).attr('title', 'Click the table row to select it or hold down the "Shift" key and click multiple rows to select them');
+      $(row).attr('title', 'Click the table row to select it or hold down "Ctrl" and click multiple rows to select them');
     },
     rowId: function(data, type, row, meta) {
       return data.Validator.Pubkey;
     }
   });
+
+  // show manage-notifications button and remove-all button only if there is data in the validator table
+  if (validators.length !== 0) {
+    $('#manage-notifications-btn').removeAttr('hidden');
+    $('#remove-all-btn').removeAttr('hidden');
+  }
 }
 
 $(document).ready(function() {
@@ -829,5 +835,8 @@ $(document).ready(function() {
     $('[id$=web]').attr('checked', $(this).is(':checked'));
   });
 
-    // TODO today: if all events for push/email/web, all events checked is true
+  // customize tables tooltips
+  $('#validators-notifications').DataTable().$('tr').tooltip({ 'width': '5rem' });
+
+  // TODO: if all events for push/email/web are checked, all events checked is true
 });
