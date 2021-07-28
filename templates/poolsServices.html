@@ -160,7 +160,7 @@
         <div class="row mt-4">
             <div class="col-md-12">
                 <span id="totalmsg"></span>
-                <div class="table-responsive card px-0 py-1 mb-2">
+                <div class="table-responsive card px-0 pb-1 mb-2">
                     <table class="table">
                         <thead>
                             <tr>
@@ -190,9 +190,11 @@
                 </div>
             </div>
         </div>
+        <br/>
+        <div>Staking pool deposit adresses are based on on-chain data. Please open an <a href="https://github.com/gobitfly/eth2-beaconchain-explorer/issues">issue</a> if you want to add an Ethereum staking pool.</div>
         <div class="row mt-4">
             <div class="col-md-12">
-                <div id="poolTable" class="table-responsive card px-0 py-1 mb-2">
+                <div id="poolTable" class="table-responsive card px-0 pb-1 pt-2 mb-2">
                     <table class="table" id="staking-pool-table">
                         <thead>
                             <tr>
@@ -217,11 +219,16 @@
             </div>
         </div>
     </div>
-    <div id="poolPopUP" style="position: absolute; width: 70%; z-index: 100; top: 15%; right: 15%;" class="card p-1 d-none">
+    <div id="poolPopUP" style="position: absolute; width: 70%; z-index: 100; top: 15%; right: 15%;" class="card p-1 pt-2 d-none">
         <div class="container-fluid" style="width: 100%;">
+            <div class="row"><div class="col-12 d-flex justify-content-end"><button id="poolPopUpBtn" class="col-4 col-md-2 btn btn-sm btn-primary mr-0">Close</button></div></div>
             <div class="row m-0 mb-1" style="width: 100%;">
-                <button id="poolPopUpBtn" class="col-2 btn btn-sm btn-primary">Close</button>
-                <span class="col p-1 mx-1" style="color: gray;"><i class="fas fa-info-circle"></i> Inactive validators are ordered by 31 day balance, highest first</span>
+                <div class="col-12 d-flex flex-row justify-content-center w-100">
+                    <div class="d-flex flex-column align-items-center">
+                        <span style="font-size: 24px;" id="poolPopUpTitle"></span>
+                        <span class="p-1 mx-1" style="color: gray; font-size: 12px;"><i class="fas fa-info-circle"></i> Inactive validators are ordered by 31 day balance, highest first</span>
+                    </div>
+                </div>
             </div>
             <div class="row popupMain p-0 m-0 justify-content-center" style="height: 70vh; width: 100%; overflow: auto;"></div>
         </div>

@@ -182,6 +182,21 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 	return template.HTML(rb)
 }
 
+func FormatAddCommas(n uint64) template.HTML {
+	p := message.NewPrinter(language.English)
+	rb := []rune(p.Sprintf("%d", n))
+	if len(rb) >= 3 {
+		if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+			if rb[len(rb)-1] == '.' {
+				rb = rb[:len(rb)-1]
+
+			}
+		}
+	}
+
+	return template.HTML(rb)
+}
+
 // FormatBlockRoot will return the block-root formated as html
 func FormatBlockRoot(blockRoot []byte) template.HTML {
 	if len(blockRoot) < 32 {
@@ -192,7 +207,7 @@ func FormatBlockRoot(blockRoot []byte) template.HTML {
 
 // FormatBlockSlot will return the block-slot formated as html
 func FormatBlockSlot(blockSlot uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%[1]d\">%[1]d</a>", blockSlot))
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%d\">%s</a>", blockSlot, FormatAddCommas(blockSlot)))
 }
 
 // FormatAttestationInclusionSlot will return the block-slot formated as html
@@ -284,7 +299,7 @@ func FormatEffectiveBalance(balanceInt uint64, currency string) template.HTML {
 
 // FormatEpoch will return the epoch formated as html
 func FormatEpoch(epoch uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%[1]d\">%[1]d</a>", epoch))
+	return template.HTML(fmt.Sprintf("<a href=\"/epoch/%d\">%s</a>", epoch, FormatAddCommas(epoch)))
 }
 
 // FormatEth1AddressString will return the eth1-address formated as html string
@@ -460,6 +475,13 @@ func FormatPublicKey(validator []byte) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
 }
 
+func FormatMachineName(machineName string) template.HTML {
+	if machineName == "" {
+		machineName = "Default"
+	}
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-hdd\"></i> %v", machineName))
+}
+
 // FormatTimestamp will return a timestamp formated as html. This is supposed to be used together with client-side js
 func FormatTimestamp(ts int64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"timestamp\" title=\"%v\" data-toggle=\"tooltip\" data-placement=\"top\" data-timestamp=\"%d\"></span>", time.Unix(ts, 0), ts))
@@ -501,6 +523,62 @@ func FormatValidatorStatus(status string) template.HTML {
 		return "<span><b>Slashed</b></span>"
 	}
 	return "<b>Unknown</b>"
+}
+
+func formatPool(tag []string) string {
+	if len(tag) > 1 {
+		tagType := tag[0]
+		tagName := strings.Split(tag[len(tag)-1], " ")
+		if len(tagName) > 1 {
+			_, err := strconv.ParseInt(tagName[len(tagName)-1], 10, 64)
+			if err == nil {
+				name := ""
+				for _, s := range tagName[:len(tagName)-1] {
+					if s == "-" {
+						continue
+					}
+					name += s + " "
+				}
+				return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 12px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, name)
+			}
+		}
+		return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 12px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, tag[len(tag)-1])
+	}
+	return ""
+}
+
+func formatSpecialTag(tag string) string {
+	special_tag := strings.Split(tag, ":")
+	if len(special_tag) > 1 {
+		if special_tag[0] == "pool" {
+			return formatPool(special_tag)
+		}
+	}
+
+	return fmt.Sprintf(`<span style="font-size: 12px;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
+}
+
+// FormatValidatorTag will return html formated text of a validator-tag.
+// Depending on the tag it will describe the tag in a tooltip and link to more information regarding the tag.
+func FormatValidatorTag(tag string) template.HTML {
+	var result string
+	switch tag {
+	case "rocketpool":
+		result = fmt.Sprintf(`<span style="background:yellow; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
+	case "ssv":
+		result = fmt.Sprintf(`<span style="background:orange; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
+	default:
+		result = formatSpecialTag(tag)
+	}
+	return template.HTML(result)
+}
+
+func FormatValidatorTags(tags []string) template.HTML {
+	str := ""
+	for _, tag := range tags {
+		str += string(FormatValidatorTag(tag)) + " "
+	}
+	return template.HTML(str)
 }
 
 // FormatValidator will return html formatted text for a validator
@@ -645,10 +723,10 @@ func TrLang(lang string, key string) template.HTML {
 	return template.HTML(I18n.Tr(lang, key))
 }
 
-func KFormatterEthPrice(currency int) string {
-	if currency > 999 {
-		ethTruncPrice := fmt.Sprint(float64(int((float64(currency)/float64(1000))*10))/float64(10)) + "k"
+func KFormatterEthPrice(price uint64) string {
+	if price > 999 {
+		ethTruncPrice := fmt.Sprint(float64(int((float64(price)/float64(1000))*10))/float64(10)) + "k"
 		return ethTruncPrice
 	}
-	return fmt.Sprint(currency)
+	return fmt.Sprint(price)
 }

@@ -312,3 +312,7 @@ function formatTimestamps(selStr) {
   })
   sel.find('[data-toggle="tooltip"]').tooltip()
 }
+
+function addCommas(number) {
+  return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+}

@@ -512,6 +512,7 @@ create table users_subscriptions
     user_id         int                         not null,
     event_name      character varying(100)      not null,
     event_filter    text                        not null default '',
+    event_threshold real                        default 0,
     last_sent_ts    timestamp without time zone,
     last_sent_epoch int,
     created_ts      timestamp without time zone not null,
@@ -540,6 +541,14 @@ create table users_validators_tags
     primary key (user_id, validator_publickey, tag)
 );
 
+drop table if exists validator_tags;
+create table validator_tags
+(
+    publickey bytea                  not null,
+    tag       character varying(100) not null,
+    primary key (publickey, tag)
+);
+
 drop table if exists mails_sent;
 create table mails_sent
 (
@@ -566,23 +575,21 @@ create table api_statistics
     primary key (ts, apikey, call)
 );
 
-drop table if exists stats_meta;
-CREATE TABLE stats_meta (
-	id 				bigserial 			primary key,
-	version 			int 				not null default 1,
-	ts 				timestamp  			not null,
+drop table if exists stats_meta_p;
+CREATE TABLE stats_meta_p (
+	id 				    bigserial,
+	version 			int 				        not null default 1,
+	ts 				    timestamp  			        not null,
 	process 			character varying(20) 		not null,
 	machine 		 	character varying(50),
     created_trunc       timestamp   not null,
-    exporter_version          integer,
+    exporter_version    varchar(35),
+    day                 int,
 	
-	user_id 		 	bigint	 	 		not null,
-    foreign key(user_id) references users(id),
-    UNIQUE (user_id, created_trunc, process, machine)
-);
-
-create index idx_stats_machine on stats_meta (machine);
-create index idx_stats_user on stats_meta (user_id);
+	user_id 		 	bigint	 	 		        not null,
+    primary key (id, day)
+    
+) PARTITION BY LIST (day);
 
 drop table if exists stats_process;
 CREATE TABLE stats_process (
@@ -603,6 +610,7 @@ CREATE TABLE stats_process (
 	
 	foreign key(meta_id) references stats_meta(id)
 );
+create index idx_stats_process_metaid on stats_process (meta_id);
 
 drop table if exists stats_add_beaconnode;
 CREATE TABLE stats_add_beaconnode (
@@ -622,6 +630,7 @@ CREATE TABLE stats_add_beaconnode (
 	
 	foreign key(general_id) references stats_process(id)
 );
+create index idx_stats_beaconnode_generalid on stats_add_beaconnode (general_id);
 
 drop table if exists stats_add_validator;
 CREATE TABLE stats_add_validator (
@@ -633,6 +642,7 @@ CREATE TABLE stats_add_validator (
 	
 	foreign key(general_id) references stats_process(id)
 );
+create index idx_stats_beaconnode_validator on stats_add_validator (general_id);
 
 drop table if exists stats_system;
 CREATE TABLE stats_system (
@@ -669,6 +679,8 @@ CREATE TABLE stats_system (
 	
 	foreign key(meta_id) references stats_meta(id)
 );
+
+create index idx_stats_system_meta_id on stats_system (meta_id);
 
 drop table if exists stake_pools_stats;
 create table stake_pools_stats

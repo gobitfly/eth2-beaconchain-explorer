@@ -5,7 +5,6 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
-	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -78,12 +77,10 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Select(graffiti, `
 			SELECT graffiti, count(*)
 			FROM blocks
-			WHERE 
-				LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1)
-				OR ENCODE(graffiti, 'hex') LIKE ($2)
+			WHERE graffiti_text ILIKE $1
 			GROUP BY graffiti
 			ORDER BY count desc
-			LIMIT 10`, "%"+search+"%", fmt.Sprintf("%%%x%%", search))
+			LIMIT 10`, "%"+search+"%")
 		if err == nil {
 			for i := range *graffiti {
 				(*graffiti)[i].Graffiti = utils.FormatGraffitiString((*graffiti)[i].Graffiti)
@@ -161,13 +158,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					DENSE_RANK() OVER(ORDER BY graffiti) AS graffitirow
 				FROM blocks 
 				LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-				WHERE 
-					LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($1)
-					OR ENCODE(graffiti, 'hex') LIKE ($2)
+				WHERE graffiti_text ILIKE $1
 			) a 
 			WHERE validatorrow <= 301 AND graffitirow <= 10
 			GROUP BY graffiti
-			ORDER BY count DESC`, "%"+search+"%", fmt.Sprintf("%%%x%%", search))
+			ORDER BY count DESC`, "%"+search+"%")
 		if err == nil {
 			for i := range res {
 				res[i].Graffiti = utils.FormatGraffitiString(res[i].Graffiti)

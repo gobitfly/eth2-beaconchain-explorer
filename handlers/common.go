@@ -202,7 +202,7 @@ func GetCurrencySymbol(r *http.Request) string {
 	}
 }
 
-func GetCurrentPrice(r *http.Request) int {
+func GetCurrentPrice(r *http.Request) uint64 {
 	cookie, err := r.Cookie("currency")
 	if err != nil {
 		return price.GetEthRoundPrice(price.GetEthPrice("USD"))
@@ -221,7 +221,7 @@ func GetCurrentPriceFormatted(r *http.Request) string {
 	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
 		return fmt.Sprintf("%s", utils.KFormatterEthPrice(price))
 	}
-	return fmt.Sprintf("%d", price)
+	return fmt.Sprintf("%s", utils.FormatAddCommas(uint64(price)))
 }
 
 func GetTruncCurrentPriceFormatted(r *http.Request) string {

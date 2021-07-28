@@ -108,42 +108,42 @@
                     case 'AUD':
                         document.getElementById('currentCurrencySymbol').textContent = 'A$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.AudTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.AudRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .AudRoundPrice}}
                         break
 	                case 'CAD':
                         document.getElementById('currentCurrencySymbol').textContent = 'C$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.CadTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.CadRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .CadRoundPrice}}
 		                break
 	                case 'CNY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
                         document.getElementById('currentKFormattedPrice').textContent = {{.CnyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.CnyRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .CnyRoundPrice}}
 		                break
 	                case 'EUR':
                         document.getElementById('currentCurrencySymbol').textContent = '€'
                         document.getElementById('currentKFormattedPrice').textContent = {{.EurTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.EurRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .EurRoundPrice}}
 		                break
 	                case 'GBP':
                         document.getElementById('currentCurrencySymbol').textContent = '£'
                         document.getElementById('currentKFormattedPrice').textContent = {{.GbpTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.GbpRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .GbpRoundPrice}}
 		                break
 	                case 'JPY':
                         document.getElementById('currentCurrencySymbol').textContent = '¥'
                         document.getElementById('currentKFormattedPrice').textContent = {{.JpyTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.JpyRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .JpyRoundPrice}}
 		                break
 	                case 'RUB':
                         document.getElementById('currentCurrencySymbol').textContent = '₽'
                         document.getElementById('currentKFormattedPrice').textContent = {{.RubTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.RubRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .RubRoundPrice}}
 		                break
                     default:
                         document.getElementById('currentCurrencySymbol').textContent = '$'
                         document.getElementById('currentKFormattedPrice').textContent = {{.UsdTruncPrice}}
-                        document.getElementById('currentCurencyPrice').textContent = {{.UsdRoundPrice}}
+                        document.getElementById('currentCurencyPrice').textContent = {{formatAddCommas .UsdRoundPrice}}
 		                break
                 }
             })
@@ -174,7 +174,7 @@
                         <span class="item-text">Ep<span class="d-none d-md-inline">och</span>:</span>
                     </div>
                     <div class="info-item-body">
-                        <a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{.CurrentEpoch}}</a>
+                        <a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{formatAddCommas .CurrentEpoch}}</a>
                     </div>
                 </div>
 
@@ -188,7 +188,7 @@
                             <span class="item-text">Slot:</span>
                         </div>
                         <div class="info-item-body">
-                            <a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{.CurrentSlot}}</a>
+                            <a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{formatAddCommas .CurrentSlot}}</a>
                         </div>
                     </div>
                 </div>
@@ -345,13 +345,13 @@
                                 <i style="margin: 0; padding: 0;" class="fas fa-sign-in-alt"></i>
                             </a>
                             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="loginDropdown">
-                                <a class="dropdown-item" href="/login">Sign In</a>
+                                <a class="dropdown-item" href="/login">Log in</a>
                                 <a class="dropdown-item" href="/register">Sign Up</a>
                             </div>
                         </div>
                     </div>
                     <a href="/login" class="mr-3 d-none d-md-flex">
-                        <span>Sign In</span>
+                        <span>Log in</span>
                     </a>
                     <a href="/register" class="btn btn-primary btn-sm d-none d-md-flex">
                         <span class="text-white"><b>Sign Up</b></span>
@@ -595,11 +595,6 @@
                 <li class="nav-item {{ if eq .Active "services"}}active{{end}} dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">  
-                        {{if .User.Authenticated}}
-                            {{if isUserClientUpdated .User.UserID}}   
-                                <span id="clients-update-notifier-nav" class="fas fa-circle fa-sm text-primary" style="font-size: 5px; position: absolute; top: 18px; left: 0px;"></span>
-                            {{end}}
-                        {{end}}
                         <span class="nav-icon">
                             <i class="fas fa-tools"></i>                            
                         </span>
@@ -619,13 +614,6 @@
                     <a class="dropdown-item" href="/ethClients">
                         <span class="nav-icon"><i class="fas fa-desktop mr-2"></i></span>
                         <span class="nav-text">Ethereum Clients</span>
-                        {{if .User.Authenticated}}
-                            {{if isUserClientUpdated .User.UserID}} 
-                            <div id="clients-update-notifier-item" class="d-flex justify-content-start m-0">
-                                <span class="text-primary m-0 p-0" style="font-size: 8px;">update</span>
-                            </div>
-                            {{end}}
-                        {{end}}
                     </a>
                     <a class="dropdown-item" href="/rewards">
                         <span class="nav-icon"><i class="far fa-money-bill-alt mr-2"></i></span>
@@ -769,9 +757,15 @@
                     <div class="col">
                         <span>By using our site you agree to our <a href="/legal/privacy.pdf">use of cookies</a> to deliver a better user experience.</span>
                     </div>
-                    <div class="col-3 d-flex justify-content-center align-items-center">
-                        <button class="btn btn-primary btn" style="margin-left: 1%" onclick="acceptCookieBanner()">Got it</button>
-                    <div>
+                    
+                </div>
+                <div class="row">
+                    
+                    <div class="col d-flex justify-content-end align-items-end">
+                        <button class="btn btn-secondary btn" style="margin-left: 1%" onclick="acceptOnlyNecessaryCookies()">Only Necesarry</button>
+                        <button class="btn btn-primary btn" style="margin-left: 1%" onclick="acceptCookieBanner()">Accept All Cookies</button>
+                        <div>
+   
                 </div>
             </div>
         </div>
@@ -808,7 +802,7 @@
                 <div class="col-md-4 mb-2">
                     <h5>Links</h5>
                     <div class="d-flex flex-column">
-                        <a class="my-1" href="https://twitter.com/etherchain_org"><i class="fab fa-twitter mr-2"></i>Bitfly</a>
+                        <a class="my-1" href="https://twitter.com/beaconcha_in"><i class="fab fa-twitter mr-2"></i>Beaconcha.in</a>
                         <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>Github</a>
                         <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer-app"><i class="fab fa-github mr-2"></i>Github Mobile App</a>
 
@@ -905,83 +899,101 @@
         }
     </script>
 
-    {{if not .User.Authenticated}}
-    <script>
-        function hideCookieBanner(){
-            $('#cookie-banner').attr("class", "d-none");
-        }
-        function acceptCookieBanner() {
-                document.cookie = "cookie=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+    {{ if not .Meta.NoTrack }}
+        {{if not .User.Authenticated}}
+        <script>
+            function hideCookieBanner(){
+                $('#cookie-banner').attr("class", "d-none");
+            }
+            function acceptCookieBanner() {
+                    document.cookie = "cookie=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+                    hideCookieBanner()
+            }
+            function acceptOnlyNecessaryCookies() {
+                    document.cookie = "cookie=accepted-necessary;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
+                    hideCookieBanner()
+            }
+            
+            if (document.cookie.indexOf("cookie=accepted")!=-1){
                 hideCookieBanner()
-        }
-        
-        if (document.cookie.indexOf("cookie=accepted")!=-1){
-            hideCookieBanner()
-        }else{
-            $('#cookie-banner').attr("class", "");
-        }
-    </script>
+            }else{
+                $('#cookie-banner').attr("class", "");
+            }
+        </script>
+        {{end}}
     {{end}}
-
     <script src="/js/clipboard.min.js"></script>
     {{ template "js" .Data }}
 
     <script src="/js/instant.min.js" type="module"></script>
-    {{ if ne .Meta.GATag ""}}
-        <!-- Global site tag (gtag.js) - Google Analytics -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}"></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
+    {{ if not .Meta.NoTrack }}
+        {{ if ne .Meta.GATag "" }}
+            <!-- Global site tag (gtag.js) - Google Analytics -->
+            
+            <script>
+                if (document.cookie.indexOf("cookie=accepted-necessary") == -1){
+                    let src = 'https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}';
+                    let a = document.createElement('script');
+                    a.src = src;
+                    document.body.appendChild(a);
+                } 
+            </script>
 
-            function gtag() {
-                dataLayer.push(arguments);
-            }
 
-            gtag('js', new Date());
+            <script>
 
-            gtag('config', {{.Meta.GATag}});
+                window.dataLayer = window.dataLayer || [];
 
-            function createFunctionWithTimeout(callback, opt_timeout) {
-                var called = false;
-
-                function fn() {
-                    if (!called) {
-                        called = true;
-                        callback();
-                    }
+                function gtag() {
+                    dataLayer.push(arguments);
                 }
 
-                setTimeout(fn, opt_timeout || 1000);
-                return fn;
-            }
+                gtag('js', new Date());
 
-            function handleOutboundLinkClicks(event) {
-                var link = event.currentTarget.href
-                event.preventDefault();
+                gtag('config', {{.Meta.GATag}});
 
-                var fallback = setTimeout(function () {
-                    window.location = link
-                }, 1000)
+                function createFunctionWithTimeout(callback, opt_timeout) {
+                    var called = false;
 
-                gtag('event', "click", {
-                    event_category: 'Outbound Link',
-                    event_label: link,
-                    event_callback: function () {
-                        clearTimeout(fallback)
-                        window.location = link
+                    function fn() {
+                        if (!called) {
+                            called = true;
+                            callback();
+                        }
                     }
-                });
-            }
 
-            // add event handler for outbound links tagged with ga-outbound
-            var outbounds = document.querySelectorAll('[ga-outbound]')
+                    setTimeout(fn, opt_timeout || 1000);
+                    return fn;
+                }
 
-            for (var i = 0; i < outbounds.length; i++) {
-                var element = outbounds[i];
-                element.addEventListener('click', handleOutboundLinkClicks)
-            }
+                function handleOutboundLinkClicks(event) {
+                    var link = event.currentTarget.href
+                    event.preventDefault();
 
-        </script>
+                    var fallback = setTimeout(function () {
+                        window.location = link
+                    }, 1000)
+
+                    gtag('event', "click", {
+                        event_category: 'Outbound Link',
+                        event_label: link,
+                        event_callback: function () {
+                            clearTimeout(fallback)
+                            window.location = link
+                        }
+                    });
+                }
+
+                // add event handler for outbound links tagged with ga-outbound
+                var outbounds = document.querySelectorAll('[ga-outbound]')
+
+                for (var i = 0; i < outbounds.length; i++) {
+                    var element = outbounds[i];
+                    element.addEventListener('click', handleOutboundLinkClicks)
+                }
+
+            </script>
+        {{end}}
     {{end}}
 
     <script type="text/javascript" async src="/js/revive.min.js"></script>

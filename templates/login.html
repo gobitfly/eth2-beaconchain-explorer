@@ -3,6 +3,34 @@
 
 {{ define "css"}}
 {{end}}
+{{ define "js" }}
+<script>
+    var params = new URLSearchParams(window.location.search)
+    var emailParam = params.get('email')
+    var emailInput = document.getElementById('email')
+
+    if(emailParam && emailParam.length && emailInput && !emailInput.value) {
+        emailInput.value = emailParam
+    }
+
+    var forgotPWLink = document.getElementById('forgotPasswordLink')
+    emailInput.addEventListener('input', function(ev) {
+        if(ev.target.value && ev.target.value.length) {
+            updateEmailLink(ev.target.value)
+        }
+    })
+    if(emailInput && emailInput.value && emailInput.value.length) {
+        updateEmailLink(emailInput.value)
+    }
+    function updateEmailLink(value) {
+        if(value && value.length) {
+            forgotPWLink.setAttribute('href', '/requestReset?email='+ encodeURI(value))
+        } else {
+            forgotPWLink.setAttribute('href', '/requestReset')
+        }
+    }
+</script>
+{{end}}
 
 {{ define "content"}}
     {{with .Data}}
@@ -26,20 +54,20 @@
                         {{.CsrfField}}
                         <div class="form-group">
                             <label for="email">Email address</label>
-                            <input required inputmode="email" type="text" maxlength="100" class="form-control"
-                                   autocomplete="email" id="email" name="email">
+                            <input tabindex="1" required inputmode="email" type="text" maxlength="100" class="form-control"
+                                   autocomplete="email" id="email" name="email" autofocus>
                         </div>
                         <div class="form-group">
                             <label class="d-flex justify-content-between align-items-center" for="password">
                                 <span>Password</span>
-                                <a href="/requestReset">Forgot Password?</a>
+                                <a id="forgotPasswordLink" tabindex="5" href="/requestReset">Forgot Password?</a>
                             </label>
-                            <input required type="password" maxlength="256" class="form-control"
+                            <input tabindex="2" required type="password" maxlength="256" class="form-control"
                                    autocomplete="current-password" id="password" name="password">
                         </div>
-                        <button type="submit" class="btn btn-primary float-right">Login</button>
+                        <button tabindex="3" type="submit" class="btn btn-primary float-right">Login</button>
                     </form>
-                    <span style="font-size: 90%;" class="text-muted">Don't have an account? </span><a href="/register">Sign
+                    <span style="font-size: 90%;" class="text-muted">Don't have an account? </span><a tabindex="4" href="/register">Sign
                         up</a>
                 </div>
             </div>

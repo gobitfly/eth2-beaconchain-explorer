@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/context"
+
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
@@ -184,6 +186,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 
 	data := InitPageData(w, r, "user", "/user", "")
 	data.Data = authorizeData
+	data.Meta.NoTrack = true
 
 	err = authorizeTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -422,6 +425,8 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 			}
 		} else if sub.EventName == types.TaxReportEventName {
 			pubkey = template.HTML(`<a href="/rewards">report</a>`)
+		} else if strings.HasPrefix(string(sub.EventName), "monitoring_") {
+			pubkey = utils.FormatMachineName(sub.EventFilter)
 		}
 
 		tableData = append(tableData, []interface{}{
@@ -841,7 +846,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 
 	balance := FormValueOrJSON(r, "balance_decreases")
 	if balance == "on" {
-		err := db.AddSubscription(user.UserID, types.ValidatorBalanceDecreasedEventName, pubKey)
+		err := db.AddSubscription(user.UserID, types.ValidatorBalanceDecreasedEventName, pubKey, 0)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorBalanceDecreasedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -850,7 +855,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	slashed := FormValueOrJSON(r, "validator_slashed")
 	if slashed == "on" {
-		err := db.AddSubscription(user.UserID, types.ValidatorGotSlashedEventName, pubKey)
+		err := db.AddSubscription(user.UserID, types.ValidatorGotSlashedEventName, pubKey, 0)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -859,7 +864,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	proposalSubmitted := FormValueOrJSON(r, "validator_proposal_submitted")
 	if proposalSubmitted == "on" {
-		err := db.AddSubscription(user.UserID, types.ValidatorExecutedProposalEventName, pubKey)
+		err := db.AddSubscription(user.UserID, types.ValidatorExecutedProposalEventName, pubKey, 0)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -868,7 +873,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	proposalMissed := FormValueOrJSON(r, "validator_proposal_missed")
 	if proposalMissed == "on" {
-		err := db.AddSubscription(user.UserID, types.ValidatorMissedProposalEventName, pubKey)
+		err := db.AddSubscription(user.UserID, types.ValidatorMissedProposalEventName, pubKey, 0)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -877,7 +882,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	attestationMissed := FormValueOrJSON(r, "validator_attestation_missed")
 	if attestationMissed == "on" {
-		err := db.AddSubscription(user.UserID, types.ValidatorMissedAttestationEventName, pubKey)
+		err := db.AddSubscription(user.UserID, types.ValidatorMissedAttestationEventName, pubKey, 0)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1035,18 +1040,74 @@ func UserValidatorWatchlistRemove(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
 	q := r.URL.Query()
 	event := q.Get("event")
 	filter := q.Get("filter")
+	thresholdString := q.Get("threshold")
+	var threshold float64 = 0
+	threshold, _ = strconv.ParseFloat(thresholdString, 64)
+
+	if internUserNotificationsSubscribe(event, filter, threshold, w, r) {
+		OKResponse(w, r)
+	}
+}
+
+func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	type SubIntent struct {
+		EventName      string  `json:"event_name"`
+		EventFilter    string  `json:"event_filter"`
+		EventThreshold float64 `json:"event_threshold"`
+	}
+
+	var jsonObjects []SubIntent
+	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
+	if err != nil {
+		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not parse request")
+		return
+	}
+
+	if len(jsonObjects) > 100 {
+		logger.Errorf("Max number bundle subscribe is 100", err)
+		sendErrorResponse(j, r.URL.String(), "Max number bundle subscribe is 100")
+		return
+	}
+
+	var result bool = true
+	m := make(map[string]bool)
+	for i := 0; i < len(jsonObjects); i++ {
+		obj := jsonObjects[i]
+
+		// make sure expensive operations without filter can only be done once per request
+		if m[obj.EventName] && obj.EventFilter == "" {
+			continue
+		}
+
+		result = result && internUserNotificationsSubscribe(obj.EventName, obj.EventFilter, obj.EventThreshold, w, r)
+		m[obj.EventName] = true
+		if !result {
+			break
+		}
+	}
+
+	if result {
+		OKResponse(w, r)
+	}
+}
+
+func internUserNotificationsSubscribe(event, filter string, threshold float64, w http.ResponseWriter, r *http.Request) bool {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
 	filter = strings.Replace(filter, "0x", "", -1)
 
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
 		logger.Errorf("error invalid event name: %v", err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
+		return false
 	}
 
 	isPkey := !pkeyRegex.MatchString(filter)
@@ -1055,10 +1116,12 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 	if filterLen != 96 && filterLen != 0 && isPkey {
 		logger.Errorf("error invalid pubkey characters or length: %v", err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
+		return false
 	}
 
-	if filterLen == 0 { // no filter = add all my watched validators (max 100)
+	userPremium := getUserPremium(r)
+
+	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") { // no filter = add all my watched validators
 
 		filter := db.WatchlistFilter{
 			UserId:         user.UserID,
@@ -1070,18 +1133,137 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 		myValidators, err2 := db.GetTaggedValidators(filter)
 		if err2 != nil {
 			ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
-			return
+			return false
+		}
+
+		maxValidators := userPremium.MaxValidators
+
+		// not quite happy performance wise, placing a TODO here for future me
+		for i, v := range myValidators {
+			err = db.AddSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)), 0)
+			if err != nil {
+				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+				return false
+			}
+
+			if i >= maxValidators {
+				break
+			}
+		}
+	} else { // add filtered one
+
+		if !userPremium.NotificationThresholds {
+			if eventName == types.MonitoringMachineDiskAlmostFullEventName {
+				threshold = 0.1
+			} else if eventName == types.MonitoringMachineCpuLoadEventName {
+				threshold = 0.6
+			}
+		}
+
+		err = db.AddSubscription(user.UserID, eventName, filter, threshold)
+		if err != nil {
+			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return false
+		}
+	}
+
+	return true
+}
+
+func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	type UnSubIntent struct {
+		EventName   string `json:"event_name"`
+		EventFilter string `json:"event_filter"`
+	}
+
+	var jsonObjects []UnSubIntent
+	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
+	if err != nil {
+		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not parse request")
+		return
+	}
+
+	if len(jsonObjects) > 100 {
+		logger.Errorf("Max number bundle unsubscribe is 100", err)
+		sendErrorResponse(j, r.URL.String(), "Max number bundle unsubscribe is 100")
+		return
+	}
+
+	var result bool = true
+	m := make(map[string]bool)
+	for i := 0; i < len(jsonObjects); i++ {
+		obj := jsonObjects[i]
+
+		// make sure expensive operations without filter can only be done once per request
+		if m[obj.EventName] && obj.EventFilter == "" {
+			continue
+		}
+
+		result = result && internUserNotificationsUnsubscribe(jsonObjects[i].EventName, jsonObjects[i].EventFilter, w, r)
+		m[obj.EventName] = true
+
+		if !result {
+			break
+		}
+	}
+
+	if result {
+		OKResponse(w, r)
+	}
+}
+
+func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWriter, r *http.Request) bool {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
+
+	filter = strings.Replace(filter, "0x", "", -1)
+
+	eventName, err := types.EventNameFromString(event)
+	if err != nil {
+		logger.Errorf("error invalid event name: %v", err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return false
+	}
+
+	isPkey := !pkeyRegex.MatchString(filter)
+	filterLen := len(filter)
+
+	if len(filter) != 96 && filterLen != 0 && isPkey {
+		logger.Errorf("error invalid pubkey characters or length: %v", err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return false
+	}
+
+	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") { // no filter = add all my watched validators
+
+		filter := db.WatchlistFilter{
+			UserId:         user.UserID,
+			Validators:     nil,
+			Tag:            types.ValidatorTagsWatchlist,
+			JoinValidators: true,
+		}
+
+		myValidators, err2 := db.GetTaggedValidators(filter)
+		if err2 != nil {
+			ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
+			return false
 		}
 
 		maxValidators := getUserPremium(r).MaxValidators
 
 		// not quite happy performance wise, placing a TODO here for future me
 		for i, v := range myValidators {
-			err = db.AddSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
+			err = db.DeleteSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
 			if err != nil {
-				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-				return
+				return false
 			}
 
 			if i >= maxValidators {
@@ -1089,17 +1271,16 @@ func UserNotificationsSubscribe(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		// add filtered one
-
-		err = db.AddSubscription(user.UserID, eventName, filter)
+		// filtered one only
+		err = db.DeleteSubscription(user.UserID, eventName, filter)
 		if err != nil {
-			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
+			logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-			return
+			return false
 		}
 	}
 
-	OKResponse(w, r)
+	return true
 }
 
 func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
@@ -1126,7 +1307,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if filterLen == 0 { // no filter = add all my watched validators (max 100)
+	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") { // no filter = add all my watched validators
 
 		filter := db.WatchlistFilter{
 			UserId:         user.UserID,

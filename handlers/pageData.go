@@ -23,6 +23,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 			Description: "beaconcha.in makes the Ethereum 2.0. beacon chain accessible to non-technical end users",
 			Path:        path,
 			GATag:       utils.Config.Frontend.GATag,
+			NoTrack:     false,
 		},
 		Active:                active,
 		Data:                  &types.Empty{},
@@ -61,7 +62,6 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		ClientsUpdated:        ethclients.ClientsUpdated(),
 		Phase0:                utils.Config.Chain.Phase0,
 		Lang:                  "en-US",
-		// InfoBanner:            ethclients.GetBannerClients(),
 	}
 	data.EthPrice = price.GetEthPrice(data.Currency)
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
