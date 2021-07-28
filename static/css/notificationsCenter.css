@@ -20,7 +20,7 @@
 }
 /* TODO: replace with defined color variable */
 .custom-background-color { 
-  background-color: rgba(0,0,0, 0.0); 
+  background-color: #fdfdfd; 
 }
 .custom-border-radius { 
   border-radius: .5rem; 
@@ -97,8 +97,7 @@
   display: block;
   font-size: .75rem;
   font-weight: 400;
-  /* color: #343a40; */
-  color: var(--dark);
+  color: #343a40;
 }
 .text-empty-section { 
   height: 200px; 
