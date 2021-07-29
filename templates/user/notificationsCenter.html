@@ -71,7 +71,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="attestationsMissed">{{.Metrics.AttestationsMissed}}</span>
-						<span class="metric-description">attestations missed <span class="d-block">in the past 24h</span></span>
+						<span class="metric-description">att<span class="d-inline-block d-xl-none">.</span><span class="d-none d-xl-inline-block">estations</span> missed <span class="d-block">in the past 24h</span></span>
 					</div>
 				</div>
 			</div>
@@ -93,7 +93,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsMissed">{{.Metrics.ProposalsMissed}}</span>
-						<span class="metric-description">proposals missed <span class="d-block">in the past 24h</span></span>
+						<span class="metric-description">prop<span class="d-inline-block d-xl-none">.</span><span class="d-none d-xl-inline-block">osals</span> missed <span class="d-block">in the past 24h</span></span>
 					</div>
 				</div>
 			</div>
@@ -127,7 +127,6 @@
 				{{ else }}
 					<div class="px-0 px-md-3 py-1">
 						<table class="table table-borderless table-hover" id="monitoring-notifications">
-							<!-- <thead bgcolor="#fdfdfd"> -->
 							<thead>
 								<tr>
 									<th scope="col" class="h6 border-bottom-0">Notification</th>
@@ -160,7 +159,6 @@
 				{{ else }}
 					<div class="px-0 px-md-3 py-1">
 						<table class="table table-borderless table-hover" id="network-notifications">
-							<!-- <thead bgcolor="#fdfdfd"> -->
 							<thead>
 								<tr>
 									<th scope="col" class="h6 border-bottom-0">Notification</th>
@@ -204,8 +202,7 @@
 				</div>
 			{{ else }}
 				<div class="px-3 py-3">
-					<table class="table table-borderless table-hover border-0" id="validators-notifications">
-						<!-- <thead bgcolor="#fdfdfd"> -->
+					<table class="table table-borderless table-hover" id="validators-notifications">
 						<thead>
 							<tr>
 								<th scope="col" class="h6 border-bottom-0">Validator</th>
@@ -403,13 +400,13 @@
 		</div>
 	</div>
 	<!-- Add Validator modal -->
-	<div class="modal fade" id="addValidatorModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addValidatorLabel" aria-hidden="true">
-		<div class="modal-dialog modal-dialog-centered" role="document">
-			<div class="modal-content custom-remove-modal row mx-0">
+	<div class="modal fade custom-modal" id="addValidatorModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addValidatorLabel" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
+			<div class="modal-content custom-remove-modal mx-0 custom-modal-content">
 				<div class="mb-4 custom-remove-modal-close">
 					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>
-				<div class="col-12 d-flex flex-column align-items-center justify-content-center px-0 h6">
+				<div class="col-sm-12 d-flex flex-column align-items-center justify-content-center px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Add Validator
 						<span class="d-block mt-3 heading-l4 text-left">
@@ -464,7 +461,7 @@
 						</div>
 					</div>
 				</div>
-				<div class="col-12 d-flex align-items-center justify-content-between px-0">
+				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-3 px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
 					<button id="add-validator-button" type="button" class="btn btn-primary btn-primary btn-sm w-50 mr-2 ml-sm-3">Add</button>
 				</div>

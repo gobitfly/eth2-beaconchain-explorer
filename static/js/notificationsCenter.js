@@ -653,11 +653,10 @@ $(document).ready(function() {
           body: { pubkey: `0x${rowId}` },
         }).then(res => {
           if (res.status == 200) {
-            $('#confirmRemoveModal').modal('hide');   
-            // TODO: redraw table because it does not update after deleting the item    
+            $('#confirmRemoveModal').modal('hide');     
             window.location.reload(false);
           } else {
-            // alert('Error removing validator from Watchlist');
+            alert('Error removing validator from Watchlist');
             $('#confirmRemoveModal').modal('hide');
             window.location.reload();
           }
@@ -706,14 +705,12 @@ $(document).ready(function() {
           if (res.status == 200) {
             $('#confirmRemoveModal').modal('hide');
             window.location.reload(false);
-            // TODO: redraw table because it does not update after deleting the item
           } else {
-            // alert('Error removing validator from Watchlist');
+            alert('Error removing validator from Watchlist');
 						$('#confirmRemoveModal').modal('hide');
             window.location.reload();
           }
-          // what is this for?
-          $(this).html('Remove');
+          $(this).html('Removed');
         });
       }
     } else {
@@ -733,12 +730,11 @@ $(document).ready(function() {
             $('#confirmRemoveModal').modal('hide');
             window.location.reload(false);
           } else {
-            // alert('Error removing all validators from Watchlist');
+            alert('Error removing all validators from Watchlist');
 						$('#confirmRemoveModal').modal('hide');
             window.location.reload();
           }
-          // what is this for?
-          $(this).html('Remove');
+          $(this).html('Removed');
         });
       }
     }
@@ -817,8 +813,12 @@ $(document).ready(function() {
     $('[id^=validator_proposal_missed]').attr('checked', false);
     $('[id^=validator_got_slashed]').attr('checked', false);
 
+
+
     // TODO today: also uncheck this on modal close
     $('[id^=all_events]').attr('checked', false);
+
+
 
     // remove selected class from rows when modal closed
     $('#validators-notifications .selected').removeClass('selected');
@@ -836,7 +836,7 @@ $(document).ready(function() {
   });
 
   // customize tables tooltips
-  $('#validators-notifications').DataTable().$('tr').tooltip({ 'width': '5rem' });
+  $('#validators-notifications').DataTable().$('tr').tooltip({ width: 5 });
 
   // TODO: if all events for push/email/web are checked, all events checked is true
 });

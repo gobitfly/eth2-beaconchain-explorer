@@ -1,4 +1,4 @@
-.badge-custom-size { 
+.badge-custom-size {
   font-size: .82rem;
 }
 .breadcrumb-custom {
@@ -21,7 +21,7 @@
 /* TODO: replace with defined color variable */
 .custom-background-color { 
   /* background-color: #fdfdfd; */
-  background-color: rgba(0, 0, 0, 0.0); 
+  /* background-color: rgba(0, 0, 0, 0.0);  */
 }
 .custom-border-radius { 
   border-radius: .5rem; 
@@ -102,9 +102,8 @@
 /* TODO: same, replace with defined color variable */
 .metric-description { 
   display: block;
-  font-size: .75rem;
+  font-size: .85rem;
   font-weight: 400;
-  /* color: #343a40; */
   color: var(--dark);
 }
 .text-empty-section { 
@@ -159,6 +158,9 @@ div.dataTables_length {
 }
 div.dataTables_scrollBody {
   background: none !important;
+}
+div.dataTables_scrollBody table {
+  background-color: rgba(0, 0, 0, 0.0) !important;
 }
 .row-selected {
   background-color: #e6e6e6 !important;
@@ -269,14 +271,6 @@ div.dataTables_scrollBody {
   border: none;
   background: transparent;
 }
-@media screen and (max-width: 460px) {
-  .custom-remove-modal { 
-    padding: 1.8rem 1rem 2.5rem;
-  }
-  .custom-remove-modal-close {
-    right: -.25rem;
-  }
-}
 /* custom search with typeahead */
 .twitter-typeahead {
   width: 100%;
@@ -318,4 +312,29 @@ div.dataTables_scrollBody {
   margin: 0;
   padding-left: 1rem;
   padding-right: 1rem;
+}
+
+
+
+@media screen and (max-width: 540px) {
+  .custom-modal {
+    padding: 0 !important;
+  }
+  .custom-modal .custom-modal-dialog {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    margin: 0;
+  }
+  .custom-modal .custom-modal-content {
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
+  .custom-modal {
+    overflow-y: auto;
+  }
+  .custom-remove-modal { 
+    padding: 1.8rem 1.5rem 2.5rem;
+  }
 }
