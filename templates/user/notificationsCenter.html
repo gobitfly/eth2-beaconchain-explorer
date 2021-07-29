@@ -111,7 +111,7 @@
 				</div>
 				
 				<!-- if there is no data in the table -->
-				{{ if false }}
+				{{if false}}
 					<div class="mx-sm-auto text-sm-center text-empty-section">
 						<h3 class="mt-5 heading-l2">Get notified with our <span class="d-block font-weight-bold">Beaconchain Dashboard App</span></h3>
 						<h4 class="mt-2 heading-l3">Now available for Android and iOS</h4>
@@ -124,7 +124,7 @@
 							</a>
 						</div>
 					</div>
-				{{ else }}
+				{{else}}
 					<div class="px-0 px-md-3 py-1">
 						<table class="table table-borderless table-hover" id="monitoring-notifications">
 							<thead>
@@ -139,7 +139,7 @@
 							<tbody></tbody>
 						</table>
 					</div>
-				{{ end }}
+				{{end}}
 			</div>
 			<div class="col-12 col-xl mt-3 mt-xl-0 ml-xl-3 shadow p-1 mb-3 container-height custom-border-radius custom-background-color">
 				<div class="d-flex flex-column align-items-start flex-sm-row align-items-sm-center justify-content-sm-between mx-3 mb-2">
@@ -151,12 +151,12 @@
 						<span class="text-nowrap">Add network event</span>
 					</button>
 				</div>
-				{{ if false }}
+				{{if false}}
 					<div class="ml-3 mx-sm-auto mt-5 text-sm-center text-empty-section">
 						<i class="far fa-frown mb-3 icon"></i>
 						<h3 class="heading-l3">You don't have any notifications</h3>
 					</div>
-				{{ else }}
+				{{else}}
 					<div class="px-0 px-md-3 py-1">
 						<table class="table table-borderless table-hover" id="network-notifications">
 							<thead>
@@ -172,7 +172,7 @@
 							<tbody></tbody>
 						</table>
 					</div>
-				{{ end }}
+				{{end}}
 			</div>
 		</div>
 		<div class="mx-0 my-3 shadow p-1 mb-3 container-min-width validators-container-min-height custom-border-radius custom-background-color">
@@ -195,12 +195,12 @@
 					</button>
 				</div>
 			</div>
-			{{ if eq (len .Validators) 0 }}
+			{{if eq (len .Validators) 0}}
 				<div class="mx-sm-auto text-sm-center text-empty-section">
 					<h3 class="mt-5 heading-l2">No Validators in your watchlist yet</h3>
 					<h4 class="mt-2 heading-l3">Start adding Validators and subscribe to events to receive notifications</h4>
 				</div>
-			{{ else }}
+			{{else}}
 				<div class="px-3 py-3">
 					<table class="table table-borderless table-hover" id="validators-notifications">
 						<thead>
@@ -217,7 +217,7 @@
 						<tbody></tbody>
 					</table>
 				</div>
-			{{ end }}
+			{{end}}
 		</div>
 	</div>
 	
@@ -241,18 +241,16 @@
 		</div>
 	</div>
 	<!-- Add Monitoring events modal -->
-	<div class="modal fade" id="addMonitoringEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addMonitoringEventLabel" aria-hidden="true">
-		<div class="modal-dialog modal-dialog-centered" role="document">
-			<div class="modal-content custom-remove-modal row mx-0">
+	<div class="modal fade custom-modal" id="addMonitoringEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addMonitoringEventLabel" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
+			<div class="modal-content custom-remove-modal mx-0 custom-modal-content">
 				<div class="mb-4 custom-remove-modal-close">
 					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>
-				<div class="col-12 d-flex flex-column align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
+				<div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Monitoring Notifications
-						<span class="d-block mt-3 heading-l4 text-left">
-							Select monitoring events to receive notifications about or turn notifications off
-						</span>
+						<span class="d-block mt-3 heading-l4 text-left">Select monitoring events to receive notifications about or turn notifications off</span>
 					</div> 
 					<div id="add-validator-search-container" class="w-100 mb-3">
 						<div class="my-3">
@@ -293,7 +291,7 @@
 						</div>
 					</div>  
 				</div>
-				<div class="col-12 d-flex align-items-center justify-content-between px-0">
+				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-1 px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
 					<button id="remove-button" type="button" class="btn btn-primary btn-primary btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
 				</div>
@@ -301,18 +299,16 @@
 		</div>
 	</div>
 	<!-- Add Network events modal -->
-	<div class="modal fade" id="addNetworkEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addNetworkEventLabel" aria-hidden="true">
-		<div class="modal-dialog modal-dialog-centered" role="document">
-			<div class="modal-content custom-remove-modal row mx-0">
+	<div class="modal fade custom-modal" id="addNetworkEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addNetworkEventLabel" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
+			<div class="modal-content custom-remove-modal mx-0 custom-modal-content">
 				<div class="mb-4 custom-remove-modal-close">
 					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>
-				<div class="col-12 d-flex flex-column align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
+				<div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-4 mb-sm-5 px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Network Notifications
-						<span class="d-block mt-3 heading-l4 text-left">
-							Select network events to receive notifications about or turn notifications off
-						</span>
+						<span class="d-block mt-3 heading-l4 text-left">Select network events to receive notifications about or turn notifications off</span>
 					</div> 
 					<div class="w-100 my-3">
 						<div class="form-check form-check-inline w-100 my-2">
@@ -325,7 +321,7 @@
 						</div>
 					</div> 
 				</div>
-				<div class="col-12 d-flex align-items-center justify-content-between px-0">
+				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-1 px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
 					<button id="remove-button" type="button" class="btn btn-primary btn-primary btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
 				</div>
@@ -333,18 +329,16 @@
 		</div>
 	</div>
 	<!-- Manage notifications modal -->
-	<div class="modal fade" id="manageNotificationsModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="manageNotificationsLabel" aria-hidden="true">
-		<div class="modal-dialog modal-dialog-centered" role="document">
-			<div class="modal-content custom-remove-modal row mx-0">
+	<div class="modal fade custom-modal" id="manageNotificationsModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="manageNotificationsLabel" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
+			<div class="modal-content custom-remove-modal mx-0 custom-modal-content">
 				<div class="mb-4 custom-remove-modal-close">
 					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>
-				<div class="col-12 d-flex flex-column align-items-center justify-content-center mb-4 px-0 h6">
+				<div class="col-sm-12 d-flex flex-column align-items-center justify-content-center mb-4 px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Manage Notifications
-						<span class="d-block mt-3 heading-l4 text-left">
-							Select events to receive notifications about or turn notifications off for the validators in your watchlist
-						</span>
+						<span class="d-block mt-3 heading-l4 text-left">Select events to receive notifications about or turn notifications off for the validators in your watchlist</span>
 					</div> 
 					<div class="w-100 my-4">
 						<div id="selected-validators-events-container" class="w-100 mb-4 custom-container scrollbar"></div>
@@ -392,7 +386,7 @@
 						</div>
 					</div>   
 				</div>
-				<div class="col-12 d-flex align-items-center justify-content-between px-0">
+				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-1 px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
 					<button id="remove-button" type="button" class="btn btn-primary btn-primary btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
 				</div>
@@ -409,11 +403,9 @@
 				<div class="col-sm-12 d-flex flex-column align-items-center justify-content-center px-0 h6">
 					<div class="w-100 heading-l2 text-center">
 						Add Validator
-						<span class="d-block mt-3 heading-l4 text-left">
-							Add validators to your watchlist and select validator events to receive notifications about
-						</span>
-					</div> 
-					<div id="add-validator-search-container" class="w-100 mb-3">
+						<span class="d-block mt-3 heading-l4 text-left">Add validators to your watchlist and select validator events to receive notifications about</span>
+					</div>
+					<div id="add-validator-search-container" class="w-100 mb-sm-3">
 						<div class="my-3">
 							<input class="form-control validator-typeahead" type="text" autocomplete="off" spellcheck="false" placeholder="Search validator..." aria-label="Search validator">
 						</div>
@@ -461,7 +453,7 @@
 						</div>
 					</div>
 				</div>
-				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-3 px-0">
+				<div class="col-sm-12 d-flex align-items-center justify-content-between px-0">
 					<button id="cancel-button" type="button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
 					<button id="add-validator-button" type="button" class="btn btn-primary btn-primary btn-sm w-50 mr-2 ml-sm-3">Add</button>
 				</div>

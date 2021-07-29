@@ -73,16 +73,6 @@
   font-size: 2.4rem;
   color: #5E3F6B;
 }
-.input-search { 
-  width: 100%;
-  background-color: #f1f1f1;
-  border: none;
-  border-radius: .5rem 0 0 .5rem;
-}
-.input-search::placeholder { 
-  font-size: .9rem;
-  font-weight: 400;
-}
 .metrics-section { 
   min-height: 120px; 
 }
@@ -118,7 +108,10 @@
 /* tables */
 table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, 
 table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
-  background-color: var(--banner-background) !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  line-height: 1.1rem !important;
+  color: var(--dark) !important;
 }
 table.dataTable tbody tr.selected, 
 table.dataTable tbody th.selected, 
@@ -313,10 +306,7 @@ div.dataTables_scrollBody table {
   padding-left: 1rem;
   padding-right: 1rem;
 }
-
-
-
-@media screen and (max-width: 540px) {
+@media screen and (max-width: 450px) {
   .custom-modal {
     padding: 0 !important;
   }
@@ -335,6 +325,6 @@ div.dataTables_scrollBody table {
     overflow-y: auto;
   }
   .custom-remove-modal { 
-    padding: 1.8rem 1.5rem 2.5rem;
+    padding: 1.8rem 1.8rem 2.5rem;
   }
 }
