@@ -383,6 +383,45 @@ func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	reqData := struct {
+		Pubkey string   `json:"pubkey"`
+		Events []string `json:"events"`
+	}{}
+
+	// pubkeys := make([]string, 0)
+	err = json.Unmarshal(body, &reqData)
+	if err != nil {
+		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = db.AddToWatchlist([]db.WatchlistEntry{{UserId: user.UserID, Validator_publickey: reqData.Pubkey}})
+	if err != nil {
+		logger.Errorf("error adding to watchlist: %v, %v", r.URL.String(), err)
+		return
+	}
+
+	for _, item := range reqData.Events {
+		err = db.AddSubscription(user.UserID, types.EventName(item), reqData.Pubkey, 0)
+		if err != nil {
+			logger.Errorf("error adding subscription: %v, %v", r.URL.String(), err)
+			continue
+		}
+	}
+}
+
 // UserNotificationsCenter renders the notificationsCenter template
 func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
