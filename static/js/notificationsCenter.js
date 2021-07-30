@@ -148,7 +148,7 @@ function create_typeahead(input_container) {
       display: 'index',
       templates: {
         header: '<h5 class="font-weight-bold ml-3">Validators</h5>',
-        suggestion: function (data) {
+        suggestion: function(data) {
           return `<div class="font-weight-normal text-truncate high-contrast">${data.index}</div>`;
         }
     	}
@@ -160,7 +160,7 @@ function create_typeahead(input_container) {
       display: 'name',
       templates: {
         header: '<h5 class="font-weight-bold ml-3">Validators by Name</h5>',
-        suggestion: function (data) {
+        suggestion: function(data) {
           var len = data.validator_indices.length > VALLIMIT ? VALLIMIT + '+' : data.validator_indices.length;
           return `<div class="font-weight-normal high-contrast" style="display: flex;"><div class="text-truncate" style="flex: 1 1 auto;">${data.name}</div><div style="max-width: fit-content; white-space: nowrap;">${len}</div></div>`;
         }
@@ -482,7 +482,7 @@ function loadValidatorsData(data) {
           if (type === 'sort' || type === 'type') {
             return data.Index;
           }
-          return `<span class="font-weight-bold"><a href="/validator/${data.Index}"><i class="fas fa-male mr-1"></i>` + data.Index + '</a></span>' + `<a class="heading-l4 d-none d-sm-block mt-2" style="width: 5rem;" href="/validator/${data.Pubkey}">0x` + data.Pubkey.substring(0, 6) + '...</a>';
+          return `<span class="font-weight-bold"><i class="fas fa-male mr-1"></i><a style="padding: .25rem;" href="/validator/${data.Index}">` + data.Index + '</a></span>' + `<a class="heading-l4 d-none d-sm-block mt-2" style="width: 5rem;" href="/validator/${data.Pubkey}">0x` + data.Pubkey.substring(0, 6) + '...</a>';
         }
       },
       {

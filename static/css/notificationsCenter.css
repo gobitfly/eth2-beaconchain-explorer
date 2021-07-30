@@ -18,10 +18,9 @@
 .container-min-width { 
   min-width: 300px; 
 }
-/* TODO: replace with defined color variable */
+/* TODO: for dark theme use #2c292d */
 .custom-background-color { 
-  /* background-color: #fdfdfd; */
-  /* background-color: rgba(0, 0, 0, 0.0);  */
+  background-color: #fdfdfd;
 }
 .custom-border-radius { 
   border-radius: .5rem; 
@@ -37,6 +36,10 @@
   height: 10rem;
   overflow-y: auto;
 }
+.custom-modal .custom-modal-content {
+  background-color: #fdfdfd;
+  /* background-color: #2c292d; */
+}
 .custom-remove-modal { 
   position: relative;
   min-width: 280px;
@@ -46,6 +49,11 @@
   position: relative; 
   top: -1rem; 
   right: -2.5rem;
+}
+/* TODO: decide on color for hover */
+.custom-remove-modal-close button,
+.custom-remove-modal-close button:hover { 
+  color: var(--dark);
 }
 .heading { 
   font-size: 1.8rem; 
@@ -69,9 +77,10 @@
   box-shadow: 0px 0px 2px #6d6d6d;
   padding: .6em;
 }
+/* TODO: desaturate colors for dark theme, for color primary use #ffaa31 and #ff593c for delete/remove buttons */
 .icon { 
   font-size: 2.4rem;
-  color: #5E3F6B;
+  color: var(--primary);
 }
 .metrics-section { 
   min-height: 120px; 
@@ -82,14 +91,12 @@
 .metric-card-row { 
   height: 100%; 
 }
-/* TODO: make the color #8186F1 on dark theme */
 .metric-value { 
   text-align: left;
   font-size: 2.2rem;
   font-weight: 700;
-  color: #5E3F6B
+  color: var(--dark);
 }
-/* TODO: same, replace with defined color variable */
 .metric-description { 
   display: block;
   font-size: .85rem;
@@ -188,14 +195,14 @@ div.dataTables_scrollBody table {
 .custom-range-input {
   width: 60px;
   padding: 4px 5px;
-  border: .5px solid var(--input-border-color);
+  border: .5px solid var(--dark);
   border-radius: 2px;
 }
 .custom-range {
   -webkit-appearance: none;
   height: 6px;
   background: rgba(255, 255, 255, 0.6);
-  background: var(--input-border-color);
+  background: var(--dark);
   border-radius: 5px;
   background-image: linear-gradient(#6d6d6d, #6d6d6d);
   background-size: 80% 100%;
@@ -203,7 +210,7 @@ div.dataTables_scrollBody table {
 }
 .custom-range-input:focus,
 .custom-range:focus {
-  box-shadow: 0 0 2px 1px var(--input-border-color);
+  box-shadow: 0 0 2px 1px var(--dark);
   outline: none;
 }
 .custom-range::-webkit-slider-thumb {
@@ -213,7 +220,7 @@ div.dataTables_scrollBody table {
   border-radius: 50%;
   background: #6d6d6d;
   cursor: ew-resize;
-  box-shadow: 0 0 2px 0 var(--input-border-color);
+  box-shadow: 0 0 2px 0 var(--dark);
   transition: background .3s ease-in-out;
 }
 .custom-range::-moz-range-thumb {
@@ -223,7 +230,7 @@ div.dataTables_scrollBody table {
   border-radius: 50%;
   background: #6d6d6d;
   cursor: ew-resize;
-  box-shadow: 0 0 2px 0 var(--input-border-color);
+  box-shadow: 0 0 2px 0 var(--dark);
   transition: background .3s ease-in-out;
 }
 .custom-range::-ms-thumb {
@@ -233,8 +240,7 @@ div.dataTables_scrollBody table {
   border-radius: 50%;
   background: #6d6d6d;
   cursor: ew-resize;
-  box-shadow: 0 0 2px 0 var(--input-border-color);
-  /* transition: background .3s ease-in-out; */
+  box-shadow: 0 0 2px 0 var(--dark);
   transition: background .3s cubic-bezier(.37, 0, .63, 1);
 }
 .custom-range::-webkit-slider-thumb:hover {
@@ -309,6 +315,7 @@ div.dataTables_scrollBody table {
 @media screen and (max-width: 450px) {
   .custom-modal {
     padding: 0 !important;
+    overflow-y: auto;
   }
   .custom-modal .custom-modal-dialog {
     width: 100%;
@@ -320,9 +327,6 @@ div.dataTables_scrollBody table {
     height: 100%;
     border: 0;
     border-radius: 0;
-  }
-  .custom-modal {
-    overflow-y: auto;
   }
   .custom-remove-modal { 
     padding: 1.8rem 1.8rem 2.5rem;
