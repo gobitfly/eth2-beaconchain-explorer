@@ -1,12 +1,4 @@
 const data = {
-	metrics: {
-    validators: 5,
-    notifications: 10,
-    attestationsSubmitted: 1,
-    attestationsMissed: 1,
-    proposalsSubmitted: 2,
-    proposalsMissed: 0
-  },
   monitoring: [
     {
       id: 1,
@@ -108,7 +100,6 @@ const data = {
 var csrfToken = "";
 var validators = null;
 
-// TODO: typeahead in add validator modal does not work anymore
 function create_typeahead(input_container) {
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
@@ -167,9 +158,9 @@ function create_typeahead(input_container) {
     	}
   });
 
-	$(input_container).on('focus', function(event) {
-    if (event.target.value !== "") {
-      $(this).trigger($.Event('keydown', { keyCode: 40 }));
+	$(input_container).on('focus', function(e) {
+    if (e.target.value !== "") {
+      $(this).trigger($.Event('keydown', {keyCode: 40}));
     }
   });
 
@@ -177,7 +168,7 @@ function create_typeahead(input_container) {
     $('.tt-suggestion').first().addClass('tt-cursor');
   });
 
-  $(input_container).on('typeahead:select', function(ev, sug) {
+  $(input_container).on('typeahead:select', function(e, sug) {
     $(input_container).val(sug.index);
   });
 }
@@ -204,12 +195,10 @@ function loadMonitoringData(data) {
     rowId: 'id',
     initComplete: function (settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar');
-
       // click event to monitoring table edit button
       $('#monitoring-notifications #edit-monitoring-events-btn').on('click', function(e) {
         e.stopPropagation();
         const threshold_editable_placeholder = $(this).parent().find('.threshold_non_editable_text').text().slice(0, -1);
-
         // close all other editable rows
         $('.threshold_editable').each(function() {
           $(this).attr('hidden', true);
@@ -220,7 +209,6 @@ function loadMonitoringData(data) {
         $(this).parent().parent().find('.threshold_editable').removeAttr('hidden');
         $(this).parent().parent().find('.threshold_editable').attr('value', threshold_editable_placeholder);
       });
-
       // enter event to threshold input
       $('.threshold_editable').on('keypress', function(e) {
         if (e.which == 13) {
@@ -260,7 +248,6 @@ function loadMonitoringData(data) {
         	}
       	}
       });
-
       // click event to table remove button
       $('#monitoring-notifications #remove-btn').on('click', function(e) {
 				$('#modaltext').text($(this).data('modaltext'));
@@ -444,12 +431,10 @@ function loadValidatorsData(data) {
     data: data,
     initComplete: function(settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar');
-
       // click event to validators table edit button
       $('#validators-notifications #edit-validator-events-btn').on('click', function(e) {
         $('#manageNotificationsModal').attr('rowId', $(this).parent().parent().attr('id'));
       });
-
       // click event to remove button
       $('#validators-notifications #remove-btn').on('click', function(e) {
         const rowId = $(this).parent().parent().attr('id');
@@ -587,7 +572,6 @@ function loadValidatorsData(data) {
       return data.Validator.Pubkey;
     }
   });
-
   // show manage-notifications button and remove-all button only if there is data in the validator table
   if (validators.length !== 0) {
     $('#manage-notifications-btn').removeAttr('hidden');
@@ -612,8 +596,6 @@ $(document).ready(function() {
         $(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
       });
     }
-    create_typeahead('.validator-typeahead');
-
     // remove selected class from rows on click outside
     if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
       $('#validators-notifications .selected').removeClass('selected');
@@ -625,17 +607,16 @@ $(document).ready(function() {
     $('#confirmRemoveModal').removeAttr('rowId');
     $('#confirmRemoveModal').attr('tablename', 'validators');
   });
-
   // click event to modal remove button
   $('#remove-button').on('click', function(e) {
     const rowId = $('#confirmRemoveModal').attr('rowId');
     const tablename = $('#confirmRemoveModal').attr('tablename');
-
     // if rowId also check tablename then delete row in corresponding data section
     // if no row id delete directly in correponding data section
     if (rowId !== undefined) {
     	if (tablename === 'monitoring') {
         data.monitoring = data.monitoring.filter(function(item) {
+          $('#confirmRemoveModal').modal('hide');
           return item.id.toString() !== rowId.toString();
         });
       }
@@ -662,7 +643,6 @@ $(document).ready(function() {
         data.validators = [];
       }
     }
-
     // remove selected class from rows on click outside
     if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
       $('#validators-notifications .selected').removeClass('selected');
@@ -674,12 +654,10 @@ $(document).ready(function() {
     $('#confirmRemoveModal').removeAttr('rowId');
     $('#confirmRemoveModal').attr('tablename', 'validators');
   });
-
   // click event to modal remove button
   $('#remove-button').on('click', function(e) {
     const rowId = $('#confirmRemoveModal').attr('rowId');
     const tablename = $('#confirmRemoveModal').attr('tablename');
-
     // if rowId also check tablename then delete row in corresponding data section
   	// if no row id delete directly in correponding data section
     if (rowId !== undefined) {
@@ -754,7 +732,6 @@ $(document).ready(function() {
   $('#validators-notifications tbody').on('click', 'tr', function() {
     $(this).addClass('selected');
   });
-
   // on modal open after click event to validators table edit button
   $('#manageNotificationsModal').on('show.bs.modal', function(e) {
     // get the selected row (single row selected)
@@ -797,7 +774,6 @@ $(document).ready(function() {
       }
     }
   });
-
   // on modal close
 	$('#manageNotificationsModal').on('hide.bs.modal', function(e) {
   	$(this).removeAttr('rowId');
@@ -810,11 +786,9 @@ $(document).ready(function() {
 
     // TODO today: also uncheck this on modal close
     $('[id^=all_events]').attr('checked', false);
-
     // remove selected class from rows when modal closed
     $('#validators-notifications .selected').removeClass('selected');
   });
-
   // all events checkboxes (push, email, web)
   $('#all_events_push').on('click', function() {
     $('[id$=push]').attr('checked', $(this).is(':checked'));
@@ -825,13 +799,8 @@ $(document).ready(function() {
   $('#all_events_web').on('change', function() {
     $('[id$=web]').attr('checked', $(this).is(':checked'));
   });
-
   // customize tables tooltips
   $('#validators-notifications').DataTable().$('tr').tooltip({ width: 5 });
-
-  // TODO: if all events for push/email/web are checked, all events checked is true
-
-
 
   /* fetch(`/user/notifications-center/validatorsub`, {
     method: 'POST',

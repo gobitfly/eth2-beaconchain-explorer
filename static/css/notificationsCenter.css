@@ -163,15 +163,9 @@ div.dataTables_length {
 div.dataTables_scrollBody {
   background: none !important;
 }
-
-
-
 div.dataTables_scrollBody table {
   background-color: rgba(0, 0, 0, 0.0) !important;
 }
-
-
-
 .row-selected {
   background-color: #e6e6e6 !important;
 }
