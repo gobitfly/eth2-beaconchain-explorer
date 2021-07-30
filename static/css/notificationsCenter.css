@@ -18,8 +18,9 @@
 .container-min-width { 
   min-width: 300px; 
 }
-/* TODO: for dark theme use #2c292d */
 .custom-background-color { 
+  /* background-color: var(--new-card-bg); */
+  /* background-color: #2c292d; */
   background-color: #fdfdfd;
 }
 .custom-border-radius { 
@@ -37,8 +38,9 @@
   overflow-y: auto;
 }
 .custom-modal .custom-modal-content {
-  background-color: #fdfdfd;
+  /* background-color: var(--new-card-bg); */
   /* background-color: #2c292d; */
+  background-color: #fdfdfd;
 }
 .custom-remove-modal { 
   position: relative;
@@ -71,15 +73,17 @@
 .heading-section { 
   height: 60px; 
 }
+/* TODO: make #6d6d6d and #ebebeb into variables */
 .i-custom:hover {
   display: inline-block;
   border-radius: 50%;
   box-shadow: 0px 0px 2px #6d6d6d;
   padding: .6em;
 }
-/* TODO: desaturate colors for dark theme, for color primary use #ffaa31 and #ff593c for delete/remove buttons */
 .icon { 
   font-size: 2.4rem;
+  /* color: var(--new-primary); */
+  /* color: #ffaa31; */
   color: var(--primary);
 }
 .metrics-section { 
@@ -95,15 +99,13 @@
   text-align: left;
   font-size: 2.2rem;
   font-weight: 700;
-  /* color: var(--dark); */
-  color: var(--body-color,#343a40);
+  color: var(--body-color);
 }
 .metric-description { 
   display: block;
   font-size: .85rem;
   font-weight: 400;
-  /* color: var(--dark); */
-  color: var(--body-color,#343a40);
+  color: var(--body-color);
 }
 .text-empty-section { 
   height: 200px; 
@@ -130,7 +132,7 @@ table.dataTable tbody td.selected {
 table.dataTable tbody tr.selected a, 
 table.dataTable tbody th.selected a, 
 table.dataTable tbody td.selected a {
-  color: var(--link-color,#2d5986) !important;
+  color: var(--link-color, #2d5986) !important;
 }
 table.dataTable tbody>tr.selected, 
 table.dataTable tbody>tr>.selected {
@@ -161,9 +163,15 @@ div.dataTables_length {
 div.dataTables_scrollBody {
   background: none !important;
 }
+
+
+
 div.dataTables_scrollBody table {
   background-color: rgba(0, 0, 0, 0.0) !important;
 }
+
+
+
 .row-selected {
   background-color: #e6e6e6 !important;
 }
@@ -193,26 +201,25 @@ div.dataTables_scrollBody table {
 .scrollbar {
   scrollbar-color: #6d6d6d #ebebeb;
 }
-/* custom range in monitoring section modal */
+/* custom range in add monitoring event modal */
 .custom-range-input {
   width: 60px;
   padding: 4px 5px;
-  border: .5px solid var(--dark);
-  border-radius: 2px;
+  border: .5px solid var(--input-border-color);
+  border-radius: 4px;
 }
 .custom-range {
   -webkit-appearance: none;
   height: 6px;
-  background: rgba(255, 255, 255, 0.6);
-  background: var(--dark);
-  border-radius: 5px;
-  background-image: linear-gradient(#6d6d6d, #6d6d6d);
+  background: var(--input-border-color);
+  border-radius: 6px;
+  background-image: linear-gradient(var(--dark), var(--dark));
   background-size: 80% 100%;
   background-repeat: no-repeat;
 }
 .custom-range-input:focus,
 .custom-range:focus {
-  box-shadow: 0 0 2px 1px var(--dark);
+  box-shadow: 0 0 2px 1px var(--highlight);
   outline: none;
 }
 .custom-range::-webkit-slider-thumb {
@@ -220,39 +227,36 @@ div.dataTables_scrollBody table {
   height: 16px;
   width: 16px;
   border-radius: 50%;
-  background: #6d6d6d;
+  background: var(--dark);
   cursor: ew-resize;
-  box-shadow: 0 0 2px 0 var(--dark);
-  transition: background .3s ease-in-out;
+  box-shadow: 0 0 2px 0 var(--input-border-color);
 }
 .custom-range::-moz-range-thumb {
   -webkit-appearance: none;
   height: 16px;
   width: 16px;
   border-radius: 50%;
-  background: #6d6d6d;
+  background: var(--dark);
   cursor: ew-resize;
-  box-shadow: 0 0 2px 0 var(--dark);
-  transition: background .3s ease-in-out;
+  box-shadow: 0 0 2px 0 var(--input-border-color);
 }
 .custom-range::-ms-thumb {
   -webkit-appearance: none;
   height: 16px;
   width: 16px;
   border-radius: 50%;
-  background: #6d6d6d;
+  background: var(--dark);
   cursor: ew-resize;
-  box-shadow: 0 0 2px 0 var(--dark);
-  transition: background .3s cubic-bezier(.37, 0, .63, 1);
+  box-shadow: 0 0 2px 0 var(--input-border-color);
 }
 .custom-range::-webkit-slider-thumb:hover {
-  background: #6d6d6d;
+  background: var(--dark);
 }
 .custom-range::-moz-range-thumb:hover {
-  background: #6d6d6d;
+  background: var(--dark);
 }
 .custom-range::-ms-thumb:hover {
-  background: #6d6d6d;
+  background: var(--dark);
 }
 .custom-range::-webkit-slider-runnable-track {
   -webkit-appearance: none;
@@ -292,6 +296,8 @@ div.dataTables_scrollBody table {
 }
 #add-validator-search-container .tt-suggestion .tt-cursor,
 #add-validator-search-container .tt-suggestion:hover {
+  /* background-color: var(--new-primary); */
+  /* background-color: #ffaa31; */
   background-color: var(--primary);
   cursor: pointer;
 }
@@ -300,6 +306,8 @@ div.dataTables_scrollBody table {
   max-height: 19rem;
   margin-top: 4px;
   padding: .5rem;
+  /* background-color: var(--new-card-bg); */
+  /* background-color: #2c292d; */
   background-color: #fdfdfd;
   -webkit-border-radius: 4px;
   -moz-border-radius: 4px;

@@ -319,7 +319,8 @@ function loadMonitoringData(data) {
         orderable: false,
         responsivePriority: 3,
         data: null,
-        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove notification" style="padding: .5rem; color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
+        // defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove notification" style="padding: .5rem; color: #ff593c; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
+        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
       }
     ],
   });
@@ -429,13 +430,6 @@ function loadValidatorsData(data) {
     	processing: 'Loading. Please wait...',
       search: '',
       searchPlaceholder: 'Search...',
-      select: {
-        rows: {
-          _: '%d rows selected',
-          0: 'Click on a row to select it',
-          1: '1 row selected'
-        }
-      },
       zeroRecords: 'No entries match'
     },
     processing: true,
@@ -582,7 +576,8 @@ function loadValidatorsData(data) {
         orderable: false,
         responsivePriority: 3,
         data: null,
-        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: #f82e2e; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
+        // defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: #ff593c; cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
+        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
       }
     ],
     rowCallback: function(row, data, displayNum, displayIndex, dataIndex) {
