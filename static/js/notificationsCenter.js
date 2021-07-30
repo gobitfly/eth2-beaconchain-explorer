@@ -813,12 +813,8 @@ $(document).ready(function() {
     $('[id^=validator_proposal_missed]').attr('checked', false);
     $('[id^=validator_got_slashed]').attr('checked', false);
 
-
-
     // TODO today: also uncheck this on modal close
     $('[id^=all_events]').attr('checked', false);
-
-
 
     // remove selected class from rows when modal closed
     $('#validators-notifications .selected').removeClass('selected');
@@ -840,20 +836,22 @@ $(document).ready(function() {
 
   // TODO: if all events for push/email/web are checked, all events checked is true
 
-//   fetch(`/user/notifications-center/validatorsub`, {
-//     method: 'POST',
-//     headers: { "X-CSRF-Token": csrfToken },
-//     credentials: 'include',
-//     body: JSON.stringify({pubkey: "ae22f35d8fb2ef9985a96625718fa2b8957138417886e422c01208d14674a494a4e7de0c5816dd58711758493faea7f7", events: ["validator_got_slashed","validator_balance_decreased"]})
-//   }).then(res => {
-//     if (res.status == 200) {
-//     //   $('#confirmRemoveModal').modal('hide');
-//     //   window.location.reload(false);
-//     } else {
-//     //   alert('Error removing all validators from Watchlist');
-//     //               $('#confirmRemoveModal').modal('hide');
-//     //   window.location.reload();
-//     }
-//     // $(this).html('Removed');
-//   });
+
+
+  /* fetch(`/user/notifications-center/validatorsub`, {
+    method: 'POST',
+    headers: { "X-CSRF-Token": csrfToken },
+    credentials: 'include',
+    body: JSON.stringify({ pubkey: "ae22f35d8fb2ef9985a96625718fa2b8957138417886e422c01208d14674a494a4e7de0c5816dd58711758493faea7f7", events: ["validator_got_slashed","validator_balance_decreased"] })
+  }).then(res => {
+     if (res.status == 200) {
+      $('#confirmRemoveModal').modal('hide');
+      window.location.reload(false);
+     } else {
+      alert('Error removing all validators from Watchlist');
+      $('#confirmRemoveModal').modal('hide');
+      window.location.reload();
+     }
+     $(this).html('Removed');
+   }); */
 });
