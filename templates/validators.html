@@ -70,7 +70,11 @@
                 if (possibleStates[hashState]) state = hashState
             }
 
+            var usp = new URLSearchParams(window.location.search)
+            var q = usp.get('q')
+
             validatorsDataTable = $('#validators').DataTable({
+                search: q ? {search:q} : null,
                 pageLength: 25,
                 processing: true,
                 serverSide: true,
@@ -154,7 +158,7 @@
                         render: function (data, type, row, meta) {
                             if (data === null || data[0] === 9223372036854775807)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
@@ -163,7 +167,7 @@
                         render: function (data, type, row, meta) {
                             if (data === null)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
@@ -172,7 +176,7 @@
                         render: function (data, type, row, meta) {
                             if (data === null)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
@@ -181,7 +185,7 @@
                         render: function (data, type, row, meta) {
                             if (data === null)
                                 return 'No Attestation found';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
@@ -195,6 +199,14 @@
                         }
                     },
                 ]
+            })
+            $("#validators_filter > label > input").on('input', function (ev) {
+                if (ev && ev.target && ev.target.value) {
+                    var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+                    window.history.replaceState(null, 'Validators Overview', newUrl)
+                } else {
+                    window.history.replaceState(null, 'Validators Overview', window.location.pathname)
+                }
             })
         })
     </script>

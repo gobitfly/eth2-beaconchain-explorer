@@ -14,6 +14,8 @@ import (
 func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
+	streaksDisabledFlag := flag.Bool("streaks.disabled", false, "Disable exporting streaks")
+	poolsDisabledFlag := flag.Bool("pools.disabled", false, "Disable exporting pools")
 
 	flag.Parse()
 
@@ -43,8 +45,12 @@ func main() {
 	}
 
 	go statisticsLoop()
-	go streaksLoop()
-	go poolsLoop()
+	if !*streaksDisabledFlag {
+		go streaksLoop()
+	}
+	if !*poolsDisabledFlag {
+		go poolsLoop()
+	}
 
 	utils.WaitForCtrlC()
 
@@ -96,9 +102,9 @@ func streaksLoop() {
 		}
 		if done {
 			// updated streaks up to the current finalized epoch
-			time.Sleep(time.Hour)
+			time.Sleep(time.Second * 3600)
 		} else {
-			// go gaster until streaks are upated to the current finalized epoch
+			// go faster until streaks are upated to the current finalized epoch
 			time.Sleep(time.Second * 10)
 		}
 	}

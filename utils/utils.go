@@ -1,13 +1,13 @@
 package utils
 
 import (
+	"bytes"
 	securerand "crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/types"
 	"fmt"
@@ -91,6 +91,8 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatTimestampTs":                       FormatTimestampTs,
 		"formatValidatorName":                     FormatValidatorName,
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
+		"formatValidatorTags":                     FormatValidatorTags,
+		"formatValidatorTag":                      FormatValidatorTag,
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
@@ -99,6 +101,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"add":                                     func(i, j int) int { return i + j },
 		"addI64":                                  func(i, j int64) int64 { return i + j },
 		"div":                                     func(i, j float64) float64 { return i / j },
+		"divInt":                                  func(i, j int) float64 { return float64(i) / float64(j) },
 		"gtf":                                     func(i, j float64) bool { return i > j },
 		"round": func(i float64, n int) float64 {
 			return math.Round(i*math.Pow10(n)) / math.Pow10(n)
@@ -108,7 +111,10 @@ func GetTemplateFuncs() template.FuncMap {
 			p := message.NewPrinter(language.English)
 			return p.Sprintf("%.0f\n", i)
 		},
-
+		"formatThousandsInt": func(i int) string {
+			p := message.NewPrinter(language.English)
+			return p.Sprintf("%d", i)
+		},
 		"derefString":      DerefString,
 		"trLang":           TrLang,
 		"firstCharToUpper": func(s string) string { return strings.Title(s) },
@@ -118,9 +124,8 @@ func GetTemplateFuncs() template.FuncMap {
 			}
 			return false
 		},
-		"isUserClientUpdated":       ethclients.IsUserClientUpdated,
-		"dismissClientNotification": ethclients.DismissClientNotification,
-		"isUserSubscribed":          ethclients.IsUserSubscribed,
+		"stringsJoin":     strings.Join,
+		"formatAddCommas": FormatAddCommas,
 	}
 }
 
@@ -134,6 +139,10 @@ func IncludeHTML(path string) template.HTML {
 		return ""
 	}
 	return template.HTML(string(b))
+}
+
+func GraffitiToSring(graffiti []byte) string {
+	return strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
 }
 
 // FormatGraffitiString formats (and escapes) the graffiti
@@ -171,7 +180,12 @@ func EpochToTime(epoch uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+epoch*Config.Chain.SecondsPerSlot*Config.Chain.SlotsPerEpoch), 0)
 }
 
-// EpochToTime will return a time.Time for an epoch
+// TimeToDay will return a days since genesis for an timestamp
+func TimeToDay(timestamp uint64) uint64 {
+	return uint64(time.Unix(int64(timestamp), 0).Sub(time.Unix(int64(Config.Chain.GenesisTimestamp), 0)).Hours() / 24)
+	// return time.Unix(int64(Config.Chain.GenesisTimestamp), 0).Add(time.Hour * time.Duration(24*int(day)))
+}
+
 func DayToTime(day int64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp), 0).Add(time.Hour * time.Duration(24*int(day)))
 }

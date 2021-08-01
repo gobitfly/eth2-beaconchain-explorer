@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+
 	"strings"
 	// "strings"
 )
@@ -41,7 +42,7 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	poolData.DepositDistribution.Path = "deposits_distribution"
 	poolData.StakedEther = indexStats.StakedEther
 	poolData.TotalValidators = services.GetTotalValidators()
-	poolData.PoolInfo, poolData.EthSupply, poolData.LastUpdate, poolData.IdEthSeries = services.GetPoolsData()
+	poolData.PoolInfo, poolData.EthSupply, poolData.LastUpdate = services.GetPoolsData()
 	poolData.IsMainnet = false
 	if utils.Config.Chain.Network == "mainnet" {
 		poolData.IsMainnet = true
@@ -102,6 +103,19 @@ func GetAvgCurrentStreak(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = json.NewEncoder(w).Encode(sqlData)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+}
+
+func GetIncomePerEthChart(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	err := json.NewEncoder(w).Encode(services.GetIncomePerDepositedETHChart())
 	if err != nil {
 		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)

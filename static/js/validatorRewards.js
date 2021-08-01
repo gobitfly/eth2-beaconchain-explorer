@@ -3,6 +3,7 @@ const DECIMAL_POINTS_ETH = 6
 const DECIMAL_POINTS_CURRENCY = 3
 var csrfToken = ""
 var currency = ""
+var subsTable = null
 // let validators = []
 
 function create_typeahead(input_container) {
@@ -165,28 +166,12 @@ function hideSpinner(){
     $("#loading-div").removeClass("d-flex")
 }
 
-function updateTotals(data){
-    totalEth = 0.0
-    totalCurrency = 0.0
-
-    for(let item of data){
-        totalEth+=parseFloat(item[2])
-        totalCurrency+=parseFloat(item[4])
-    }
-
-    $("#total-income-eth-span").html(`ETH: <b>${(totalEth.toFixed(DECIMAL_POINTS_ETH))}</b>`)
-    $("#total-income-currency-span").html(`${currency}: <b>${addCommas(totalCurrency.toFixed(DECIMAL_POINTS_CURRENCY))}</b>`)
-    $("#totals-div").removeClass("d-none")
-}
-
-function addCommas(number) {
-    return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+function showSpinner(){
+    $("#loading-div").removeClass("d-none")
+    $("#loading-div").addClass("d-flex")
 }
 
 function showTable(data){
-    if (data.length > 0 && data[0].length === 6){
-        currency = data[0][5].toUpperCase()
-    }
     
     $('#tax-table').DataTable({
         processing: true,
@@ -196,7 +181,7 @@ function showTable(data){
         pagingType: 'full_numbers',
         pageLength: 100,
         lengthChange: false,
-        data: data,
+        data: data.history,
         dom: 'Bfrtip',
         buttons: [
             'copyHtml5',
@@ -205,13 +190,19 @@ function showTable(data){
             'pdfHtml5'
         ],
         drawCallback: function (settings) {
-            hideSpinner()
-            $("#form-div").addClass("d-none")
+            $("#form-div").removeClass("d-flex").addClass("d-none")
             $("#table-div").removeClass("d-none")
             $("#subscriptions-div").addClass("d-none")
-            updateTotals(data)
+            $("#total-income-eth-span").html("ETH "+data.total_eth)
+            $("#total-income-currency-span").html(data.total_currency)
+            $("#totals-div").removeClass("d-none")
             $(".dt-button").addClass("ml-2 ")
-            $(".dt-button").attr("style", "border-radius: 20px; border-style: none; opacity: 0.9;")
+            hideSpinner()
+
+        },
+        order: [[0,'desc']],
+        language: {
+            searchPlaceholder: "Enter Date"
         },
         columnDefs: [
             {
@@ -219,44 +210,49 @@ function showTable(data){
                 data: '0',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return data
+                    if (type==="filter" || type==="display") return data
+                    return moment(data).unix()
                 }
             }, {
                 targets: 1,
                 data: '1',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    // return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    return data
                 }
             }, {
                 targets: 2,
                 data: '2',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    // return (parseFloat(data).toFixed(DECIMAL_POINTS_ETH))
+                    return data
                 }
             }, {
                 targets: 3,
                 data: '3',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                    // return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                    return data
                 }
             }, {
                 targets: 4,
                 data: '4',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                   return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                //    return `${currency} ${addCommas(parseFloat(data).toFixed(DECIMAL_POINTS_CURRENCY))}`
+                    return data
                 }
-            }, {
-                targets: 5,
-                data: '5',
-                "orderable": false,
-                visible: false,
-                render: function (data, type, row, meta) {
-                    return data.toUpperCase()
-                }
+            // }, {
+            //     targets: 5,
+            //     data: '5',
+            //     "orderable": false,
+            //     visible: false,
+            //     render: function (data, type, row, meta) {
+            //         return data.toUpperCase()
+            //     }
             }]
     });
 }
@@ -264,6 +260,7 @@ function showTable(data){
 
 function unSubUser(filter){
     // console.log(filter)
+    showSpinner()
     fetch(`/user/rewards/unsubscribe?${filter}`, {
         method: 'POST',
         headers: {"X-CSRF-Token": csrfToken},
@@ -273,15 +270,27 @@ function unSubUser(filter){
         if (res.status == 200){
             res.json().then((data)=>{
                 console.log(data.msg)
-                window.location.reload(true)
+                fetchSubscriptions()
             })              
         }
     })
 }
 
 function updateSubscriptionTable(data, container){
-    if (data.length===0)return
-    $('#'+container).DataTable({
+    if (data.data.length===0){
+        $("#subscriptions-div").addClass("d-none")
+        hideSpinner()
+        return
+    }
+    if (subsTable !== null){
+        // subsTable.clear()
+        // subsTable.empty()
+        // subsTable.destroy()
+        $('#'+container).DataTable().clear().destroy();
+        // $('#'+container+" tbody").empty()
+        // $('#'+container+" thead").empty()
+    }
+    subsTable = $('#'+container).DataTable({
         processing: true,
         serverSide: false,
         ordering: true,
@@ -289,10 +298,16 @@ function updateSubscriptionTable(data, container){
         pagingType: 'full_numbers',
         pageLength: 100,
         lengthChange: false,
-        data: data,
+        data: data.data,
         drawCallback: function(settings){
             $("#subscriptions-table-art").removeClass("d-flex").addClass("d-none")
             $("#subscriptions-table-div").removeClass("invisible")
+            $("#subscriptions-div").removeClass("d-none")
+            $("#subs-header").html(`Subscriptions (${data.count}/5)`)
+            hideSpinner()
+        },
+        language: {
+            searchPlaceholder: "Enter Date, Currency"
         },
         columnDefs: [
             {
@@ -300,11 +315,14 @@ function updateSubscriptionTable(data, container){
                 data: '0',
                 "orderable": true,
                 render: function (data, type, row, meta) {
-                    let date = data.split(" ")
-                    if (date.length >=2){
-                        return `${date[0]} ${date[1]}`
-                    }
-                    return data
+                    if (type==="filter" || type==="display"){
+                        let date = data.split(" ")
+                        if (date.length >=1){
+                            return `${date[0]}`
+                        }
+                        return data
+                    } 
+                    return moment(data).unix()
                 }
             }, {
                 targets: 1,
@@ -318,16 +336,28 @@ function updateSubscriptionTable(data, container){
                 data: '2',
                 "orderable": false,
                 render: function (data, type, row, meta) {
-                    return `<textarea readonly style="height: 50px; width: 200px; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark">${data}</textarea>`
+                    if (type==="display"){
+                        l = data.split(",")
+                        l.sort((a,b)=>parseInt(a)-parseInt(b))
+                        data = ""
+                        for (i of l){
+                            data += `<li style="flex: 1 0 8%; list-style-type : none;" class="p-1"><a href="/validator/${i}"><i class="fas fa-male mr-1"></i>${i}</a></li>`
+                        }
+                        return `<ul style="display: flex; flex-wrap: wrap; height: 50px; width: 98%; overflow: auto; background-color: rgba(0, 0, 0, 0);" class="nice-scroll text-dark pl-0 ml-0">${data}</ul>`
+                    }
+                    return data
                 }
             }, {
                 targets: 3,
                 data: '3',
                 "orderable": false,
                 render: function (data, type, row, meta) {
+                    downloadQueryUrl = `${window.location.origin}/rewards/hist/download?validators=${row[2]}&currency=${row[1]}&days=${moment().subtract(1, 'month').startOf('month').unix()}-${moment().subtract(1, 'month').endOf('month').unix()}`
                     return `
-                        <div class="d-flex justify-content-center align-item-center">
-                            <i class="fas fa-times text-danger" onClick='unSubUser("${data}")' style="cursor: pointer;"></i>
+                        <div class="d-flex justify-content-between align-item-center">
+                            <i class="far fa-clone mr-2" style="cursor: pointer;" onClick='loadValInForm("${row[2]}")' data-toggle="tooltip" data-placement="top" title="Load validators in the form"></i>
+                            <a href="${downloadQueryUrl}" download><i class="fas fa-file-download mr-2" style="cursor: pointer;" data-toggle="tooltip" data-placement="top" title="Download the last month report"></i></a>
+                            <i class="fas fa-times text-danger mr-2" onClick='unSubUser("${data}")' style="cursor: pointer;" data-toggle="tooltip" data-placement="top" title="Unsubscribe"></i>
                         </div>
                         `
                 }
@@ -335,25 +365,49 @@ function updateSubscriptionTable(data, container){
     });
 }
 
+function loadValInForm(val){
+    $('#validator-index-view').val(val.replace(/([a-zA-Z ])/g, ""))
+}
+
+function fetchSubscriptions(){
+    fetch(`/user/rewards/subscriptions/data`, {
+        method: 'POST',
+        headers: {"X-CSRF-Token": csrfToken},
+        credentials: 'include',
+        body: "",
+    }).then((res)=>{
+        if (res.status == 200){
+            res.json().then((data)=>{
+                // console.log(data.msg)
+                updateSubscriptionTable(data, "subscriptions-table")
+            })              
+        }else{
+            console.error("error getting subscriptions", res)
+        }
+    }).catch((err)=>{
+        console.error("error getting subscriptions", err)
+    })
+}
+
 $(document).ready(function () {
-    if (document.getElementsByName("CsrfField")[0]===undefined){
-        console.error("Auth error")
-    }else{
+    if (document.getElementsByName("CsrfField")[0]!==undefined){
         csrfToken = document.getElementsByName("CsrfField")[0].value
     }
 
-    if (localStorage.getItem("dashboard_validators").length){
+    if (JSON.parse(localStorage.getItem("load_dashboard_validators"))){
         $('#validator-index-view').val(JSON.parse(localStorage.getItem("dashboard_validators")))
+        localStorage.setItem("load_dashboard_validators", false)
     }
 
     $('#validator-index-view').on("keyup", function(){
         $(this).val($(this).val().replace(/([a-zA-Z ])/g, ""))
     })
 
+    $("#days").val(`${moment().startOf('month').unix()}-${moment().unix()}`)
 
     $('input[id="datepicker"]').daterangepicker({
         pens: 'left',
-        minDate: moment().subtract(365, 'days'), 
+        minDate: moment.unix(MIN_TIMESTAMP), 
         maxDate: moment(),
         maxSpan: {
             'days': 365
@@ -362,21 +416,56 @@ $(document).ready(function () {
             'This Month to date': [moment().startOf('month'), moment()],
             'Last Month to date': [moment().subtract(1, 'month').startOf('month'), moment()],
             'This Year to date': [moment().startOf('year'), moment()],
-            'Last 365 days': [moment().subtract(365, 'days'), moment()],
          },
          locale: {
             format: 'DD/MM/YYYY'
         },
-        singleDatePicker: true,
-        alwaysShowCalendars: false
+        singleDatePicker: false,
+        alwaysShowCalendars: false,
+        startDate: moment().startOf('month'), 
+        endDate: moment()
     }, function(start, end, label) {
-        let end_d = moment()
-        $("#days").val(end_d.diff(moment(start), 'days'))
+        // let end_d = moment()
+        $("#days").val(`${moment(start).unix()}-${moment(end).unix()}`)
     });
     
     create_typeahead('.typeahead-validators');
     let qry = getValidatorQueryString()
     // console.log(qry, qry.length)
+
+    $("#report-sub-btn").on("click", function(){
+        var form = document.getElementById('hits-form')
+        if(!form.reportValidity()) {
+                return
+        }
+        let btn_content = $(this).html()
+        $(this).html(`<div class="spinner-border text-dark spinner-border-sm" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>`)
+        
+        fetch(`/user/rewards/subscribe?validators=${$("#validator-index-view").val()}&currency=${$("#currency").val()}`, {
+            method: 'POST',
+            headers: {"X-CSRF-Token": csrfToken},
+            credentials: 'include',
+            body: "",
+        }).then((res)=>{
+            if (res.status == 200){
+                res.json().then((data)=>{
+                    // console.log(data.msg)
+                    fetchSubscriptions()
+                    $(this).html(btn_content)
+                })              
+            }else{
+                console.error("error subscribing", res)
+                alert("Subscription limit is reached")
+                $(this).html(btn_content)
+            }
+        }).catch((err)=>{
+            console.error("error subscribing", err)
+            $(this).html(btn_content)
+        })
+    })
+
     if (qry.length > 1){
         fetch(`/rewards/hist${qry}`,{
             method: "GET"
@@ -392,26 +481,6 @@ $(document).ready(function () {
             alert("Failed to fetch the data :(")
             hideSpinner()      
           })
-
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const reqBody = JSON.stringify({validators: urlParams.get('validators'), currency: urlParams.get('currency')})
-        // console.log(reqBody)
-        if (urlParams.get('checkbox')==="on"){
-            fetch(`/user/rewards/subscribe${qry}`, {
-                method: 'POST',
-                headers: {"X-CSRF-Token": csrfToken},
-                credentials: 'include',
-                body: reqBody,
-            }).then((res)=>{
-                if (res.status == 200){
-                    res.json().then((data)=>{
-                        console.log(data.msg)
-                    })              
-                }
-            })
-        }
-
 
     }else{
         hideSpinner()

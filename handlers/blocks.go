@@ -60,21 +60,24 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
-	var blocksCount uint64
-	var blocks []*types.IndexPageDataBlocks
-	if search == "" {
-		err = db.DB.Get(&blocksCount, "SELECT COALESCE(MAX(slot) + 1,0) FROM blocks")
-		if err != nil {
-			logger.Errorf("error retrieving max slot number: %v", err)
-			http.Error(w, "Internal server error", 503)
-			return
-		}
+	var totalCount uint64
+	var filteredCount uint64
+	var blocks []*types.BlocksPageDataBlocks
 
-		startSlot := blocksCount - start
-		endSlot := blocksCount - start - length + 1
+	err = db.DB.Get(&totalCount, "SELECT COALESCE(MAX(slot) + 1,0) FROM blocks")
+	if err != nil {
+		logger.Errorf("error retrieving max slot number: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if search == "" {
+		filteredCount = totalCount
+		startSlot := totalCount - start
+		endSlot := totalCount - start - length + 1
 
 		if startSlot > 9223372036854775807 {
-			startSlot = blocksCount
+			startSlot = totalCount
 		}
 		if endSlot > 9223372036854775807 {
 			endSlot = 0
@@ -100,27 +103,71 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			WHERE blocks.slot >= $1 AND blocks.slot <= $2 
 			ORDER BY blocks.slot DESC`, endSlot, startSlot)
-	} else {
-		err = db.DB.Get(&blocksCount, `
-			SELECT count(*) 
-			FROM blocks 
-			WHERE 
-				CAST(blocks.slot as text) LIKE $1 
-				OR LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($2)
-				OR ENCODE(graffiti, 'hex') LIKE ($3)
-				OR proposer IN (
-					SELECT validatorindex
-					FROM validators
-					INNER JOIN validator_names ON validators.pubkey = validator_names.publickey
-					WHERE validator_names.name IS NOT NULL AND LOWER(validator_names.name) LIKE LOWER($2)
-				)`, search+"%", "%"+search+"%", fmt.Sprintf("%%%x%%", search))
 		if err != nil {
-			logger.Errorf("error retrieving max slot number: %v", err)
+			logger.Errorf("error retrieving block data: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
+	} else {
+		// we seach for blocks matching the search-string:
+		//
+		// - block-slot (exact when number)
+		// - block-graffiti (infix)
+		// - proposer-index (exact when number)
+		// - proposer-publickey (prefix when hex, exact when hex and 96 chars)
+		// - proposer-name (infix)
+		//
+		// the resulting query will look like this:
+		//
+		// 		$blocksQry1
+		// 		union $blocksQry2
+		// 		union $blocksQryN
+		// 		union select slot from blocks where proposer in (
+		// 			$proposersQry1
+		// 			union $proposersQry2
+		// 			union $proposersQryN
+		// 		)
+		//
+		// note: we use union instead of disjunct or-queries for performance-reasons
+		args := []interface{}{}
 
-		err = db.DB.Select(&blocks, `
+		searchLimit := 1000
+
+		searchBlocksQrys := []string{}
+		searchProposersQrys := []string{}
+
+		args = append(args, "%"+search+"%")
+		searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where graffiti_text ilike $%d limit %d)`, len(args), searchLimit))
+		searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select publickey as pubkey from validator_names where name ilike $%d limit %d)`, len(args), searchLimit))
+
+		searchNumber, err := strconv.ParseUint(search, 10, 64)
+		if err == nil {
+			// if the search-string is a number we can look for exact matchings
+			args = append(args, searchNumber)
+			searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where slot = $%d limit %d)`, len(args), searchLimit))
+			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where validatorindex = $%d limit %d)`, len(args), searchLimit))
+		}
+		if searchPubkeyExactRE.MatchString(search) {
+			// if the search-string is a valid hex-string but not long enough for a full publickey we look for prefix
+			pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+			args = append(args, pubkey)
+			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where pubkeyhex = $%d limit %d)`, len(args), searchLimit))
+		} else if len(search) > 2 && searchPubkeyLikeRE.MatchString(search) {
+			// if the search-string looks like a publickey we look for exact match
+			pubkey := strings.ToLower(strings.Replace(search, "0x", "", -1))
+			args = append(args, pubkey+"%")
+			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where pubkeyhex like $%d limit %d)`, len(args), searchLimit))
+		}
+
+		// join proposer-queries and append to block-queries looking for proposers
+		searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`select slot from blocks where proposer in (select v.validatorindex from (%v) a left join validators v on v.pubkey = a.pubkey)`, strings.Join(searchProposersQrys, " union ")))
+		searchBlocksQry := strings.Join(searchBlocksQrys, " union ")
+
+		args = append(args, length)
+		args = append(args, start)
+
+		qry := fmt.Sprintf(`
+			WITH matched_slots as (%v)
 			SELECT 
 				blocks.epoch, 
 				blocks.slot, 
@@ -135,34 +182,26 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 				blocks.status, 
 				COALESCE((SELECT SUM(ARRAY_LENGTH(validators, 1)) FROM blocks_attestations WHERE beaconblockroot = blocks.blockroot), 0) AS votes, 
 				blocks.graffiti,
-				COALESCE(validator_names.name, '') AS name
-			FROM blocks 
+				COALESCE(validator_names.name, '') AS name,
+				cnt.total_count
+			FROM matched_slots
+			INNER JOIN blocks on blocks.slot = matched_slots.slot 
 			LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			WHERE slot IN (
-				SELECT slot 
-				FROM blocks
-				WHERE 
-					CAST(blocks.slot as text) LIKE $1 
-					OR LOWER(ENCODE(graffiti , 'escape')) LIKE LOWER($2) 
-					OR ENCODE(graffiti, 'hex') LIKE ($3)
-					OR proposer IN (
-						SELECT validatorindex
-						FROM validators
-						INNER JOIN validator_names ON validators.pubkey = validator_names.publickey
-						WHERE validator_names.name IS NOT NULL AND LOWER(validator_names.name) LIKE LOWER($2)
-					)
-				ORDER BY blocks.slot DESC 
-				LIMIT $4
-				OFFSET $5
-			) ORDER BY blocks.slot DESC`,
-			search+"%", "%"+search+"%", fmt.Sprintf("%%%x%%", search), length, start)
-	}
+			LEFT JOIN (select count(*) from matched_slots) cnt(total_count) ON true
+			ORDER BY slot DESC LIMIT $%v OFFSET $%v`, searchBlocksQry, len(args)-1, len(args))
 
-	if err != nil {
-		logger.Errorf("error retrieving block data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+		err = db.DB.Select(&blocks, qry, args...)
+		if err != nil {
+			logger.Errorf("error retrieving block data (with search): %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+
+		filteredCount = 0
+		if len(blocks) > 0 {
+			filteredCount = blocks[0].TotalCount
+		}
 	}
 
 	tableData := make([][]interface{}, len(blocks))
@@ -200,8 +239,8 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.DataTableResponse{
 		Draw:            draw,
-		RecordsTotal:    blocksCount,
-		RecordsFiltered: blocksCount,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: filteredCount,
 		Data:            tableData,
 	}
 

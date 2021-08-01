@@ -4,12 +4,20 @@ ins[data-revive-zoneid] > a > img {
   height: auto;
 }
 
+@media (max-width: 450px) {
+  .pagination .first,
+  .pagination .last {
+    display: none;
+  }
+}
+
 .page-item {
   margin: 0 .2rem;
 }
 
 .page-item > a {
   border-radius: .225rem;
+  font-size: .95rem;
 }
 
 .dropdown-menu .nav-icon i {
@@ -64,22 +72,22 @@ ins[data-revive-zoneid] > a > img {
 }
 
 .paginate_input {
-    padding: .25rem .5rem;
-    font-size: .875rem;
-    height: 100%;
-    line-height: 1.5;
-    border-radius: .2rem;
-    display: block;
-    width: 100%;
-    font-weight: 400;
-    line-height: 1.5;
-    color: var(--input-color);
-    background-color: var(--bg-color-secondary);
-    background-clip: padding-box;
-    border: 1px solid var(--input-border-color);
-    border-radius: .25rem;
-    box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
-    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+  padding: .25rem .5rem;
+  font-size: .875rem;
+  height: 100%;
+  line-height: 1.5;
+  border-radius: .2rem;
+  display: block;
+  width: 100%;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--input-color);
+  background-color: var(--bg-color-secondary);
+  background-clip: padding-box;
+  border: 1px solid var(--input-border-color);
+  border-radius: .25rem;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+  transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
 }
 
 table {

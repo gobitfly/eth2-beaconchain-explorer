@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/lib/pq"
 )
@@ -167,10 +168,64 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetCurrency(r *http.Request) string {
-
 	if cookie, err := r.Cookie("currency"); err == nil {
 		return cookie.Value
 	}
 
 	return "ETH"
+}
+
+func GetCurrencySymbol(r *http.Request) string {
+
+	cookie, err := r.Cookie("currency")
+	if err != nil {
+		return "$"
+	}
+
+	switch cookie.Value {
+	case "AUD":
+		return "A$"
+	case "CAD":
+		return "C$"
+	case "CNY":
+		return "¥"
+	case "EUR":
+		return "€"
+	case "GBP":
+		return "£"
+	case "JPY":
+		return "¥"
+	case "RUB":
+		return "₽"
+	default:
+		return "$"
+	}
+}
+
+func GetCurrentPrice(r *http.Request) uint64 {
+	cookie, err := r.Cookie("currency")
+	if err != nil {
+		return price.GetEthRoundPrice(price.GetEthPrice("USD"))
+	}
+
+	if cookie.Value == "ETH" {
+		return price.GetEthRoundPrice(price.GetEthPrice("USD"))
+	}
+	return price.GetEthRoundPrice(price.GetEthPrice(cookie.Value))
+}
+
+func GetCurrentPriceFormatted(r *http.Request) string {
+	userAgent := r.Header.Get("User-Agent")
+	userAgent = strings.ToLower(userAgent)
+	price := GetCurrentPrice(r)
+	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
+		return fmt.Sprintf("%s", utils.KFormatterEthPrice(price))
+	}
+	return fmt.Sprintf("%s", utils.FormatAddCommas(uint64(price)))
+}
+
+func GetTruncCurrentPriceFormatted(r *http.Request) string {
+	price := GetCurrentPrice(r)
+	symbol := GetCurrencySymbol(r)
+	return fmt.Sprintf("%s %s", symbol, utils.KFormatterEthPrice(price))
 }

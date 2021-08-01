@@ -84,17 +84,19 @@ type Notification interface {
 	GetInfo(includeUrl bool) string
 	GetTitle() string
 	GetEventFilter() string
+	GetEmailAttachment() *EmailAttachment
 }
 
 type Subscription struct {
-	ID           uint64     `db:"id"`
-	UserID       uint64     `db:"user_id"`
-	EventName    EventName  `db:"event_name"`
-	EventFilter  string     `db:"event_filter"`
-	LastSent     *time.Time `db:"last_sent_ts"`
-	LastEpoch    *uint64    `db:"last_sent_epoch"`
-	CreatedTime  time.Time  `db:"created_ts"`
-	CreatedEpoch uint64     `db:"created_epoch"`
+	ID             uint64     `db:"id"`
+	UserID         uint64     `db:"user_id"`
+	EventName      EventName  `db:"event_name"`
+	EventFilter    string     `db:"event_filter"`
+	LastSent       *time.Time `db:"last_sent_ts"`
+	LastEpoch      *uint64    `db:"last_sent_epoch"`
+	CreatedTime    time.Time  `db:"created_ts"`
+	CreatedEpoch   uint64     `db:"created_epoch"`
+	EventThreshold float64    `db:"event_threshold"`
 }
 
 type TaggedValidators struct {
@@ -141,14 +143,20 @@ type MobileSubscriptionTransactionGeneric struct {
 }
 
 type PremiumData struct {
-	ID        uint64 `db:"id"`
-	Receipt   string `db:"receipt"`
-	Store     string `db:"store"`
-	Active    bool   `db:"active"`
-	ProductID string `db:"product_id"`
+	ID        uint64    `db:"id"`
+	Receipt   string    `db:"receipt"`
+	Store     string    `db:"store"`
+	Active    bool      `db:"active"`
+	ProductID string    `db:"product_id"`
+	ExpiresAt time.Time `db:"expires_at"`
 }
 
 type UserWithPremium struct {
 	ID      uint64         `db:"id"`
 	Product sql.NullString `db:"product_id"`
+}
+
+type EmailAttachment struct {
+	Attachment []byte
+	Name       string
 }

@@ -35,8 +35,8 @@
     animation: bounce 2s 1;
 }
 
-.chart-pi, .chart-line {
-    animation: fadein 0.15s 1;
+.fade-in-out{
+    animation: fadein 1.5s 3;
 }
 
 .chart-switch-btn i{
@@ -47,14 +47,12 @@
 @keyframes fadein{
     0%{
         opacity: 0.0;
-        transform: translateY(0);
     }
     50%{
-        transform: translateY(5%); 
+        opacity: 1.0; 
     }
     100%{
-        opacity: 1.0;
-        transform: translateY(0);
+        opacity: 0.0;
     }
 }
 

@@ -26,10 +26,15 @@ import (
 
 // @title Beaconcha.in ETH2 API
 // @version 1.0
-// @description High performance API for querying information from the Ethereum 2.0 beacon chain
+// @description High performance API for querying information about the Ethereum 2.0 beacon chain
 // @description The API is currently free to use. A fair use policy applies. Calls are rate limited to
 // @description 10 requests / 1 minute / IP. All API results are cached for 1 minute.
 // @description If you required a higher usage plan please checkout https://beaconcha.in/pricing.
+// @description The API key can be provided in the Header or as a query string parameter.
+// @description
+// @description Key as a query string parameter: `curl https://beaconcha.in/api/v1/block/1?apikey=<your_key>`
+// @description
+// @description Key in a request header:  `curl -H 'apikey: <your_key>' https://beaconcha.in/api/v1/block/1`
 // @securitydefinitions.oauth2.accessCode OAuthAccessCode
 // @tokenurl https://beaconcha.in/user/token
 // @authorizationurl https://beaconcha.in/user/authorize
@@ -1059,7 +1064,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	claims := getAuthClaims(r)
 
 	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
-	if err != nil || subscriptionCount >= 4 {
+	if err != nil || subscriptionCount >= 5 {
 		sendErrorResponse(j, r.URL.String(), "reached max subscription limit")
 		return
 	}
@@ -1071,6 +1076,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 		Store:     parsedBase.Transaction.Type,
 		Active:    false,
 		ProductID: parsedBase.ProductID,
+		ExpiresAt: time.Now(),
 	}
 
 	// we can ignore this error since it always returns a result object and err
@@ -1094,15 +1100,16 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	OKResponse(w, r)
 }
 
-type PremiumData struct {
-	Package       string
-	MaxValidators int
-	MaxStats      uint64
-	MaxNodes      uint64
-	WidgetSupport bool
+type PremiumUser struct {
+	Package                string
+	MaxValidators          int
+	MaxStats               uint64
+	MaxNodes               uint64
+	WidgetSupport          bool
+	NotificationThresholds bool
 }
 
-func getUserPremium(r *http.Request) PremiumData {
+func getUserPremium(r *http.Request) PremiumUser {
 	claims := getAuthClaims(r)
 
 	if claims == nil {
@@ -1112,13 +1119,14 @@ func getUserPremium(r *http.Request) PremiumData {
 	return getUserPremiumByPackage(claims.Package)
 }
 
-func getUserPremiumByPackage(pkg string) PremiumData {
-	result := PremiumData{
-		Package:       "standard",
-		MaxValidators: 100,
-		MaxStats:      180,
-		MaxNodes:      1,
-		WidgetSupport: false,
+func getUserPremiumByPackage(pkg string) PremiumUser {
+	result := PremiumUser{
+		Package:                "standard",
+		MaxValidators:          100,
+		MaxStats:               180,
+		MaxNodes:               1,
+		WidgetSupport:          false,
+		NotificationThresholds: false,
 	}
 
 	if pkg == "" {
@@ -1127,7 +1135,12 @@ func getUserPremiumByPackage(pkg string) PremiumData {
 
 	result.Package = pkg
 	result.MaxStats = 43200
-	result.WidgetSupport = true
+	result.NotificationThresholds = true
+
+	if result.Package != "plankton" {
+		result.WidgetSupport = true
+	}
+
 	if result.Package == "goldfish" {
 		result.MaxNodes = 2
 	}
@@ -1263,6 +1276,7 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 		sessionUser := getUser(w, r)
 		if !sessionUser.Authenticated {
 			sendErrorResponse(j, r.URL.String(), "not authenticated")
+			return
 		}
 		userID = sessionUser.UserID
 	} else {
@@ -1270,9 +1284,9 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 		userID = claims.UserID
 	}
 
-	rows, err2 := db.MobileDeviceSettingsUpdate(userID, userDeviceID, notifyEnabled, active)
-	if err2 != nil {
-		logger.Errorf("could not retrieve db results err: %v", err2)
+	rows, err := db.MobileDeviceSettingsUpdate(userID, userDeviceID, notifyEnabled, active)
+	if err != nil {
+		logger.Errorf("could not retrieve db results err: %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
 	}
@@ -1405,6 +1419,18 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
+func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	apiKey := q.Get("apikey")
+	machine := q.Get("machine")
+
+	if apiKey == "" {
+		apiKey = r.Header.Get("apikey")
+	}
+
+	clientStatsPost(w, r, apiKey, machine)
+}
+
 // ClientStatsPost godoc
 // @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
 // @Tags User
@@ -1416,19 +1442,26 @@ func ClientStats(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} types.ApiResponse
 // @Security ApiKeyAuth
 // @Router /api/v1/stats/{apiKey}/{machine} [get]
-func ClientStatsPost(w http.ResponseWriter, r *http.Request) {
-
-	w.Header().Set("Content-Type", "application/json")
-	j := json.NewEncoder(w)
+func ClientStatsPostOld(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	userData, err := db.GetUserIdByApiKey(vars["apiKey"])
+	clientStatsPost(w, r, vars["apiKey"], vars["machine"])
+}
+
+func clientStatsPost(w http.ResponseWriter, r *http.Request, apiKey, machine string) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	if utils.Config.Frontend.DisableStatsInserts {
+		sendErrorResponse(j, r.URL.String(), "service temporarily unavailable")
+		return
+	}
+
+	userData, err := db.GetUserIdByApiKey(apiKey)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "no user found with api key")
 		return
 	}
-
-	machine := vars["machine"]
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -1444,7 +1477,7 @@ func ClientStatsPost(w http.ResponseWriter, r *http.Request) {
 		err = json.Unmarshal(body, &jsonObject)
 		if err != nil {
 			logger.Errorf("Could not parse stats (meta stats) general | %v ", err)
-			sendErrorResponse(j, r.URL.String(), "could not parse meta")
+			sendErrorResponse(j, r.URL.String(), "capi rate limit reached, one process per machine per user each minute is allowed.")
 			return
 		}
 		jsonObjects = []map[string]interface{}{jsonObject}
@@ -1482,7 +1515,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 
 	parsedMeta.Machine = machine
 
-	if parsedMeta.Version != 1 {
+	if parsedMeta.Version > 2 || parsedMeta.Version <= 0 {
 		sendErrorResponse(j, r.URL.String(), "this version is not supported")
 		return false
 	}
@@ -1494,15 +1527,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 
 	maxNodes := getUserPremiumByPackage(userData.Product.String).MaxNodes
 
-	tx, err := db.NewTransaction()
-	if err != nil {
-		logger.Errorf("Could not transact | %v", err)
-		sendErrorResponse(j, r.URL.String(), "could not store")
-		return false
-	}
-	defer tx.Rollback()
-
-	count, err := db.GetStatsMachineCount(tx, userData.ID)
+	count, err := db.GetStatsMachineCount(userData.ID)
 	if err != nil {
 		logger.Errorf("Could not get max machine count| %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not get machine count")
@@ -1515,11 +1540,27 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		return false
 	}
 
+	tx, err := db.NewTransaction()
+	if err != nil {
+		logger.Errorf("Could not transact | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not store")
+		return false
+	}
+	defer tx.Rollback()
+
 	id, err := db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 	if err != nil {
-		logger.Errorf("Could not store stats (meta stats) | %v", err)
-		sendErrorResponse(j, r.URL.String(), "could not store meta")
-		return false
+		if strings.Contains(err.Error(), "no partition of relation") {
+			db.CreateNewStatsMetaPartition()
+			tx.Rollback()
+			tx, err = db.NewTransaction()
+			id, err = db.InsertStatsMeta(tx, userData.ID, parsedMeta)
+		}
+		if err != nil {
+			logger.Errorf("Could not store stats (meta stats) | %v", err)
+			sendErrorResponse(j, r.URL.String(), "could not store meta")
+			return false
+		}
 	}
 
 	// Special case for system

@@ -95,75 +95,67 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 
 	if search == "" {
 		err = db.DB.Select(&sqlData, `
-			with 
+			with
 				longeststreaks as (
-					select 
-						validatorindex, start, length, rank() over (order by length desc),
-						rank() over (partition by validatorindex order by length desc) as vrank
-					from validator_attestation_streaks
-					where status = 1
+					select validatorindex, start, length, rank() over(order by length desc)
+					from validator_attestation_streaks where longest = 't' and status = 1
 				),
 				currentstreaks as (
-					select validatorindex, start, length, rank() over (order by length desc)
-					from validator_attestation_streaks
-					where status = 1 and start+length = (select max(start+length) from validator_attestation_streaks)
+					select validatorindex, start, length, rank() over(order by length desc)
+					from validator_attestation_streaks where current = 't' and status = 1
 				)
 			select 
-				ls.validatorindex,
-				COALESCE(validator_names.name, '') AS name,
+				v.validatorindex,
+				coalesce(vn.name, '') as name,
 				cnt.totalcount,
-				ls.rank lrank, 
-				ls.start lstart, 
-				ls.length llength, 
-				coalesce(cs.rank,0) crank, 
-				coalesce(cs.start,0) cstart, 
-				coalesce(cs.length,0) clength 
+				ls.rank lrank,
+				ls.start lstart,
+				ls.length llength,
+				cs.rank crank,
+				cs.start cstart,
+				cs.length clength
 			from longeststreaks ls
 			inner join validators v on ls.validatorindex = v.validatorindex
-			left join validator_names on v.pubkey = validator_names.publickey
+			left join currentstreaks cs on cs.validatorindex = v.validatorindex
+			left join validator_names vn on v.pubkey = vn.publickey
 			left join (select count(*) from longeststreaks) cnt(totalcount) on true
-			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
-			where vrank = 1
 			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start)
 	} else {
 		err = db.DB.Select(&sqlData, `
 			with 
 				matched_validators as (
-					SELECT v.validatorindex, v.pubkey, COALESCE(vn.name,'') as name
-					FROM validators v
-					LEFT JOIN validator_names vn ON vn.publickey = v.pubkey
-					WHERE (pubkeyhex LIKE $3
-						OR CAST(v.validatorindex AS text) LIKE $3)
-						OR LOWER(vn.name) LIKE LOWER($3)
+					select v.validatorindex, v.pubkey, coalesce(vn.name,'') as name
+					from validators v
+					left join validator_names vn ON vn.publickey = v.pubkey
+					where (pubkeyhex like $4
+						or cast(v.validatorindex as text) like $3)
+						or vn.name ilike $3
 				),
 				longeststreaks as (
-					select 
-						validatorindex, start, length, rank() over (order by length desc),
-						rank() over (partition by validatorindex order by length desc) as vrank
-					from validator_attestation_streaks
-					where status = 1
+					select validatorindex, start, length, rank() over(order by length desc)
+					from validator_attestation_streaks where longest = 't' and status = 1
 				),
 				currentstreaks as (
-					select validatorindex, start, length, rank() over (order by length desc)
-					from validator_attestation_streaks
-					where status = 1 and start+length = (select max(start+length) from validator_attestation_streaks)
+					select validatorindex, start, length, rank() over(order by length desc)
+					from validator_attestation_streaks where current = 't' and status = 1
 				)
 			select 
-				ls.validatorindex,
-				v.name,
+				v.validatorindex,
+				coalesce(vn.name, '') as name,
 				cnt.totalcount,
-				ls.rank lrank, 
-				ls.start lstart, 
-				ls.length llength, 
-				coalesce(cs.rank,0) crank, 
-				coalesce(cs.start,0) cstart, 
-				coalesce(cs.length,0) clength 
+				ls.rank lrank,
+				ls.start lstart,
+				ls.length llength,
+				cs.rank crank,
+				cs.start cstart,
+				cs.length clength
 			from longeststreaks ls
-			inner join matched_validators v on ls.validatorindex = v.validatorindex
-			left join (select count(*) from longeststreaks) cnt(totalcount) on true
-			left join currentstreaks cs on cs.validatorindex = ls.validatorindex
-			where vrank = 1
-			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start, "%"+search+"%")
+			inner join matched_validators mv on ls.validatorindex = mv.validatorindex
+			inner join validators v on ls.validatorindex = v.validatorindex
+			left join currentstreaks cs on cs.validatorindex = v.validatorindex
+			left join validator_names vn on v.pubkey = vn.publickey
+			left join (select count(*) from matched_validators) cnt(totalcount) on true
+			order by `+orderBy+` `+orderDir+` limit $1 offset $2`, length, start, "%"+search+"%", search+"%")
 	}
 	if err != nil {
 		logger.Errorf("error retrieving streaksData data (search=%v): %v", search != "", err)

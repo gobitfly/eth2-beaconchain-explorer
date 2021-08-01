@@ -3,19 +3,18 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gorilla/csrf"
-	"github.com/lib/pq"
 )
 
 var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validatorRewards.html"))
@@ -23,9 +22,10 @@ var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewa
 // var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub"}
 
 type rewardsResp struct {
-	Currencies    []string
-	CsrfField     template.HTML
-	Subscriptions [][]string
+	Currencies        []string
+	CsrfField         template.HTML
+	ShowSubscriptions bool
+	MinDateTimestamp  uint64
 }
 
 func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
@@ -44,13 +44,14 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
 	}
 
-	var subs = [][]string{}
-
-	if data.User.Authenticated {
-		subs = getUserRewardSubscriptions(data.User.UserID)
+	var minTime time.Time
+	err = db.DB.Get(&minTime,
+		`select ts from price order by ts asc limit 1`)
+	if err != nil {
+		logger.Errorf("error getting min ts: %w", err)
 	}
 
-	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), Subscriptions: subs}
+	data.Data = rewardsResp{Currencies: supportedCurrencies, CsrfField: csrf.TemplateField(r), MinDateTimestamp: uint64(minTime.Unix()), ShowSubscriptions: data.User.Authenticated}
 
 	err = validatorRewardsServicesTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
@@ -85,109 +86,6 @@ func getUserRewardSubscriptions(uid uint64) [][]string {
 	return res
 }
 
-func getValidatorHist(validatorArr []uint64, currency string, days uint64) [][]string {
-	var err error
-	validatorFilter := pq.Array(validatorArr)
-
-	var pricesDb []types.Price
-	err = db.DB.Select(&pricesDb,
-		`select * from price order by ts desc limit $1`, days)
-	if err != nil {
-		logger.Errorf("error getting prices: %w", err)
-	}
-
-	var maxDay uint64
-	err = db.DB.Get(&maxDay,
-		`select MAX(day) from validator_stats`)
-	if err != nil {
-		logger.Errorf("error getting max day: %w", err)
-	}
-
-	if days > 365 {
-		days = 365
-	}
-	var lowerBound uint64 = 0
-	if maxDay > days {
-		lowerBound = maxDay - days
-	}
-	var income []types.ValidatorStatsTableRow
-	err = db.DB.Select(&income,
-		`select day, start_balance, end_balance
-		 from validator_stats 
-		 where validatorindex=ANY($1) AND day > $2
-		 order by day desc`, validatorFilter, lowerBound)
-	if err != nil {
-		logger.Errorf("error getting incomes: %w", err)
-	}
-
-	prices := map[string]float64{}
-	for _, item := range pricesDb {
-		date := fmt.Sprintf("%v", item.TS)
-		date = strings.Split(date, " ")[0]
-		switch currency {
-		case "eur":
-			prices[date] = item.EUR
-		case "usd":
-			prices[date] = item.USD
-		case "gbp":
-			prices[date] = item.GBP
-		case "cad":
-			prices[date] = item.CAD
-		case "cny":
-			prices[date] = item.CNY
-		case "jpy":
-			prices[date] = item.JPY
-		case "rub":
-			prices[date] = item.RUB
-		default:
-			prices[date] = item.USD
-			currency = "usd"
-		}
-	}
-
-	totalIncomePerDay := map[string][2]int64{}
-	for _, item := range income {
-		date := fmt.Sprintf("%v", utils.DayToTime(item.Day))
-		date = strings.Split(date, " ")[0]
-		if _, exist := totalIncomePerDay[date]; !exist {
-			totalIncomePerDay[date] = [2]int64{item.StartBalance.Int64, item.EndBalance.Int64}
-			continue
-		}
-		state := totalIncomePerDay[date]
-		state[0] += item.StartBalance.Int64
-		state[1] += item.EndBalance.Int64
-		totalIncomePerDay[date] = state
-	}
-
-	data := make([][]string, len(totalIncomePerDay))
-	i := 0
-	for key, item := range totalIncomePerDay {
-		if len(item) < 2 {
-			continue
-		}
-		data[i] = []string{
-			key,
-			fmt.Sprintf("%f", float64(item[1])/1e9), // end of day balance
-			fmt.Sprintf("%f", (float64(item[1])/1e9)-(float64(item[0])/1e9)),               // income of day ETH
-			fmt.Sprintf("%f", prices[key]),                                                 //price will default to 0 if key does not exist
-			fmt.Sprintf("%f", ((float64(item[1])/1e9)-(float64(item[0])/1e9))*prices[key]), // income of day Currency
-			currency,
-		}
-		i++
-	}
-
-	sort.Slice(data, func(p, q int) bool {
-		i, err := time.Parse("2006-01-02", data[p][0])
-		i2, err := time.Parse("2006-01-02", data[q][0])
-		if err != nil {
-			return false
-		}
-		return i2.Before(i)
-	})
-
-	return data
-}
-
 func isValidCurrency(currency string) bool {
 	var count uint64
 	err := db.DB.Get(&count,
@@ -220,14 +118,20 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	currency := q.Get("currency")
 
-	days, err := strconv.ParseUint(q.Get("days"), 10, 64)
-	if err != nil {
-		logger.Errorf("error retrieving days %v", err)
-		http.Error(w, "Invalid query", 400)
-		return
+	var start uint64 = 0
+	var end uint64 = 0
+	dateRange := strings.Split(q.Get("days"), "-")
+	if len(dateRange) == 2 {
+		start, err = strconv.ParseUint(dateRange[0], 10, 64)
+		end, err = strconv.ParseUint(dateRange[1], 10, 64)
+		if err != nil {
+			logger.Errorf("error retrieving days range %v", err)
+			http.Error(w, "Invalid query", 400)
+			return
+		}
 	}
 
-	data := getValidatorHist(validatorArr, currency, days)
+	data := services.GetValidatorHist(validatorArr, currency, start, end)
 
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
@@ -239,9 +143,6 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 }
 
 func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Disposition", "attachment; filename=beaconcah_in-income-report.csv")
-	w.Header().Set("Content-Type", "text/csv")
-
 	q := r.URL.Query()
 
 	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"))
@@ -253,46 +154,33 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 	currency := q.Get("currency")
 
-	days, err := strconv.ParseUint(q.Get("days"), 10, 64)
-	if err != nil {
-		logger.Errorf("error retrieving days %v", err)
-		http.Error(w, "Invalid query", 400)
-		return
+	var start uint64 = 0
+	var end uint64 = 0
+	dateRange := strings.Split(q.Get("days"), "-")
+	if len(dateRange) == 2 {
+		start, err = strconv.ParseUint(dateRange[0], 10, 64)
+		end, err = strconv.ParseUint(dateRange[1], 10, 64)
+		if err != nil {
+			logger.Errorf("error retrieving days range %v", err)
+			http.Error(w, "Invalid query", 400)
+			return
+		}
 	}
 
-	data := getValidatorHist(validatorArr, currency, days)
+	hist := services.GetValidatorHist(validatorArr, currency, start, end)
 
-	if len(data) == 0 {
+	if len(hist.History) == 0 {
 		w.Write([]byte("No data available"))
 		return
 	}
-	cur := data[0][len(data[0])-1]
-	cur = strings.ToUpper(cur)
-	csv := fmt.Sprintf("Date,End-of-date balance ETH,Income for date ETH,Price of ETH for date %s, Income for date %s", cur, cur)
 
-	totalIncomeEth := 0.0
-	totalIncomeCur := 0.0
+	s := time.Unix(int64(start), 0)
+	e := time.Unix(int64(end), 0)
 
-	for _, item := range data {
-		if len(item) < 5 {
-			csv += "\n0,0,0,0,0"
-			continue
-		}
-		csv += fmt.Sprintf("\n%s,%s,%s,%s,%s", item[0], item[1], item[2], item[3], item[4])
-		tEth, err := strconv.ParseFloat(item[2], 64)
-		tCur, err := strconv.ParseFloat(item[4], 64)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=income_history_%v_%v.pdf", s.Format("20060102"), e.Format("20060102")))
+	w.Header().Set("Content-Type", "text/csv")
 
-		if err != nil {
-			continue
-		}
-
-		totalIncomeEth += tEth
-		totalIncomeCur += tCur
-	}
-
-	csv += fmt.Sprintf("\nTotal, ,%f, ,%f", totalIncomeEth, totalIncomeCur)
-
-	_, err = w.Write([]byte(csv))
+	_, err = w.Write(services.GeneratePdfReport(hist))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error writing response")
 		http.Error(w, "Internal server error", 503)
@@ -310,10 +198,22 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var count uint64
+	err := db.DB.Get(&count,
+		`select count(event_name) 
+		from users_subscriptions 
+		where user_id=$1 AND event_name=$2;`, user.UserID, types.TaxReportEventName)
+
+	if err != nil || count >= 5 {
+		logger.WithField("route", r.URL.String()).Info(fmt.Sprintf("User Subscription limit (%v) reached %v", count, err))
+		http.Error(w, "Internal server error, User Subscription limit reached", http.StatusInternalServerError)
+		return
+	}
+
 	q := r.URL.Query()
 
 	validatorArr := q.Get("validators")
-	_, err := parseValidatorsFromQueryString(validatorArr)
+	_, err = parseValidatorsFromQueryString(validatorArr)
 	if err != nil {
 		http.Error(w, "Invalid query, Invalid Validators", 400)
 		return
@@ -329,7 +229,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	err = db.AddSubscription(user.UserID,
 		types.TaxReportEventName,
-		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency))
+		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency), 0)
 
 	if err != nil {
 		logger.Errorf("error updating user subscriptions: %v", err)
@@ -383,6 +283,41 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(struct {
 		Msg string `json:"msg"`
 	}{Msg: "Subscription Deleted"})
+
+	if err != nil {
+		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r)
+	user := getUser(w, r)
+	if !user.Authenticated {
+		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
+		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
+		return
+	}
+
+	var count uint64
+	err := db.DB.Get(&count,
+		`select count(event_name) 
+		from users_subscriptions 
+		where user_id=$1 AND event_name=$2;`, user.UserID, types.TaxReportEventName)
+
+	if err != nil {
+		logger.WithField("route", r.URL.String()).Error("Failed to get User Subscriptions Count")
+		http.Error(w, "Internal server error, Failed to get User Subscriptions Count", http.StatusInternalServerError)
+		return
+	}
+
+	data := getUserRewardSubscriptions(user.UserID)
+
+	err = json.NewEncoder(w).Encode(struct {
+		Data  [][]string `json:"data"`
+		Count uint64     `json:"count"`
+	}{Data: data, Count: count})
 
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error encoding json response")

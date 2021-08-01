@@ -2,11 +2,11 @@
 <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the number of 32 slots">Epoch:</span></div>
-    <div class="col-md-10"><a href="/epoch/{{.Epoch}}">{{.Epoch}}</a></div>
+    <div class="col-md-10"><a href="/epoch/{{.Epoch}}">{{ formatAddCommas .Epoch}}</a></div>
   </div>
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="A slot is a chance for a block to be added to the Beacon Chain and shards">Slot:</span></div>
-    <div class="col-md-10"><b>{{.Slot}}</b></div>
+    <div class="col-md-10"><b>{{ formatAddCommas .Slot}}</b></div>
   </div>
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the current state of the block">Status:</span></div>
@@ -83,7 +83,7 @@
       </div>
       <div class="row p-1">
         <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator deposits to the deposit contract in this block">Deposit Count:</span></div>
-        <div class="col-md-10 text-monospace text-break">{{.Eth1dataDepositcount}}</div>
+        <div class="col-md-10 text-monospace text-break">{{ formatAddCommas .Eth1dataDepositcount}}</div>
       </div>
       <div class="row p-1">
         <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The root of the merkle tree of deposits">Deposit Root:</span></div>
@@ -94,19 +94,19 @@
   </div>
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of attestations included in this block by the block proposer">Attestations:</span></div>
-    <div class="col-md-10"><b>{{.AttestationsCount}}</b></div>
+    <div class="col-md-10"><b>{{formatAddCommas .AttestationsCount}}</b></div>
   </div>
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of votes included in this block">Votes:</span></div>
-    <div class="col-md-10"><b>{{.VotesCount}}</b></div>
+    <div class="col-md-10"><b>{{ formatAddCommas .VotesCount}}</b></div>
   </div>
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voting validators">Voting Validators:</span></div>
-    <div class="col-md-10"><b>{{.VotingValidatorsCount}}</b></div>
+    <div class="col-md-10"><b>{{ formatAddCommas .VotingValidatorsCount}}</b></div>
   </div>
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voluntary Exits which have been included in this block by the block proposer">Voluntary Exits:</span></div>
-    <div class="col-md-10"><b>{{.VoluntaryExitscount}}</b></div>
+    <div class="col-md-10"><b>{{ formatAddCommas .VoluntaryExitscount}}</b></div>
   </div>
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of slashings which have been included in this block by the block proposer">Slashings:</span></div>
@@ -117,7 +117,7 @@
   {{ end }}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator deposits which have been included in this block by the block proposer">Deposits:</span></div>
-    <div class="col-md-10"><b>{{.DepositsCount}}</b></div>
+    <div class="col-md-10"><b>{{ formatAddCommas .DepositsCount}}</b></div>
   </div>
   {{ end }}
 </div>

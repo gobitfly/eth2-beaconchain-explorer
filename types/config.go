@@ -50,6 +50,9 @@ type Config struct {
 			EndEpoch   uint64   `yaml:"endEpoch" envconfig:"INDEXER_ONETIMEEXPORT_END_EPOCH"`
 			Epochs     []uint64 `yaml:"epochs" envconfig:"INDEXER_ONETIMEEXPORT_EPOCHS"`
 		} `yaml:"onetimeexport"`
+		PubKeyTagsExporter struct {
+			Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
+		} `yaml:"pubkeyTagsExporter"`
 	} `yaml:"indexer"`
 	Frontend struct {
 		Kong               string `yaml:"kong" envconfig:"FRONTEND_KONG"`
@@ -103,11 +106,13 @@ type Config struct {
 				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
 			} `yaml:"mailgun"`
 		} `yaml:"mail"`
-		GATag                 string `yaml:"gatag" envconfig:"GATAG"`
-		VerifyAppSubs         bool   `yaml:"verifyAppSubscriptions" envconfig:"FRONTEND_VERIFY_APP_SUBSCRIPTIONS"`
-		AppSubsAppleSecret    string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
-		AppSubsGoogleJSONPath string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
-		ShowDonors            struct {
+		GATag                  string `yaml:"gatag" envconfig:"GATAG"`
+		VerifyAppSubs          bool   `yaml:"verifyAppSubscriptions" envconfig:"FRONTEND_VERIFY_APP_SUBSCRIPTIONS"`
+		AppSubsAppleSecret     string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
+		AppSubsGoogleJSONPath  string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
+		CleanupOldMachineStats bool   `yaml:"cleanupOldMachineStats" envconfig:"FRONTEND_CLEANUP_OLD_MACHINE_STATS"`
+		DisableStatsInserts    bool   `yaml:"disableStatsInserts" envconfig:"FRONTEND_DISABLE_STATS_INSERTS"`
+		ShowDonors             struct {
 			Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
 			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
 		} `yaml:"showDonors"`
@@ -117,9 +122,15 @@ type Config struct {
 		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
 	} `yaml:"metrics"`
 	Notifications struct {
-		Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
-		FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
+		Enabled                                       bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"FRONTEND_USERDB_NOTIFICATIONS_ENABLED"`
+		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
+		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"FRONTEND_VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
 	} `yaml:"notifications"`
+	SSVExporter struct {
+		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
+		Address string `yaml:"address" envconfig:"SSV_EXPORTER_ADDRESS"`
+	} `yaml:"SSVExporter"`
 }
 
 // Phase0 is the config for beacon chain phase0
