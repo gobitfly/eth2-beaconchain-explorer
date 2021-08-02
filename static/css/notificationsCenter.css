@@ -20,7 +20,7 @@
 }
 .custom-background-color { 
   /* background-color: var(--new-card-bg); */
-  /* background-color: #2c292d; */
+  /* background-color: #484449; */
   background-color: #fdfdfd;
 }
 .custom-border-radius { 
@@ -37,11 +37,6 @@
   height: 10rem;
   overflow-y: auto;
 }
-.custom-modal .custom-modal-content {
-  /* background-color: var(--new-card-bg); */
-  /* background-color: #2c292d; */
-  background-color: #fdfdfd;
-}
 .custom-remove-modal { 
   position: relative;
   min-width: 280px;
@@ -52,8 +47,6 @@
   top: -1rem; 
   right: -2.5rem;
 }
-/* TODO: decide on color for hover */
-.custom-remove-modal-close button,
 .custom-remove-modal-close button:hover { 
   color: var(--dark);
 }
@@ -73,17 +66,16 @@
 .heading-section { 
   height: 60px; 
 }
-/* TODO: make #6d6d6d and #ebebeb into variables */
 .i-custom:hover {
   display: inline-block;
   border-radius: 50%;
-  box-shadow: 0px 0px 2px #6d6d6d;
+  box-shadow: 0px 0px 2px var(--dark);
   padding: .6em;
 }
 .icon { 
   font-size: 2.4rem;
   /* color: var(--new-primary); */
-  /* color: #ffaa31; */
+  /* color: #ff9c19; */
   color: var(--primary);
 }
 .metrics-section { 
@@ -127,7 +119,7 @@ table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
 table.dataTable tbody tr.selected, 
 table.dataTable tbody th.selected, 
 table.dataTable tbody td.selected {
-  color: #343a40 !important;
+  color: var(--light) !important;
 }
 table.dataTable tbody tr.selected a, 
 table.dataTable tbody th.selected a, 
@@ -136,7 +128,7 @@ table.dataTable tbody td.selected a {
 }
 table.dataTable tbody>tr.selected, 
 table.dataTable tbody>tr>.selected {
-  background-color: #ebebeb !important;
+  background-color: var(--light) !important;
 }
 div.dataTables_info {
   padding-top: 2.15rem !important;
@@ -166,8 +158,11 @@ div.dataTables_scrollBody {
 div.dataTables_scrollBody table {
   background-color: rgba(0, 0, 0, 0.0) !important;
 }
+.custom-table-head {
+  background-color: var(--bg) !important;
+}
 .row-selected {
-  background-color: #e6e6e6 !important;
+  background-color: var(--light) !important;
 }
 #monitoring-notifications_wrapper div.dataTables_length,
 #monitoring-notifications_wrapper div.dataTables_paginate,
@@ -183,17 +178,17 @@ div.dataTables_scrollBody table {
   width: 8px;
 }
 .scrollbar::-webkit-scrollbar-track {
-  background-color: #ebebeb;
+  background-color: var(--light);
   -webkit-border-radius: 10px;
   border-radius: 10px;
 }
 .scrollbar::-webkit-scrollbar-thumb {
   -webkit-border-radius: 10px;
   border-radius: 10px;
-  background: #6d6d6d; 
+  background: var(--dark);
 }
 .scrollbar {
-  scrollbar-color: #6d6d6d #ebebeb;
+  scrollbar-color: var(--dark) var(--light);
 }
 /* custom range in add monitoring event modal */
 .custom-range-input {
@@ -275,8 +270,8 @@ div.dataTables_scrollBody table {
   width: 100%;
 }
 #add-validator-search-container .tt-open {
-  background-color: #6d6d6d;
-  scrollbar-color: #ebebeb;
+  background-color: var(--dark);
+  scrollbar-color: var(--light);
   scrollbar-width: thin;
 }
 #add-validator-search-container .tt-open::-webkit-scrollbar {
@@ -284,14 +279,14 @@ div.dataTables_scrollBody table {
   height: 5px;
 }
 #add-validator-search-container .tt-open::-webkit-scrollbar-thumb {
-  background-color: #6d6d6d;
+  background-color: var(--dark);
   border-radius: 10px;
   color: #ebebeb;
 }
 #add-validator-search-container .tt-suggestion .tt-cursor,
 #add-validator-search-container .tt-suggestion:hover {
   /* background-color: var(--new-primary); */
-  /* background-color: #ffaa31; */
+  /* background-color: #ff9c19; */
   background-color: var(--primary);
   cursor: pointer;
 }
@@ -301,12 +296,12 @@ div.dataTables_scrollBody table {
   margin-top: 4px;
   padding: .5rem;
   /* background-color: var(--new-card-bg); */
-  /* background-color: #2c292d; */
+  /* background-color: #484449; */
   background-color: #fdfdfd;
   -webkit-border-radius: 4px;
   -moz-border-radius: 4px;
   border-radius: 4px;
-  box-shadow: 0 1px 25px #6d6d6d;
+  border: 1px solid var(--dark);
   overflow-y: auto;
   cursor: pointer;
 }

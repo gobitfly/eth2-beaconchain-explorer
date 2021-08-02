@@ -29,7 +29,7 @@
 			</div>
 		</div>
 		<div class="row flex-sm-nowrap mx-0 my-2 container-min-width metrics-section">
-		  <div class="col-12 col-sm col-xl mr-3 mt-1 mb-2 p-2 shadow-sm container-max-width metric-card custom-border-radius custom-background-color">
+		  <div class="col-12 col-sm col-xl mr-3 mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
 			  <div class="row d-flex align-items-center mx-1 metric-card-row">
 				  <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 					  <i class="fas fa-user"></i>
@@ -40,7 +40,7 @@
 				  </div>
 			  </div>
 		  </div>
-			<div class="col-12 col-sm col-xl mr-3 mt-1 mb-2 p-2 shadow-sm container-max-width metric-card custom-border-radius custom-background-color">
+			<div class="col-12 col-sm col-xl mr-3 mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
 				<div class="row d-flex align-items-center mx-1 metric-card-row">
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-bell"></i>
@@ -51,7 +51,7 @@
 					</div>
 				</div>
 			</div>
-			<div class="col d-none d-lg-block mr-3 mt-1 mb-2 p-2 shadow-sm container-max-width metric-card custom-border-radius custom-background-color">
+			<div class="col d-none d-lg-block mr-3 mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
 				<div class="row d-flex align-items-center mx-1 metric-card-row">
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-bullseye"></i>
@@ -62,7 +62,7 @@
 					</div>
 				</div>
 			</div>
-			<div class="col d-none d-lg-block mr-3 mt-1 mb-2 p-2 shadow-sm container-max-width metric-card custom-border-radius custom-background-color">
+			<div class="col d-none d-lg-block mr-3 mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
 				<div class="row d-flex align-items-center mx-1 metric-card-row">
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-envelope-open-text"></i>
@@ -73,7 +73,7 @@
 					</div>
 				</div>
 			</div>
-			<div class="col d-none d-lg-block mt-1 mb-2 p-2 shadow-sm container-max-width metric-card custom-border-radius custom-background-color">
+			<div class="col d-none d-lg-block mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
 				<div class="row d-flex align-items-center mx-1 metric-card-row">
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-bullseye"></i>
@@ -86,7 +86,7 @@
 			</div>
 		</div>
 		<div class="row flex-xl-nowrap mx-0 my-3 container-min-width">
-			<div class="col-12 col-xl mb-3 p-1 shadow container-height custom-border-radius custom-background-color">
+			<div class="col-12 col-xl mb-3 p-1 shadow-sm border container-height custom-border-radius custom-background-color">
 				<div class="d-flex flex-column align-items-start flex-sm-row align-items-sm-center justify-content-sm-between mx-3 mb-2">
 					<div class="mt-3">
 						<h2 class="heading-l2">Monitoring</h2>
@@ -115,7 +115,7 @@
 				{{else}}
 					<div class="px-0 px-md-3 py-1">
 						<table class="table table-borderless table-hover" id="monitoring-notifications">
-							<thead>
+							<thead class="custom-table-head">
 								<tr>
 									<th scope="col" class="h6 border-bottom-0">Notification</th>
 									<th scope="col" class="h6 border-bottom-0">Threshold</th>
@@ -129,7 +129,7 @@
 					</div>
 				{{end}}
 			</div>
-			<div class="col-12 col-xl mt-3 mt-xl-0 mb-3 ml-xl-3 p-1 shadow container-height custom-border-radius custom-background-color">
+			<div class="col-12 col-xl mt-3 mt-xl-0 mb-3 ml-xl-3 p-1 shadow-sm border container-height custom-border-radius custom-background-color">
 				<div class="d-flex flex-column align-items-start flex-sm-row align-items-sm-center justify-content-sm-between mx-3 mb-2">
 					<div class="mt-3">
 						<h2 class="heading-l2">Network</h2>
@@ -146,7 +146,7 @@
 				{{else}}
 					<div class="px-0 px-md-3 py-1">
 						<table class="table table-borderless table-hover" id="network-notifications">
-							<thead>
+							<thead class="custom-table-head">
 								<tr>
 									<th scope="col" class="h6 border-bottom-0">Notification</th>
 									<th scope="col" class="h6 border-bottom-0">Network</th>
@@ -162,7 +162,7 @@
 				{{end}}
 			</div>
 		</div>
-		<div class="mx-0 my-3 p-1 shadow container-min-width validators-container-min-height custom-border-radius custom-background-color">
+		<div class="mx-0 my-3 p-1 shadow-sm border container-min-width validators-container-min-height custom-border-radius custom-background-color">
 			<div class="row d-flex flex-lg-nowrap align-items-center mx-3 mt-3 py-2">
 				<div class="col-12 col-md-3 d-flex justify-content-start px-0">
 					<h2 class="heading-l2 mb-2 mb-md-0">Validators</h2>
@@ -190,7 +190,7 @@
 			{{else}}
 				<div class="px-3 py-3">
 					<table class="table table-borderless table-hover" id="validators-notifications">
-						<thead>
+						<thead class="custom-table-head">
 							<tr>
 								<th scope="col" class="h6 border-bottom-0">Validator</th>
 								<th scope="col" class="h6 border-bottom-0">Notifications</th>
@@ -212,7 +212,7 @@
 	<!-- Confirm Remove modal -->
   <div class="modal fade" id="confirmRemoveModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="confirmRemoveLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered" role="document">
-			<div class="modal-content custom-remove-modal row mx-0">
+			<div class="modal-content row mx-0 custom-background-color custom-remove-modal">
 				<div class="mb-4 custom-remove-modal-close">
 					<button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>
@@ -230,7 +230,7 @@
 	<!-- Add Monitoring events modal -->
 	<div class="modal fade custom-modal" id="addMonitoringEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addMonitoringEventLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
-			<div class="modal-content custom-remove-modal mx-0 custom-modal-content">
+			<div class="modal-content mx-0 custom-background-color custom-remove-modal custom-modal-content">
 				<div class="mb-4 custom-remove-modal-close">
 					<button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>
@@ -288,7 +288,7 @@
 	<!-- Add Network events modal -->
 	<div class="modal fade custom-modal" id="addNetworkEventModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addNetworkEventLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
-			<div class="modal-content custom-remove-modal mx-0 custom-modal-content">
+			<div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
 				<div class="mb-4 custom-remove-modal-close">
 					<button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>
@@ -318,7 +318,7 @@
 	<!-- Manage notifications modal -->
 	<div class="modal fade custom-modal" id="manageNotificationsModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="manageNotificationsLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
-			<div class="modal-content custom-remove-modal mx-0 custom-modal-content">
+			<div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
 				<div class="mb-4 custom-remove-modal-close">
 					<button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>
@@ -383,7 +383,7 @@
 	<!-- Add Validator modal -->
 	<div class="modal fade custom-modal" id="addValidatorModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="addValidatorLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered custom-modal-dialog" role="document">
-			<div class="modal-content custom-remove-modal mx-0 custom-modal-content">
+			<div class="modal-content mx-0 custom-background-color custom-modal-content custom-remove-modal">
 				<div class="mb-4 custom-remove-modal-close">
 					<button class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
 				</div>

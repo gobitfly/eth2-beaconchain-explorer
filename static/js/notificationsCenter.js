@@ -193,7 +193,7 @@ function loadMonitoringData(data) {
     paging: true,
     data: data,
     rowId: 'id',
-    initComplete: function (settings, json) {
+    initComplete: function(settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar');
       // click event to monitoring table edit button
       $('#monitoring-notifications #edit-monitoring-events-btn').on('click', function(e) {
