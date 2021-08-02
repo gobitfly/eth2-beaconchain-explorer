@@ -19,8 +19,8 @@
   min-width: 300px; 
 }
 .custom-background-color { 
-  /* background-color: var(--new-card-bg); */
-  /* background-color: #484449; */
+  /* background-color: var(--new-card-bg);
+  background-color: #484449; */
   background-color: #fdfdfd;
 }
 .custom-border-radius { 
@@ -74,8 +74,8 @@
 }
 .icon { 
   font-size: 2.4rem;
-  /* color: var(--new-primary); */
-  /* color: #ff9c19; */
+  /* color: var(--new-primary);
+  color: #ff9c19; */
   color: var(--primary);
 }
 .metrics-section { 
@@ -281,12 +281,12 @@ div.dataTables_scrollBody table {
 #add-validator-search-container .tt-open::-webkit-scrollbar-thumb {
   background-color: var(--dark);
   border-radius: 10px;
-  color: #ebebeb;
+  color: var(--light);
 }
 #add-validator-search-container .tt-suggestion .tt-cursor,
 #add-validator-search-container .tt-suggestion:hover {
-  /* background-color: var(--new-primary); */
-  /* background-color: #ff9c19; */
+  /* background-color: var(--new-primary);
+  background-color: #ff9c19; */
   background-color: var(--primary);
   cursor: pointer;
 }
@@ -295,8 +295,8 @@ div.dataTables_scrollBody table {
   max-height: 19rem;
   margin-top: 4px;
   padding: .5rem;
-  /* background-color: var(--new-card-bg); */
-  /* background-color: #484449; */
+  /* background-color: var(--new-card-bg);
+  background-color: #484449; */
   background-color: #fdfdfd;
   -webkit-border-radius: 4px;
   -moz-border-radius: 4px;
