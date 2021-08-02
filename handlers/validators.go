@@ -230,14 +230,17 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	totalCount := stats.TotalValidatorCount
-	if totalCount == nil {
-		totalCount = new(uint64)
+	var totalCount uint64
+	var filteredCount uint64
+
+	if stats.TotalValidatorCount != nil {
+		totalCount = *stats.TotalValidatorCount
 	}
 
 	var validators []*types.ValidatorsPageDataValidators
 	qry := ""
 	if dataQuery.Search == "" && dataQuery.StateFilter == "" {
+		filteredCount = totalCount
 		qry = fmt.Sprintf(`
 			SELECT
 				validators.validatorindex,
@@ -256,6 +259,11 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			ORDER BY %s %s
 			LIMIT $1 OFFSET $2`, dataQuery.OrderBy, dataQuery.OrderDir)
 		err = db.DB.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
+		if err != nil {
+			logger.Errorf("error retrieving validators data: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 	} else {
 		// for perfomance-reasons we combine multiple search results with `union`
 		args := []interface{}{}
@@ -287,19 +295,26 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 				validators.exitepoch,
 				validators.lastattestationslot,
 				COALESCE(validator_names.name, '') AS name,
-				validators.status AS state
+				validators.status AS state,
+				COALESCE(cnt.total_count, 0) as total_count
 			FROM validators
 			INNER JOIN matched_validators ON validators.pubkey = matched_validators.pubkey
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+			LEFT JOIN (select count(*) from matched_validators) cnt(total_count) ON true
 			%s
 			ORDER BY %s %s
 			LIMIT $%d OFFSET $%d`, searchQry, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
 		err = db.DB.Select(&validators, qry, args...)
-	}
-	if err != nil {
-		logger.Errorf("error retrieving validators data: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+		if err != nil {
+			logger.Errorf("error retrieving validators data (with search): %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+
+		filteredCount = 0
+		if len(validators) > 0 {
+			filteredCount = validators[0].TotalCount
+		}
 	}
 
 	tableData := make([][]interface{}, len(validators))
@@ -352,8 +367,8 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.DataTableResponse{
 		Draw:            dataQuery.Draw,
-		RecordsTotal:    *totalCount,
-		RecordsFiltered: *totalCount,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: filteredCount,
 		Data:            tableData,
 	}
 

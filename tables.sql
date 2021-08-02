@@ -575,22 +575,21 @@ create table api_statistics
     primary key (ts, apikey, call)
 );
 
-drop table if exists stats_meta;
-CREATE TABLE stats_meta (
-	id 				bigserial 			primary key,
-	version 			int 				not null default 1,
-	ts 				timestamp  			not null,
+drop table if exists stats_meta_p;
+CREATE TABLE stats_meta_p (
+	id 				    bigserial,
+	version 			int 				        not null default 1,
+	ts 				    timestamp  			        not null,
 	process 			character varying(20) 		not null,
 	machine 		 	character varying(50),
     created_trunc       timestamp   not null,
-    exporter_version          string,
+    exporter_version    varchar(35),
+    day                 int,
 	
-	user_id 		 	bigint	 	 		not null,
-    foreign key(user_id) references users(id),
-    UNIQUE (user_id, created_trunc, process, machine)
-);
-create index idx_stats_created_trunc on stats_meta (created_trunc);
-create index idx_stats_user on stats_meta (user_id);
+	user_id 		 	bigint	 	 		        not null,
+    primary key (id, day)
+    
+) PARTITION BY LIST (day);
 
 drop table if exists stats_process;
 CREATE TABLE stats_process (
