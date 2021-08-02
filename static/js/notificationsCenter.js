@@ -685,7 +685,7 @@ $(document).ready(function() {
             window.location.reload(false);
             } else {
             alert('Error removing validator from Watchlist');
-                        $('#confirmRemoveModal').modal('hide');
+            $('#confirmRemoveModal').modal('hide');
             window.location.reload();
             }
             $(this).html('Removed');
@@ -709,7 +709,7 @@ $(document).ready(function() {
                 window.location.reload(false);
             } else {
                 alert('Error removing all validators from Watchlist');
-                            $('#confirmRemoveModal').modal('hide');
+                $('#confirmRemoveModal').modal('hide');
                 window.location.reload();
             }
             $(this).html('Removed');
@@ -807,28 +807,27 @@ $(document).ready(function() {
   // customize tables tooltips
   $('#validators-notifications').DataTable().$('tr').tooltip({ width: 5 });
 
-
-  function get_validator_sub_events(){
-    let events = []  
-    for (let item of EVENTS){
+  function get_validator_sub_events() {
+    let events = [];
+    for (let item of EVENTS) {
         events.push({
             event: item,
             email: $(`#${item} :input#email`).prop("checked"),
             push: $(`#${item} :input#push`).prop("checked"),
             web: $(`#${item} :input#web`).prop("checked")
-        })
+        });
       }
-    return events
+    return events;
   }
 
-  $("#add-validator-button").on("click", function(){
-      console.log("clicked", $("#validator_attestation_missed>input#email"))
+  $("#add-validator-button").on("click", function() {
+      // console.log("clicked", $("#validator_attestation_missed>input#email"));
     
-      try{
-        let index = parseInt($("#add-validator-input").val())
-        let events = get_validator_sub_events()
-        // console.log(events)
-        if(!isNaN(index)){
+      try {
+        let index = parseInt($("#add-validator-input").val());
+        let events = get_validator_sub_events();
+        // console.log(events);
+        if(!isNaN(index)) {
             fetch(`/user/notifications-center/validatorsub`, {
                 method: 'POST',
                 headers: { "X-CSRF-Token": csrfToken },
@@ -845,35 +844,35 @@ $(document).ready(function() {
                     }
                 }); 
             }
-      }catch{
-        alert("Invalid Validator Index!")
-        //   console.log(validators, $("#add-validator-input").val())    
+      } catch {
+        alert("Invalid Validator Index!");
+        // console.log(validators, $("#add-validator-input").val());    
       }
   })
 
-  for(let event of $("#validator_all_events :input")){ 
-     $(event).on("click", function(){
-        if ($(this).prop("checked")){
-            for (let item of EVENTS){
-                $(`#${item} input#${$(event).attr("id")}`).prop("checked", true)
+  for (let event of $("#validator_all_events :input")) { 
+     $(event).on("click", function() {
+        if ($(this).prop("checked")) {
+            for (let item of EVENTS) {
+                $(`#${item} input#${$(event).attr("id")}`).prop("checked", true);
             }
-        }else{
-            for (let item of EVENTS){
-                $(`#${item} input#${$(event).attr("id")}`).prop("checked", false)
+        } else {
+            for (let item of EVENTS) {
+                $(`#${item} input#${$(event).attr("id")}`).prop("checked", false);
             }
         }
     })
    }
 
-   for(let event of $("#manage_all_events :input")){ 
-    $(event).on("click", function(){
-       if ($(this).prop("checked")){
-           for (let item of EVENTS){
-               $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", true)
+   for(let event of $("#manage_all_events :input")) { 
+    $(event).on("click", function() {
+       if ($(this).prop("checked")) {
+           for (let item of EVENTS) {
+               $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", true);
            }
-       }else{
-           for (let item of EVENTS){
-               $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", false)
+       } else {
+           for (let item of EVENTS) {
+               $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", false);
            }
        }
    })
