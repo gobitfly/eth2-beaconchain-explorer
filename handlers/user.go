@@ -395,8 +395,13 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reqData := struct {
-		Pubkey string   `json:"pubkey"`
-		Events []string `json:"events"`
+		Pubkey string `json:"pubkey"`
+		Events []struct {
+			Event string `json:"event"`
+			Email bool   `json:"email"`
+			Push  bool   `json:"push"`
+			Web   bool   `json:"web"`
+		} `json:"events"`
 	}{}
 
 	// pubkeys := make([]string, 0)
@@ -414,10 +419,12 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, item := range reqData.Events {
-		err = db.AddSubscription(user.UserID, types.EventName(item), reqData.Pubkey, 0)
-		if err != nil {
-			logger.Errorf("error adding subscription: %v, %v", r.URL.String(), err)
-			continue
+		if item.Email {
+			err = db.AddSubscription(user.UserID, types.EventName(item.Event), reqData.Pubkey, 0)
+			if err != nil {
+				logger.Errorf("error adding subscription: %v, %v", r.URL.String(), err)
+				continue
+			}
 		}
 	}
 }
