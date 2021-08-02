@@ -1,7 +1,6 @@
-{{ define "validatorCountdown" }}
+{{define "validatorCountdown"}}
 <script>
 	function setTime(days, hour, min, second) {
-
 		if (second < 0) {
 			days = 0
 			hour = 0
@@ -12,12 +11,15 @@
 		if (second < 10) {
 			second = '0'+ second 
 		}
+
 		if (min < 10) {
 			min = '0' + min
 		}
+
 		if (hour < 10) {
 			hour = '0' + hour
 		}
+		
 		if (days < 10) {
 			days = '0' + days
 		}
