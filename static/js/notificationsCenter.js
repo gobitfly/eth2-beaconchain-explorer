@@ -675,45 +675,45 @@ $(document).ready(function() {
       if (tablename === 'validators') {
         $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Removing validator...</span></div>');
         fetch(`/validator/${rowId}/remove`, {
-          method: 'POST',
-          headers: { "X-CSRF-Token": csrfToken },
-          credentials: 'include',
-          body: { pubkey: `0x${rowId}` },
+            method: 'POST',
+            headers: { "X-CSRF-Token": csrfToken },
+            credentials: 'include',
+            body: { pubkey: `0x${rowId}` },
         }).then(res => {
-          if (res.status == 200) {
+            if (res.status == 200) {
             $('#confirmRemoveModal').modal('hide');
             window.location.reload(false);
-          } else {
+            } else {
             alert('Error removing validator from Watchlist');
-						$('#confirmRemoveModal').modal('hide');
+                        $('#confirmRemoveModal').modal('hide');
             window.location.reload();
-          }
-          $(this).html('Removed');
+            }
+            $(this).html('Removed');
         });
       }
     } else {
     	if (tablename === 'validators') {
-        $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Removing all...</span></div>');
-        let pubkeys = [];
-        for (let item of validators) {
-          pubkeys.push(item.Validator.Pubkey);
-        }
-        fetch(`/user/notifications-center/removeall`, {
-          method: 'POST',
-          headers: { "X-CSRF-Token": csrfToken },
-          credentials: 'include',
-          body: JSON.stringify(pubkeys)
-        }).then(res => {
-          if (res.status == 200) {
-            $('#confirmRemoveModal').modal('hide');
-            window.location.reload(false);
-          } else {
-            alert('Error removing all validators from Watchlist');
-						$('#confirmRemoveModal').modal('hide');
-            window.location.reload();
-          }
-          $(this).html('Removed');
-        });
+            $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Removing all...</span></div>');
+            let pubkeys = [];
+            for (let item of validators) {
+            pubkeys.push(item.Validator.Pubkey);
+            }
+            fetch(`/user/notifications-center/removeall`, {
+            method: 'POST',
+            headers: { "X-CSRF-Token": csrfToken },
+            credentials: 'include',
+            body: JSON.stringify(pubkeys)
+            }).then(res => {
+            if (res.status == 200) {
+                $('#confirmRemoveModal').modal('hide');
+                window.location.reload(false);
+            } else {
+                alert('Error removing all validators from Watchlist');
+                            $('#confirmRemoveModal').modal('hide');
+                window.location.reload();
+            }
+            $(this).html('Removed');
+            });
       }
     }
 
@@ -864,4 +864,18 @@ $(document).ready(function() {
         }
     })
    }
+
+   for(let event of $("#manage_all_events :input")){ 
+    $(event).on("click", function(){
+       if ($(this).prop("checked")){
+           for (let item of EVENTS){
+               $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", true)
+           }
+       }else{
+           for (let item of EVENTS){
+               $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", false)
+           }
+       }
+   })
+  }
 });
