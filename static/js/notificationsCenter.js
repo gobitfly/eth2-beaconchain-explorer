@@ -99,6 +99,9 @@ const data = {
 
 var csrfToken = "";
 var validators = null;
+const EVENTS = ["validator_attestation_missed","validator_balance_decreased",
+                "validator_proposal_missed","validator_proposal_submitted",
+                "validator_got_slashed"]
 
 function create_typeahead(input_container) {
   var bhValidators = new Bloodhound({
@@ -169,7 +172,9 @@ function create_typeahead(input_container) {
   });
 
   $(input_container).on('typeahead:select', function(e, sug) {
+    console.log(sug)
     $(input_container).val(sug.index);
+    $(input_container).attr("pk", sug.pubkey);
   });
 }
 
@@ -802,20 +807,61 @@ $(document).ready(function() {
   // customize tables tooltips
   $('#validators-notifications').DataTable().$('tr').tooltip({ width: 5 });
 
-  /* fetch(`/user/notifications-center/validatorsub`, {
-    method: 'POST',
-    headers: { "X-CSRF-Token": csrfToken },
-    credentials: 'include',
-    body: JSON.stringify({ pubkey: "ae22f35d8fb2ef9985a96625718fa2b8957138417886e422c01208d14674a494a4e7de0c5816dd58711758493faea7f7", events: ["validator_got_slashed","validator_balance_decreased"] })
-  }).then(res => {
-     if (res.status == 200) {
-      $('#confirmRemoveModal').modal('hide');
-      window.location.reload(false);
-     } else {
-      alert('Error removing all validators from Watchlist');
-      $('#confirmRemoveModal').modal('hide');
-      window.location.reload();
-     }
-     $(this).html('Removed');
-   }); */
+
+  function get_validator_sub_events(){
+    let events = []  
+    for (let item of EVENTS){
+        events.push({
+            event: item,
+            email: $(`#${item} :input#email`).prop("checked"),
+            push: $(`#${item} :input#push`).prop("checked"),
+            web: $(`#${item} :input#web`).prop("checked")
+        })
+      }
+    return events
+  }
+
+  $("#add-validator-button").on("click", function(){
+      console.log("clicked", $("#validator_attestation_missed>input#email"))
+    
+      try{
+        let index = parseInt($("#add-validator-input").val())
+        let events = get_validator_sub_events()
+        // console.log(events)
+        if(!isNaN(index)){
+            fetch(`/user/notifications-center/validatorsub`, {
+                method: 'POST',
+                headers: { "X-CSRF-Token": csrfToken },
+                credentials: 'include',
+                body: JSON.stringify({ pubkey: $("#add-validator-input").attr("pk"), events: events })
+                }).then(res => {
+                    if (res.status == 200) {
+                    $('#addValidatorModal').modal('hide');
+                    window.location.reload(false);
+                    } else {
+                    alert('Error adding validators to Watchlist');
+                    $('#addValidatorModal').modal('hide');
+                    window.location.reload();
+                    }
+                }); 
+            }
+      }catch{
+        alert("Invalid Validator Index!")
+        //   console.log(validators, $("#add-validator-input").val())    
+      }
+  })
+
+  for(let event of $("#validator_all_events :input")){ 
+     $(event).on("click", function(){
+        if ($(this).prop("checked")){
+            for (let item of EVENTS){
+                $(`#${item} input#${$(event).attr("id")}`).prop("checked", true)
+            }
+        }else{
+            for (let item of EVENTS){
+                $(`#${item} input#${$(event).attr("id")}`).prop("checked", false)
+            }
+        }
+    })
+   }
 });
