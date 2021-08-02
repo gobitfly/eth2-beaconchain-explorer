@@ -848,7 +848,8 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 		machine  
 	FROM users_subscriptions us
 	JOIN (
-		SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta
+		SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p 
+		WHERE day >= $3 
 		group by user_id, machine
 	) v on v.user_id = us.user_id 
 	WHERE us.event_name = $1 AND us.created_epoch <= $2 
@@ -866,9 +867,10 @@ func collectMonitoringMachineDiskAlmostFull(notificationsByUserID map[uint64]map
 			max(us.id) as id,
 			machine 
 		FROM users_subscriptions us 
-		INNER JOIN stats_meta v ON us.user_id = v.user_id
+		INNER JOIN stats_meta_p v ON us.user_id = v.user_id
 		INNER JOIN stats_system sy ON v.id = sy.meta_id
 		WHERE us.event_name = $1 AND us.created_epoch <= $2 
+		AND v.day >= $3 
 		AND v.machine = us.event_filter 
 		AND (us.last_sent_epoch < ($2 - 750) OR us.last_sent_epoch IS NULL)
 		AND sy.disk_node_bytes_free::decimal / sy.disk_node_bytes_total < event_threshold
@@ -885,8 +887,8 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 			machine 
 		FROM users_subscriptions us 
 		INNER JOIN (
-			SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta
-			where process = 'system' 
+			SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p
+			where process = 'system' AND day >= $3 
 			group by user_id, machine
 		) v ON us.user_id = v.user_id 
 		WHERE v.machine = us.event_filter 
@@ -896,8 +898,9 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 		AND event_threshold < (SELECT 
 			1 - (cpu_node_idle_seconds_total::decimal - lag(cpu_node_idle_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) / (cpu_node_system_seconds_total::decimal - lag(cpu_node_system_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) as cpu_load 
 			FROM stats_system as sy 
-			INNER JOIN stats_meta m on meta_id = m.id 
-			WHERE m.id = meta_id
+			INNER JOIN stats_meta_p m on meta_id = m.id 
+			WHERE m.id = meta_id 
+			AND m.day >= $3 
 			AND m.user_id = v.user_id 
 			AND m.machine = us.event_filter 
 			ORDER BY sy.id desc
@@ -919,7 +922,11 @@ func collectMonitoringMachine(notificationsByUserID map[uint64]map[types.EventNa
 		MachineName    string `db:"machine"`
 	}
 
-	err := db.FrontendDB.Select(&dbResult, query, eventName, latestEpoch)
+	now := time.Now()
+	nowTs := now.Unix()
+	var day int = int(nowTs/86400) - 1 // -1 so we have no issue on partition table change
+
+	err := db.FrontendDB.Select(&dbResult, query, eventName, latestEpoch, day)
 	if err != nil {
 		return err
 	}
