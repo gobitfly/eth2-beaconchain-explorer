@@ -808,7 +808,7 @@ $(document).ready(function() {
   $('#validators-notifications').DataTable().$('tr').tooltip({ width: 5 });
 
 
-  function get_validator_sub_event(){
+  function get_validator_sub_events(){
     let events = []  
     for (let item of EVENTS){
         events.push({
@@ -826,7 +826,7 @@ $(document).ready(function() {
     
       try{
         let index = parseInt($("#add-validator-input").val())
-        let events = get_validator_sub_event()
+        let events = get_validator_sub_events()
         // console.log(events)
         if(!isNaN(index)){
             fetch(`/user/notifications-center/validatorsub`, {
@@ -850,4 +850,18 @@ $(document).ready(function() {
         //   console.log(validators, $("#add-validator-input").val())    
       }
   })
+
+  for(let event of $("#validator_all_events :input")){ 
+     $(event).on("click", function(){
+        if ($(this).prop("checked")){
+            for (let item of EVENTS){
+                $(`#${item} input#${$(event).attr("id")}`).prop("checked", true)
+            }
+        }else{
+            for (let item of EVENTS){
+                $(`#${item} input#${$(event).attr("id")}`).prop("checked", false)
+            }
+        }
+    })
+   }
 });
