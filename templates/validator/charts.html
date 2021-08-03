@@ -1,4 +1,4 @@
-{{ define "validatorProposedChart" }}
+{{define "validatorProposedChart"}}
     <div id="proposed-chart" style="height: 100%">
         <div class="d-flex p-5 justify-content-center align-items-stretch" style="height: 100%">
             <svg style="width:100%; height: auto;" id="ed352ff4-7a14-4498-84af-0dc7b5b1bcd0" data-name="Layer 1"
@@ -138,9 +138,9 @@
                 })
         </script>
     {{end}}
-{{ end }}
+{{end}}
 
-{{ define "validatorIncomeChart" }}
+{{define "validatorIncomeChart"}}
 {{with .Data}}
     <div id="income-chart" style="height: 100%;">
         <div class="d-flex p-5 justify-content-center align-items-center">
@@ -210,7 +210,7 @@
             </svg>
         </div>
     </div>
-    {{ if .IncomeHistoryChartData }}
+    {{if .IncomeHistoryChartData}}
         <script>
             var incomeHistory = {{.IncomeHistoryChartData}}
             var currency = {{$.Currency}}

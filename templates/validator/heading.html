@@ -52,10 +52,6 @@
       	</ol>
       </nav>
     </div>
-
-		<div style="background-color: olive; width: 600px; height: 100px;">
-			{{if .Tags}} {{formatValidatorTags .Tags}} {{end}}
-		</div>
     {{if .Tags}} {{formatValidatorTags .Tags}} {{end}}
     <div class="text-monospace text-secondary text-truncate text-sm mb-0" id="copy-input">0x{{printf "%x" .PublicKey}}</div>
   </div>
