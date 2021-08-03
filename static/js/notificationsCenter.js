@@ -623,53 +623,6 @@ $(document).ready(function() {
     const rowId = $('#confirmRemoveModal').attr('rowId');
     const tablename = $('#confirmRemoveModal').attr('tablename');
     // if rowId also check tablename then delete row in corresponding data section
-    // if no row id delete directly in correponding data section
-    if (rowId !== undefined) {
-    	if (tablename === 'monitoring') {
-        data.monitoring = data.monitoring.filter(function(item) {
-          $('#confirmRemoveModal').modal('hide');
-          return item.id.toString() !== rowId.toString();
-        });
-      }
-
-      if (tablename === 'validators') {
-        fetch(`/validator/${rowId}/remove`, {
-          method: 'POST',
-          headers: { "X-CSRF-Token": csrfToken },
-          credentials: 'include',
-          body: { pubkey: `0x${rowId}` },
-        }).then(res => {
-          if (res.status == 200) {
-            $('#confirmRemoveModal').modal('hide');     
-            window.location.reload(false);
-          } else {
-            alert('Error removing validator from Watchlist');
-            $('#confirmRemoveModal').modal('hide');
-            window.location.reload();
-          }
-        });
-      }
-    } else {
-      if (tablename === 'validators') {
-        data.validators = [];
-      }
-    }
-    // remove selected class from rows on click outside
-    if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
-      $('#validators-notifications .selected').removeClass('selected');
-    }
-  });
-
-  $('#remove-all-btn').on('click', function(e) {
-    $('#modaltext').text($(this).data('modaltext'));
-    $('#confirmRemoveModal').removeAttr('rowId');
-    $('#confirmRemoveModal').attr('tablename', 'validators');
-  });
-  // click event to modal remove button
-  $('#remove-button').on('click', function(e) {
-    const rowId = $('#confirmRemoveModal').attr('rowId');
-    const tablename = $('#confirmRemoveModal').attr('tablename');
-    // if rowId also check tablename then delete row in corresponding data section
   	// if no row id delete directly in correponding data section
     if (rowId !== undefined) {
       if (tablename === 'monitoring') {
@@ -687,12 +640,12 @@ $(document).ready(function() {
             body: { pubkey: `0x${rowId}` },
         }).then(res => {
             if (res.status == 200) {
-            $('#confirmRemoveModal').modal('hide');
-            window.location.reload(false);
+                $('#confirmRemoveModal').modal('hide');
+                window.location.reload(false);
             } else {
-            alert('Error removing validator from Watchlist');
-            $('#confirmRemoveModal').modal('hide');
-            window.location.reload();
+                alert('Error removing validator from Watchlist');
+                $('#confirmRemoveModal').modal('hide');
+                window.location.reload();
             }
             $(this).html('Removed');
         });
@@ -722,7 +675,10 @@ $(document).ready(function() {
             });
       }
     }
-
+    // remove selected class from rows on click outside
+    if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
+      $('#validators-notifications .selected').removeClass('selected');
+    }
     if (tablename === 'monitoring') {
       $('#monitoring-notifications').DataTable().clear().destroy();
       loadMonitoringData(data.monitoring);
