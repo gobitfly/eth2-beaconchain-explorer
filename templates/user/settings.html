@@ -32,6 +32,19 @@
     var machineName = ''
 
     function changeMachineName(name = ''){
+        if (name.length >= 50) {
+            document.getElementById("invalid-name").innerText = "Name is too long."
+            return
+        } else {
+            let res = /^[a-zA-Z0-9]+$/.test(name);
+            if (!res && name.length > 0) {
+                document.getElementById("invalid-name").innerText = "A name can only contain upper or lowercase letters or numbers."
+                return
+            } else {
+                document.getElementById("invalid-name").innerText = ""
+            }
+        }
+
         machineName = name
         applyMachineConfigs()
     }
@@ -50,25 +63,13 @@
             var config = clientRefs[i].config
             config = config.replace("{apiKey}", apiKey);
 
-            let res = /^[a-zA-Z0-9]+$/.test(machineName);
-            if (machineName.length > 0 && name.length < 50 && res) {
+            if (machineName.length > 0 && name.length < 50) {
                 config = config.replace("{machineName}", "&machine=" + machineName.replaceAll(" ", ""))
             } else {
                 config = config.replace("{machineName}", "")
             }
 
             config = config.replace("{exporter-arch}", binary)
-
-            if (machineName.length >= 50) {
-                document.getElementById("invalid-name").innerText = "Name is too long."
-            } else {
-
-                if (!res && machineName.length > 0) {
-                    document.getElementById("invalid-name").innerText = "A name can only contain upper or lowercase letters or numbers."
-                } else {
-                    document.getElementById("invalid-name").innerText = ""
-                }
-            }
 
             if (config.length > 0) {
                 // console.log(flagHex, flagB64, b64ToHex(flagB64))
@@ -89,7 +90,6 @@
             "dl-normal", 
             "curl -L https://raw.githubusercontent.com/gobitfly/eth2-client-metrics-exporter/master/.script/" + installScript + " | bash"
         )
-
     }
 
     function initExplorerDownloads(className, content) { 
