@@ -511,18 +511,23 @@ function loadValidatorsData(data) {
           <div class="form-check">
             <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
             <label class="form-check-label" for=""></label>
-          </div>`
+          </div>`,
+        visible: false
       },
       {
         targets: 3,
         orderable: false,
         responsivePriority: 4,
-        data: null,
-        defaultContent: `
+        data: 'Notifications',
+        render: function(data, type, row, meta) {
+            let status = data.length>0? 'checked="true"': "";
+            // console.log(data, data.length, data.length>0, status)
+            return `
         	<div class="form-check">
-            <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
+            <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="" ${status} disabled="true">
           	<label class="form-check-label" for=""></label>
           </div>`
+        } 
       },
       {
         targets: 4,
@@ -533,7 +538,8 @@ function loadValidatorsData(data) {
         	<div class="form-check">
           	<input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
             <label class="form-check-label" for=""></label>
-          </div>`
+          </div>`,
+        visible: false
       },
       {
         targets: 5,
