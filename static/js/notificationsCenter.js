@@ -755,23 +755,11 @@ $(document).ready(function() {
         </div> `
       );
 
-      rowData.Notifications.forEach(function (notification) {
-      	if (notification.Notification === 'validator_balance_decreased') {
-          $('[id^=validator_balance_decreased]').attr('checked', true);
+      for(let event of $("#manage_all_events :input")){ 
+        for (let item of rowData.Notifications){
+            $(`#manage_${item.Notification} input#${$(event).attr("id")}`).prop("checked", true)
         }
-        if (notification.Notification === 'validator_attestation_missed') {
-          $('[id^=validator_attestation_missed]').attr('checked', true);
-        }
-        if (notification.Notification === 'validator_proposal_submitted') {
-          $('[id^=validator_proposal_submitted]').attr('checked', true);
-      	}
-        if (notification.Notification === 'validator_proposal_missed') {
-          $('[id^=validator_proposal_missed]').attr('checked', true);
-        }
-        if (notification.Notification === 'validator_got_slashed') {
-          $('[id^=validator_got_slashed]').attr('checked', true);
-        }
-    	});
+      }
     } else {
       // get the selected rows (mutiple rows selected)
       const rowsSelected = $('#validators-notifications').DataTable().rows('.selected').data();
@@ -789,11 +777,12 @@ $(document).ready(function() {
 	$('#manageNotificationsModal').on('hide.bs.modal', function(e) {
   	$(this).removeAttr('rowId');
     $('#selected-validators-events-container #validator-event-badge').remove();
-    $('[id^=validator_balance_decreased]').attr('checked', false);
-    $('[id^=validator_attestation_missed]').attr('checked', false);
-    $('[id^=validator_proposal_submitted]').attr('checked', false);
-    $('[id^=validator_proposal_missed]').attr('checked', false);
-    $('[id^=validator_got_slashed]').attr('checked', false);
+    for(let event of $("#manage_all_events :input")){ 
+        for (let item of EVENTS){
+            $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", false)
+        }
+        $(event).prop("checked", false)
+      }
 
     // TODO today: also uncheck this on modal close
     $('[id^=all_events]').attr('checked', false);
@@ -857,6 +846,7 @@ $(document).ready(function() {
       }
   })
 
+  //select/deselect notification checkboxes for all events
   for(let event of $("#validator_all_events :input")){ 
      $(event).on("click", function(){
         if ($(this).prop("checked")){
