@@ -412,6 +412,12 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if reqData.Pubkey == "" {
+		logger.Errorf("error invalid pubkey: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	err = db.AddToWatchlist([]db.WatchlistEntry{{UserId: user.UserID, Validator_publickey: reqData.Pubkey}})
 	if err != nil {
 		logger.Errorf("error adding to watchlist: %v, %v", r.URL.String(), err)
@@ -424,6 +430,70 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logger.Errorf("error adding subscription: %v, %v", r.URL.String(), err)
 				continue
+			}
+		}
+	}
+}
+
+func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	reqData := struct {
+		Pubkeys []string `json:"pubkeys"`
+		Events  []struct {
+			Event string `json:"event"`
+			Email bool   `json:"email"`
+			Push  bool   `json:"push"`
+			Web   bool   `json:"web"`
+		} `json:"events"`
+	}{}
+
+	// pubkeys := make([]string, 0)
+	err = json.Unmarshal(body, &reqData)
+	if err != nil {
+		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if len(reqData.Pubkeys) == 0 {
+		logger.Errorf("error invalid pubkey: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	pqPubkeys := pq.Array(reqData.Pubkeys)
+	pqEventNames := pq.Array([]string{string(types.ValidatorMissedAttestationEventName),
+		string(types.ValidatorBalanceDecreasedEventName),
+		string(types.ValidatorMissedProposalEventName),
+		string(types.ValidatorExecutedProposalEventName),
+		string(types.ValidatorGotSlashedEventName)})
+
+	_, err = db.DB.Exec(`
+			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
+		`, user.UserID, pqPubkeys, pqEventNames)
+	if err != nil {
+		logger.Errorf("error removing old events: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	for _, pubkey := range reqData.Pubkeys {
+		for _, item := range reqData.Events {
+			if item.Email {
+				err = db.AddSubscription(user.UserID, types.EventName(item.Event), pubkey, 0)
+				if err != nil {
+					logger.Errorf("error adding subscription: %v, %v", r.URL.String(), err)
+					continue
+				}
 			}
 		}
 	}
