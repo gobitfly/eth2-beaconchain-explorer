@@ -590,6 +590,15 @@ function loadValidatorsData(data) {
   }
 }
 
+function remove_item_from_event_container(pubkey){
+    for (let item of $("#selected-validators-events-container").find("span")){
+        if (pubkey===$(item).attr("pk")){
+            $(item).remove()
+            return
+        }
+    }
+  }
+
 $(document).ready(function() {
   if (document.getElementsByName('CsrfField')[0] !== undefined) {
     csrfToken = document.getElementsByName('CsrfField')[0].value;
@@ -709,7 +718,7 @@ $(document).ready(function() {
       $('#selected-validators-events-container').append(
         `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Validator.Pubkey}>
         		Validator ${rowData.Validator.Index}
-          	<i class="fas fa-times ml-2" style="cursor: pointer;"></i>
+          	<i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowData.Validator.Pubkey}')"></i>
         </span> `
       );
 
@@ -725,7 +734,7 @@ $(document).ready(function() {
         $('#selected-validators-events-container').append(
           `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowsSelected[i].Validator.Pubkey}>
             Validator ${rowsSelected[i].Validator.Index}
-            <i class="fas fa-times ml-2" style="cursor: pointer;"></i>
+            <i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowsSelected[i].Validator.Pubkey}')"></i>
           </span> `
         );
       }
@@ -766,6 +775,7 @@ $(document).ready(function() {
       for (let item of $("#selected-validators-events-container").find("span")){
           pubkeys.push($(item).attr("pk"))
       }
+      if (pubkeys.length===0)return
       let events = get_validator_manage_sub_events()
       fetch(`/user/notifications-center/updatesubs`, {
         method: 'POST',

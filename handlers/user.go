@@ -464,6 +464,12 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(reqData.Pubkeys) == 0 {
+		logger.Errorf("error invalid pubkey: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	pqPubkeys := pq.Array(reqData.Pubkeys)
 	pqEventNames := pq.Array([]string{string(types.ValidatorMissedAttestationEventName),
 		string(types.ValidatorBalanceDecreasedEventName),
