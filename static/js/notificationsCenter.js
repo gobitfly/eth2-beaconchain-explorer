@@ -699,16 +699,18 @@ $(document).ready(function() {
   $('#validators-notifications tbody').on('click', 'tr', function() {
     $(this).addClass('selected');
   });
+
   // on modal open after click event to validators table edit button
   $('#manageNotificationsModal').on('show.bs.modal', function(e) {
     // get the selected row (single row selected)
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data();
+    // console.log(rowData)
     if (rowData) {
       $('#selected-validators-events-container').append(
-        `<div id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal">
+        `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Validator.Pubkey}>
         		Validator ${rowData.Validator.Index}
           	<i class="fas fa-times ml-2" style="cursor: pointer;"></i>
-        </div> `
+        </span> `
       );
 
       for(let event of $("#manage_all_events :input")){ 
@@ -721,10 +723,10 @@ $(document).ready(function() {
       const rowsSelected = $('#validators-notifications').DataTable().rows('.selected').data();
       for (let i = 0; i < rowsSelected.length; i++) {
         $('#selected-validators-events-container').append(
-          `<div id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal">
+          `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowsSelected[i].Validator.Pubkey}>
             Validator ${rowsSelected[i].Validator.Index}
             <i class="fas fa-times ml-2" style="cursor: pointer;"></i>
-          </div> `
+          </span> `
         );
       }
     }
@@ -745,6 +747,44 @@ $(document).ready(function() {
     // remove selected class from rows when modal closed
     $('#validators-notifications .selected').removeClass('selected');
   });
+
+  function get_validator_manage_sub_events(){
+    let events = []  
+    for (let item of EVENTS){
+        events.push({
+            event: item,
+            email: $(`#manage_${item} :input#email`).prop("checked"),
+            push: $(`#manage_${item} :input#push`).prop("checked"),
+            web: $(`#manage_${item} :input#web`).prop("checked")
+        })
+      }
+    return events
+  }
+
+  $("#update-subs-btn").on("click", function(){
+      let pubkeys = []
+      for (let item of $("#selected-validators-events-container").find("span")){
+          pubkeys.push($(item).attr("pk"))
+      }
+      let events = get_validator_manage_sub_events()
+      fetch(`/user/notifications-center/updatesubs`, {
+        method: 'POST',
+        headers: { "X-CSRF-Token": csrfToken },
+        credentials: 'include',
+        body: JSON.stringify({ pubkeys: pubkeys, events: events })
+        }).then(res => {
+            if (res.status == 200) {
+            $('#manageNotificationsModal').modal('hide');
+            window.location.reload(false);
+            } else {
+            alert('Error updating validators subscriptions');
+            $('#manageNotificationsModal').modal('hide');
+            window.location.reload();
+            }
+        }); 
+
+  })
+
   // all events checkboxes (push, email, web)
   $('#all_events_push').on('click', function() {
     $('[id$=push]').attr('checked', $(this).is(':checked'));
