@@ -1022,8 +1022,8 @@ type taxReportNotification struct {
 
 func (n *taxReportNotification) GetEmailAttachment() *types.EmailAttachment {
 	tNow := time.Now()
-	firstDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
-	lastDay := firstDay.AddDate(0, 1, 0).Add(-time.Nanosecond)
+	lastDay := time.Date(tNow.Year(), tNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	firstDay := lastDay.AddDate(0, -1, 0)
 
 	q, err := url.ParseQuery(n.EventFilter)
 
