@@ -604,6 +604,7 @@ $(document).ready(function() {
     csrfToken = document.getElementsByName('CsrfField')[0].value;
   }
   create_typeahead('.validator-typeahead');
+  create_typeahead('.monitoring-typeahead');
 
   loadMonitoringData(data.monitoring);
   loadNetworkData(data.network);
@@ -880,4 +881,8 @@ $(document).ready(function() {
        }
    })
   }
+
+  $("#add-monitoring-event-btn").on("click", function(){
+
+  })
 });
