@@ -3,7 +3,7 @@
 	<script type="text/javascript" src="/js/datatable_input.js"></script>
 	<script src="/js/notificationsCenter.js"></script>
 	{{ .CsrfField }}
-	<script>loadValidatorsData({{.Validators}})</script>
+	<script> const DATA = {{.Validators}}</script>
 {{end}}
 
 {{define "css"}}
