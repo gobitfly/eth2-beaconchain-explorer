@@ -20,8 +20,6 @@
 }
 .custom-background-color { 
   background-color: var(--new-card-bg);
-  /* background-color: #484449;
-  background-color: #fdfdfd; */
 }
 .custom-border-radius { 
   border-radius: .5rem; 
@@ -75,8 +73,6 @@
 .icon { 
   font-size: 2.4rem;
   color: var(--new-primary);
-  /* color: #ff9c19;
-  color: var(--primary); */
 }
 .metrics-section { 
   min-height: 120px; 
@@ -286,8 +282,6 @@ div.dataTables_scrollBody table {
 #add-validator-search-container .tt-suggestion .tt-cursor,
 #add-validator-search-container .tt-suggestion:hover {
   background-color: var(--new-primary);
-  /* background-color: #ff9c19;
-  background-color: var(--primary); */
   cursor: pointer;
 }
 #add-validator-search-container .tt-menu {
@@ -296,8 +290,6 @@ div.dataTables_scrollBody table {
   margin-top: 4px;
   padding: .5rem;
   background-color: var(--new-card-bg);
-  /* background-color: #484449;
-  background-color: #fdfdfd; */
   -webkit-border-radius: 4px;
   -moz-border-radius: 4px;
   border-radius: 4px;
