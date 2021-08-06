@@ -411,6 +411,7 @@ function loadNetworkData(data) {
 }
 
 function loadValidatorsData(data) {
+    console.log(data)
   validators = data;
 
   let validatorsTable = $('#validators-notifications');
@@ -604,7 +605,7 @@ $(document).ready(function() {
     csrfToken = document.getElementsByName('CsrfField')[0].value;
   }
   create_typeahead('.validator-typeahead');
-  create_typeahead('.monitoring-typeahead');
+//   create_typeahead('.monitoring-typeahead');
 
   loadMonitoringData(data.monitoring);
   loadNetworkData(data.network);
@@ -882,7 +883,28 @@ $(document).ready(function() {
    })
   }
 
-  $("#add-monitoring-event-btn").on("click", function(){
+  $("#add-monitoring-event-modal-btn").on("click", function(){
+      for (let item of validators.sort((a,b)=>{return a.Validator.Index-b.Validator.Index})){
+          $("#add-monitoring-validator-select").append(`<option value="${item.Validator.Pubkey}">${item.Validator.Index}</option>`)
+      }
+  })
 
+  $("#add-monitoring-event-btn").on("click", function(){
+      let pubkey = $("#add-monitoring-validator-select option:selected").val();
+    // fetch(`/notifications/subscribe`, {
+    //     method: 'POST',
+    //     headers: { "X-CSRF-Token": csrfToken },
+    //     credentials: 'include',
+    //     body: ""
+    //     }).then(res => {
+    //         if (res.status == 200) {
+    //         $('#manageNotificationsModal').modal('hide');
+    //         window.location.reload(false);
+    //         } else {
+    //         alert('Error updating validators subscriptions');
+    //         $('#manageNotificationsModal').modal('hide');
+    //         window.location.reload();
+    //         }
+    //     }); 
   })
 });

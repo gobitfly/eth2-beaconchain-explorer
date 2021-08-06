@@ -92,7 +92,7 @@
 						<h2 class="heading-l2">Monitoring</h2>
 					</div>
 					<!-- TODO: fix button remains focused after being pressed -->
-					<button class="btn btn-primary ml-sm-3" data-toggle="modal" data-target="#addMonitoringEventModal">
+					<button id="add-monitoring-event-modal-btn" class="btn btn-primary ml-sm-3" data-toggle="modal" data-target="#addMonitoringEventModal">
 						<i class="fas fa-plus"></i>
 						<span class="text-nowrap">Add monitoring event</span>
 					</button>
@@ -241,7 +241,8 @@
 					</div> 
 					<div id="add-validator-search-container" class="w-100 mb-3">
 						<div class="my-3">
-							<input class="form-control monitoring-typeahead" type="text" autocomplete="off" spellcheck="false" placeholder="Select your machine..." aria-label="Search machine">
+							<!-- <input id="add-monitoring-validator-input" class="form-control monitoring-typeahead" type="text" autocomplete="off" spellcheck="false" placeholder="Select your machine..." aria-label="Search machine"> -->
+							<select name="Select your machine..." id="add-monitoring-validator-select" class="form-control"></select>
 						</div>
 						<div class="mb-3">
 							<div class="form-check form-check-inline w-100 mb-2">

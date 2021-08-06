@@ -305,8 +305,8 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	err := db.DB.Select(&validatordb, `
 	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, a.last_sent_ts
 	FROM validators 
-	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, event_name, last_sent_ts FROM users_subscriptions 
-	RIGHT OUTER JOIN users_validators_tags uvt ON event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex')
+	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, us.last_sent_ts FROM users_validators_tags uvt 
+	LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id
 	WHERE uvt.user_id = $1) a ON a.pubkey=pubkeyhex;
 		`, userId)
 	if err != nil {
