@@ -250,7 +250,7 @@
 									<i class="fas fa-microchip fa-sm d-inline-block mr-2"></i>
 									CPU Usage
 								</label>
-								<input class="form-check-input checkbox-custom-size" type="checkbox" id="cpu" value="">
+								<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="cpu" event="monitoring_cpu_load" value="">
 							</div>
 							<div class="w-100 d-flex align-items-center pl-2">
 								<input id="cpu-input-range" class="w-75 mr-5 range custom-range" type="range" value="80" min="0" max="100" data-target="#cpu-input-range-val" />
@@ -263,7 +263,7 @@
 									<i class="fas fa-hdd fa-sm d-inline-block mr-2"></i>
 									HDD Usage
 								</label>
-								<input class="form-check-input checkbox-custom-size" type="checkbox" id="hdd" value="">
+								<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="hdd" event="monitoring_hdd_almostfull" value="">
 							</div>
 							<div class="w-100 d-flex align-items-center pl-2">
 								<input id="hdd-input-range" class="w-75 mr-5 range custom-range" type="range" value="80" min="0" max="100" data-target="#hdd-input-range-val" />
@@ -275,7 +275,7 @@
 								<i class="fas fa-battery-full fa-sm d-inline-block mr-2"></i>
 								Machine Offline
 							</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="offline" value="">
+							<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="offline" event="monitoring_machine_offline" value="">
 						</div>
 					</div>  
 				</div>

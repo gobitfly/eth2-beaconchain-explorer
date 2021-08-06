@@ -411,7 +411,7 @@ function loadNetworkData(data) {
 }
 
 function loadValidatorsData(data) {
-    console.log(data)
+    // console.log(data)
   validators = data;
 
   let validatorsTable = $('#validators-notifications');
@@ -891,20 +891,44 @@ $(document).ready(function() {
 
   $("#add-monitoring-event-btn").on("click", function(){
       let pubkey = $("#add-monitoring-validator-select option:selected").val();
-    // fetch(`/notifications/subscribe`, {
-    //     method: 'POST',
-    //     headers: { "X-CSRF-Token": csrfToken },
-    //     credentials: 'include',
-    //     body: ""
-    //     }).then(res => {
-    //         if (res.status == 200) {
-    //         $('#manageNotificationsModal').modal('hide');
-    //         window.location.reload(false);
-    //         } else {
-    //         alert('Error updating validators subscriptions');
-    //         $('#manageNotificationsModal').modal('hide');
-    //         window.location.reload();
-    //         }
-    //     }); 
+      events = []
+      for (let item of $("input.monitoring")){
+          if ($(item).prop("checked")){
+            //   console.log($(item), $(item).attr("event"), $(item).prop("event"))
+            let e = $(item).attr("event");
+            let t = 0
+            switch (e) {
+                case "monitoring_cpu_load":
+                    t = parseFloat($("#cpu-input-range-val").val())/100
+                    break;
+                case "monitoring_hdd_almostfull":
+                    t = parseFloat($("#hdd-input-range-val").val())/100
+                    break;
+                default:
+                    t=0;
+            }
+              events.push({
+                  event: e,
+                  email: true,
+                  threshold: t
+                })
+          }
+      }
+    //   console.log(pubkey, events)
+    fetch(`/user/notifications-center/monitoring/updatesubs`, {
+        method: 'POST',
+        headers: { "X-CSRF-Token": csrfToken },
+        credentials: 'include',
+        body: JSON.stringify({ pubkeys: [pubkey], events: events })
+    }).then(res => {
+        if (res.status == 200) {
+        $('#manageNotificationsModal').modal('hide');
+        window.location.reload(false);
+        } else {
+        alert('Error updating validators subscriptions');
+        $('#manageNotificationsModal').modal('hide');
+        window.location.reload();
+        }
+    }); 
   })
 });
