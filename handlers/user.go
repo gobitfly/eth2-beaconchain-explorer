@@ -305,8 +305,8 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	err := db.DB.Select(&validatordb, `
 	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, a.last_sent_ts
 	FROM validators 
-	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, event_name, last_sent_ts FROM users_subscriptions 
-	RIGHT OUTER JOIN users_validators_tags uvt ON event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex')
+	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, us.last_sent_ts FROM users_validators_tags uvt 
+	LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id
 	WHERE uvt.user_id = $1) a ON a.pubkey=pubkeyhex;
 		`, userId)
 	if err != nil {
@@ -424,14 +424,24 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	result := true
+	m := map[string]bool{}
 	for _, item := range reqData.Events {
 		if item.Email {
-			err = db.AddSubscription(user.UserID, types.EventName(item.Event), reqData.Pubkey, 0)
-			if err != nil {
-				logger.Errorf("error adding subscription: %v, %v", r.URL.String(), err)
+			if m[item.Event] && reqData.Pubkey == "" {
 				continue
 			}
+
+			result = result && internUserNotificationsSubscribe(item.Event, reqData.Pubkey, 0, w, r)
+			m[item.Event] = true
+			if !result {
+				break
+			}
 		}
+	}
+
+	if result {
+		OKResponse(w, r)
 	}
 }
 
@@ -449,10 +459,11 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 	reqData := struct {
 		Pubkeys []string `json:"pubkeys"`
 		Events  []struct {
-			Event string `json:"event"`
-			Email bool   `json:"email"`
-			Push  bool   `json:"push"`
-			Web   bool   `json:"web"`
+			Event     string  `json:"event"`
+			Email     bool    `json:"email"`
+			Push      bool    `json:"push"`
+			Web       bool    `json:"web"`
+			Threshold float64 `json:"threshold"`
 		} `json:"events"`
 	}{}
 
@@ -486,16 +497,112 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	all_success := true
 	for _, pubkey := range reqData.Pubkeys {
+		result := true
+		m := map[string]bool{}
 		for _, item := range reqData.Events {
 			if item.Email {
-				err = db.AddSubscription(user.UserID, types.EventName(item.Event), pubkey, 0)
-				if err != nil {
-					logger.Errorf("error adding subscription: %v, %v", r.URL.String(), err)
+				if m[item.Event] && pubkey == "" {
 					continue
+				}
+
+				result = result && internUserNotificationsSubscribe(item.Event, pubkey, item.Threshold, w, r)
+				m[item.Event] = true
+				if !result {
+					break
 				}
 			}
 		}
+		if !result {
+			all_success = false
+			break
+		}
+	}
+
+	if all_success {
+		OKResponse(w, r)
+	}
+}
+
+func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
+	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
+	user := getUser(w, r)
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	reqData := struct {
+		Pubkeys []string `json:"pubkeys"`
+		Events  []struct {
+			Event    string  `json:"event"`
+			Email    bool    `json:"email"`
+			Push     bool    `json:"push"`
+			Web      bool    `json:"web"`
+			Treshold float64 `json:"treshold"`
+		} `json:"events"`
+	}{}
+
+	// pubkeys := make([]string, 0)
+	err = json.Unmarshal(body, &reqData)
+	if err != nil {
+		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if len(reqData.Pubkeys) == 0 {
+		logger.Errorf("error invalid pubkey: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	pqPubkeys := pq.Array(reqData.Pubkeys)
+	pqEventNames := pq.Array([]string{string(types.ValidatorMissedAttestationEventName),
+		string(types.MonitoringMachineCpuLoadEventName),
+		string(types.MonitoringMachineDiskAlmostFullEventName),
+		string(types.MonitoringMachineOfflineEventName),
+		string(types.MonitoringMachineSwitchedToETH1FallbackEventName),
+		string(types.MonitoringMachineSwitchedToETH2FallbackEventName)})
+
+	_, err = db.DB.Exec(`
+			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
+		`, user.UserID, pqPubkeys, pqEventNames)
+	if err != nil {
+		logger.Errorf("error removing old events: %v, %v", r.URL.String(), err)
+		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	all_success := true
+	for _, pubkey := range reqData.Pubkeys {
+		result := true
+		m := map[string]bool{}
+		for _, item := range reqData.Events {
+			if item.Email {
+				if m[item.Event] && pubkey == "" {
+					continue
+				}
+
+				result = result && internUserNotificationsSubscribe(item.Event, pubkey, item.Treshold, w, r)
+				m[item.Event] = true
+				if !result {
+					break
+				}
+			}
+		}
+		if !result {
+			all_success = false
+			break
+		}
+	}
+
+	if all_success {
+		OKResponse(w, r)
 	}
 }
 

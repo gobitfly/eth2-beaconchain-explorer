@@ -98,10 +98,11 @@ const data = {
 };
 
 var csrfToken = "";
-var validators = null;
-const EVENTS = ["validator_attestation_missed","validator_balance_decreased",
+
+const VALIDATOR_EVENTS = ["validator_attestation_missed","validator_balance_decreased",
                 "validator_proposal_missed","validator_proposal_submitted",
-                "validator_got_slashed"]
+                "validator_got_slashed"];
+const MONITORING_EVENTS = ["monitoring_machine_offline", "monitoring_hdd_almostfull", "monitoring_cpu_load"]
 
 function create_typeahead(input_container) {
   var bhValidators = new Bloodhound({
@@ -411,7 +412,8 @@ function loadNetworkData(data) {
 }
 
 function loadValidatorsData(data) {
-  validators = data;
+    // console.log(data)
+//   validators = data;
 
   let validatorsTable = $('#validators-notifications');
   validatorsTable.DataTable({
@@ -474,12 +476,14 @@ function loadValidatorsData(data) {
         responsivePriority: 2,
         data: 'Notifications',
         render: function(data, type, row, meta) {
+          if (type === "display"){
           let notifications = "";
-          if (data.length === 0) {
-            return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
-          }
+          let hasItems = false;
           for (let notification of data) {
-            let badgeColor = "";
+            //   console.log(notification.Notification, VALIDATOR_EVENTS, VALIDATOR_EVENTS.includes(notification.Notification))
+            if (VALIDATOR_EVENTS.includes(notification.Notification)){
+              hasItems=true
+              let badgeColor = "";
               switch (notification.Notification) {
                 case 'validator_balance_decreased':
                   badgeColor = 'badge-light';
@@ -499,7 +503,13 @@ function loadValidatorsData(data) {
             }
             notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + notification.Notification.replaceAll("_", " ") + '</span>';
           }
+        }
+        if (!hasItems) {
+            return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
+          }
           return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
+        }
+        return null
         }
       },
       {
@@ -584,7 +594,7 @@ function loadValidatorsData(data) {
     }
   });
   // show manage-notifications button and remove-all button only if there is data in the validator table
-  if (validators.length !== 0) {
+  if (DATA.length !== 0) {
     $('#manage-notifications-btn').removeAttr('hidden');
     $('#remove-all-btn').removeAttr('hidden');
   }
@@ -604,9 +614,12 @@ $(document).ready(function() {
     csrfToken = document.getElementsByName('CsrfField')[0].value;
   }
   create_typeahead('.validator-typeahead');
-  create_typeahead('.monitoring-typeahead');
+//   create_typeahead('.monitoring-typeahead');
 
-  loadMonitoringData(data.monitoring);
+
+  loadValidatorsData(DATA);
+//   loadMonitoringData(DATA);
+  loadMonitoringData(data.monitoring)
   loadNetworkData(data.network);
 
   $(document).on('click', function(e) {
@@ -664,7 +677,7 @@ $(document).ready(function() {
     	if (tablename === 'validators') {
             $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Removing all...</span></div>');
             let pubkeys = [];
-            for (let item of validators) {
+            for (let item of DATA) {
             pubkeys.push(item.Validator.Pubkey);
             }
             fetch(`/user/notifications-center/removeall`, {
@@ -746,7 +759,7 @@ $(document).ready(function() {
   	$(this).removeAttr('rowId');
     $('#selected-validators-events-container #validator-event-badge').remove();
     for(let event of $("#manage_all_events :input")){ 
-        for (let item of EVENTS){
+        for (let item of VALIDATOR_EVENTS){
             $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", false)
         }
         $(event).prop("checked", false)
@@ -760,7 +773,7 @@ $(document).ready(function() {
 
   function get_validator_manage_sub_events(){
     let events = []  
-    for (let item of EVENTS){
+    for (let item of VALIDATOR_EVENTS){
         events.push({
             event: item,
             email: $(`#manage_${item} :input#email`).prop("checked"),
@@ -809,9 +822,10 @@ $(document).ready(function() {
   // customize tables tooltips
   $('#validators-notifications').DataTable().$('tr').tooltip({ width: 5 });
 
-  function get_validator_sub_events() {
-    let events = [];
-    for (let item of EVENTS) {
+
+  function get_validator_sub_events(){
+    let events = []  
+    for (let item of VALIDATOR_EVENTS){
         events.push({
             event: item,
             email: $(`#${item} :input#email`).prop("checked"),
@@ -856,32 +870,77 @@ $(document).ready(function() {
   for(let event of $("#validator_all_events :input")){ 
      $(event).on("click", function(){
         if ($(this).prop("checked")){
-            for (let item of EVENTS){
+            for (let item of VALIDATOR_EVENTS){
                 $(`#${item} input#${$(event).attr("id")}`).prop("checked", true)
             }
-        } else {
-            for (let item of EVENTS) {
-                $(`#${item} input#${$(event).attr("id")}`).prop("checked", false);
+        }else{
+            for (let item of VALIDATOR_EVENTS){
+                $(`#${item} input#${$(event).attr("id")}`).prop("checked", false)
             }
         }
     })
    }
 
-   for(let event of $("#manage_all_events :input")) { 
-    $(event).on("click", function() {
-       if ($(this).prop("checked")) {
-           for (let item of EVENTS) {
-               $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", true);
+   for(let event of $("#manage_all_events :input")){ 
+    $(event).on("click", function(){
+       if ($(this).prop("checked")){
+           for (let item of VALIDATOR_EVENTS){
+               $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", true)
            }
-       } else {
-           for (let item of EVENTS) {
-               $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", false);
+       }else{
+           for (let item of VALIDATOR_EVENTS){
+               $(`#manage_${item} input#${$(event).attr("id")}`).prop("checked", false)
            }
        }
    })
   }
 
-  $("#add-monitoring-event-btn").on("click", function(){
+  $("#add-monitoring-event-modal-btn").on("click", function(){
+      for (let item of DATA.sort((a,b)=>{return a.Validator.Index-b.Validator.Index})){
+          $("#add-monitoring-validator-select").append(`<option value="${item.Validator.Pubkey}">${item.Validator.Index}</option>`)
+      }
+  })
 
+  $("#add-monitoring-event-btn").on("click", function(){
+      let pubkey = $("#add-monitoring-validator-select option:selected").val();
+      events = []
+      for (let item of $("input.monitoring")){
+          if ($(item).prop("checked")){
+            //   console.log($(item), $(item).attr("event"), $(item).prop("event"))
+            let e = $(item).attr("event");
+            let t = 0
+            switch (e) {
+                case "monitoring_cpu_load":
+                    t = parseFloat($("#cpu-input-range-val").val())/100
+                    break;
+                case "monitoring_hdd_almostfull":
+                    t = parseFloat($("#hdd-input-range-val").val())/100
+                    break;
+                default:
+                    t=0;
+            }
+              events.push({
+                  event: e,
+                  email: true,
+                  threshold: t
+                })
+          }
+      }
+    //   console.log(pubkey, events)
+    fetch(`/user/notifications-center/monitoring/updatesubs`, {
+        method: 'POST',
+        headers: { "X-CSRF-Token": csrfToken },
+        credentials: 'include',
+        body: JSON.stringify({ pubkeys: [pubkey], events: events })
+    }).then(res => {
+        if (res.status == 200) {
+        $('#manageNotificationsModal').modal('hide');
+        window.location.reload(false);
+        } else {
+        alert('Error updating validators subscriptions');
+        $('#manageNotificationsModal').modal('hide');
+        window.location.reload();
+        }
+    }); 
   })
 });
