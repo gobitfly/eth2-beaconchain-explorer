@@ -300,12 +300,13 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 		Pubkey       string  `db:"pubkey"`
 		Notification *string `db:"event_name"`
 		LastSent     *uint64 `db:"last_sent_ts"`
+		Threshold    *string `db:"event_threshold"`
 	}{}
 
 	err := db.DB.Select(&validatordb, `
-	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, a.last_sent_ts
+	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, a.last_sent_ts, a.event_threshold
 	FROM validators 
-	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, us.last_sent_ts FROM users_validators_tags uvt 
+	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, us.last_sent_ts, us.event_threshold FROM users_validators_tags uvt 
 	LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id
 	WHERE uvt.user_id = $1) a ON a.pubkey=pubkeyhex;
 		`, userId)
@@ -316,6 +317,7 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	type notification struct {
 		Notification string
 		Timestamp    uint64
+		Threshold    string
 	}
 
 	type validatorDetails struct {
@@ -341,7 +343,7 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 			if item.LastSent != nil {
 				ts = *item.LastSent
 			}
-			map_item.Notifications = append(map_item.Notifications, notification{Notification: *item.Notification, Timestamp: ts})
+			map_item.Notifications = append(map_item.Notifications, notification{Notification: *item.Notification, Timestamp: ts, Threshold: *item.Threshold})
 			result_map[item.Index] = map_item
 		}
 

@@ -173,7 +173,26 @@ function create_typeahead(input_container) {
 }
 
 function loadMonitoringData(data) {
-	let monitoringTable = $('#monitoring-notifications');
+    // console.log(data)
+  let mdata = []
+  let id = 0
+  for (let item of data){
+      for (let n of item.Notifications){
+          let ns = n.Notification.split("_")
+          if (ns[0]==="monitoring"){
+              mdata.push({
+                id: id,
+                notification: ns[1],
+                threshold: n.Threshold,
+                machine: item.Validator.Index,
+                mostRecent: n.Timestamp
+              })
+              id+=1;
+          }
+      }
+  }
+//   console.log(mdata)
+  let monitoringTable = $('#monitoring-notifications');
 
   monitoringTable.DataTable({
     language: {
@@ -190,7 +209,7 @@ function loadMonitoringData(data) {
     scroller: true,
     scrollY: 380,
     paging: true,
-    data: data,
+    data: mdata,
     rowId: 'id',
     initComplete: function(settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar');
@@ -285,13 +304,16 @@ function loadMonitoringData(data) {
           if (!data) {
             return '<span class="threshold_non_editable">N/A</span>';
           }
-          return '<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + data * 100 + '%</span> <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;"></i></span>';
+          return '<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + (data * 100).toFixed(2) + '%</span> <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;"></i></span>';
         }
       },
       {
         targets: 2,
         responsivePriority: 2,
-        data: 'machine'
+        data: 'machine',
+        render: function(data, type, row, meta) {
+            return `<span class="font-weight-bold"><i class="fas fa-male mr-1"></i><a style="padding: .25rem;" href="/validator/${data}">${data}</a></span>`
+        }
       },
       {
         targets: 3,
@@ -302,6 +324,8 @@ function loadMonitoringData(data) {
           if (type === 'sort' || type === 'type') {
             return data;
           }
+
+          if (parseInt(data)===0) return "N/a"
           return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" })}</span>`;
         }
     	},
@@ -615,8 +639,7 @@ $(document).ready(function() {
 
 
   loadValidatorsData(DATA);
-  // loadMonitoringData(DATA);
-  loadMonitoringData(data.monitoring)
+  loadMonitoringData(DATA)
   loadNetworkData(data.network);
 
   $(document).on('click', function(e) {
