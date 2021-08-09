@@ -503,7 +503,7 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 			}
 		}
 	}
-	return nil
+	return db.UpdateEpochFinalization()
 }
 
 func performanceDataUpdater() {

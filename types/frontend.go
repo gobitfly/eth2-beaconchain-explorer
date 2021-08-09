@@ -56,6 +56,7 @@ var EventNames = []EventName{
 	MonitoringMachineCpuLoadEventName,
 	MonitoringMachineSwitchedToETH2FallbackEventName,
 	MonitoringMachineSwitchedToETH1FallbackEventName,
+	MonitoringMachineMemoryUsageEventName,
 	TaxReportEventName,
 }
 
