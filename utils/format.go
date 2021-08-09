@@ -14,6 +14,7 @@ import (
 	"time"
 
 	eth1common "github.com/ethereum/go-ethereum/common"
+	"github.com/protolambda/zssz/bitfields"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -381,6 +382,38 @@ func FormatHash(hash []byte) template.HTML {
 		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span>", hash[:3]))
 	}
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
+}
+
+// FormatBitlist will return a bitlist formated as html
+func FormatBitlist(bits []byte) template.HTML {
+	var buf strings.Builder
+	buf.WriteString("<div class=\"text-bitlist\">")
+	perLine := 8
+	for y := 0; y < len(bits)/perLine; y++ {
+		start, end := y, y+perLine
+		if end > len(bits) {
+			end = len(bits)
+		}
+		for x := start; x < end; x++ {
+			v := bits[x]
+			var vStr string
+			// if this is the last byte, strip the delimiter bit, and omit the trailing zeroes
+			if x == len(bits)-1 {
+				i := bitfields.BitIndex(v)
+				// mask out the delimit bit
+				v &^= 1 << i
+				// no padding
+				vStr = fmt.Sprintf("%b", v)
+			} else {
+				// pad to full 8 bits, don't omit zeroes
+				vStr = fmt.Sprintf("%08b", v)
+			}
+			buf.WriteString(fmt.Sprintf(" <span class=\"text-monospace\">%s</span>", vStr))
+		}
+		buf.WriteString("<br/>")
+	}
+	buf.WriteString("</div>")
+	return template.HTML(buf.String())
 }
 
 // FormatIncome will return a string for a balance
