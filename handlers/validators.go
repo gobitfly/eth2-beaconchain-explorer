@@ -296,7 +296,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 				validators.lastattestationslot,
 				COALESCE(validator_names.name, '') AS name,
 				validators.status AS state,
-				cnt.total_count
+				COALESCE(cnt.total_count, 0) as total_count
 			FROM validators
 			INNER JOIN matched_validators ON validators.pubkey = matched_validators.pubkey
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
