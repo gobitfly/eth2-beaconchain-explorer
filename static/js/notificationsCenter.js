@@ -179,8 +179,8 @@ function loadMonitoringData(data) {
     for (let n of item.Notifications) {
       let ns = n.Notification.split("_")
       if (ns[0] === "monitoring") {
-        if (ns[1]==="machine"){
-          ns[1]=ns[2];
+        if (ns[1] === "machine") {
+          ns[1] = ns[2];
         }
         mdata.push({
           id: id,
@@ -188,7 +188,7 @@ function loadMonitoringData(data) {
           threshold: [n.Threshold, item],
           machine: item.Validator.Index,
           mostRecent: n.Timestamp,
-          event: {pk: item.Validator.Pubkey, e: n.Notification}
+          event: { pk: item.Validator.Pubkey, e: n.Notification }
         })
         id += 1;
       }
@@ -218,7 +218,7 @@ function loadMonitoringData(data) {
 
       // click event to monitoring table edit button
       $('#monitoring-notifications #edit-monitoring-events-btn').on('click', function (e) {
-        console.log($(this).attr("event"), $(this).attr("pk"), $(this).attr("ind"))
+        // console.log($(this).attr("event"), $(this).attr("pk"), $(this).attr("ind"))
         $('#add-monitoring-validator-select').html("")
         $("#cpu-input-range-val, #cpu-input-range").val(80)
         $("#cpu-input-range").attr("style", `background-size: 80% 100%`)
@@ -227,45 +227,31 @@ function loadMonitoringData(data) {
         for (let item of $('input.monitoring')) {
           $(item).prop('checked', false)
         }
-        
+
         let ev = $(this).attr("event").split(",")
-        for(let i of ev){
-          if (i.length>0){
+        for (let i of ev) {
+          if (i.length > 0) {
             let t = i.split(":")
             // console.log()
             for (let item of $('input.monitoring')) {
               let e = $(item).attr('event');
-              console.log(e, t[0], e===t[0])
-              if (e===t[0]){
-                $(item).prop('checked', true) 
-                let p = parseInt(parseFloat(t[1])*100);
+              // console.log(e, t[0], e === t[0])
+              if (e === t[0]) {
+                $(item).prop('checked', true)
+                let p = parseInt(parseFloat(t[1]) * 100);
                 if (e.includes("_cpu_")) {
                   $("#cpu-input-range-val, #cpu-input-range").val(p)
                   $("#cpu-input-range").attr("style", `background-size: ${p}% 100%`)
-                }else if (e.includes("_hdd_")){
+                } else if (e.includes("_hdd_")) {
                   $("#hdd-input-range-val, #hdd-input-range").val(p)
                   $("#hdd-input-range").attr("style", `background-size: ${p}% 100%`)
-                } 
-              } 
+                }
+              }
             }
           }
         }
 
         $('#add-monitoring-validator-select').append(`<option value="${$(this).attr("pk")}">${$(this).attr("ind")}</option>`);
-
-        // console.log($(item), $(item).attr("event"), $(item).prop("event"));
-        // e.stopPropagation();
-        // const threshold_editable_placeholder = $(this).parent().find('.threshold_non_editable_text').text().slice(0, -1);
-
-        // // close all other editable rows
-        // $('.threshold_editable').each(function () {
-        //   $(this).attr('hidden', true);
-        //   $(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
-        // });
-
-        // $(this).parent().parent().find('.threshold_non_editable').css('display', 'none');
-        // $(this).parent().parent().find('.threshold_editable').removeAttr('hidden');
-        // $(this).parent().parent().find('.threshold_editable').attr('value', threshold_editable_placeholder);
       });
 
       // enter event to threshold input
@@ -314,8 +300,8 @@ function loadMonitoringData(data) {
 
         // set the row id 
         let rowId = $(this).parent().parent().attr('id');
-        if (rowId===undefined){
-          rowId=0;
+        if (rowId === undefined) {
+          rowId = 0;
         }
         $('#confirmRemoveModal').attr('rowId', rowId);
         $('#confirmRemoveModal').attr('tablename', 'monitoring');
@@ -348,12 +334,12 @@ function loadMonitoringData(data) {
             return '<span class="threshold_non_editable">N/A</span>';
           }
 
-          if (type==="display"){
+          if (type === "display") {
             let e = ""
-            for(let i of data[1].Notifications){
+            for (let i of data[1].Notifications) {
               let ns = i.Notification.split("_")
               if (ns[0] === "monitoring") {
-                e+=`${i.Notification}:${i.Threshold},`
+                e += `${i.Notification}:${i.Threshold},`
               }
             }
             return `<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden />
@@ -396,11 +382,11 @@ function loadMonitoringData(data) {
         orderable: false,
         responsivePriority: 3,
         data: 'event',
-        render: function(data, type, row, meta){
+        render: function (data, type, row, meta) {
           return `<i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" 
                       title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" 
                       data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
-        } 
+        }
       }
     ],
   });
