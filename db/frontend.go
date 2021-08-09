@@ -81,7 +81,7 @@ func UpdatePassword(userId uint64, hash []byte) error {
 // AddAuthorizeCode registers a code that can be used in exchange for an access token
 func AddAuthorizeCode(userId uint64, code, clientId string, appId uint64) error {
 	var dbClientID = clientId
-	if len(dbClientID) <= 2 { // remain backwards compatible
+	if len(dbClientID) <= 5 { // remain backwards compatible
 		dbClientID = code
 	}
 	now := time.Now()
