@@ -456,8 +456,7 @@
                                                 data-parent="#accordionExample" style="margin: 15px;">
                                                 <div class="accordion-body">
                                                     
-                                                    Copy & Paste the following flags to your Lighthouse validator <strong>and</strong> beaconnode run script:<br/><br/>
-
+                                                    Copy & Paste the following flags to your Lighthouse validator <strong>and</strong> beaconnode:<br/><br/>
 
                                                     <div style="margin-left: 5px; margin-right: 5px;">
                                                         <div style="float: left;  width: 90%;">
@@ -537,7 +536,24 @@
                                                 data-parent="#accordionExample" style="margin: 15px;">
                                                 <div class="accordion-body">
                                                     
-                                                    <h4>1. Install Metric Exporter</h4>
+                                                    <h4>1. Run Nimbus Client</h4>
+                                                    Copy & Paste the following flags to your Nimbus node:<br/><br/>
+                                                    <div style="margin-left: 5px; margin-right: 5px;">
+                                                        <div style="float: left;  width: 90%;">
+                                                            <code >
+                                                                <span>--metrics --metric-port=8008</span>
+                                                            </code>
+                                                        </div>
+                                                        <div style="float: right;">
+                                                            <a data-toggle="tooltip" data-original-title="Copy Command"
+                                                            data-clipboard-text="--metrics --metric-port=8008" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+                                                            <span class="fa fa-copy icon-inside" ></span> </a>
+                                                        </div>
+                                                    </div>
+                                               
+                                                    <div style="clear: both;"></div><br/>
+
+                                                    <h4>2. Install Metric Exporter</h4>
                                                     Download the latest beaconcha.in metrics exporter on your machine:<br/><br/>
 
 
@@ -557,23 +573,7 @@
                                                         </div>
                                                     </div>
 
-                                                    <div style="clear: both;"></div><br/>
 
-                                                    <h4>2. Run Nimbus Client</h4>
-                                                    Copy & Paste the following flags to your Nimbus node run script:<br/><br/>
-                                                    <div style="margin-left: 5px; margin-right: 5px;">
-                                                        <div style="float: left;  width: 90%;">
-                                                            <code >
-                                                                <span>--metrics --metric-port=8008</span>
-                                                            </code>
-                                                        </div>
-                                                        <div style="float: right;">
-                                                            <a data-toggle="tooltip" data-original-title="Copy Command"
-                                                            data-clipboard-text="--metrics --metric-port=8008" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
-                                                            <span class="fa fa-copy icon-inside" ></span> </a>
-                                                        </div>
-                                                    </div>
-                                               
                                                     <div style="clear: both;"></div><br/>
 
                                                     <h4>3. Run Metrics Exporter</h4>
