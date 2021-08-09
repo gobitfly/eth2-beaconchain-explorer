@@ -185,7 +185,7 @@ function loadMonitoringData(data) {
         mdata.push({
           id: id,
           notification: ns[1],
-          threshold: n.Threshold,
+          threshold: [n.Threshold, item],
           machine: item.Validator.Index,
           mostRecent: n.Timestamp,
           event: {pk: item.Validator.Pubkey, e: n.Notification}
@@ -218,18 +218,54 @@ function loadMonitoringData(data) {
 
       // click event to monitoring table edit button
       $('#monitoring-notifications #edit-monitoring-events-btn').on('click', function (e) {
-        e.stopPropagation();
-        const threshold_editable_placeholder = $(this).parent().find('.threshold_non_editable_text').text().slice(0, -1);
+        console.log($(this).attr("event"), $(this).attr("pk"), $(this).attr("ind"))
+        $('#add-monitoring-validator-select').html("")
+        $("#cpu-input-range-val, #cpu-input-range").val(80)
+        $("#cpu-input-range").attr("style", `background-size: 80% 100%`)
+        $("#hdd-input-range-val, #hdd-input-range").val(80)
+        $("#hdd-input-range").attr("style", `background-size: 80% 100%`)
+        for (let item of $('input.monitoring')) {
+          $(item).prop('checked', false)
+        }
+        
+        let ev = $(this).attr("event").split(",")
+        for(let i of ev){
+          if (i.length>0){
+            let t = i.split(":")
+            // console.log()
+            for (let item of $('input.monitoring')) {
+              let e = $(item).attr('event');
+              console.log(e, t[0], e===t[0])
+              if (e===t[0]){
+                $(item).prop('checked', true) 
+                let p = parseInt(parseFloat(t[1])*100);
+                if (e.includes("_cpu_")) {
+                  $("#cpu-input-range-val, #cpu-input-range").val(p)
+                  $("#cpu-input-range").attr("style", `background-size: ${p}% 100%`)
+                }else if (e.includes("_hdd_")){
+                  $("#hdd-input-range-val, #hdd-input-range").val(p)
+                  $("#hdd-input-range").attr("style", `background-size: ${p}% 100%`)
+                } 
+              } 
+            }
+          }
+        }
 
-        // close all other editable rows
-        $('.threshold_editable').each(function () {
-          $(this).attr('hidden', true);
-          $(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
-        });
+        $('#add-monitoring-validator-select').append(`<option value="${$(this).attr("pk")}">${$(this).attr("ind")}</option>`);
 
-        $(this).parent().parent().find('.threshold_non_editable').css('display', 'none');
-        $(this).parent().parent().find('.threshold_editable').removeAttr('hidden');
-        $(this).parent().parent().find('.threshold_editable').attr('value', threshold_editable_placeholder);
+        // console.log($(item), $(item).attr("event"), $(item).prop("event"));
+        // e.stopPropagation();
+        // const threshold_editable_placeholder = $(this).parent().find('.threshold_non_editable_text').text().slice(0, -1);
+
+        // // close all other editable rows
+        // $('.threshold_editable').each(function () {
+        //   $(this).attr('hidden', true);
+        //   $(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
+        // });
+
+        // $(this).parent().parent().find('.threshold_non_editable').css('display', 'none');
+        // $(this).parent().parent().find('.threshold_editable').removeAttr('hidden');
+        // $(this).parent().parent().find('.threshold_editable').attr('value', threshold_editable_placeholder);
       });
 
       // enter event to threshold input
@@ -311,7 +347,26 @@ function loadMonitoringData(data) {
           if (!data) {
             return '<span class="threshold_non_editable">N/A</span>';
           }
-          return '<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden /><span class="threshold_non_editable"><span class="threshold_non_editable_text">' + (data * 100).toFixed(2) + '%</span> <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;"></i></span>';
+
+          if (type==="display"){
+            let e = ""
+            for(let i of data[1].Notifications){
+              let ns = i.Notification.split("_")
+              if (ns[0] === "monitoring") {
+                e+=`${i.Notification}:${i.Threshold},`
+              }
+            }
+            return `<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden />
+                    <span class="threshold_non_editable">
+                      <span class="threshold_non_editable_text">
+                        ${(data[0] * 100).toFixed(2)}%
+                      </span> 
+                      <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;" 
+                          data-toggle= "modal" data-target="#addMonitoringEventModal" pk="${data[1].Validator.Pubkey}" ind="${data[1].Validator.Index}" event="${e}"></i>
+                    </span>`;
+          }
+
+          return data[0];
         }
       },
       {
@@ -342,7 +397,9 @@ function loadMonitoringData(data) {
         responsivePriority: 3,
         data: 'event',
         render: function(data, type, row, meta){
-          return `<i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
+          return `<i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" 
+                      title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" 
+                      data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
         } 
       }
     ],
