@@ -564,8 +564,7 @@ func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pqPubkeys := pq.Array(reqData.Pubkeys)
-	pqEventNames := pq.Array([]string{string(types.ValidatorMissedAttestationEventName),
-		string(types.MonitoringMachineCpuLoadEventName),
+	pqEventNames := pq.Array([]string{string(types.MonitoringMachineCpuLoadEventName),
 		string(types.MonitoringMachineDiskAlmostFullEventName),
 		string(types.MonitoringMachineOfflineEventName),
 		string(types.MonitoringMachineSwitchedToETH1FallbackEventName),
