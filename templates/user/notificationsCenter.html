@@ -47,7 +47,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="notifications">{{.Metrics.Notifications}}</span>
-						<span class="metric-description">notifications <span class="d-block">in <span class="d-inline-block d-lg-none d-xl-inline-block">the</span> past 24h</span></span>
+						<span class="metric-description">notifications <span class="d-block">in <span class="d-inline-block d-lg-none d-xl-inline-block">the</span> past 7 days</span></span>
 					</div>
 				</div>
 			</div>
@@ -58,7 +58,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="attestationsMissed">{{.Metrics.AttestationsMissed}}</span>
-						<span class="metric-description">att<span class="d-inline-block d-xl-none">.</span><span class="d-none d-xl-inline-block">estations</span> missed <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 24h</span></span>
+						<span class="metric-description">att<span class="d-inline-block d-xl-none">.</span><span class="d-none d-xl-inline-block">estations</span> missed <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 7 days</span></span>
 					</div>
 				</div>
 			</div>
@@ -69,7 +69,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsSubmitted">{{.Metrics.ProposalsSubmitted}}</span>
-						<span class="metric-description">proposals <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 24h</span></span>
+						<span class="metric-description">proposals <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 7 days</span></span>
 					</div>
 				</div>
 			</div>
@@ -80,7 +80,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsMissed">{{.Metrics.ProposalsMissed}}</span>
-						<span class="metric-description">prop<span class="d-inline-block d-xl-none">.</span><span class="d-none d-xl-inline-block">osals</span> missed <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 24h</span></span>
+						<span class="metric-description">prop<span class="d-inline-block d-xl-none">.</span><span class="d-none d-xl-inline-block">osals</span> missed <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 7 days</span></span>
 					</div>
 				</div>
 			</div>
@@ -251,8 +251,8 @@
 								<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="cpu" event="monitoring_cpu_load" value="">
 							</div>
 							<div class="w-100 d-flex align-items-center pl-2">
-								<input id="cpu-input-range" class="w-75 mr-5 range custom-range" type="range" value="80" min="0" max="100" data-target="#cpu-input-range-val" />
- 								<input id="cpu-input-range-val" class="range custom-range-input" type="number" value="80" min="0" max="100" data-target="#cpu-input-range" />
+								<input id="cpu-input-range" class="w-75 mr-5 range custom-range" type="range" value="60" min="0" max="100" data-target="#cpu-input-range-val" style="background-size: 60%;"/>
+ 								<input id="cpu-input-range-val" class="range custom-range-input" type="number" value="60" min="0" max="100" data-target="#cpu-input-range" />
 							</div>
 						</div>
 						<div class="mb-3">
@@ -264,8 +264,8 @@
 								<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="hdd" event="monitoring_hdd_almostfull" value="">
 							</div>
 							<div class="w-100 d-flex align-items-center pl-2">
-								<input id="hdd-input-range" class="w-75 mr-5 range custom-range" type="range" value="80" min="0" max="100" data-target="#hdd-input-range-val" />
-								<input id="hdd-input-range-val" class="range custom-range-input" type="number" value="80" min="0" max="100" data-target="#hdd-input-range" />
+								<input id="hdd-input-range" class="w-75 mr-5 range custom-range" type="range" value="10" min="0" max="100" data-target="#hdd-input-range-val" style="background-size: 10%;"/>
+								<input id="hdd-input-range-val" class="range custom-range-input" type="number" value="10" min="0" max="100" data-target="#hdd-input-range" />
 							</div>
 						</div>
 						<div class="form-check form-check-inline w-100">
@@ -276,6 +276,7 @@
 							<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="offline" event="monitoring_machine_offline" value="">
 						</div>
 					</div>  
+					<i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="You need a premium subscription to select custom thresholds"></i>
 				</div>
 				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-1 px-0">
 					<button id="cancel-button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
