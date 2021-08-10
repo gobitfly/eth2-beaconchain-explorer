@@ -1,94 +1,94 @@
-const data = {
-  // monitoring: [
-  //   {
-  //     id: 1,
-  //     notification: "CPU",
-  //     threshold: 0.8,
-  //     machine: "machine1",
-  //     mostRecent: 1626078050
-  //   },
-  //   {
-  //     id: 2,
-  //     notification: "HDD",
-  //     threshold: 0.8,
-  //     machine: "machine1",
-  //     mostRecent: 1625894270
-  //   },
-  //   {
-  //     id: 3,
-  //     notification: "Offline",
-  //     threshold: null,
-  //     machine: "machine1",
-  //     mostRecent: 1625627930
-  //   },
-  //   {
-  //     id: 4,
-  //     notification: "CPU",
-  //     threshold: 0.9,
-  //     machine: "machine2",
-  //     mostRecent: 1625721407
-  //   },
-  //   {
-  //     id: 5,
-  //     notification: "HDD",
-  //     threshold: 0.9,
-  //     machine: "machine2",
-  //     mostRecent: 1625721527
-  //   }
-  // ],
-  network: [
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1622615148
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1622615145
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625203607
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625808407
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625807927
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625721527
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625721407
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625627930
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1625894270
-    },
-    {
-      notification: "Finality issues",
-      network: "Beaconchain",
-      mostRecent: 1626078050
-    }
-  ]
-};
+// const data = {
+//   monitoring: [
+//     {
+//       id: 1,
+//       notification: "CPU",
+//       threshold: 0.8,
+//       machine: "machine1",
+//       mostRecent: 1626078050
+//     },
+//     {
+//       id: 2,
+//       notification: "HDD",
+//       threshold: 0.8,
+//       machine: "machine1",
+//       mostRecent: 1625894270
+//     },
+//     {
+//       id: 3,
+//       notification: "Offline",
+//       threshold: null,
+//       machine: "machine1",
+//       mostRecent: 1625627930
+//     },
+//     {
+//       id: 4,
+//       notification: "CPU",
+//       threshold: 0.9,
+//       machine: "machine2",
+//       mostRecent: 1625721407
+//     },
+//     {
+//       id: 5,
+//       notification: "HDD",
+//       threshold: 0.9,
+//       machine: "machine2",
+//       mostRecent: 1625721527
+//     }
+//   ],
+//   network: [
+//     {
+//       notification: "Finality issues",
+//       network: "Beaconchain",
+//       mostRecent: 1622615148
+//     },
+//     {
+//       notification: "Finality issues",
+//       network: "Beaconchain",
+//       mostRecent: 1622615145
+//     },
+//     {
+//       notification: "Finality issues",
+//       network: "Beaconchain",
+//       mostRecent: 1625203607
+//     },
+//     {
+//       notification: "Finality issues",
+//       network: "Beaconchain",
+//       mostRecent: 1625808407
+//     },
+//     {
+//       notification: "Finality issues",
+//       network: "Beaconchain",
+//       mostRecent: 1625807927
+//     },
+//     {
+//       notification: "Finality issues",
+//       network: "Beaconchain",
+//       mostRecent: 1625721527
+//     },
+//     {
+//       notification: "Finality issues",
+//       network: "Beaconchain",
+//       mostRecent: 1625721407
+//     },
+//     {
+//       notification: "Finality issues",
+//       network: "Beaconchain",
+//       mostRecent: 1625627930
+//     },
+//     {
+//       notification: "Finality issues",
+//       network: "Beaconchain",
+//       mostRecent: 1625894270
+//     },
+//     {
+//       notification: "Finality issues",
+//       network: "Beaconchain",
+//       mostRecent: 1626078050
+//     }
+//   ]
+// };
 
 var csrfToken = "";
 
@@ -425,7 +425,7 @@ function loadNetworkData(data) {
       {
         targets: 0,
         responsivePriority: 1,
-        data: 'notification',
+        data: 'Notification',
         render: function (data, type, row, meta) {
           return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>';
         }
@@ -433,7 +433,7 @@ function loadNetworkData(data) {
       {
         targets: 1,
         responsivePriority: 2,
-        data: 'network'
+        data: 'Network'
       },
       {
         targets: 2,
@@ -456,7 +456,8 @@ function loadNetworkData(data) {
           <div class="form-check">
             <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
             <label class="form-check-label" for=""></label>
-          </div>`
+          </div>`,
+        visible: false
           
       },
       {
@@ -474,16 +475,17 @@ function loadNetworkData(data) {
       {
         targets: 5,
         responsivePriority: 1,
-        data: 'mostRecent',
+        data: 'Timestamp',
         render: function (data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
           if (type === 'sort' || type === 'type') {
             return data;
           }
-          return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" })}</span>`;
+          return `<span class="heading-l4">${luxon.DateTime.fromMillis(data).toRelative({ style: "long" })}</span>`;
         }
       }
-    ]
+    ],
+    order: [[5, 'desc']]
   });
 }
 
@@ -695,7 +697,8 @@ $(document).ready(function () {
 
   loadValidatorsData(DATA);
   loadMonitoringData(DATA)
-  loadNetworkData(data.network);
+  // loadNetworkData(data.network);
+  loadNetworkData(NET.Events_ts)
 
   $(document).on('click', function (e) {
     // if click outside input while any threshold input visible, reset value and hide input
@@ -1038,4 +1041,44 @@ $(document).ready(function () {
       }
     });
   });
+
+  $("#add-network-subscription").on("click", function(){
+    if ($("#finalityIssues").prop("checked")){
+      $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Adding network event...</span></div>');
+      fetch(`/user/notifications/subscribe?event=${$('#finalityIssues').attr('event')}&filter=0x${$('#finalityIssues').attr('event')}`, {
+        method: 'POST',
+        headers: { "X-CSRF-Token": csrfToken },
+        credentials: 'include',
+        body: ""
+      }).then(res => {
+        if (res.status == 200) {
+          $('#addNetworkEventModal').modal('hide');
+          window.location.reload(false);
+        } else {
+          alert('Error updating network subscriptions');
+          $('#addNetworkEventModal').modal('hide');
+          window.location.reload();
+        }
+        $(this).html('Save');
+      });
+    }else{
+      $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Removing network event...</span></div>');
+      fetch(`/user/notifications/unsubscribe?event=${$('#finalityIssues').attr('event')}&filter=0x${$('#finalityIssues').attr('event')}`, {
+        method: 'POST',
+        headers: { "X-CSRF-Token": csrfToken },
+        credentials: 'include',
+        body: ""
+      }).then(res => {
+        if (res.status == 200) {
+          $('#addNetworkEventModal').modal('hide');
+          window.location.reload(false);
+        } else {
+          alert('Error updating network subscriptions');
+          $('#addNetworkEventModal').modal('hide');
+          window.location.reload();
+        }
+        $(this).html('Save');
+      });
+    }
+  })
 });

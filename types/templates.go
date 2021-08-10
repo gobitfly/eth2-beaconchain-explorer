@@ -969,6 +969,7 @@ type UserNotificationsCenterPageData struct {
 	AuthData
 	Metrics    interface{}
 	Validators interface{}
+	Network    interface{}
 	// Subscriptions []*Subscription
 }
 

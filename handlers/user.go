@@ -359,6 +359,40 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	return valiadtors, err
 }
 
+func getUserNetworkEvents(userId uint64) (interface{}, error) {
+	type result struct {
+		Notification string
+		Network      string
+		Timestamp    uint64
+	}
+	net := struct {
+		IsSubscribed bool
+		Events_ts    []result
+	}{Events_ts: []result{}}
+
+	c := 0
+	err := db.DB.Get(&c, `
+		SELECT count(user_id)                 
+		FROM users_subscriptions      
+		WHERE user_id=$1 AND event_name=$2;
+	`, userId, types.NetworkLivenessIncreasedEventName)
+
+	if c > 0 {
+		net.IsSubscribed = true
+		n := []uint64{}
+		err = db.DB.Select(&n, `select extract( epoch from ts)::Int as ts from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '1 year';`)
+
+		resp := []result{}
+		for _, item := range n {
+			resp = append(resp, result{Notification: "Finality issue", Network: utils.Config.Chain.Network, Timestamp: item * 1000})
+		}
+		net.Events_ts = resp
+
+	}
+
+	return net, err
+}
+
 func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
 	user := getUser(w, r)
@@ -634,9 +668,17 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	networkData, err := getUserNetworkEvents(user.UserID)
+	if err != nil {
+		logger.Errorf("error retrieving network data for users: %v ", user.UserID, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 	data := InitPageData(w, r, "user", "/user", "")
 	userNotificationsCenterData.Metrics = metricsdb
 	userNotificationsCenterData.Validators = validatorTableData
+	userNotificationsCenterData.Network = networkData
 	data.Data = userNotificationsCenterData
 	data.User = user
 
