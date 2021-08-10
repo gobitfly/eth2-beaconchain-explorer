@@ -619,7 +619,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2) OR validators.pubkey = ANY($3)) AND aa.inclusionslot > 0
 		GROUP BY aa.validatorindex, validators.pubkey
 		ORDER BY aa.validatorindex`,
-		epoch, pq.Array(queryIndices), pq.Array(queryPubkeys))
+		epoch, pq.Array(queryIndices), queryPubkeys)
 
 	if err != nil {
 		logger.Error(err)
@@ -684,7 +684,7 @@ func getAttestationEfficiencyQuery(epoch int64, queryIndices []uint64, queryPubk
 	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2) OR validators.pubkey = ANY($3)) AND aa.inclusionslot > 0
 	GROUP BY aa.validatorindex, validators.pubkey
 	ORDER BY aa.validatorindex
-	`, epoch, pq.Array(queryIndices), pq.Array(queryPubkeys))
+	`, epoch, pq.Array(queryIndices), queryPubkeys)
 }
 
 // ApiValidatorLeaderboard godoc
