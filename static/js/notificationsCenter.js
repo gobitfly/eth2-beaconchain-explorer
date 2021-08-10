@@ -444,7 +444,8 @@ function loadNetworkData(data) {
           <div class="form-check">
         		<input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
             <label class="form-check-label" for=""></label>
-          </div>`
+          </div>`,
+          visible: false
       },
       {
         targets: 3,
@@ -456,6 +457,7 @@ function loadNetworkData(data) {
             <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
             <label class="form-check-label" for=""></label>
           </div>`
+          
       },
       {
         targets: 4,
@@ -466,7 +468,8 @@ function loadNetworkData(data) {
           <div class="form-check">
             <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="">
             <label class="form-check-label" for=""></label>
-          </div>`
+          </div>`,
+          visible: false
       },
       {
         targets: 5,

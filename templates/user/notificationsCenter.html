@@ -148,9 +148,9 @@
 								<tr>
 									<th scope="col" class="h6 border-bottom-0">Notification</th>
 									<th scope="col" class="h6 border-bottom-0">Network</th>
-                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
-                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-envelope fa-lg"></i></th>
-                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
+									<th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
+									<th scope="col" class="h6 border-bottom-0"><i class="fas fa-envelope fa-lg"></i></th>
+									<th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
 									<th scope="col" class="h6 border-bottom-0">Most Recent</th>
 								</tr>
 							</thead>
@@ -192,9 +192,9 @@
 							<tr>
 								<th scope="col" class="h6 border-bottom-0">Validator</th>
 								<th scope="col" class="h6 border-bottom-0">Notifications</th>
-                <th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
-                <th scope="col" class="h6 border-bottom-0"><i class="fas fa-envelope fa-lg"></i></th>
-                <th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
+								<th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
+								<th scope="col" class="h6 border-bottom-0"><i class="fas fa-envelope fa-lg"></i></th>
+								<th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
 								<th scope="col" class="h6 border-bottom-0">Most Recent</th>
 								<th scope="col" class="h6 border-bottom-0"></th>
 							</tr>
@@ -300,17 +300,17 @@
 					<div class="w-100 my-3">
 						<div class="form-check form-check-inline w-100 my-2">
 							<label class="form-check-label mr-auto font-weight-normal" for="finalityIssues">Finality issues</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="finalityIssues" value="">
+							<input class="form-check-input checkbox-custom-size" type="checkbox" id="finalityIssues" value="" event="network_liveness_increased">
 						</div>
-						<div class="form-check form-check-inline w-100 my-2">
+						<!-- <div class="form-check form-check-inline w-100 my-2">
 							<label class="form-check-label mr-auto font-weight-normal" for="">and more events...</label>
 							<input class="form-check-input checkbox-custom-size" type="checkbox" id="" value="">
-						</div>
+						</div> -->
 					</div> 
 				</div>
 				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-1 px-0">
 					<button id="cancel-button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
-					<button id="remove-button" class="btn btn-primary btn-new-primary btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
+					<button id="add-network-subscription" class="btn btn-primary btn-new-primary btn-sm w-50 mr-2 ml-sm-3">Save</button>
 				</div>
 			</div>
 		</div>

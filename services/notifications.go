@@ -1192,7 +1192,7 @@ func (n *networkNotification) GetEventName() types.EventName {
 }
 
 func (n *networkNotification) GetInfo(includeUrl bool) string {
-	generalPart := fmt.Sprint(`Network experienced finality issues.`)
+	generalPart := fmt.Sprintf(`Network experienced finality issues. Learn more at https://%v/charts/network_liveness`, utils.Config.Frontend.SiteDomain)
 	return generalPart
 }
 
@@ -1215,7 +1215,8 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 	err := db.DB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
 			FROM users_subscriptions AS us
-			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 DAY' OR us.last_sent_ts IS NULL);
+			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 hour' OR us.last_sent_ts IS NULL)
+			AND (select count(ts) from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '20 minutes')>0;
 			`,
 		eventName)
 
