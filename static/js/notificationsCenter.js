@@ -882,6 +882,7 @@ $(document).ready(function () {
   }
 
   $('#update-subs-btn').on('click', function () {
+    $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Managing notifications...</span></div>');
     let pubkeys = [];
     for (let item of $('#selected-validators-events-container').find('span')) {
       pubkeys.push($(item).attr('pk'));
@@ -904,6 +905,7 @@ $(document).ready(function () {
         $('#manageNotificationsModal').modal('hide');
         window.location.reload();
       }
+      $(this).html("Save")
     });
   })
 
