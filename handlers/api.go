@@ -1436,7 +1436,7 @@ func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 // @Tags User
 // @Produce json
 // @Param apiKey path string true "User API key, can be found on https://beaconcha.in/user/settings"
-// @Param machine path string false "Name your device if you have multiple devices you wan't to monitor"
+// @Param machine path string false "Name your device if you have multiple devices you want to monitor"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Failure 500 {object} types.ApiResponse
