@@ -211,7 +211,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 		return cachedValue.(*types.EpochAssignments), nil
 	}
 
-	logger.Infof("caching assignements for epoch %v", epoch)
+	logger.Infof("caching assignments for epoch %v", epoch)
 	start := time.Now()
 	assignments := &types.EpochAssignments{
 		ProposerAssignments: make(map[uint64]uint64),
@@ -257,7 +257,7 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 		pc.assignmentsCache.Add(epoch, assignments)
 	}
 
-	logger.Infof("cached assignements for epoch %v took %v", epoch, time.Since(start))
+	logger.Infof("cached assignments for epoch %v took %v", epoch, time.Since(start))
 	return assignments, nil
 }
 

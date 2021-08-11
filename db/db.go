@@ -1452,6 +1452,12 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 	return err
 }
 
+// UpdateEpochFinalization will update finalized-flag of all epochs before the last finalized epoch
+func UpdateEpochFinalization() error {
+	_, err := DB.Exec(`UPDATE epochs SET finalized = true WHERE epoch < (SELECT MAX(epoch) FROM epochs WHERE finalized = true)`)
+	return err
+}
+
 // GetTotalValidatorsCount will return the total-validator-count
 func GetTotalValidatorsCount() (uint64, error) {
 	var totalCount uint64
