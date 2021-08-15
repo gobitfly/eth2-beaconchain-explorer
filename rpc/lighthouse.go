@@ -376,6 +376,14 @@ func bitlistParticipation(bits []byte) float64 {
 	return float64(participating) / float64(bitLen)
 }
 
+func uint64List(li []uint64Str) []uint64 {
+	out := make([]uint64, len(li), len(li))
+	for i, v := range li {
+		out[i] = uint64(v)
+	}
+	return out
+}
+
 // GetBlocksBySlot will get the blocks by slot from Lighthouse RPC api
 func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 	respRoot, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%d/root", lc.endpoint, slot))
@@ -444,6 +452,65 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		block.Eth1Data.DepositCount = 0
 	}
 
+	for i, proposerSlashing := range parsedBlock.Message.Body.ProposerSlashings {
+		block.ProposerSlashings[i] = &types.ProposerSlashing{
+			ProposerIndex: uint64(proposerSlashing.SignedHeader1.Message.ProposerIndex),
+			Header1: &types.Block{
+				Slot:       uint64(proposerSlashing.SignedHeader1.Message.Slot),
+				ParentRoot: utils.MustParseHex(proposerSlashing.SignedHeader1.Message.ParentRoot),
+				StateRoot:  utils.MustParseHex(proposerSlashing.SignedHeader1.Message.StateRoot),
+				Signature:  utils.MustParseHex(proposerSlashing.SignedHeader1.Signature),
+				BodyRoot:   utils.MustParseHex(proposerSlashing.SignedHeader1.Message.BodyRoot),
+			},
+			Header2: &types.Block{
+				Slot:       uint64(proposerSlashing.SignedHeader2.Message.Slot),
+				ParentRoot: utils.MustParseHex(proposerSlashing.SignedHeader2.Message.ParentRoot),
+				StateRoot:  utils.MustParseHex(proposerSlashing.SignedHeader2.Message.StateRoot),
+				Signature:  utils.MustParseHex(proposerSlashing.SignedHeader2.Signature),
+				BodyRoot:   utils.MustParseHex(proposerSlashing.SignedHeader2.Message.BodyRoot),
+			},
+		}
+	}
+
+	for i, attesterSlashing := range parsedBlock.Message.Body.AttesterSlashings {
+		block.AttesterSlashings[i] = &types.AttesterSlashing{
+			Attestation1: &types.IndexedAttestation{
+				Data: &types.AttestationData{
+					Slot:            uint64(attesterSlashing.Attestation1.Data.Slot),
+					CommitteeIndex:  uint64(attesterSlashing.Attestation1.Data.Index),
+					BeaconBlockRoot: utils.MustParseHex(attesterSlashing.Attestation1.Data.BeaconBlockRoot),
+					Source: &types.Checkpoint{
+						Epoch: uint64(attesterSlashing.Attestation1.Data.Source.Epoch),
+						Root:  utils.MustParseHex(attesterSlashing.Attestation1.Data.Source.Root),
+					},
+					Target: &types.Checkpoint{
+						Epoch: uint64(attesterSlashing.Attestation1.Data.Target.Epoch),
+						Root:  utils.MustParseHex(attesterSlashing.Attestation1.Data.Target.Root),
+					},
+				},
+				Signature:        utils.MustParseHex(attesterSlashing.Attestation1.Signature),
+				AttestingIndices: uint64List(attesterSlashing.Attestation1.AttestingIndices),
+			},
+			Attestation2: &types.IndexedAttestation{
+				Data: &types.AttestationData{
+					Slot:            uint64(attesterSlashing.Attestation2.Data.Slot),
+					CommitteeIndex:  uint64(attesterSlashing.Attestation2.Data.Index),
+					BeaconBlockRoot: utils.MustParseHex(attesterSlashing.Attestation2.Data.BeaconBlockRoot),
+					Source: &types.Checkpoint{
+						Epoch: uint64(attesterSlashing.Attestation2.Data.Source.Epoch),
+						Root:  utils.MustParseHex(attesterSlashing.Attestation2.Data.Source.Root),
+					},
+					Target: &types.Checkpoint{
+						Epoch: uint64(attesterSlashing.Attestation2.Data.Target.Epoch),
+						Root:  utils.MustParseHex(attesterSlashing.Attestation2.Data.Target.Root),
+					},
+				},
+				Signature:        utils.MustParseHex(attesterSlashing.Attestation2.Signature),
+				AttestingIndices: uint64List(attesterSlashing.Attestation2.AttestingIndices),
+			},
+		}
+	}
+
 	for i, attestation := range parsedBlock.Message.Body.Attestations {
 		a := &types.Attestation{
 			AggregationBits: utils.MustParseHex(attestation.AggregationBits),
@@ -494,6 +561,14 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		}
 
 		block.Deposits[i] = d
+	}
+
+	for i, voluntaryExit := range parsedBlock.Message.Body.VoluntaryExits {
+		block.VoluntaryExits[i] = &types.VoluntaryExit{
+			Epoch:          uint64(voluntaryExit.Message.Epoch),
+			ValidatorIndex: uint64(voluntaryExit.Message.ValidatorIndex),
+			Signature:      utils.MustParseHex(voluntaryExit.Signature),
+		}
 	}
 
 	return []*types.Block{block}, nil
