@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"strings"
 	"time"
@@ -12,27 +11,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 )
-
-// AddSubscription adds a new subscription to the database.
-func AddSubscription(userID uint64, eventName types.EventName, eventFilter string, eventThreshold float64) error {
-	now := time.Now()
-	nowTs := now.Unix()
-	nowEpoch := utils.TimeToEpoch(now)
-
-	var onConflictDo string = "NOTHING"
-	if strings.HasPrefix(string(eventName), "monitoring_") {
-		onConflictDo = "UPDATE SET event_threshold = $6"
-	}
-
-	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, eventName, eventFilter, nowTs, nowEpoch, eventThreshold)
-	return err
-}
-
-// DeleteSubscription removes a subscription from the database.
-func DeleteSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
-	_, err := FrontendDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, eventName, eventFilter)
-	return err
-}
 
 type WatchlistEntry struct {
 	UserId              uint64
@@ -62,7 +40,7 @@ func AddToWatchlist(watchlist []WatchlistEntry) error {
 
 	qry = qry[:len(qry)-1] + " ON CONFLICT DO NOTHING;"
 
-	_, err := DB.Exec(qry, args...)
+	_, err := FrontendDB.Exec(qry, args...)
 	return err
 }
 
@@ -73,7 +51,7 @@ func RemoveFromWatchlist(userId uint64, validator_publickey string) error {
 	if err != nil {
 		return err
 	}
-	tx, err := DB.Begin()
+	tx, err := FrontendDB.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
 	}

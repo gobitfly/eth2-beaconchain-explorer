@@ -22,6 +22,10 @@ func TestMain(m *testing.M) {
 	}
 	utils.Config = cfg
 
+	if cfg.Database.Password != "xxx" {
+		logrus.Fatal("error do not run this test in production")
+	}
+
 	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
 	defer db.DB.Close()
 
