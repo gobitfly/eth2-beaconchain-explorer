@@ -17,20 +17,20 @@
 {{define "content"}}
 	{{with .Data}}
 	<div class="container-fluid container-xl container-min-width container-custom"> 
-		<div class="row d-flex align-items-center justify-content-start ml-1 my-2">
+		<div class="d-flex flex-column flex-sm-row align-items-start justify-content-center align-items-sm-center justify-content-sm-between ml-1 my-2">
 			<nav aria-label="breadcrumb">
 				<ol class="breadcrumb font-size-1 mb-0 breadcrumb-custom">
 					<li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
 					<li class="breadcrumb-item active" aria-current="page">Notifications</li>
 				</ol>
 			</nav>
+			<a href="/user/notifications">Old version</a>
 		</div>
 		<div class="row d-flex align-items-center justify-content-between mx-0 my-5 container-min-width heading-section">
 			<div class="col-12 col-md pl-0 heading">
 				<h1 class="heading text-nowrap">Notifications Center</h1>
         <h2 class="heading-l3 text-muted font-weight-light">Manage the notifications you want to receive</h2>
 			</div>
-			<a href="/user/notifications">old version</a>
 		</div>
 		<div class="row flex-sm-nowrap mx-0 my-2 container-min-width metrics-section">
 		  <div class="col-12 col-sm col-xl mr-3 mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
