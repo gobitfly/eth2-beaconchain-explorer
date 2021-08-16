@@ -1,6 +1,7 @@
 package services
 
 import (
+	"database/sql"
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/mail"
@@ -332,31 +333,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 		return nil
 	}
 
-	var dbResult []struct {
-		ValidatorIndex uint64 `db:"validatorindex"`
-		StartBalance   uint64 `db:"startbalance"`
-		EndBalance     uint64 `db:"endbalance"`
-		EventFilter    string `db:"pubkey"`
-	}
-
-	err := db.DB.Select(&dbResult, `
-		SELECT validatorindex, startbalance, endbalance, a.pubkey AS pubkey FROM (
-			SELECT 
-				v.validatorindex,
-				v.pubkeyhex AS pubkey, 
-				vb0.balance AS endbalance, 
-				vb3.balance AS startbalance, 
-				(SELECT MAX(epoch) FROM (
-					SELECT epoch, balance-LAG(balance) OVER (ORDER BY epoch) AS diff
-					FROM validator_balances_recent 
-					WHERE validatorindex = v.validatorindex AND epoch > $1 - 10
-				) b WHERE diff > 0) AS lastbalanceincreaseepoch
-			from validators v
-			INNER JOIN validator_balances_recent vb0 ON v.validatorindex = vb0.validatorindex AND vb0.epoch = $1
-			INNER JOIN validator_balances_recent vb1 ON v.validatorindex = vb1.validatorindex AND vb1.epoch = $1 - 1 AND vb1.balance > vb0.balance
-			INNER JOIN validator_balances_recent vb2 ON v.validatorindex = vb2.validatorindex AND vb2.epoch = $1 - 2 AND vb2.balance > vb1.balance
-			INNER JOIN validator_balances_recent vb3 ON v.validatorindex = vb3.validatorindex AND vb3.epoch = $1 - 3 AND vb3.balance > vb2.balance
-		) a WHERE lastbalanceincreaseepoch IS NOT NULL`, latestEpoch)
+	dbResult, err := db.GetValidatorsBalanceDecrease(latestEpoch)
 	if err != nil {
 		return err
 	}
@@ -380,29 +357,36 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 			EndEpoch:       latestEpoch,
 			StartBalance:   event.StartBalance,
 			EndBalance:     event.EndBalance,
-			EventFilter:    event.EventFilter,
+			EventFilter:    event.Pubkey,
 		}
 
-		rows, err := stmtNotification.Query(types.ValidatorBalanceDecreasedEventName, event.EventFilter, latestEpoch)
+		rows, err := stmtNotification.Query(types.ValidatorBalanceDecreasedEventName, event.Pubkey, latestEpoch)
 		if err != nil {
 			return err
 		}
 
 		for rows.Next() {
-			var sub struct {
-				subId  uint64 `db:"id"`
-				userId uint64 `db:"user_id"`
-			}
-			rows.Scan(&sub)
-			n.SubscriptionID = sub.subId
+			var subId uint64
+			var userId uint64
 
-			if _, exists := notificationsByUserID[sub.userId]; !exists {
-				notificationsByUserID[sub.userId] = map[types.EventName][]types.Notification{}
+			err := rows.Scan(&subId, &userId)
+			if err == sql.ErrNoRows {
+				logger.Warn("no rows found")
+				continue
 			}
-			if _, exists := notificationsByUserID[sub.userId][n.GetEventName()]; !exists {
-				notificationsByUserID[sub.userId][n.GetEventName()] = []types.Notification{}
+			if err != nil {
+				return err
 			}
-			notificationsByUserID[sub.userId][n.GetEventName()] = append(notificationsByUserID[sub.userId][n.GetEventName()], n)
+
+			n.SubscriptionID = subId
+
+			if _, exists := notificationsByUserID[userId]; !exists {
+				notificationsByUserID[userId] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[userId][n.GetEventName()]; !exists {
+				notificationsByUserID[userId][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[userId][n.GetEventName()] = append(notificationsByUserID[userId][n.GetEventName()], n)
 		}
 
 		defer rows.Close()
@@ -412,7 +396,6 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -466,20 +449,27 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 		}
 
 		for rows.Next() {
-			var sub struct {
-				subId  uint64 `db:"id"`
-				userId uint64 `db:"user_id"`
-			}
-			rows.Scan(&sub)
-			n.SubscriptionID = sub.subId
+			var subId uint64
+			var userId uint64
 
-			if _, exists := notificationsByUserID[sub.userId]; !exists {
-				notificationsByUserID[sub.userId] = map[types.EventName][]types.Notification{}
+			err := rows.Scan(&subId, &userId)
+			if err == sql.ErrNoRows {
+				logger.Warn("no rows found")
+				continue
 			}
-			if _, exists := notificationsByUserID[sub.userId][n.GetEventName()]; !exists {
-				notificationsByUserID[sub.userId][n.GetEventName()] = []types.Notification{}
+			if err != nil {
+				return err
 			}
-			notificationsByUserID[sub.userId][n.GetEventName()] = append(notificationsByUserID[sub.userId][n.GetEventName()], n)
+
+			n.SubscriptionID = subId
+
+			if _, exists := notificationsByUserID[userId]; !exists {
+				notificationsByUserID[userId] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[userId][n.GetEventName()]; !exists {
+				notificationsByUserID[userId][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[userId][n.GetEventName()] = append(notificationsByUserID[userId][n.GetEventName()], n)
 		}
 
 		defer rows.Close()
@@ -611,20 +601,27 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		}
 
 		for rows.Next() {
-			var sub struct {
-				subId  uint64 `db:"id"`
-				userId uint64 `db:"user_id"`
-			}
-			rows.Scan(&sub)
-			n.SubscriptionID = sub.subId
+			var subId uint64
+			var userId uint64
 
-			if _, exists := notificationsByUserID[sub.userId]; !exists {
-				notificationsByUserID[sub.userId] = map[types.EventName][]types.Notification{}
+			err := rows.Scan(&subId, &userId)
+			if err == sql.ErrNoRows {
+				logger.Warn("no rows found")
+				continue
 			}
-			if _, exists := notificationsByUserID[sub.userId][n.GetEventName()]; !exists {
-				notificationsByUserID[sub.userId][n.GetEventName()] = []types.Notification{}
+			if err != nil {
+				return err
 			}
-			notificationsByUserID[sub.userId][n.GetEventName()] = append(notificationsByUserID[sub.userId][n.GetEventName()], n)
+
+			n.SubscriptionID = subId
+
+			if _, exists := notificationsByUserID[userId]; !exists {
+				notificationsByUserID[userId] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[userId][n.GetEventName()]; !exists {
+				notificationsByUserID[userId][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[userId][n.GetEventName()] = append(notificationsByUserID[userId][n.GetEventName()], n)
 		}
 
 		defer rows.Close()
@@ -828,8 +825,20 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 		}
 
 		for rows.Next() {
+			var subId uint64
 			var userId uint64
-			rows.Scan(&userId)
+
+			err := rows.Scan(&subId, &userId)
+			if err == sql.ErrNoRows {
+				logger.Warn("no rows found")
+				continue
+			}
+			if err != nil {
+				return err
+			}
+
+			n.SubscriptionID = subId
+
 			if _, exists := notificationsByUserID[userId]; !exists {
 				notificationsByUserID[userId] = map[types.EventName][]types.Notification{}
 			}
