@@ -472,10 +472,11 @@ create table oauth_codes
     id         serial                      not null,
     user_id    int                         not null,
     code       character varying(64)       not null,
+    client_id  character varying(128)      not null,
     consumed   bool                        not null default 'f',
     app_id     int                         not null,
     created_ts timestamp without time zone not null,
-    primary key (user_id, code)
+    primary key (user_id, app_id, client_id)
 );
 
 drop table if exists users_devices;

@@ -3,7 +3,10 @@
 	<script type="text/javascript" src="/js/datatable_input.js"></script>
 	<script src="/js/notificationsCenter.js"></script>
 	{{ .CsrfField }}
-	<script>const DATA = {{.Validators}}</script>
+	<script>
+		const DATA = {{.Validators}}
+		const NET = {{.Network}}
+	</script>
 {{end}}
 
 {{define "css"}}
@@ -27,6 +30,7 @@
 				<h1 class="heading text-nowrap">Notifications Center</h1>
         <h2 class="heading-l3 text-muted font-weight-light">Manage the notifications you want to receive</h2>
 			</div>
+			<a href="/user/notifications">old version</a>
 		</div>
 		<div class="row flex-sm-nowrap mx-0 my-2 container-min-width metrics-section">
 		  <div class="col-12 col-sm col-xl mr-3 mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
@@ -47,7 +51,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="notifications">{{.Metrics.Notifications}}</span>
-						<span class="metric-description">notifications <span class="d-block">in <span class="d-inline-block d-lg-none d-xl-inline-block">the</span> past 24h</span></span>
+						<span class="metric-description">notifications <span class="d-block">in <span class="d-inline-block d-lg-none d-xl-inline-block">the</span> past 7 days</span></span>
 					</div>
 				</div>
 			</div>
@@ -58,7 +62,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="attestationsMissed">{{.Metrics.AttestationsMissed}}</span>
-						<span class="metric-description">att<span class="d-inline-block d-xl-none">.</span><span class="d-none d-xl-inline-block">estations</span> missed <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 24h</span></span>
+						<span class="metric-description">att<span class="d-inline-block d-xl-none">.</span><span class="d-none d-xl-inline-block">estations</span> missed <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 7 days</span></span>
 					</div>
 				</div>
 			</div>
@@ -69,7 +73,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsSubmitted">{{.Metrics.ProposalsSubmitted}}</span>
-						<span class="metric-description">proposals <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 24h</span></span>
+						<span class="metric-description">proposals <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 7 days</span></span>
 					</div>
 				</div>
 			</div>
@@ -80,7 +84,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsMissed">{{.Metrics.ProposalsMissed}}</span>
-						<span class="metric-description">prop<span class="d-inline-block d-xl-none">.</span><span class="d-none d-xl-inline-block">osals</span> missed <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 24h</span></span>
+						<span class="metric-description">prop<span class="d-inline-block d-xl-none">.</span><span class="d-none d-xl-inline-block">osals</span> missed <span class="d-block">in <span class="d-none d-xl-inline-block">the</span> past 7 days</span></span>
 					</div>
 				</div>
 			</div>
@@ -148,9 +152,9 @@
 								<tr>
 									<th scope="col" class="h6 border-bottom-0">Notification</th>
 									<th scope="col" class="h6 border-bottom-0">Network</th>
-                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
-                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-envelope fa-lg"></i></th>
-                  <th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
+									<th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
+									<th scope="col" class="h6 border-bottom-0"><i class="fas fa-envelope fa-lg"></i></th>
+									<th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
 									<th scope="col" class="h6 border-bottom-0">Most Recent</th>
 								</tr>
 							</thead>
@@ -192,9 +196,9 @@
 							<tr>
 								<th scope="col" class="h6 border-bottom-0">Validator</th>
 								<th scope="col" class="h6 border-bottom-0">Notifications</th>
-                <th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
-                <th scope="col" class="h6 border-bottom-0"><i class="fas fa-envelope fa-lg"></i></th>
-                <th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
+								<th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
+								<th scope="col" class="h6 border-bottom-0"><i class="fas fa-envelope fa-lg"></i></th>
+								<th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
 								<th scope="col" class="h6 border-bottom-0">Most Recent</th>
 								<th scope="col" class="h6 border-bottom-0"></th>
 							</tr>
@@ -251,8 +255,8 @@
 								<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="cpu" event="monitoring_cpu_load" value="">
 							</div>
 							<div class="w-100 d-flex align-items-center pl-2">
-								<input id="cpu-input-range" class="w-75 mr-5 range custom-range" type="range" value="80" min="0" max="100" data-target="#cpu-input-range-val" />
- 								<input id="cpu-input-range-val" class="range custom-range-input" type="number" value="80" min="0" max="100" data-target="#cpu-input-range" />
+								<input id="cpu-input-range" class="w-75 mr-5 range custom-range" type="range" value="60" min="0" max="100" data-target="#cpu-input-range-val" style="background-size: 60%;"/>
+ 								<input id="cpu-input-range-val" class="range custom-range-input" type="number" value="60" min="0" max="100" data-target="#cpu-input-range" />
 							</div>
 						</div>
 						<div class="mb-3">
@@ -264,8 +268,8 @@
 								<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="hdd" event="monitoring_hdd_almostfull" value="">
 							</div>
 							<div class="w-100 d-flex align-items-center pl-2">
-								<input id="hdd-input-range" class="w-75 mr-5 range custom-range" type="range" value="80" min="0" max="100" data-target="#hdd-input-range-val" />
-								<input id="hdd-input-range-val" class="range custom-range-input" type="number" value="80" min="0" max="100" data-target="#hdd-input-range" />
+								<input id="hdd-input-range" class="w-75 mr-5 range custom-range" type="range" value="10" min="0" max="100" data-target="#hdd-input-range-val" style="background-size: 10%;"/>
+								<input id="hdd-input-range-val" class="range custom-range-input" type="number" value="10" min="0" max="100" data-target="#hdd-input-range" />
 							</div>
 						</div>
 						<div class="form-check form-check-inline w-100">
@@ -276,6 +280,7 @@
 							<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="offline" event="monitoring_machine_offline" value="">
 						</div>
 					</div>  
+					<i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="You need a premium subscription to select custom thresholds"></i>
 				</div>
 				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-1 px-0">
 					<button id="cancel-button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
@@ -299,17 +304,17 @@
 					<div class="w-100 my-3">
 						<div class="form-check form-check-inline w-100 my-2">
 							<label class="form-check-label mr-auto font-weight-normal" for="finalityIssues">Finality issues</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="finalityIssues" value="">
+							<input class="form-check-input checkbox-custom-size" type="checkbox" id="finalityIssues" value="" event="network_liveness_increased" {{if .Network.IsSubscribed}}checked="true"{{end}}>
 						</div>
-						<div class="form-check form-check-inline w-100 my-2">
+						<!-- <div class="form-check form-check-inline w-100 my-2">
 							<label class="form-check-label mr-auto font-weight-normal" for="">and more events...</label>
 							<input class="form-check-input checkbox-custom-size" type="checkbox" id="" value="">
-						</div>
+						</div> -->
 					</div> 
 				</div>
 				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-1 px-0">
 					<button id="cancel-button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
-					<button id="remove-button" class="btn btn-primary btn-new-primary btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
+					<button id="add-network-subscription" class="btn btn-primary btn-new-primary btn-sm w-50 mr-2 ml-sm-3">Save</button>
 				</div>
 			</div>
 		</div>
@@ -330,7 +335,8 @@
 						<div id="selected-validators-events-container" class="w-100 mb-4 custom-container scrollbar"></div>
 						<div class="d-flex align-items-center justify-content-end w-100 my-2">
 							<!--<div class="mr-2">Push</div>-->
-							<div class="mr-3">Email</div>
+							<!-- <div class="mr-3">Email</div> -->
+							<div class="mr-4"><i class="fas fa-envelope fa-lg"></i></div>
 							<!--<div class="mr-2">Web</div>-->
 						</div>
 						<div class="form-check form-check-inline w-100 my-2" id="manage_validator_attestation_missed">
@@ -374,7 +380,7 @@
 				</div>
 				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-1 px-0">
 					<button id="cancel-button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
-					<button id="update-subs-btn" class="btn btn-primary btn-new-primary btn-sm w-50 mr-2 ml-sm-3" data-dismiss="modal">Save</button>
+					<button id="update-subs-btn" class="btn btn-primary btn-new-primary btn-sm w-50 mr-2 ml-sm-3">Save</button>
 				</div>
 			</div>
 		</div>
@@ -397,7 +403,8 @@
 						</div>
 						<div class="d-flex align-items-center justify-content-end w-100 my-2">
 							<!--<div class="mr-2">Push</div>-->
-							<div class="mr-3">Email</div>
+							<!-- <div class="mr-3">Email</div> -->
+							<div class="mr-4"><i class="fas fa-envelope fa-lg"></i></div>
 							<!--<div class="mr-2">Web</div>-->
 						</div>
 						<div class="form-check form-check-inline w-100 my-2" id="validator_attestation_missed">

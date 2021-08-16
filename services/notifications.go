@@ -89,6 +89,12 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting tax report notifications: %v", err)
 	}
 
+	//Network liveness
+	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
+	if err != nil {
+		logger.Errorf("error collecting tax report notifications: %v", err)
+	}
+
 	return notificationsByUserID
 }
 
@@ -112,6 +118,12 @@ func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notific
 	err = collectMonitoringMachineCPULoad(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting Eth client cpu notifications: %v", err)
+	}
+
+	// Monitoring (premium): ram
+	err = collectMonitoringMachineMemoryUsage(notificationsByUserID)
+	if err != nil {
+		logger.Errorf("error collecting Eth client memory notifications: %v", err)
 	}
 
 	return notificationsByUserID
@@ -855,7 +867,7 @@ func collectMonitoringMachineOffline(notificationsByUserID map[uint64]map[types.
 	WHERE us.event_name = $1 AND us.created_epoch <= $2 
 	AND us.event_filter = v.machine 
 	AND (us.last_sent_epoch < ($2 - 120) OR us.last_sent_epoch IS NULL)
-	AND v.created_trunc < now() - interval '4 minutes' AND v.created_trunc > now() - interval '3 hours'
+	AND v.created_trunc < now() - interval '4 minutes' AND v.created_trunc > now() - interval '1 hours'
 	group by us.user_id, machine
 	`)
 }
@@ -894,7 +906,7 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 		WHERE v.machine = us.event_filter 
 		AND us.event_name = $1 AND us.created_epoch <= $2 
 		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
-		AND v.created_trunc > now() - interval '1 hours' 
+		AND v.created_trunc > now() - interval '45 minutes' 
 		AND event_threshold < (SELECT 
 			1 - (cpu_node_idle_seconds_total::decimal - lag(cpu_node_idle_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) / (cpu_node_system_seconds_total::decimal - lag(cpu_node_system_seconds_total::decimal, 4, 0::decimal) OVER (PARTITION BY m.user_id, machine ORDER BY sy.id asc)) as cpu_load 
 			FROM stats_system as sy 
@@ -906,6 +918,37 @@ func collectMonitoringMachineCPULoad(notificationsByUserID map[uint64]map[types.
 			ORDER BY sy.id desc
 			LIMIT 1
 		) 
+		group by us.user_id, machine;
+	`)
+}
+
+func collectMonitoringMachineMemoryUsage(notificationsByUserID map[uint64]map[types.EventName][]types.Notification) error {
+	return collectMonitoringMachine(notificationsByUserID, types.MonitoringMachineMemoryUsageEventName,
+		`SELECT 
+			max(us.id) as id, 
+			us.user_id,
+			machine 
+		FROM users_subscriptions us 
+		INNER JOIN (
+			SELECT max(id) as id, user_id, machine, max(created_trunc) as created_trunc from stats_meta_p
+			where process = 'system' AND day >= $3 
+			group by user_id, machine
+		) v ON us.user_id = v.user_id 
+		WHERE v.machine = us.event_filter 
+		AND us.event_name = $1 AND us.created_epoch <= $2
+		AND (us.last_sent_epoch < ($2 - 10) OR us.last_sent_epoch IS NULL)
+		AND v.created_trunc > now() - interval '1 hours' 
+		AND event_threshold < (SELECT avg(usage) FROM (SELECT 
+		1 - ((memory_node_bytes_free + memory_node_bytes_cached + memory_node_bytes_buffers) / memory_node_bytes_total::decimal) as usage
+		FROM stats_system as sy 
+		INNER JOIN stats_meta_p m on meta_id = m.id 
+		WHERE m.id = meta_id 
+		AND m.day >= $3 
+		AND m.user_id = v.user_id 
+		AND m.machine = us.event_filter 
+		ORDER BY sy.id desc
+		LIMIT 5
+		) p) 
 		group by us.user_id, machine;
 	`)
 }
@@ -984,11 +1027,13 @@ func (n *monitorMachineNotification) GetInfo(includeUrl bool) string {
 	case types.MonitoringMachineOfflineEventName:
 		return fmt.Sprintf(`Your staking machine "%v" might be offline. It has not been seen for a couple minutes now.`, n.MachineName)
 	case types.MonitoringMachineCpuLoadEventName:
-		return fmt.Sprintf(`Your staking machine "%v" has reached your configured threshold CPU usage.`, n.MachineName)
+		return fmt.Sprintf(`Your staking machine "%v" has reached your configured CPU usage threshold.`, n.MachineName)
 	case types.MonitoringMachineSwitchedToETH1FallbackEventName:
 		return fmt.Sprintf(`Your staking machine "%v" has switched to your configured ETH1 fallback`, n.MachineName)
 	case types.MonitoringMachineSwitchedToETH2FallbackEventName:
 		return fmt.Sprintf(`Your staking machine "%v" has switched to your configured ETH2 fallback`, n.MachineName)
+	case types.MonitoringMachineMemoryUsageEventName:
+		return fmt.Sprintf(`Your staking machine "%v" has reached your configured RAM threshold.`, n.MachineName)
 	}
 	return ""
 }
@@ -1005,6 +1050,8 @@ func (n *monitorMachineNotification) GetTitle() string {
 		return "ETH1 Fallback Active"
 	case types.MonitoringMachineSwitchedToETH2FallbackEventName:
 		return "ETH2 Fallback Active"
+	case types.MonitoringMachineMemoryUsageEventName:
+		return "Memory Warning"
 	}
 	return ""
 }
@@ -1116,6 +1163,81 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 			}
 			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 		}
+	}
+
+	return nil
+}
+
+type networkNotification struct {
+	SubscriptionID uint64
+	UserID         uint64
+	Epoch          uint64
+	EventFilter    string
+}
+
+func (n *networkNotification) GetEmailAttachment() *types.EmailAttachment {
+	return nil
+}
+
+func (n *networkNotification) GetSubscriptionID() uint64 {
+	return n.SubscriptionID
+}
+
+func (n *networkNotification) GetEpoch() uint64 {
+	return n.Epoch
+}
+
+func (n *networkNotification) GetEventName() types.EventName {
+	return types.NetworkLivenessIncreasedEventName
+}
+
+func (n *networkNotification) GetInfo(includeUrl bool) string {
+	generalPart := fmt.Sprintf(`Network experienced finality issues. Learn more at https://%v/charts/network_liveness`, utils.Config.Frontend.SiteDomain)
+	return generalPart
+}
+
+func (n *networkNotification) GetTitle() string {
+	return fmt.Sprint("Beaconchain Network Issues")
+}
+
+func (n *networkNotification) GetEventFilter() string {
+	return n.EventFilter
+}
+
+func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
+	var dbResult []struct {
+		SubscriptionID uint64 `db:"id"`
+		UserID         uint64 `db:"user_id"`
+		Epoch          uint64 `db:"created_epoch"`
+		EventFilter    string `db:"event_filter"`
+	}
+
+	err := db.DB.Select(&dbResult, `
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
+			FROM users_subscriptions AS us
+			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 hour' OR us.last_sent_ts IS NULL)
+			AND (select count(ts) from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '20 minutes')>0;
+			`,
+		eventName)
+
+	if err != nil {
+		return err
+	}
+
+	for _, r := range dbResult {
+		n := &taxReportNotification{
+			SubscriptionID: r.SubscriptionID,
+			UserID:         r.UserID,
+			Epoch:          r.Epoch,
+			EventFilter:    r.EventFilter,
+		}
+		if _, exists := notificationsByUserID[r.UserID]; !exists {
+			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+		}
+		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+		}
+		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 	}
 
 	return nil

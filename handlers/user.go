@@ -159,9 +159,11 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	redirectURI := q.Get("redirect_uri")
+	clientID := q.Get("client_id")
 	state := q.Get("state")
 
 	session.Values["state"] = state
+	session.Values["client_id"] = clientID
 	session.Values["oauth_redirect_uri"] = redirectURI
 	session.Save(r, w)
 
@@ -284,10 +286,10 @@ func getUserMetrics(userId uint64) (interface{}, error) {
 
 	err := db.DB.Get(&metricsdb, `
 		SELECT COUNT(user_id) as validators,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY') AS notifications,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$2) AS attestations_missed,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$3) AS proposals_missed,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 DAY' AND event_name=$4) AS proposals_submitted
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS') AS notifications,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS' AND event_name=$2) AS attestations_missed,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS' AND event_name=$3) AS proposals_missed,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS' AND event_name=$4) AS proposals_submitted
 		FROM users_validators_tags  
 		WHERE user_id=$1;
 		`, userId, types.ValidatorMissedAttestationEventName, types.ValidatorMissedProposalEventName, types.ValidatorExecutedProposalEventName)
@@ -300,12 +302,13 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 		Pubkey       string  `db:"pubkey"`
 		Notification *string `db:"event_name"`
 		LastSent     *uint64 `db:"last_sent_ts"`
+		Threshold    *string `db:"event_threshold"`
 	}{}
 
 	err := db.DB.Select(&validatordb, `
-	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, a.last_sent_ts
+	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, extract( epoch from a.last_sent_ts)::Int as last_sent_ts, a.event_threshold
 	FROM validators 
-	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, us.last_sent_ts FROM users_validators_tags uvt 
+	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, us.last_sent_ts, us.event_threshold FROM users_validators_tags uvt 
 	LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id
 	WHERE uvt.user_id = $1) a ON a.pubkey=pubkeyhex;
 		`, userId)
@@ -316,6 +319,7 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	type notification struct {
 		Notification string
 		Timestamp    uint64
+		Threshold    string
 	}
 
 	type validatorDetails struct {
@@ -341,7 +345,7 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 			if item.LastSent != nil {
 				ts = *item.LastSent
 			}
-			map_item.Notifications = append(map_item.Notifications, notification{Notification: *item.Notification, Timestamp: ts})
+			map_item.Notifications = append(map_item.Notifications, notification{Notification: *item.Notification, Timestamp: ts, Threshold: *item.Threshold})
 			result_map[item.Index] = map_item
 		}
 
@@ -353,6 +357,40 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	}
 
 	return valiadtors, err
+}
+
+func getUserNetworkEvents(userId uint64) (interface{}, error) {
+	type result struct {
+		Notification string
+		Network      string
+		Timestamp    uint64
+	}
+	net := struct {
+		IsSubscribed bool
+		Events_ts    []result
+	}{Events_ts: []result{}}
+
+	c := 0
+	err := db.DB.Get(&c, `
+		SELECT count(user_id)                 
+		FROM users_subscriptions      
+		WHERE user_id=$1 AND event_name=$2;
+	`, userId, types.NetworkLivenessIncreasedEventName)
+
+	if c > 0 {
+		net.IsSubscribed = true
+		n := []uint64{}
+		err = db.DB.Select(&n, `select extract( epoch from ts)::Int as ts from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '1 year';`)
+
+		resp := []result{}
+		for _, item := range n {
+			resp = append(resp, result{Notification: "Finality issue", Network: utils.Config.Chain.Network, Timestamp: item * 1000})
+		}
+		net.Events_ts = resp
+
+	}
+
+	return net, err
 }
 
 func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
@@ -562,8 +600,7 @@ func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pqPubkeys := pq.Array(reqData.Pubkeys)
-	pqEventNames := pq.Array([]string{string(types.ValidatorMissedAttestationEventName),
-		string(types.MonitoringMachineCpuLoadEventName),
+	pqEventNames := pq.Array([]string{string(types.MonitoringMachineCpuLoadEventName),
 		string(types.MonitoringMachineDiskAlmostFullEventName),
 		string(types.MonitoringMachineOfflineEventName),
 		string(types.MonitoringMachineSwitchedToETH1FallbackEventName),
@@ -631,9 +668,17 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	networkData, err := getUserNetworkEvents(user.UserID)
+	if err != nil {
+		logger.Errorf("error retrieving network data for users: %v ", user.UserID, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 	data := InitPageData(w, r, "user", "/user", "")
 	userNotificationsCenterData.Metrics = metricsdb
 	userNotificationsCenterData.Validators = validatorTableData
+	userNotificationsCenterData.Network = networkData
 	data.Data = userNotificationsCenterData
 	data.User = user
 
@@ -845,7 +890,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, _, err := getUserSession(w, r)
+	user, session, err := getUserSession(w, r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		callback := appData.RedirectURI + "?error=access_denied&error_description=no_session" + stateAppend
@@ -864,8 +909,9 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 
 		code := hex.EncodeToString(codeBytes)   // return to user
 		codeHashed := utils.HashAndEncode(code) // save hashed code in db
+		clientID := session.Values["client_id"].(string)
 
-		err2 := db.AddAuthorizeCode(user.UserID, codeHashed, appData.ID)
+		err2 := db.AddAuthorizeCode(user.UserID, codeHashed, clientID, appData.ID)
 		if err2 != nil {
 			logger.Errorf("error adding authorization code for user: %v %v", user.UserID, err2)
 			callback := appData.RedirectURI + "?error=server_error&error_description=err_db_storefail" + stateAppend
@@ -1531,6 +1577,8 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 				threshold = 0.1
 			} else if eventName == types.MonitoringMachineCpuLoadEventName {
 				threshold = 0.6
+			} else if eventName == types.MonitoringMachineMemoryUsageEventName {
+				threshold = 0.8
 			}
 		}
 
