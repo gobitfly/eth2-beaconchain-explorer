@@ -116,7 +116,7 @@ table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
 table.dataTable tbody tr.selected, 
 table.dataTable tbody th.selected, 
 table.dataTable tbody td.selected {
-  color: var(--light) !important;
+  color: var(--dark) !important;
 }
 table.dataTable tbody tr.selected a, 
 table.dataTable tbody th.selected a, 
