@@ -29,6 +29,7 @@ const (
 	MonitoringMachineOfflineEventName                EventName = "monitoring_machine_offline"
 	MonitoringMachineDiskAlmostFullEventName         EventName = "monitoring_hdd_almostfull"
 	MonitoringMachineCpuLoadEventName                EventName = "monitoring_cpu_load"
+	MonitoringMachineMemoryUsageEventName            EventName = "monitoring_memory_usage"
 	MonitoringMachineSwitchedToETH2FallbackEventName EventName = "monitoring_fallback_eth2inuse"
 	MonitoringMachineSwitchedToETH1FallbackEventName EventName = "monitoring_fallback_eth1inuse"
 	TaxReportEventName                               EventName = "user_tax_report"
@@ -55,6 +56,7 @@ var EventNames = []EventName{
 	MonitoringMachineCpuLoadEventName,
 	MonitoringMachineSwitchedToETH2FallbackEventName,
 	MonitoringMachineSwitchedToETH1FallbackEventName,
+	MonitoringMachineMemoryUsageEventName,
 	TaxReportEventName,
 }
 
