@@ -1212,7 +1212,7 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 		EventFilter    string `db:"event_filter"`
 	}
 
-	err := db.DB.Select(&dbResult, `
+	err := db.FrontendDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 hour' OR us.last_sent_ts IS NULL)
