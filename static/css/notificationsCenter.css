@@ -60,6 +60,7 @@
 .heading-l4 { 
   font-size: .85rem;
   font-weight: 300;
+  line-height: 1.5rem !important;
 }
 .heading-section { 
   height: 60px; 

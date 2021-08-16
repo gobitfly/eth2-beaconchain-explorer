@@ -306,7 +306,7 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	}{}
 
 	err := db.DB.Select(&validatordb, `
-	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, a.last_sent_ts, a.event_threshold
+	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, extract( epoch from a.last_sent_ts)::Int as last_sent_ts, a.event_threshold
 	FROM validators 
 	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, us.last_sent_ts, us.event_threshold FROM users_validators_tags uvt 
 	LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id

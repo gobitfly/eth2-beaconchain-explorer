@@ -644,7 +644,7 @@ function loadValidatorsData(data) {
             return no_time;
           }
           data.sort((a, b) => {
-            return a.age - b.age;
+            return b.Timestamp - a.Timestamp;
           });
           if (type === 'sort' || type === 'type') {
             return data[0].Timestamp;
