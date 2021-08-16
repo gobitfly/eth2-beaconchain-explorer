@@ -367,7 +367,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	}
 
 	stmtNotification, err := tx.Prepare(`
-		SELECT id, user_id from users_notifications where event_name = $1 AND event_filter = $2 AND (last_sent_epoch > $3 OR last_sent_epoch IS NULL) AND created_epoch <= $3;
+		SELECT id, user_id from users_subscriptions where event_name = $1 AND event_filter = $2 AND (last_sent_epoch > $3 OR last_sent_epoch IS NULL) AND created_epoch <= $3;
 	`)
 	if err != nil {
 		return err
@@ -445,7 +445,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 	}
 
 	stmtNotification, err := tx.Prepare(`
-		SELECT id, user_id from users_notifications where event_name = $1 AND event_filter = $2 AND (last_sent_epoch > $3 OR last_sent_epoch IS NULL) AND created_epoch <= $3;
+		SELECT id, user_id from users_subscriptions where event_name = $1 AND event_filter = $2 AND (last_sent_epoch > $3 OR last_sent_epoch IS NULL) AND created_epoch <= $3;
 	`)
 	if err != nil {
 		return err
@@ -588,7 +588,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 	}
 
 	stmtNotification, err := tx.Prepare(`
-		SELECT id, user_id from users_notifications where event_name = $1 AND event_filter = $2 AND (last_sent_epoch < ($3 - 6) OR last_sent_epoch IS NULL) AND created_epoch <= $3;
+		SELECT id, user_id from users_subscriptions where event_name = $1 AND event_filter = $2 AND (last_sent_epoch < ($3 - 6) OR last_sent_epoch IS NULL) AND created_epoch <= $3;
 	`)
 	if err != nil {
 		return err
@@ -807,7 +807,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	}
 
 	stmtNotification, err := tx.Prepare(`
-		SELECT user_id from users_notifications where event_name = $1 AND event_filter = $2 AND (last_sent_epoch < $3 or last_sent_epoch IS NULL);
+		SELECT user_id from users_subscriptions where event_name = $1 AND event_filter = $2 AND (last_sent_epoch < $3 or last_sent_epoch IS NULL);
 	`)
 	if err != nil {
 		return err
