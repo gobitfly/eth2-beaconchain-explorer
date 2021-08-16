@@ -54,6 +54,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 			logger.Errorf("error collecting validator_balance_decreased notifications: %v", err)
 		}
 	}
+
 	err = collectValidatorGotSlashedNotifications(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
@@ -332,8 +333,6 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	}
 
 	var dbResult []struct {
-		SubscriptionID uint64 `db:"id"`
-		UserID         uint64 `db:"user_id"`
 		ValidatorIndex uint64 `db:"validatorindex"`
 		StartBalance   uint64 `db:"startbalance"`
 		EndBalance     uint64 `db:"endbalance"`
@@ -341,51 +340,72 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	}
 
 	err := db.DB.Select(&dbResult, `
-		SELECT id, user_id, validatorindex, startbalance, endbalance, a.pubkey AS pubkey FROM (
+		SELECT validatorindex, startbalance, endbalance, a.pubkey AS pubkey FROM (
 			SELECT 
-				us.id, 
-				us.user_id, 
 				v.validatorindex,
 				v.pubkeyhex AS pubkey, 
 				vb0.balance AS endbalance, 
 				vb3.balance AS startbalance, 
-				us.last_sent_epoch,
 				(SELECT MAX(epoch) FROM (
 					SELECT epoch, balance-LAG(balance) OVER (ORDER BY epoch) AS diff
 					FROM validator_balances_recent 
-					WHERE validatorindex = v.validatorindex AND epoch > us.last_sent_epoch AND epoch > $2 - 10
+					WHERE validatorindex = v.validatorindex AND epoch > $1 - 10
 				) b WHERE diff > 0) AS lastbalanceincreaseepoch
-			FROM users_subscriptions us
-			INNER JOIN validators v ON v.pubkeyhex = us.event_filter
-			INNER JOIN validator_balances_recent vb0 ON v.validatorindex = vb0.validatorindex AND vb0.epoch = $2
-			INNER JOIN validator_balances_recent vb1 ON v.validatorindex = vb1.validatorindex AND vb1.epoch = $2 - 1 AND vb1.balance > vb0.balance
-			INNER JOIN validator_balances_recent vb2 ON v.validatorindex = vb2.validatorindex AND vb2.epoch = $2 - 2 AND vb2.balance > vb1.balance
-			INNER JOIN validator_balances_recent vb3 ON v.validatorindex = vb3.validatorindex AND vb3.epoch = $2 - 3 AND vb3.balance > vb2.balance
-			WHERE us.event_name = $1 AND us.created_epoch <= $2
-		) a WHERE lastbalanceincreaseepoch IS NOT NULL OR last_sent_epoch IS NULL`,
-		types.ValidatorBalanceDecreasedEventName, latestEpoch)
+			from validators v
+			INNER JOIN validator_balances_recent vb0 ON v.validatorindex = vb0.validatorindex AND vb0.epoch = $1
+			INNER JOIN validator_balances_recent vb1 ON v.validatorindex = vb1.validatorindex AND vb1.epoch = $1 - 1 AND vb1.balance > vb0.balance
+			INNER JOIN validator_balances_recent vb2 ON v.validatorindex = vb2.validatorindex AND vb2.epoch = $1 - 2 AND vb2.balance > vb1.balance
+			INNER JOIN validator_balances_recent vb3 ON v.validatorindex = vb3.validatorindex AND vb3.epoch = $1 - 3 AND vb3.balance > vb2.balance
+		) a WHERE lastbalanceincreaseepoch IS NOT NULL`, latestEpoch)
 	if err != nil {
 		return err
 	}
 
-	for _, r := range dbResult {
+	tx, err := db.FrontendDB.Beginx()
+	if err != nil {
+		return err
+	}
+
+	stmtNotification, err := tx.Prepare(`
+		SELECT id, user_id from users_notifications where event_name = $1 AND event_filter = $2 AND last_sent_epoch > $3 AND created_epoch <= $3;
+	`)
+	if err != nil {
+		return err
+	}
+
+	for _, event := range dbResult {
 		n := &validatorBalanceDecreasedNotification{
-			SubscriptionID: r.SubscriptionID,
-			ValidatorIndex: r.ValidatorIndex,
+			ValidatorIndex: event.ValidatorIndex,
 			StartEpoch:     latestEpoch - 3,
 			EndEpoch:       latestEpoch,
-			StartBalance:   r.StartBalance,
-			EndBalance:     r.EndBalance,
-			EventFilter:    r.EventFilter,
+			StartBalance:   event.StartBalance,
+			EndBalance:     event.EndBalance,
+			EventFilter:    event.EventFilter,
 		}
 
-		if _, exists := notificationsByUserID[r.UserID]; !exists {
-			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+		rows, err := stmtNotification.Query(types.ValidatorBalanceDecreasedEventName, event.EventFilter, latestEpoch)
+		if err != nil {
+			return err
 		}
-		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
-			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+
+		for rows.Next() {
+			var sub struct {
+				subId  uint64 `db:"id"`
+				userId uint64 `db:"user_id"`
+			}
+			rows.Scan(&sub)
+			n.SubscriptionID = sub.subId
+
+			if _, exists := notificationsByUserID[sub.userId]; !exists {
+				notificationsByUserID[sub.userId] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[sub.userId][n.GetEventName()]; !exists {
+				notificationsByUserID[sub.userId][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[sub.userId][n.GetEventName()] = append(notificationsByUserID[sub.userId][n.GetEventName()], n)
 		}
-		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+
+		defer rows.Close()
 	}
 
 	return nil
@@ -669,16 +689,26 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 		return nil
 	}
 
-	var dbResult []struct {
-		SubscriptionID uint64 `db:"id"`
-		UserID         uint64 `db:"user_id"`
-		ValidatorIndex uint64 `db:"validatorindex"`
-		Slasher        uint64 `db:"slasher"`
-		Epoch          uint64 `db:"epoch"`
-		Reason         string `db:"reason"`
-		EventFilter    string `db:"pubkey"`
+	// only consider the most recent epochs
+	lookBack := int64(latestEpoch) - 50
+	if lookBack < 0 {
+		lookBack = 0
 	}
 
+	var dbResult []struct {
+		// SubscriptionID uint64 `db:"id"`
+		// UserID         uint64 `db:"user_id"`
+		// ValidatorIndex uint64 `db:"validatorindex"`
+		Epoch                  uint64 `db:"epoch"`
+		Slasher                uint64 `db:"slasher"`
+		SlasherPubkey          string `db:"slasher_pubkey"`
+		SlashedValidator       uint64 `db:"slashedvalidator"`
+		SlashedValidatorPubkey string `db:"slashedvalidator_pubkey"`
+		Reason                 string `db:"reason"`
+		// EventFilter    string `db:"pubkey"`
+	}
+
+	// dbResult := make([]pq.StringArray, 0)
 	err := db.DB.Select(&dbResult, `
 		WITH
 			slashings AS (
@@ -695,7 +725,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 						'Attestation Violation' AS reason
 					FROM blocks_attesterslashings 
 					LEFT JOIN blocks ON blocks_attesterslashings.block_slot = blocks.slot
-					WHERE blocks.status = '1'
+					WHERE blocks.status = '1' AND blocks.epoch > $1
 					UNION ALL
 						SELECT
 							blocks.slot, 
@@ -705,36 +735,57 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 							'Proposer Violation' AS reason 
 						FROM blocks_proposerslashings
 						LEFT JOIN blocks ON blocks_proposerslashings.block_slot = blocks.slot
-						WHERE blocks.status = '1'
+						WHERE blocks.status = '1' AND blocks.epoch > $1
 				) a
 				ORDER BY slashedvalidator, slot
 			)
-		SELECT us.id, us.user_id, v.validatorindex, s.slasher, s.epoch, s.reason, ENCODE(v.pubkey::bytea, 'hex') AS pubkey
-		FROM users_subscriptions us
-		INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
-		INNER JOIN slashings s ON s.slashedvalidator = v.validatorindex
-		WHERE us.event_name = $1 AND us.last_sent_epoch IS NULL AND us.created_epoch < s.epoch`,
-		types.ValidatorGotSlashedEventName)
+		SELECT slasher, vk.pubkey as slasher_pubkey, slashedvalidator, vv.pubkey as slashedvalidator_pubkey, epoch, reason
+		FROM slashings s
+	    INNER JOIN validators vk ON s.slasher = vk.validatorindex
+		INNER JOIN validators vv ON s.slashedvalidator = vv.validatorindex`, lookBack)
 	if err != nil {
 		return err
 	}
 
-	for _, r := range dbResult {
+	tx, err := db.FrontendDB.Beginx()
+	if err != nil {
+		return err
+	}
+
+	stmtNotification, err := tx.Prepare(`
+		SELECT user_id from users_notifications where event_name = $1 AND event_filter = $2 AND last_sent_epoch < $3;
+	`)
+	if err != nil {
+		return err
+	}
+
+	for _, notification := range dbResult {
 		n := &validatorGotSlashedNotification{
-			SubscriptionID: r.SubscriptionID,
-			ValidatorIndex: r.ValidatorIndex,
-			Slasher:        r.Slasher,
-			Epoch:          r.Epoch,
-			Reason:         r.Reason,
-			EventFilter:    r.EventFilter,
+			Slasher:        notification.Slasher,
+			Epoch:          notification.Epoch,
+			Reason:         notification.Reason,
+			ValidatorIndex: notification.SlashedValidator,
+			EventFilter:    notification.SlashedValidatorPubkey,
 		}
-		if _, exists := notificationsByUserID[r.UserID]; !exists {
-			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+
+		rows, err := stmtNotification.Query(types.ValidatorGotSlashedEventName, notification.SlashedValidatorPubkey, notification.Epoch)
+		if err != nil {
+			return err
 		}
-		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
-			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+
+		for rows.Next() {
+			var userId uint64
+			rows.Scan(&userId)
+			if _, exists := notificationsByUserID[userId]; !exists {
+				notificationsByUserID[userId] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[userId][n.GetEventName()]; !exists {
+				notificationsByUserID[userId][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[userId][n.GetEventName()] = append(notificationsByUserID[userId][n.GetEventName()], n)
 		}
-		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+
+		defer rows.Close()
 	}
 
 	return nil
