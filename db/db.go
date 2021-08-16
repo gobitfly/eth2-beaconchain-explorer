@@ -1550,3 +1550,44 @@ func GetDepositThresholdTime() (*time.Time, error) {
 	}
 	return threshold, nil
 }
+
+func GetValidatorsBalanceDecrease(epoch uint64) ([]struct {
+	Pubkey         string `db:"pubkey"`
+	ValidatorIndex uint64 `db:"validatorindex"`
+	StartBalance   uint64 `db:"startbalance"`
+	EndBalance     uint64 `db:"endbalance"`
+}, error) {
+
+	var dbResult []struct {
+		Pubkey         string `db:"pubkey"`
+		ValidatorIndex uint64 `db:"validatorindex"`
+		StartBalance   uint64 `db:"startbalance"`
+		EndBalance     uint64 `db:"endbalance"`
+	}
+
+	err := DB.Select(&dbResult, `
+	SELECT validatorindex, startbalance, endbalance, a.pubkey AS pubkey FROM (
+		SELECT 
+			v.validatorindex,
+			v.pubkeyhex AS pubkey, 
+			vb0.balance AS endbalance, 
+			vb3.balance AS startbalance, 
+			(SELECT MAX(epoch) FROM (
+				SELECT epoch, balance-LAG(balance) OVER (ORDER BY epoch) AS diff
+				FROM validator_balances_recent 
+				WHERE validatorindex = v.validatorindex AND epoch > $1 - 10
+			) b WHERE diff > 0) AS lastbalanceincreaseepoch
+		from validators v
+		INNER JOIN validator_balances_recent vb0 ON v.validatorindex = vb0.validatorindex AND vb0.epoch = $1
+		INNER JOIN validator_balances_recent vb1 ON v.validatorindex = vb1.validatorindex AND vb1.epoch = $1 - 1 AND vb1.balance > vb0.balance
+		INNER JOIN validator_balances_recent vb2 ON v.validatorindex = vb2.validatorindex AND vb2.epoch = $1 - 2 AND vb2.balance > vb1.balance
+		INNER JOIN validator_balances_recent vb3 ON v.validatorindex = vb3.validatorindex AND vb3.epoch = $1 - 3 AND vb3.balance > vb2.balance
+	) a WHERE lastbalanceincreaseepoch IS NOT NULL
+	`, epoch)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return dbResult, nil
+}
