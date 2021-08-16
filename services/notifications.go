@@ -367,7 +367,7 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	}
 
 	stmtNotification, err := tx.Prepare(`
-		SELECT id, user_id from users_notifications where event_name = $1 AND event_filter = $2 AND last_sent_epoch > $3 AND created_epoch <= $3;
+		SELECT id, user_id from users_notifications where event_name = $1 AND event_filter = $2 AND (last_sent_epoch > $3 OR last_sent_epoch IS NULL) AND created_epoch <= $3;
 	`)
 	if err != nil {
 		return err
@@ -408,6 +408,11 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 		defer rows.Close()
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -415,8 +420,6 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 	latestEpoch := LatestEpoch()
 
 	var dbResult []struct {
-		SubscriptionID uint64 `db:"id"`
-		UserID         uint64 `db:"user_id"`
 		ValidatorIndex uint64 `db:"validatorindex"`
 		Epoch          uint64 `db:"epoch"`
 		Status         uint64 `db:"status"`
@@ -425,39 +428,66 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 
 	err := db.DB.Select(&dbResult, `
 			SELECT 
-				us.id, 
-				us.user_id, 
 				v.validatorindex, 
 				pa.epoch,
 				pa.status,
 				ENCODE(v.pubkey::bytea, 'hex') AS pubkey
-			FROM users_subscriptions us
-			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
-			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($2 - 5) 
-			WHERE us.event_name = $1 AND pa.status = $3 AND us.created_epoch <= $2 AND pa.epoch >= ($2 - 5) AND (us.last_sent_epoch < pa.epoch OR us.last_sent_epoch IS NULL)`,
-		eventName, latestEpoch, status)
+			FROM validators v
+			INNER JOIN proposal_assignments pa ON v.validatorindex = pa.validatorindex AND pa.epoch >= ($1 - 5) 
+			WHERE pa.status = $2 AND pa.epoch >= ($1 - 5)`, latestEpoch, status)
 	if err != nil {
 		return err
 	}
 
-	for _, r := range dbResult {
+	tx, err := db.FrontendDB.Beginx()
+	if err != nil {
+		return err
+	}
 
+	stmtNotification, err := tx.Prepare(`
+		SELECT id, user_id from users_notifications where event_name = $1 AND event_filter = $2 AND (last_sent_epoch > $3 OR last_sent_epoch IS NULL) AND created_epoch <= $3;
+	`)
+	if err != nil {
+		return err
+	}
+
+	for _, event := range dbResult {
 		n := &validatorProposalNotification{
-			SubscriptionID: r.SubscriptionID,
-			ValidatorIndex: r.ValidatorIndex,
-			Epoch:          r.Epoch,
-			Status:         r.Status,
+			ValidatorIndex: event.ValidatorIndex,
+			Epoch:          event.Epoch,
+			Status:         event.Status,
 			EventName:      eventName,
-			EventFilter:    r.EventFilter,
+			EventFilter:    event.EventFilter,
 		}
 
-		if _, exists := notificationsByUserID[r.UserID]; !exists {
-			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+		rows, err := stmtNotification.Query(types.ValidatorBalanceDecreasedEventName, event.EventFilter, latestEpoch)
+		if err != nil {
+			return err
 		}
-		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
-			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+
+		for rows.Next() {
+			var sub struct {
+				subId  uint64 `db:"id"`
+				userId uint64 `db:"user_id"`
+			}
+			rows.Scan(&sub)
+			n.SubscriptionID = sub.subId
+
+			if _, exists := notificationsByUserID[sub.userId]; !exists {
+				notificationsByUserID[sub.userId] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[sub.userId][n.GetEventName()]; !exists {
+				notificationsByUserID[sub.userId][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[sub.userId][n.GetEventName()] = append(notificationsByUserID[sub.userId][n.GetEventName()], n)
 		}
-		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+
+		defer rows.Close()
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -527,8 +557,6 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 	latestSlot := LatestSlot()
 
 	var dbResult []struct {
-		SubscriptionID uint64 `db:"id"`
-		UserID         uint64 `db:"user_id"`
 		ValidatorIndex uint64 `db:"validatorindex"`
 		Epoch          uint64 `db:"epoch"`
 		Status         uint64 `db:"status"`
@@ -539,46 +567,72 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 
 	err := db.DB.Select(&dbResult, `
 			SELECT 
-				us.id, 
-				us.user_id, 
 				v.validatorindex, 
 				aa.epoch,
 				aa.status,
 				aa.attesterslot,
 				aa.inclusionslot,
 				ENCODE(v.pubkey::bytea, 'hex') AS pubkey
-			FROM users_subscriptions us
-			INNER JOIN validators v ON ENCODE(v.pubkey, 'hex') = us.event_filter
+			FROM validators
 			INNER JOIN attestation_assignments_p aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 3)  AND aa.week >= ($2 - 3) / 1575
-			WHERE us.event_name = $1 AND aa.status = $3 AND us.created_epoch <= $2 AND aa.epoch >= ($2 - 3)
-			AND (us.last_sent_epoch < ($2 - 6) OR us.last_sent_epoch IS NULL)
+			WHERE AND aa.status = $3 AND aa.epoch >= ($2 - 3)
 			AND aa.inclusionslot = 0 AND aa.attesterslot < ($4 - 32)
-			`,
-		eventName, latestEpoch, status, latestSlot)
+			`, latestEpoch, status, latestSlot)
 	if err != nil {
 		return err
 	}
 
-	for _, r := range dbResult {
+	tx, err := db.FrontendDB.Beginx()
+	if err != nil {
+		return err
+	}
 
+	stmtNotification, err := tx.Prepare(`
+		SELECT id, user_id from users_notifications where event_name = $1 AND event_filter = $2 AND (last_sent_epoch < ($3 - 6) OR last_sent_epoch IS NULL) AND created_epoch <= $3;
+	`)
+	if err != nil {
+		return err
+	}
+
+	for _, event := range dbResult {
 		n := &validatorAttestationNotification{
-			SubscriptionID: r.SubscriptionID,
-			ValidatorIndex: r.ValidatorIndex,
-			Epoch:          r.Epoch,
-			Status:         r.Status,
+			ValidatorIndex: event.ValidatorIndex,
+			Epoch:          event.Epoch,
+			Status:         event.Status,
 			EventName:      eventName,
-			Slot:           r.Slot,
-			InclusionSlot:  r.InclusionSlot,
-			EventFilter:    r.EventFilter,
+			Slot:           event.Slot,
+			InclusionSlot:  event.InclusionSlot,
+			EventFilter:    event.EventFilter,
 		}
 
-		if _, exists := notificationsByUserID[r.UserID]; !exists {
-			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+		rows, err := stmtNotification.Query(types.ValidatorBalanceDecreasedEventName, event.EventFilter, latestEpoch)
+		if err != nil {
+			return err
 		}
-		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
-			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+
+		for rows.Next() {
+			var sub struct {
+				subId  uint64 `db:"id"`
+				userId uint64 `db:"user_id"`
+			}
+			rows.Scan(&sub)
+			n.SubscriptionID = sub.subId
+
+			if _, exists := notificationsByUserID[sub.userId]; !exists {
+				notificationsByUserID[sub.userId] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[sub.userId][n.GetEventName()]; !exists {
+				notificationsByUserID[sub.userId][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[sub.userId][n.GetEventName()] = append(notificationsByUserID[sub.userId][n.GetEventName()], n)
 		}
-		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
+
+		defer rows.Close()
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -753,7 +807,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	}
 
 	stmtNotification, err := tx.Prepare(`
-		SELECT user_id from users_notifications where event_name = $1 AND event_filter = $2 AND last_sent_epoch < $3;
+		SELECT user_id from users_notifications where event_name = $1 AND event_filter = $2 AND (last_sent_epoch < $3 or last_sent_epoch IS NULL);
 	`)
 	if err != nil {
 		return err
@@ -786,6 +840,11 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 		}
 
 		defer rows.Close()
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -861,7 +920,7 @@ func collectEthClientNotifications(notificationsByUserID map[uint64]map[types.Ev
 			EventFilter    string `db:"event_filter"`
 		}
 
-		err := db.DB.Select(&dbResult, `
+		err := db.FrontendDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter
 			FROM users_subscriptions AS us
 			WHERE 
@@ -1182,7 +1241,7 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 			EventFilter    string `db:"event_filter"`
 		}
 
-		err := db.DB.Select(&dbResult, `
+		err := db.FrontendDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '2 DAY' OR us.last_sent_ts IS NULL);
