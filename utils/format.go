@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"eth2-exporter/price"
 	"fmt"
-	"github.com/protolambda/zssz/bitfields"
 	"html"
 	"html/template"
 	"math"
@@ -13,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/protolambda/zssz/bitfields"
 
 	eth1common "github.com/ethereum/go-ethereum/common"
 	"golang.org/x/text/language"

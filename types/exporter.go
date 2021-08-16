@@ -93,9 +93,8 @@ type Block struct {
 	Attestations      []*Attestation
 	Deposits          []*Deposit
 	VoluntaryExits    []*VoluntaryExit
-	// warning: sync aggregate may be nil, for phase0 blocks
-	SyncAggregate *SyncAggregate
-	Canonical     bool
+	SyncAggregate     *SyncAggregate // warning: sync aggregate may be nil, for phase0 blocks
+	Canonical         bool
 }
 
 // Eth1Data is a struct to hold the ETH1 data

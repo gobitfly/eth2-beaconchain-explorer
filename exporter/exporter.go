@@ -38,6 +38,7 @@ func Start(client rpc.Client) error {
 		go UpdatePubkeyTag()
 	}
 
+	fmt.Println("DEBUG 1")
 	// wait until the beacon-node is available
 	for {
 		_, err := client.GetChainHead()
@@ -47,6 +48,7 @@ func Start(client rpc.Client) error {
 		logger.Errorf("beacon-node seems to be unavailable: %v", err)
 		time.Sleep(time.Second * 10)
 	}
+	fmt.Println("DEBUG 2")
 
 	if utils.Config.Indexer.FullIndexOnStartup {
 		logger.Printf("performing one time full db reindex")

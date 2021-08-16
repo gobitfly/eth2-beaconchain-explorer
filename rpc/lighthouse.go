@@ -6,12 +6,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"github.com/protolambda/zssz/bitfields"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/protolambda/zssz/bitfields"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prysmaticlabs/go-bitfield"
@@ -592,8 +593,8 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 		// technically there are rules for delayed finalization through previous epoch, applied only later. But good enough, this matches previous wonky behavior
 		Finalized:               float32(parsedResponse.Data.CurrentEpochTargetAttestingGwei)/float32(parsedResponse.Data.CurrentEpochActiveGwei) > (float32(2) / float32(3)),
 		GlobalParticipationRate: float32(parsedResponse.Data.CurrentEpochTargetAttestingGwei) / float32(parsedResponse.Data.CurrentEpochActiveGwei),
-		VotedEther:              uint64(parsedResponse.Data.PreviousEpochTargetAttestingGwei) / 1e9,
-		EligibleEther:           uint64(parsedResponse.Data.CurrentEpochActiveGwei) / 1e9,
+		VotedEther:              uint64(parsedResponse.Data.PreviousEpochTargetAttestingGwei),
+		EligibleEther:           uint64(parsedResponse.Data.CurrentEpochActiveGwei),
 	}, nil
 }
 
