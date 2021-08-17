@@ -371,7 +371,6 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 
 			err := rows.Scan(&subId, &userId)
 			if err == sql.ErrNoRows {
-				logger.Warn("no rows found")
 				continue
 			}
 			if err != nil {
@@ -454,7 +453,6 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 
 			err := rows.Scan(&subId, &userId)
 			if err == sql.ErrNoRows {
-				logger.Warn("no rows found")
 				continue
 			}
 			if err != nil {
@@ -572,20 +570,30 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		return err
 	}
 
-	tx, err := db.FrontendDB.Beginx()
+	query := ""
+	resultsLen := len(dbResult)
+	for i, event := range dbResult {
+		query += fmt.Sprintf(`SELECT %d as ref, id, user_id from users_subscriptions where event_name = $1 AND event_filter = '%s'  AND (last_sent_epoch < ($2 - 6) OR last_sent_epoch IS NULL) AND created_epoch <= $2`, i, event.EventFilter)
+		if i < resultsLen-1 {
+			query += " UNION "
+		}
+	}
+
+	var subscribers []struct {
+		Ref    uint64 `db:"ref"`
+		Id     uint64 `db:"id"`
+		UserId uint64 `db:"user_id"`
+	}
+
+	err = db.FrontendDB.Select(&subscribers, query, types.ValidatorBalanceDecreasedEventName, latestEpoch)
 	if err != nil {
 		return err
 	}
 
-	stmtNotification, err := tx.Prepare(`
-		SELECT id, user_id from users_subscriptions where event_name = $1 AND event_filter = $2 AND (last_sent_epoch < ($3 - 6) OR last_sent_epoch IS NULL) AND created_epoch <= $3;
-	`)
-	if err != nil {
-		return err
-	}
-
-	for _, event := range dbResult {
+	for _, sub := range subscribers {
+		event := dbResult[sub.Ref]
 		n := &validatorAttestationNotification{
+			SubscriptionID: sub.Id,
 			ValidatorIndex: event.ValidatorIndex,
 			Epoch:          event.Epoch,
 			Status:         event.Status,
@@ -595,41 +603,14 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			EventFilter:    event.EventFilter,
 		}
 
-		rows, err := stmtNotification.Query(types.ValidatorBalanceDecreasedEventName, event.EventFilter, latestEpoch)
-		if err != nil {
-			return err
+		if _, exists := notificationsByUserID[sub.UserId]; !exists {
+			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
 		}
-
-		for rows.Next() {
-			var subId uint64
-			var userId uint64
-
-			err := rows.Scan(&subId, &userId)
-			if err == sql.ErrNoRows {
-				logger.Warn("no rows found")
-				continue
-			}
-			if err != nil {
-				return err
-			}
-
-			n.SubscriptionID = subId
-
-			if _, exists := notificationsByUserID[userId]; !exists {
-				notificationsByUserID[userId] = map[types.EventName][]types.Notification{}
-			}
-			if _, exists := notificationsByUserID[userId][n.GetEventName()]; !exists {
-				notificationsByUserID[userId][n.GetEventName()] = []types.Notification{}
-			}
-			notificationsByUserID[userId][n.GetEventName()] = append(notificationsByUserID[userId][n.GetEventName()], n)
+		if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
+			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
 		}
+		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
 
-		defer rows.Close()
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -746,54 +727,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 		lookBack = 0
 	}
 
-	var dbResult []struct {
-		// SubscriptionID uint64 `db:"id"`
-		// UserID         uint64 `db:"user_id"`
-		// ValidatorIndex uint64 `db:"validatorindex"`
-		Epoch                  uint64 `db:"epoch"`
-		Slasher                uint64 `db:"slasher"`
-		SlasherPubkey          string `db:"slasher_pubkey"`
-		SlashedValidator       uint64 `db:"slashedvalidator"`
-		SlashedValidatorPubkey string `db:"slashedvalidator_pubkey"`
-		Reason                 string `db:"reason"`
-		// EventFilter    string `db:"pubkey"`
-	}
-
-	// dbResult := make([]pq.StringArray, 0)
-	err := db.DB.Select(&dbResult, `
-		WITH
-			slashings AS (
-				SELECT DISTINCT ON (slashedvalidator) * FROM (
-					SELECT
-						blocks.slot, 
-						blocks.epoch, 
-						blocks.proposer AS slasher, 
-						UNNEST(ARRAY(
-							SELECT UNNEST(attestation1_indices)
-								INTERSECT
-							SELECT UNNEST(attestation2_indices)
-						)) AS slashedvalidator, 
-						'Attestation Violation' AS reason
-					FROM blocks_attesterslashings 
-					LEFT JOIN blocks ON blocks_attesterslashings.block_slot = blocks.slot
-					WHERE blocks.status = '1' AND blocks.epoch > $1
-					UNION ALL
-						SELECT
-							blocks.slot, 
-							blocks.epoch, 
-							blocks.proposer AS slasher, 
-							blocks_proposerslashings.proposerindex AS slashedvalidator,
-							'Proposer Violation' AS reason 
-						FROM blocks_proposerslashings
-						LEFT JOIN blocks ON blocks_proposerslashings.block_slot = blocks.slot
-						WHERE blocks.status = '1' AND blocks.epoch > $1
-				) a
-				ORDER BY slashedvalidator, slot
-			)
-		SELECT slasher, vk.pubkey as slasher_pubkey, slashedvalidator, vv.pubkey as slashedvalidator_pubkey, epoch, reason
-		FROM slashings s
-	    INNER JOIN validators vk ON s.slasher = vk.validatorindex
-		INNER JOIN validators vv ON s.slashedvalidator = vv.validatorindex`, lookBack)
+	dbResult, err := db.GetValidatorsGotSlashed(uint64(lookBack))
 	if err != nil {
 		return err
 	}
@@ -804,7 +738,7 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	}
 
 	stmtNotification, err := tx.Prepare(`
-		SELECT user_id from users_subscriptions where event_name = $1 AND event_filter = $2 AND (last_sent_epoch < $3 or last_sent_epoch IS NULL);
+		SELECT user_id from users_subscriptions where event_name = $1 AND event_filter = $2 AND (last_sent_epoch < $3 OR last_sent_epoch IS NULL);
 	`)
 	if err != nil {
 		return err
@@ -812,10 +746,10 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 
 	for _, notification := range dbResult {
 		n := &validatorGotSlashedNotification{
-			Slasher:        notification.Slasher,
+			Slasher:        notification.SlasherIndex,
 			Epoch:          notification.Epoch,
 			Reason:         notification.Reason,
-			ValidatorIndex: notification.SlashedValidator,
+			ValidatorIndex: notification.SlashedValidatorIndex,
 			EventFilter:    notification.SlashedValidatorPubkey,
 		}
 
@@ -830,7 +764,6 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 
 			err := rows.Scan(&subId, &userId)
 			if err == sql.ErrNoRows {
-				logger.Warn("no rows found")
 				continue
 			}
 			if err != nil {
