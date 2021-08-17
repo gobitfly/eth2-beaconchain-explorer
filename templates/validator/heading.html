@@ -16,11 +16,10 @@
           <i class="fa fa-edit fa-lg mb-3 text-muted" role="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" style="padding: .5rem;"></i>
         </span>
         {{if len .Watchlist}}
-          <!-- TODO: make icon button look like the rest -->
           <span class="mb-3" data-toggle="tooltip" title="Stop receiving updates for this validator">
             <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
-              <button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button">
-                <i class="fas fa-bookmark"></i>
+              <button type="submit" id="unfollow-button" style="background: none; padding: 0; border: none;">
+                <i class="fas fa-bookmark fa-lg text-muted" style="padding: .5rem;"></i>
               </button>
             </form>
           </span>
@@ -30,19 +29,17 @@
               <i class="fas fa-bookmark fa-lg text-muted" role="button" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" style="padding: .5rem;"></i>
             </span>
           {{else}}
-            <!-- TODO: make icon button look like the rest -->
             <span class="mb-3" data-toggle="tooltip" title="Follow validator to receive email notifications">
               <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
-                <button class="btn btn-dark text-white btn-sm" id="follow-button">
-                  <i class="far fa-bookmark"></i>
+                <button type="submit" id="follow-button" style="background: none; padding: 0; border: none;">
+                  <i class="fas fa-bookmark fa-lg text-muted" style="padding: .5rem;"></i>
                 </button>
               </form>
             </span>
           {{end}}
         {{end}}
       </div>
-      <!-- TODO: maybe it should be the primary button?! -->
-      <a class="text-nowrap text-muted" href="/validator/{{.Index}}/stats">View daily statistics</a>
+      <a class="btn btn-primary text-white text-nowrap" href="/validator/{{.Index}}/stats">View daily statistics</a>
     </div>
     <div class="d-flex align-items-center">
       <h2 class="mb-0 mr-1 h6 font-weight-light text-monospace text-secondary text-truncate text-sm" id="copy-input">0x{{printf "%x" .PublicKey}}</h2>
