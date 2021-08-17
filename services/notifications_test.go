@@ -7,8 +7,10 @@ import (
 	"flag"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,7 +25,7 @@ func TestMain(m *testing.M) {
 	utils.Config = cfg
 
 	if cfg.Database.Password != "xxx" {
-		logrus.Fatal("error do not run this test in production")
+		logrus.Fatal("error do not run these tests in production")
 	}
 
 	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
@@ -40,8 +42,17 @@ func TestMain(m *testing.M) {
 	err = db.DB.Get(&epoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
 	if err != nil {
 		logger.Errorf("error retrieving latest epoch from the database: %v", err)
+		return
 	}
 	atomic.StoreUint64(&latestEpoch, epoch)
+
+	var slot uint64
+	err = db.DB.Get(&slot, "SELECT COALESCE(MAX(slot), 0) FROM blocks where slot < $1", utils.TimeToSlot(uint64(time.Now().Add(time.Second*10).Unix())))
+	if err != nil {
+		logger.Errorf("error retrieving latest slot from the database: %v", err)
+		return
+	}
+	atomic.StoreUint64(&latestSlot, slot)
 
 	m.Run()
 }
@@ -111,4 +122,171 @@ func TestBalanceDecrease(t *testing.T) {
 		t.Errorf("error unexpected event created expected: %v but got %v", expected, got)
 		return
 	}
+}
+
+func TestGotSlashedNotifications(t *testing.T) {
+	latestEpoch := LatestEpoch()
+	t.Logf("Running test for got slashed notification: %v", latestEpoch)
+}
+
+func TestAttestationViolationNotification(t *testing.T) {
+	latestEpoch := LatestEpoch()
+	latestSlot := LatestSlot()
+	t.Logf("Testing Attestation Violation for epoch: %v and slot: %v", latestEpoch, latestSlot)
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		t.Errorf("error creating tx err: %v", err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`
+	INSERT INTO blocks_attesterslashings (
+		block_slot,
+		block_index,
+		attestation1_indices,
+		attestation2_indices,
+		block_root,
+		attestation1_signature,
+		attestation1_slot,
+		attestation1_index,
+		attestation1_beaconblockroot,
+		attestation1_source_epoch,
+		attestation1_source_root,
+		attestation1_target_epoch,
+		attestation1_target_root,
+		attestation2_signature,
+		attestation2_slot,
+		attestation2_index,
+		attestation2_beaconblockroot,
+		attestation2_source_epoch,
+		attestation2_source_root,
+		attestation2_target_epoch,
+		attestation2_target_root
+	) SELECT
+		(SELECT slot from blocks where status = '1' order by slot desc limit 1) as block_slot,
+		1 as block_index,
+		$1 as attestation1_indices,
+		$1 as attestation2_indices,
+		b.*
+		FROM (SELECT 
+		  block_root,
+		  attestation1_signature,
+		  attestation1_slot,
+		  attestation1_index,
+		  attestation1_beaconblockroot,
+		  attestation1_source_epoch,
+		  attestation1_source_root,
+		  attestation1_target_epoch,
+		  attestation1_target_root,
+		  attestation2_signature,
+		  attestation2_slot,
+		  attestation2_index,
+		  attestation2_beaconblockroot,
+		  attestation2_source_epoch,
+		  attestation2_source_root,
+		  attestation2_target_epoch,
+		  attestation2_target_root
+	FROM blocks_attesterslashings ORDER BY block_slot desc LIMIT 1) b`, pq.Int64Array([]int64{50, 60}))
+	if err != nil {
+		t.Errorf("error inserting dummy AttestationViolation err: %v", err)
+		return
+	}
+
+	rows, err := tx.Query(`
+		SELECT block_slot FROM blocks_attesterslashings ORDER BY block_slot desc LIMIT 1
+	`)
+	if err != nil {
+		t.Errorf("error querying attesterslashing %v", err)
+	}
+
+	for rows.Next() {
+		var slot uint64
+		rows.Scan(&slot)
+		t.Logf("included an attestation violation in slot %v", slot)
+	}
+
+	rows, err = tx.Query(`
+			WITH
+			slashings AS (
+				SELECT DISTINCT ON (slashedvalidator) * FROM (
+					SELECT
+						blocks.slot, 
+						blocks.epoch, 
+						blocks.proposer AS slasher, 
+						UNNEST(ARRAY(
+							SELECT UNNEST(attestation1_indices)
+								INTERSECT
+							SELECT UNNEST(attestation2_indices)
+						)) AS slashedvalidator, 
+						'Attestation Violation' AS reason
+					FROM blocks_attesterslashings 
+					LEFT JOIN blocks ON blocks_attesterslashings.block_slot = blocks.slot
+					WHERE blocks.status = '1' AND blocks.epoch > $1
+					UNION ALL
+						SELECT
+							blocks.slot, 
+							blocks.epoch, 
+							blocks.proposer AS slasher, 
+							blocks_proposerslashings.proposerindex AS slashedvalidator,
+							'Proposer Violation' AS reason 
+						FROM blocks_proposerslashings
+						LEFT JOIN blocks ON blocks_proposerslashings.block_slot = blocks.slot
+						WHERE blocks.status = '1' AND blocks.epoch > $1
+				) a
+				ORDER BY slashedvalidator, slot
+			)
+		SELECT slasher, vk.pubkey as slasher_pubkey, slashedvalidator, vv.pubkey as slashedvalidator_pubkey, epoch, reason
+		FROM slashings s
+		INNER JOIN validators vk ON s.slasher = vk.validatorindex
+		INNER JOIN validators vv ON s.slashedvalidator = vv.validatorindex
+	`, latestEpoch-10)
+	if err != nil {
+		t.Errorf("error getting recent slashable offences %v", err)
+		return
+	}
+
+	var dbResults []struct {
+		Epoch                  uint64 `db:"epoch"`
+		SlasherIndex           uint64 `db:"slasher"`
+		SlasherPubkey          string `db:"slasher_pubkey"`
+		SlashedValidatorIndex  uint64 `db:"slashedvalidator"`
+		SlashedValidatorPubkey string `db:"slashedvalidator_pubkey"`
+		Reason                 string `db:"reason"`
+	}
+
+	for rows.Next() {
+		var dbResult struct {
+			Epoch                  uint64 `db:"epoch"`
+			SlasherIndex           uint64 `db:"slasher"`
+			SlasherPubkey          string `db:"slasher_pubkey"`
+			SlashedValidatorIndex  uint64 `db:"slashedvalidator"`
+			SlashedValidatorPubkey string `db:"slashedvalidator_pubkey"`
+			Reason                 string `db:"reason"`
+		}
+
+		err = rows.Scan(&dbResult.SlasherIndex, &dbResult.SlasherPubkey, &dbResult.SlashedValidatorIndex, &dbResult.SlashedValidatorPubkey, &dbResult.Epoch, &dbResult.Reason)
+		if err != nil {
+			t.Errorf("error scanning for slashings err: %v", err)
+			return
+		}
+		t.Logf("found slashing offence %+v", dbResult)
+		dbResults = append(dbResults, dbResult)
+	}
+
+	if len(dbResults) == 0 {
+		t.Errorf("error expected two slashing events but got %v", len(dbResults))
+		return
+	}
+
+	for _, result := range dbResults {
+		if result.Reason != "Attestation Violation" {
+			t.Errorf("error expected slashing violation to be: %v but received: %v for slashed validator: %v", "Attestation Violation", result.Reason, result.SlashedValidatorIndex)
+		}
+	}
+
+	t.Logf("found db results %+v", dbResults)
+}
+
+func TestProposerViolationNotification(t *testing.T) {
+
 }
