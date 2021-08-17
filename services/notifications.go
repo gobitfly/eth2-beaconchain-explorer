@@ -1,7 +1,6 @@
 package services
 
 import (
-	"database/sql"
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/mail"
@@ -338,20 +337,30 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 		return err
 	}
 
-	tx, err := db.FrontendDB.Beginx()
+	query := ""
+	resultsLen := len(dbResult)
+	for i, event := range dbResult {
+		query += fmt.Sprintf(`SELECT %d as ref, id, user_id from users_subscriptions where event_name = $1 AND event_filter = '%s'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL) AND created_epoch <= $2`, i, event.Pubkey)
+		if i < resultsLen-1 {
+			query += " UNION "
+		}
+	}
+
+	var subscribers []struct {
+		Ref    uint64 `db:"ref"`
+		Id     uint64 `db:"id"`
+		UserId uint64 `db:"user_id"`
+	}
+
+	err = db.FrontendDB.Select(&subscribers, query, types.ValidatorBalanceDecreasedEventName, latestEpoch)
 	if err != nil {
 		return err
 	}
 
-	stmtNotification, err := tx.Prepare(`
-		SELECT id, user_id from users_subscriptions where event_name = $1 AND event_filter = $2 AND (last_sent_epoch > $3 OR last_sent_epoch IS NULL) AND created_epoch <= $3;
-	`)
-	if err != nil {
-		return err
-	}
-
-	for _, event := range dbResult {
+	for _, sub := range subscribers {
+		event := dbResult[sub.Ref]
 		n := &validatorBalanceDecreasedNotification{
+			SubscriptionID: sub.Id,
 			ValidatorIndex: event.ValidatorIndex,
 			StartEpoch:     latestEpoch - 3,
 			EndEpoch:       latestEpoch,
@@ -360,41 +369,15 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 			EventFilter:    event.Pubkey,
 		}
 
-		rows, err := stmtNotification.Query(types.ValidatorBalanceDecreasedEventName, event.Pubkey, latestEpoch)
-		if err != nil {
-			return err
+		if _, exists := notificationsByUserID[sub.UserId]; !exists {
+			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
 		}
-
-		for rows.Next() {
-			var subId uint64
-			var userId uint64
-
-			err := rows.Scan(&subId, &userId)
-			if err == sql.ErrNoRows {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-
-			n.SubscriptionID = subId
-
-			if _, exists := notificationsByUserID[userId]; !exists {
-				notificationsByUserID[userId] = map[types.EventName][]types.Notification{}
-			}
-			if _, exists := notificationsByUserID[userId][n.GetEventName()]; !exists {
-				notificationsByUserID[userId][n.GetEventName()] = []types.Notification{}
-			}
-			notificationsByUserID[userId][n.GetEventName()] = append(notificationsByUserID[userId][n.GetEventName()], n)
+		if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
+			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
 		}
-
-		defer rows.Close()
+		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -715,61 +698,44 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 		return err
 	}
 
-	tx, err := db.FrontendDB.Beginx()
+	query := ""
+	resultsLen := len(dbResult)
+	for i, event := range dbResult {
+		query += fmt.Sprintf(`SELECT %d as ref, id, user_id from users_subscriptions where event_name = $1 AND event_filter = '%s'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL)`, i, event.SlashedValidatorPubkey)
+		if i < resultsLen-1 {
+			query += " UNION "
+		}
+	}
+
+	var subscribers []struct {
+		Ref    uint64 `db:"ref"`
+		Id     uint64 `db:"id"`
+		UserId uint64 `db:"user_id"`
+	}
+
+	err = db.FrontendDB.Select(&subscribers, query, types.ValidatorGotSlashedEventName, latestEpoch)
 	if err != nil {
 		return err
 	}
 
-	stmtNotification, err := tx.Prepare(`
-		SELECT user_id from users_subscriptions where event_name = $1 AND event_filter = $2 AND (last_sent_epoch < $3 OR last_sent_epoch IS NULL);
-	`)
-	if err != nil {
-		return err
-	}
-
-	for _, notification := range dbResult {
+	for _, sub := range subscribers {
+		event := dbResult[sub.Ref]
 		n := &validatorGotSlashedNotification{
-			Slasher:        notification.SlasherIndex,
-			Epoch:          notification.Epoch,
-			Reason:         notification.Reason,
-			ValidatorIndex: notification.SlashedValidatorIndex,
-			EventFilter:    notification.SlashedValidatorPubkey,
+			SubscriptionID: sub.Id,
+			Slasher:        event.SlasherIndex,
+			Epoch:          event.Epoch,
+			Reason:         event.Reason,
+			ValidatorIndex: event.SlashedValidatorIndex,
+			EventFilter:    event.SlashedValidatorPubkey,
 		}
 
-		rows, err := stmtNotification.Query(types.ValidatorGotSlashedEventName, notification.SlashedValidatorPubkey, notification.Epoch)
-		if err != nil {
-			return err
+		if _, exists := notificationsByUserID[sub.UserId]; !exists {
+			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
 		}
-
-		for rows.Next() {
-			var subId uint64
-			var userId uint64
-
-			err := rows.Scan(&subId, &userId)
-			if err == sql.ErrNoRows {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-
-			n.SubscriptionID = subId
-
-			if _, exists := notificationsByUserID[userId]; !exists {
-				notificationsByUserID[userId] = map[types.EventName][]types.Notification{}
-			}
-			if _, exists := notificationsByUserID[userId][n.GetEventName()]; !exists {
-				notificationsByUserID[userId][n.GetEventName()] = []types.Notification{}
-			}
-			notificationsByUserID[userId][n.GetEventName()] = append(notificationsByUserID[userId][n.GetEventName()], n)
+		if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
+			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
 		}
-
-		defer rows.Close()
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
+		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
 	}
 
 	return nil
