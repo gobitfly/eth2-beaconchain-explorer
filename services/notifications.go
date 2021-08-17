@@ -421,20 +421,30 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 		return err
 	}
 
-	tx, err := db.FrontendDB.Beginx()
+	query := ""
+	resultsLen := len(dbResult)
+	for i, event := range dbResult {
+		query += fmt.Sprintf(`SELECT %d as ref, id, user_id from users_subscriptions where event_name = $1 AND event_filter = '%s'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL) AND created_epoch <= $2`, i, event.EventFilter)
+		if i < resultsLen-1 {
+			query += " UNION "
+		}
+	}
+
+	var subscribers []struct {
+		Ref    uint64 `db:"ref"`
+		Id     uint64 `db:"id"`
+		UserId uint64 `db:"user_id"`
+	}
+
+	err = db.FrontendDB.Select(&subscribers, query, eventName, latestEpoch)
 	if err != nil {
 		return err
 	}
 
-	stmtNotification, err := tx.Prepare(`
-		SELECT id, user_id from users_subscriptions where event_name = $1 AND event_filter = $2 AND (last_sent_epoch > $3 OR last_sent_epoch IS NULL) AND created_epoch <= $3;
-	`)
-	if err != nil {
-		return err
-	}
-
-	for _, event := range dbResult {
+	for _, sub := range subscribers {
+		event := dbResult[sub.Ref]
 		n := &validatorProposalNotification{
+			SubscriptionID: sub.Id,
 			ValidatorIndex: event.ValidatorIndex,
 			Epoch:          event.Epoch,
 			Status:         event.Status,
@@ -442,40 +452,13 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 			EventFilter:    event.EventFilter,
 		}
 
-		rows, err := stmtNotification.Query(types.ValidatorBalanceDecreasedEventName, event.EventFilter, latestEpoch)
-		if err != nil {
-			return err
+		if _, exists := notificationsByUserID[sub.UserId]; !exists {
+			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
 		}
-
-		for rows.Next() {
-			var subId uint64
-			var userId uint64
-
-			err := rows.Scan(&subId, &userId)
-			if err == sql.ErrNoRows {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-
-			n.SubscriptionID = subId
-
-			if _, exists := notificationsByUserID[userId]; !exists {
-				notificationsByUserID[userId] = map[types.EventName][]types.Notification{}
-			}
-			if _, exists := notificationsByUserID[userId][n.GetEventName()]; !exists {
-				notificationsByUserID[userId][n.GetEventName()] = []types.Notification{}
-			}
-			notificationsByUserID[userId][n.GetEventName()] = append(notificationsByUserID[userId][n.GetEventName()], n)
+		if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
+			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
 		}
-
-		defer rows.Close()
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
+		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
 	}
 
 	return nil
