@@ -5,15 +5,50 @@
         <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
           <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
           <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
-          <li class="breadcrumb-item active" aria-current="page">Validator details</li>
+          <li class="breadcrumb-item active" aria-current="page">Validator info</li>
         </ol>
       </nav>
     </div>
-    <h1 class="h3 my-2">
-      Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}
-    </h1>
-    <h2 class="h6 font-weight-light text-monospace text-secondary text-truncate text-sm" id="copy-input">0x{{printf "%x" .PublicKey}}</h2>
-    <div style="background-color: coral;">
+    <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between mt-3">
+      <div class="d-flex align-items-center">
+        <h1 class="mb-0 mr-1 h3 text-nowrap">Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</h1>
+        <span data-toggle="tooltip" title="Edit name">
+          <i class="fa fa-edit fa-lg mb-3 text-muted" role="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" style="padding: .5rem;"></i>
+        </span>
+        {{if len .Watchlist}}
+          <!-- TODO: make icon button look like the rest -->
+          <span class="mb-3" data-toggle="tooltip" title="Stop receiving updates for this validator">
+            <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
+              <button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button">
+                <i class="fas fa-bookmark"></i>
+              </button>
+            </form>
+          </span>
+        {{else}}
+          {{if .User.Authenticated}}
+            <span class="mb-3" data-toggle="tooltip" title="Follow validator to receive email notifications">
+              <i class="fas fa-bookmark fa-lg text-muted" role="button" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" style="padding: .5rem;"></i>
+            </span>
+          {{else}}
+            <!-- TODO: make icon button look like the rest -->
+            <span class="mb-3" data-toggle="tooltip" title="Follow validator to receive email notifications">
+              <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
+                <button class="btn btn-dark text-white btn-sm" id="follow-button">
+                  <i class="far fa-bookmark"></i>
+                </button>
+              </form>
+            </span>
+          {{end}}
+        {{end}}
+      </div>
+      <!-- TODO: maybe it should be the primary button?! -->
+      <a class="text-nowrap text-muted" href="/validator/{{.Index}}/stats">View daily statistics</a>
+    </div>
+    <div class="d-flex align-items-center">
+      <h2 class="mb-0 mr-1 h6 font-weight-light text-monospace text-secondary text-truncate text-sm" id="copy-input">0x{{printf "%x" .PublicKey}}</h2>
+      <i class="fa fa-copy fa-lg mb-3 text-muted" role="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}" style="padding: .5rem;"></i>
+    </div>
+    <!-- <div>
       <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
         <i class="fa fa-copy"></i>
       </button>
@@ -52,7 +87,7 @@
           <i class="fas fa-table"></i>
         </a>
       </span>
-    </div>
+    </div> -->
     <div><span class="mr-3 h6 font-weight-light text-muted">Tags: </span>{{if .Tags}} {{formatValidatorTags .Tags}} {{end}}</div>
   </div>
 {{end}}
