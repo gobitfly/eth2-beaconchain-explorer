@@ -346,6 +346,10 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 		}
 	}
 
+	if query == "" {
+		return nil
+	}
+
 	var subscribers []struct {
 		Ref    uint64 `db:"ref"`
 		Id     uint64 `db:"id"`
@@ -411,6 +415,10 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 		if i < resultsLen-1 {
 			query += " UNION "
 		}
+	}
+
+	if query == "" {
+		return nil
 	}
 
 	var subscribers []struct {
@@ -543,6 +551,10 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		if i < resultsLen-1 {
 			query += " UNION "
 		}
+	}
+
+	if query == "" {
+		return nil
 	}
 
 	var subscribers []struct {
@@ -707,12 +719,15 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 		}
 	}
 
+	if query == "" {
+		return nil
+	}
+
 	var subscribers []struct {
 		Ref    uint64 `db:"ref"`
 		Id     uint64 `db:"id"`
 		UserId uint64 `db:"user_id"`
 	}
-
 	err = db.FrontendDB.Select(&subscribers, query, types.ValidatorGotSlashedEventName, latestEpoch)
 	if err != nil {
 		return err
