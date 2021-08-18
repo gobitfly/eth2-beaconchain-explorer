@@ -1,107 +1,15 @@
-// const data = {
-//   monitoring: [
-//     {
-//       id: 1,
-//       notification: "CPU",
-//       threshold: 0.8,
-//       machine: "machine1",
-//       mostRecent: 1626078050
-//     },
-//     {
-//       id: 2,
-//       notification: "HDD",
-//       threshold: 0.8,
-//       machine: "machine1",
-//       mostRecent: 1625894270
-//     },
-//     {
-//       id: 3,
-//       notification: "Offline",
-//       threshold: null,
-//       machine: "machine1",
-//       mostRecent: 1625627930
-//     },
-//     {
-//       id: 4,
-//       notification: "CPU",
-//       threshold: 0.9,
-//       machine: "machine2",
-//       mostRecent: 1625721407
-//     },
-//     {
-//       id: 5,
-//       notification: "HDD",
-//       threshold: 0.9,
-//       machine: "machine2",
-//       mostRecent: 1625721527
-//     }
-//   ],
-//   network: [
-//     {
-//       notification: "Finality issues",
-//       network: "Beaconchain",
-//       mostRecent: 1622615148
-//     },
-//     {
-//       notification: "Finality issues",
-//       network: "Beaconchain",
-//       mostRecent: 1622615145
-//     },
-//     {
-//       notification: "Finality issues",
-//       network: "Beaconchain",
-//       mostRecent: 1625203607
-//     },
-//     {
-//       notification: "Finality issues",
-//       network: "Beaconchain",
-//       mostRecent: 1625808407
-//     },
-//     {
-//       notification: "Finality issues",
-//       network: "Beaconchain",
-//       mostRecent: 1625807927
-//     },
-//     {
-//       notification: "Finality issues",
-//       network: "Beaconchain",
-//       mostRecent: 1625721527
-//     },
-//     {
-//       notification: "Finality issues",
-//       network: "Beaconchain",
-//       mostRecent: 1625721407
-//     },
-//     {
-//       notification: "Finality issues",
-//       network: "Beaconchain",
-//       mostRecent: 1625627930
-//     },
-//     {
-//       notification: "Finality issues",
-//       network: "Beaconchain",
-//       mostRecent: 1625894270
-//     },
-//     {
-//       notification: "Finality issues",
-//       network: "Beaconchain",
-//       mostRecent: 1626078050
-//     }
-//   ]
-// };
-
 var csrfToken = "";
 
 const VALIDATOR_EVENTS = ["validator_attestation_missed", "validator_balance_decreased",
-  "validator_proposal_missed", "validator_proposal_submitted",
-  "validator_got_slashed"];
+                          "validator_proposal_missed", "validator_proposal_submitted",
+                          "validator_got_slashed"];
 const MONITORING_EVENTS = ["monitoring_machine_offline", "monitoring_hdd_almostfull", "monitoring_cpu_load"];
 
 function create_typeahead(input_container) {
   var bhValidators = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
-    identify: function (obj) {
+    identify: function(obj) {
       return obj.index
     },
     remote: {
@@ -113,7 +21,7 @@ function create_typeahead(input_container) {
   var bhName = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
-    identify: function (obj) {
+    identify: function(obj) {
       return obj.name
     },
     remote: {
@@ -136,7 +44,7 @@ function create_typeahead(input_container) {
       display: 'index',
       templates: {
         header: '<h5 class="font-weight-bold ml-3">Validators</h5>',
-        suggestion: function (data) {
+        suggestion: function(data) {
           return `<div class="font-weight-normal text-truncate high-contrast">${data.index}</div>`;
         }
       }
@@ -148,38 +56,37 @@ function create_typeahead(input_container) {
       display: 'name',
       templates: {
         header: '<h5 class="font-weight-bold ml-3">Validators by Name</h5>',
-        suggestion: function (data) {
+        suggestion: function(data) {
           var len = data.validator_indices.length > VALLIMIT ? VALLIMIT + '+' : data.validator_indices.length;
           return `<div class="font-weight-normal high-contrast" style="display: flex;"><div class="text-truncate" style="flex: 1 1 auto;">${data.name}</div><div style="max-width: fit-content; white-space: nowrap;">${len}</div></div>`;
         }
       }
     });
 
-  $(input_container).on('focus', function (e) {
+  $(input_container).on('focus', function(e) {
     if (e.target.value !== "") {
       $(this).trigger($.Event('keydown', { keyCode: 40 }));
     }
   });
 
-  $(input_container).on('input', function () {
+  $(input_container).on('input', function() {
     $('.tt-suggestion').first().addClass('tt-cursor');
   });
 
-  $(input_container).on('typeahead:select', function (e, sug) {
-    console.log(sug)
+  $(input_container).on('typeahead:select', function(e, sug) {
     $(input_container).val(sug.index);
-    $(input_container).attr("pk", sug.pubkey);
+    $(input_container).attr('pk', sug.pubkey);
   });
 }
 
 function loadMonitoringData(data) {
-  let mdata = []
-  let id = 0
+  let mdata = [];
+  let id = 0;
   for (let item of data) {
     for (let n of item.Notifications) {
-      let ns = n.Notification.split("_")
-      if (ns[0] === "monitoring") {
-        if (ns[1] === "machine") {
+      let ns = n.Notification.split('_');
+      if (ns[0] === 'monitoring') {
+        if (ns[1] === 'machine') {
           ns[1] = ns[2];
         }
         mdata.push({
@@ -194,6 +101,26 @@ function loadMonitoringData(data) {
       }
     }
   }
+
+  if (mdata.length !== 0) {
+    $('#monitoring-section-with-data').append(
+      `<table class="table table-borderless table-hover" id="monitoring-notifications">
+        <thead class="custom-table-head">
+          <tr>
+            <th scope="col" class="h6 border-bottom-0">Notification</th>
+            <th scope="col" class="h6 border-bottom-0">Threshold</th>
+            <th scope="col" class="h6 border-bottom-0">Machine</th>
+            <th scope="col" class="h6 border-bottom-0">Most Recent</th>
+            <th scope="col" class="h6 border-bottom-0"></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>`
+    );
+  } else {
+    $('#monitoring-section-empty').removeAttr('hidden');
+  }
+
   let monitoringTable = $('#monitoring-notifications');
 
   monitoringTable.DataTable({
@@ -213,38 +140,37 @@ function loadMonitoringData(data) {
     paging: true,
     data: mdata,
     rowId: 'id',
-    initComplete: function (settings, json) {
+    initComplete: function(settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar');
 
       // click event to monitoring table edit button
-      $('#monitoring-notifications #edit-monitoring-events-btn').on('click', function (e) {
+      $('#monitoring-notifications #edit-monitoring-events-btn').on('click', function(e) {
         // console.log($(this).attr("event"), $(this).attr("pk"), $(this).attr("ind"))
-        $('#add-monitoring-validator-select').html("")
-        $("#cpu-input-range-val, #cpu-input-range").val(80)
-        $("#cpu-input-range").attr("style", `background-size: 80% 100%`)
-        $("#hdd-input-range-val, #hdd-input-range").val(80)
-        $("#hdd-input-range").attr("style", `background-size: 80% 100%`)
+        $('#add-monitoring-validator-select').html("");
+        $('#cpu-input-range-val, #cpu-input-range').val(80);
+        $('#cpu-input-range').attr('style', `background-size: 80% 100%`);
+        $('#hdd-input-range-val, #hdd-input-range').val(80);
+        $('#hdd-input-range').attr('style', `background-size: 80% 100%`);
         for (let item of $('input.monitoring')) {
-          $(item).prop('checked', false)
+          $(item).prop('checked', false);
         }
 
-        let ev = $(this).attr("event").split(",")
+        let ev = $(this).attr('event').split(',');
         for (let i of ev) {
           if (i.length > 0) {
-            let t = i.split(":")
-            // console.log()
+            let t = i.split(':');
             for (let item of $('input.monitoring')) {
               let e = $(item).attr('event');
               // console.log(e, t[0], e === t[0])
               if (e === t[0]) {
-                $(item).prop('checked', true)
+                $(item).prop('checked', true);
                 let p = parseInt(parseFloat(t[1]) * 100);
-                if (e.includes("_cpu_")) {
-                  $("#cpu-input-range-val, #cpu-input-range").val(p)
-                  $("#cpu-input-range").attr("style", `background-size: ${p}% 100%`)
-                } else if (e.includes("_hdd_")) {
-                  $("#hdd-input-range-val, #hdd-input-range").val(p)
-                  $("#hdd-input-range").attr("style", `background-size: ${p}% 100%`)
+                if (e.includes('_cpu_')) {
+                  $('#cpu-input-range-val, #cpu-input-range').val(p);
+                  $('#cpu-input-range').attr('style', `background-size: ${p}% 100%`);
+                } else if (e.includes('_hdd_')) {
+                  $('#hdd-input-range-val, #hdd-input-range').val(p);
+                  $('#hdd-input-range').attr('style', `background-size: ${p}% 100%`);
                 }
               }
             }
@@ -255,7 +181,7 @@ function loadMonitoringData(data) {
       });
 
       // enter event to threshold input
-      $('.threshold_editable').on('keypress', function (e) {
+      $('.threshold_editable').on('keypress', function(e) {
         if (e.which == 13) {
           const rowId = $(this).parent().parent().attr('id');
           let newThreshold = $(this).val();
@@ -279,7 +205,7 @@ function loadMonitoringData(data) {
           }
 
           if (isValid) {
-            index = data.findIndex(function (item) {
+            index = data.findIndex(function(item) {
               return item.id.toString() === rowId.toString();
             });
 
@@ -295,7 +221,7 @@ function loadMonitoringData(data) {
       });
 
       // click event to table remove button
-      $('#monitoring-notifications #remove-btn').on('click', function (e) {
+      $('#monitoring-notifications #remove-btn').on('click', function(e) {
         $('#modaltext').text($(this).data('modaltext'));
 
         // set the row id 
@@ -312,7 +238,7 @@ function loadMonitoringData(data) {
     columnDefs: [
       {
         targets: '_all',
-        createdCell: function (td, cellData, rowData, row, col) {
+        createdCell: function(td, cellData, rowData, row, col) {
           $(td).css('padding-top', '20px');
           $(td).css('padding-bottom', '20px');
         }
@@ -321,7 +247,7 @@ function loadMonitoringData(data) {
         targets: 0,
         responsivePriority: 1,
         data: 'notification',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>';
         }
       },
@@ -329,26 +255,25 @@ function loadMonitoringData(data) {
         targets: 1,
         responsivePriority: 3,
         data: 'threshold',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           if (!data) {
             return '<span class="threshold_non_editable">N/A</span>';
           }
 
-          if (type === "display") {
-            let e = ""
+          if (type === 'display') {
+            let e = "";
             for (let i of data[1].Notifications) {
-              let ns = i.Notification.split("_")
-              if (ns[0] === "monitoring") {
-                e += `${i.Notification}:${i.Threshold},`
+              let ns = i.Notification.split('_');
+              if (ns[0] === 'monitoring') {
+                e += `${i.Notification}:${i.Threshold},`;
               }
             }
             return `<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden />
                     <span class="threshold_non_editable">
-                      <span class="threshold_non_editable_text">
-                        ${(data[0] * 100).toFixed(2)}%
-                      </span> 
+                      <span class="threshold_non_editable_text">${(data[0] * 100).toFixed(2)}%</span> 
                       <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;" 
-                          data-toggle= "modal" data-target="#addMonitoringEventModal" pk="${data[1].Validator.Pubkey}" ind="${data[1].Validator.Index}" event="${e}"></i>
+                          data-toggle= "modal" data-target="#addMonitoringEventModal" pk="${data[1].Validator.Pubkey}" ind="${data[1].Validator.Index}" event="${e}">
+                      </i>
                     </span>`;
           }
 
@@ -359,7 +284,7 @@ function loadMonitoringData(data) {
         targets: 2,
         responsivePriority: 2,
         data: 'machine',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           return `<span class="font-weight-bold"><i class="fas fa-male mr-1"></i><a style="padding: .25rem;" href="/validator/${data}">${data}</a></span>`
         }
       },
@@ -367,13 +292,15 @@ function loadMonitoringData(data) {
         targets: 3,
         responsivePriority: 1,
         data: 'mostRecent',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
           if (type === 'sort' || type === 'type') {
             return data;
           }
 
-          if (parseInt(data) === 0) return "N/a"
+          if (parseInt(data) === 0) {
+            return 'N/A';
+          }
           return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" })}</span>`;
         }
       },
@@ -382,14 +309,17 @@ function loadMonitoringData(data) {
         orderable: false,
         responsivePriority: 3,
         data: 'event',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           return `<i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" 
                       title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" 
-                      data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
+                      data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?">
+                  </i>`
         }
       }
     ],
   });
+
+  
 }
 
 function loadNetworkData(data) {
@@ -411,13 +341,13 @@ function loadNetworkData(data) {
     scrollY: 380,
     paging: true,
     data: data,
-    initComplete: function (settings, json) {
+    initComplete: function(settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar');
     },
     columnDefs: [
       {
         targets: '_all',
-        createdCell: function (td, cellData, rowData, row, col) {
+        createdCell: function(td, cellData, rowData, row, col) {
           $(td).css('padding-top', '20px');
           $(td).css('padding-bottom', '20px');
         }
@@ -426,7 +356,7 @@ function loadNetworkData(data) {
         targets: 0,
         responsivePriority: 1,
         data: 'Notification',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>';
         }
       },
@@ -476,7 +406,7 @@ function loadNetworkData(data) {
         targets: 5,
         responsivePriority: 1,
         data: 'Timestamp',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
           if (type === 'sort' || type === 'type') {
             return data;
@@ -514,16 +444,16 @@ function loadValidatorsData(data) {
     },
     fixedHeader: true,
     data: data,
-    initComplete: function (settings, json) {
+    initComplete: function(settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar');
 
       // click event to validators table edit button
-      $('#validators-notifications #edit-validator-events-btn').on('click', function (e) {
+      $('#validators-notifications #edit-validator-events-btn').on('click', function(e) {
         $('#manageNotificationsModal').attr('rowId', $(this).parent().parent().attr('id'));
       });
 
       // click event to remove button
-      $('#validators-notifications #remove-btn').on('click', function (e) {
+      $('#validators-notifications #remove-btn').on('click', function(e) {
         const rowId = $(this).parent().parent().attr('id');
         $('#modaltext').text($(this).data('modaltext'));
 
@@ -535,7 +465,7 @@ function loadValidatorsData(data) {
     columnDefs: [
       {
         targets: '_all',
-        createdCell: function (td, cellData, rowData, row, col) {
+        createdCell: function(td, cellData, rowData, row, col) {
           $(td).css('padding-top', '20px');
           $(td).css('padding-bottom', '20px');
         }
@@ -544,7 +474,7 @@ function loadValidatorsData(data) {
         targets: 0,
         responsivePriority: 1,
         data: 'Validator',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
           if (type === 'sort' || type === 'type') {
             return data.Index;
@@ -556,7 +486,7 @@ function loadValidatorsData(data) {
         targets: 1,
         responsivePriority: 2,
         data: 'Notifications',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           if (type === 'display') {
             let notifications = "";
             let hasItems = false;
@@ -610,7 +540,7 @@ function loadValidatorsData(data) {
         orderable: false,
         responsivePriority: 4,
         data: 'Notifications',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           let status = data.length > 0 ? 'checked="true"' : "";
           // console.log(data, data.length, data.length>0, status);
           return `
@@ -636,7 +566,7 @@ function loadValidatorsData(data) {
         targets: 5,
         responsivePriority: 1,
         data: 'Notifications',
-        render: function (data, type, row, meta) {
+        render: function(data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
           // data = data.Notifications
           let no_time = 'N/A';
@@ -663,10 +593,10 @@ function loadValidatorsData(data) {
         defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
       }
     ],
-    rowCallback: function (row, data, displayNum, displayIndex, dataIndex) {
+    rowCallback: function(row, data, displayNum, displayIndex, dataIndex) {
       $(row).attr('title', 'Click the table row to select it or hold down CTRL and click multiple rows to select them');
     },
-    rowId: function (data, type, row, meta) {
+    rowId: function(data, type, row, meta) {
       return data.Validator.Pubkey;
     }
   });
@@ -687,7 +617,7 @@ function remove_item_from_event_container(pubkey) {
   }
 }
 
-$(document).ready(function () {
+$(document).ready(function() {
   if (document.getElementsByName('CsrfField')[0] !== undefined) {
     csrfToken = document.getElementsByName('CsrfField')[0].value;
   }
@@ -700,10 +630,10 @@ $(document).ready(function () {
   // loadNetworkData(data.network);
   loadNetworkData(NET.Events_ts)
 
-  $(document).on('click', function (e) {
+  $(document).on('click', function(e) {
     // if click outside input while any threshold input visible, reset value and hide input
     if (e.target.className.indexOf('threshold_editable') < 0) {
-      $('.threshold_editable').each(function () {
+      $('.threshold_editable').each(function() {
         $(this).attr('hidden', true);
         $(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
       });
@@ -715,14 +645,14 @@ $(document).ready(function () {
     }
   });
 
-  $('#remove-all-btn').on('click', function (e) {
+  $('#remove-all-btn').on('click', function(e) {
     $('#modaltext').text($(this).data('modaltext'));
     $('#confirmRemoveModal').removeAttr('rowId');
     $('#confirmRemoveModal').attr('tablename', 'validators');
   });
 
   // click event to modal remove button
-  $('#remove-button').on('click', function (e) {
+  $('#remove-button').on('click', function(e) {
     const rowId = $('#confirmRemoveModal').attr('rowId');
     const tablename = $('#confirmRemoveModal').attr('tablename');
 
@@ -804,7 +734,7 @@ $(document).ready(function () {
     }
   });
 
-  $('.range').on('input', function (e) {
+  $('.range').on('input', function(e) {
     const target_id = $(this).data('target');
     let target = $(target_id);
     target.val($(this).val());
@@ -815,21 +745,21 @@ $(document).ready(function () {
     }
   });
 
-  $('#validators-notifications tbody').on('click', 'tr', function () {
+  $('#validators-notifications tbody').on('click', 'tr', function() {
     $(this).addClass('selected');
   });
 
   // on modal open after click event to validators table edit button
-  $('#manageNotificationsModal').on('show.bs.modal', function (e) {
+  $('#manageNotificationsModal').on('show.bs.modal', function(e) {
     // get the selected row (single row selected)
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data();
-    // console.log(rowData)
+    // console.log(rowData);
     if (rowData) {
       $('#selected-validators-events-container').append(
         `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Validator.Pubkey}>
         		Validator ${rowData.Validator.Index}
           	<i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowData.Validator.Pubkey}')"></i>
-        </span> `
+        </span>`
       );
 
       for (let event of $('#manage_all_events :input')) {
@@ -845,14 +775,14 @@ $(document).ready(function () {
           `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowsSelected[i].Validator.Pubkey}>
             Validator ${rowsSelected[i].Validator.Index}
             <i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowsSelected[i].Validator.Pubkey}')"></i>
-          </span> `
+          </span>`
         );
       }
     }
   });
 
   // on modal close
-  $('#manageNotificationsModal').on('hide.bs.modal', function (e) {
+  $('#manageNotificationsModal').on('hide.bs.modal', function(e) {
     $(this).removeAttr('rowId');
     $('#selected-validators-events-container #validator-event-badge').remove();
     for (let event of $('#manage_all_events :input')) {
@@ -881,7 +811,7 @@ $(document).ready(function () {
     return events;
   }
 
-  $('#update-subs-btn').on('click', function () {
+  $('#update-subs-btn').on('click', function() {
     $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Managing notifications...</span></div>');
     let pubkeys = [];
     for (let item of $('#selected-validators-events-container').find('span')) {
@@ -905,18 +835,18 @@ $(document).ready(function () {
         $('#manageNotificationsModal').modal('hide');
         window.location.reload();
       }
-      $(this).html("Save")
+      $(this).html('Save');
     });
   })
 
   // all events checkboxes (push, email, web)
-  $('#all_events_push').on('click', function () {
+  $('#all_events_push').on('click', function() {
     $('[id$=push]').attr('checked', $(this).is(':checked'));
   });
-  $('#all_events_email').on('change', function () {
+  $('#all_events_email').on('change', function() {
     $('[id$=email]').attr('checked', $(this).is(':checked'));
   });
-  $('#all_events_web').on('change', function () {
+  $('#all_events_web').on('change', function() {
     $('[id$=web]').attr('checked', $(this).is(':checked'));
   });
 
@@ -937,7 +867,7 @@ $(document).ready(function () {
     return events;
   }
 
-  $('#add-validator-button').on('click', function () {
+  $('#add-validator-button').on('click', function() {
     // console.log("clicked", $("#validator_attestation_missed>input#email"));
     try {
       let index = parseInt($('#add-validator-input').val());
@@ -966,9 +896,9 @@ $(document).ready(function () {
     }
   });
 
-  //select/deselect notification checkboxes for all events
+  // select/deselect notification checkboxes for all events
   for (let event of $('#validator_all_events :input')) {
-    $(event).on('click', function () {
+    $(event).on('click', function() {
       if ($(this).prop('checked')) {
         for (let item of VALIDATOR_EVENTS) {
           $(`#${item} input#${$(event).attr('id')}`).prop('checked', true);
@@ -982,7 +912,7 @@ $(document).ready(function () {
   }
 
   for (let event of $('#manage_all_events :input')) {
-    $(event).on('click', function () {
+    $(event).on('click', function() {
       if ($(this).prop('checked')) {
         for (let item of VALIDATOR_EVENTS) {
           $(`#manage_${item} input#${$(event).attr('id')}`).prop('checked', true);
@@ -995,13 +925,13 @@ $(document).ready(function () {
     });
   }
 
-  $('#add-monitoring-event-modal-btn').on('click', function () {
+  $('#add-monitoring-event-modal-btn').on('click', function() {
     for (let item of DATA.sort((a, b) => { return a.Validator.Index - b.Validator.Index })) {
       $('#add-monitoring-validator-select').append(`<option value="${item.Validator.Pubkey}">${item.Validator.Index}</option>`);
     }
   });
 
-  $('#add-monitoring-event-btn').on('click', function () {
+  $('#add-monitoring-event-btn').on('click', function() {
     let pubkey = $('#add-monitoring-validator-select option:selected').val();
     events = [];
     for (let item of $('input.monitoring')) {
@@ -1044,8 +974,8 @@ $(document).ready(function () {
     });
   });
 
-  $("#add-network-subscription").on("click", function(){
-    if ($("#finalityIssues").prop("checked")){
+  $('#add-network-subscription').on('click', function() {
+    if ($('#finalityIssues').prop('checked')) {
       $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Adding network event...</span></div>');
       fetch(`/user/notifications/subscribe?event=${$('#finalityIssues').attr('event')}&filter=0x${$('#finalityIssues').attr('event')}`, {
         method: 'POST',
@@ -1063,7 +993,7 @@ $(document).ready(function () {
         }
         $(this).html('Save');
       });
-    }else{
+    } else {
       $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Removing network event...</span></div>');
       fetch(`/user/notifications/unsubscribe?event=${$('#finalityIssues').attr('event')}&filter=0x${$('#finalityIssues').attr('event')}`, {
         method: 'POST',

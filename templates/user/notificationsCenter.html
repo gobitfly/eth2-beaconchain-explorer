@@ -6,8 +6,6 @@
 	<script>
 		const DATA = {{.Validators}}
 		const NET = {{.Network}}
-
-		console.log(NET);
 	</script>
 {{end}}
 
@@ -102,37 +100,20 @@
 						<span class="text-nowrap">Add monitoring event</span>
 					</button>
 				</div>
-				<!-- if there is no data in the table -->
-				{{if true}}
-					<div class="text-sm-center text-empty-section">
-						<h3 class="mt-5 heading-l2">Monitor your staking device and beacon <span class="d-block"> node with our <span class="font-weight-bold">Beaconchain app</span></span></h3>
-						<h4 class="mt-2 heading-l3">Now available for Android and iOS</h4>
-						<div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-center mt-4 mb-5">
-							<a class="mx-2 my-2" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121" target="_blank">
-								<img src="../img/ios.png" class="badge-button" />
-							</a>
-							<a class="mx-2 my-2" href="https://play.google.com/store/apps/details?id=in.beaconcha.mobile" target="_blank">
-								<img src="../img/android.png" class="badge-button" />
-							</a>
-						</div>
-						<div class="heading-l4 font-weight-normal">Check out our Knowledge Base for a step by step tutorial: <span class="d-block"><a href="https://kb.beaconcha.in/beaconcha.in-explorer/mobile-app-less-than-greater-than-beacon-node" target="_blank">Mobile App Node Monitoring</a></span></div>
+				<div class="text-sm-center text-empty-section" id="monitoring-section-empty" hidden>
+					<h3 class="mt-5 heading-l2">Monitor your staking device and beacon <span class="d-block"> node with our <span class="font-weight-bold">Beaconchain app</span></span></h3>
+					<h4 class="mt-2 heading-l4">Now available for Android and iOS</h4>
+					<div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-center mt-4 mb-5">
+						<a class="mx-2 my-2" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121" target="_blank">
+							<img src="../img/ios.png" class="badge-button" />
+						</a>
+						<a class="mx-2 my-2" href="https://play.google.com/store/apps/details?id=in.beaconcha.mobile" target="_blank">
+							<img src="../img/android.png" class="badge-button" />
+						</a>
 					</div>
-				{{else}}
-					<div class="px-0 px-md-3 py-1">
-						<table class="table table-borderless table-hover" id="monitoring-notifications">
-							<thead class="custom-table-head">
-								<tr>
-									<th scope="col" class="h6 border-bottom-0">Notification</th>
-									<th scope="col" class="h6 border-bottom-0">Threshold</th>
-                  <th scope="col" class="h6 border-bottom-0">Machine</th>
-									<th scope="col" class="h6 border-bottom-0">Most Recent</th>
-									<th scope="col" class="h6 border-bottom-0"></th>
-								</tr>
-							</thead>
-							<tbody></tbody>
-						</table>
-					</div>
-				{{end}}
+					<h4 class="heading-l3">Check out our Knowledge Base for a step by step tutorial: <span class="d-block"><a href="https://kb.beaconcha.in/beaconcha.in-explorer/mobile-app-less-than-greater-than-beacon-node" target="_blank">Mobile App Node Monitoring</a></span></h4>
+				</div>
+				<div class="px-0 px-md-3 py-1" id="monitoring-section-with-data"></div>
 			</div>
 			<div class="col-12 col-xl mt-3 mt-xl-0 mb-3 ml-xl-3 p-1 shadow-sm border container-height custom-border-radius custom-background-color">
 				<div class="d-flex flex-column align-items-start flex-sm-row align-items-sm-center justify-content-sm-between mx-3 mb-2">
@@ -145,8 +126,9 @@
 					</button>
 				</div>
 				{{if .Network}}
-					<div class="ml-3 mx-sm-auto mt-5 text-sm-center text-empty-section">
-						<h3 class="heading-l3">You don't have any notifications</h3>
+					<div class="ml-3 mx-sm-auto text-sm-center text-empty-section">
+						<h3 class="mt-5 heading-l2">No network notifications yet</h3>
+						<h4 class="mt-2 heading-l3">Subscribe to network events to receive notifications</h4>
 					</div>
 				{{else}}
 					<div class="px-0 px-md-3 py-1">
