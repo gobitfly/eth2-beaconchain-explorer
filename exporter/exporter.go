@@ -38,7 +38,6 @@ func Start(client rpc.Client) error {
 		go UpdatePubkeyTag()
 	}
 
-	fmt.Println("DEBUG 1")
 	// wait until the beacon-node is available
 	for {
 		_, err := client.GetChainHead()
@@ -48,7 +47,6 @@ func Start(client rpc.Client) error {
 		logger.Errorf("beacon-node seems to be unavailable: %v", err)
 		time.Sleep(time.Second * 10)
 	}
-	fmt.Println("DEBUG 2")
 
 	if utils.Config.Indexer.FullIndexOnStartup {
 		logger.Printf("performing one time full db reindex")
@@ -211,6 +209,9 @@ func Start(client rpc.Client) error {
 	newBlockChan := client.GetNewBlockChan()
 
 	lastExportedSlot := uint64(0)
+
+	doFullCheck(client)
+
 	for {
 		select {
 		case block := <-newBlockChan:
@@ -442,6 +443,7 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("export_epoch").Observe(time.Since(start).Seconds())
+		logger.WithFields(logrus.Fields{"duration": time.Since(start), "epoch": epoch}).Info("completed exporting epoch")
 	}()
 
 	// Check if the partition for the validator_balances and attestation_assignments table for this epoch exists
@@ -468,11 +470,11 @@ func ExportEpoch(epoch uint64, client rpc.Client) error {
 	startGetEpochData := time.Now()
 	logger.Printf("retrieving data for epoch %v", epoch)
 	data, err := client.GetEpochData(epoch)
-
 	if err != nil {
 		return fmt.Errorf("error retrieving epoch data: %v", err)
 	}
 	metrics.TaskDuration.WithLabelValues("rpc_get_epoch_data").Observe(time.Since(startGetEpochData).Seconds())
+	logger.WithFields(logrus.Fields{"duration": time.Since(startGetEpochData), "epoch": epoch}).Info("completed getting epoch-data")
 	logger.Printf("data for epoch %v retrieved, took %v", epoch, time.Since(start))
 
 	if len(data.Validators) == 0 {
@@ -509,7 +511,7 @@ func updateEpochStatus(client rpc.Client, startEpoch, endEpoch uint64) error {
 }
 
 func performanceDataUpdater() {
-	for true {
+	for {
 		logger.Info("updating validator performance data")
 		err := updateValidatorPerformance()
 
@@ -693,6 +695,41 @@ func updateValidatorPerformance() error {
 	}
 
 	return tx.Commit()
+}
+
+func finalityCheckpointsUpdater(client rpc.Client) {
+	t := time.NewTicker(time.Second * time.Duration(utils.Config.Chain.SecondsPerSlot))
+	for range t.C {
+		var prevEpoch uint64
+		err := db.DB.Get(&prevEpoch, `select coalesce(max(epoch),1) from finality_checkpoints`)
+		if err != nil {
+			logger.WithError(err).Errorf("error getting last exported finality_checkpoints from db")
+			continue
+		}
+		nextEpoch := prevEpoch + 1
+		checkpoints, err := client.GetFinalityCheckpoints(nextEpoch)
+		if err != nil {
+			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error getting finality_checkpoints from client")
+			continue
+		}
+		_, err = db.DB.Exec(`
+			insert into finality_checkpoints (
+				epoch, 
+				current_justified_epoch, current_justified_root, 
+				previous_justified_epoch, previous_justified_root, 
+				finalized_epoch, finalized_root
+			)
+			values ($1, $2, $3, $4, $5, $6, $7)`,
+			nextEpoch,
+			checkpoints.CurrentJustified.Epoch, checkpoints.CurrentJustified.Root,
+			checkpoints.PreviousJustified.Epoch, checkpoints.PreviousJustified.Root,
+			checkpoints.Finalized.Epoch, checkpoints.Finalized.Root,
+		)
+		if err != nil {
+			logger.WithFields(logrus.Fields{"error": err, "epoch": nextEpoch}).Errorf("error inserting finality_checkpoints into db")
+			continue
+		}
+	}
 }
 
 func networkLivenessUpdater(client rpc.Client) {

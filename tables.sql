@@ -700,14 +700,14 @@ create table stake_pools_stats
 drop table if exists price;
 create table price
 (
-    ts     timestamp without time zone not null,
-    eur numeric(20,10)                not null,
-    usd numeric(20,10)                not null,
-    rub numeric(20,10)                not null,
-    cny numeric(20,10)                not null,
-    cad numeric(20,10)                not null,
-    jpy numeric(20,10)                not null,
-    gbp numeric(20,10)                not null,
+    ts  timestamp without time zone not null,
+    eur numeric(20,10)              not null,
+    usd numeric(20,10)              not null,
+    rub numeric(20,10)              not null,
+    cny numeric(20,10)              not null,
+    cad numeric(20,10)              not null,
+    jpy numeric(20,10)              not null,
+    gbp numeric(20,10)              not null,
     primary key (ts)
 );
 
@@ -728,4 +728,17 @@ CREATE TABLE stats_sharing (
 	share           bool             not null,
 	user_id 		 	bigint	 	 		not null,
     foreign key(user_id) references users(id)
+);
+
+drop table if exists finality_checkpoints;
+create table finality_checkpoints (
+    head_epoch               int   not null,
+    head_root                bytea not null,
+    current_justified_epoch  int   not null,
+    current_justified_root   bytea not null,
+    previous_justified_epoch int   not null,
+    previous_justified_root  bytea not null,
+    finalized_epoch          int   not null,
+    finalized_root           bytea not null,
+    primary key (head_epoch, head_root)
 );

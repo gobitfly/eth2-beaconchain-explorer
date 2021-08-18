@@ -168,11 +168,6 @@ func (lc *LighthouseClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	}, nil
 }
 
-// GetAttestationPool returns an empty Attestation as the Lighthouse RPC api does not support receiving the attestation pool.
-func (lc *LighthouseClient) GetAttestationPool() ([]*types.Attestation, error) {
-	return []*types.Attestation{}, nil
-}
-
 // GetEpochAssignments will get the epoch assignments from Lighthouse RPC api
 func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error) {
 	lc.assignmentsCacheMux.Lock()
@@ -598,6 +593,14 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 	}, nil
 }
 
+func (lc *LighthouseClient) GetFinalityCheckpoints(epoch uint64) (*types.FinalityCheckpoints, error) {
+	// finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, id))
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
+	// }
+	return &types.FinalityCheckpoints{}, nil
+}
+
 var notFoundErr = errors.New("not found 404")
 
 func (lc *LighthouseClient) get(url string) ([]byte, error) {
@@ -607,6 +610,8 @@ func (lc *LighthouseClient) get(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	defer resp.Body.Close()
 
 	data, err := ioutil.ReadAll(resp.Body)
 

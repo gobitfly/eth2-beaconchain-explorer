@@ -1,7 +1,7 @@
 package types
 
 import (
-	ethpb "github.com/prysmaticlabs/prysm/proto/eth/v1alpha1"
+	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
 )
 
 // ChainHead is a struct to hold chain head data
@@ -18,6 +18,21 @@ type ChainHead struct {
 	PreviousJustifiedSlot      uint64
 	PreviousJustifiedEpoch     uint64
 	PreviousJustifiedBlockRoot []byte
+}
+
+type FinalityCheckpoints struct {
+	PreviousJustified struct {
+		Epoch uint64 `json:"epoch"`
+		Root  string `json:"root"`
+	} `json:"previous_justified"`
+	CurrentJustified struct {
+		Epoch uint64 `json:"epoch"`
+		Root  string `json:"root"`
+	} `json:"current_justified"`
+	Finalized struct {
+		Epoch uint64 `json:"epoch"`
+		Root  string `json:"root"`
+	} `json:"finalized"`
 }
 
 // EpochData is a struct to hold epoch data
