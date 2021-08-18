@@ -75,6 +75,10 @@
   font-size: 2.4rem;
   color: var(--new-primary);
 }
+.icon-small { 
+  font-size: 1.2rem;
+  color: var(--new-primary);
+}
 .metrics-section { 
   min-height: 120px; 
 }
@@ -96,9 +100,8 @@
   font-weight: 400;
   color: var(--body-color);
 }
-.text-empty-section { 
-  height: 200px; 
-  margin-top: 10rem;
+.text-empty-section {
+  margin-top: 4rem;
   margin-left: .5rem;
   margin-right: .5rem;
 }

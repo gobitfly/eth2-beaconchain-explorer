@@ -6,6 +6,8 @@
 	<script>
 		const DATA = {{.Validators}}
 		const NET = {{.Network}}
+
+		console.log(NET);
 	</script>
 {{end}}
 
@@ -102,10 +104,10 @@
 				</div>
 				<!-- if there is no data in the table -->
 				{{if true}}
-					<div class="mx-sm-auto text-sm-center text-empty-section">
-						<h3 class="mt-5 heading-l2">Get notified with our <span class="d-block font-weight-bold">Beaconchain Dashboard App</span></h3>
+					<div class="text-sm-center text-empty-section">
+						<h3 class="mt-5 heading-l2">Monitor your staking device and beacon <span class="d-block"> node with our <span class="font-weight-bold">Beaconchain app</span></span></h3>
 						<h4 class="mt-2 heading-l3">Now available for Android and iOS</h4>
-						<div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-center mt-5">
+						<div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-center mt-4 mb-5">
 							<a class="mx-2 my-2" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121" target="_blank">
 								<img src="../img/ios.png" class="badge-button" />
 							</a>
@@ -113,6 +115,7 @@
 								<img src="../img/android.png" class="badge-button" />
 							</a>
 						</div>
+						<div class="heading-l4 font-weight-normal">Check out our Knowledge Base for a step by step tutorial: <span class="d-block"><a href="https://kb.beaconcha.in/beaconcha.in-explorer/mobile-app-less-than-greater-than-beacon-node" target="_blank">Mobile App Node Monitoring</a></span></div>
 					</div>
 				{{else}}
 					<div class="px-0 px-md-3 py-1">
@@ -280,8 +283,7 @@
 							<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="offline" event="monitoring_machine_offline" value="">
 						</div>
 					</div>  
-					<div class="mt-1 heading-l4 font-weight-bold"><i class="fas fa-bell fa-lg mr-2"></i>Set custom thresholds to be notified about with a premium subscription</div>
-					<!-- <i class="fas fa-info-circle fa-sm" data-toggle="tooltip" title="You need a premium subscription to select custom thresholds"></i> -->
+					<div class="mt-1 heading-l4 font-weight-bold"><span class="icon-small"><i class="fas fa-bell fa-lg mr-2"></i></span>Set custom thresholds to be notified about with a Premium Subscription</div>
 				</div>
 				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-1 px-0">
 					<button id="cancel-button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
@@ -307,10 +309,6 @@
 							<label class="form-check-label mr-auto font-weight-normal" for="finalityIssues">Finality issues</label>
 							<input class="form-check-input checkbox-custom-size" type="checkbox" id="finalityIssues" value="" event="network_liveness_increased" {{if .Network.IsSubscribed}}checked="true"{{end}}>
 						</div>
-						<!-- <div class="form-check form-check-inline w-100 my-2">
-							<label class="form-check-label mr-auto font-weight-normal" for="">and more events...</label>
-							<input class="form-check-input checkbox-custom-size" type="checkbox" id="" value="">
-						</div> -->
 					</div> 
 				</div>
 				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-1 px-0">
@@ -336,7 +334,6 @@
 						<div id="selected-validators-events-container" class="w-100 mb-4 custom-container scrollbar"></div>
 						<div class="d-flex align-items-center justify-content-end w-100 my-2">
 							<!--<div class="mr-2">Push</div>-->
-							<!-- <div class="mr-3">Email</div> -->
 							<div class="mr-4"><i class="fas fa-envelope fa-lg"></i></div>
 							<!--<div class="mr-2">Web</div>-->
 						</div>
@@ -404,7 +401,6 @@
 						</div>
 						<div class="d-flex align-items-center justify-content-end w-100 my-2">
 							<!--<div class="mr-2">Push</div>-->
-							<!-- <div class="mr-3">Email</div> -->
 							<div class="mr-4"><i class="fas fa-envelope fa-lg"></i></div>
 							<!--<div class="mr-2">Web</div>-->
 						</div>
