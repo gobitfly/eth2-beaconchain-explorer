@@ -427,7 +427,12 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 		UserId uint64 `db:"user_id"`
 	}
 
-	err = db.FrontendDB.Select(&subscribers, query, eventName, latestEpoch)
+	name := string(eventName)
+	if utils.Config.Chain.Phase0.ConfigName != "" {
+		name = utils.Config.Chain.Phase0.ConfigName + ":" + name
+	}
+
+	err = db.FrontendDB.Select(&subscribers, query, utils.Config.Chain.Phase0.ConfigName, name, latestEpoch)
 	if err != nil {
 		return err
 	}
@@ -563,7 +568,12 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		UserId uint64 `db:"user_id"`
 	}
 
-	err = db.FrontendDB.Select(&subscribers, query, types.ValidatorBalanceDecreasedEventName, latestEpoch)
+	name := string(types.ValidatorBalanceDecreasedEventName)
+	if utils.Config.Chain.Phase0.ConfigName != "" {
+		name = utils.Config.Chain.Phase0.ConfigName + ":" + name
+	}
+
+	err = db.FrontendDB.Select(&subscribers, query, name, latestEpoch)
 	if err != nil {
 		return err
 	}
@@ -728,7 +738,13 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 		Id     uint64 `db:"id"`
 		UserId uint64 `db:"user_id"`
 	}
-	err = db.FrontendDB.Select(&subscribers, query, types.ValidatorGotSlashedEventName, latestEpoch)
+
+	name := string(types.ValidatorGotSlashedEventName)
+	if utils.Config.Chain.Phase0.ConfigName != "" {
+		name = utils.Config.Chain.Phase0.ConfigName + ":" + name
+	}
+
+	err = db.FrontendDB.Select(&subscribers, query, name, latestEpoch)
 	if err != nil {
 		return err
 	}
@@ -1147,12 +1163,17 @@ func collectTaxReportNotificationNotifications(notificationsByUserID map[uint64]
 			EventFilter    string `db:"event_filter"`
 		}
 
+		name := string(eventName)
+		if utils.Config.Chain.Phase0.ConfigName != "" {
+			name = utils.Config.Chain.Phase0.ConfigName + ":" + name
+		}
+
 		err := db.FrontendDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '2 DAY' OR us.last_sent_ts IS NULL);
 			`,
-			eventName)
+			name)
 
 		if err != nil {
 			return err
