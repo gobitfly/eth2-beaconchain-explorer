@@ -132,6 +132,7 @@ func TestGotSlashedNotifications(t *testing.T) {
 func TestAttestationViolationNotification(t *testing.T) {
 	latestEpoch := LatestEpoch()
 	latestSlot := LatestSlot()
+	notificationsByUserID := map[uint64]map[types.EventName][]types.Notification{}
 	t.Logf("Testing Attestation Violation for epoch: %v and slot: %v", latestEpoch, latestSlot)
 	tx, err := db.DB.Beginx()
 	if err != nil {
@@ -139,6 +140,7 @@ func TestAttestationViolationNotification(t *testing.T) {
 	}
 	defer tx.Rollback()
 
+	// insert a test attestation violation
 	_, err = tx.Exec(`
 	INSERT INTO blocks_attesterslashings (
 		block_slot,
@@ -205,6 +207,14 @@ func TestAttestationViolationNotification(t *testing.T) {
 		t.Logf("included an attestation violation in slot %v", slot)
 	}
 
+	err = collectValidatorGotSlashedNotifications(notificationsByUserID)
+	if err != nil {
+		t.Errorf("error collecting validator_got_slashed notifications err: %v", err)
+	}
+
+	t.Logf("ready to send: %+v notifications", notificationsByUserID)
+
+	// we copied this query because the changes are only visible inside the transaction
 	rows, err = tx.Query(`
 			WITH
 			slashings AS (
@@ -287,6 +297,23 @@ func TestAttestationViolationNotification(t *testing.T) {
 	t.Logf("found db results %+v", dbResults)
 }
 
+// TestProposerViolationNotification tests wether a notification gets created for a subscribed user
 func TestProposerViolationNotification(t *testing.T) {
+
+}
+
+func TestBlockProposalSubmittedNotification(t *testing.T) {
+
+}
+
+func TestBlockProposalMissedNotification(t *testing.T) {
+
+}
+
+func TestEthClientNotifications(t *testing.T) {
+
+}
+
+func TestTaxReportNotifications(t *testing.T) {
 
 }

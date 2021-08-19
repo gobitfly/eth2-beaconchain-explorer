@@ -1551,6 +1551,7 @@ func GetDepositThresholdTime() (*time.Time, error) {
 	return threshold, nil
 }
 
+// GetValidatorsBalanceDecrease returns all validators whose balance decreased for 3 consecutive epochs. It looks 10 epochs back for when the balance increased the last time
 func GetValidatorsBalanceDecrease(epoch uint64) ([]struct {
 	Pubkey         string `db:"pubkey"`
 	ValidatorIndex uint64 `db:"validatorindex"`
@@ -1589,5 +1590,63 @@ func GetValidatorsBalanceDecrease(epoch uint64) ([]struct {
 		return nil, err
 	}
 
+	return dbResult, nil
+}
+
+// GetValidatorsGotSlashed returns the validators that got slashed after `epoch` either by an attestation violation or a proposer violation
+func GetValidatorsGotSlashed(epoch uint64) ([]struct {
+	Epoch                  uint64 `db:"epoch"`
+	SlasherIndex           uint64 `db:"slasher"`
+	SlasherPubkey          string `db:"slasher_pubkey"`
+	SlashedValidatorIndex  uint64 `db:"slashedvalidator"`
+	SlashedValidatorPubkey string `db:"slashedvalidator_pubkey"`
+	Reason                 string `db:"reason"`
+}, error) {
+
+	var dbResult []struct {
+		Epoch                  uint64 `db:"epoch"`
+		SlasherIndex           uint64 `db:"slasher"`
+		SlasherPubkey          string `db:"slasher_pubkey"`
+		SlashedValidatorIndex  uint64 `db:"slashedvalidator"`
+		SlashedValidatorPubkey string `db:"slashedvalidator_pubkey"`
+		Reason                 string `db:"reason"`
+	}
+	err := DB.Select(&dbResult, `
+		WITH
+			slashings AS (
+				SELECT DISTINCT ON (slashedvalidator) * FROM (
+					SELECT
+						blocks.slot, 
+						blocks.epoch, 
+						blocks.proposer AS slasher, 
+						UNNEST(ARRAY(
+							SELECT UNNEST(attestation1_indices)
+								INTERSECT
+							SELECT UNNEST(attestation2_indices)
+						)) AS slashedvalidator, 
+						'Attestation Violation' AS reason
+					FROM blocks_attesterslashings 
+					LEFT JOIN blocks ON blocks_attesterslashings.block_slot = blocks.slot
+					WHERE blocks.status = '1' AND blocks.epoch > $1
+					UNION ALL
+						SELECT
+							blocks.slot, 
+							blocks.epoch, 
+							blocks.proposer AS slasher, 
+							blocks_proposerslashings.proposerindex AS slashedvalidator,
+							'Proposer Violation' AS reason 
+						FROM blocks_proposerslashings
+						LEFT JOIN blocks ON blocks_proposerslashings.block_slot = blocks.slot
+						WHERE blocks.status = '1' AND blocks.epoch > $1
+				) a
+				ORDER BY slashedvalidator, slot
+			)
+		SELECT slasher, vk.pubkey as slasher_pubkey, slashedvalidator, vv.pubkey as slashedvalidator_pubkey, epoch, reason
+		FROM slashings s
+	    INNER JOIN validators vk ON s.slasher = vk.validatorindex
+		INNER JOIN validators vv ON s.slashedvalidator = vv.validatorindex`, epoch)
+	if err != nil {
+		return nil, err
+	}
 	return dbResult, nil
 }
