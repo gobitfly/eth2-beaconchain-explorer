@@ -145,7 +145,6 @@ function loadMonitoringData(data) {
 
       // click event to monitoring table edit button
       $('#monitoring-notifications #edit-monitoring-events-btn').on('click', function(e) {
-        // console.log($(this).attr("event"), $(this).attr("pk"), $(this).attr("ind"))
         $('#add-monitoring-validator-select').html("");
         $('#cpu-input-range-val, #cpu-input-range').val(80);
         $('#cpu-input-range').attr('style', `background-size: 80% 100%`);
@@ -161,7 +160,6 @@ function loadMonitoringData(data) {
             let t = i.split(':');
             for (let item of $('input.monitoring')) {
               let e = $(item).attr('event');
-              // console.log(e, t[0], e === t[0])
               if (e === t[0]) {
                 $(item).prop('checked', true);
                 let p = parseInt(parseFloat(t[1]) * 100);
@@ -268,13 +266,14 @@ function loadMonitoringData(data) {
                 e += `${i.Notification}:${i.Threshold},`;
               }
             }
-            return `<input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden />
-                    <span class="threshold_non_editable">
-                      <span class="threshold_non_editable_text">${(data[0] * 100).toFixed(2)}%</span> 
-                      <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;" 
-                          data-toggle= "modal" data-target="#addMonitoringEventModal" pk="${data[1].Validator.Pubkey}" ind="${data[1].Validator.Index}" event="${e}">
-                      </i>
-                    </span>`;
+            return `
+              <input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden />
+              <span class="threshold_non_editable">
+                <span class="threshold_non_editable_text">${(data[0] * 100).toFixed(2)}%</span> 
+                <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;" 
+                  data-toggle= "modal" data-target="#addMonitoringEventModal" pk="${data[1].Validator.Pubkey}" ind="${data[1].Validator.Index}" event="${e}">
+                </i>
+              </span>`;
           }
 
           return data[0];
@@ -310,16 +309,15 @@ function loadMonitoringData(data) {
         responsivePriority: 3,
         data: 'event',
         render: function(data, type, row, meta) {
-          return `<i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" 
-                      title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" 
-                      data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?">
-                  </i>`
+          return `
+            <i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" 
+              title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" 
+              data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?">
+            </i>`
         }
       }
     ],
   });
-
-  
 }
 
 function loadNetworkData(data) {
@@ -420,9 +418,6 @@ function loadNetworkData(data) {
 }
 
 function loadValidatorsData(data) {
-  // console.log(data);
-  // validators = data;
-
   let validatorsTable = $('#validators-notifications');
   validatorsTable.DataTable({
     language: {
@@ -491,7 +486,6 @@ function loadValidatorsData(data) {
             let notifications = "";
             let hasItems = false;
             for (let notification of data) {
-              // console.log(notification.Notification, VALIDATOR_EVENTS, VALIDATOR_EVENTS.includes(notification.Notification));
               if (VALIDATOR_EVENTS.includes(notification.Notification)) {
                 hasItems = true;
                 let badgeColor = "";
@@ -541,13 +535,13 @@ function loadValidatorsData(data) {
         responsivePriority: 4,
         data: 'Notifications',
         render: function(data, type, row, meta) {
-          let status = data.length > 0 ? 'checked="true"' : "";
-          // console.log(data, data.length, data.length>0, status);
-          return `
-        	<div class="form-check">
+          // let status = data.length > 0 ? 'checked="true"' : "";
+          let status = data.length > 0 ? '<i class="fas fa-check fa-lg"></i>' : "";
+          return status
+          /* `<div class="form-check">
             <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="" ${status} disabled="true">
           	<label class="form-check-label" for=""></label>
-          </div>`
+          </div>` */
         }
       },
       {
@@ -568,7 +562,6 @@ function loadValidatorsData(data) {
         data: 'Notifications',
         render: function(data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
-          // data = data.Notifications
           let no_time = 'N/A';
           if (data.length === 0) {
             return no_time;
@@ -593,6 +586,7 @@ function loadValidatorsData(data) {
         defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
       }
     ],
+    // TODO: remove tooltip, place info somewhere else
     rowCallback: function(row, data, displayNum, displayIndex, dataIndex) {
       $(row).attr('title', 'Click the table row to select it or hold down CTRL and click multiple rows to select them');
     },
@@ -605,6 +599,18 @@ function loadValidatorsData(data) {
   if (DATA.length !== 0) {
     $('#manage-notifications-btn').removeAttr('hidden');
     $('#remove-all-btn').removeAttr('hidden');
+    if ($(window).width() < 620) {
+      $('#add-validator-btn-text').attr('hidden', true);
+    } else {
+      $('#add-validator-btn-text').removeAttr('hidden');
+    }
+    $(window).resize(function() {
+      if ($(window).width() < 620) {
+        $('#add-validator-btn-text').attr('hidden', true);
+      } else {
+        $('#add-validator-btn-text').removeAttr('hidden');
+      }
+    });
   }
 }
 
@@ -753,7 +759,6 @@ $(document).ready(function() {
   $('#manageNotificationsModal').on('show.bs.modal', function(e) {
     // get the selected row (single row selected)
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data();
-    // console.log(rowData);
     if (rowData) {
       $('#selected-validators-events-container').append(
         `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Validator.Pubkey}>
@@ -868,11 +873,9 @@ $(document).ready(function() {
   }
 
   $('#add-validator-button').on('click', function() {
-    // console.log("clicked", $("#validator_attestation_missed>input#email"));
     try {
       let index = parseInt($('#add-validator-input').val());
       let events = get_validator_sub_events();
-      // console.log(events);
       if (!isNaN(index)) {
         fetch(`/user/notifications-center/validatorsub`, {
           method: 'POST',
@@ -891,8 +894,7 @@ $(document).ready(function() {
         });
       }
     } catch {
-      alert('Invalid Validator Index!');
-      // console.log(validators, $("#add-validator-input").val());    
+      alert('Invalid Validator Index!');  
     }
   });
 
@@ -919,7 +921,7 @@ $(document).ready(function() {
         }
       } else {
         for (let item of VALIDATOR_EVENTS) {
-          $(`#manage_${item} input#${$(event).attr("id")}`).prop('checked', false);
+          $(`#manage_${item} input#${$(event).attr('id')}`).prop('checked', false);
         }
       }
     });
@@ -936,7 +938,6 @@ $(document).ready(function() {
     events = [];
     for (let item of $('input.monitoring')) {
       if ($(item).prop('checked')) {
-        // console.log($(item), $(item).attr("event"), $(item).prop("event"));
         let e = $(item).attr('event');
         let t = 0;
         switch (e) {
@@ -956,7 +957,6 @@ $(document).ready(function() {
         });
       }
     }
-    // console.log(pubkey, events);
     fetch(`/user/notifications-center/monitoring/updatesubs`, {
       method: 'POST',
       headers: { "X-CSRF-Token": csrfToken },

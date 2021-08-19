@@ -27,7 +27,7 @@
 .custom-container {
   height: 6rem;
   overflow-y: auto;
-  border: .1rem inset;
+  border: .15rem inset;
   border-radius: .5rem;
   padding: .6rem;
 }
@@ -62,9 +62,9 @@
 }
 .heading-l4 { 
   font-size: .85rem;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.5rem !important;
-  letter-spacing: 1.6px;
+  letter-spacing: .8px;
 }
 .heading-section { 
   height: 60px; 
@@ -105,7 +105,7 @@
   color: var(--body-color);
 }
 .text-empty-section {
-  margin-top: 4rem;
+  margin-top: 10rem;
   margin-left: .5rem;
   margin-right: .5rem;
 }
@@ -329,5 +329,10 @@ div.dataTables_scrollBody table {
   }
   .custom-remove-modal { 
     padding: 1.8rem 1.8rem 2.5rem;
+  }
+}
+@media screen and (max-width: 640px) {
+  .text-empty-section {
+    margin-top: 4.5rem;
   }
 }
