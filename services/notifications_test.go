@@ -66,17 +66,25 @@ func TestBalanceDecrease(t *testing.T) {
 		return
 	}
 
+	testUsers := []int64{
+		7,
+		10,
+	}
+
 	t.Logf("found %v validators losing balance", len(result))
 
 	if len(result) > 0 {
 		valOne := result[0]
-		err := db.AddTestSubscription(10, types.ValidatorBalanceDecreasedEventName, valOne.Pubkey, 0, latestEpoch-1)
-		if err != nil {
-			t.Errorf("error creating test subscription %v", err)
-			return
+		for _, user := range testUsers {
+			err := db.AddTestSubscription(uint64(user), types.ValidatorBalanceDecreasedEventName, valOne.Pubkey, 0, latestEpoch-1)
+			if err != nil {
+				t.Errorf("error creating test subscription %v", err)
+				return
+			}
 		}
+
 		t.Cleanup(func() {
-			_, err := db.FrontendDB.Exec("DELETE FROM users_subscriptions where user_id = 10")
+			_, err := db.FrontendDB.Exec("DELETE FROM users_subscriptions where user_id = ANY($1)", pq.Int64Array(testUsers))
 			if err != nil {
 				t.Errorf("error cleaning up TestBalanceDecrease err: %v", err)
 				return
@@ -141,7 +149,7 @@ func TestAttestationViolationNotification(t *testing.T) {
 	defer tx.Rollback()
 
 	// insert a test attestation violation
-	_, err = tx.Exec(`
+	rows, err := tx.Query(`
 	INSERT INTO blocks_attesterslashings (
 		block_slot,
 		block_index,
@@ -188,17 +196,11 @@ func TestAttestationViolationNotification(t *testing.T) {
 		  attestation2_source_root,
 		  attestation2_target_epoch,
 		  attestation2_target_root
-	FROM blocks_attesterslashings ORDER BY block_slot desc LIMIT 1) b`, pq.Int64Array([]int64{50, 60}))
+	FROM blocks_attesterslashings ORDER BY block_slot desc LIMIT 1) b 
+	RETURNING block_slot`, pq.Int64Array([]int64{50, 60}))
 	if err != nil {
 		t.Errorf("error inserting dummy AttestationViolation err: %v", err)
 		return
-	}
-
-	rows, err := tx.Query(`
-		SELECT block_slot FROM blocks_attesterslashings ORDER BY block_slot desc LIMIT 1
-	`)
-	if err != nil {
-		t.Errorf("error querying attesterslashing %v", err)
 	}
 
 	for rows.Next() {
