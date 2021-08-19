@@ -29,11 +29,11 @@ func notificationsSender() {
 		}
 		start := time.Now()
 
-		// Network DB Notifications (validator related)
+		// Network DB Notifications (network related)
 		notifications := collectNotifications()
 		sendNotifications(notifications, db.DB)
 
-		// Network DB Notifications (validator related)
+		// Network DB Notifications (user related)
 		if utils.Config.Notifications.UserDBNotifications {
 			userNotifications := collectUserDbNotifications()
 			sendNotifications(userNotifications, db.FrontendDB)
@@ -78,12 +78,6 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting validator_attestation_missed notifications: %v", err)
 	}
 
-	// New ETH clients
-	err = collectEthClientNotifications(notificationsByUserID, types.EthClientUpdateEventName)
-	if err != nil {
-		logger.Errorf("error collecting Eth client notifications: %v", err)
-	}
-
 	//Tax Report
 	err = collectTaxReportNotificationNotifications(notificationsByUserID, types.TaxReportEventName)
 	if err != nil {
@@ -119,6 +113,12 @@ func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notific
 	err = collectMonitoringMachineMemoryUsage(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting Eth client memory notifications: %v", err)
+	}
+
+	// New ETH clients
+	err = collectEthClientNotifications(notificationsByUserID, types.EthClientUpdateEventName)
+	if err != nil {
+		logger.Errorf("error collecting Eth client notifications: %v", err)
 	}
 
 	return notificationsByUserID
@@ -331,7 +331,6 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 	if latestEpoch < 3 {
 		return nil
 	}
-
 	dbResult, err := db.GetValidatorsBalanceDecrease(latestEpoch)
 	if err != nil {
 		return err
@@ -345,11 +344,9 @@ func collectValidatorBalanceDecreasedNotifications(notificationsByUserID map[uin
 			query += " UNION "
 		}
 	}
-
 	if query == "" {
 		return nil
 	}
-
 	var subscribers []struct {
 		Ref    uint64 `db:"ref"`
 		Id     uint64 `db:"id"`
