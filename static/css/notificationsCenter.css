@@ -50,17 +50,21 @@
 }
 .heading { 
   font-size: 1.8rem; 
+  letter-spacing: 3px;
 }
 .heading-l2 { 
   font-size: 1.6rem; 
+  letter-spacing: 1.5px;
 }
 .heading-l3 { 
   font-size: 1.1rem;
+  letter-spacing: 2px;
 }
 .heading-l4 { 
   font-size: .85rem;
   font-weight: 300;
   line-height: 1.5rem !important;
+  letter-spacing: 1.6px;
 }
 .heading-section { 
   height: 60px; 
