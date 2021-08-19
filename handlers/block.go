@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
@@ -56,7 +57,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		return
@@ -77,6 +78,9 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			blocks.eth1data_depositroot,
 			blocks.eth1data_depositcount,
 			blocks.eth1data_blockhash,
+			blocks.syncaggregate_bits,
+			blocks.syncaggregate_signature,
+			blocks.syncaggregate_participation,
 			blocks.proposerslashingscount,
 			blocks.attesterslashingscount,
 			blocks.attestationscount,
@@ -99,7 +103,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		return
@@ -112,9 +116,12 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	blockPageData.SlashingsCount = blockPageData.AttesterSlashingsCount + blockPageData.ProposerSlashingsCount
 
 	err = db.DB.Get(&blockPageData.NextSlot, "SELECT slot FROM blocks WHERE slot > $1 ORDER BY slot LIMIT 1", blockPageData.Slot)
-	if err != nil {
-		logger.Errorf("error retrieving next slot for block %v: %v", blockPageData.Slot, err)
+	if err == sql.ErrNoRows {
 		blockPageData.NextSlot = 0
+	} else if err != nil {
+		logger.Errorf("error retrieving next slot for block %v: %v", blockPageData.Slot, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 	err = db.DB.Get(&blockPageData.PreviousSlot, "SELECT slot FROM blocks WHERE slot < $1 ORDER BY slot DESC LIMIT 1", blockPageData.Slot)
 	if err != nil {
@@ -143,7 +150,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block attestation data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -166,7 +173,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			&attestation.TargetRoot)
 		if err != nil {
 			logger.Errorf("error scanning block attestation data: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		attestations = append(attestations, attestation)
@@ -185,7 +192,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		blockPageData.BlockRoot)
 	if err != nil {
 		logger.Errorf("error retrieving block votes data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -200,7 +207,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			&attestation.CommitteeIndex)
 		if err != nil {
 			logger.Errorf("error scanning block votes data: %v", err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		for _, validator := range attestation.Validators {
@@ -227,7 +234,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	err = db.DB.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block deposit data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -257,7 +264,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		WHERE block_slot = $1`, blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block attester slashings data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -274,7 +281,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	err = db.DB.Select(&blockPageData.ProposerSlashings, "SELECT * FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block proposer slashings data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -290,7 +297,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }
@@ -309,7 +316,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
 		if err != nil {
 			logger.Errorf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -321,7 +328,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		`, blockRootHash)
 		if err != nil {
 			logger.Errorf("error querying for block slot with block root hash %v err: %v", blockRootHash, err)
-			http.Error(w, "Interal server error", 503)
+			http.Error(w, "Interal server error", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -334,20 +341,20 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
 	if err != nil {
 		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -369,7 +376,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 	`, blockSlot)
 	if err != nil {
 		logger.Errorf("error retrieving deposit count for slot %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -389,7 +396,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		blockSlot, length, start)
 	if err != nil {
 		logger.Errorf("error retrieving block deposit data: %v", err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -415,7 +422,7 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(data)
 	if err != nil {
 		logger.Errorf("error encoding json response for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
