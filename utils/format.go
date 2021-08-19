@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/protolambda/zssz/bitfields"
+	"github.com/protolambda/ztyp/bitfields"
 
 	eth1common "github.com/ethereum/go-ethereum/common"
 	"golang.org/x/text/language"
