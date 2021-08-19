@@ -9,11 +9,12 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
-	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
+	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
+
 	"github.com/prysmaticlabs/go-bitfield"
 	"google.golang.org/grpc"
 
-	ptypes "github.com/gogo/protobuf/types"
+	"github.com/golang/protobuf/ptypes/empty"
 	eth2types "github.com/prysmaticlabs/eth2-types"
 )
 
@@ -53,7 +54,7 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 	}
 	client.assignmentsCache, _ = lru.New(10)
 
-	streamChainHeadClient, err := chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
+	streamChainHeadClient, err := chainClient.StreamChainHead(context.Background(), &empty.Empty{})
 	if err != nil {
 		return nil, err
 	}
@@ -67,11 +68,11 @@ func NewPrysmClient(endpoint string) (*PrysmClient, error) {
 
 				// in order to recover from a stream error we wait for a second and then re-create the stream
 				time.Sleep(time.Second)
-				streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
+				streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &empty.Empty{})
 				for err != nil {
 					logger.Errorf("error initializing chain head stream: %v. retrying in 1s...", err)
 					time.Sleep(time.Second)
-					streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &ptypes.Empty{})
+					streamChainHeadClient, err = chainClient.StreamChainHead(context.Background(), &empty.Empty{})
 				}
 				continue
 			}
@@ -103,7 +104,7 @@ func (pc *PrysmClient) GetNewBlockChan() chan *types.Block {
 
 // GetGenesisTimestamp returns the genesis timestamp of the beacon chain
 func (pc *PrysmClient) GetGenesisTimestamp() (int64, error) {
-	genesis, err := pc.nodeClient.GetGenesis(context.Background(), &ptypes.Empty{})
+	genesis, err := pc.nodeClient.GetGenesis(context.Background(), &empty.Empty{})
 
 	if err != nil {
 		return 0, err
@@ -114,7 +115,7 @@ func (pc *PrysmClient) GetGenesisTimestamp() (int64, error) {
 
 // GetChainHead will get the chain head from a Prysm client
 func (pc *PrysmClient) GetChainHead() (*types.ChainHead, error) {
-	headResponse, err := pc.client.GetChainHead(context.Background(), &ptypes.Empty{})
+	headResponse, err := pc.client.GetChainHead(context.Background(), &empty.Empty{})
 
 	if err != nil {
 		return nil, err
@@ -140,62 +141,16 @@ func (pc *PrysmClient) GetChainHead() (*types.ChainHead, error) {
 func (pc *PrysmClient) GetValidatorQueue() (*types.ValidatorQueue, error) {
 	var err error
 
-	validators, err := pc.client.GetValidatorQueue(context.Background(), &ptypes.Empty{})
+	validators, err := pc.client.GetValidatorQueue(context.Background(), &empty.Empty{})
 
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator queue data: %v", err)
 	}
 
 	return &types.ValidatorQueue{
-		ChurnLimit:                 validators.ChurnLimit,
-		ActivationPublicKeys:       validators.ActivationPublicKeys,
-		ExitPublicKeys:             validators.ExitPublicKeys,
-		ActivationValidatorIndices: validators.ActivationValidatorIndices,
-		ExitValidatorIndices:       validators.ExitValidatorIndices,
+		Activating: uint64(len(validators.ActivationPublicKeys)),
+		Exititing:  uint64(len(validators.ExitPublicKeys)),
 	}, nil
-}
-
-// GetAttestationPool will get the attestation pool from a Prysm client
-func (pc *PrysmClient) GetAttestationPool() ([]*types.Attestation, error) {
-	var err error
-
-	attestationPoolResponse := &ethpb.AttestationPoolResponse{}
-
-	attestations := []*types.Attestation{}
-
-	for {
-		attestationPoolResponse, err = pc.client.AttestationPool(context.Background(), &ethpb.AttestationPoolRequest{PageSize: utils.Config.Indexer.Node.PageSize, PageToken: attestationPoolResponse.NextPageToken})
-		if err != nil {
-			return nil, err
-		}
-		if attestationPoolResponse.TotalSize == 0 {
-			break
-		}
-		for _, attestation := range attestationPoolResponse.Attestations {
-			attestations = append(attestations, &types.Attestation{
-				AggregationBits: attestation.AggregationBits,
-				Data: &types.AttestationData{
-					Slot:            uint64(attestation.Data.Slot),
-					CommitteeIndex:  uint64(attestation.Data.CommitteeIndex),
-					BeaconBlockRoot: attestation.Data.BeaconBlockRoot,
-					Source: &types.Checkpoint{
-						Epoch: uint64(attestation.Data.Source.Epoch),
-						Root:  attestation.Data.Source.Root,
-					},
-					Target: &types.Checkpoint{
-						Epoch: uint64(attestation.Data.Target.Epoch),
-						Root:  attestation.Data.Target.Root,
-					},
-				},
-				Signature: attestation.Signature,
-			})
-		}
-		if attestationPoolResponse.NextPageToken == "" {
-			break
-		}
-	}
-
-	return attestations, nil
 }
 
 // GetEpochAssignments will get the epoch assignments from a Prysm client
@@ -245,11 +200,11 @@ func (pc *PrysmClient) GetEpochAssignments(epoch uint64) (*types.EpochAssignment
 	// Attestation assignments are cached by the slot & committee key
 	for _, assignment := range validatorAssignmentes {
 		for _, slot := range assignment.ProposerSlots {
-			assignments.ProposerAssignments[uint64(slot)] = assignment.ValidatorIndex
+			assignments.ProposerAssignments[uint64(slot)] = uint64(assignment.ValidatorIndex)
 		}
 
 		for memberIndex, validatorIndex := range assignment.BeaconCommittees {
-			assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(uint64(assignment.AttesterSlot), uint64(assignment.CommitteeIndex), uint64(memberIndex))] = validatorIndex
+			assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(uint64(assignment.AttesterSlot), uint64(assignment.CommitteeIndex), uint64(memberIndex))] = uint64(validatorIndex)
 		}
 	}
 
@@ -373,14 +328,14 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 
 		for _, validator := range validatorResponse.ValidatorList {
 
-			balance, exists := validatorBalances[validator.Index]
+			balance, exists := validatorBalances[uint64(validator.Index)]
 			if !exists {
 				logger.WithField("pubkey", fmt.Sprintf("%x", validator.Validator.PublicKey)).WithField("epoch", epoch).Errorf("error retrieving validator balance")
 				continue
 			}
 
 			val := &types.Validator{
-				Index:                      validator.Index,
+				Index:                      uint64(validator.Index),
 				PublicKey:                  validator.Validator.PublicKey,
 				WithdrawalCredentials:      validator.Validator.WithdrawalCredentials,
 				Balance:                    balance,
@@ -392,9 +347,9 @@ func (pc *PrysmClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
 				WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
 			}
 
-			val.Balance1d = validatorBalances1d[validator.Index]
-			val.Balance7d = validatorBalances7d[validator.Index]
-			val.Balance31d = validatorBalances31d[validator.Index]
+			val.Balance1d = validatorBalances1d[uint64(validator.Index)]
+			val.Balance7d = validatorBalances7d[uint64(validator.Index)]
+			val.Balance31d = validatorBalances31d[uint64(validator.Index)]
 
 			data.Validators = append(data.Validators, val)
 
@@ -441,7 +396,7 @@ func (pc *PrysmClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, erro
 		}
 
 		for _, balance := range validatorBalancesResponse.Balances {
-			validatorBalances[balance.Index] = balance.Balance
+			validatorBalances[uint64(balance.Index)] = balance.Balance
 		}
 
 		if validatorBalancesResponse.NextPageToken == "" {
@@ -461,7 +416,9 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 	if slot == 0 {
 		blocksRequest.QueryFilter = &ethpb.ListBlocksRequest_Genesis{Genesis: true}
 	}
-	blocksResponse, err := pc.client.ListBlocks(context.Background(), blocksRequest)
+
+	// blocksResponse, err := pc.client.ListBlocks(context.Background(), blocksRequest)
+	blocksResponse, err := pc.client.ListBlocksAltair(context.Background(), blocksRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -471,10 +428,10 @@ func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 	}
 
 	for _, block := range blocksResponse.BlockContainers {
-
 		// Make sure that blocks from the genesis epoch have their Eth1Data field set
-		if block.Block.Block.Body.Eth1Data == nil {
-			block.Block.Block.Body.Eth1Data = &ethpb.Eth1Data{
+		blk := block.GetAltairBlock()
+		if blk != nil && blk.Block.Body.Eth1Data == nil {
+			blk.Block.Body.Eth1Data = &ethpb.Eth1Data{
 				DepositRoot:  []byte{},
 				DepositCount: 0,
 				BlockHash:    []byte{},
@@ -520,33 +477,49 @@ func (pc *PrysmClient) GetBlockStatusByEpoch(epoch uint64) ([]*types.CanonBlock,
 	return blocks, nil
 }
 
-func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.Block, error) {
+func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainerAltair) (*types.Block, error) {
+	phase0Block := block.GetPhase0Block()
+	if phase0Block != nil {
+		return pc.parsePhase0Block(block)
+	}
+	altairBlock := block.GetAltairBlock()
+	if altairBlock != nil {
+		return pc.parseAltairBlock(block)
+	}
+	return nil, fmt.Errorf("block is neither phase0 nor altair")
+}
+
+func (pc *PrysmClient) parsePhase0Block(block *ethpb.BeaconBlockContainerAltair) (*types.Block, error) {
+	blk := block.GetPhase0Block()
+	if blk == nil {
+		return nil, fmt.Errorf("failed getting phase0 block")
+	}
 	b := &types.Block{
 		Status:       1,
 		Canonical:    block.Canonical,
 		BlockRoot:    block.BlockRoot,
-		Slot:         uint64(block.Block.Block.Slot),
-		ParentRoot:   block.Block.Block.ParentRoot,
-		StateRoot:    block.Block.Block.StateRoot,
-		Signature:    block.Block.Signature,
-		RandaoReveal: block.Block.Block.Body.RandaoReveal,
-		Graffiti:     block.Block.Block.Body.Graffiti,
+		Slot:         uint64(blk.Block.Slot),
+		ParentRoot:   blk.Block.ParentRoot,
+		StateRoot:    blk.Block.StateRoot,
+		Signature:    blk.Signature,
+		RandaoReveal: blk.Block.Body.RandaoReveal,
+		Graffiti:     blk.Block.Body.Graffiti,
 		Eth1Data: &types.Eth1Data{
-			DepositRoot:  block.Block.Block.Body.Eth1Data.DepositRoot,
-			DepositCount: block.Block.Block.Body.Eth1Data.DepositCount,
-			BlockHash:    block.Block.Block.Body.Eth1Data.BlockHash,
+			DepositRoot:  blk.Block.Body.Eth1Data.DepositRoot,
+			DepositCount: blk.Block.Body.Eth1Data.DepositCount,
+			BlockHash:    blk.Block.Body.Eth1Data.BlockHash,
 		},
-		ProposerSlashings: make([]*types.ProposerSlashing, len(block.Block.Block.Body.ProposerSlashings)),
-		AttesterSlashings: make([]*types.AttesterSlashing, len(block.Block.Block.Body.AttesterSlashings)),
-		Attestations:      make([]*types.Attestation, len(block.Block.Block.Body.Attestations)),
-		Deposits:          make([]*types.Deposit, len(block.Block.Block.Body.Deposits)),
-		VoluntaryExits:    make([]*types.VoluntaryExit, len(block.Block.Block.Body.VoluntaryExits)),
-		Proposer:          block.Block.Block.ProposerIndex,
+		ProposerSlashings: make([]*types.ProposerSlashing, len(blk.Block.Body.ProposerSlashings)),
+		AttesterSlashings: make([]*types.AttesterSlashing, len(blk.Block.Body.AttesterSlashings)),
+		Attestations:      make([]*types.Attestation, len(blk.Block.Body.Attestations)),
+		Deposits:          make([]*types.Deposit, len(blk.Block.Body.Deposits)),
+		VoluntaryExits:    make([]*types.VoluntaryExit, len(blk.Block.Body.VoluntaryExits)),
+		Proposer:          uint64(blk.Block.ProposerIndex),
 	}
 
-	for i, proposerSlashing := range block.Block.Block.Body.ProposerSlashings {
+	for i, proposerSlashing := range blk.Block.Body.ProposerSlashings {
 		b.ProposerSlashings[i] = &types.ProposerSlashing{
-			ProposerIndex: proposerSlashing.Header_1.Header.ProposerIndex,
+			ProposerIndex: uint64(proposerSlashing.Header_1.Header.ProposerIndex),
 			Header1: &types.Block{
 				Slot:       uint64(proposerSlashing.Header_1.Header.Slot),
 				ParentRoot: proposerSlashing.Header_1.Header.ParentRoot,
@@ -564,7 +537,7 @@ func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.
 		}
 	}
 
-	for i, attesterSlashing := range block.Block.Block.Body.AttesterSlashings {
+	for i, attesterSlashing := range blk.Block.Body.AttesterSlashings {
 		b.AttesterSlashings[i] = &types.AttesterSlashing{
 			Attestation1: &types.IndexedAttestation{
 				Data: &types.AttestationData{
@@ -603,7 +576,7 @@ func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.
 		}
 	}
 
-	for i, attestation := range block.Block.Block.Body.Attestations {
+	for i, attestation := range blk.Block.Body.Attestations {
 		a := &types.Attestation{
 			AggregationBits: attestation.AggregationBits,
 			Data: &types.AttestationData{
@@ -642,7 +615,7 @@ func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.
 
 		b.Attestations[i] = a
 	}
-	for i, deposit := range block.Block.Block.Body.Deposits {
+	for i, deposit := range blk.Block.Body.Deposits {
 		b.Deposits[i] = &types.Deposit{
 			Proof:                 deposit.Proof,
 			PublicKey:             deposit.Data.PublicKey,
@@ -652,10 +625,165 @@ func (pc *PrysmClient) parseRpcBlock(block *ethpb.BeaconBlockContainer) (*types.
 		}
 	}
 
-	for i, voluntaryExit := range block.Block.Block.Body.VoluntaryExits {
+	for i, voluntaryExit := range blk.Block.Body.VoluntaryExits {
 		b.VoluntaryExits[i] = &types.VoluntaryExit{
 			Epoch:          uint64(voluntaryExit.Exit.Epoch),
-			ValidatorIndex: voluntaryExit.Exit.ValidatorIndex,
+			ValidatorIndex: uint64(voluntaryExit.Exit.ValidatorIndex),
+			Signature:      voluntaryExit.Signature,
+		}
+	}
+	return b, nil
+}
+
+func (pc *PrysmClient) parseAltairBlock(block *ethpb.BeaconBlockContainerAltair) (*types.Block, error) {
+	blk := block.GetAltairBlock()
+	if blk == nil {
+		return nil, fmt.Errorf("failed getting altair block")
+	}
+	b := &types.Block{
+		Status:       1,
+		Canonical:    block.Canonical,
+		BlockRoot:    block.BlockRoot,
+		Slot:         uint64(blk.Block.Slot),
+		ParentRoot:   blk.Block.ParentRoot,
+		StateRoot:    blk.Block.StateRoot,
+		Signature:    blk.Signature,
+		RandaoReveal: blk.Block.Body.RandaoReveal,
+		Graffiti:     blk.Block.Body.Graffiti,
+		Eth1Data: &types.Eth1Data{
+			DepositRoot:  blk.Block.Body.Eth1Data.DepositRoot,
+			DepositCount: blk.Block.Body.Eth1Data.DepositCount,
+			BlockHash:    blk.Block.Body.Eth1Data.BlockHash,
+		},
+		ProposerSlashings: make([]*types.ProposerSlashing, len(blk.Block.Body.ProposerSlashings)),
+		AttesterSlashings: make([]*types.AttesterSlashing, len(blk.Block.Body.AttesterSlashings)),
+		Attestations:      make([]*types.Attestation, len(blk.Block.Body.Attestations)),
+		Deposits:          make([]*types.Deposit, len(blk.Block.Body.Deposits)),
+		VoluntaryExits:    make([]*types.VoluntaryExit, len(blk.Block.Body.VoluntaryExits)),
+		Proposer:          uint64(blk.Block.ProposerIndex),
+	}
+
+	if blk.Block.Body.SyncAggregate != nil {
+		bits := blk.Block.Body.SyncAggregate.SyncCommitteeBits.Bytes()
+		b.SyncAggregate = &types.SyncAggregate{
+			SyncCommitteeBits:          bits,
+			SyncAggregateParticipation: bitlistParticipation(bits),
+			SyncCommitteeSignature:     blk.Block.Body.SyncAggregate.SyncCommitteeSignature,
+		}
+	}
+
+	for i, proposerSlashing := range blk.Block.Body.ProposerSlashings {
+		b.ProposerSlashings[i] = &types.ProposerSlashing{
+			ProposerIndex: uint64(proposerSlashing.Header_1.Header.ProposerIndex),
+			Header1: &types.Block{
+				Slot:       uint64(proposerSlashing.Header_1.Header.Slot),
+				ParentRoot: proposerSlashing.Header_1.Header.ParentRoot,
+				StateRoot:  proposerSlashing.Header_1.Header.StateRoot,
+				Signature:  proposerSlashing.Header_1.Signature,
+				BodyRoot:   proposerSlashing.Header_1.Header.BodyRoot,
+			},
+			Header2: &types.Block{
+				Slot:       uint64(proposerSlashing.Header_2.Header.Slot),
+				ParentRoot: proposerSlashing.Header_2.Header.ParentRoot,
+				StateRoot:  proposerSlashing.Header_2.Header.StateRoot,
+				Signature:  proposerSlashing.Header_2.Signature,
+				BodyRoot:   proposerSlashing.Header_2.Header.BodyRoot,
+			},
+		}
+	}
+
+	for i, attesterSlashing := range blk.Block.Body.AttesterSlashings {
+		b.AttesterSlashings[i] = &types.AttesterSlashing{
+			Attestation1: &types.IndexedAttestation{
+				Data: &types.AttestationData{
+					Slot:            uint64(attesterSlashing.Attestation_1.Data.Slot),
+					CommitteeIndex:  uint64(attesterSlashing.Attestation_1.Data.CommitteeIndex),
+					BeaconBlockRoot: attesterSlashing.Attestation_1.Data.BeaconBlockRoot,
+					Source: &types.Checkpoint{
+						Epoch: uint64(attesterSlashing.Attestation_1.Data.Source.Epoch),
+						Root:  attesterSlashing.Attestation_1.Data.Source.Root,
+					},
+					Target: &types.Checkpoint{
+						Epoch: uint64(attesterSlashing.Attestation_1.Data.Target.Epoch),
+						Root:  attesterSlashing.Attestation_1.Data.Target.Root,
+					},
+				},
+				Signature:        attesterSlashing.Attestation_1.Signature,
+				AttestingIndices: attesterSlashing.Attestation_1.AttestingIndices,
+			},
+			Attestation2: &types.IndexedAttestation{
+				Data: &types.AttestationData{
+					Slot:            uint64(attesterSlashing.Attestation_2.Data.Slot),
+					CommitteeIndex:  uint64(attesterSlashing.Attestation_2.Data.CommitteeIndex),
+					BeaconBlockRoot: attesterSlashing.Attestation_2.Data.BeaconBlockRoot,
+					Source: &types.Checkpoint{
+						Epoch: uint64(attesterSlashing.Attestation_2.Data.Source.Epoch),
+						Root:  attesterSlashing.Attestation_2.Data.Source.Root,
+					},
+					Target: &types.Checkpoint{
+						Epoch: uint64(attesterSlashing.Attestation_2.Data.Target.Epoch),
+						Root:  attesterSlashing.Attestation_2.Data.Target.Root,
+					},
+				},
+				Signature:        attesterSlashing.Attestation_2.Signature,
+				AttestingIndices: attesterSlashing.Attestation_2.AttestingIndices,
+			},
+		}
+	}
+
+	for i, attestation := range blk.Block.Body.Attestations {
+		a := &types.Attestation{
+			AggregationBits: attestation.AggregationBits,
+			Data: &types.AttestationData{
+				Slot:            uint64(attestation.Data.Slot),
+				CommitteeIndex:  uint64(attestation.Data.CommitteeIndex),
+				BeaconBlockRoot: attestation.Data.BeaconBlockRoot,
+				Source: &types.Checkpoint{
+					Epoch: uint64(attestation.Data.Source.Epoch),
+					Root:  attestation.Data.Source.Root,
+				},
+				Target: &types.Checkpoint{
+					Epoch: uint64(attestation.Data.Target.Epoch),
+					Root:  attestation.Data.Target.Root,
+				},
+			},
+			Signature: attestation.Signature,
+		}
+
+		aggregationBits := bitfield.Bitlist(a.AggregationBits)
+		assignments, err := pc.GetEpochAssignments(a.Data.Slot / utils.Config.Chain.SlotsPerEpoch)
+		if err != nil {
+			return nil, fmt.Errorf("error receiving epoch assignment for epoch %v: %v", a.Data.Slot/utils.Config.Chain.SlotsPerEpoch, err)
+		}
+
+		a.Attesters = make([]uint64, 0)
+		for i := uint64(0); i < aggregationBits.Len(); i++ {
+			if aggregationBits.BitAt(i) {
+				validator, found := assignments.AttestorAssignments[utils.FormatAttestorAssignmentKey(a.Data.Slot, a.Data.CommitteeIndex, i)]
+				if !found { // This should never happen!
+					validator = 0
+					logger.Errorf("error retrieving assigned validator for attestation %v of block %v for slot %v committee index %v member index %v", i, b.Slot, a.Data.Slot, a.Data.CommitteeIndex, i)
+				}
+				a.Attesters = append(a.Attesters, validator)
+			}
+		}
+
+		b.Attestations[i] = a
+	}
+	for i, deposit := range blk.Block.Body.Deposits {
+		b.Deposits[i] = &types.Deposit{
+			Proof:                 deposit.Proof,
+			PublicKey:             deposit.Data.PublicKey,
+			WithdrawalCredentials: deposit.Data.WithdrawalCredentials,
+			Amount:                deposit.Data.Amount,
+			Signature:             deposit.Data.Signature,
+		}
+	}
+
+	for i, voluntaryExit := range blk.Block.Body.VoluntaryExits {
+		b.VoluntaryExits[i] = &types.VoluntaryExit{
+			Epoch:          uint64(voluntaryExit.Exit.Epoch),
+			ValidatorIndex: uint64(voluntaryExit.Exit.ValidatorIndex),
 			Signature:      voluntaryExit.Signature,
 		}
 	}
@@ -686,4 +814,12 @@ func (pc *PrysmClient) GetValidatorParticipation(epoch uint64) (*types.Validator
 		VotedEther:              epochParticipationStatistics.Participation.VotedEther,
 		EligibleEther:           epochParticipationStatistics.Participation.EligibleEther,
 	}, nil
+}
+
+func (pc *PrysmClient) GetFinalityCheckpoints(epoch uint64) (*types.FinalityCheckpoints, error) {
+	// finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, id))
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
+	// }
+	return nil, fmt.Errorf("not implemented yet")
 }
