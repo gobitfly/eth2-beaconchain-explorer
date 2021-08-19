@@ -258,7 +258,7 @@ create table blocks
     eth1data_blockhash          bytea,
     syncaggregate_bits          bytea,
     syncaggregate_signature     bytea,
-    syncaggregate_participation float not null,
+    syncaggregate_participation float not null default 0,
     proposerslashingscount      int   not null,
     attesterslashingscount      int   not null,
     attestationscount           int   not null,
