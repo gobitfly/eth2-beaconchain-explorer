@@ -587,7 +587,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 		Epoch: epoch,
 		// technically there are rules for delayed finalization through previous epoch, applied only later. But good enough, this matches previous wonky behavior
 		Finalized:               float32(parsedResponse.Data.CurrentEpochTargetAttestingGwei)/float32(parsedResponse.Data.CurrentEpochActiveGwei) > (float32(2) / float32(3)),
-		GlobalParticipationRate: float32(parsedResponse.Data.CurrentEpochTargetAttestingGwei) / float32(parsedResponse.Data.CurrentEpochActiveGwei),
+		GlobalParticipationRate: float32(parsedResponse.Data.PreviousEpochTargetAttestingGwei) / float32(parsedResponse.Data.CurrentEpochActiveGwei),
 		VotedEther:              uint64(parsedResponse.Data.PreviousEpochTargetAttestingGwei),
 		EligibleEther:           uint64(parsedResponse.Data.CurrentEpochActiveGwei),
 	}, nil
