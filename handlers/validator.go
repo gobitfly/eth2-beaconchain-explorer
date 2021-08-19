@@ -212,6 +212,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("retrieving data, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
+	// we use MAX(validatorindex)+1 instead of COUNT(*) for querying the rank_count for performance-reasons
 	err = db.DB.Get(&validatorPageData, `
 		SELECT
 			validators.pubkey,
@@ -226,6 +227,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			COALESCE(validator_names.name, '') AS name,
 			COALESCE(validators.balance, 0) AS balance,
 			COALESCE(validator_performance.rank7d, 0) AS rank7d,
+			COALESCE(validator_performance_count.total_count, 0) AS rank_count,
 			validators.status,
 			COALESCE(validators.balanceactivation, 0) AS balanceactivation,
 			COALESCE(validators.balance7d, 0) AS balance7d,
@@ -236,6 +238,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			ON validators.pubkey = validator_names.publickey
 		LEFT JOIN validator_performance 
 			ON validators.validatorindex = validator_performance.validatorindex
+		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance) validator_performance_count(total_count) ON true
 		WHERE validators.validatorindex = $1`, index)
 
 	if err == sql.ErrNoRows {
@@ -252,8 +255,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if validatorPageData.Rank7d > 0 {
-		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(int64(validatorPageData.NetworkStats.ActiveValidators))
+	if validatorPageData.Rank7d > 0 && validatorPageData.RankCount > 0 {
+		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(validatorPageData.RankCount)
 	}
 
 	// logger.Infof("validator page data retrieved, elapsed: %v", time.Since(start))
