@@ -49,22 +49,21 @@
   color: var(--dark);
 }
 .heading { 
-  font-size: 1.8rem; 
-  letter-spacing: 3px;
-}
-.heading-l2 { 
-  font-size: 1.6rem; 
-  letter-spacing: 1.5px;
-}
-.heading-l3 { 
-  font-size: 1.1rem;
+  font-size: 1.8rem;
   letter-spacing: 2px;
 }
+.heading-l2 { 
+  font-size: 1.4rem;
+  letter-spacing: .5px;
+}
+.heading-l3 {
+  font-size: 1.05rem;
+  letter-spacing: 1px;
+}
 .heading-l4 { 
-  font-size: .85rem;
+  font-size: .9rem;
   font-weight: 400;
-  line-height: 1.5rem !important;
-  letter-spacing: .8px;
+  line-height: 1.3rem !important;
 }
 .heading-section { 
   height: 60px; 
@@ -72,7 +71,7 @@
 .i-custom:hover {
   display: inline-block;
   border-radius: 50%;
-  box-shadow: 0px 0px 2px var(--dark);
+  box-shadow: 0 0 1.5px var(--dark);
   padding: .6em;
 }
 .icon { 
@@ -207,7 +206,6 @@ div.dataTables_scrollBody table {
   background: var(--input-border-color);
   border-radius: 6px;
   background-image: linear-gradient(var(--dark), var(--dark));
-  background-size: 80% 100%;
   background-repeat: no-repeat;
 }
 .custom-range-input:focus,

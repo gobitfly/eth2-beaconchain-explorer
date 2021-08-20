@@ -630,11 +630,10 @@ $(document).ready(function() {
   create_typeahead('.validator-typeahead');
   // create_typeahead('.monitoring-typeahead');
 
-
   loadValidatorsData(DATA);
-  loadMonitoringData(DATA)
+  loadMonitoringData(DATA);
   // loadNetworkData(data.network);
-  loadNetworkData(NET.Events_ts)
+  loadNetworkData(NET.Events_ts);
 
   $(document).on('click', function(e) {
     // if click outside input while any threshold input visible, reset value and hide input

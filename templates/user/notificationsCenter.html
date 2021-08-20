@@ -124,10 +124,10 @@
 						<span class="text-nowrap">Add network event</span>
 					</button>
 				</div>
-				{{if .Network}}
+				{{if eq (len .Network.Events_ts) 0}}
 					<div class="ml-3 mx-sm-auto text-sm-center text-empty-section">
 						<h3 class="mt-5 heading-l2">No network notifications yet</h3>
-						<h4 class="mt-2 heading-l3">Subscribe to network events to receive notifications</h4>
+						<h4 class="mt-2 heading-l3">Subscribe to events to receive notifications</h4>
 					</div>
 				{{else}}
 					<div class="px-0 px-md-3 py-1">
@@ -154,11 +154,11 @@
 					<h2 class="heading-l2 mb-2 mb-md-0">Validators</h2>
 				</div>
 				<div class="col-12 col-md-9 d-flex justify-content-start justify-content-sm-end px-0">
-					<button hidden class="btn btn-outline-dark" id="manage-notifications-btn" data-toggle="modal" data-target="#manageNotificationsModal" title="Manage the notifications you receive for the selected validator(s)">
+					<button hidden class="btn btn-outline-dark" id="manage-notifications-btn" data-toggle="modal" data-target="#manageNotificationsModal" title="Manage notifications for the selected validator(s)">
 						<i class="fas fa-cog"></i>
 						<span class="d-none d-sm-inline-block text-nowrap">Manage notifications</span>
 					</button>
-					<button hidden class="btn btn-outline-new-red mx-3" id="remove-all-btn" data-toggle="modal" data-target="#confirmRemoveModal" title="Remove all validators from your list" data-modaltext="Are you sure you want to remove all validators from your list?">
+					<button hidden class="btn btn-outline-new-red mx-3" id="remove-all-btn" data-toggle="modal" data-target="#confirmRemoveModal" title="Remove all validators from list" data-modaltext="Are you sure you want to remove all validators from your list?">
 						<i class="fas fa-times"></i>
 						<span class="d-none d-sm-inline-block text-nowrap">Remove all</span>
 					</button>
@@ -181,7 +181,7 @@
 								<th scope="col" class="h6 border-bottom-0">Validator</th>
 								<th scope="col" class="h6 border-bottom-0">Notifications</th>
 								<th scope="col" class="h6 border-bottom-0"><i class="fas fa-mobile fa-lg"></i></th>
-								<th scope="col" class="h6 border-bottom-0" title="Email notifications"><i class="fas fa-envelope fa-lg"></i></th>
+								<th scope="col" class="h6 border-bottom-0" title="Subscribed"><i class="fas fa-envelope fa-lg"></i></th>
 								<th scope="col" class="h6 border-bottom-0"><i class="fas fa-globe fa-lg"></i></th>
 								<th scope="col" class="h6 border-bottom-0">Most Recent</th>
 								<th scope="col" class="h6 border-bottom-0"></th>
@@ -204,7 +204,7 @@
 				</div>
 				<div class="w-100 mb-2 heading-l2 text-center">Confirm Removal</div>
 				<div class="col-12 d-flex align-items-center mb-5 px-0 h6">
-					<span class="text-left" id="modaltext"></span> 
+					<span class="text-left font-weight-normal" id="modaltext"></span>
 				</div>
 				<div class="col-12 d-flex align-items-center justify-content-between px-0">
 					<button id="cancel-button" class="btn btn-outline-dark btn-sm w-50 mr-2 mr-sm-3" data-dismiss="modal">Cancel</button>
@@ -239,7 +239,7 @@
 								<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="cpu" event="monitoring_cpu_load" value="">
 							</div>
 							<div class="w-100 d-flex align-items-center pl-2">
-								<input id="cpu-input-range" class="w-75 mr-5 range custom-range" type="range" value="60" min="0" max="100" data-target="#cpu-input-range-val" style="background-size: 60%;"/>
+								<input id="cpu-input-range" class="w-75 mr-5 range custom-range" type="range" value="60" min="0" max="100" data-target="#cpu-input-range-val" style="background-size: 60%;" />
  								<input id="cpu-input-range-val" class="range custom-range-input" type="number" value="60" min="0" max="100" data-target="#cpu-input-range" />
 							</div>
 						</div>
@@ -252,7 +252,7 @@
 								<input class="form-check-input checkbox-custom-size monitoring" type="checkbox" id="hdd" event="monitoring_hdd_almostfull" value="">
 							</div>
 							<div class="w-100 d-flex align-items-center pl-2">
-								<input id="hdd-input-range" class="w-75 mr-5 range custom-range" type="range" value="10" min="0" max="100" data-target="#hdd-input-range-val" style="background-size: 10%;"/>
+								<input id="hdd-input-range" class="w-75 mr-5 range custom-range" type="range" value="10" min="0" max="100" data-target="#hdd-input-range-val" style="background-size: 10%;" />
 								<input id="hdd-input-range-val" class="range custom-range-input" type="number" value="10" min="0" max="100" data-target="#hdd-input-range" />
 							</div>
 						</div>
