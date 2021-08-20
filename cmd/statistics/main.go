@@ -58,14 +58,22 @@ func main() {
 }
 
 func statisticsLoop() {
-	for true {
+	for {
 		latestEpoch, err := db.GetLatestEpoch()
 		if err != nil {
 			logrus.Errorf("error retreiving latest epoch from the db: %v", err)
 			time.Sleep(time.Minute)
 			continue
 		}
-		currentDay := latestEpoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
+
+		epochsPerDay := (24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot
+		if latestEpoch < epochsPerDay {
+			logrus.Infof("skipping exporting validator_stats, first day has not been indexed yet")
+			time.Sleep(time.Minute)
+			continue
+		}
+
+		currentDay := latestEpoch / epochsPerDay
 		previousDay := currentDay - 1
 
 		if previousDay > currentDay {
@@ -81,7 +89,7 @@ func statisticsLoop() {
 			lastExportedDay++
 		}
 
-		logrus.Infof("previous day is %v, last exported day is %v", previousDay, lastExportedDay)
+		logrus.Infof("latest epoch is %v, previous day is %v, last exported day is %v", latestEpoch, previousDay, lastExportedDay)
 		if lastExportedDay <= previousDay || lastExportedDay == 0 {
 			for day := lastExportedDay; day <= previousDay; day++ {
 				err := db.WriteStatisticsForDay(day)
