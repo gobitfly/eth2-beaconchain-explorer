@@ -532,12 +532,12 @@ func CreateNewStatsMetaPartition() error {
 
 	_, err := FrontendDB.Exec("CREATE TABLE " + partitionName + " PARTITION OF stats_meta_p FOR VALUES IN (" + strconv.Itoa(day) + ")")
 	if err != nil {
-		logger.Error("error creating partition %v", err)
+		logger.Errorf("error creating partition %v", err)
 		return err
 	}
 	_, err = FrontendDB.Exec("CREATE UNIQUE INDEX " + partitionName + "_user_id_created_trunc_process_machine_key ON public." + partitionName + " USING btree (user_id, created_trunc, process, machine)")
 	if err != nil {
-		logger.Error("error creating index %v", err)
+		logger.Errorf("error creating index %v", err)
 		return err
 	}
 
@@ -678,7 +678,7 @@ func GetHistoricPrices(currency string) (map[uint64]float64, error) {
 		Currency float64
 	}{}
 
-	if currency != "eur" && currency != "usd" && currency != "rub" && currency != "cny" && currency != "cad" && currency != "gbp" && currency != "gbp" {
+	if currency != "eur" && currency != "usd" && currency != "rub" && currency != "cny" && currency != "cad" && currency != "gbp" {
 		return nil, fmt.Errorf("currency %v not supported", currency)
 	}
 

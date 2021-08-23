@@ -1027,7 +1027,10 @@ func UserValidatorWatchlistRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := db.RemoveFromWatchlist(user.UserID, pubKey)
+	network := utils.Config.Chain.Phase0.ConfigName
+	network = strings.ToLower(network)
+
+	err := db.RemoveFromWatchlist(user.UserID, pubKey, network)
 	if err != nil {
 		logger.Errorf("error deleting subscription: %v", err)
 		FlashRedirectOrJSONErrorResponse(w, r,
