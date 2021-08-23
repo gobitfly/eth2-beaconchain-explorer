@@ -1235,7 +1235,7 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 		}
 
 		for _, r := range dbResult {
-			n := &taxReportNotification{
+			n := &networkNotification{
 				SubscriptionID: r.SubscriptionID,
 				UserID:         r.UserID,
 				Epoch:          r.Epoch,
