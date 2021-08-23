@@ -1,4 +1,4 @@
-#hero-feed{
+#hero-feed, .countdown{
     min-width: 450px;
     min-height: 250px;
     max-width: 450px;
@@ -107,7 +107,7 @@
 }
 
 .fade-in-top{
-    animation: fade-top 3s 1;
+    animation: fade-top 1s 1;
 }
 
 .color-shift-anim{
