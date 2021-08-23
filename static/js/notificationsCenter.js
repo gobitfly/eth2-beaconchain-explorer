@@ -586,10 +586,6 @@ function loadValidatorsData(data) {
         defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
       }
     ],
-    // TODO: remove tooltip, place info somewhere else
-    rowCallback: function(row, data, displayNum, displayIndex, dataIndex) {
-      $(row).attr('title', 'Click the table row to select it or hold down CTRL and click multiple rows to select them');
-    },
     rowId: function(data, type, row, meta) {
       return data.Validator.Pubkey;
     }
@@ -853,10 +849,6 @@ $(document).ready(function() {
   $('#all_events_web').on('change', function() {
     $('[id$=web]').attr('checked', $(this).is(':checked'));
   });
-
-  // customize tables tooltips
-  $('#validators-notifications').DataTable().$('tr').tooltip({ width: 5 });
-
 
   function get_validator_sub_events() {
     let events = [];
