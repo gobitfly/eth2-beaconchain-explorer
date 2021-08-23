@@ -114,6 +114,11 @@
     animation: color-shift 5s infinite;
 }
 
+.text-dark-bold{
+    color: black;
+    font-weight: bold;
+  }
+
 .text-gradient{
     background: linear-gradient(45deg, var(--dark) 30%, var(--light) 140%);
     background-size: 200% auto;
