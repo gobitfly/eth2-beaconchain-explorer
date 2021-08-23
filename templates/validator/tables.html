@@ -507,6 +507,7 @@
           <td class="border-0">{{formatIncome .Income31d $.Currency}}</td>
         </tr>
         <tr>
+          <!-- TODO: change icon from question mark to i for info -->
           <th scope="row" class="pl-5 border-0 font-weight-normal">APR <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="fas fa-question-circle text-muted"></i></span></th>
           <td class="border-0">
             <span class="{{if gtf .Apr 0}}text-success{{end}} {{if gtf  0 .Apr}}text-danger{{end}}"><b>{{.Apr | formatPercentage}} %</b></span>
