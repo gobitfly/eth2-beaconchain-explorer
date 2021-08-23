@@ -7,9 +7,9 @@
     </div>
     {{ if .Countdown.Enabled }}
     <div class="countdown fade-in-top shadow-sm d-none d-md-flex flex-column justify-content-center align-items-center">
-        <h1 style="min-width: 342px;">{{ .Countdown.Title }}</h1>
-        <h3 class="pt-2 pb-1" id="countdown-time" style="min-width: 342px;"></h3>
-        <span>{{ .Countdown.Info }}</span>
+        <h1 style="min-width: 342px;" class="text-gradient">{{ .Countdown.Title }}</h1>
+        <h3 class="pt-2 pb-1 text-gradient" id="countdown-time" style="min-width: 342px;"></h3>
+        <span class="text-gradient">{{ .Countdown.Info }}</span>
     </div>
     {{ end }}
     <svg id="b1dfe96f-fe37-4185-8264-ce8c2a4cb4b9" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg"
@@ -173,19 +173,24 @@
 {{ if .Countdown.Enabled }}
 <script>
   function updateCountdown() {
-    let local_time = luxon.DateTime.local()
-    let time_diff_obj = luxon.DateTime.fromMillis({{ .Countdown.Timestamp }}).diff(local_time).toObject()
-    let time_left = luxon.Duration.fromObject(time_diff_obj).toFormat('MM-dd hh:mm:ss').split(" ")
+    let time_diff = luxon.DateTime.fromMillis({{ .Countdown.Timestamp }}).diff(luxon.DateTime.local()).toObject()
+    let time_left = luxon.Duration.fromObject(time_diff).toFormat('MM-dd hh:mm:ss').split(" ")
     let date = time_left[0].split("-")
-    $("#countdown-time").html(`${date[0]} Months ${date[1]} days ${time_left[1]}`)
+    let m = "Month", d = "Day";
+    if (parseInt(date[0])>1) m+="s";
+    if (parseInt(date[1])>1) d+="s"
+    $("#countdown-time").html(`${date[0]} ${m} ${date[1]} ${d} ${time_left[1]}`)
   }
 
+  
   updateCountdown()
-  setInterval(() => {
-    if (document.hasFocus()) {
-        updateCountdown()
-    }
-  }, 1000)
+  requestAnimationFrame(()=>{
+    setInterval(() => {
+      if (document.hasFocus()) {
+          updateCountdown()
+      }
+    }, 1000)
+  })
 </script>
 {{ end }}
 {{ end }}
