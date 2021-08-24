@@ -10,7 +10,7 @@
         <h1 style="" class="text-dark-bold ml-3">{{ .Countdown.Title }}</h1>
         <h3 class="pt-1 text-dark-bold countdown-epoch ml-3" style=""></h3>
         <h3 class="pt-2 pb-1 text-dark-bold countdown-time ml-3" style=""></h3>
-        <span class="text-dark-bold">{{ .Countdown.Info }}</span>
+        <span class="text-dark-bold ml-3">{{ .Countdown.Info }}</span>
     </div>
     {{ end }}
     <svg id="b1dfe96f-fe37-4185-8264-ce8c2a4cb4b9" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg"
@@ -181,6 +181,7 @@
 <script src="/js/herofeed.js"></script>
 {{ if .Countdown.Enabled }}
 <script>
+  let c_epoch = {{$.CurrentEpoch}}, c_slot = {{$.CurrentSlot}}, t=12;
   function updateCountdown() {
     let time_diff = luxon.DateTime.fromMillis({{ .Countdown.Timestamp }}).diff(luxon.DateTime.local())
     if (time_diff.milliseconds <= 0) {$(".countdown-time").html("00:00:00"); return}
@@ -194,12 +195,23 @@
     if (parseInt(date[1])<=0) {d=""; date[1]=""}
     $(".countdown-time").html(`${date[0]} ${m} ${date[1]} ${d} ${time_left[1]}`)
 
-    let epoch_left = timeToEpoch({{ .Countdown.Timestamp }}) - {{$.CurrentEpoch}};
-    let slots_left = timeToSlot({{ .Countdown.Timestamp }}) - {{$.CurrentSlot}};
+    if (t<=0){
+      fetch("/latestState")
+      .then(res=>res.json().then((data)=>{
+        c_epoch = data.currentEpoch;
+        c_slot = data.currentSlot;
+        t=12;
+      }))
+      t=60; // prevent sending too many requests 
+    }
+
+    let epoch_left = timeToEpoch({{ .Countdown.Timestamp }}) - c_epoch;
+    let slots_left = timeToSlot({{ .Countdown.Timestamp }}) - c_slot;
     epoch_left = epoch_left<0?0:epoch_left;
     slots_left = slots_left<0?0:slots_left;
     $(".countdown-epoch").html(`${epoch_left} Epoch${epoch_left>1?"s":""} ${slots_left} Slot${slots_left>1?"s":""} left`);
     //console.log(epoch_left, slots_left)
+    t=t-1;
   }
 
   $(document).ready(()=>{
