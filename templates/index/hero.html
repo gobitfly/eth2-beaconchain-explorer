@@ -6,10 +6,10 @@
       <span class="donate-btn"><img src="/img/gitcoin_logo.svg" style="width: auto; height: 30px;" /></span>
     </div>
     {{ if .Countdown.Enabled }}
-    <div class="countdown fade-in-top shadow-sm d-none d-lg-flex flex-column justify-content-center align-items-center">
-        <h3 class="pb-2 pt-1 text-dark-bold countdown-epoch" style=""></h3>
-        <h1 style="" class="text-dark-bold">{{ .Countdown.Title }}</h1>
-        <h3 class="pt-2 pb-1 text-dark-bold countdown-time" style=""></h3>
+    <div class="countdown fade-in-top shadow-sm d-none d-lg-flex flex-column justify-content-center align-items-start">
+        <h1 style="" class="text-dark-bold ml-3">{{ .Countdown.Title }}</h1>
+        <h3 class="pt-1 text-dark-bold countdown-epoch ml-3" style=""></h3>
+        <h3 class="pt-2 pb-1 text-dark-bold countdown-time ml-3" style=""></h3>
         <span class="text-dark-bold">{{ .Countdown.Info }}</span>
     </div>
     {{ end }}
@@ -169,8 +169,8 @@
   {{ if .Countdown.Enabled }}
   <div class="d-flex d-lg-none justify-content-center w-100">
     <div class="d-flex justify-content-center align-items-center" style="position: relative; top: 0px;">
-        <h1 style="font-size: 14px;" class="w-50 text-dark d-flex justify-content-center">{{ .Countdown.Title }}</h1>
-        <h3 class="w-50 text-dark ml-3 countdown-time d-flex justify-content-center" style="font-size: 14px;"></h3>
+        <h1 style="font-size: 14px;" class="w-60 text-dark d-flex justify-content-center">{{ .Countdown.Title }}</h1>
+        <h3 class="w-40 text-dark ml-3 countdown-time d-flex justify-content-center" style="font-size: 14px;"></h3>
     </div>
   </div>
   {{ end }}
@@ -194,10 +194,10 @@
     if (parseInt(date[1])<=0) {d=""; date[1]=""}
     $(".countdown-time").html(`${date[0]} ${m} ${date[1]} ${d} ${time_left[1]}`)
 
-    let epoch_left = {{$.CurrentEpoch}} - timeToEpoch({{ .Countdown.Timestamp }});
-    let slots_left = {{$.CurrentSlot}} - timeToSlot({{ .Countdown.Timestamp }});
-    epoch_left = epoch_left>0||0;
-    slots_left = slots_left>0||0;
+    let epoch_left = timeToEpoch({{ .Countdown.Timestamp }}) - {{$.CurrentEpoch}};
+    let slots_left = timeToSlot({{ .Countdown.Timestamp }}) - {{$.CurrentSlot}};
+    epoch_left = epoch_left<0?0:epoch_left;
+    slots_left = slots_left<0?0:slots_left;
     $(".countdown-epoch").html(`${epoch_left} Epoch${epoch_left>1?"s":""} ${slots_left} Slot${slots_left>1?"s":""} left`);
     //console.log(epoch_left, slots_left)
   }
