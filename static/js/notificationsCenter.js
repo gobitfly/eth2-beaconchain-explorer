@@ -922,6 +922,7 @@ $(document).ready(function() {
   }
 
   $('#add-monitoring-event-modal-btn').on('click', function() {
+    $('#add-monitoring-validator-select').html('');
     for (let item of DATA.sort((a, b) => { return a.Validator.Index - b.Validator.Index })) {
       $('#add-monitoring-validator-select').append(`<option value="${item.Validator.Pubkey}">${item.Validator.Index}</option>`);
     }
