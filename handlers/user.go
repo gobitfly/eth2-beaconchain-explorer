@@ -1265,7 +1265,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 
 	balance := FormValueOrJSON(r, "balance_decreases")
 	if balance == "on" {
-		err := db.AddSubscription(user.UserID, types.ValidatorBalanceDecreasedEventName, pubKey, 0)
+		err := db.AddSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, types.ValidatorBalanceDecreasedEventName, pubKey, 0)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorBalanceDecreasedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1274,7 +1274,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	slashed := FormValueOrJSON(r, "validator_slashed")
 	if slashed == "on" {
-		err := db.AddSubscription(user.UserID, types.ValidatorGotSlashedEventName, pubKey, 0)
+		err := db.AddSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, types.ValidatorGotSlashedEventName, pubKey, 0)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1283,7 +1283,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	proposalSubmitted := FormValueOrJSON(r, "validator_proposal_submitted")
 	if proposalSubmitted == "on" {
-		err := db.AddSubscription(user.UserID, types.ValidatorExecutedProposalEventName, pubKey, 0)
+		err := db.AddSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, types.ValidatorExecutedProposalEventName, pubKey, 0)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1292,7 +1292,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	proposalMissed := FormValueOrJSON(r, "validator_proposal_missed")
 	if proposalMissed == "on" {
-		err := db.AddSubscription(user.UserID, types.ValidatorMissedProposalEventName, pubKey, 0)
+		err := db.AddSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, types.ValidatorMissedProposalEventName, pubKey, 0)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1301,7 +1301,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	attestationMissed := FormValueOrJSON(r, "validator_attestation_missed")
 	if attestationMissed == "on" {
-		err := db.AddSubscription(user.UserID, types.ValidatorMissedAttestationEventName, pubKey, 0)
+		err := db.AddSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, types.ValidatorMissedAttestationEventName, pubKey, 0)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, types.ValidatorGotSlashedEventName, pubKey, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1443,7 +1443,10 @@ func UserValidatorWatchlistRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := db.RemoveFromWatchlist(user.UserID, pubKey)
+	network := utils.Config.Chain.Phase0.ConfigName
+	network = strings.ToLower(network)
+
+	err := db.RemoveFromWatchlist(user.UserID, pubKey, network)
 	if err != nil {
 		logger.Errorf("error deleting subscription: %v", err)
 		FlashRedirectOrJSONErrorResponse(w, r,
@@ -1559,7 +1562,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 		// not quite happy performance wise, placing a TODO here for future me
 		for i, v := range myValidators {
-			err = db.AddSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)), 0)
+			err = db.AddSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)), 0)
 			if err != nil {
 				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1582,7 +1585,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 			}
 		}
 
-		err = db.AddSubscription(user.UserID, eventName, filter, threshold)
+		err = db.AddSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, eventName, filter, threshold)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1677,10 +1680,9 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 		}
 
 		maxValidators := getUserPremium(r).MaxValidators
-
 		// not quite happy performance wise, placing a TODO here for future me
 		for i, v := range myValidators {
-			err = db.DeleteSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
+			err = db.DeleteSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
 			if err != nil {
 				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1693,7 +1695,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 		}
 	} else {
 		// filtered one only
-		err = db.DeleteSubscription(user.UserID, eventName, filter)
+		err = db.DeleteSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, eventName, filter)
 		if err != nil {
 			logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)

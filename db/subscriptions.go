@@ -4,56 +4,30 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/types"
-	"eth2-exporter/utils"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"github.com/pkg/errors"
 )
-
-// Special case for all monitoring events to be stored in users db
-func getSubscriptionDB(eventName types.EventName) *sqlx.DB {
-	if strings.HasPrefix(string(eventName), "monitoring_") {
-		return FrontendDB
-	} else {
-		return DB
-	}
-}
-
-// AddSubscription adds a new subscription to the database.
-func AddSubscription(userID uint64, eventName types.EventName, eventFilter string, eventThreshold float64) error {
-	now := time.Now()
-	nowTs := now.Unix()
-	nowEpoch := utils.TimeToEpoch(now)
-
-	var onConflictDo string = "NOTHING"
-	if strings.HasPrefix(string(eventName), "monitoring_") {
-		onConflictDo = "UPDATE SET event_threshold = $6"
-	}
-
-	_, err := getSubscriptionDB(eventName).Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, eventName, eventFilter, nowTs, nowEpoch, eventThreshold)
-	return err
-}
-
-// DeleteSubscription removes a subscription from the database.
-func DeleteSubscription(userID uint64, eventName types.EventName, eventFilter string) error {
-	_, err := getSubscriptionDB(eventName).Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, eventName, eventFilter)
-	return err
-}
 
 type WatchlistEntry struct {
 	UserId              uint64
 	Validator_publickey string
 }
 
-func AddToWatchlist(watchlist []WatchlistEntry) error {
+func AddToWatchlist(watchlist []WatchlistEntry, network string) error {
 	qry := ""
+	tag := network + ":" + string(types.ValidatorTagsWatchlist)
 	args := make([]interface{}, 0)
 	qry += "INSERT INTO users_validators_tags (user_id, validator_publickey, tag) VALUES "
 
 	for _, entry := range watchlist {
+		if len(entry.Validator_publickey) != 96 {
+			return errors.Errorf("error invalid validator pubkey length expected 96 but got %v", len(entry.Validator_publickey))
+		}
 		key, err := hex.DecodeString(entry.Validator_publickey)
 		if err != nil {
 			return err
@@ -64,36 +38,38 @@ func AddToWatchlist(watchlist []WatchlistEntry) error {
 		qry += fmt.Sprintf("$%v,", len(args))
 		args = append(args, key)
 		qry += fmt.Sprintf("$%v,", len(args))
-		args = append(args, string(types.ValidatorTagsWatchlist))
+		args = append(args, tag)
 		qry += fmt.Sprintf("$%v", len(args))
 		qry += "),"
 	}
 
 	qry = qry[:len(qry)-1] + " ON CONFLICT DO NOTHING;"
 
-	_, err := DB.Exec(qry, args...)
+	_, err := FrontendDB.Exec(qry, args...)
 	return err
 }
 
 // RemoveFromWatchlist removes a validator for a given user from the users_validators_tag table
 // It also deletes any subscriptions for that bookmarked validator
-func RemoveFromWatchlist(userId uint64, validator_publickey string) error {
+func RemoveFromWatchlist(userId uint64, validator_publickey string, network string) error {
 	key, err := hex.DecodeString(validator_publickey)
 	if err != nil {
 		return err
 	}
-	tx, err := DB.Begin()
+	tx, err := FrontendDB.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting db transactions: %v", err)
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_filter = $2", userId, validator_publickey)
+	_, err = tx.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_filter = $2 and event_name LIKE ($3 || '%')", userId, validator_publickey, network+":")
 	if err != nil {
 		return fmt.Errorf("error deleting subscriptions for validator: %v", err)
 	}
 
-	_, err = tx.Exec("DELETE FROM users_validators_tags WHERE user_id = $1 and validator_publickey = $2 and tag = $3", userId, key, types.ValidatorTagsWatchlist)
+	tag := network + ":" + string(types.ValidatorTagsWatchlist)
+
+	_, err = tx.Exec("DELETE FROM users_validators_tags WHERE user_id = $1 and validator_publickey = $2 and tag = $3", userId, key, tag)
 	if err != nil {
 		return fmt.Errorf("error deleting validator from watchlist: %v", err)
 	}
@@ -108,9 +84,10 @@ type WatchlistFilter struct {
 	UserId         uint64
 	Validators     *pq.ByteaArray
 	JoinValidators bool
+	Network        string
 }
 
-// GetTaggedValidators returns validaters that were tagged by a user
+// GetTaggedValidators returns validators that were tagged by a user
 func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, error) {
 	list := []*types.TaggedValidators{}
 	args := make([]interface{}, 0)
@@ -119,33 +96,17 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 	// SELECT users_validators_tags.user_id, users_validators_tags.validator_publickey, event_name
 	// FROM users_validators_tags inner join users_subscriptions
 	// ON users_validators_tags.user_id = users_subscriptions.user_id and ENCODE(users_validators_tags.validator_publickey::bytea, 'hex') = users_subscriptions.event_filter;
-
-	args = append(args, filter.Tag)
+	tag := filter.Network + ":" + string(filter.Tag)
+	args = append(args, tag)
 	args = append(args, filter.UserId)
 	qry := `
-		SELECT user_id`
-
-	if filter.JoinValidators {
-		qry += ", balance, pubkey, validatorindex"
-	}
-
-	qry += `
-	FROM users_validators_tags`
-
-	if filter.JoinValidators {
-		qry += `
-			INNER JOIN validators 
-			ON users_validators_tags.validator_publickey = validators.pubkey`
-	}
-
-	qry += `
+		SELECT user_id, validator_publickey, tag
+		FROM users_validators_tags
 		WHERE tag = $1 AND user_id = $2`
-	// select * from users_validators_tags inner join validators on users_validators_tags.validator_publickey = validators.pubkey
 
-	// , ARRAY_AGG(
-	// 	SELECT event_name FROM users_subscriptions
-	// 	WHERE user_id = $2 and ENCODE(users_validators_tags.validator_publickey::bytea, 'hex') = users_subscriptions.event_filter
-	// ) as events
+	// if filter.JoinValidators {
+	// 	qry += ", balance, pubkey, validatorindex"
+	// }
 
 	if filter.Validators != nil {
 		args = append(args, *filter.Validators)
@@ -153,8 +114,24 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 		qry += fmt.Sprintf("validator_publickey = ANY($%d)", len(args))
 	}
 
-	err := DB.Select(&list, qry, args...)
-	return list, err
+	qry += " ORDER BY validator_publickey desc "
+	err := FrontendDB.Select(&list, qry, args...)
+	if err != nil {
+		return nil, err
+	}
+	validators := make([]*types.Validator, 0, len(list))
+	if filter.JoinValidators {
+		err := DB.Select(&validators, `SELECT balance, pubkey, validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY pubkey desc`, *filter.Validators)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for i, li := range list {
+		li.Validator = validators[i]
+	}
+
+	return list, nil
 }
 
 // GetSubscriptionsFilter can be passed to GetSubscriptions() to filter subscriptions.
