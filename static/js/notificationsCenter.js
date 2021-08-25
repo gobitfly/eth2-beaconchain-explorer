@@ -600,14 +600,18 @@ function loadValidatorsData(data) {
     $('#remove-all-btn').removeAttr('hidden');
     if ($(window).width() < 620) {
       $('#add-validator-btn-text').attr('hidden', true);
+      $('#add-validator-btn-icon').removeAttr('hidden');
     } else {
       $('#add-validator-btn-text').removeAttr('hidden');
+      $('#add-validator-btn-icon').attr('hidden', true);
     }
     $(window).resize(function() {
       if ($(window).width() < 620) {
         $('#add-validator-btn-text').attr('hidden', true);
+        $('#add-validator-btn-icon').removeAttr('hidden');
       } else {
         $('#add-validator-btn-text').removeAttr('hidden');
+        $('#add-validator-btn-icon').attr('hidden', true);
       }
     });
   }
