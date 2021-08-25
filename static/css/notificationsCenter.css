@@ -176,6 +176,9 @@ div.dataTables_scrollBody table {
 #network-notifications_wrapper div.dataTables_paginate { 
   display: none; 
 }
+#validators-notifications_wrapper div.dataTables_paginate ul li { 
+  background-color: var(--new-card-bg);
+}
 #validators-notifications { 
   min-height: 610px; 
 }
