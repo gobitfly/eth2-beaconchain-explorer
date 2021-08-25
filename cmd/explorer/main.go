@@ -23,7 +23,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	_ "eth2-exporter/docs"
+	//_ "eth2-exporter/docs"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
@@ -106,7 +106,7 @@ func main() {
 				logrus.Fatal(err)
 			}
 		} else if utils.Config.Indexer.Node.Type == "lighthouse" {
-			rpcClient, err = rpc.NewLighthouseClient(cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
+			rpcClient, err = rpc.NewLighthouseClient("http://" + cfg.Indexer.Node.Host + ":" + cfg.Indexer.Node.Port)
 			if err != nil {
 				logrus.Fatal(err)
 			}

@@ -79,13 +79,13 @@
                                 <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Top
                                     Depositor</h2>
                                 <span class="h6"
-                                      title="Number of deposits made">{{(index .Stats.TopDepositors 0).DepositCount}} Deposits</span>
+                                      title="Number of deposits made">{{if len .Stats.TopDepositors }}{{(index .Stats.TopDepositors 0).DepositCount}}{{else}}0{{end}} Deposits</span>
                             </div>
                             <div class="d-flex align-items-center">
 					<span style="max-width: 150px;" class="h6 font-weight-normal mb-0 text-truncate">
 						<a href="/validators/eth1leaderboard" class="text-primary text-truncate">
 						<i class="fas fa-medal"></i>
-							0x{{(index .Stats.TopDepositors 0).Address}} 
+                            {{if len .Stats.TopDepositors }}0x{{(index .Stats.TopDepositors 0).Address}}{{end}}
 						</a>
 					</span>
                             </div>
@@ -98,13 +98,13 @@
                             <div class="d-flex justify-content-between align-item-center">
                                 <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Runner Up</h2>
                                 <span class="h6"
-                                      title="Number of deposits made">{{(index .Stats.TopDepositors 1).DepositCount}} Deposits</span>
+                                      title="Number of deposits made">{{if len .Stats.TopDepositors }}{{(index .Stats.TopDepositors 1).DepositCount}}{{else}}0{{end}} Deposits</span>
                             </div>
                             <div class="d-flex align-items-center">
 					<span style="max-width: 150px;" class="h6 font-weight-normal mb-0 text-truncate">
 						<a href="/validators/eth1leaderboard" class="text-primary text-truncate">
 						<i class="fas fa-medal"></i>
-							0x{{(index .Stats.TopDepositors 1).Address}} 
+                            {{if len .Stats.TopDepositors }}0x{{(index .Stats.TopDepositors 1).Address}}{{end}}
 						</a>
 						</span>
                             </div>

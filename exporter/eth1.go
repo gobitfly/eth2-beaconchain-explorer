@@ -18,7 +18,7 @@ import (
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
 	"github.com/prysmaticlabs/prysm/beacon-chain/core/helpers"
 	contracts "github.com/prysmaticlabs/prysm/contracts/deposit-contract"
-	ethpb "github.com/prysmaticlabs/prysm/proto/eth/v1alpha1"
+	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
 	"github.com/prysmaticlabs/prysm/shared/bytesutil"
 	"github.com/prysmaticlabs/prysm/shared/depositutil"
 	"github.com/prysmaticlabs/prysm/shared/hashutil"

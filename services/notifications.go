@@ -1205,39 +1205,50 @@ func (n *networkNotification) GetEventFilter() string {
 }
 
 func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
-	var dbResult []struct {
-		SubscriptionID uint64 `db:"id"`
-		UserID         uint64 `db:"user_id"`
-		Epoch          uint64 `db:"created_epoch"`
-		EventFilter    string `db:"event_filter"`
-	}
-
-	err := db.DB.Select(&dbResult, `
-			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
-			FROM users_subscriptions AS us
-			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 hour' OR us.last_sent_ts IS NULL)
-			AND (select count(ts) from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '20 minutes')>0;
-			`,
-		eventName)
+	count := 0
+	err := db.DB.Get(&count, `
+		select count(ts) from network_liveness where (headepoch-finalizedepoch)!=2 AND ts > now() - interval '20 minutes';
+	`)
 
 	if err != nil {
 		return err
 	}
 
-	for _, r := range dbResult {
-		n := &taxReportNotification{
-			SubscriptionID: r.SubscriptionID,
-			UserID:         r.UserID,
-			Epoch:          r.Epoch,
-			EventFilter:    r.EventFilter,
+	if count > 0 {
+
+		var dbResult []struct {
+			SubscriptionID uint64 `db:"id"`
+			UserID         uint64 `db:"user_id"`
+			Epoch          uint64 `db:"created_epoch"`
+			EventFilter    string `db:"event_filter"`
 		}
-		if _, exists := notificationsByUserID[r.UserID]; !exists {
-			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+
+		err := db.FrontendDB.Select(&dbResult, `
+			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
+			FROM users_subscriptions AS us
+			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 hour' OR us.last_sent_ts IS NULL);
+			`,
+			eventName)
+
+		if err != nil {
+			return err
 		}
-		if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
-			notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+
+		for _, r := range dbResult {
+			n := &networkNotification{
+				SubscriptionID: r.SubscriptionID,
+				UserID:         r.UserID,
+				Epoch:          r.Epoch,
+				EventFilter:    r.EventFilter,
+			}
+			if _, exists := notificationsByUserID[r.UserID]; !exists {
+				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
+			}
+			if _, exists := notificationsByUserID[r.UserID][n.GetEventName()]; !exists {
+				notificationsByUserID[r.UserID][n.GetEventName()] = []types.Notification{}
+			}
+			notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 		}
-		notificationsByUserID[r.UserID][n.GetEventName()] = append(notificationsByUserID[r.UserID][n.GetEventName()], n)
 	}
 
 	return nil

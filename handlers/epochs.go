@@ -124,6 +124,7 @@ func EpochsData(w http.ResponseWriter, r *http.Request) {
 
 	tableData := make([][]interface{}, len(epochs))
 	for i, b := range epochs {
+		// logger.Info("debug", b.Epoch, b.EligibleEther, b.VotedEther, b.GlobalParticipationRate, currency, utils.FormatBalance(b.EligibleEther, currency))
 		tableData[i] = []interface{}{
 			utils.FormatEpoch(b.Epoch),
 			utils.FormatTimestamp(utils.EpochToTime(b.Epoch).Unix()),
