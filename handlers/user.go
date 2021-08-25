@@ -241,7 +241,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var countSubscriptions int
-	err = db.DB.Get(&countSubscriptions, `
+	err = db.FrontendDB.Get(&countSubscriptions, `
 	SELECT count(*) as count
 	FROM users_subscriptions
 	WHERE user_id = $1
@@ -284,7 +284,7 @@ func getUserMetrics(userId uint64) (interface{}, error) {
 		ProposalsSubmitted uint64 `db:"proposals_submitted"`
 	}{}
 
-	err := db.DB.Get(&metricsdb, `
+	err := db.FrontendDB.Get(&metricsdb, `
 		SELECT COUNT(user_id) as validators,
 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS') AS notifications,
 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS' AND event_name=$2) AS attestations_missed,
@@ -371,7 +371,7 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 	}{Events_ts: []result{}}
 
 	c := 0
-	err := db.DB.Get(&c, `
+	err := db.FrontendDB.Get(&c, `
 		SELECT count(user_id)                 
 		FROM users_subscriptions      
 		WHERE user_id=$1 AND event_name=$2;
@@ -524,7 +524,7 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 		string(types.ValidatorExecutedProposalEventName),
 		string(types.ValidatorGotSlashedEventName)})
 
-	_, err = db.DB.Exec(`
+	_, err = db.FrontendDB.Exec(`
 			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
 		`, user.UserID, pqPubkeys, pqEventNames)
 	if err != nil {
@@ -604,7 +604,7 @@ func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
 		string(types.MonitoringMachineSwitchedToETH1FallbackEventName),
 		string(types.MonitoringMachineSwitchedToETH2FallbackEventName)})
 
-	_, err = db.DB.Exec(`
+	_, err = db.FrontendDB.Exec(`
 			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
 		`, user.UserID, pqPubkeys, pqEventNames)
 	if err != nil {
@@ -813,7 +813,7 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 	user := getUser(w, r)
 
 	subs := []types.Subscription{}
-	err = db.DB.Select(&subs, `
+	err = db.FrontendDB.Select(&subs, `
 			SELECT *
 			FROM users_subscriptions
 			WHERE user_id = $1
