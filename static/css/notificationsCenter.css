@@ -31,6 +31,7 @@
   border-radius: .5rem;
   padding: .6rem;
 }
+/* style not used  */
 .custom-dropdown {
   height: 10rem;
   overflow-y: auto;
@@ -114,6 +115,7 @@
 /* tables */
 table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, 
 table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
+  top: 1.6rem !important;
   background-color: transparent !important;
   box-shadow: none !important;
   line-height: 1.1rem !important;
@@ -164,6 +166,7 @@ div.dataTables_scrollBody table {
 .custom-table-head {
   background-color: var(--bg) !important;
 }
+/* style not used  */
 .row-selected {
   background-color: var(--light) !important;
 }
@@ -172,6 +175,9 @@ div.dataTables_scrollBody table {
 #network-notifications_wrapper div.dataTables_length,
 #network-notifications_wrapper div.dataTables_paginate { 
   display: none; 
+}
+#validators-notifications_wrapper div.dataTables_paginate ul li { 
+  background-color: var(--new-card-bg);
 }
 #validators-notifications { 
   min-height: 610px; 
@@ -326,7 +332,10 @@ div.dataTables_scrollBody table {
     border-radius: 0;
   }
   .custom-remove-modal { 
-    padding: 1.8rem 1.8rem 2.5rem;
+    padding: 1.3rem 1.8rem 2.5rem;
+  }
+  .custom-remove-modal-close { 
+    right: -1rem;
   }
 }
 @media screen and (max-width: 640px) {

@@ -146,10 +146,11 @@ function loadMonitoringData(data) {
       // click event to monitoring table edit button
       $('#monitoring-notifications #edit-monitoring-events-btn').on('click', function(e) {
         $('#add-monitoring-validator-select').html("");
-        $('#cpu-input-range-val, #cpu-input-range').val(80);
+        /* $('#cpu-input-range-val, #cpu-input-range').val(80);
         $('#cpu-input-range').attr('style', `background-size: 80% 100%`);
         $('#hdd-input-range-val, #hdd-input-range').val(80);
-        $('#hdd-input-range').attr('style', `background-size: 80% 100%`);
+        $('#hdd-input-range').attr('style', `background-size: 80% 100%`); */
+
         for (let item of $('input.monitoring')) {
           $(item).prop('checked', false);
         }
@@ -474,7 +475,9 @@ function loadValidatorsData(data) {
           if (type === 'sort' || type === 'type') {
             return data.Index;
           }
-          return `<span class="font-weight-bold"><i class="fas fa-male mr-1"></i><a style="padding: .25rem;" href="/validator/${data.Index}">` + data.Index + '</a></span>' + `<a class="heading-l4 d-none d-sm-block mt-2" style="width: 5rem;" href="/validator/${data.Pubkey}">0x` + data.Pubkey.substring(0, 6) + '...</a>';
+          let datahref = `/validator/${data.Index || data.Pubkey}`;
+          // return `<span class="font-weight-bold"><i class="fas fa-male mr-1"></i><a style="padding: .25rem;" href="/validator/${data.Index}">` + data.Index + '</a></span>' + `<a class="heading-l4 d-none d-sm-block mt-2" style="width: 5rem;" href="/validator/${data.Pubkey}">0x` + data.Pubkey.substring(0, 6) + '...</a>';
+          return `<i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + data.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + data.Pubkey.substring(0, 6) + `</span></a>`;
         }
       },
       {
@@ -597,14 +600,18 @@ function loadValidatorsData(data) {
     $('#remove-all-btn').removeAttr('hidden');
     if ($(window).width() < 620) {
       $('#add-validator-btn-text').attr('hidden', true);
+      $('#add-validator-btn-icon').removeAttr('hidden');
     } else {
       $('#add-validator-btn-text').removeAttr('hidden');
+      $('#add-validator-btn-icon').attr('hidden', true);
     }
     $(window).resize(function() {
       if ($(window).width() < 620) {
         $('#add-validator-btn-text').attr('hidden', true);
+        $('#add-validator-btn-icon').removeAttr('hidden');
       } else {
         $('#add-validator-btn-text').removeAttr('hidden');
+        $('#add-validator-btn-icon').attr('hidden', true);
       }
     });
   }
@@ -919,6 +926,7 @@ $(document).ready(function() {
   }
 
   $('#add-monitoring-event-modal-btn').on('click', function() {
+    $('#add-monitoring-validator-select').html('');
     for (let item of DATA.sort((a, b) => { return a.Validator.Index - b.Validator.Index })) {
       $('#add-monitoring-validator-select').append(`<option value="${item.Validator.Pubkey}">${item.Validator.Index}</option>`);
     }
