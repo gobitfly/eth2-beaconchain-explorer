@@ -22,6 +22,7 @@ func notificationsSender() {
 	for {
 		// check if the explorer is not too far behind, if we set this value to close (10m) it could potentially never send any notifications
 		// if IsSyncing() {
+
 		if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(LatestEpoch())) {
 			logger.Info("skipping notifications because the explorer is syncing")
 			time.Sleep(time.Second * 60)
@@ -430,12 +431,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 		UserId uint64 `db:"user_id"`
 	}
 
-	name := string(eventName)
-	if utils.Config.Chain.Phase0.ConfigName != "" {
-		name = utils.Config.Chain.Phase0.ConfigName + ":" + name
-	}
-
-	err = db.FrontendDB.Select(&subscribers, query, utils.Config.Chain.Phase0.ConfigName, name, latestEpoch)
+	err = db.FrontendDB.Select(&subscribers, query, utils.GetNetwork(), latestEpoch)
 	if err != nil {
 		return err
 	}
@@ -543,10 +539,10 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 				aa.attesterslot,
 				aa.inclusionslot,
 				ENCODE(v.pubkey::bytea, 'hex') AS pubkey
-			FROM validators
-			INNER JOIN attestation_assignments_p aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($2 - 3)  AND aa.week >= ($2 - 3) / 1575
-			WHERE AND aa.status = $3 AND aa.epoch >= ($2 - 3)
-			AND aa.inclusionslot = 0 AND aa.attesterslot < ($4 - 32)
+			FROM validators v
+			INNER JOIN attestation_assignments_p aa ON v.validatorindex = aa.validatorindex AND aa.epoch >= ($1 - 3) AND aa.week >= ($1 - 3) / 1575
+			WHERE aa.status = $2 AND aa.epoch >= ($1 - 3)
+			AND aa.inclusionslot = 0 AND aa.attesterslot < ($3 - 32)
 			`, latestEpoch, status, latestSlot)
 	if err != nil {
 		return err
