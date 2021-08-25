@@ -21,14 +21,13 @@ func TestWatchlist(t *testing.T) {
 			Validator_publickey: pubkey,
 		},
 	}
-	network := utils.Config.Chain.Phase0.ConfigName
-	err := AddToWatchlist(watchList, network)
+	err := AddToWatchlist(watchList, utils.GetNetwork())
 	if err != nil {
 		t.Errorf("error adding validator with pubkey: %v to user %v err: %v", pubkey, testUsers[0], err)
 		return
 	}
 	t.Cleanup(func() {
-		err := RemoveFromWatchlist(uint64(testUsers[0]), pubkey, network)
+		err := RemoveFromWatchlist(uint64(testUsers[0]), pubkey, utils.GetNetwork())
 		if err != nil {
 			t.Errorf("error cleaning up could not remove validator: %v from the watchlist for user: %v err: %v", pubkey, testUsers[0], err)
 			return
@@ -44,7 +43,7 @@ func TestWatchlist(t *testing.T) {
 	filter := WatchlistFilter{
 		Tag:            types.ValidatorTagsWatchlist,
 		UserId:         uint64(testUsers[0]),
-		Network:        network,
+		Network:        utils.GetNetwork(),
 		Validators:     &pq.ByteaArray{pub},
 		JoinValidators: true,
 	}

@@ -411,9 +411,8 @@ func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
 	for _, item := range pubkeys {
-		err = db.RemoveFromWatchlist(user.UserID, item)
+		err = db.RemoveFromWatchlist(user.UserID, item, utils.GetNetwork())
 		if err != nil {
 			logger.Errorf("error removing from  watchlist: %v, %v", r.URL.String(), err)
 			continue
@@ -455,8 +454,7 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	err = db.AddToWatchlist([]db.WatchlistEntry{{UserId: user.UserID, Validator_publickey: reqData.Pubkey}})
+	err = db.AddToWatchlist([]db.WatchlistEntry{{UserId: user.UserID, Validator_publickey: reqData.Pubkey}}, utils.GetNetwork())
 	if err != nil {
 		logger.Errorf("error adding to watchlist: %v, %v", r.URL.String(), err)
 		return
@@ -1325,8 +1323,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 			Validator_publickey: pubKey,
 		},
 	}
-
-	err := db.AddToWatchlist(watchlistEntries)
+	err := db.AddToWatchlist(watchlistEntries, utils.GetNetwork())
 	if err != nil {
 		logger.Errorf("error adding validator to watchlist to db: %v", err)
 		FlashRedirectOrJSONErrorResponse(w, r,
@@ -1395,8 +1392,7 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 			Validator_publickey: key,
 		})
 	}
-
-	err = db.AddToWatchlist(watchListEntries)
+	err = db.AddToWatchlist(watchListEntries, utils.GetNetwork())
 	if err != nil {
 		logger.Errorf("error could not add validators to watchlist: %v, %v", r.URL.String(), err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1443,10 +1439,7 @@ func UserValidatorWatchlistRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	network := utils.Config.Chain.Phase0.ConfigName
-	network = strings.ToLower(network)
-
-	err := db.RemoveFromWatchlist(user.UserID, pubKey, network)
+	err := db.RemoveFromWatchlist(user.UserID, pubKey, utils.GetNetwork())
 	if err != nil {
 		logger.Errorf("error deleting subscription: %v", err)
 		FlashRedirectOrJSONErrorResponse(w, r,
@@ -1682,7 +1675,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 		maxValidators := getUserPremium(r).MaxValidators
 		// not quite happy performance wise, placing a TODO here for future me
 		for i, v := range myValidators {
-			err = db.DeleteSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
+			err = db.DeleteSubscription(user.UserID, utils.GetNetwork(), eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
 			if err != nil {
 				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1695,7 +1688,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 		}
 	} else {
 		// filtered one only
-		err = db.DeleteSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, eventName, filter)
+		err = db.DeleteSubscription(user.UserID, utils.GetNetwork(), eventName, filter)
 		if err != nil {
 			logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1749,7 +1742,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 		// not quite happy performance wise, placing a TODO here for future me
 		for i, v := range myValidators {
-			err = db.DeleteSubscription(user.UserID, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
+			err = db.DeleteSubscription(user.UserID, utils.GetNetwork(), eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)))
 			if err != nil {
 				logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1762,7 +1755,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// filtered one only
-		err = db.DeleteSubscription(user.UserID, eventName, filter)
+		err = db.DeleteSubscription(user.UserID, utils.GetNetwork(), eventName, filter)
 		if err != nil {
 			logger.Errorf("error could not REMOVE subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
