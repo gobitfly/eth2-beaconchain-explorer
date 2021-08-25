@@ -78,12 +78,6 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 		logger.Errorf("error collecting validator_attestation_missed notifications: %v", err)
 	}
 
-	//Tax Report
-	err = collectTaxReportNotificationNotifications(notificationsByUserID, types.TaxReportEventName)
-	if err != nil {
-		logger.Errorf("error collecting tax report notifications: %v", err)
-	}
-
 	//Network liveness
 	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
 	if err != nil {
@@ -125,6 +119,12 @@ func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notific
 	err = collectEthClientNotifications(notificationsByUserID, types.EthClientUpdateEventName)
 	if err != nil {
 		logger.Errorf("error collecting Eth client notifications: %v", err)
+	}
+
+	//Tax Report
+	err = collectTaxReportNotificationNotifications(notificationsByUserID, types.TaxReportEventName)
+	if err != nil {
+		logger.Errorf("error collecting tax report notifications: %v", err)
 	}
 
 	return notificationsByUserID
