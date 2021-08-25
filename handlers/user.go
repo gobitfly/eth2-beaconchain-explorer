@@ -1543,6 +1543,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 			Validators:     nil,
 			Tag:            types.ValidatorTagsWatchlist,
 			JoinValidators: true,
+			Network:        utils.GetNetwork(),
 		}
 
 		myValidators, err2 := db.GetTaggedValidators(filter)
@@ -1664,6 +1665,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 			Validators:     nil,
 			Tag:            types.ValidatorTagsWatchlist,
 			JoinValidators: true,
+			Network:        utils.GetNetwork(),
 		}
 
 		myValidators, err2 := db.GetTaggedValidators(filter)
@@ -1730,6 +1732,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 			Validators:     nil,
 			Tag:            types.ValidatorTagsWatchlist,
 			JoinValidators: true,
+			Network:        utils.GetNetwork(),
 		}
 
 		myValidators, err2 := db.GetTaggedValidators(filter)

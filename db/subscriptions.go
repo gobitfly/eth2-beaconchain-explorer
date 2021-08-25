@@ -104,10 +104,6 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 		FROM users_validators_tags
 		WHERE tag = $1 AND user_id = $2`
 
-	// if filter.JoinValidators {
-	// 	qry += ", balance, pubkey, validatorindex"
-	// }
-
 	if filter.Validators != nil {
 		args = append(args, *filter.Validators)
 		qry += " AND "
@@ -119,16 +115,18 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 	if err != nil {
 		return nil, err
 	}
-	validators := make([]*types.Validator, 0, len(list))
-	if filter.JoinValidators {
+	var validators []*types.Validator
+	if filter.JoinValidators && filter.Validators != nil {
 		err := DB.Select(&validators, `SELECT balance, pubkey, validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY pubkey desc`, *filter.Validators)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	for i, li := range list {
-		li.Validator = validators[i]
+		if len(list) != len(validators) {
+			logger.Errorf("error could not get validators for watchlist. Expected to retrieve %v validators but got %v", len(list), len(validators))
+		}
+		for i, li := range list {
+			li.Validator = validators[i]
+		}
 	}
 
 	return list, nil
