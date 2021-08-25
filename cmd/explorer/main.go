@@ -417,7 +417,6 @@ func main() {
 			}
 		}()
 	}
-
 	if utils.Config.Notifications.Enabled {
 		services.InitNotifications()
 	}
