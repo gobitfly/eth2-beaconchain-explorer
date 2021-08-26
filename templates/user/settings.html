@@ -803,7 +803,7 @@
                                 </div>
                                 <div class="progress">
                                     {{$percentageDaily := formatPercentage (divInt .ApiStatistics.Daily .ApiStatistics.MaxDaily)}}
-                                    <div class="progress-bar" role="progressbar" style="width: {{$percentageDaily}}%;" aria-valuenow="{{.ApiStatistics.Daily}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxDaily}}">{{$percentageDaily}} %</div>
+                                    <div class="progress-bar" role="progressbar" style="width: {{$percentageDaily}}%; white-space: no-wrap;" aria-valuenow="{{.ApiStatistics.Daily}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxDaily}}">{{$percentageDaily}} %</div>
                                 </div>
                             </div>
                             {{ end }}
@@ -814,7 +814,7 @@
                                 </div>
                                 <div class="progress">
                                     {{$percentageMonthly := formatPercentage (divInt .ApiStatistics.Monthly .ApiStatistics.MaxMonthly)}}
-                                    <div class="progress-bar" role="progressbar" style="width: {{$percentageMonthly}}%;" aria-valuenow="{{.ApiStatistics.Monthly}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxMonthly}}">{{$percentageMonthly}} %</div>
+                                    <div class="progress-bar" role="progressbar" style="width: {{$percentageMonthly}}%; white-space: nowrap;" aria-valuenow="{{.ApiStatistics.Monthly}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxMonthly}}">{{$percentageMonthly}} %</div>
                                 </div>
                             </div>
                         </div>
