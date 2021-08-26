@@ -1,4 +1,4 @@
-#hero-feed{
+#hero-feed, .countdown{
     min-width: 450px;
     min-height: 250px;
     max-width: 450px;
@@ -11,9 +11,9 @@
     z-index: 1;
     padding-top: 2%;
     padding-bottom: 2%;
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     
 }
 
@@ -107,11 +107,35 @@
 }
 
 .fade-in-top{
-    animation: fade-top 3s 1;
+    animation: fade-top 1s 1;
 }
 
 .color-shift-anim{
     animation: color-shift 5s infinite;
+}
+
+.text-dark-bold{
+    color: black;
+    font-weight: bold;
+  }
+
+.text-gradient{
+    background: linear-gradient(45deg, var(--dark) 30%, var(--light) 140%);
+    background-size: 200% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -moz-background-clip: text;
+    -moz-text-fill-color: transparent;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+    font-weight: bold;
+    animation: gradient-move 1s infinite;
+  }
+
+@keyframes gradient-move {
+    to{
+        background-position: -200% center;
+    }
 }
 
 @keyframes fade-top {

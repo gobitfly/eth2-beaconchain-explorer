@@ -116,6 +116,12 @@ type Config struct {
 			Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
 			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
 		} `yaml:"showDonors"`
+		Countdown struct {
+			Enabled   bool   `yaml:"enabled" envconfig:"FRONTEND_COUNTDOWN_ENABLED"`
+			Title     string `yaml:"title" envconfig:"FRONTEND_COUNTDOWN_TITLE"`
+			Timestamp uint64 `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
+			Info      string `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
+		} `yaml:"countdown"`
 	} `yaml:"frontend"`
 	Metrics struct {
 		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`

@@ -145,6 +145,7 @@ type IndexPageData struct {
 	Mainnet                   bool                   `json:"-"`
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
+	Countdown                 interface{}
 }
 
 type IndexPageDataEpochs struct {
