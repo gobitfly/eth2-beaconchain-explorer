@@ -562,15 +562,13 @@ func SetBlockStatus(blocks []*types.CanonBlock) error {
 
 // SaveValidatorQueue will save the validator queue into the database
 func SaveValidatorQueue(validators *types.ValidatorQueue) error {
-	enteringValidatorsCount := len(validators.ActivationPublicKeys)
-	exitingValidatorsCount := len(validators.ExitPublicKeys)
 	_, err := DB.Exec(`
 		INSERT INTO queue (ts, entering_validators_count, exiting_validators_count)
 		VALUES (date_trunc('hour', now()), $1, $2)
 		ON CONFLICT (ts) DO UPDATE SET
 			entering_validators_count = excluded.entering_validators_count, 
 			exiting_validators_count = excluded.exiting_validators_count`,
-		enteringValidatorsCount, exitingValidatorsCount)
+		validators.Activating, validators.Exititing)
 	return err
 }
 
@@ -608,6 +606,7 @@ func SaveEpoch(data *types.EpochData) error {
 	start := time.Now()
 	defer func() {
 		metrics.TaskDuration.WithLabelValues("db_save_epoch").Observe(time.Since(start).Seconds())
+		logger.WithFields(logrus.Fields{"epoch": data.Epoch, "duration": time.Since(start)}).Info("completed saving epoch")
 	}()
 
 	tx, err := DB.Begin()
@@ -1176,8 +1175,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 	}()
 
 	stmtBlock, err := tx.Prepare(`
-		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, proposer, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+		INSERT INTO blocks (epoch, slot, blockroot, parentroot, stateroot, signature, randaoreveal, graffiti, graffiti_text, eth1data_depositroot, eth1data_depositcount, eth1data_blockhash, syncaggregate_bits, syncaggregate_signature, proposerslashingscount, attesterslashingscount, attestationscount, depositscount, voluntaryexitscount, syncaggregate_participation, proposer, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 		ON CONFLICT (slot, blockroot) DO NOTHING`)
 	if err != nil {
 		return err
@@ -1278,6 +1277,14 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			n := time.Now()
 
 			logger.Tracef("writing block data: %v", b.Eth1Data.DepositRoot)
+			syncAggBits := []byte{}
+			syncAggSig := []byte{}
+			syncAggParticipation := 0.0
+			if b.SyncAggregate != nil {
+				syncAggBits = b.SyncAggregate.SyncCommitteeBits
+				syncAggSig = b.SyncAggregate.SyncCommitteeSignature
+				syncAggParticipation = b.SyncAggregate.SyncAggregateParticipation
+			}
 			_, err = stmtBlock.Exec(
 				b.Slot/utils.Config.Chain.SlotsPerEpoch,
 				b.Slot,
@@ -1291,11 +1298,14 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				b.Eth1Data.DepositRoot,
 				b.Eth1Data.DepositCount,
 				b.Eth1Data.BlockHash,
+				syncAggBits,
+				syncAggSig,
 				len(b.ProposerSlashings),
 				len(b.AttesterSlashings),
 				len(b.Attestations),
 				len(b.Deposits),
 				len(b.VoluntaryExits),
+				syncAggParticipation,
 				b.Proposer,
 				strconv.FormatUint(b.Status, 10),
 			)
@@ -1449,6 +1459,12 @@ func UpdateEpochStatus(stats *types.ValidatorParticipation) error {
 		WHERE epoch = $5`,
 		stats.Finalized, stats.EligibleEther, stats.GlobalParticipationRate, stats.VotedEther, stats.Epoch)
 
+	return err
+}
+
+// UpdateEpochFinalization will update finalized-flag of all epochs before the last finalized epoch
+func UpdateEpochFinalization() error {
+	_, err := DB.Exec(`UPDATE epochs SET finalized = true WHERE epoch < (SELECT MAX(epoch) FROM epochs WHERE finalized = true)`)
 	return err
 }
 

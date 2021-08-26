@@ -16,10 +16,12 @@
         ctx.stroke();
 
         var pixels = {{.}}
+        if (pixels !== null) {
             pixels.forEach(function (p) {
                 ctx.fillStyle = "#" + p.color
                 ctx.fillRect(p.x, p.y, 1, 1)
             })
+        }
     </script>
 {{end}}
 
@@ -27,41 +29,39 @@
 {{end}}
 
 {{ define "content"}}
-    {{with .Data}}
-        <div class="container mt-2">
-            <div class="my-3">
-                <div class="d-md-flex py-2 justify-content-md-between">
-                    <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-paint-brush"></i> The Graffitiwall - Draw your stake!
-                    </h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
-                            <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-                            <li class="breadcrumb-item active" aria-current="page">Graffitiwall</li>
-                        </ol>
-                    </nav>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-12">
-                    <h2 class="h6">How to participate?</h2>
-                    <p>
-                        In order to draw on the graffitiwall you will need to adjust the graffiti value your validator
-                        assigns to each proposed block.
-                        It must contain the following string <code>graffitiwall:<b>x</b>:<b>y</b>:<b>#000000</b></code>
-                        where <b>x</b> is the x coordinate of the pixel, y is the <b>y</b> coordinate of the pixel and
-                        <b>#000000</b> is the html color code of the pixel you want to set.
-                        For example in order to set the pixel at position x: 50 and y: 60 to the color #efefef you would
-                        set the following graffiti in your validator:
-                        <code>graffitiwall:<b>50</b>:<b>60</b>:<b>#efefef</b></code>.
-                        Pixels can be overwritten and only the most recent value will be shown. The total canvas size is
-                        1000x1000 pixels.</p>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-12 text-center">
-                    <canvas id="graffitiwall" width="1000" height="1050" style="image-rendering:pixelated;"></canvas>
-                </div>
+    <div class="container mt-2">
+        <div class="my-3">
+            <div class="d-md-flex py-2 justify-content-md-between">
+                <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-paint-brush"></i> The Graffitiwall - Draw your stake!
+                </h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Graffitiwall</li>
+                    </ol>
+                </nav>
             </div>
         </div>
-    {{end}}
+        <div class="row">
+            <div class="col-md-12">
+                <h2 class="h6">How to participate?</h2>
+                <p>
+                    In order to draw on the graffitiwall you will need to adjust the graffiti value your validator
+                    assigns to each proposed block.
+                    It must contain the following string <code>graffitiwall:<b>x</b>:<b>y</b>:<b>#000000</b></code>
+                    where <b>x</b> is the x coordinate of the pixel, y is the <b>y</b> coordinate of the pixel and
+                    <b>#000000</b> is the html color code of the pixel you want to set.
+                    For example in order to set the pixel at position x: 50 and y: 60 to the color #efefef you would
+                    set the following graffiti in your validator:
+                    <code>graffitiwall:<b>50</b>:<b>60</b>:<b>#efefef</b></code>.
+                    Pixels can be overwritten and only the most recent value will be shown. The total canvas size is
+                    1000x1000 pixels.</p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12 text-center">
+                <canvas id="graffitiwall" width="1000" height="1050" style="image-rendering:pixelated;"></canvas>
+            </div>
+        </div>
+    </div>
 {{end}}

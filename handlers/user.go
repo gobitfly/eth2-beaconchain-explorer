@@ -158,9 +158,11 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	redirectURI := q.Get("redirect_uri")
+	clientID := q.Get("client_id")
 	state := q.Get("state")
 
 	session.Values["state"] = state
+	session.Values["client_id"] = clientID
 	session.Values["oauth_redirect_uri"] = redirectURI
 	session.Save(r, w)
 
@@ -472,7 +474,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, _, err := getUserSession(w, r)
+	user, session, err := getUserSession(w, r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		callback := appData.RedirectURI + "?error=access_denied&error_description=no_session" + stateAppend
@@ -491,8 +493,9 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 
 		code := hex.EncodeToString(codeBytes)   // return to user
 		codeHashed := utils.HashAndEncode(code) // save hashed code in db
+		clientID := session.Values["client_id"].(string)
 
-		err2 := db.AddAuthorizeCode(user.UserID, codeHashed, appData.ID)
+		err2 := db.AddAuthorizeCode(user.UserID, codeHashed, clientID, appData.ID)
 		if err2 != nil {
 			logger.Errorf("error adding authorization code for user: %v %v", user.UserID, err2)
 			callback := appData.RedirectURI + "?error=server_error&error_description=err_db_storefail" + stateAppend
@@ -1158,6 +1161,8 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 				threshold = 0.1
 			} else if eventName == types.MonitoringMachineCpuLoadEventName {
 				threshold = 0.6
+			} else if eventName == types.MonitoringMachineMemoryUsageEventName {
+				threshold = 0.8
 			}
 		}
 

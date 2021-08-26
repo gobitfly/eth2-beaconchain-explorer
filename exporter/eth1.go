@@ -16,12 +16,11 @@ import (
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethRPC "github.com/ethereum/go-ethereum/rpc"
-	ethpb "github.com/prysmaticlabs/ethereumapis/eth/v1alpha1"
-	"github.com/prysmaticlabs/go-ssz"
+	"github.com/prysmaticlabs/prysm/beacon-chain/core/helpers"
 	contracts "github.com/prysmaticlabs/prysm/contracts/deposit-contract"
-	pb "github.com/prysmaticlabs/prysm/proto/beacon/p2p/v1"
-	"github.com/prysmaticlabs/prysm/shared/bls"
+	ethpb "github.com/prysmaticlabs/prysm/proto/prysm/v1alpha1"
 	"github.com/prysmaticlabs/prysm/shared/bytesutil"
+	"github.com/prysmaticlabs/prysm/shared/depositutil"
 	"github.com/prysmaticlabs/prysm/shared/hashutil"
 	"github.com/prysmaticlabs/prysm/shared/params"
 	"github.com/sirupsen/logrus"
@@ -158,6 +157,44 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 	blocksToFetch := []uint64{}
 	txsToFetch := []string{}
 
+	cfg := params.BeaconConfig()
+	domain, err := helpers.ComputeDomain(
+		cfg.DomainDeposit,
+		cfg.GenesisForkVersion,
+		cfg.ZeroHash[:],
+	)
+	if utils.Config.Chain.Network == "zinken" {
+		domain, err = helpers.ComputeDomain(
+			cfg.DomainDeposit,
+			[]byte{0x00, 0x00, 0x00, 0x03},
+			cfg.ZeroHash[:],
+		)
+	}
+	if utils.Config.Chain.Network == "toledo" {
+		domain, err = helpers.ComputeDomain(
+			cfg.DomainDeposit,
+			[]byte{0x00, 0x70, 0x1E, 0xD0},
+			cfg.ZeroHash[:],
+		)
+	}
+	if utils.Config.Chain.Network == "pyrmont" {
+		domain, err = helpers.ComputeDomain(
+			cfg.DomainDeposit,
+			[]byte{0x00, 0x00, 0x20, 0x09},
+			cfg.ZeroHash[:],
+		)
+	}
+	if utils.Config.Chain.Network == "prater" {
+		domain, err = helpers.ComputeDomain(
+			cfg.DomainDeposit,
+			[]byte{0x00, 0x00, 0x10, 0x20},
+			cfg.ZeroHash[:],
+		)
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	for _, depositLog := range depositLogs {
 		if depositLog.Topics[0] != eth1DepositEventSignature {
 			continue
@@ -166,12 +203,12 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 		if err != nil {
 			return depositsToSave, fmt.Errorf("error unpacking eth1-deposit-log: %x: %w", depositLog.Data, err)
 		}
-		err = VerifyEth1DepositSignature(&ethpb.Deposit_Data{
+		err = depositutil.VerifyDepositSignature(&ethpb.Deposit_Data{
 			PublicKey:             pubkey,
 			WithdrawalCredentials: withdrawalCredentials,
 			Amount:                bytesutil.FromBytes8(amount),
 			Signature:             signature,
-		})
+		}, domain)
 		validSignature := err == nil
 		blocksToFetch = append(blocksToFetch, depositLog.BlockNumber)
 		txsToFetch = append(txsToFetch, depositLog.TxHash.Hex())
@@ -212,10 +249,10 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 		if chainID == nil {
 			return depositsToSave, fmt.Errorf("error getting tx-chainId for eth1-deposit")
 		}
-		signer := gethTypes.NewEIP155Signer(chainID)
+		signer := gethTypes.NewLondonSigner(chainID)
 		sender, err := signer.Sender(tx)
 		if err != nil {
-			return depositsToSave, fmt.Errorf("error getting sender for eth1-deposit")
+			return depositsToSave, fmt.Errorf("error getting sender for eth1-deposit (txHash: %x, chainID: %v): %w", d.TxHash, chainID, err)
 		}
 		d.FromAddress = sender.Bytes()
 	}
@@ -331,121 +368,4 @@ func eth1BatchRequestHeadersAndTxs(blocksToFetch []uint64, txsToFetch []string) 
 	}
 
 	return headers, txs, nil
-}
-
-// From: "github.com/prysmaticlabs/prysm/beacon-chain/core/helpers"
-// Avoid including dependency directly as it triggers a
-// Cloudflare roughtime call that blocks startup for
-// several seconds
-// ForkVersionByteLength length of fork version byte array.
-const ForkVersionByteLength = 4
-
-// DomainByteLength length of domain byte array.
-const DomainByteLength = 4
-
-func ComputeDomain(domainType [DomainByteLength]byte, forkVersion []byte, genesisValidatorsRoot []byte) ([]byte, error) {
-	if forkVersion == nil {
-		forkVersion = params.BeaconConfig().GenesisForkVersion
-	}
-	if genesisValidatorsRoot == nil {
-		genesisValidatorsRoot = params.BeaconConfig().ZeroHash[:]
-	}
-	forkBytes := [ForkVersionByteLength]byte{}
-	copy(forkBytes[:], forkVersion)
-
-	forkDataRoot, err := computeForkDataRoot(forkBytes[:], genesisValidatorsRoot)
-	if err != nil {
-		return nil, err
-	}
-
-	return domain(domainType, forkDataRoot[:]), nil
-}
-
-func domain(domainType [DomainByteLength]byte, forkDataRoot []byte) []byte {
-	b := []byte{}
-	b = append(b, domainType[:4]...)
-	b = append(b, forkDataRoot[:28]...)
-	return b
-}
-
-func computeForkDataRoot(version []byte, root []byte) ([32]byte, error) {
-	r, err := ssz.HashTreeRoot(&pb.ForkData{
-		CurrentVersion:        version,
-		GenesisValidatorsRoot: root,
-	})
-	if err != nil {
-		return [32]byte{}, err
-	}
-	return r, nil
-}
-
-func VerifyEth1DepositSignature(obj *ethpb.Deposit_Data) error {
-	cfg := params.BeaconConfig()
-	if utils.Config.Chain.Network == "altona" {
-		cfg = params.AltonaConfig()
-	} else if utils.Config.Chain.Network == "medalla" {
-		cfg = params.MedallaConfig()
-	} else if utils.Config.Chain.Network == "spadina" {
-		cfg = params.SpadinaConfig()
-	}
-	domain, err := ComputeDomain(
-		cfg.DomainDeposit,
-		cfg.GenesisForkVersion,
-		cfg.ZeroHash[:],
-	)
-	if utils.Config.Chain.Network == "zinken" {
-		domain, err = ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x00, 0x00, 0x03},
-			cfg.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Network == "toledo" {
-		domain, err = ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x70, 0x1E, 0xD0},
-			cfg.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Network == "pyrmont" {
-		domain, err = ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x00, 0x20, 0x09},
-			cfg.ZeroHash[:],
-		)
-	}
-	if utils.Config.Chain.Network == "prater" {
-		domain, err = ComputeDomain(
-			cfg.DomainDeposit,
-			[]byte{0x00, 0x00, 0x10, 0x20},
-			cfg.ZeroHash[:],
-		)
-	}
-	if err != nil {
-		return fmt.Errorf("could not get domain: %w", err)
-	}
-	blsPubkey, err := bls.PublicKeyFromBytes(obj.PublicKey)
-	if err != nil {
-		return fmt.Errorf("could not get pubkey: %w", err)
-	}
-	blsSig, err := bls.SignatureFromBytes(obj.Signature)
-	if err != nil {
-		return fmt.Errorf("could not get sig %w", err)
-	}
-	root, err := ssz.SigningRoot(obj)
-	if err != nil {
-		return fmt.Errorf("could not get root: %w", err)
-	}
-	signingData := &pb.SigningData{
-		ObjectRoot: root[:],
-		Domain:     domain,
-	}
-	ctrRoot, err := ssz.HashTreeRoot(signingData)
-	if err != nil {
-		return fmt.Errorf("could not get ctr root: %w", err)
-	}
-	if !blsSig.Verify(blsPubkey, ctrRoot[:]) {
-		return fmt.Errorf("invalid signature")
-	}
-	return nil
 }
