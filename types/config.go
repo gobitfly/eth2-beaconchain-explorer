@@ -131,6 +131,11 @@ type Config struct {
 		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
 		Address string `yaml:"address" envconfig:"SSV_EXPORTER_ADDRESS"`
 	} `yaml:"SSVExporter"`
+	RocketpoolExporter struct {
+		Enabled                   bool   `yaml:"enabled" envconfig:"ROCKETPOOL_EXPORTER_ENABLED"`
+		StorageContractAddress    string `yaml:"enabled" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_ADDRESS"`
+		StorageContractFirstBlock uint64 `yaml:"enabled" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_FIRST_BLOCK"`
+	}
 }
 
 // Phase0 is the config for beacon chain phase0
