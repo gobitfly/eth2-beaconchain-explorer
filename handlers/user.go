@@ -298,20 +298,18 @@ func getUserMetrics(userId uint64) (interface{}, error) {
 
 func getValidatorTableData(userId uint64) (interface{}, error) {
 	validatordb := []struct {
-		Index        uint64  `db:"index"`
 		Pubkey       string  `db:"pubkey"`
 		Notification *string `db:"event_name"`
 		LastSent     *uint64 `db:"last_sent_ts"`
 		Threshold    *string `db:"event_threshold"`
 	}{}
 
-	err := db.DB.Select(&validatordb, `
-	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, extract( epoch from a.last_sent_ts)::Int as last_sent_ts, a.event_threshold
-	FROM validators 
-	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, us.last_sent_ts, us.event_threshold FROM users_validators_tags uvt 
+	err := db.FrontendDB.Select(&validatordb, `
+	SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold 
+	FROM users_validators_tags uvt 
 	LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id
-	WHERE uvt.user_id = $1) a ON a.pubkey=pubkeyhex;
-		`, userId)
+	WHERE uvt.user_id = $1;`, userId)
+
 	if err != nil {
 		return validatordb, err
 	}
@@ -335,18 +333,29 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	result_map := map[uint64]validator{}
 
 	for _, item := range validatordb {
-		if _, exists := result_map[item.Index]; !exists {
-			result_map[item.Index] = validator{Validator: validatorDetails{Pubkey: item.Pubkey, Index: item.Index}, Notifications: []notification{}}
+		var index uint64
+
+		err = db.DB.Get(&index, `
+		SELECT validatorindex
+		FROM validators WHERE pubkeyhex=$1
+			`, item.Pubkey)
+
+		if err != nil {
+			return validatordb, err
+		}
+
+		if _, exists := result_map[index]; !exists {
+			result_map[index] = validator{Validator: validatorDetails{Pubkey: item.Pubkey, Index: index}, Notifications: []notification{}}
 		}
 
 		if item.Notification != nil {
-			map_item := result_map[item.Index]
+			map_item := result_map[index]
 			var ts uint64 = 0
 			if item.LastSent != nil {
 				ts = *item.LastSent
 			}
 			map_item.Notifications = append(map_item.Notifications, notification{Notification: *item.Notification, Timestamp: ts, Threshold: *item.Threshold})
-			result_map[item.Index] = map_item
+			result_map[index] = map_item
 		}
 
 	}

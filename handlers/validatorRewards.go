@@ -63,7 +63,7 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 
 func getUserRewardSubscriptions(uid uint64) [][]string {
 	var dbResp []types.Subscription
-	err := db.DB.Select(&dbResp,
+	err := db.FrontendDB.Select(&dbResp,
 		`select * from users_subscriptions where event_name=$1 AND user_id=$2`, types.TaxReportEventName, uid)
 	if err != nil {
 		logger.Errorf("error getting prices: %w", err)
@@ -199,7 +199,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var count uint64
-	err := db.DB.Get(&count,
+	err := db.FrontendDB.Get(&count,
 		`select count(event_name) 
 		from users_subscriptions 
 		where user_id=$1 AND event_name=$2;`, user.UserID, types.TaxReportEventName)
@@ -303,7 +303,7 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var count uint64
-	err := db.DB.Get(&count,
+	err := db.FrontendDB.Get(&count,
 		`select count(event_name) 
 		from users_subscriptions 
 		where user_id=$1 AND event_name=$2;`, user.UserID, types.TaxReportEventName)
