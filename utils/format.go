@@ -543,7 +543,8 @@ func FormatValidatorStatus(status string) template.HTML {
 	} else if status == "pending" {
 		return "<span><b>Pending</b></span>"
 	} else if status == "active_online" {
-		return "<b>Active</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		// return "<b>Active</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		return "<span class=\"badge badge-success\" style=\"font-size: 1rem;\">ACTIVE</span>"
 	} else if status == "active_offline" {
 		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Active</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
 	} else if status == "exiting_online" {

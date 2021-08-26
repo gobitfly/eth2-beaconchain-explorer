@@ -3,43 +3,49 @@
     <div style="min-width: 400px;">
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
-          <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
-          <li class="breadcrumb-item"><a href="/validators" title="Validators">Validators</a></li>
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/validators">Validators</a></li>
           <li class="breadcrumb-item active" aria-current="page">Validator info</li>
         </ol>
       </nav>
     </div>
-    <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between mt-3">
-      <div class="d-flex align-items-center">
-        <h1 class="mb-0 mr-1 h3 text-nowrap">Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</h1>
-        <span data-toggle="tooltip" title="Edit name">
-          <i class="fa fa-edit fa-lg mb-3 text-muted" role="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" style="padding: .5rem;"></i>
-        </span>
-        {{if len .Watchlist}}
-          <span class="mb-3" data-toggle="tooltip" title="Stop receiving updates for this validator">
-            <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
-              <button type="submit" id="unfollow-button" style="background: none; padding: 0; border: none;">
-                <i class="fas fa-bookmark fa-lg text-muted" style="padding: .5rem;"></i>
-              </button>
-            </form>
+    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-md-between mt-3">
+      <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-center justify-content-sm-start">
+        <div class="d-flex align-items-center justify-content-start">
+          <h1 class="mb-0 mr-1 h3 text-nowrap">Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</h1>
+          <span data-toggle="tooltip" title="Edit name">
+            <i class="fa fa-edit fa-lg mb-3 text-muted" role="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" style="padding: .5rem;"></i>
           </span>
-        {{else}}
-          {{if .User.Authenticated}}
-            <span class="mb-3" data-toggle="tooltip" title="Follow validator to receive email notifications">
-              <i class="fas fa-bookmark fa-lg text-muted" role="button" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" style="padding: .5rem;"></i>
-            </span>
-          {{else}}
-            <span class="mb-3" data-toggle="tooltip" title="Follow validator to receive email notifications">
-              <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
-                <button type="submit" id="follow-button" style="background: none; padding: 0; border: none;">
+          {{if len .Watchlist}}
+            <span class="mb-3" data-toggle="tooltip" title="Stop receiving updates for this validator">
+              <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
+                <button type="submit" id="unfollow-button" style="background: none; padding: 0; border: none;">
                   <i class="fas fa-bookmark fa-lg text-muted" style="padding: .5rem;"></i>
                 </button>
               </form>
             </span>
+          {{else}}
+            {{if .User.Authenticated}}
+              <span class="mb-3" data-toggle="tooltip" title="Follow validator to receive email notifications">
+                <i class="fas fa-bookmark fa-lg text-muted" role="button" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal" style="padding: .5rem;"></i>
+              </span>
+            {{else}}
+              <span class="mb-3" data-toggle="tooltip" title="Follow validator to receive email notifications">
+                <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
+                  <button type="submit" id="follow-button" style="background: none; padding: 0; border: none;">
+                    <i class="fas fa-bookmark fa-lg text-muted" style="padding: .5rem;"></i>
+                  </button>
+                </form>
+              </span>
+            {{end}}
           {{end}}
-        {{end}}
+        </div>
+        <div class="d-flex align-items-center justify-content-start mb-4 mb-sm-0">
+          <div class="ml-sm-3"><span class="badge badge-secondary text-white" style="font-size: 1rem;">RANK #<a href="/validators/leaderboard">{{if gt .Rank7d 0}}{{.Rank7d}}{{else}}N/A{{end}}</a></span></div>
+          <div class="ml-2">{{.Status | formatValidatorStatus}}</div>
+        </div>
       </div>
-      <a class="btn btn-new-primary text-nowrap" href="/validator/{{.Index}}/stats">View daily statistics</a>
+      <a class="btn btn-new-primary text-nowrap text-white" href="/validator/{{.Index}}/stats">View daily statistics</a>
     </div>
     <div class="d-flex align-items-center">
       <h2 class="mb-0 mr-1 h6 font-weight-light text-monospace text-secondary text-truncate text-sm" id="copy-input">0x{{printf "%x" .PublicKey}}</h2>
