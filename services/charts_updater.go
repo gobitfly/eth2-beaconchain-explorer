@@ -1545,6 +1545,11 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Y:         0,
 				Drilldown: "Defi",
 			},
+			{
+				Name:      "Guarda",
+				Y:         0,
+				Drilldown: "Guarda",
+			},
 		}
 		drillSeries = []drillSeriesData{
 			{
@@ -1590,6 +1595,11 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			{
 				Name: "Defi",
 				ID:   "Defi",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Guarda",
+				ID:   "Guarda",
 				Data: [][2]string{},
 			},
 			{ // always must be the last
