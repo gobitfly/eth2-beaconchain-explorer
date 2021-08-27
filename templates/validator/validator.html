@@ -123,10 +123,11 @@
 								<li class="nav-item">
 									<a class="nav-link active" id="incomeChart-tab" data-toggle="tab" href="#incomeChart" role="tab" aria-controls="incomeChart-tab-content" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-chart-line"></i><span class="tab-text">Income</span></a>
 								</li>
+								<!--
 								<li class="nav-item">
 									<a class="nav-link {{if eq .BlocksCount 0}}disabled{{end}}" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart-tab-content" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-chart-bar"></i><span class="tab-text">Proposals</span></a>
 								</li>
-								<!-- Tables -->
+								-->
 								
 								<li class="nav-item">
 									<a class="nav-link {{if eq .BlocksCount 0}}disabled{{end}}" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
@@ -144,11 +145,24 @@
 									<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab"
 									aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span></a>
 								</li>
+								<li class="nav-item">
+									<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#rocketpool" role="tab"
+									aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-rocket"></i> <span class="tab-text">Rocketpool</span></a>
+								</li>
 							</ul>
 							<div class="tab-content h-100" id="myTabContent">
 								<div id="incomeChart" class="tab-pane fade h-100 show active" role="tabpanel" aria-labelledby="incomeChart-tab">
 									{{template "validatorIncomeChart"  $ }}
 								</div>
+								<div id="blocks"  class="tab-pane fade h-100 show active" role="tabpanel" aria-labelledby="blocks-tab">
+									<div class="blocks-switch m-2">
+										<i class="fas fa-chart-line fa-sm switch-chart p-2 blocks-switch-selected"></i>
+										<i class="fas fa-table fa-sm switch-table p-2"></i>
+									</div>
+									<div>{{template "validatorProposedChart"  . }}</div>
+									<div>{{template "validatorProposedTable"  . }}</div>
+								</div>
+								<!--
 								<div id="proposedChart" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="proposedChart-tab">
 									{{template "validatorProposedChart"  . }}
 								</div>
@@ -157,6 +171,7 @@
 									{{ template "validatorProposedTable"  . }}
 								</div>
 								{{end}}
+								-->
 								{{ if gt .AttestationsCount 0 }}
 								 <div class="tab-pane fade h-100" id="attestations" role="tabpanel" aria-labelledby="attestations-tab" aria-controls="attestations">
 									{{template "validatorAttestationsTable" . }}
@@ -171,6 +186,19 @@
 									<div class="px-3">
 										{{template "validatorDepositsTable" $}}
 									</div>
+								</div>
+								<div class="tab-pane fade h-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
+									<pre>
+	minipool: 0x738e8da6cf16798e83dda32bb4cd6d19fbd0211f
+		node_fee: 0.2
+		deposit_type: Half
+		status: staking
+	node: 0x1dadb9212a1053297ca2513aebe691d6eb6c658a
+		timezone_location: Europe/London
+		rpl_stake: 734592247041014493907
+		min_rpl_stake: 5762745628576077305
+		max_rpl_stake: 8644118442864115958375
+									</pre>
 								</div>
 							</div>
 						</div>
