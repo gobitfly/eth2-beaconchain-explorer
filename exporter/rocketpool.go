@@ -121,6 +121,7 @@ func (rp *RocketpoolExporter) InitProposals() error {
 }
 
 func (rp *RocketpoolExporter) Run() error {
+	errorInterval := time.Second * 2
 	t := time.NewTicker(rp.UpdateInterval)
 	defer t.Stop()
 	for {
@@ -129,13 +130,13 @@ func (rp *RocketpoolExporter) Run() error {
 		err = rp.Update()
 		if err != nil {
 			logger.WithError(err).Errorf("error updating rocketpool-data")
-			time.Sleep(time.Second * 2)
+			time.Sleep(errorInterval)
 			continue
 		}
 		err = rp.Save()
 		if err != nil {
 			logger.WithError(err).Errorf("error saving rocketpool-data")
-			time.Sleep(time.Second * 2)
+			time.Sleep(errorInterval)
 			continue
 		}
 
@@ -163,6 +164,10 @@ func (rp *RocketpoolExporter) Save() error {
 		return err
 	}
 	err = rp.SaveProposals()
+	if err != nil {
+		return err
+	}
+	err = rp.TagValidators()
 	if err != nil {
 		return err
 	}
@@ -439,6 +444,53 @@ func (rp *RocketpoolExporter) SaveProposals() error {
 			valueArgs = append(valueArgs, d.State)
 		}
 		stmt := fmt.Sprintf(`insert into rocketpool_proposals (rocketpool_storage_address, id, dao, proposer_address, message, created_time, start_time, end_time, expiry_time, votes_required, votes_for, votes_against, member_voted, member_supported, is_cancelled, is_executed, payload, state) values %s on conflict (rocketpool_storage_address, id) do update set dao = excluded.dao, proposer_address = excluded.proposer_address, message = excluded.message, created_time = excluded.created_time, start_time = excluded.start_time, end_time = excluded.end_time, expiry_time = excluded.expiry_time, votes_required = excluded.votes_required, votes_for = excluded.votes_for, votes_against = excluded.votes_against, member_voted = excluded.member_voted, member_supported = excluded.member_supported, is_cancelled = excluded.is_cancelled, is_executed = excluded.is_executed, payload = excluded.payload, state = excluded.state`, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (rp *RocketpoolExporter) TagValidators() error {
+	if len(rp.MinipoolsByAddress) == 0 {
+		return nil
+	}
+
+	t0 := time.Now()
+	defer func(t0 time.Time) {
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Debugf("saved rocketpool-validator-tags")
+	}(t0)
+
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	data := make([]*RocketpoolMinipool, len(rp.MinipoolsByAddress))
+	i := 0
+	for _, mp := range rp.MinipoolsByAddress {
+		data[i] = mp
+		i++
+	}
+
+	batchSize := 5000
+	for b := 0; b < len(data); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(data) < end {
+			end = len(data)
+		}
+		n := 1
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*n)
+		for i, d := range data[start:end] {
+			valueStrings = append(valueStrings, fmt.Sprintf("($%d, 'rocketpool')", i*n+1))
+			valueArgs = append(valueArgs, d.Pubkey)
+		}
+		stmt := fmt.Sprintf(`insert into validator_tags (publickey, tag) values %s on conflict (publickey, tag) do nothing`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return err
