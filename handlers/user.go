@@ -283,7 +283,7 @@ func getUserMetrics(userId uint64) (interface{}, error) {
 		ProposalsMissed    uint64 `db:"proposals_missed"`
 		ProposalsSubmitted uint64 `db:"proposals_submitted"`
 	}{}
-
+	net := strings.ToLower(utils.GetNetwork())
 	err := db.FrontendDB.Get(&metricsdb, `
 		SELECT COUNT(user_id) as validators,
 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS') AS notifications,
@@ -292,7 +292,9 @@ func getUserMetrics(userId uint64) (interface{}, error) {
 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS' AND event_name=$4) AS proposals_submitted
 		FROM users_validators_tags  
 		WHERE user_id=$1;
-		`, userId, types.ValidatorMissedAttestationEventName, types.ValidatorMissedProposalEventName, types.ValidatorExecutedProposalEventName)
+		`, userId, net+":"+string(types.ValidatorMissedAttestationEventName),
+		net+":"+string(types.ValidatorMissedProposalEventName),
+		net+":"+string(types.ValidatorExecutedProposalEventName))
 	return metricsdb, err
 }
 
@@ -384,7 +386,7 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 		SELECT count(user_id)                 
 		FROM users_subscriptions      
 		WHERE user_id=$1 AND event_name=$2;
-	`, userId, types.NetworkLivenessIncreasedEventName)
+	`, userId, strings.ToLower(utils.GetNetwork())+":"+string(types.NetworkLivenessIncreasedEventName))
 
 	if c > 0 {
 		net.IsSubscribed = true

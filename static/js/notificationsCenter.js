@@ -84,7 +84,9 @@ function loadMonitoringData(data) {
   let id = 0;
   for (let item of data) {
     for (let n of item.Notifications) {
-      let ns = n.Notification.split('_');
+      let nn = n.Notification.split(':');
+      nn = nn[nn.length-1];
+      let ns = nn.split('_');
       if (ns[0] === 'monitoring') {
         if (ns[1] === 'machine') {
           ns[1] = ns[2];
@@ -95,7 +97,7 @@ function loadMonitoringData(data) {
           threshold: [n.Threshold, item],
           machine: item.Validator.Index,
           mostRecent: n.Timestamp,
-          event: { pk: item.Validator.Pubkey, e: n.Notification }
+          event: { pk: item.Validator.Pubkey, e: nn }
         })
         id += 1;
       }
@@ -156,6 +158,7 @@ function loadMonitoringData(data) {
         }
 
         let ev = $(this).attr('event').split(',');
+        console.log(ev);
         for (let i of ev) {
           if (i.length > 0) {
             let t = i.split(':');
@@ -262,9 +265,12 @@ function loadMonitoringData(data) {
           if (type === 'display') {
             let e = "";
             for (let i of data[1].Notifications) {
-              let ns = i.Notification.split('_');
+              // console.log("q", i)
+              let nn = i.Notification.split(':');
+              nn = nn[nn.length-1];
+              let ns = nn.split('_');
               if (ns[0] === 'monitoring') {
-                e += `${i.Notification}:${i.Threshold},`;
+                e += `${nn}:${i.Threshold},`;
               }
             }
             return `
@@ -323,7 +329,7 @@ function loadMonitoringData(data) {
 
 function loadNetworkData(data) {
   let networkTable = $('#network-notifications');
-
+  // console.log(NET, data)
   networkTable.DataTable({
     language: {
       info: '_TOTAL_ entries',
@@ -489,10 +495,13 @@ function loadValidatorsData(data) {
             let notifications = "";
             let hasItems = false;
             for (let notification of data) {
-              if (VALIDATOR_EVENTS.includes(notification.Notification)) {
+              let n = notification.Notification.split(":")
+              n = n[n.length-1]
+              // console.log(n)
+              if (VALIDATOR_EVENTS.includes(n)) {
                 hasItems = true;
                 let badgeColor = "";
-                switch (notification.Notification) {
+                switch (n) {
                   case 'validator_balance_decreased':
                     badgeColor = 'badge-light';
                     break;
@@ -509,9 +518,10 @@ function loadValidatorsData(data) {
                     badgeColor = 'badge-light';
                     break;
                 }
-                notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + notification.Notification.replaceAll("_", " ") + '</span>';
+                notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + n.replaceAll("_", " ") + '</span>';
               }
             }
+            // console.log(notifications)
             if (!hasItems) {
               return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
             }
@@ -771,7 +781,9 @@ $(document).ready(function() {
 
       for (let event of $('#manage_all_events :input')) {
         for (let item of rowData.Notifications) {
-          $(`#manage_${item.Notification} input#${$(event).attr('id')}`).prop('checked', true);
+          let n = item.Notification.split(":")
+          n = n[n.length-1]
+          $(`#manage_${n} input#${$(event).attr('id')}`).prop('checked', true);
         }
       }
     } else {
