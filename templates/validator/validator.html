@@ -78,7 +78,7 @@
 		{{template "validatorHeading" .}}
 		<div class="row align-items-stretch">
 			<div class="col-lg-8 px-lg-2 my-2">
-				<div class="card d-flex flex-column justify-content-center h-100 py-0 px-0 card-body" style="background-color: yellow;">
+				<div class="card d-flex flex-column justify-content-center h-100 py-0 px-0 card-body" style="min-width: 320px;">
 					<div class="row">
 						<div class="col">
 							{{template "validatorLifeCycleDiagram" .}}
@@ -101,7 +101,7 @@
 				</div>
 			</div>
 			<div class="col-lg-4 px-lg-2 my-2">
-				<div class="card card-body px-0 h-100 d-flex align-items-center" style="min-width: 300px;">
+				<div class="card card-body px-0 h-100 d-flex align-items-center" style="min-width: 320px;">
 					{{if $deposited}}
 						{{template "validatorNetworkStatsTable" .}}
 					{{end}}

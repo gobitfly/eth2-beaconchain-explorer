@@ -541,7 +541,8 @@ func FormatValidatorStatus(status string) template.HTML {
 	if status == "deposited" || status == "deposited_valid" || status == "deposited_invalid" {
 		return "<span><b>Deposited</b></span>"
 	} else if status == "pending" {
-		return "<span><b>Pending</b></span>"
+		// return "<span><b>Pending</b></span>"
+		return "<span class=\"badge badge-warning\" style=\"font-size: 1rem;\">PENDING</span>"
 	} else if status == "active_online" {
 		// return "<b>Active</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
 		return "<span class=\"badge badge-success\" style=\"font-size: 1rem;\">ACTIVE</span>"
@@ -558,7 +559,8 @@ func FormatValidatorStatus(status string) template.HTML {
 	} else if status == "exited" {
 		return "<span><b>Exited</b></span>"
 	} else if status == "slashed" {
-		return "<span><b>Slashed</b></span>"
+		// return "<span><b>Slashed</b></span>"
+		return "<span class=\"badge badge-danger\" style=\"font-size: 1rem;\"><b>SLASHED</b></span>"
 	}
 	return "<b>Unknown</b>"
 }
