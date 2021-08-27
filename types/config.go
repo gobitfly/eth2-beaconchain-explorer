@@ -133,8 +133,8 @@ type Config struct {
 	} `yaml:"SSVExporter"`
 	RocketpoolExporter struct {
 		Enabled                   bool   `yaml:"enabled" envconfig:"ROCKETPOOL_EXPORTER_ENABLED"`
-		StorageContractAddress    string `yaml:"enabled" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_ADDRESS"`
-		StorageContractFirstBlock uint64 `yaml:"enabled" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_FIRST_BLOCK"`
+		StorageContractAddress    string `yaml:"storageContractAddress" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_ADDRESS"`
+		StorageContractFirstBlock uint64 `yaml:"storageContractFirstBlock" envconfig:"ROCKETPOOL_EXPORTER_STORAGE_CONTRACT_FIRST_BLOCK"`
 	}
 }
 
