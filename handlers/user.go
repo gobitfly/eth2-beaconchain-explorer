@@ -526,12 +526,13 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	net := strings.ToLower(utils.GetNetwork())
 	pqPubkeys := pq.Array(reqData.Pubkeys)
-	pqEventNames := pq.Array([]string{string(types.ValidatorMissedAttestationEventName),
-		string(types.ValidatorBalanceDecreasedEventName),
-		string(types.ValidatorMissedProposalEventName),
-		string(types.ValidatorExecutedProposalEventName),
-		string(types.ValidatorGotSlashedEventName)})
+	pqEventNames := pq.Array([]string{net + ":" + string(types.ValidatorMissedAttestationEventName),
+		net + ":" + string(types.ValidatorBalanceDecreasedEventName),
+		net + ":" + string(types.ValidatorMissedProposalEventName),
+		net + ":" + string(types.ValidatorExecutedProposalEventName),
+		net + ":" + string(types.ValidatorGotSlashedEventName)})
 
 	_, err = db.FrontendDB.Exec(`
 			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
@@ -606,12 +607,13 @@ func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	net := strings.ToLower(utils.GetNetwork())
 	pqPubkeys := pq.Array(reqData.Pubkeys)
-	pqEventNames := pq.Array([]string{string(types.MonitoringMachineCpuLoadEventName),
-		string(types.MonitoringMachineDiskAlmostFullEventName),
-		string(types.MonitoringMachineOfflineEventName),
-		string(types.MonitoringMachineSwitchedToETH1FallbackEventName),
-		string(types.MonitoringMachineSwitchedToETH2FallbackEventName)})
+	pqEventNames := pq.Array([]string{net + ":" + string(types.MonitoringMachineCpuLoadEventName),
+		net + ":" + string(types.MonitoringMachineDiskAlmostFullEventName),
+		net + ":" + string(types.MonitoringMachineOfflineEventName),
+		net + ":" + string(types.MonitoringMachineSwitchedToETH1FallbackEventName),
+		net + ":" + string(types.MonitoringMachineSwitchedToETH2FallbackEventName)})
 
 	_, err = db.FrontendDB.Exec(`
 			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
