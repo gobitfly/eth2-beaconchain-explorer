@@ -12,7 +12,7 @@
     <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-md-between mt-3">
       <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-center justify-content-sm-start">
         <div class="d-flex align-items-center justify-content-start">
-          <h1 class="mb-0 mr-1 h3 text-nowrap">Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</h1>
+          <h1 class="mb-0 mr-1 h3 text-nowrap" style="letter-spacing: 2px;">Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</h1>
           <span data-toggle="tooltip" title="Edit name">
             <i class="fa fa-edit fa-lg mb-3 text-muted" role="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" style="padding: .5rem;"></i>
           </span>

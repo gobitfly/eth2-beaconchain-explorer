@@ -1,6 +1,6 @@
 {{define "validatorLifeCycleDiagram"}}
     {{$deposited := or (or (eq .Status "deposited") (eq .Status "deposited_valid")) (eq .Status "deposited_invalid")}}
-    <div class="validator__lifecycle-container" style="background-color: orange;">
+    <div class="validator__lifecycle-container">
     	<div class="validator__lifecycle-content">
       	<div id="lifecycle-deposited" class="validator__lifecycle-node-container validator__lifecycle-deposited">
           <div class="validator__lifecycle-node-header">
