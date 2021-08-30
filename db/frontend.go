@@ -288,7 +288,7 @@ func GetAppSubscriptionCount(userID uint64) (int64, error) {
 
 func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error) {
 	userSub := types.UserPremiumSubscription{}
-	err := FrontendDB.Get(&userSub, "SELECT user_id, store, active, product_id FROM users_app_subscriptions WHERE user_id = $1 ORDER BY active, id desc LIMIT 1", id)
+	err := FrontendDB.Get(&userSub, "SELECT user_id, store, active, product_id FROM users_app_subscriptions WHERE user_id = $1 AND active = true ORDER BY active, id desc LIMIT 1", id)
 	return userSub, err
 }
 
