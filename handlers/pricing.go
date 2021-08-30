@@ -18,6 +18,12 @@ var pricingTemplate = template.Must(template.New("pricing").Funcs(utils.GetTempl
 	"templates/svg/pricing.html",
 ))
 
+var mobilePricingTemplate = template.Must(template.New("mobilepricing").Funcs(utils.GetTemplateFuncs()).ParseFiles(
+	"templates/layout.html",
+	"templates/payment/mobilepricing.html",
+	"templates/svg/mobilepricing.html",
+))
+
 var successTemplate = template.Must(template.New("success").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
 	"templates/payment/success.html",
@@ -48,7 +54,7 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if data.User.Authenticated {
-		subscription, err := db.StripeGetUserAPISubscription(data.User.UserID)
+		subscription, err := db.StripeGetUserSubscription(data.User.UserID, utils.GROUP_API)
 		if err != nil {
 			logger.Errorf("error retrieving user subscriptions %v", err)
 			http.Error(w, "Internal server error", 503)
@@ -65,6 +71,50 @@ func Pricing(w http.ResponseWriter, r *http.Request) {
 	data.Data = pageData
 
 	err = pricingTemplate.ExecuteTemplate(w, "layout", data)
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+func MobilePricing(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	w.Header().Set("Content-Type", "text/html")
+
+	data := InitPageData(w, r, "premium", "/premium", "Premium Pricing")
+
+	pageData := &types.MobilePricing{}
+	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
+	pageData.CsrfField = csrf.TemplateField(r)
+
+	pageData.User = data.User
+	pageData.FlashMessage, err = utils.GetFlash(w, r, "pricing_flash")
+	if err != nil {
+		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if data.User.Authenticated {
+		subscription, err := db.StripeGetUserSubscription(data.User.UserID, utils.GROUP_API)
+		if err != nil {
+			logger.Errorf("error retrieving user subscriptions %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		pageData.Subscription = subscription
+	}
+
+	pageData.StripePK = utils.Config.Frontend.Stripe.PublicKey
+	pageData.Plankton = utils.Config.Frontend.Stripe.Plankton
+	pageData.Goldfish = utils.Config.Frontend.Stripe.Goldfish
+	pageData.Whale = utils.Config.Frontend.Stripe.Whale
+
+	data.Data = pageData
+
+	err = mobilePricingTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", 503)
