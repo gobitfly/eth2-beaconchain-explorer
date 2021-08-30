@@ -328,7 +328,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			err = createNewStripeSubscription(subscription, event)
 			if err != nil {
 				logger.WithError(err).Error(err.Error(), event.Data.Object)
-				http.Error(w, "error updating "+err.Error()+" customer: "+subscription.Customer.ID, 503)
+				http.Error(w, "error updating "+err.Error()+" customer: "+subscription.Customer.ID+" | subscriptionID: "+subscription.ID+" | priceID: "+priceID, 503)
 				return
 			}
 
