@@ -408,7 +408,7 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 
 func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
+	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -435,7 +435,7 @@ func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
+	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -496,7 +496,7 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 
 func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
+	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -576,7 +576,7 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 
 func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
+	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -659,7 +659,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsCenterData := &types.UserNotificationsCenterPageData{}
 
-	user := getUser(w, r)
+	user := getUser(r)
 
 	userNotificationsCenterData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userNotificationsCenterData.CsrfField = csrf.TemplateField(r)
