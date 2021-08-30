@@ -185,9 +185,10 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		Email     string `db:"email"`
 		Password  string `db:"password"`
 		Confirmed bool   `db:"email_confirmed"`
+		ProductID string `db:"product_id"`
 	}{}
 
-	err = db.FrontendDB.Get(&user, "SELECT id, email, password, email_confirmed FROM users WHERE email = $1", email)
+	err = db.FrontendDB.Get(&user, "SELECT users.id, email, password, email_confirmed, product_id FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
 	if err != nil {
 		logger.Errorf("error retrieving password for user %v: %v", email, err)
 		session.AddFlash("Error: Invalid email or password!")
@@ -213,10 +214,11 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 
 	session.Values["authenticated"] = true
 	session.Values["user_id"] = user.ID
+	session.Values["subscription"] = user.ProductID
 	// session.AddFlash("Successfully logged in")
 
 	session.Save(r, w)
-	logger.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"])
+	logger.Println("login succeeded with session", session.Values["authenticated"], session.Values["user_id"], session.Values["subscription"])
 
 	redirectURI, RedirectExists := session.Values["oauth_redirect_uri"]
 
@@ -248,6 +250,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	session.Values["subscription"] = ""
 	session.Values["authenticated"] = false
 	delete(session.Values, "user_id")
 	session.Save(r, w)
@@ -275,8 +278,9 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		ID             uint64 `db:"id"`
 		EmailConfirmed bool   `db:"email_confirmed"`
 		Email          string `db:"email"`
+		ProductID      string `db:"product_id"`
 	}{}
-	err = db.FrontendDB.Get(&dbUser, "SELECT id, email_confirmed, email FROM users WHERE password_reset_hash = $1", hash)
+	err = db.FrontendDB.Get(&dbUser, "SELECT users.id, email_confirmed, email, product_id FROM users LEFT JOIN users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE password_reset_hash = $1", hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			session.AddFlash("Error: Invalid reset link, please retry.")
@@ -307,9 +311,11 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	user := &types.User{}
 	user.Authenticated = true
 	user.UserID = dbUser.ID
+	user.Subscription = dbUser.ProductID
 
 	session.Values["authenticated"] = true
 	session.Values["user_id"] = user.UserID
+	session.Values["subscription"] = user.Subscription
 
 	session.Save(r, w)
 
@@ -328,7 +334,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 	logger := logger.WithField("route", r.URL.String())
 
-	user, session, err := getUserSession(w, r)
+	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -370,6 +376,7 @@ func ResetPasswordPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session.Values["subscription"] = ""
 	session.Values["authenticated"] = false
 	delete(session.Values, "user_id")
 
