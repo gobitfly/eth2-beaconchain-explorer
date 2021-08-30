@@ -1556,7 +1556,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 		// not quite happy performance wise, placing a TODO here for future me
 		for i, v := range myValidators {
-			err = db.AddSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)), 0)
+			err = db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, fmt.Sprintf("%v", hex.EncodeToString(v.PublicKey)), 0)
 			if err != nil {
 				logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 				ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
@@ -1579,7 +1579,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 			}
 		}
 
-		err = db.AddSubscription(user.UserID, utils.Config.Chain.Phase0.ConfigName, eventName, filter, threshold)
+		err = db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, filter, threshold)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
