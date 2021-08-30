@@ -623,11 +623,24 @@ func FormatValidator(validator uint64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
-func FormatValidatorWithName(validator uint64, name string) template.HTML {
+func FormatValidatorWithName(validator interface{}, name string) template.HTML {
+	var validatorRead string
+	var validatorLink string
+	switch v := validator.(type) {
+	case []byte:
+		if len(v) > 2 {
+			validatorRead = fmt.Sprintf("0x%x…%x", v[:2], v[len(v)-2:])
+		}
+		validatorLink = fmt.Sprintf("%x", v)
+	default:
+		validatorRead = fmt.Sprintf("%v", v)
+		validatorLink = fmt.Sprintf("%v", v)
+	}
+
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validator))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
 	} else {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validatorLink, validatorRead))
 	}
 }
 

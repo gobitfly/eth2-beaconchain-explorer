@@ -16,6 +16,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/rocket-pool/rocketpool-go/dao"
 	rpDAO "github.com/rocket-pool/rocketpool-go/dao"
+	rpDAOTrustedNode "github.com/rocket-pool/rocketpool-go/dao/trustednode"
 	"github.com/rocket-pool/rocketpool-go/minipool"
 	"github.com/rocket-pool/rocketpool-go/node"
 	"github.com/rocket-pool/rocketpool-go/rocketpool"
@@ -42,13 +43,14 @@ func rocketpoolExporter() {
 }
 
 type RocketpoolExporter struct {
-	Eth1Client         *ethclient.Client
-	API                *rocketpool.RocketPool
-	DB                 *sqlx.DB
-	UpdateInterval     time.Duration
-	MinipoolsByAddress map[string]*RocketpoolMinipool
-	NodesByAddress     map[string]*RocketpoolNode
-	ProposalsByID      map[uint64]*RocketpoolProposal
+	Eth1Client          *ethclient.Client
+	API                 *rocketpool.RocketPool
+	DB                  *sqlx.DB
+	UpdateInterval      time.Duration
+	MinipoolsByAddress  map[string]*RocketpoolMinipool
+	NodesByAddress      map[string]*RocketpoolNode
+	DAOProposalsByID    map[uint64]*RocketpoolDAOProposal
+	DAOMembersByAddress map[string]*RocketpoolDAOMember
 }
 
 func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressHex string, db *sqlx.DB) (*RocketpoolExporter, error) {
@@ -63,7 +65,8 @@ func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressH
 	rpe.UpdateInterval = time.Second * 60
 	rpe.MinipoolsByAddress = map[string]*RocketpoolMinipool{}
 	rpe.NodesByAddress = map[string]*RocketpoolNode{}
-	rpe.ProposalsByID = map[uint64]*RocketpoolProposal{}
+	rpe.DAOProposalsByID = map[uint64]*RocketpoolDAOProposal{}
+	rpe.DAOMembersByAddress = map[string]*RocketpoolDAOMember{}
 	return rpe, nil
 }
 
@@ -77,7 +80,11 @@ func (rp *RocketpoolExporter) Init() error {
 	if err != nil {
 		return err
 	}
-	err = rp.InitProposals()
+	err = rp.InitDAOProposals()
+	if err != nil {
+		return err
+	}
+	err = rp.InitDAOMembers()
 	if err != nil {
 		return err
 	}
@@ -90,8 +97,8 @@ func (rp *RocketpoolExporter) InitMinipools() error {
 	if err != nil {
 		return err
 	}
-	for _, mp := range dbRes {
-		rp.MinipoolsByAddress[fmt.Sprintf("%x", mp.Address)] = &mp
+	for _, val := range dbRes {
+		rp.MinipoolsByAddress[fmt.Sprintf("%x", val.Address)] = &val
 	}
 	return nil
 }
@@ -102,20 +109,32 @@ func (rp *RocketpoolExporter) InitNodes() error {
 	if err != nil {
 		return err
 	}
-	for _, node := range dbRes {
-		rp.NodesByAddress[fmt.Sprintf("%x", node.Address)] = &node
+	for _, val := range dbRes {
+		rp.NodesByAddress[fmt.Sprintf("%x", val.Address)] = &val
 	}
 	return nil
 }
 
-func (rp *RocketpoolExporter) InitProposals() error {
-	dbRes := []RocketpoolProposal{}
+func (rp *RocketpoolExporter) InitDAOProposals() error {
+	dbRes := []RocketpoolDAOProposal{}
 	err := rp.DB.Select(&dbRes, `select * from rocketpool_proposals`)
 	if err != nil {
 		return err
 	}
-	for _, proposal := range dbRes {
-		rp.ProposalsByID[proposal.ID] = &proposal
+	for _, val := range dbRes {
+		rp.DAOProposalsByID[val.ID] = &val
+	}
+	return nil
+}
+
+func (rp *RocketpoolExporter) InitDAOMembers() error {
+	dbRes := []RocketpoolDAOMember{}
+	err := rp.DB.Select(&dbRes, `select * from rocketpool_dao_members`)
+	if err != nil {
+		return err
+	}
+	for _, val := range dbRes {
+		rp.DAOMembersByAddress[fmt.Sprintf("%x", val.Address)] = &val
 	}
 	return nil
 }
@@ -149,7 +168,8 @@ func (rp *RocketpoolExporter) Update() error {
 	var wg errgroup.Group
 	wg.Go(func() error { return rp.UpdateMinipools() })
 	wg.Go(func() error { return rp.UpdateNodes() })
-	wg.Go(func() error { return rp.UpdateProposals() })
+	wg.Go(func() error { return rp.UpdateDAOProposals() })
+	wg.Go(func() error { return rp.UpdateDAOMembers() })
 	return wg.Wait()
 }
 
@@ -163,7 +183,11 @@ func (rp *RocketpoolExporter) Save() error {
 	if err != nil {
 		return err
 	}
-	err = rp.SaveProposals()
+	err = rp.SaveDAOProposals()
+	if err != nil {
+		return err
+	}
+	err = rp.SaveDAOMembers()
 	if err != nil {
 		return err
 	}
@@ -230,10 +254,10 @@ func (rp *RocketpoolExporter) UpdateNodes() error {
 	return nil
 }
 
-func (rp *RocketpoolExporter) UpdateProposals() error {
+func (rp *RocketpoolExporter) UpdateDAOProposals() error {
 	t0 := time.Now()
 	defer func(t0 time.Time) {
-		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("updated rocketpool-proposals")
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("updated rocketpool-dao-proposals")
 	}(t0)
 
 	pc, err := rpDAO.GetProposalCount(rp.API, nil)
@@ -241,11 +265,40 @@ func (rp *RocketpoolExporter) UpdateProposals() error {
 		return err
 	}
 	for i := uint64(0); i < pc; i++ {
-		p, err := NewRocketpoolProposal(rp.API, i+1)
+		p, err := NewRocketpoolDAOProposal(rp.API, i+1)
 		if err != nil {
 			return err
 		}
-		rp.ProposalsByID[i] = p
+		rp.DAOProposalsByID[i] = p
+	}
+	return nil
+}
+
+func (rp *RocketpoolExporter) UpdateDAOMembers() error {
+	t0 := time.Now()
+	defer func(t0 time.Time) {
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("updated rocketpool-dao-members")
+	}(t0)
+
+	members, err := rpDAOTrustedNode.GetMembers(rp.API, nil)
+	if err != nil {
+		return err
+	}
+	for _, m := range members {
+		addrHex := m.Address.Hex()
+		if member, exists := rp.DAOMembersByAddress[addrHex]; exists {
+			err = member.Update(rp.API)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		m, err := NewRocketpoolDAOMember(rp.API, m.Address.Bytes())
+		if err != nil {
+			return err
+		}
+		rp.DAOMembersByAddress[addrHex] = m
 	}
 	return nil
 }
@@ -308,7 +361,7 @@ func (rp *RocketpoolExporter) SaveMinipools() error {
 		stmt := fmt.Sprintf(`insert into rocketpool_minipools (rocketpool_storage_address, address, pubkey, status, status_time, node_address, node_fee, deposit_type) values %s on conflict (rocketpool_storage_address, address) do update set pubkey = excluded.pubkey, status = excluded.status, status_time = excluded.status_time, node_address = excluded.node_address, node_fee = excluded.node_fee, deposit_type = excluded.deposit_type`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return err
+			return fmt.Errorf("error inserting into rocketpool_minipools: %w", err)
 		}
 	}
 
@@ -371,27 +424,27 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 		stmt := fmt.Sprintf(`insert into rocketpool_nodes (rocketpool_storage_address, address, timezone_location, rpl_stake, min_rpl_stake, max_rpl_stake) values %s on conflict (rocketpool_storage_address, address) do update set rpl_stake = excluded.rpl_stake, min_rpl_stake = excluded.min_rpl_stake, max_rpl_stake = excluded.max_rpl_stake`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return err
+			return fmt.Errorf("error inserting into rocketpool_nodes: %w", err)
 		}
 	}
 
 	return tx.Commit()
 }
 
-func (rp *RocketpoolExporter) SaveProposals() error {
-	if len(rp.ProposalsByID) == 0 {
+func (rp *RocketpoolExporter) SaveDAOProposals() error {
+	if len(rp.DAOProposalsByID) == 0 {
 		return nil
 	}
 
 	t0 := time.Now()
 	defer func(t0 time.Time) {
-		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Debugf("saved rocketpool-proposals")
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Debugf("saved rocketpool-dao-proposals")
 	}(t0)
 
-	data := make([]*RocketpoolProposal, len(rp.ProposalsByID))
+	data := make([]*RocketpoolDAOProposal, len(rp.DAOProposalsByID))
 	i := 0
-	for _, proposal := range rp.ProposalsByID {
-		data[i] = proposal
+	for _, val := range rp.DAOProposalsByID {
+		data[i] = val
 		i++
 	}
 
@@ -443,10 +496,75 @@ func (rp *RocketpoolExporter) SaveProposals() error {
 			valueArgs = append(valueArgs, d.Payload)
 			valueArgs = append(valueArgs, d.State)
 		}
-		stmt := fmt.Sprintf(`insert into rocketpool_proposals (rocketpool_storage_address, id, dao, proposer_address, message, created_time, start_time, end_time, expiry_time, votes_required, votes_for, votes_against, member_voted, member_supported, is_cancelled, is_executed, payload, state) values %s on conflict (rocketpool_storage_address, id) do update set dao = excluded.dao, proposer_address = excluded.proposer_address, message = excluded.message, created_time = excluded.created_time, start_time = excluded.start_time, end_time = excluded.end_time, expiry_time = excluded.expiry_time, votes_required = excluded.votes_required, votes_for = excluded.votes_for, votes_against = excluded.votes_against, member_voted = excluded.member_voted, member_supported = excluded.member_supported, is_cancelled = excluded.is_cancelled, is_executed = excluded.is_executed, payload = excluded.payload, state = excluded.state`, strings.Join(valueStrings, ","))
+		stmt := fmt.Sprintf(`insert into rocketpool_dao_proposals (rocketpool_storage_address, id, dao, proposer_address, message, created_time, start_time, end_time, expiry_time, votes_required, votes_for, votes_against, member_voted, member_supported, is_cancelled, is_executed, payload, state) values %s on conflict (rocketpool_storage_address, id) do update set dao = excluded.dao, proposer_address = excluded.proposer_address, message = excluded.message, created_time = excluded.created_time, start_time = excluded.start_time, end_time = excluded.end_time, expiry_time = excluded.expiry_time, votes_required = excluded.votes_required, votes_for = excluded.votes_for, votes_against = excluded.votes_against, member_voted = excluded.member_voted, member_supported = excluded.member_supported, is_cancelled = excluded.is_cancelled, is_executed = excluded.is_executed, payload = excluded.payload, state = excluded.state`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return err
+			return fmt.Errorf("error inserting into rocketpool_dao_proposals: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (rp *RocketpoolExporter) SaveDAOMembers() error {
+	if len(rp.DAOMembersByAddress) == 0 {
+		return nil
+	}
+
+	t0 := time.Now()
+	defer func(t0 time.Time) {
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Debugf("saved rocketpool-dao-members")
+	}(t0)
+
+	data := make([]*RocketpoolDAOMember, len(rp.DAOMembersByAddress))
+	i := 0
+	for _, val := range rp.DAOMembersByAddress {
+		data[i] = val
+		i++
+	}
+
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	nArgs := 8
+	valueStringsArr := make([]string, nArgs)
+	for i := range valueStringsArr {
+		valueStringsArr[i] = "$%d"
+	}
+	valueStringsTpl := "(" + strings.Join(valueStringsArr, ",") + ")"
+	valueStringsArgs := make([]interface{}, nArgs)
+
+	batchSize := 1000
+	for b := 0; b < len(data); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(data) < end {
+			end = len(data)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*nArgs)
+		for i, d := range data[start:end] {
+			for j := 0; j < nArgs; j++ {
+				valueStringsArgs[j] = i*nArgs + j + 1
+			}
+			valueStrings = append(valueStrings, fmt.Sprintf(valueStringsTpl, valueStringsArgs...))
+			valueArgs = append(valueArgs, rp.API.RocketStorageContract.Address.Bytes())
+			valueArgs = append(valueArgs, d.Address)
+			valueArgs = append(valueArgs, d.ID)
+			valueArgs = append(valueArgs, d.URL)
+			valueArgs = append(valueArgs, d.JoinedTime)
+			valueArgs = append(valueArgs, d.LastProposalTime)
+			valueArgs = append(valueArgs, d.RPLBondAmount.String())
+			valueArgs = append(valueArgs, d.UnbondedValidatorCount)
+		}
+		stmt := fmt.Sprintf(`insert into rocketpool_dao_members (rocketpool_storage_address, address, id, url, joined_time, last_proposal_time, rpl_bond_amount, unbonded_validator_count) values %s on conflict (rocketpool_storage_address, address) do update set id = excluded.id, url = excluded.url, joined_time = excluded.joined_time, last_proposal_time = excluded.last_proposal_time, rpl_bond_amount = excluded.rpl_bond_amount, unbonded_validator_count = excluded.unbonded_validator_count`, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return fmt.Errorf("error inserting into rocketpool_dao_members: %w", err)
 		}
 	}
 
@@ -493,7 +611,7 @@ func (rp *RocketpoolExporter) TagValidators() error {
 		stmt := fmt.Sprintf(`insert into validator_tags (publickey, tag) values %s on conflict (publickey, tag) do nothing`, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
-			return err
+			return fmt.Errorf("error inserting into validator_tags: %w", err)
 		}
 	}
 
@@ -502,7 +620,7 @@ func (rp *RocketpoolExporter) TagValidators() error {
 
 type RocketpoolMinipool struct {
 	Address     []byte    `db:"address"`
-	Pubkey      []byte    `db:"Pubkey"`
+	Pubkey      []byte    `db:"pubkey"`
 	NodeAddress []byte    `db:"node_address"`
 	NodeFee     float64   `db:"node_fee"`
 	DepositType string    `db:"deposit_type"`
@@ -619,7 +737,7 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool) error {
 	return nil
 }
 
-type RocketpoolProposal struct {
+type RocketpoolDAOProposal struct {
 	ID              uint64    `db:"id"`
 	DAO             string    `db:"dao"`
 	ProposerAddress []byte    `db:"proposer_address"`
@@ -639,8 +757,8 @@ type RocketpoolProposal struct {
 	State           string    `db:"state"`
 }
 
-func NewRocketpoolProposal(rp *rocketpool.RocketPool, pid uint64) (*RocketpoolProposal, error) {
-	p := &RocketpoolProposal{ID: pid}
+func NewRocketpoolDAOProposal(rp *rocketpool.RocketPool, pid uint64) (*RocketpoolDAOProposal, error) {
+	p := &RocketpoolDAOProposal{ID: pid}
 	err := p.Update(rp)
 	if err != nil {
 		return nil, err
@@ -648,7 +766,7 @@ func NewRocketpoolProposal(rp *rocketpool.RocketPool, pid uint64) (*RocketpoolPr
 	return p, nil
 }
 
-func (this *RocketpoolProposal) Update(rp *rocketpool.RocketPool) error {
+func (this *RocketpoolDAOProposal) Update(rp *rocketpool.RocketPool) error {
 	pd, err := dao.GetProposalDetails(rp, this.ID, nil)
 	if err != nil {
 		return err
@@ -670,5 +788,39 @@ func (this *RocketpoolProposal) Update(rp *rocketpool.RocketPool) error {
 	this.IsExecuted = pd.IsExecuted
 	this.Payload = pd.Payload
 	this.State = pd.State.String()
+	return nil
+}
+
+type RocketpoolDAOMember struct {
+	Address                []byte    `db:"address"`
+	ID                     string    `db:"id"`
+	URL                    string    `url:"url"`
+	JoinedTime             time.Time `db:"joined_time"`
+	LastProposalTime       time.Time `db:"last_proposal_time"`
+	RPLBondAmount          *big.Int  `db:"rpl_bond_amount"`
+	UnbondedValidatorCount uint64    `db:"unbonded_validator_count"`
+}
+
+func NewRocketpoolDAOMember(rp *rocketpool.RocketPool, addr []byte) (*RocketpoolDAOMember, error) {
+	m := &RocketpoolDAOMember{}
+	m.Address = addr
+	err := m.Update(rp)
+	if err != nil {
+		return m, err
+	}
+	return m, nil
+}
+
+func (this *RocketpoolDAOMember) Update(rp *rocketpool.RocketPool) error {
+	d, err := rpDAOTrustedNode.GetMemberDetails(rp, common.BytesToAddress(this.Address), nil)
+	if err != nil {
+		return err
+	}
+	this.ID = d.ID
+	this.URL = d.Url
+	this.JoinedTime = time.Unix(int64(d.JoinedTime), 0)
+	this.LastProposalTime = time.Unix(int64(d.LastProposalTime), 0)
+	this.RPLBondAmount = d.RPLBondAmount
+	this.UnbondedValidatorCount = d.UnbondedValidatorCount
 	return nil
 }

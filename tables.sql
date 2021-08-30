@@ -747,7 +747,7 @@ drop table if exists rocketpool_export_status;
 create table rocketpool_export_status
 (
     rocketpool_storage_address bytea not null,
-    eth1_block                 int   not null,
+    eth1_block int not null,
     primary key (rocketpool_storage_address)
 );
 
@@ -756,14 +756,11 @@ create table rocketpool_minipools
 (
     rocketpool_storage_address bytea not null,
 
-    -- static values, set and frozen at initialization of minipool
     address bytea not null,
     pubkey bytea not null,
     node_address bytea not null,
     node_fee float not null,
     deposit_type varchar(20) not null, -- none (invalid), full, half, empty .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolDeposit.sol
-
-    -- variable values, change during lifetime of minipool
     status text not null, -- Initialized, Prelaunch, Staking, Withdrawable, Dissolved .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolStatus.sol
     status_time timestamp without time zone,
 
@@ -775,11 +772,8 @@ create table rocketpool_nodes
 (
     rocketpool_storage_address bytea not null,
 
-    -- static values, set and frozen at initialization of node
     address bytea not null,
     timezone_location varchar(200) not null,
-
-    -- variable values, change during lifetime of node
     rpl_stake numeric not null,
     min_rpl_stake numeric not null,
     max_rpl_stake numeric not null,
@@ -787,8 +781,8 @@ create table rocketpool_nodes
     primary key(rocketpool_storage_address, address)
 );
 
-drop table if exists rocketpool_proposals;
-create table rocketpool_proposals
+drop table if exists rocketpool_dao_proposals;
+create table rocketpool_dao_proposals
 (
     rocketpool_storage_address bytea not null,
 
@@ -813,96 +807,18 @@ create table rocketpool_proposals
     primary key(rocketpool_storage_address, id)
 );
 
-drop table if exists rocketpool_dao_nodes;
-create table rocketpool_dao_nodes
+drop table if exists rocketpool_dao_members;
+create table rocketpool_dao_members
 (
     rocketpool_storage_address bytea not null,
 
     address bytea not null,
+    id varchar(200) not null,
+    url varchar(200) not null,
     joined_time timestamp without time zone,
     last_proposal_time timestamp without time zone,
-    rpl_bond_amount bigint not null,
+    rpl_bond_amount numeric not null,
     unbonded_validator_count int not null,
 
     primary key(rocketpool_storage_address, address)
-);
-
-drop table if exists rocketpool_stats;
-create table rocketpool_stats
-(
-    rocketpool_storage_address bytea not null,
-
-    ----------------------- network
-    -- rocketNetworkBalances
-    block int not null,
-    total_eth_balance bigint not null,
-    staking_eth_balance bigint not null,
-    total_reth_supply bigint not null,
-    eth_utilization_rate float not null,
-    -- rocketNetworkFees
-    node_demand bigint not null,
-    node_fee bigint not null,
-    node_fee_by_demand bigint not null,
-    -- rocketNetworkWithdrawal
-    withdrawal_balance bigint not null,
-    withdrawal_credentials bytea not null,
-
-    ----------------------- node
-    -- rocketNodeManager
-    node_count int not null,
-    trusted_node_count int not null,
-
-    ----------------------- minipool
-    -- rocketMinipoolManager
-    minipool_count int not null,
-    unprocessed_minipool_count int not null,
-    -- rocketMinipoolQueue
-    total_queue_length int not null,
-    full_deposit_queue_length int not null,
-    half_deposit_queue_length int not null,
-    empty_deposit_queue_length int not null,
-    total_queue_capacity bigint not null,
-    effective_queue_capacity bigint not null,
-    next_minipool_queue_capacity bigint not null,
-    primary key(rocketpool_storage_address, block)
-);
-
-drop table if exists rocketpool_settings;
-create table rocketpool_settings
-(
-    rocketpool_storage_address bytea not null,
-
-    ----------------------- settings
-    -- rocketDepositSettings
-    maximum_deposit_assignments bigint not null,
-    maximum_deposit_pool_size bigint not null,
-    minimum_deposit bigint not null,
-    assign_deposits_enabled bool not null,
-    deposit_enabled bool not null,
-    -- rocketMinipoolSettings
-    minipool_launch_balance bigint not null,
-    minipool_full_deposit_node_amount bigint not null,
-    minipool_half_deposit_node_amount bigint not null,
-    minipool_empty_deposit_node_amount bigint not null,
-    minipool_full_deposit_user_amount bigint not null,
-    minipool_half_deposit_user_amount bigint not null,
-    minipool_empty_deposit_user_amount bigint not null,
-    minipool_submit_withdrawable_enabled bool not null,
-    minipool_launch_timeout int not null,
-    minipool_withdrawal_delay int not null,
-    -- rocketNetworkSettings
-    node_consensus_threshold bigint not null,
-    submit_balances_enabled bool not null,
-    submit_balances_frequency int not null,
-    process_withdrawals_enabled bool not null,
-    minimum_node_fee bigint not null,
-    target_node_fee bigint not null,
-    maximum_node_fee bigint not null,
-    node_fee_demand_range bigint not null,
-    target_reth_collateral_rate bigint not null,
-    -- rocketNodeSettings
-    node_registration_enabled bool not null,
-    node_deposit_enabled bool not null,
-
-    primary key(rocketpool_storage_address, block)
 );
