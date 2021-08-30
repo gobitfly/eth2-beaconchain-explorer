@@ -16,7 +16,7 @@
 					</div>
 					<div class="row border-bottom p-1 mx-0">
 						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Represents the aggregated attestation of all participating validators in this attestation">Aggregation Bits:</span></div>
-						<div class="col-md-10">{{printf "%8b" $attestation.AggregationBits}}</div>
+						<div class="col-md-10">{{formatBitlist $attestation.AggregationBits}}</div>
 					</div>
 					<div class="row border-bottom p-1 mx-0">
 						<div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Validators who have submitted their attestation and have been included by the block proposer">Validators:</span></div>

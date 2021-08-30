@@ -146,6 +146,7 @@ type IndexPageData struct {
 	Mainnet                   bool                   `json:"-"`
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
+	Countdown                 interface{}
 }
 
 type IndexPageDataEpochs struct {
@@ -163,24 +164,25 @@ type IndexPageDataEpochs struct {
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
 type IndexPageDataBlocks struct {
-	Epoch              uint64        `json:"epoch"`
-	Slot               uint64        `json:"slot"`
-	Ts                 time.Time     `json:"ts"`
-	Proposer           uint64        `db:"proposer" json:"proposer"`
-	ProposerFormatted  template.HTML `json:"proposer_formatted"`
-	BlockRoot          []byte        `db:"blockroot" json:"block_root"`
-	BlockRootFormatted string        `json:"block_root_formatted"`
-	ParentRoot         []byte        `db:"parentroot" json:"parent_root"`
-	Attestations       uint64        `db:"attestationscount" json:"attestations"`
-	Deposits           uint64        `db:"depositscount" json:"deposits"`
-	Exits              uint64        `db:"voluntaryexitscount" json:"exits"`
-	Proposerslashings  uint64        `db:"proposerslashingscount" json:"proposerslashings"`
-	Attesterslashings  uint64        `db:"attesterslashingscount" json:"attesterslashings"`
-	Status             uint64        `db:"status" json:"status"`
-	StatusFormatted    template.HTML `json:"status_formatted"`
-	Votes              uint64        `db:"votes" json:"votes"`
-	Graffiti           []byte        `db:"graffiti"`
-	ProposerName       string        `db:"name"`
+	Epoch                uint64        `json:"epoch"`
+	Slot                 uint64        `json:"slot"`
+	Ts                   time.Time     `json:"ts"`
+	Proposer             uint64        `db:"proposer" json:"proposer"`
+	ProposerFormatted    template.HTML `json:"proposer_formatted"`
+	BlockRoot            []byte        `db:"blockroot" json:"block_root"`
+	BlockRootFormatted   string        `json:"block_root_formatted"`
+	ParentRoot           []byte        `db:"parentroot" json:"parent_root"`
+	Attestations         uint64        `db:"attestationscount" json:"attestations"`
+	Deposits             uint64        `db:"depositscount" json:"deposits"`
+	Exits                uint64        `db:"voluntaryexitscount" json:"exits"`
+	Proposerslashings    uint64        `db:"proposerslashingscount" json:"proposerslashings"`
+	Attesterslashings    uint64        `db:"attesterslashingscount" json:"attesterslashings"`
+	SyncAggParticipation float64       `db:"syncaggregate_participation" json:"sync_aggregate_participation"`
+	Status               uint64        `db:"status" json:"status"`
+	StatusFormatted      template.HTML `json:"status_formatted"`
+	Votes                uint64        `db:"votes" json:"votes"`
+	Graffiti             []byte        `db:"graffiti"`
+	ProposerName         string        `db:"name"`
 }
 
 // IndexPageEpochHistory is a struct to hold the epoch history for the main web page
@@ -193,25 +195,26 @@ type IndexPageEpochHistory struct {
 
 // IndexPageDataBlocks is a struct to hold detail data for the main web page
 type BlocksPageDataBlocks struct {
-	TotalCount         uint64        `db:"total_count"`
-	Epoch              uint64        `json:"epoch"`
-	Slot               uint64        `json:"slot"`
-	Ts                 time.Time     `json:"ts"`
-	Proposer           uint64        `db:"proposer" json:"proposer"`
-	ProposerFormatted  template.HTML `json:"proposer_formatted"`
-	BlockRoot          []byte        `db:"blockroot" json:"block_root"`
-	BlockRootFormatted string        `json:"block_root_formatted"`
-	ParentRoot         []byte        `db:"parentroot" json:"parent_root"`
-	Attestations       uint64        `db:"attestationscount" json:"attestations"`
-	Deposits           uint64        `db:"depositscount" json:"deposits"`
-	Exits              uint64        `db:"voluntaryexitscount" json:"exits"`
-	Proposerslashings  uint64        `db:"proposerslashingscount" json:"proposerslashings"`
-	Attesterslashings  uint64        `db:"attesterslashingscount" json:"attesterslashings"`
-	Status             uint64        `db:"status" json:"status"`
-	StatusFormatted    template.HTML `json:"status_formatted"`
-	Votes              uint64        `db:"votes" json:"votes"`
-	Graffiti           []byte        `db:"graffiti"`
-	ProposerName       string        `db:"name"`
+	TotalCount           uint64        `db:"total_count"`
+	Epoch                uint64        `json:"epoch"`
+	Slot                 uint64        `json:"slot"`
+	Ts                   time.Time     `json:"ts"`
+	Proposer             uint64        `db:"proposer" json:"proposer"`
+	ProposerFormatted    template.HTML `json:"proposer_formatted"`
+	BlockRoot            []byte        `db:"blockroot" json:"block_root"`
+	BlockRootFormatted   string        `json:"block_root_formatted"`
+	ParentRoot           []byte        `db:"parentroot" json:"parent_root"`
+	Attestations         uint64        `db:"attestationscount" json:"attestations"`
+	Deposits             uint64        `db:"depositscount" json:"deposits"`
+	Exits                uint64        `db:"voluntaryexitscount" json:"exits"`
+	Proposerslashings    uint64        `db:"proposerslashingscount" json:"proposerslashings"`
+	Attesterslashings    uint64        `db:"attesterslashingscount" json:"attesterslashings"`
+	SyncAggParticipation float64       `db:"syncaggregate_participation" json:"sync_aggregate_participation"`
+	Status               uint64        `db:"status" json:"status"`
+	StatusFormatted      template.HTML `json:"status_formatted"`
+	Votes                uint64        `db:"votes" json:"votes"`
+	Graffiti             []byte        `db:"graffiti"`
+	ProposerName         string        `db:"name"`
 }
 
 // ValidatorsPageData is a struct to hold data about the validators page
@@ -303,6 +306,7 @@ type ValidatorPageData struct {
 	Income7d                            int64
 	Income31d                           int64
 	Rank7d                              int64 `db:"rank7d"`
+	RankCount                           int64 `db:"rank_count"`
 	RankPercentage                      float64
 	Apr                                 float64
 	Proposals                           [][]uint64
@@ -485,23 +489,26 @@ type BlockPageData struct {
 	Ts                     time.Time
 	NextSlot               uint64
 	PreviousSlot           uint64
-	Proposer               uint64 `db:"proposer"`
-	Status                 uint64 `db:"status"`
-	BlockRoot              []byte `db:"blockroot"`
-	ParentRoot             []byte `db:"parentroot"`
-	StateRoot              []byte `db:"stateroot"`
-	Signature              []byte `db:"signature"`
-	RandaoReveal           []byte `db:"randaoreveal"`
-	Graffiti               []byte `db:"graffiti"`
-	ProposerName           string `db:"name"`
-	Eth1dataDepositroot    []byte `db:"eth1data_depositroot"`
-	Eth1dataDepositcount   uint64 `db:"eth1data_depositcount"`
-	Eth1dataBlockhash      []byte `db:"eth1data_blockhash"`
-	ProposerSlashingsCount uint64 `db:"proposerslashingscount"`
-	AttesterSlashingsCount uint64 `db:"attesterslashingscount"`
-	AttestationsCount      uint64 `db:"attestationscount"`
-	DepositsCount          uint64 `db:"depositscount"`
-	VoluntaryExitscount    uint64 `db:"voluntaryexitscount"`
+	Proposer               uint64  `db:"proposer"`
+	Status                 uint64  `db:"status"`
+	BlockRoot              []byte  `db:"blockroot"`
+	ParentRoot             []byte  `db:"parentroot"`
+	StateRoot              []byte  `db:"stateroot"`
+	Signature              []byte  `db:"signature"`
+	RandaoReveal           []byte  `db:"randaoreveal"`
+	Graffiti               []byte  `db:"graffiti"`
+	ProposerName           string  `db:"name"`
+	Eth1dataDepositroot    []byte  `db:"eth1data_depositroot"`
+	Eth1dataDepositcount   uint64  `db:"eth1data_depositcount"`
+	Eth1dataBlockhash      []byte  `db:"eth1data_blockhash"`
+	SyncAggregateBits      []byte  `db:"syncaggregate_bits"`
+	SyncAggregateSignature []byte  `db:"syncaggregate_signature"`
+	SyncAggParticipation   float64 `db:"syncaggregate_participation"`
+	ProposerSlashingsCount uint64  `db:"proposerslashingscount"`
+	AttesterSlashingsCount uint64  `db:"attesterslashingscount"`
+	AttestationsCount      uint64  `db:"attestationscount"`
+	DepositsCount          uint64  `db:"depositscount"`
+	VoluntaryExitscount    uint64  `db:"voluntaryexitscount"`
 	SlashingsCount         uint64
 	VotesCount             uint64
 	VotingValidatorsCount  uint64

@@ -92,6 +92,31 @@
       </div>
     </div>
   </div>
+  {{ if .SyncAggregateSignature }}
+    <div class="row border-bottom p-3 mx-0">
+      <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Aggregate (Altair Light-Client support)">Sync Aggregate:</span></div>
+      <div class="col-md-10">
+        <div class="row p-1">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Aggregate Participation">Participation:</span></div>
+          <div class="col-md-10 text-break">
+              <span>{{ formatParticipation .SyncAggParticipation }}</span>
+          </div>
+        </div>
+        <div class="row p-1">
+          <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Committee Aggregation Bits">Bits:</span></div>
+          <div class="col-md-10 text-monospace text-break">
+              <span>{{ formatBitlist .SyncAggregateBits }}</span>
+          </div>
+        </div>
+        <div class="row p-1">
+            <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Committee Signature">Signature:</span></div>
+            <div class="col-md-10 text-monospace text-break">
+                <span>0x{{ printf "%x" .SyncAggregateSignature }}</span>
+            </div>
+        </div>
+      </div>
+    </div>
+  {{ end }}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of attestations included in this block by the block proposer">Attestations:</span></div>
     <div class="col-md-10"><b>{{formatAddCommas .AttestationsCount}}</b></div>

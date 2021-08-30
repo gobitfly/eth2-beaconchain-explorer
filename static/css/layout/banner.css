@@ -3,7 +3,7 @@
   height: 46px;
   z-index: 999;
   width: 100%;
-  min-width: 300px;
+  min-width: 320px;
   background-color: var(--banner-background);
   color: var(--banner-text);
   /* font-size: 90%; */
@@ -27,6 +27,12 @@
   font-weight: 500;
 }
 
+@media (max-width: 1440px) {
+  .currency-symbol {
+    display: none;
+  }
+}
+
 .k-formatted-price {
   display: inline-block;
 }
@@ -35,7 +41,7 @@
   display: none;
 }
 
-@media (min-width: 800px) {
+@media (min-width: 1440px) {
   .k-formatted-price {
     display: none;
   }
@@ -303,24 +309,6 @@ color: var(--banner-text);
   }
 }
 
-.currency-symbol {
-  font-weight: 500;
-}
-
-@media (max-width: 350px) {
-  .currency-symbol {
-    display: none;
-  }
-}
-
-.k-formatted-price {
-  display: inline-block;
-}
-
-.price {
-  display: none;
-}
-
 .currency-dropdown-toggle {
   display: flex;
   align-items: center;
@@ -367,15 +355,7 @@ color: var(--banner-text);
   font-weight: 500;
 }
 
-@media (min-width: 800px) {
-  .k-formatted-price {
-    display: none;
-  }
-
-  .price {
-    display: inline-block;
-  }
-
+@media (min-width: 900px) {
   .currency-name {
     display: inline-block;
   }

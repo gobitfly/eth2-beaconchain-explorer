@@ -37,30 +37,26 @@
         <link rel="preload" as="font" href="https://fonts.gstatic.com/s/barlow/v4/7cHqv4kjgoGqM7E3_-gs51os.woff2" crossorigin>
         <link rel="preload" as="font" href="/fonts/Inter-Regular.woff2" crossorigin>
 
-
-
-
-
         <link id="app-style-initial" rel="stylesheet" href="/theme/css/beacon-light.min.css">
         <link id="app-style" rel="stylesheet" href="/css/layout.css">
         <link rel="stylesheet" href="/css/layout/toggle.css">
         <link rel="stylesheet" href="/css/layout/banner.css">
         <link rel="stylesheet" href="/css/layout/herofeed.css">
         <script>
-            var mql = window.matchMedia('(prefers-color-scheme: light)');
-            var lightScheme = mql.matches;
-            var currentTheme = localStorage.getItem('theme');
+            var mql = window.matchMedia('(prefers-color-scheme: light)')
+            var lightScheme = mql.matches
+            var currentTheme = localStorage.getItem('theme')
             var d1 = document.getElementById('app-style')
 
             if (currentTheme !== 'light' && currentTheme !== 'dark') {
                 currentTheme = lightScheme ? 'light' : 'dark'
             }
 
-            document.documentElement.setAttribute('data-theme', currentTheme);
-            localStorage.setItem('theme', currentTheme);
+            document.documentElement.setAttribute('data-theme', currentTheme)
+            localStorage.setItem('theme', currentTheme)
 
             if (currentTheme === 'dark') {
-                d1.insertAdjacentHTML('beforebegin', '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-' + currentTheme + '.min.css" onload="document.documentElement.style.display = ``">');
+                d1.insertAdjacentHTML('beforebegin', '<link id="app-theme" rel="stylesheet" type="text/css" href="/theme/css/beacon-' + currentTheme + '.min.css" onload="document.documentElement.style.display = ``">')
                 window.addEventListener('load', function () {
                     document.getElementById('app-style-initial').remove()
                 })
@@ -72,26 +68,26 @@
         <script>
             function updateLang(lang) {
                 document.cookie = "language=" + lang + ";samesite=strict;path=/"
-                window.location.reload();
+                window.location.reload()
             }
             function updateCurrency(currency) {
                 document.cookie = "currency=" + currency + ";samesite=strict;path=/"
-                window.location.reload(true);
+                window.location.reload(true)
             }
 
             function getCookie(cname) {
-                var name = cname + "=";
-                var ca = document.cookie.split(';');
+                var name = cname + "="
+                var ca = document.cookie.split(';')
                 for(var i = 0; i < ca.length; i++) {
-                    var c = ca[i];
+                    var c = ca[i]
                     while (c.charAt(0) == ' ') {
-                    c = c.substring(1);
+                        c = c.substring(1)
                     }
                     if (c.indexOf(name) == 0) {
-                    return c.substring(name.length, c.length);
+                        return c.substring(name.length, c.length)
                     }
                 }
-                return "";
+                return ""
             }
 
             window.addEventListener('load', function() {
@@ -157,51 +153,50 @@
         <strong>We're sorry but beaconcha.in doesn't work properly without JavaScript enabled. Please enable it to
             continue.</strong>
     </noscript>
+
     <!-- Banner -->
-    <div {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}}
-         class="info-banner-container">
+    <div {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}} class="info-banner-container">
         <div class="info-banner-content container">
             <div id="banner-stats" class="info-banner-left">
-                <a style="white-space:nowrap;" class="mr-2" href="/">
+                <a style="white-space: nowrap;" class="mr-2" href="/">
                     <i class="fas fa-home"></i> <span>|</span>
                 </a>
 
-                <div id="banner-epoch" class="info-item d-flex mr-2">
-                    <div class="info-item-header mr-2">
+                <div id="banner-epoch" class="info-item d-flex mr-2 mr-lg-3">
+                    <div class="info-item-header mr-1">
               			<span class="item-icon">
                				 <i class="fas fa-history"></i>
 						</span>
-                        <span class="item-text">Ep<span class="d-none d-md-inline">och</span>:</span>
+                        <span class="d-none d-sm-inline item-text">Ep<span class="d-none d-xl-inline">och</span></span>
                     </div>
-                    <div class="info-item-body">
+                    <div class="info-item-body" data-toggle="tooltip" title="" data-original-title="Epoch">
                         <a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{formatAddCommas .CurrentEpoch}}</a>
                     </div>
                 </div>
 
-
                 <div class="d-none d-lg-block">
-                    <div id="banner-slot" class="info-item d-flex mr-2">
-                        <div class="info-item-header mr-2">
+                    <div id="banner-slot" class="info-item d-flex mr-2 mr-lg-3">
+                        <div class="info-item-header mr-1">
 							<span class="item-icon">
 								<i class="fas fa-cubes"></i>
 							</span>
-                            <span class="item-text">Slot:</span>
+                            <span class="item-text">Slot</span>
                         </div>
-                        <div class="info-item-body">
+                        <div class="info-item-body" data-toggle="tooltip" title="" data-original-title="Slot">
                             <a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{formatAddCommas .CurrentSlot}}</a>
                         </div>
                     </div>
                 </div>
 
                 <div id="banner-eth-price">
-                    <div class="info-item d-flex mr-2">
-                        <div class="info-item-header mr-2">
+                    <div class="info-item d-flex mr-2 mr-lg-3">
+                        <div class="info-item-header mr-1">
 							<span class="item-icon">
 								<i class="fas fa-cubes"></i>
 							</span>
-                            <span class="d-none d-xl-inline item-text">Pr<span class="d-none d-md-inline">ice</span>:</span>
+                            <span class="d-none d-xl-inline item-text">Price</span>
                         </div>
-                        <div class="info-item-body">
+                        <div class="info-item-body" data-toggle="tooltip" title="" data-original-title="Price">
                             <a id="banner-eth-price-data">
                                 <span id="currentCurrencySymbol" class="currency-symbol">{{.CurrentSymbol}}</span>
                                 <span id="initialPrice">{{.CurrentPriceFormatted}}</span>
@@ -214,29 +209,24 @@
 
                 {{if not .ShowSyncingMessage}}
                     {{if gt .FinalizationDelay 3}}
-                        <div id="banner-fin" class="info-item d-flex mr-3">
-                            <div class="info-item-header mr-2 text-warning">
+                        <div id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
+                            <div class="info-item-header mr-1">
                                 <span class="item-icon">
-                                    <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title=""
-                                       data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
-                                </span>
-                                <span class="item-text d-none d-xl-block">
-                                    Finality
+                                    <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago"></i>
                                 </span>
                             </div>
                             <div class="info-item-body text-warning">
                                 <span id="banner-fin-data">{{.FinalizationDelay}}</span>
-                                <i class="fas fa-exclamation-triangle item-text" data-toggle="tooltip" title=""
-                                   data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago."></i>
+                                <i class="fas fa-exclamation-triangle item-text" data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{.FinalizationDelay}} epochs ago"></i>
                             </div>
                         </div>
                     {{end}}
                 {{end}}
+
                 {{if .ShowSyncingMessage}}
-                    <div id="banner-status" class="info-item d-flex mr-3">
+                    <div id="banner-status" class="info-item d-flex mr-1  mr-lg-3">
                         <div class="info-item-body">
-                            <i class="fas fa-sync" data-toggle="tooltip" title=""
-                               data-original-title="The explorer is currently syncing with the network"></i>
+                            <i class="fas fa-sync" data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network"></i>
                         </div>
                     </div>
                 {{end}}
@@ -706,8 +696,8 @@
         <!-- <div class="p-1" style="overflow-wrap: break-word;background-color: var(--bg-color-light); height: 40px; display: flex; justify-content:center; align-items:center;"> 
           <span class="d-none d-md-block">
 
-            <span>Watch the 
-                <span>
+            <span>
+                 <span>
                     <a style="color: #ff6600;" href="https://ethernodes.org/london" target="_blank">
                     London Hardfork
                     </a>
@@ -721,14 +711,14 @@
                         <a style="color: #ff6600;" href="https://discord.gg/NvCxbCu" target="_blank">
                             Ethstaker
                         </a>
-                    </span> on Thursday, Aug 5, 2021
+                    </span> on Thursday, Aug 5, 2021 
                 </span>
 
 
         </span>
         <span class="d-md-none p-1" style="font-size:90%">
             <span>
-                <span>
+                 <span>
                     Watch the 
                     <a style="color: #ff6600;" href="https://ethernodes.org/london" target="_blank">
                         London Hardfork
@@ -738,7 +728,7 @@
                 <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=afAFQY--GlI" target="_blank">
                     on YouTube
                 </a>
-                </span>
+                </span> 
             </span>
         </span>
         </div>  -->
@@ -846,9 +836,6 @@
         </footer>
     </div>
 
-
-
-
     <script src="/js/jquery.min.js"></script>
     <script src="/js/popper.min.js"
             integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
@@ -863,8 +850,8 @@
     <script src="/js/layout.js"></script>
     <script src="/js/banner.js"></script>
     <script>
-        var currency = {{.Currency}};
-        var exchangeRate = {{.ExchangeRate}};
+        var currency = {{.Currency}}
+        var exchangeRate = {{.ExchangeRate}}
 
         function slotToTime(slot) {
             var gts = {{.ChainGenesisTimestamp}}
@@ -903,7 +890,7 @@
         {{if not .User.Authenticated}}
         <script>
             function hideCookieBanner(){
-                $('#cookie-banner').attr("class", "d-none");
+                $('#cookie-banner').attr("class", "d-none")
             }
             function acceptCookieBanner() {
                     document.cookie = "cookie=accepted;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/"
@@ -914,10 +901,10 @@
                     hideCookieBanner()
             }
             
-            if (document.cookie.indexOf("cookie=accepted")!=-1){
+            if (document.cookie.indexOf("cookie=accepted")!=-1) {
                 hideCookieBanner()
-            }else{
-                $('#cookie-banner').attr("class", "");
+            } else {
+                $('#cookie-banner').attr("class", "")
             }
         </script>
         {{end}}
@@ -931,11 +918,11 @@
             <!-- Global site tag (gtag.js) - Google Analytics -->
             
             <script>
-                if (document.cookie.indexOf("cookie=accepted-necessary") == -1){
-                    let src = 'https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}';
-                    let a = document.createElement('script');
-                    a.src = src;
-                    document.body.appendChild(a);
+                if (document.cookie.indexOf("cookie=accepted-necessary") == -1) {
+                    let src = 'https://www.googletagmanager.com/gtag/js?id={{.Meta.GATag}}'
+                    let a = document.createElement('script')
+                    a.src = src
+                    document.body.appendChild(a)
                 } 
             </script>
 
@@ -945,30 +932,30 @@
                 window.dataLayer = window.dataLayer || [];
 
                 function gtag() {
-                    dataLayer.push(arguments);
+                    dataLayer.push(arguments)
                 }
 
-                gtag('js', new Date());
+                gtag('js', new Date())
 
-                gtag('config', {{.Meta.GATag}});
+                gtag('config', {{.Meta.GATag}})
 
                 function createFunctionWithTimeout(callback, opt_timeout) {
-                    var called = false;
+                    var called = false
 
                     function fn() {
                         if (!called) {
-                            called = true;
-                            callback();
+                            called = true
+                            callback()
                         }
                     }
 
                     setTimeout(fn, opt_timeout || 1000);
-                    return fn;
+                    return fn
                 }
 
                 function handleOutboundLinkClicks(event) {
                     var link = event.currentTarget.href
-                    event.preventDefault();
+                    event.preventDefault()
 
                     var fallback = setTimeout(function () {
                         window.location = link
@@ -988,7 +975,7 @@
                 var outbounds = document.querySelectorAll('[ga-outbound]')
 
                 for (var i = 0; i < outbounds.length; i++) {
-                    var element = outbounds[i];
+                    var element = outbounds[i]
                     element.addEventListener('click', handleOutboundLinkClicks)
                 }
 
