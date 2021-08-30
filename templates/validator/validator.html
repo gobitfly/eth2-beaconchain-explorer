@@ -190,9 +190,9 @@
 				</div>
 			</div>
 			<div class="col-lg-4 px-lg-2 d-flex align-items-center my-2">
-				<div class="card h-100 px-0 pt-0 card-body">
+				<div class="card h-100 px-0 px-xl-4 pt-1 pt-sm-3 card-body" style="min-width: 320px;">
 					<div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
-						<span class="h4 text-center mb-0">Validator History</span>
+						<span class="h5 ml-5 ml-xl-0 mr-auto mb-0">Validator History</span>
 					</div>
 					{{if or $validating $exited}}
 						{{template "validatorHistoryTable" $}}

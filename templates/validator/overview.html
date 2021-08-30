@@ -231,16 +231,16 @@
 {{define "validatorOverviewCount"}}
   <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-start justify-content-sm-between mx-5 my-3">
     <div class="mb-4 mb-sm-0">
-      <span id="blockCount" class="h5" style="cursor: default;" data-toggle="tooltip" title="Proposed: {{.ProposedBlocksCount}}, Missed: {{.MissedBlocksCount}}, Orphaned: {{.OrphanedBlocksCount}}, Scheduled: {{.ScheduledBlocksCount}}"><i class="fas fa-cubes fa-lg mr-2"></i>{{.BlocksCount}}{{if ne .BlocksCount 0}} ({{formatPercentageColored .UnmissedBlocksPercentage ""}}){{end}}</span>
+      <span id="blockCount" class="h5" style="cursor: pointer;" data-toggle="tooltip" title="Proposed: {{.ProposedBlocksCount}}, Missed: {{.MissedBlocksCount}}, Orphaned: {{.OrphanedBlocksCount}}, Scheduled: {{.ScheduledBlocksCount}}"><i class="fas fa-cubes fa-lg mr-2"></i>{{.BlocksCount}}{{if ne .BlocksCount 0}} ({{formatPercentageColored .UnmissedBlocksPercentage ""}}){{end}}</span>
     </div>
     <div class="mb-4 mb-sm-0">
-      <span id="attestationCount" class="h5" style="cursor: default;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{.ExecutedAttestationsCount}}, Missed: {{.MissedAttestationsCount}}, Orphaned: {{.OrphanedAttestationsCount}})"><i class="fas fa-file-signature mr-2"></i>{{.AttestationsCount}}{{if ne .AttestationsCount 0}} ({{formatPercentageColored .UnmissedAttestationsPercentage ""}}){{end}}</span>
+      <span id="attestationCount" class="h5" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{.ExecutedAttestationsCount}}, Missed: {{.MissedAttestationsCount}}, Orphaned: {{.OrphanedAttestationsCount}})"><i class="fas fa-file-signature mr-2"></i>{{.AttestationsCount}}{{if ne .AttestationsCount 0}} ({{formatPercentageColored .UnmissedAttestationsPercentage ""}}){{end}}</span>
     </div>
     <div class="mb-4 mb-sm-0">
-      <span id="slashingsCount" class="h5" style="cursor: default;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash mr-2"></i>{{.SlashingsCount}}</span>
+      <span id="slashingsCount" class="h5" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash mr-2"></i>{{.SlashingsCount}}</span>
     </div>
     <div class="mb-4 mb-sm-0">
-      <span id="depositCount" class="h5" style="cursor: default;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet mr-2"></i>{{.DepositsCount}}</span>
+      <span id="depositCount" class="h5" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet mr-2"></i>{{.DepositsCount}}</span>
     </div>
     <div class="mb-4 mb-sm-0">
       {{if ne .CurrentAttestationStreak .LongestAttestationStreak}}

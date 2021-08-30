@@ -539,7 +539,8 @@ func FormatTimestampTs(ts time.Time) template.HTML {
 // pending, active_online, active_offline, exiting_online, exciting_offline, slashing_online, slashing_offline, exited, slashed
 func FormatValidatorStatus(status string) template.HTML {
 	if status == "deposited" || status == "deposited_valid" || status == "deposited_invalid" {
-		return "<span><b>Deposited</b></span>"
+		// return "<span><b>Deposited</b></span>"
+		return "<span class=\"badge badge-warning\" style=\"font-size: 1rem;\">DEPOSITED</span>"
 	} else if status == "pending" {
 		// return "<span><b>Pending</b></span>"
 		return "<span class=\"badge badge-warning\" style=\"font-size: 1rem;\">PENDING</span>"
@@ -547,22 +548,29 @@ func FormatValidatorStatus(status string) template.HTML {
 		// return "<b>Active</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
 		return "<span class=\"badge badge-success\" style=\"font-size: 1rem;\">ACTIVE</span>"
 	} else if status == "active_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Active</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		// return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Active</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\" class=\"badge badge-danger\" style=\"font-size: 1rem;\">ACTIVE</span>"
 	} else if status == "exiting_online" {
-		return "<b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		// return "<b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		return "<span class=\"badge badge-success\" style=\"font-size: 1rem;\">EXITING</span>"
 	} else if status == "exiting_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		// return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\" class=\"badge badge-danger\" style=\"font-size: 1rem;\">EXITING</span>"
 	} else if status == "slashing_online" {
-		return "<b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		// return "<b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
+		return "<span class=\"badge badge-success\" style=\"font-size: 1rem;\">SLASHING</span>"
 	} else if status == "slashing_offline" {
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		// return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
+		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\" class=\"badge badge-danger\" style=\"font-size: 1rem;\">SLASHING</span>"
 	} else if status == "exited" {
-		return "<span><b>Exited</b></span>"
+		// return "<span><b>Exited</b></span>"
+		return "<span class=\"badge badge-danger\" style=\"font-size: 1rem;\">EXITED</span>"
 	} else if status == "slashed" {
 		// return "<span><b>Slashed</b></span>"
 		return "<span class=\"badge badge-danger\" style=\"font-size: 1rem;\"><b>SLASHED</b></span>"
 	}
-	return "<b>Unknown</b>"
+	// return "<b>Unknown</b>"
+	return "<span class=\"badge badge-secondary text-white\" style=\"font-size: 1rem;\">UNKNOWN</span>"
 }
 
 func formatPool(tag []string) string {
@@ -595,7 +603,7 @@ func formatSpecialTag(tag string) string {
 		}
 	}
 
-	return fmt.Sprintf(`<span style="font-size: 12px;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
+	return fmt.Sprintf(`<span style="font-size: 18px;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
 }
 
 // FormatValidatorTag will return html formated text of a validator-tag.
@@ -604,9 +612,9 @@ func FormatValidatorTag(tag string) template.HTML {
 	var result string
 	switch tag {
 	case "rocketpool":
-		result = fmt.Sprintf(`<span style="background:yellow; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
+		result = fmt.Sprintf(`<span style="background: yellow; font-size: 18px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
 	case "ssv":
-		result = fmt.Sprintf(`<span style="background:orange; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
+		result = fmt.Sprintf(`<span style="background: orange; font-size: 18px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
 	default:
 		result = formatSpecialTag(tag)
 	}

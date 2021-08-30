@@ -444,7 +444,7 @@
     <div class="table-responsive px-0 py-0">
       <table style="margin-top: 0px !important;" class="table" id="validator-history-table" width="100%">
         <thead>
-          <tr>
+          <tr style="font-size: .95rem;">
             <th>Epoch</th>
             <!-- <th>Slot</th> -->
             <th>Balance Change</th>
@@ -482,8 +482,10 @@
         $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(1)').removeClass('col-md-5').removeClass('col-sm-12');
         $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(2)').removeClass('col-md-7').removeClass('col-sm-12');
         $('#validator-history-table_wrapper > div:nth-child(3)').addClass('justify-content-center');
+        $('#validator-history-table_wrapper > div:nth-child(3)').attr('style', 'margin-top: .5rem !important');
         $('#validator-history-table_paginate').attr('style', 'padding-right: 0 !important');
         $('#validator-history-table_info').attr('style', 'padding-top: 0;');
+        $('#validator-history-table_info').attr('style', 'display: none;');
       });
     </script>
 	{{end}}
@@ -491,7 +493,7 @@
 
 {{define "validatorIncomeTable"}}
 	{{with .Data}}
-    <h3 class="ml-5 mr-auto mb-3 h4">Income</h3>
+    <span class="h5 ml-5 mr-auto mb-3">Income</span>
     <table class="table" style="margin-top: 0 !important;" width="100%">
       <tbody>
         <tr>
@@ -507,7 +509,6 @@
           <td class="border-0">{{formatIncome .Income31d $.Currency}}</td>
         </tr>
         <tr>
-          <!-- TODO: change icon from question mark to i for info -->
           <th scope="row" class="pl-5 border-0 font-weight-normal">APR <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="fas fa-info-circle text-muted"></i></span></th>
           <td class="border-0">
             <span class="{{if gtf .Apr 0}}text-success{{end}} {{if gtf  0 .Apr}}text-danger{{end}}"><b>{{.Apr | formatPercentage}} %</b></span>
