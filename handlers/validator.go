@@ -232,12 +232,22 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			COALESCE(validators.balanceactivation, 0) AS balanceactivation,
 			COALESCE(validators.balance7d, 0) AS balance7d,
 			COALESCE(validators.balance31d, 0) AS balance31d,
-			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') as tags
+			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') AS tags,
+			rplm.node_address      AS rocketpool_node_address,
+			rplm.address           AS rocketpool_minipool_address,
+			rplm.node_fee          AS rocketpool_minipool_node_fee,
+			rplm.deposit_type      AS rocketpool_minipool_deposit_type,
+			rplm.status            AS rocketpool_minipool_status,
+			rplm.status_time       AS rocketpool_minipool_status_time,
+			rpln.timezone_location AS rocketpool_node_timezone_location,
+			rpln.rpl_stake         AS rocketpool_node_rpl_stake,
+			rpln.min_rpl_stake     AS rocketpool_node_min_rpl_stake,
+			rpln.max_rpl_stake     AS rocketpool_node_max_rpl_stake
 		FROM validators
-		LEFT JOIN validator_names
-			ON validators.pubkey = validator_names.publickey
-		LEFT JOIN validator_performance 
-			ON validators.validatorindex = validator_performance.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
+		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
+		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance) validator_performance_count(total_count) ON true
 		WHERE validators.validatorindex = $1`, index)
 

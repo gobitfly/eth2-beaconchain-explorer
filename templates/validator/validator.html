@@ -189,15 +189,15 @@
 								</div>
 								<div class="tab-pane fade h-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
 									<pre>
-	minipool: 0x738e8da6cf16798e83dda32bb4cd6d19fbd0211f
-		node_fee: 0.2
-		deposit_type: Half
-		status: staking
-	node: 0x1dadb9212a1053297ca2513aebe691d6eb6c658a
-		timezone_location: Europe/London
-		rpl_stake: 734592247041014493907
-		min_rpl_stake: 5762745628576077305
-		max_rpl_stake: 8644118442864115958375
+minipool_address:       {{formatEth1Address .RocketpoolMinipoolAddress}}
+minipool_node_fee:      {{.RocketpoolMinipoolNodeFee}}
+minipool_deposit_type:  {{.RocketpoolMinipoolDepositType}}
+minipool_status:        {{.RocketpoolMinipoolStatus}}
+node_address:           {{formatEth1Address .RocketpoolNodeAddress}}
+node_timezone_location: {{.RocketpoolNodeTimezoneLocation}}
+node_rpl_stake:         {{.RocketpoolNodeRPLStake}}
+node_min_rpl_stake:     {{.RocketpoolNodeMinRPLStake}}
+node_max_rpl_stake:     {{.RocketpoolNodeMaxRPLStake}}
 									</pre>
 								</div>
 							</div>
