@@ -171,6 +171,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
 				Tag:            types.ValidatorTagsWatchlist,
 				JoinValidators: false,
+				Network:        utils.GetNetwork(),
 			}
 			watchlist, err := db.GetTaggedValidators(filter)
 			if err != nil {
@@ -282,6 +283,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		Validators:     &pq.ByteaArray{validatorPageData.PublicKey},
 		Tag:            types.ValidatorTagsWatchlist,
 		JoinValidators: false,
+		Network:        utils.GetNetwork(),
 	}
 
 	watchlist, err := db.GetTaggedValidators(filter)

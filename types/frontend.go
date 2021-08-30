@@ -102,9 +102,10 @@ type Subscription struct {
 }
 
 type TaggedValidators struct {
-	UserID uint64 `db:"user_id"`
-	Tag    string `db:"tag"`
-	Validator
+	UserID             uint64 `db:"user_id"`
+	Tag                string `db:"tag"`
+	ValidatorPublickey []byte `db:"validator_publickey"`
+	*Validator
 	Events []EventName `db:"events"`
 }
 

@@ -350,6 +350,11 @@ func main() {
 			authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
 			authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
+			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
+			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")
+			authRouter.HandleFunc("/notifications-center/validatorsub", handlers.AddValidatorsAndSubscribe).Methods("POST")
+			authRouter.HandleFunc("/notifications-center/updatesubs", handlers.UserUpdateSubscriptions).Methods("POST")
+			authRouter.HandleFunc("/notifications-center/monitoring/updatesubs", handlers.UserUpdateMonitoringSubscriptions).Methods("POST")
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
 			authRouter.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
@@ -413,7 +418,6 @@ func main() {
 			}
 		}()
 	}
-
 	if utils.Config.Notifications.Enabled {
 		services.InitNotifications()
 	}

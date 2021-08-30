@@ -229,6 +229,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.AddSubscription(user.UserID,
+		utils.Config.Chain.Phase0.ConfigName,
 		types.TaxReportEventName,
 		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency), 0)
 
@@ -272,6 +273,7 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := db.DeleteSubscription(user.UserID,
+		utils.GetNetwork(),
 		types.TaxReportEventName,
 		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency))
 
