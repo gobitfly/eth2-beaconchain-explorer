@@ -161,14 +161,14 @@
 					</ul>
 					<div class="tab-content h-100" id="myTabContent">
 						<div id="incomeChart" class="tab-pane fade h-100 show active" role="tabpanel" aria-labelledby="incomeChart-tab">
-							{{template "validatorIncomeChart"  $}}
+							{{template "validatorIncomeChart" $}}
 						</div>
 						<div id="proposedChart" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="proposedChart-tab">
-							{{template "validatorProposedChart"  .}}
+							{{template "validatorProposedChart" .}}
 						</div>
 						{{if gt .BlocksCount 0}}
 							<div class="tab-pane fade h-100" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
-								{{template "validatorProposedTable"  .}}
+								{{template "validatorProposedTable" .}}
 							</div>
 						{{end}}
 						{{if gt .AttestationsCount 0}}
@@ -178,7 +178,7 @@
 						{{end}}
 						{{if gt .SlashingsCount 0}}
 							<div class="tab-pane fade h-100" id="slashings" role="tabpanel" aria-labelledby="slashings-tab" aria-controls="slashings">
-								{{template "validatorSlashingsTable" . }}
+								{{template "validatorSlashingsTable" .}}
 							</div>
 						{{end}}
 						<div class="tab-pane fade h-100" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
@@ -313,9 +313,9 @@
 	</div>
 
 	<!-- Edit Validator Modals -->
-	{{template "validatorEditModal"  .}}
+	{{template "validatorEditModal" .}}
 	<!-- Add Validator to Watchlist Modal -->
-	{{template "validatorBookmarkModal"  .}}
+	{{template "validatorBookmarkModal" .}}
 </div>
 {{end}}
 {{end}}
