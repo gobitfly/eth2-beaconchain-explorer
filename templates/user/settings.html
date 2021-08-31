@@ -374,7 +374,11 @@
 
                                     <div class="my-2">
                                         <span class="text-muted">
+                                            {{if not .Premium.Active }}
                                             Premium features for your beaconcha.in and Beaconchain Dashboard App experience. No ads, support for more validators and more.
+                                            {{else}}
+                                            Your premium subscription is active. Thank you for supporting us! 
+                                            {{end}}
                                         </span>
                                     </div>
 

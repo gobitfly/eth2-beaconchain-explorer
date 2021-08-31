@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
 	"eth2-exporter/types"
@@ -105,6 +106,14 @@ func MobilePricing(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		pageData.Subscription = subscription
+
+		premiumSubscription, err := db.GetUserPremiumSubscription(data.User.UserID)
+		if err != nil && err != sql.ErrNoRows {
+			logger.Errorf("error retrieving user subscriptions %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		pageData.ActiveMobileStoreSub = premiumSubscription.Active
 	}
 
 	pageData.StripePK = utils.Config.Frontend.Stripe.PublicKey

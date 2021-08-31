@@ -1002,15 +1002,16 @@ type ApiPricing struct {
 }
 
 type MobilePricing struct {
-	FlashMessage string
-	User         *User
-	CsrfField    template.HTML
-	RecaptchaKey string
-	Subscription UserSubscription
-	StripePK     string
-	Plankton     string
-	Goldfish     string
-	Whale        string
+	FlashMessage         string
+	User                 *User
+	CsrfField            template.HTML
+	RecaptchaKey         string
+	Subscription         UserSubscription
+	StripePK             string
+	Plankton             string
+	Goldfish             string
+	Whale                string
+	ActiveMobileStoreSub bool
 }
 
 type StakeWithUsPageData struct {

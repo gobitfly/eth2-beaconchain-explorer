@@ -207,8 +207,15 @@
             </div>
         </section>
 
-
         <div class="container mt-2 container-pricing">
+            {{if .ActiveMobileStoreSub}}
+            <div class="justify-content-center text-center position-relative">
+                <div class="alert alert-info " role="alert" style="margin-top: 30px;">
+                    You have an active premium subscription from the app store / play store. You can manage your active subscriptions from there.
+                  </div>
+            </div>
+            {{end}}
+
             <section class="my-5">
                 <div class="card-deck mb-3 justify-content-center text-center position-relative">
                     <div style="margin: 0" class="row justify-content-center">
@@ -254,7 +261,7 @@
                                             </button>
                                         </form>
                                     {{else}}
-                                        {{ if and .StripePK .Plankton }}
+                                        {{ if and .StripePK .Plankton (not .ActiveMobileStoreSub) }}
                                             <button id="plankton" class="btn btn-lg btn-block btn-outline-primary">
                                                 Select
                                             </button>
@@ -294,7 +301,7 @@
                                             </button>
                                         </form>
                                     {{else}}
-                                        {{ if and .StripePK .Goldfish }}
+                                        {{ if and .StripePK .Goldfish (not .ActiveMobileStoreSub) }}
                                             <button id="goldfish" class="btn btn-lg btn-block btn-outline-primary">
                                                 Select
                                             </button>
@@ -330,7 +337,7 @@
                                             </button>
                                         </form>
                                     {{else}}
-                                        {{ if and .StripePK .Whale }}
+                                        {{ if and .StripePK .Whale (not .ActiveMobileStoreSub) }}
                                             <button id="whale" class="btn btn-lg btn-block btn-outline-primary">
                                                 Select
                                             </button>
