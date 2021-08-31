@@ -123,7 +123,7 @@
                         },
                         render: function(data, type, row, meta) {
                             // return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-                            return `<a href="/validator/"${data}>0x${data.substr(0, 8)}...</a><i class="fa fa-copy fa-lg text-muted" role="button" data-toggle="tooltip" title="Copy Public Key to clipboard" data-clipboard-text="0x${data}"></i>`
+                            return `<a href="/validator/${data}">0x${data.substr(0, 8)}...</a><i class="fa fa-copy fa-lg text-muted" role="button" data-toggle="tooltip" title="Copy Public Key to clipboard" data-clipboard-text="0x${data}"></i>`
                         }
                     },
                     {
