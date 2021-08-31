@@ -292,7 +292,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// to handle race condition errors where invoice.paid is executed before customer.subscription.created, do nothing since it's already processed
+		// to handle race condition errors where subscription.updated is executed before customer.subscription.created, do nothing since it's already processed
 		_, err = db.StripeGetSubscription(subscription.ID)
 		if err == sql.ErrNoRows {
 			err = createNewStripeSubscription(subscription, event)
