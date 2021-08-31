@@ -916,10 +916,11 @@ type UserSubscription struct {
 }
 
 type UserPremiumSubscription struct {
-	UserID  uint64 `db:"user_id"`
-	Store   string `db:"store"`
-	Active  *bool  `db:"active"`
-	Package string `db:"product_id"`
+	UserID       uint64 `db:"user_id"`
+	Store        string `db:"store"`
+	Active       bool   `db:"active"`
+	Package      string `db:"product_id"`
+	RejectReason string `db:"reject_reason"`
 }
 
 type StripeSubscription struct {

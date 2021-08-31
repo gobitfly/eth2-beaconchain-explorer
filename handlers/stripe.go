@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/mail"
 	"eth2-exporter/types"
@@ -334,8 +333,8 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 
 			currSub = &types.StripeSubscription{
 				CustomerID:     &subscription.Customer.ID,
-				SubscriptionID: &subscription.Items.Data[0].Price.ID,
-				PriceID:        &subscription.ID,
+				SubscriptionID: &subscription.ID,
+				PriceID:        &subscription.Items.Data[0].Price.ID,
 			}
 		}
 		if err != nil && err != sql.ErrNoRows {
@@ -386,7 +385,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_MOBILE {
-			appSubID, err := db.GetUserSubscriptionIDByStripe(subscription.Customer.ID)
+			appSubID, err := db.GetUserSubscriptionIDByStripe(subscription.ID)
 			if err != nil {
 				logger.WithError(err).Error("error updating stripe mobile subscription, no users_app_subs id found for subscription id", subscription.ID)
 				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+subscription.Customer.ID, 503)
@@ -436,9 +435,9 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if utils.GetPurchaseGroup(invoice.Lines.Data[0].Price.ID) == utils.GROUP_MOBILE {
-			appSubID, err := db.GetUserSubscriptionIDByStripe(invoice.Customer.ID)
+			appSubID, err := db.GetUserSubscriptionIDByStripe(invoice.Lines.Data[0].Subscription)
 			if err != nil {
-				logger.WithError(err).Error("error updating stripe mobile subscription (paid), no users_app_subs id found for subscription id", invoice.Customer.ID)
+				logger.WithError(err).Error("error updating stripe mobile subscription (paid), no users_app_subs id found for customer id", invoice.Customer.ID)
 				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+invoice.Customer.ID, 503)
 				return
 			}
@@ -466,13 +465,13 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 func createNewStripeSubscription(subscription stripe.Subscription, event stripe.Event) error {
 	err := db.StripeCreateSubscription(subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID, event.Data.Raw)
 	if err != nil {
-		return errors.New("error updating user with subscription")
+		return err
 	}
 
 	if utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_MOBILE {
 		userID, err := db.StripeGetCustomerUserId(subscription.Customer.ID)
 		if err != nil {
-			return errors.New("error getting user id from customer id")
+			return err
 		}
 		details := types.MobileSubscription{
 			ProductID:   getCleanProductID(subscription.Items.Data[0].Price.ID),
@@ -487,7 +486,7 @@ func createNewStripeSubscription(subscription stripe.Subscription, event stripe.
 		}
 		err = db.InsertMobileSubscription(userID, details, details.Transaction.Type, details.Transaction.Receipt, 0, "", subscription.ID)
 		if err != nil {
-			return errors.New("error saving mobile subscription from stripe")
+			return err
 		}
 	}
 

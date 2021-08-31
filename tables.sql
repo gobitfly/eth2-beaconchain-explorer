@@ -434,7 +434,7 @@ create table users_stripe_subscriptions
     price_id        character varying(256)        not null,
     active          bool not null default 'f',
     payload         json                          not null,
-    purchase_group           character varying(30)         not null default 'api',
+    purchase_group    character varying(30)         not null default 'api',
     primary key (customer_id, subscription_id, price_id)
 );
 

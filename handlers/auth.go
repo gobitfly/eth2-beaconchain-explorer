@@ -186,9 +186,10 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		Password  string `db:"password"`
 		Confirmed bool   `db:"email_confirmed"`
 		ProductID string `db:"product_id"`
+		Active    bool   `db:"active"`
 	}{}
 
-	err = db.FrontendDB.Get(&user, "SELECT users.id, email, password, email_confirmed, product_id FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
+	err = db.FrontendDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, active FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
 	if err != nil {
 		logger.Errorf("error retrieving password for user %v: %v", email, err)
 		session.AddFlash("Error: Invalid email or password!")
@@ -210,6 +211,10 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		session.Save(r, w)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
+	}
+
+	if !user.Active {
+		user.ProductID = ""
 	}
 
 	session.Values["authenticated"] = true
@@ -279,8 +284,9 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		EmailConfirmed bool   `db:"email_confirmed"`
 		Email          string `db:"email"`
 		ProductID      string `db:"product_id"`
+		Active         bool   `db:"active"`
 	}{}
-	err = db.FrontendDB.Get(&dbUser, "SELECT users.id, email_confirmed, email, product_id FROM users LEFT JOIN users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE password_reset_hash = $1", hash)
+	err = db.FrontendDB.Get(&dbUser, "SELECT users.id, email_confirmed, email, COALESCE(product_id, '') as product_id, active FROM users LEFT JOIN users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE password_reset_hash = $1", hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			session.AddFlash("Error: Invalid reset link, please retry.")
@@ -311,12 +317,14 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 	user := &types.User{}
 	user.Authenticated = true
 	user.UserID = dbUser.ID
-	user.Subscription = dbUser.ProductID
+	user.Subscription = ""
+	if dbUser.Active {
+		user.Subscription = dbUser.ProductID
+	}
 
 	session.Values["authenticated"] = true
 	session.Values["user_id"] = user.UserID
 	session.Values["subscription"] = user.Subscription
-
 	session.Save(r, w)
 
 	data := InitPageData(w, r, "requestReset", "/requestReset", "Reset Password")
