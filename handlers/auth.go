@@ -189,7 +189,7 @@ func LoginPost(w http.ResponseWriter, r *http.Request) {
 		Active    bool   `db:"active"`
 	}{}
 
-	err = db.FrontendDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, active FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
+	err = db.FrontendDB.Get(&user, "SELECT users.id, email, password, email_confirmed, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active FROM users left join users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE email = $1", email)
 	if err != nil {
 		logger.Errorf("error retrieving password for user %v: %v", email, err)
 		session.AddFlash("Error: Invalid email or password!")
@@ -286,7 +286,7 @@ func ResetPassword(w http.ResponseWriter, r *http.Request) {
 		ProductID      string `db:"product_id"`
 		Active         bool   `db:"active"`
 	}{}
-	err = db.FrontendDB.Get(&dbUser, "SELECT users.id, email_confirmed, email, COALESCE(product_id, '') as product_id, active FROM users LEFT JOIN users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE password_reset_hash = $1", hash)
+	err = db.FrontendDB.Get(&dbUser, "SELECT users.id, email_confirmed, email, COALESCE(product_id, '') as product_id, COALESCE(active, false) as active FROM users LEFT JOIN users_app_subscriptions on users_app_subscriptions.user_id = users.id WHERE password_reset_hash = $1", hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			session.AddFlash("Error: Invalid reset link, please retry.")

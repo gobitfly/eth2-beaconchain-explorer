@@ -208,12 +208,14 @@
         </section>
 
         <div class="container mt-2 container-pricing">
-            {{if .ActiveMobileStoreSub}}
+            {{if .User.Authenticated}}
+            {{if and .ActiveMobileStoreSub (not .Subscription.Active)}}
             <div class="justify-content-center text-center position-relative">
                 <div class="alert alert-info " role="alert" style="margin-top: 30px;">
                     You have an active premium subscription from the app store / play store. You can manage your active subscriptions from there.
                   </div>
             </div>
+            {{end}}
             {{end}}
 
             <section class="my-5">

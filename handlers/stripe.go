@@ -292,11 +292,15 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = createNewStripeSubscription(subscription, event)
-		if err != nil {
-			logger.WithError(err).Error(err.Error(), event.Data.Object)
-			http.Error(w, "error "+err.Error()+" customer: "+subscription.Customer.ID, 503)
-			return
+		// to handle race condition errors where invoice.paid is executed before customer.subscription.created, do nothing since it's already processed
+		_, err = db.StripeGetSubscription(subscription.ID)
+		if err == sql.ErrNoRows {
+			err = createNewStripeSubscription(subscription, event)
+			if err != nil {
+				logger.WithError(err).Error(err.Error(), event.Data.Object)
+				http.Error(w, "error "+err.Error()+" customer: "+subscription.Customer.ID, 503)
+				return
+			}
 		}
 
 	case "customer.subscription.updated":
