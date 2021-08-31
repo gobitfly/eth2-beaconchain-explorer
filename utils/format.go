@@ -315,10 +315,10 @@ func FormatEth1Address(addr []byte) template.HTML {
 	eth1Addr := eth1common.BytesToAddress(addr)
 
 	if !Config.Chain.Mainnet {
-		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a><i class=\"fa fa-copy fa-lg ml-3 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", addr, eth1Addr.Hex()[:8], addr))
+		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a><i style=\"padding: .5rem;\" class=\"fa fa-copy fa-lg ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", addr, eth1Addr.Hex()[:8], addr))
 	}
 
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…</a><i class=\"fa fa-copy fa-lg ml-3 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", addr, eth1Addr.Hex()[:8], addr))
+	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…</a><i style=\"padding: .5rem;\" class=\"fa fa-copy fa-lg ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", addr, eth1Addr.Hex()[:8], addr))
 }
 
 // FormatEth1Block will return the eth1-block formated as html
@@ -379,9 +379,9 @@ func FormatHash(hash []byte) template.HTML {
 	// }
 	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
 	if len(hash) > 3 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span>", hash[:3]))
+		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span><i style=\"padding: .5rem;\" class=\"fa fa-copy fa-lg ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", hash[:3], hash))
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span><i style=\"padding: .5rem;\" class=\"fa fa-copy fa-lg ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", hash, hash))
 }
 
 func FormatBitlist(bits []byte) template.HTML {
@@ -508,7 +508,7 @@ func FormatPercentageWithGPrecision(percentage float64, precision int) string {
 
 // FormatPublicKey will return html formatted text for a validator-public-key
 func FormatPublicKey(validator []byte) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a><i class=\"fa fa-copy fa-lg ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy Public Key to clipboard\" data-clipboard-text=0x%x></i>", validator, FormatHash(validator), validator))
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
 }
 
 func FormatMachineName(machineName string) template.HTML {

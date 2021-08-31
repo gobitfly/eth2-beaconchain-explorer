@@ -1,10 +1,10 @@
-{{ define "js"}}
+{{define "js"}}
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script type="text/javascript" src="/js/highcharts/highstock.min.js"></script>
     <script type="text/javascript" src="/js/highcharts/highcharts-global-options.js"></script>
     <script>
-        $(document).ready(function () {
+        $(document).ready(function() {
             var usp = new URLSearchParams(window.location.search)
             var q = usp.get('q')
             {{ if len .DepositContract }}
@@ -16,14 +16,14 @@
                 searching: true,
                 ajax: '/validators/eth1deposits/data',
                 pagingType: 'input',
-                preDrawCallback: function () {
+                preDrawCallback: function() {
                     // this does not always work.. not sure how to solve the staying tooltip
                     try {
                         $('#deposits').find('[data-toggle="tooltip"]').tooltip('dispose')
                     } catch (e) {
                     }
                 },
-                drawCallback: function (settings) {
+                drawCallback: function(settings) {
                     formatTimestamps('#deposits')
                 },
                 language: {
@@ -40,7 +40,7 @@
                 tbl.search(q);
                 tbl.draw();
             }
-            $("#deposits_filter > label > input").on('input', function (ev) {
+            $("#deposits_filter > label > input").on('input', function(ev) {
                 if (ev && ev.target && ev.target.value) {
                     var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
                     window.history.replaceState(null, 'Eth1Deposits', newUrl)
@@ -51,12 +51,12 @@
 
         })
     </script>
-{{end}} {{ define "css"}}
+{{end}} {{define "css"}}
     <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
 
 
 {{end}}
-{{ define "content"}}
+{{define "content"}}
     {{with .Data}}
         <div class="container my-2">
             <div class="d-md-flex py-2 justify-content-md-between mb-3">
