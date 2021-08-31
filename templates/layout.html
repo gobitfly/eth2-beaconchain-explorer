@@ -984,7 +984,10 @@
         {{end}}
     {{end}}
 
-    <script type="text/javascript" async src="/js/revive.min.js"></script>
+    {{if not .NoAds}} 
+        <script type="text/javascript" async src="/js/revive.min.js"></script>
+    {{end}}
+    
     </body>
     </html>
 {{end}}
