@@ -240,12 +240,6 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = db.DisableAllSubscriptionsFromStripeUser(customer.ID)
-		if err != nil {
-			logger.WithError(err).Error("error could not disable stripe mobile subs: " + customer.ID + "err: ")
-			// log & continue anyway
-		}
-
 		err = db.StripeRemoveCustomer(customer.ID)
 		if err != nil {
 			logger.WithError(err).Error("error could not delete user with customer ID: " + customer.ID + "err: ")

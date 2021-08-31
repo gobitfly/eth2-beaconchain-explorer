@@ -312,20 +312,6 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 	return data, err
 }
 
-func DisableAllSubscriptionsFromStripeUser(stripeCustomerID string) error {
-	userID, err := StripeGetCustomerUserId(stripeCustomerID)
-	if err != nil {
-		return err
-	}
-
-	now := time.Now()
-	nowTs := now.Unix()
-	_, err = FrontendDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE user_id = $5 AND store = 'stripe';",
-		false, nowTs, nowTs, "stripe_user_deleted", userID,
-	)
-	return err
-}
-
 func GetUserSubscriptionIDByStripe(stripeSubscriptionID string) (uint64, error) {
 	var subscriptionID uint64
 	row := FrontendDB.QueryRow(
