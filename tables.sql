@@ -434,7 +434,6 @@ create table users_stripe_subscriptions
     price_id        character varying(256)        not null,
     active          bool not null default 'f',
     payload         json                          not null,
-    purchase_group    character varying(30)         not null default 'api',
     primary key (customer_id, subscription_id, price_id)
 );
 
@@ -454,8 +453,7 @@ create table users_app_subscriptions
     expires_at      timestamp without time zone   not null,
     reject_reason   character varying(50),
     receipt         character varying(99999)       not null,
-    receipt_hash    character varying(1024)        not null unique,
-    subscription_id character varying(256)         default ''
+    receipt_hash    character varying(1024)        not null unique
 );
 create index idx_user_app_subscriptions on users_app_subscriptions (user_id);
 
