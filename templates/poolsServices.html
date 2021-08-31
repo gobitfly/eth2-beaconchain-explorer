@@ -137,7 +137,7 @@
         </div>
          <div class="row">
             <div class="col-md-12">
-                {{ template "bannerPoolsServices" }}
+                {{if not .NoAds}} {{ template "bannerPoolsServices" }} {{end}}
             </div>
        </div> 
         <div class="row">

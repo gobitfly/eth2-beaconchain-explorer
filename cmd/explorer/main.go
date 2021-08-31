@@ -329,6 +329,7 @@ func main() {
 			signUpRouter.HandleFunc("/confirmation", handlers.Confirmation).Methods("GET")
 			signUpRouter.HandleFunc("/pricing", handlers.Pricing).Methods("GET")
 			signUpRouter.HandleFunc("/pricing", handlers.PricingPost).Methods("POST")
+			signUpRouter.HandleFunc("/premium", handlers.MobilePricing).Methods("GET")
 			signUpRouter.Use(csrfHandler)
 
 			oauthRouter := router.PathPrefix("/user").Subrouter()
