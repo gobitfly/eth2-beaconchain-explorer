@@ -258,6 +258,7 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	session.Values["subscription"] = ""
 	session.Values["authenticated"] = false
 	delete(session.Values, "user_id")
+	delete(session.Values, "oauth_redirect_uri")
 	session.Save(r, w)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)

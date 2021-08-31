@@ -361,7 +361,7 @@
                                     {{if or (not .Premium.Package) (not (eq .Premium.RejectReason "")) }}
                                        <a href="/premium" class="btn btn-outline-primary">Get Premium</a>
                                     {{else}}
-                                        {{if eq .Premium.Store "ios-appstore "}}
+                                        {{if eq .Premium.Store "ios-appstore" }}
                                             <span class="text-muted">via Apple</span>
                                         {{else}}
                                             <span class="text-muted">via Google</span>
