@@ -131,7 +131,12 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	data.Data = userSettingsData
 	data.User = user
 
-	session.Values["subscription"] = premiumSubscription.Package
+	var premiumPkg = ""
+	if premiumSubscription.Active {
+		premiumPkg = premiumSubscription.Package
+	}
+
+	session.Values["subscription"] = premiumPkg
 	session.Save(r, w)
 
 	err = userTemplate.ExecuteTemplate(w, "layout", data)

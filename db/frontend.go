@@ -298,7 +298,7 @@ func InsertMobileSubscription(userID uint64, paymentDetails types.MobileSubscrip
 	now := time.Now()
 	nowTs := now.Unix()
 	receiptHash := utils.HashAndEncode(receipt)
-	_, err := FrontendDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, extSubscriptionId) VALUES("+
+	_, err := FrontendDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
 		"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14);",
 		userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash, extSubscriptionId,
 	)
@@ -336,14 +336,14 @@ func GetAppSubscriptionCount(userID uint64) (int64, error) {
 
 func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error) {
 	userSub := types.UserPremiumSubscription{}
-	err := FrontendDB.Get(&userSub, "SELECT user_id, store, active, product_id FROM users_app_subscriptions WHERE user_id = $1 AND active = true ORDER BY active, id desc LIMIT 1", id)
+	err := FrontendDB.Get(&userSub, "SELECT user_id, store, active, COALESCE(product_id, '') as product_id, COALESCE(reject_reason, '') as reject_reason FROM users_app_subscriptions WHERE user_id = $1 ORDER BY active desc, id desc LIMIT 1", id)
 	return userSub, err
 }
 
 func GetUserPremiumPackage(userID uint64) (string, error) {
 	var pkg string
 	row := FrontendDB.QueryRow(
-		"SELECT product_id from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
+		"SELECT COALESCE(product_id, '') as product_id from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
 		userID,
 	)
 	err := row.Scan(&pkg)

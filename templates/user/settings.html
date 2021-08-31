@@ -338,8 +338,8 @@
                                 <h3 class="h5">
                                     <span>Beaconcha.in Premium</span> <span class="mx-1">|</span>
                                     <span style="font-size: 80%;" class="font-weight-light">
-                                        {{if not .Premium.Active}}
-                                        Free Tier {{if .Premium.Store }}(waiting on payment){{end}}
+                                        {{if not .Premium.Active }}
+                                        Free Tier {{if and (.Premium.Store) (eq .Premium.RejectReason "")}}(waiting on payment){{end}}
                                         {{else}}
                                         {{if eq .Premium.Package "plankton"}} <strong style="color: #50c878; font-size: 1.1em">Plankton </strong>
                                         {{else}}
@@ -352,13 +352,13 @@
                                         {{end}}
                                     </span>
                                 </h3>
-                                {{if eq .Premium.Store "stripe"}}
+                                {{if and (eq .Premium.Store "stripe") (eq .Premium.RejectReason "" )}}
                                 <form class="manage-billing-form">
                                     {{ .CsrfField }}
                                     <button class="btn btn-outline-primary">Manage Subscription</button>
                                 </form>
                                 {{else}}
-                                    {{if not .Premium.Package }}
+                                    {{if or (not .Premium.Package) (not (eq .Premium.RejectReason "")) }}
                                        <a href="/premium" class="btn btn-outline-primary">Get Premium</a>
                                     {{else}}
                                         {{if eq .Premium.Store "ios-appstore "}}
@@ -374,7 +374,11 @@
 
                                     <div class="my-2">
                                         <span class="text-muted">
+                                            {{if not .Premium.Active }}
                                             Premium features for your beaconcha.in and Beaconchain Dashboard App experience. No ads, support for more validators and more.
+                                            {{else}}
+                                            Your premium subscription is active. Thank you for supporting us! 
+                                            {{end}}
                                         </span>
                                     </div>
 

@@ -196,7 +196,7 @@
                 <div style="padding-top: 2rem;" class="row justify-content-between align-items-center">
                     <div class="col-md-6 mb-5">
                         <h1 class="h6 font-weight-bold text-primary">Beaconcha.in Premium</h1>
-                        <h2 class="mb-4">Premium supports up to 280 validators and enables mobile app features such as Widgets, Themes and more.</h2>
+                        <h2 class="mb-4">Premium offers an ad free experience on website & app, support for up to 280 validators, exclusive app features and more.</h2>
                     </div>
                     <div class="col-md-5 p-1" >
                      
@@ -207,8 +207,17 @@
             </div>
         </section>
 
-
         <div class="container mt-2 container-pricing">
+            {{if .User.Authenticated}}
+            {{if and .ActiveMobileStoreSub (not .Subscription.Active)}}
+            <div class="justify-content-center text-center position-relative">
+                <div class="alert alert-info " role="alert" style="margin-top: 30px;">
+                    You have an active premium subscription from the app store / play store. You can manage your active subscriptions from there.
+                  </div>
+            </div>
+            {{end}}
+            {{end}}
+
             <section class="my-5">
                 <div class="card-deck mb-3 justify-content-center text-center position-relative">
                     <div style="margin: 0" class="row justify-content-center">
@@ -222,8 +231,8 @@
                                     <li>Dashboard Validators:<br/> <strong>100</strong></li>
                                     <li>App Monitoring Machines:<br/> <strong>1</strong></li>
                                     <li>App Monitoring History: <br/> <strong>3 hours</strong></li>
-                                    <li>Custom Alerts: <br/><i class="fas fa-times"></i> </li>
                                     <li>No Ads: <br/><i class="fas fa-times"></i></li>
+                                    <li>Custom Alerts: <br/><i class="fas fa-times"></i> </li>
                                     <li>App Custom Themes: <br/><i class="fas fa-times"></i></li>
                                     <li>App Widget: <br/><i class="fas fa-times"></i></li>
                                     <li>Support us: <br/><i class="fas fa-times"></i></li>
@@ -240,8 +249,8 @@
                                     <li>Dashboard Validators:<br/> <strong>100</strong></li>
                                     <li>App Monitoring Machines:<br/> <strong>1</strong></li>
                                     <li>App Monitoring History: <br/> <strong>30 days</strong></li>
-                                    <li>Custom Alerts: <br/> <i class="fas fa-check"></i> </li>
                                     <li>No Ads: <br/><i class="fas fa-check"></i></li>
+                                    <li>Custom Alerts: <br/> <i class="fas fa-check"></i> </li>
                                     <li>App Custom Themes: <br/><i class="fas fa-times"></i></li>
                                     <li>App Widget: <br/><i class="fas fa-times"></i></li>
                                     <li>Support us: <br/><i class="fas fa-check"></i></li>
@@ -254,7 +263,7 @@
                                             </button>
                                         </form>
                                     {{else}}
-                                        {{ if and .StripePK .Plankton }}
+                                        {{ if and .StripePK .Plankton (not .ActiveMobileStoreSub) }}
                                             <button id="plankton" class="btn btn-lg btn-block btn-outline-primary">
                                                 Select
                                             </button>
@@ -280,8 +289,8 @@
                                     <li>Dashboard Validators:<br/> <strong>100</strong></li>
                                     <li>App Monitoring Machines:<br/> <strong>2</strong></li>
                                     <li>App Monitoring History: <br/> <strong>30 days</strong></li>
-                                    <li>Custom Alerts: <br/> <i class="fas fa-check"></i> </li>
                                     <li>No Ads: <br/><i class="fas fa-check"></i></li>
+                                    <li>Custom Alerts: <br/> <i class="fas fa-check"></i> </li>
                                     <li>App Custom Themes: <br/><i class="fas fa-check"></i></li>
                                     <li>App Widget: <br/><i class="fas fa-check"></i></li>
                                     <li>Support us: <br/><i class="fas fa-check"></i></li>
@@ -294,7 +303,7 @@
                                             </button>
                                         </form>
                                     {{else}}
-                                        {{ if and .StripePK .Goldfish }}
+                                        {{ if and .StripePK .Goldfish (not .ActiveMobileStoreSub) }}
                                             <button id="goldfish" class="btn btn-lg btn-block btn-outline-primary">
                                                 Select
                                             </button>
@@ -316,8 +325,8 @@
                                     <li>Dashboard Validators:<br/> <strong>280</strong></li>
                                     <li>App Monitoring Machines:<br/> <strong>10</strong></li>
                                     <li>App Monitoring History: <br/> <strong>30 days</strong></li>
-                                    <li>Custom Alerts: <br/> <i class="fas fa-check"></i> </li>
                                     <li>No Ads: <br/><i class="fas fa-check"></i></li>
+                                    <li>Custom Alerts: <br/> <i class="fas fa-check"></i> </li>
                                     <li>App Custom Themes: <br/><i class="fas fa-check"></i></li>
                                     <li>App Widget: <br/><i class="fas fa-check"></i></li>
                                     <li>Support us: <br/><i class="fas fa-check"></i></li>
@@ -330,7 +339,7 @@
                                             </button>
                                         </form>
                                     {{else}}
-                                        {{ if and .StripePK .Whale }}
+                                        {{ if and .StripePK .Whale (not .ActiveMobileStoreSub) }}
                                             <button id="whale" class="btn btn-lg btn-block btn-outline-primary">
                                                 Select
                                             </button>

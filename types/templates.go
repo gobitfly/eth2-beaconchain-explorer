@@ -916,10 +916,11 @@ type UserSubscription struct {
 }
 
 type UserPremiumSubscription struct {
-	UserID  uint64 `db:"user_id"`
-	Store   string `db:"store"`
-	Active  *bool  `db:"active"`
-	Package string `db:"product_id"`
+	UserID       uint64 `db:"user_id"`
+	Store        string `db:"store"`
+	Active       bool   `db:"active"`
+	Package      string `db:"product_id"`
+	RejectReason string `db:"reject_reason"`
 }
 
 type StripeSubscription struct {
@@ -1009,15 +1010,16 @@ type ApiPricing struct {
 }
 
 type MobilePricing struct {
-	FlashMessage string
-	User         *User
-	CsrfField    template.HTML
-	RecaptchaKey string
-	Subscription UserSubscription
-	StripePK     string
-	Plankton     string
-	Goldfish     string
-	Whale        string
+	FlashMessage         string
+	User                 *User
+	CsrfField            template.HTML
+	RecaptchaKey         string
+	Subscription         UserSubscription
+	StripePK             string
+	Plankton             string
+	Goldfish             string
+	Whale                string
+	ActiveMobileStoreSub bool
 }
 
 type StakeWithUsPageData struct {
