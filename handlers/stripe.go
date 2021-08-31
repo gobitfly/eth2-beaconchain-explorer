@@ -327,6 +327,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			err = createNewStripeSubscription(subscription, event)
 			if err != nil {
 				logger.WithError(err).Error(err.Error(), event.Data.Object)
+				logger.Warn(" customer: " + subscription.Customer.ID + " | subscriptionID: " + subscription.ID + " | priceID: " + priceID)
 				http.Error(w, "error updating "+err.Error()+" customer: "+subscription.Customer.ID+" | subscriptionID: "+subscription.ID+" | priceID: "+priceID, 503)
 				return
 			}
@@ -437,7 +438,7 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		if utils.GetPurchaseGroup(invoice.Lines.Data[0].Price.ID) == utils.GROUP_MOBILE {
 			appSubID, err := db.GetUserSubscriptionIDByStripe(invoice.Lines.Data[0].Subscription)
 			if err != nil {
-				logger.WithError(err).Error("error updating stripe mobile subscription (paid), no users_app_subs id found for customer id", invoice.Customer.ID)
+				logger.WithError(err).Error("error updating stripe mobile subscription (paid), no users_app_subs id found for subscription id", invoice.Lines.Data[0].Subscription)
 				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+invoice.Customer.ID, 503)
 				return
 			}
