@@ -253,7 +253,7 @@
                                     <td class="text-monospace">
                                         {{if eq .Status 1}}
                                             <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}...</a>
-                                            <i style="padding: .5rem;" class="fa fa-copy fa-lg ml-2 text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .BlockRoot}}></i>
+                                            <i style="padding: .25rem;" class="fa fa-copy fa-lg ml-2 text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .BlockRoot}}></i>
                                         {{else}}
                                             N/A
                                         {{end}}
