@@ -1,6 +1,6 @@
 {{ define "banner" }}
 <div id="r-banner" class=" my-2 pb-1 ad d-flex justify-content-center">
-  <div class="position-relative" style="width:fit-content">
+  <div style="height: 62px" class="position-relative" style="width:fit-content">
     <div v-if="windowWidth > 1140" id="revive-banner">
       <ins ref="ins" data-revive-zoneid="2" data-revive-id="5b200397ccf8a9353bf44ef99b45268c">
       </ins>
@@ -13,6 +13,11 @@
 
   <script>
     window.addEventListener('load', function() {
+
+      if (!$("#r-banner").find('ins').attr('data-revive-zoneid')) {
+        $('#r-banner').children('div').removeAttr('style')
+      }
+
       function refreshAd() {
         if(document.hasFocus()) {
           $("#revive-banner").find('ins').removeAttr('data-revive-loaded');

@@ -1,0 +1,78 @@
+.popupMain::-webkit-scrollbar{
+    width: 5px;
+}
+
+.popupMain::-webkit-scrollbar-thumb{
+    background-color: var(--primary);
+    border-radius: 12px;
+    border-style: none;
+    border-width: 2px;
+}
+
+.popupMain{
+    scrollbar-color: var(--primary);
+    scrollbar-width: thin;
+}
+
+.tableTotalTop{
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    top: -12px;
+    height: 20px;
+    background-color: rgba(0,0,0,0);
+    color: var(--text-white);
+    border-radius: 8px;
+    border-color: var(--primary);
+    border-style: solid;
+    border-width: 2px;
+    border-bottom-left-radius: 30px;
+    border-bottom-right-radius: 30px;
+    padding: 5%;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: bounce 2s 1;
+}
+
+.fade-in-out{
+    animation: fadein 1.5s 3;
+}
+
+.chart-switch-btn i{
+    cursor: pointer;
+    animation: zoominout 0.1s 1;
+}
+
+@keyframes fadein{
+    0%{
+        opacity: 0.0;
+    }
+    50%{
+        opacity: 1.0; 
+    }
+    100%{
+        opacity: 0.0;
+    }
+}
+
+@keyframes bounce{
+    0% {
+        top: 0px;
+    }
+    100%{
+        top: -12px;
+    }
+}
+
+@keyframes zoominout {
+    0% {
+        font-size: small;
+    }
+    50% {
+        font-size: large;
+    }
+    100% {
+        font-size: small;
+    }
+}

@@ -19,6 +19,7 @@ var latestEpoch uint64
 var latestFinalizedEpoch uint64
 var latestSlot uint64
 var latestProposedSlot uint64
+var latestValidatorCount uint64
 var indexPageData atomic.Value
 var chartsPageData atomic.Value
 var ready = sync.WaitGroup{}
@@ -36,6 +37,7 @@ func Init() {
 	go epochUpdater()
 	go slotUpdater()
 	go latestProposedSlotUpdater()
+
 	if utils.Config.Frontend.OnlyAPI {
 		ready.Done()
 	} else {
@@ -50,12 +52,13 @@ func Init() {
 	if !utils.Config.Frontend.DisableCharts {
 		go chartsPageDataUpdater()
 	}
-	go statsUpdater()
 
-	if utils.Config.Frontend.Notifications.Enabled {
-		logger.Infof("starting notifications-sender")
-		go notificationsSender()
-	}
+	go statsUpdater()
+}
+
+func InitNotifications() {
+	logger.Infof("starting notifications-sender")
+	go notificationsSender()
 }
 
 func epochUpdater() {
@@ -199,10 +202,11 @@ func getIndexPageData() (*types.IndexPageData, error) {
 			threshold = &deposit.BlockTs
 		}
 
-		data.DepositThreshold = float64(utils.Config.Chain.MinGenesisActiveValidatorCount) * 32
+		data.DepositThreshold = float64(utils.Config.Chain.Phase0.MinGenesisActiveValidatorCount) * 32
 		data.DepositedTotal = float64(deposit.Total) * 32
+
 		data.ValidatorsRemaining = (data.DepositThreshold - data.DepositedTotal) / 32
-		genesisDelay := time.Duration(int64(utils.Config.Chain.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
+		genesisDelay := time.Duration(int64(utils.Config.Chain.Phase0.GenesisDelay) * 1000 * 1000 * 1000) // convert seconds to nanoseconds
 
 		minGenesisTime := time.Unix(int64(utils.Config.Chain.GenesisTimestamp), 0)
 
@@ -288,8 +292,8 @@ func getIndexPageData() (*types.IndexPageData, error) {
 
 	var scheduledCount uint8
 	err = db.DB.Get(&scheduledCount, `
-		select count(*) from blocks where status = '0' and epoch = (select max(epoch) from blocks limit 1);
-	`)
+		select count(*) from blocks where status = '0' and epoch = $1;
+	`, epoch)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving scheduledCount from blocks: %v", err)
 	}
@@ -344,17 +348,15 @@ func getIndexPageData() (*types.IndexPageData, error) {
 		EnteringValidators uint64 `db:"entering_validators_count"`
 		ExitingValidators  uint64 `db:"exiting_validators_count"`
 	}{}
-
 	err = db.DB.Get(&queueCount, "SELECT entering_validators_count, exiting_validators_count FROM queue ORDER BY ts DESC LIMIT 1")
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("error retrieving validator queue count: %v", err)
 	}
-
 	data.EnteringValidators = queueCount.EnteringValidators
 	data.ExitingValidators = queueCount.ExitingValidators
 
 	var averageBalance float64
-	err = db.DB.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validator_balances WHERE epoch = $1", epoch)
+	err = db.DB.Get(&averageBalance, "SELECT COALESCE(AVG(balance), 0) FROM validators")
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving validator balance: %v", err)
 	}
@@ -426,6 +428,10 @@ func LatestIndexPageData() *types.IndexPageData {
 	return indexPageData.Load().(*types.IndexPageData)
 }
 
+func LatestValidatorCount() uint64 {
+	return atomic.LoadUint64(&latestValidatorCount)
+}
+
 // LatestState returns statistics about the current eth2 state
 func LatestState() *types.LatestState {
 	data := &types.LatestState{}
@@ -435,7 +441,23 @@ func LatestState() *types.LatestState {
 	data.LastProposedSlot = atomic.LoadUint64(&latestProposedSlot)
 	data.FinalityDelay = data.CurrentEpoch - data.CurrentFinalizedEpoch
 	data.IsSyncing = IsSyncing()
-	data.EthPrice = price.GetEthPrice("USD")
+	data.UsdRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("USD"))
+	data.UsdTruncPrice = utils.KFormatterEthPrice(data.UsdRoundPrice)
+	data.EurRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("EUR"))
+	data.EurTruncPrice = utils.KFormatterEthPrice(data.EurRoundPrice)
+	data.GbpRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("GBP"))
+	data.GbpTruncPrice = utils.KFormatterEthPrice(data.GbpRoundPrice)
+	data.CnyRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("CNY"))
+	data.CnyTruncPrice = utils.KFormatterEthPrice(data.CnyRoundPrice)
+	data.RubRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("RUB"))
+	data.RubTruncPrice = utils.KFormatterEthPrice(data.RubRoundPrice)
+	data.CadRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("CAD"))
+	data.CadTruncPrice = utils.KFormatterEthPrice(data.CadRoundPrice)
+	data.AudRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("AUD"))
+	data.AudTruncPrice = utils.KFormatterEthPrice(data.AudRoundPrice)
+	data.JpyRoundPrice = price.GetEthRoundPrice(price.GetEthPrice("JPY"))
+	data.JpyTruncPrice = utils.KFormatterEthPrice(data.JpyRoundPrice)
+
 	return data
 }
 
@@ -454,8 +476,12 @@ func GetLatestStats() *types.Stats {
 					DepositCount: 0,
 				},
 			},
-			InvalidDepositCount:  new(uint64),
-			UniqueValidatorCount: new(uint64),
+			InvalidDepositCount:   new(uint64),
+			UniqueValidatorCount:  new(uint64),
+			TotalValidatorCount:   new(uint64),
+			ActiveValidatorCount:  new(uint64),
+			PendingValidatorCount: new(uint64),
+			ValidatorChurnLimit:   new(uint64),
 		}
 	} else if stats.(*types.Stats).TopDepositors != nil && len(*stats.(*types.Stats).TopDepositors) == 1 {
 		*stats.(*types.Stats).TopDepositors = append(*stats.(*types.Stats).TopDepositors, types.StatsTopDepositors{

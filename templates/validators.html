@@ -1,5 +1,5 @@
 {{ define "js"}}
-    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.js"></script>
+    <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script>
         var validatorsDataTable;
@@ -30,28 +30,28 @@
                 validatorsDataTable.column(5).visible(true);
                 validatorsDataTable.column(6).visible(true);
                 validatorsDataTable.column(7).visible(true);
-                validatorsDataTable.column(8).visible(true)
+                validatorsDataTable.column(8).visible(false);
             } else if (state === "pending") {
                 validatorsDataTable.column(3).visible(true);
                 validatorsDataTable.column(4).visible(true);
                 validatorsDataTable.column(5).visible(false);
                 validatorsDataTable.column(6).visible(false);
                 validatorsDataTable.column(7).visible(false);
-                validatorsDataTable.column(8).visible(false)
+                validatorsDataTable.column(8).visible(false);
             } else if (state === "active" || state === "slashing" || state === "exiting") {
                 validatorsDataTable.column(3).visible(true);
                 validatorsDataTable.column(4).visible(true);
                 validatorsDataTable.column(5).visible(false);
                 validatorsDataTable.column(6).visible(false);
                 validatorsDataTable.column(7).visible(true);
-                validatorsDataTable.column(8).visible(true)
+                validatorsDataTable.column(8).visible(false);
             } else if (state === "exited") {
                 validatorsDataTable.column(3).visible(false);
                 validatorsDataTable.column(4).visible(true);
                 validatorsDataTable.column(5).visible(true);
                 validatorsDataTable.column(6).visible(true);
                 validatorsDataTable.column(7).visible(false);
-                validatorsDataTable.column(8).visible(true)
+                validatorsDataTable.column(8).visible(true);
             }
         }
 
@@ -70,7 +70,11 @@
                 if (possibleStates[hashState]) state = hashState
             }
 
+            var usp = new URLSearchParams(window.location.search)
+            var q = usp.get('q')
+
             validatorsDataTable = $('#validators').DataTable({
+                search: q ? {search:q} : null,
                 pageLength: 25,
                 processing: true,
                 serverSide: true,
@@ -154,7 +158,7 @@
                         render: function (data, type, row, meta) {
                             if (data === null || data[0] === 9223372036854775807)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
@@ -163,7 +167,7 @@
                         render: function (data, type, row, meta) {
                             if (data === null)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
@@ -172,7 +176,7 @@
                         render: function (data, type, row, meta) {
                             if (data === null)
                                 return '-';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/epoch/${data[0]}">Epoch ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
@@ -181,23 +185,34 @@
                         render: function (data, type, row, meta) {
                             if (data === null)
                                 return 'No Attestation found';
-                            return `<span data-toggle="tooltip" data-placement="top" title="${moment.unix(data[1]).format()}">${moment.unix(data[1]).fromNow()} (<a href="/block/${data[0]}">Block ${data[0]}</a>)</span>`
+                            return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${addCommas(data[0])}</a>)</span>`
                         }
                     },
                     {
                         targets: 8,
                         data: '8',
                         render: function (data, type, row, meta) {
-                            return `<span data-toggle="tooltip" data-placement="top" title="${data[0]} executed / ${data[1]} missed"><span class="text-success">${data[0]}</span> / <span class="text-danger">${data[1]}</span></span>`
+                            if (data === true) {
+                               return `<span data-toggle="tooltip" data-placement="top" title="slashed" class="text-danger">true</span>`
+                            }
+                            return `<span data-toggle="tooltip" data-placement="top" title="unslashed" class="text-success">false</span>`
                         }
-                    }
+                    },
                 ]
+            })
+            $("#validators_filter > label > input").on('input', function (ev) {
+                if (ev && ev.target && ev.target.value) {
+                    var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
+                    window.history.replaceState(null, 'Validators Overview', newUrl)
+                } else {
+                    window.history.replaceState(null, 'Validators Overview', window.location.pathname)
+                }
             })
         })
     </script>
 {{end}} {{ define "css"}}
     <link rel="stylesheet" type="text/css"
-          href="https://cdn.datatables.net/v/bs4/dt-1.10.20/r-2.2.3/datatables.min.css"/>
+          href="/css//datatables.min.css"/>
     <style>
         .dataTables_wrapper {
             min-height: 400px; /* this is needed to make the bootstrap-dropdown work when the table is empty */
@@ -288,7 +303,7 @@
                                 <th>Exit</th>
                                 <th title="Withdrawable epoch number">W/able</th>
                                 <th>Last Attestation</th>
-                                <th>Proposals</th>
+                                <th>Slashed</th>
                             </tr>
                             </thead>
                             <tbody></tbody>

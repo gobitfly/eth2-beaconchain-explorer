@@ -1,0 +1,81 @@
+.twitter-typeahead{
+    width: 100%;
+}
+
+.tt-open, #validator-index-view .nice-scroll{
+    background-color: var(--bg-color-secondary);
+    scrollbar-color: var(--primary) rgba(0,0,0,0.2);
+    scrollbar-width: thin;
+}
+
+.tt-open::-webkit-scrollbar, #validator-index-view::-webkit-scrollbar, .nice-scroll::-webkit-scrollbar{
+    width: 5px;
+    height: 5px;
+}
+
+.tt-open::-webkit-scrollbar-thumb, #validator-index-view::-webkit-scrollbar-thumb, .nice-scroll::-webkit-scrollbar-thumb{
+    background-color: var(--primary);
+    border-radius: 12px;
+    border-style: solid;
+    color: var(--primary);
+    border-width: 2px;
+  }
+
+.tt-suggestion.tt-cursor,
+.tt-suggestion:hover {
+  color: #fff;
+  background-color: #007bff;
+  cursor: pointer;
+}
+
+.tt-menu {
+    margin-top: 4px;
+    background-color: var(--banner-background);
+    border: 1px solid var(--banner-background);
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+    border-radius: 4px;
+    box-shadow: 0 1px 25px var(--banner-background);
+    overflow-y: auto;
+    max-height: 300px;
+    cursor: pointer;
+    width: 100%;
+    color: var(--banner-text);
+    padding: 2%;
+  }
+  
+.tt-query {
+    -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+    -moz-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+  }
+  
+.tt-suggestion {
+    line-height: 34px;
+    margin: 0;
+    padding: 0 1rem;
+  }
+
+.form-group label:after { 
+    content:" *";
+    color: var(--danger);
+ }
+
+ .daterangepicker{
+     background-color: var(--light);
+ }
+
+ td.available{
+   color: black;
+ }
+
+ div.ranges ul li{
+   color: var(--primary);
+ }
+
+ #sub-validator{
+   width: 60%;
+   min-width: 60%;
+ }
+
+ 

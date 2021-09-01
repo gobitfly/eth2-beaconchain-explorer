@@ -2,12 +2,14 @@
 FROM golang:1.15-alpine AS build-env
 RUN apk --no-cache add build-base git musl-dev linux-headers npm
 ADD . /src
-RUN cd /src && make -B all
+WORKDIR /src
+RUN make -B all
 
 # final stage
 FROM alpine
 WORKDIR /app
 RUN apk --no-cache add libstdc++ libgcc
 COPY --from=build-env /src/bin /app/
-COPY ./config-example.yml /app/config.yml
-CMD ["./explorer -config config.yml"]
+COPY --from=build-env /src/phase0.yml /app/phase0.yml
+COPY  ./config-example.yml /app/config.yml
+CMD ["./explorer", "--config", "config.yml"]

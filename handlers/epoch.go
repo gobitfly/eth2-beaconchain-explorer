@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
@@ -16,7 +17,7 @@ import (
 )
 
 var epochTemplate = template.Must(template.New("epoch").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epoch.html"))
-var epochNotFoundTemplate = template.Must(template.New("epochnotfound").ParseFiles("templates/layout.html", "templates/epochnotfound.html"))
+var epochNotFoundTemplate = template.Must(template.New("epochnotfound").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/epochnotfound.html"))
 
 // Epoch will show the epoch using a go template
 func Epoch(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +38,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		return
@@ -69,7 +70,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		return
@@ -95,7 +96,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-			http.Error(w, "Internal server error", 503)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		return
@@ -119,9 +120,12 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
 
 	err = db.DB.Get(&epochPageData.NextEpoch, "SELECT epoch FROM epochs WHERE epoch > $1 ORDER BY epoch LIMIT 1", epochPageData.Epoch)
-	if err != nil {
-		logger.Errorf("error retrieving next epoch for epoch %v: %v", epochPageData.Epoch, err)
+	if err == sql.ErrNoRows {
 		epochPageData.NextEpoch = 0
+	} else if err != nil {
+		logger.Errorf("error retrieving next epoch for epoch %v: %v", epochPageData.Epoch, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 	err = db.DB.Get(&epochPageData.PreviousEpoch, "SELECT epoch FROM epochs WHERE epoch < $1 ORDER BY epoch DESC LIMIT 1", epochPageData.Epoch)
 	if err != nil {
@@ -140,7 +144,7 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 }

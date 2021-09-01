@@ -4,7 +4,7 @@
         <div class="d-flex mb-1">
             <h1 class="h4 mb-1 mb-md-0">
                 <span>Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</span>
-                <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" data-placement="right" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
+                <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
                     <i class="fa fa-copy"></i>
                 </button>
                 <span data-toggle="tooltip" title="Edit validator name">
@@ -37,7 +37,11 @@
                         </span>
                     {{end}}
                 {{end}}
-
+                <span data-toggle="tooltip" title="View daily statistics">
+                    <a class="btn btn-dark text-white btn-sm" href="/validator/{{.Index}}/stats">
+                        <i class="fas fa-table"></i>
+                    </a>
+                </span>
             </h1>
         </div>
         <nav aria-label="breadcrumb">
@@ -48,6 +52,7 @@
             </ol>
         </nav>
     </div>
+    {{if .Tags}} {{formatValidatorTags .Tags}}{{end}}
     <div class="text-monospace text-secondary text-truncate text-sm mb-0" id="copy-input">0x{{printf "%x" .PublicKey}}</div>
     </div>
 {{end}}

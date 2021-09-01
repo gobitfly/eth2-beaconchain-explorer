@@ -1,9 +1,10 @@
 {{ define "js"}}
-    <script src="https://code.highcharts.com/stock/highstock.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
-    <script src="https://code.highcharts.com/modules/wordcloud.js"></script>
-    <script src="https://code.highcharts.com/modules/histogram-bellcurve.js"></script>
-    <script src="/js/highcharts-global-options.js"></script>
+    <script src="/js/highcharts/highstock.min.js"></script>
+    <script src="/js/highcharts/exporting.min.js"></script>
+    <script src="/js/highcharts/wordcloud.min.js"></script>
+    <script src="/js/highcharts/bellcurve.min.js"></script>
+    <script src="/js/highcharts/highcharts-global-options.js"></script>
+    <script src="/js/highcharts/drilldown.js"></script>
 
     <script>
         {{if .IsNormalChart}}
@@ -69,9 +70,7 @@
             plotOptions: {
                 column: {
                     stacking: {{.StackingMode}},
-                    dataGrouping: {
-                        {{ if .ColumnDataGroupingApproximation }}approximation: {{.ColumnDataGroupingApproximation}},{{end}}
-                    },
+                    {{ if .ColumnDataGroupingApproximation }}dataGrouping: {approximation: {{.ColumnDataGroupingApproximation}}},{{end}}
                     dataLabels: {
                         enabled: {{ .DataLabelsEnabled }},
                         {{ if .DataLabelsFormatter }} formatter: {{ .DataLabelsFormatter }}, {{end}}

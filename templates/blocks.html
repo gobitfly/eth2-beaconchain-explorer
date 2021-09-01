@@ -1,5 +1,5 @@
 {{ define "js"}}
-    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+    <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
 
     <script>
@@ -50,7 +50,7 @@
     </script>
 {{end}}
 {{ define "css"}}
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
 {{end}}
 {{ define "content"}}
     {{with .Data}}
@@ -84,6 +84,8 @@
                                 </th>
                                 <th>Exits</th>
                                 <th>Votes</th>
+                                <th data-toggle="tooltip" data-placement="top" title="Sync Aggregate participation">Sync Agg %
+                                </th>
                                 <th>Graffiti</th>
                             </tr>
                             </thead>

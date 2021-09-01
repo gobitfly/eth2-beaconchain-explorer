@@ -29,6 +29,7 @@ type Config struct {
 	} `yaml:"chain"`
 	Indexer struct {
 		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
+		FixCanonOnStartup           bool `yaml:"fixCanonOnStartup" envconfig:"INDEXER_FIX_CANON_ON_STARTUP"`
 		FullIndexOnStartup          bool `yaml:"fullIndexOnStartup" envconfig:"INDEXER_FULL_INDEX_ON_STARTUP"`
 		IndexMissingEpochsOnStartup bool `yaml:"indexMissingEpochsOnStartup" envconfig:"INDEXER_MISSING_INDEX_ON_STARTUP"`
 		CheckAllBlocksOnStartup     bool `yaml:"checkAllBlocksOnStartup" envconfig:"INDEXER_CHECK_ALL_BLOCKS_ON_STARTUP"`
@@ -49,19 +50,26 @@ type Config struct {
 			EndEpoch   uint64   `yaml:"endEpoch" envconfig:"INDEXER_ONETIMEEXPORT_END_EPOCH"`
 			Epochs     []uint64 `yaml:"epochs" envconfig:"INDEXER_ONETIMEEXPORT_EPOCHS"`
 		} `yaml:"onetimeexport"`
+		PubKeyTagsExporter struct {
+			Enabled bool `yaml:"enabled" envconfig:"PUBKEY_TAGS_EXPORTER_ENABLED"`
+		} `yaml:"pubkeyTagsExporter"`
 	} `yaml:"indexer"`
 	Frontend struct {
-		Kong          string `yaml:"kong" envconfig:"FRONTEND_KONG"`
-		OnlyAPI       bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
-		CsrfAuthKey   string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY`
-		CsrfInsecure  bool   `yaml:"csrfInsecure envconfig:"FRONTEND_CSRF_INSECURE"`
-		DisableCharts bool   `yaml:"disableCharts" envconfig:"disableCharts"`
-		Enabled       bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
-		Imprint       string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
-		SiteDomain    string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
-		SiteName      string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
-		SiteSubtitle  string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
-		Server        struct {
+		Kong               string `yaml:"kong" envconfig:"FRONTEND_KONG"`
+		OnlyAPI            bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
+		CsrfAuthKey        string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY`
+		CsrfInsecure       bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`
+		DisableCharts      bool   `yaml:"disableCharts" envconfig:"disableCharts"`
+		RecaptchaSiteKey   string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
+		RecaptchaSecretKey string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
+		Enabled            bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
+		// Imprint is deprecated place imprint file into the legal directory
+		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
+		LegalDir     string `yaml:"legalDir" envconfig:"FRONTEND_LEGAL"`
+		SiteDomain   string `yaml:"siteDomain" envconfig:"FRONTEND_SITE_DOMAIN"`
+		SiteName     string `yaml:"siteName" envconfig:"FRONTEND_SITE_NAME"`
+		SiteSubtitle string `yaml:"siteSubtitle" envconfig:"FRONTEND_SITE_SUBTITLE"`
+		Server       struct {
 			Port string `yaml:"port" envconfig:"FRONTEND_SERVER_PORT"`
 			Host string `yaml:"host" envconfig:"FRONTEND_SERVER_HOST"`
 		} `yaml:"server"`
@@ -72,10 +80,6 @@ type Config struct {
 			Host     string `yaml:"host" envconfig:"FRONTEND_DB_HOST"`
 			Port     string `yaml:"port" envconfig:"FRONTEND_DB_PORT"`
 		} `yaml:"database"`
-		Notifications struct {
-			Enabled                 bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
-			FirebaseCredentialsPath string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
-		} `yaml:"notifications"`
 		Stripe struct {
 			SecretKey string `yaml:"secretKey" envconfig:"FRONTEND_STRIPE_SECRET_KEY"`
 			PublicKey string `yaml:"publicKey" envconfig:"FRONTEND_STRIPE_PUBLIC_KEY"`
@@ -102,8 +106,37 @@ type Config struct {
 				Sender     string `yaml:"sender" envconfig:"FRONTEND_MAIL_MAILGUN_SENDER"`
 			} `yaml:"mailgun"`
 		} `yaml:"mail"`
-		GATag string `yaml:"gatag"  envconfig:"GATAG"`
+		GATag                  string `yaml:"gatag" envconfig:"GATAG"`
+		VerifyAppSubs          bool   `yaml:"verifyAppSubscriptions" envconfig:"FRONTEND_VERIFY_APP_SUBSCRIPTIONS"`
+		AppSubsAppleSecret     string `yaml:"appSubsAppleSecret" envconfig:"FRONTEND_APP_SUBS_APPLE_SECRET"`
+		AppSubsGoogleJSONPath  string `yaml:"appSubsGoogleJsonPath" envconfig:"FRONTEND_APP_SUBS_GOOGLE_JSON_PATH"`
+		CleanupOldMachineStats bool   `yaml:"cleanupOldMachineStats" envconfig:"FRONTEND_CLEANUP_OLD_MACHINE_STATS"`
+		DisableStatsInserts    bool   `yaml:"disableStatsInserts" envconfig:"FRONTEND_DISABLE_STATS_INSERTS"`
+		ShowDonors             struct {
+			Enabled bool   `yaml:"enabled" envconfig:"FRONTEND_SHOW_DONORS_ENABLED"`
+			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
+		} `yaml:"showDonors"`
+		Countdown struct {
+			Enabled   bool   `yaml:"enabled" envconfig:"FRONTEND_COUNTDOWN_ENABLED"`
+			Title     string `yaml:"title" envconfig:"FRONTEND_COUNTDOWN_TITLE"`
+			Timestamp uint64 `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
+			Info      string `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
+		} `yaml:"countdown"`
 	} `yaml:"frontend"`
+	Metrics struct {
+		Enabled bool   `yaml:"enabled" envconfig:"METRICS_ENABLED"`
+		Address string `yaml:"address" envconfig:"METRICS_ADDRESS"`
+	} `yaml:"metrics"`
+	Notifications struct {
+		Enabled                                       bool   `yaml:"enabled" envconfig:"FRONTEND_NOTIFICATIONS_ENABLED"`
+		UserDBNotifications                           bool   `yaml:"userDbNotifications" envconfig:"FRONTEND_USERDB_NOTIFICATIONS_ENABLED"`
+		FirebaseCredentialsPath                       string `yaml:"firebaseCredentialsPath" envconfig:"FRONTEND_NOTIFICATIONS_FIREBASE_CRED_PATH"`
+		ValidatorBalanceDecreasedNotificationsEnabled bool   `yaml:"validatorBalanceDecreasedNotificationsEnabled" envconfig:"FRONTEND_VALIDATOR_BALANCE_DECREASED_NOTIFICATIONS_ENABLED"`
+	} `yaml:"notifications"`
+	SSVExporter struct {
+		Enabled bool   `yaml:"enabled" envconfig:"SSV_EXPORTER_ENABLED"`
+		Address string `yaml:"address" envconfig:"SSV_EXPORTER_ADDRESS"`
+	} `yaml:"SSVExporter"`
 }
 
 // Phase0 is the config for beacon chain phase0

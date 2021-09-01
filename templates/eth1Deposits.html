@@ -1,8 +1,8 @@
 {{ define "js"}}
-    <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.js"></script>
+    <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
-    <script src="https://code.highcharts.com/stock/highstock.js"></script>
-    <script src="/js/highcharts-global-options.js"></script>
+    <script type="text/javascript" src="/js/highcharts/highstock.min.js"></script>
+    <script type="text/javascript" src="/js/highcharts/highcharts-global-options.js"></script>
     <script>
         $(document).ready(function () {
             var usp = new URLSearchParams(window.location.search)
@@ -52,7 +52,7 @@
         })
     </script>
 {{end}} {{ define "css"}}
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.20/datatables.min.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
 
 
 {{end}}
@@ -79,13 +79,13 @@
                                 <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Top
                                     Depositor</h2>
                                 <span class="h6"
-                                      title="Number of deposits made">{{(index .Stats.TopDepositors 0).DepositCount}} Deposits</span>
+                                      title="Number of deposits made">{{if len .Stats.TopDepositors }}{{(index .Stats.TopDepositors 0).DepositCount}}{{else}}0{{end}} Deposits</span>
                             </div>
                             <div class="d-flex align-items-center">
 					<span style="max-width: 150px;" class="h6 font-weight-normal mb-0 text-truncate">
 						<a href="/validators/eth1leaderboard" class="text-primary text-truncate">
 						<i class="fas fa-medal"></i>
-							0x{{(index .Stats.TopDepositors 0).Address}} 
+                            {{if len .Stats.TopDepositors }}0x{{(index .Stats.TopDepositors 0).Address}}{{end}}
 						</a>
 					</span>
                             </div>
@@ -98,13 +98,13 @@
                             <div class="d-flex justify-content-between align-item-center">
                                 <h2 class="small text-uppercase font-weight-medium text-secondary mr-1">Runner Up</h2>
                                 <span class="h6"
-                                      title="Number of deposits made">{{(index .Stats.TopDepositors 1).DepositCount}} Deposits</span>
+                                      title="Number of deposits made">{{if len .Stats.TopDepositors }}{{(index .Stats.TopDepositors 1).DepositCount}}{{else}}0{{end}} Deposits</span>
                             </div>
                             <div class="d-flex align-items-center">
 					<span style="max-width: 150px;" class="h6 font-weight-normal mb-0 text-truncate">
 						<a href="/validators/eth1leaderboard" class="text-primary text-truncate">
 						<i class="fas fa-medal"></i>
-							0x{{(index .Stats.TopDepositors 1).Address}} 
+                            {{if len .Stats.TopDepositors }}0x{{(index .Stats.TopDepositors 1).Address}}{{end}}
 						</a>
 						</span>
                             </div>

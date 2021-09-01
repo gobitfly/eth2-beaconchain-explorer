@@ -3,12 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"eth2-exporter/db"
+	"eth2-exporter/price"
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"fmt"
 	"net/http"
 	"regexp"
-	"time"
+	"strings"
 
 	"github.com/lib/pq"
 )
@@ -30,48 +32,56 @@ func GetValidatorOnlineThresholdSlot() uint64 {
 }
 
 // GetValidatorEarnings will return the earnings (last day, week, month and total) of selected validators
-func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error) {
+func GetValidatorEarnings(validators []uint64, currency string) (*types.ValidatorEarnings, error) {
 	validatorsPQArray := pq.Array(validators)
-	latestEpoch := services.LatestEpoch()
-	now := utils.EpochToTime(latestEpoch)
-	lastDayEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 1 * -1)))
-	lastWeekEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 7 * -1)))
-	lastMonthEpoch := uint64(utils.TimeToEpoch(now.Add(time.Hour * 24 * 31 * -1)))
+	latestEpoch := int64(services.LatestEpoch())
+	lastDayEpoch := latestEpoch - 225
+	lastWeekEpoch := latestEpoch - 225*7
+	lastMonthEpoch := latestEpoch - 225*31
 
-	var activationEpoch uint64
-	err := db.DB.Get(&activationEpoch, "SELECT CAST(MIN(activationepoch) AS BIGINT) FROM validators WHERE validatorindex = ANY($1)", validatorsPQArray)
-	if err != nil {
-		return nil, err
+	if lastDayEpoch < 0 {
+		lastDayEpoch = 0
+	}
+	if lastWeekEpoch < 0 {
+		lastWeekEpoch = 0
+	}
+	if lastMonthEpoch < 0 {
+		lastMonthEpoch = 0
 	}
 
-	if activationEpoch == 9223372036854775807 {
-		activationEpoch = 0
-	}
+	balances := []*types.Validator{}
 
-	balances := []struct {
-		Epoch   uint64
-		Balance int64
-	}{}
-
-	err = db.DB.Select(&balances, "SELECT epoch, COALESCE(SUM(balance), 0) AS balance FROM validator_balances WHERE epoch = ANY($1) AND validatorindex = ANY($2) GROUP BY epoch", pq.Array([]uint64{latestEpoch, lastDayEpoch, lastWeekEpoch, lastMonthEpoch, activationEpoch}), validatorsPQArray)
+	err := db.DB.Select(&balances, `SELECT 
+			   COALESCE(balance, 0) AS balance, 
+			   COALESCE(balanceactivation, 0) AS balanceactivation, 
+			   COALESCE(balance1d, 0) AS balance1d, 
+			   COALESCE(balance7d, 0) AS balance7d, 
+			   COALESCE(balance31d , 0) AS balance31d,
+       			activationepoch,
+       			pubkey
+		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	balancesEpochMap := make(map[uint64]int64)
-	for _, b := range balances {
-		balancesEpochMap[b.Epoch] = b.Balance
-	}
-
 	deposits := []struct {
-		Epoch   uint64
-		Deposit int64
+		Epoch     int64
+		Amount    int64
+		Publickey []byte
 	}{}
 
-	err = db.DB.Select(&deposits, "SELECT block_slot / 32 AS epoch, SUM(amount) AS deposit FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1)) GROUP BY epoch", validatorsPQArray)
+	err = db.DB.Select(&deposits, "SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits WHERE publickey IN (SELECT pubkey FROM validators WHERE validatorindex = ANY($1))", validatorsPQArray)
 	if err != nil {
 		return nil, err
+	}
+
+	depositsMap := make(map[string]map[int64]int64)
+	for _, d := range deposits {
+		if _, exists := depositsMap[fmt.Sprintf("%x", d.Publickey)]; !exists {
+			depositsMap[fmt.Sprintf("%x", d.Publickey)] = make(map[int64]int64)
+		}
+		depositsMap[fmt.Sprintf("%x", d.Publickey)][d.Epoch] += d.Amount
 	}
 
 	var earningsTotal int64
@@ -81,55 +91,42 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	var apr float64
 	var totalDeposits int64
 
-	for _, d := range deposits {
-		totalDeposits += d.Deposit
-	}
+	for _, balance := range balances {
 
-	// Calculate earnings
-	start := activationEpoch
-	end := latestEpoch
-	initialBalance := balancesEpochMap[start]
-	endBalance := balancesEpochMap[end]
-	depositSum := int64(0)
-	for _, d := range deposits {
-		if d.Epoch > start && d.Epoch < end {
-			depositSum += d.Deposit
+		if int64(balance.ActivationEpoch) > latestEpoch {
+			continue
 		}
-	}
-	earningsTotal = endBalance - initialBalance - depositSum
+		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
+			totalDeposits += deposit
 
-	start = lastMonthEpoch
-	initialBalance = balancesEpochMap[start]
-	endBalance = balancesEpochMap[end]
-	depositSum = int64(0)
-	for _, d := range deposits {
-		if d.Epoch > start && d.Epoch < end {
-			depositSum += d.Deposit
+			if epoch > int64(balance.ActivationEpoch) {
+				earningsTotal -= deposit
+			}
+			if epoch > lastDayEpoch && epoch > int64(balance.ActivationEpoch) {
+				earningsLastDay -= deposit
+			}
+			if epoch > lastWeekEpoch && epoch > int64(balance.ActivationEpoch) {
+				earningsLastWeek -= deposit
+			}
+			if epoch > lastMonthEpoch && epoch > int64(balance.ActivationEpoch) {
+				earningsLastMonth -= deposit
+			}
 		}
-	}
-	earningsLastMonth = endBalance - initialBalance - depositSum
 
-	start = lastWeekEpoch
-	initialBalance = balancesEpochMap[start]
-	endBalance = balancesEpochMap[end]
-	depositSum = int64(0)
-	for _, d := range deposits {
-		if d.Epoch > start && d.Epoch < end {
-			depositSum += d.Deposit
+		if int64(balance.ActivationEpoch) > lastDayEpoch {
+			balance.Balance1d = balance.BalanceActivation
 		}
-	}
-	earningsLastWeek = endBalance - initialBalance - depositSum
-
-	start = lastDayEpoch
-	initialBalance = balancesEpochMap[start]
-	endBalance = balancesEpochMap[end]
-	depositSum = int64(0)
-	for _, d := range deposits {
-		if d.Epoch > start && d.Epoch < end {
-			depositSum += d.Deposit
+		if int64(balance.ActivationEpoch) > lastWeekEpoch {
+			balance.Balance7d = balance.BalanceActivation
 		}
+		if int64(balance.ActivationEpoch) > lastMonthEpoch {
+			balance.Balance31d = balance.BalanceActivation
+		}
+		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
+		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
+		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
+		earningsLastMonth += int64(balance.Balance) - int64(balance.Balance31d)
 	}
-	earningsLastDay = endBalance - initialBalance - depositSum
 
 	apr = (((float64(earningsLastWeek) / 1e9) / (float64(totalDeposits) / 1e9)) * 365) / 7
 	if apr < float64(-1) {
@@ -137,19 +134,31 @@ func GetValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 	}
 
 	return &types.ValidatorEarnings{
-		Total:     earningsTotal,
-		LastDay:   earningsLastDay,
-		LastWeek:  earningsLastWeek,
-		LastMonth: earningsLastMonth,
-		APR:       apr,
+		Total:                earningsTotal,
+		LastDay:              earningsLastDay,
+		LastWeek:             earningsLastWeek,
+		LastMonth:            earningsLastMonth,
+		APR:                  apr,
+		TotalDeposits:        totalDeposits,
+		LastDayFormatted:     utils.FormatIncome(earningsLastDay, currency),
+		LastWeekFormatted:    utils.FormatIncome(earningsLastWeek, currency),
+		LastMonthFormatted:   utils.FormatIncome(earningsLastMonth, currency),
+		TotalFormatted:       utils.FormatIncome(earningsTotal, currency),
+		TotalChangeFormatted: utils.FormatIncome(earningsTotal+totalDeposits, currency),
 	}, nil
 }
 
 // LatestState will return common information that about the current state of the eth2 chain
 func LatestState(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	currency := GetCurrency(r)
+	data := services.LatestState()
+	// data.Currency = currency
+	data.EthPrice = price.GetEthPrice(currency)
+	data.EthRoundPrice = price.GetEthRoundPrice(data.EthPrice)
+	data.EthTruncPrice = utils.KFormatterEthPrice(data.EthRoundPrice)
 
-	err := json.NewEncoder(w).Encode(services.LatestState())
+	err := json.NewEncoder(w).Encode(data)
 
 	if err != nil {
 		logger.Errorf("error sending latest index page data: %v", err)
@@ -159,9 +168,64 @@ func LatestState(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetCurrency(r *http.Request) string {
-	if langCookie, err := r.Cookie("currency"); err == nil {
-		return langCookie.Value
+	if cookie, err := r.Cookie("currency"); err == nil {
+		return cookie.Value
 	}
 
 	return "ETH"
+}
+
+func GetCurrencySymbol(r *http.Request) string {
+
+	cookie, err := r.Cookie("currency")
+	if err != nil {
+		return "$"
+	}
+
+	switch cookie.Value {
+	case "AUD":
+		return "A$"
+	case "CAD":
+		return "C$"
+	case "CNY":
+		return "¥"
+	case "EUR":
+		return "€"
+	case "GBP":
+		return "£"
+	case "JPY":
+		return "¥"
+	case "RUB":
+		return "₽"
+	default:
+		return "$"
+	}
+}
+
+func GetCurrentPrice(r *http.Request) uint64 {
+	cookie, err := r.Cookie("currency")
+	if err != nil {
+		return price.GetEthRoundPrice(price.GetEthPrice("USD"))
+	}
+
+	if cookie.Value == "ETH" {
+		return price.GetEthRoundPrice(price.GetEthPrice("USD"))
+	}
+	return price.GetEthRoundPrice(price.GetEthPrice(cookie.Value))
+}
+
+func GetCurrentPriceFormatted(r *http.Request) string {
+	userAgent := r.Header.Get("User-Agent")
+	userAgent = strings.ToLower(userAgent)
+	price := GetCurrentPrice(r)
+	if strings.Contains(userAgent, "android") || strings.Contains(userAgent, "iphone") || strings.Contains(userAgent, "windows phone") {
+		return fmt.Sprintf("%s", utils.KFormatterEthPrice(price))
+	}
+	return fmt.Sprintf("%s", utils.FormatAddCommas(uint64(price)))
+}
+
+func GetTruncCurrentPriceFormatted(r *http.Request) string {
+	price := GetCurrentPrice(r)
+	symbol := GetCurrencySymbol(r)
+	return fmt.Sprintf("%s %s", symbol, utils.KFormatterEthPrice(price))
 }

@@ -31,8 +31,29 @@ function switchTheme(e) {
 }
 $('#toggleSwitch').on('change', switchTheme)
 
+function hideInfoBanner(msg){
+  localStorage.setItem('infoBannerStatus', msg)
+  $('#infoBanner').attr('class', 'd-none')
+}
+// $("#infoBannerDissBtn").on('click', hideInfoBanner)
+
+function setValidatorEffectiveness(elem, eff){
+  if (elem===undefined) return
+  eff=parseInt(eff)
+  if (eff >= 100) {
+    $('#'+elem).html(`<span class="text-success"> ${eff}% - Perfect <i class="fas fa-grin-stars"></i>`)
+  } else if (eff > 80) {
+    $('#'+elem).html(`<span class="text-success"> ${eff}% - Good <i class="fas fa-smile"></i></span>`)
+  } else if (eff > 60) {
+    $('#'+elem).html(`<span class="text-warning"> ${eff}% - Fair <i class="fas fa-meh"></i></span>`)
+  } else {
+    $('#'+elem).html(`<span class="text-danger"> ${eff}% - Bad <i class="fas fa-frown"></i></span>`)
+  }
+}
+
 // typeahead
 $(document).ready(function() {
+  
   formatTimestamps() // make sure this happens before tooltips
   $('[data-toggle="tooltip"]').tooltip()
 
@@ -217,22 +238,24 @@ $(document).ready(function() {
   })
 })
 
-moment.locale((window.navigator.userLanguage || window.navigator.language).toLowerCase())
 $('[aria-ethereum-date]').each(function(item) {
   var dt = $(this).attr('aria-ethereum-date')
   var format = $(this).attr('aria-ethereum-date-format')
 
   if (!format) {
-    format = 'L LTS'
+    format = 'ff'
   }
 
   if (format === 'FROMNOW') {
-    $(this).text(moment.unix(dt).fromNow())
+    $(this).text(luxon.DateTime.fromMillis(dt * 1000).toRelative({ style: "short"}))
+    $(this).attr('title', luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
+    $(this).attr('data-toggle', 'tooltip')
   } else {
-    $(this).text(moment.unix(dt).format(format))
+    $(this).text(luxon.DateTime.fromMillis(dt * 1000).toFormat(format))
   }
-  $(this).attr('title', moment.unix(dt).format("LLL"))
 })
+
+
 
 $(document).ready(function() {
     var clipboard = new ClipboardJS('[data-clipboard-text]');
@@ -261,36 +284,6 @@ $(document).ready(function() {
   });
 })
 
-// var indicator = $('#nav .nav-indicator')
-// var items = document.querySelectorAll('#nav .nav-item')
-// var selectedLi = indicator.parent()[0]
-// var navigated = false
-
-// function handleIndicator(el) {
-//   indicator.css({
-//     width: `${el.offsetWidth}px`,
-//     left: `${el.offsetLeft}px`,
-//     bottom: 0
-//   })
-// }
-
-// items.forEach(function(item, index) {
-//   item.addEventListener('click', el => {
-//     if (navigated === false) {
-//       indicator
-//         .css({
-//           width: `${selectedLi.offsetWidth}px`,
-//           left: `${selectedLi.offsetLeft}px`,
-//           bottom: 0
-//         })
-//         .detach()
-//         .appendTo('.navbar ul') //.appendTo(el.target)
-//     }
-//     navigated = true
-//     handleIndicator(item)
-//   })
-// })
-
 // With HTML5 history API, we can easily prevent scrolling!
 $('.nav-tabs a').on('shown.bs.tab', function (e) {
     if (history.replaceState) {
@@ -313,9 +306,13 @@ function formatTimestamps(selStr) {
   }
   sel.find('.timestamp').each(function(){
     var ts = $(this).data('timestamp')
-    var tsMoment = moment.unix(ts)
-    $(this).attr("data-original-title", tsMoment.format("LLL"))
-    $(this).text(tsMoment.fromNow())
+    var tsLuxon = luxon.DateTime.fromMillis(ts * 1000)
+    $(this).attr("data-original-title", tsLuxon.toFormat("ff"))
+    $(this).text(tsLuxon.toRelative({ style: "short"}))
   })
   sel.find('[data-toggle="tooltip"]').tooltip()
+}
+
+function addCommas(number) {
+  return number.toString().replace(/,/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }

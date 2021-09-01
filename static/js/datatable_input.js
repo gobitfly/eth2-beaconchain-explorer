@@ -37,10 +37,10 @@
       var language = oSettings.oLanguage.oPaginate
       var classes = oSettings.oClasses
       var info = language.info || 'Page _INPUT_ of _TOTAL_'
-      nFirst.innerHTML = '<a type="button" aria-controls="' + oSettings.sTableId + '_' + firstClassName + '" class="page-link">' + language.sFirst + '</a>'
-      nPrevious.innerHTML = '<a type="button" aria-controls="' + oSettings.sTableId + '_' + previousClassName + '" class="page-link">' + language.sPrevious + '</a>'
-      nNext.innerHTML = '<a type="button" aria-controls="' + oSettings.sTableId + '_' + nextClassName + '" class="page-link">' + language.sNext + '</a>'
-      nLast.innerHTML = '<a type="button" aria-controls="' + oSettings.sTableId + '_' + lastClassName + '" class="page-link">' + language.sLast + '</a>'
+      nFirst.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + '_' + firstClassName + '" class="page-link">' + language.sFirst + '</a>'
+      nPrevious.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + '_' + previousClassName + '" class="page-link">' + language.sPrevious + '</a>'
+      nNext.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + '_' + nextClassName + '" class="page-link">' + language.sNext + '</a>'
+      nLast.innerHTML = '<a tab-index="1" aria-controls="' + oSettings.sTableId + '_' + lastClassName + '" class="page-link">' + language.sLast + '</a>'
       nWrap.className = 'pagination'
       nFirst.className = firstClassName + ' ' + classes.sPageButton
       nPrevious.className = previousClassName + ' ' + classes.sPageButton

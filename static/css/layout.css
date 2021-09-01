@@ -1,8 +1,14 @@
-
 /* Revive ad server responsive images */
 ins[data-revive-zoneid] > a > img {
   max-width: 100%;
   height: auto;
+}
+
+@media (max-width: 450px) {
+  .pagination .first,
+  .pagination .last {
+    display: none;
+  }
 }
 
 .page-item {
@@ -11,6 +17,7 @@ ins[data-revive-zoneid] > a > img {
 
 .page-item > a {
   border-radius: .225rem;
+  font-size: .95rem;
 }
 
 .dropdown-menu .nav-icon i {
@@ -18,14 +25,14 @@ ins[data-revive-zoneid] > a > img {
 }
 
 @media (min-width: 1140px) and (max-width: 1440px) { 
-
   .navbar .nav-item img {
     display: none;
   }
-
 }
 
-
+.cursor-pointer {
+  cursor: pointer;
+}
 
 @media (max-width: 1140px) {
   .nav-icon {
@@ -49,27 +56,48 @@ ins[data-revive-zoneid] > a > img {
   }
 }
 
+@media (max-width: 768px) {
+  div.dataTables_wrapper div.dataTables_paginate ul.pagination {
+    justify-content: center !important;
+    margin-bottom: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  #slashings-table_wrapper > div:nth-child(2),
+  #blocks-table_wrapper > div:nth-child(2),
+  #attestations-table_wrapper > div:nth-child(2) {
+    margin-bottom: 1.55rem;
+  }
+}
+
 .paginate_input {
-    padding: .25rem .5rem;
-    font-size: .875rem;
-    height: 100%;
-    line-height: 1.5;
-    border-radius: .2rem;
-    display: block;
-    width: 100%;
-    font-weight: 400;
-    line-height: 1.5;
-    color: var(--input-color);
-    background-color: var(--bg-color-secondary);
-    background-clip: padding-box;
-    border: 1px solid var(--input-border-color);
-    border-radius: .25rem;
-    box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
-    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+  padding: .25rem .5rem;
+  font-size: .875rem;
+  height: 100%;
+  line-height: 1.5;
+  border-radius: .2rem;
+  display: block;
+  width: 100%;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--input-color);
+  background-color: var(--bg-color-secondary);
+  background-clip: padding-box;
+  border: 1px solid var(--input-border-color);
+  border-radius: .25rem;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.075);
+  transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+}
+
+table {
+  table-layout: auto;
 }
 
 .paginate_button, .page-link {
   background-color: var(--bg-color-secondary);
+  cursor: pointer;
+  color: var(--link-color, #2d5986);
 }
 
 .page-item.disabled .page-link {
@@ -99,7 +127,6 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   background-image: linear-gradient(180deg, transparent 65%, var(--highlight) 0);
 }
 
-
 .visually-hidden {
   border: 0;
   clip: rect(0 0 0 0);
@@ -110,17 +137,6 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   position: absolute;
   width: 1px;
   white-space: nowrap;
-}
-
-
-@media (max-width: 1139.98px) {
-  .info-banner-content.container {
-    padding-right: 0;
-    padding-left: 0;
-  }
-  .info-banner-container {
-    padding: 0 1rem;
-  }
 }
 
 
@@ -343,6 +359,7 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   left: 50%;
   transform: translate(-50%,-50%);
 }
+
 .btn-icon-inside {
   position: relative;
   line-height: 0;
@@ -352,4 +369,3 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   width: 1.3rem;
   height: 1.3rem;
 }
-

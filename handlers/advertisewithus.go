@@ -19,6 +19,8 @@ func AdvertiseWithUs(w http.ResponseWriter, r *http.Request) {
 	data := InitPageData(w, r, "advertisewithus", "/advertisewithus", "Adverstise With Us")
 
 	pageData := &types.AdvertiseWithUsPageData{}
+	pageData.RecaptchaKey = utils.Config.Frontend.RecaptchaSiteKey
+
 	pageData.FlashMessage, err = utils.GetFlash(w, r, "ad_flash")
 	if err != nil {
 		logger.Errorf("error retrieving flashes for advertisewithusform %v", err)
@@ -44,6 +46,23 @@ func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(utils.Config.Frontend.RecaptchaSecretKey) > 0 && len(utils.Config.Frontend.RecaptchaSiteKey) > 0 {
+		if len(r.FormValue("g-recaptcha-response")) == 0 {
+			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
+			logger.Errorf("error no recaptca response present %v route: %v", r.URL.String(), r.FormValue("g-recaptcha-response"))
+			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
+			return
+		}
+
+		valid, err := utils.ValidateReCAPTCHA(r.FormValue("g-recaptcha-response"))
+		if err != nil || !valid {
+			utils.SetFlash(w, r, "pricing_flash", "Error: Failed to create request")
+			logger.Errorf("error validating recaptcha %v route: %v", r.URL.String(), err)
+			http.Redirect(w, r, "/pricing", http.StatusSeeOther)
+			return
+		}
+	}
+
 	name := r.FormValue("name")
 	email := r.FormValue("email")
 	url := r.FormValue("url")
@@ -61,7 +80,7 @@ func AdvertiseWithUsPost(w http.ResponseWriter, r *http.Request) {
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 
-	err = mail.SendMail("support@beaconcha.in", "New ad inquiry", msg)
+	err = mail.SendMail("support@beaconcha.in", "New ad inquiry", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending ad form: %v", err)
 		utils.SetFlash(w, r, "ad_flash", "Error: unable to submit ad request")
