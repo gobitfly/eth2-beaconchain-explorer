@@ -16,7 +16,6 @@ import (
 )
 
 func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title string) *types.PageData {
-	user := getUser(r)
 	data := &types.PageData{
 		HeaderAd: false,
 		Meta: &types.Meta{
@@ -28,7 +27,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		},
 		Active:                active,
 		Data:                  &types.Empty{},
-		User:                  user,
+		User:                  getUser(w, r),
 		Version:               version.Version,
 		ChainSlotsPerEpoch:    utils.Config.Chain.SlotsPerEpoch,
 		ChainSecondsPerSlot:   utils.Config.Chain.SecondsPerSlot,
@@ -63,7 +62,6 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 		ClientsUpdated:        ethclients.ClientsUpdated(),
 		Phase0:                utils.Config.Chain.Phase0,
 		Lang:                  "en-US",
-		NoAds:                 user.Authenticated && user.Subscription != "",
 	}
 	data.EthPrice = price.GetEthPrice(data.Currency)
 	data.ExchangeRate = price.GetEthPrice(data.Currency)
@@ -95,7 +93,7 @@ func InitPageData(w http.ResponseWriter, r *http.Request, active, path, title st
 	return data
 }
 
-func getUser(r *http.Request) *types.User {
+func getUser(w http.ResponseWriter, r *http.Request) *types.User {
 	if IsMobileAuth(r) {
 		claims := getAuthClaims(r)
 		u := &types.User{}
@@ -103,16 +101,32 @@ func getUser(r *http.Request) *types.User {
 		u.Authenticated = true
 		return u
 	} else {
-		return getUserFromSessionStore(r)
+		return getUserFromSessionStore(w, r)
 	}
 }
 
-func getUserFromSessionStore(r *http.Request) *types.User {
-	u, _, _ := getUserSession(r)
+func getUserFromSessionStore(w http.ResponseWriter, r *http.Request) *types.User {
+	u := &types.User{}
+	session, err := utils.SessionStore.Get(r, authSessionName)
+	if err != nil {
+		logger.Errorf("error getting session from sessionStore: %v", err)
+		return u
+	}
+	ok := false
+	u.Authenticated, ok = session.Values["authenticated"].(bool)
+	if !ok {
+		u.Authenticated = false
+		return u
+	}
+	u.UserID, ok = session.Values["user_id"].(uint64)
+	if !ok {
+		u.Authenticated = false
+		return u
+	}
 	return u
 }
 
-func getUserSession(r *http.Request) (*types.User, *sessions.Session, error) {
+func getUserSession(w http.ResponseWriter, r *http.Request) (*types.User, *sessions.Session, error) {
 	u := &types.User{}
 	session, err := utils.SessionStore.Get(r, authSessionName)
 	if err != nil {
@@ -128,11 +142,6 @@ func getUserSession(r *http.Request) (*types.User, *sessions.Session, error) {
 	u.UserID, ok = session.Values["user_id"].(uint64)
 	if !ok {
 		u.Authenticated = false
-		return u, session, nil
-	}
-	u.Subscription, ok = session.Values["subscription"].(string)
-	if !ok {
-		u.Subscription = ""
 		return u, session, nil
 	}
 	return u, session, nil

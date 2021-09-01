@@ -47,7 +47,6 @@ func Pools(w http.ResponseWriter, r *http.Request) {
 	if utils.Config.Chain.Network == "mainnet" {
 		poolData.IsMainnet = true
 	}
-	poolData.NoAds = data.NoAds
 	data.Data = poolData
 
 	err = poolsServicesTemplate.ExecuteTemplate(w, "layout", data)
