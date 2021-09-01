@@ -258,14 +258,10 @@ function loadMonitoringData(data) {
         responsivePriority: 3,
         data: 'threshold',
         render: function(data, type, row, meta) {
-          if (!data) {
-            return '<span class="threshold_non_editable">N/A</span>';
-          }
-
+          console.log(data[0]);
           if (type === 'display') {
             let e = "";
             for (let i of data[1].Notifications) {
-              // console.log("q", i)
               let nn = i.Notification.split(':');
               nn = nn[nn.length-1];
               let ns = nn.split('_');
@@ -273,6 +269,7 @@ function loadMonitoringData(data) {
                 e += `${nn}:${i.Threshold},`;
               }
             }
+            // TODO: if data is 0 then return '<span class="threshold_non_editable">N/A</span>'
             return `
               <input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden />
               <span class="threshold_non_editable">
@@ -291,7 +288,7 @@ function loadMonitoringData(data) {
         responsivePriority: 2,
         data: 'machine',
         render: function(data, type, row, meta) {
-          return `<span class="font-weight-bold"><i class="fas fa-male mr-1"></i><a style="padding: .25rem;" href="/validator/${data}">${data}</a></span>`
+          return `<span class="font-weight-bold"><i class="fas fa-male mr-2"></i><a style="padding: .25rem;" href="/validator/${data}">${data}</a></span>`
         }
       },
       {
