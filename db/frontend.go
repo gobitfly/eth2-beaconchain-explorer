@@ -182,6 +182,9 @@ func GetUserMonitorSharingSetting(userID uint64) (bool, error) {
 		"SELECT share FROM stats_sharing WHERE user_id = $1 ORDER BY id desc limit 1", userID)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
 		return false, err
 	}
 
