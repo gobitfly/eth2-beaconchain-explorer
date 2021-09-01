@@ -182,6 +182,9 @@ func GetUserMonitorSharingSetting(userID uint64) (bool, error) {
 		"SELECT share FROM stats_sharing WHERE user_id = $1 ORDER BY id desc limit 1", userID)
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
 		return false, err
 	}
 
@@ -246,14 +249,33 @@ func MobileNotificatonTokenUpdate(userID, deviceID uint64, notifyToken string) e
 	return err
 }
 
-func InsertMobileSubscription(userID uint64, paymentDetails types.MobileSubscription, store, receipt string, expiration int64, rejectReson string) error {
+func InsertMobileSubscription(userID uint64, paymentDetails types.MobileSubscription, store, receipt string, expiration int64, rejectReson string, extSubscriptionId string) error {
 	now := time.Now()
 	nowTs := now.Unix()
 	receiptHash := utils.HashAndEncode(receipt)
-	_, err := FrontendDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash) VALUES("+
-		"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13);",
-		userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash,
+	_, err := FrontendDB.Exec("INSERT INTO users_app_subscriptions (user_id, product_id, price_micros, currency, created_at, updated_at, validate_remotely, active, store, receipt, expires_at, reject_reason, receipt_hash, subscription_id) VALUES("+
+		"$1, $2, $3, $4, TO_TIMESTAMP($5), TO_TIMESTAMP($6), $7, $8, $9, $10, TO_TIMESTAMP($11), $12, $13, $14);",
+		userID, paymentDetails.ProductID, paymentDetails.PriceMicros, paymentDetails.Currency, nowTs, nowTs, paymentDetails.Valid, paymentDetails.Valid, store, receipt, expiration, rejectReson, receiptHash, extSubscriptionId,
 	)
+	return err
+}
+
+func ChangeProductIDFromStripe(stripeSubscriptionID string, productID string) error {
+	now := time.Now()
+	nowTs := now.Unix()
+
+	tx, err := FrontendDB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("UPDATE users_app_subscriptions SET product_id = $2, updated_at = TO_TIMESTAMP($3) where subscription_id = $1 AND store = 'stripe'", stripeSubscriptionID, productID, nowTs)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
 	return err
 }
 
@@ -267,10 +289,16 @@ func GetAppSubscriptionCount(userID uint64) (int64, error) {
 	return count, err
 }
 
+func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error) {
+	userSub := types.UserPremiumSubscription{}
+	err := FrontendDB.Get(&userSub, "SELECT user_id, store, active, COALESCE(product_id, '') as product_id, COALESCE(reject_reason, '') as reject_reason FROM users_app_subscriptions WHERE user_id = $1 ORDER BY active desc, id desc LIMIT 1", id)
+	return userSub, err
+}
+
 func GetUserPremiumPackage(userID uint64) (string, error) {
 	var pkg string
 	row := FrontendDB.QueryRow(
-		"SELECT product_id from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
+		"SELECT COALESCE(product_id, '') as product_id from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
 		userID,
 	)
 	err := row.Scan(&pkg)
@@ -287,78 +315,14 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 	return data, err
 }
 
-func CleanupOldMachineStats() error {
-	const deleteLIMIT uint64 = 60000 // 200 users make 36000 new inserts per hour
-
-	now := time.Now()
-	nowTs := now.Unix()
-	var today int = int(nowTs / 86400)
-
-	dayRange := 32
-	day := int(today - dayRange)
-
-	deleteCondition := "SELECT COALESCE(min(id), 0) from stats_meta_p where day <= $1"
-	deleteConditionGeneral := "SELECT COALESCE(min(id), 0) from stats_process where meta_id <= $1"
-
-	var metaID uint64
-	row := FrontendDB.QueryRow(deleteCondition, day)
-	err := row.Scan(&metaID)
-	if err != nil {
-		return err
-	}
-
-	var generalID uint64
-	row = FrontendDB.QueryRow(deleteConditionGeneral, metaID)
-	err = row.Scan(&generalID)
-	if err != nil {
-		return err
-	}
-	metaID += deleteLIMIT
-	generalID += deleteLIMIT
-
-	tx, err := FrontendDB.Begin()
-
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec("DELETE FROM stats_system WHERE id IN (SELECT id from stats_system where meta_id <= $1 ORDER BY meta_id asc)", metaID)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("DELETE FROM stats_add_beaconnode WHERE id IN (SELECT id from stats_add_beaconnode WHERE general_id <= $1 ORDER BY general_id asc)", generalID)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("DELETE FROM stats_add_validator WHERE id IN (SELECT id from stats_add_validator WHERE general_id <= $1 ORDER BY general_id asc)", generalID)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("DELETE FROM stats_process WHERE id IN (SELECT id FROM stats_process WHERE id <= $1 ORDER BY id asc)", generalID)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("DELETE FROM stats_meta_p WHERE day < $2 AND id IN (SELECT id from stats_meta_p where day < $2 AND id <= $1 ORDER BY id asc)", metaID, day)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec("DROP TABLE IF EXISTS stats_meta_" + strconv.Itoa(day-2))
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-
-	return nil
+func GetUserSubscriptionIDByStripe(stripeSubscriptionID string) (uint64, error) {
+	var subscriptionID uint64
+	row := FrontendDB.QueryRow(
+		"SELECT id from users_app_subscriptions WHERE subscription_id = $1",
+		stripeSubscriptionID,
+	)
+	err := row.Scan(&subscriptionID)
+	return subscriptionID, err
 }
 
 func UpdateUserSubscription(id uint64, valid bool, expiration int64, rejectReason string) error {
@@ -442,6 +406,80 @@ func MobileDeviceSettingsSelect(userID, deviceID uint64) (*sql.Rows, error) {
 		userID, deviceID,
 	)
 	return rows, err
+}
+
+func CleanupOldMachineStats() error {
+	const deleteLIMIT uint64 = 60000 // 200 users make 36000 new inserts per hour
+
+	now := time.Now()
+	nowTs := now.Unix()
+	var today int = int(nowTs / 86400)
+
+	dayRange := 32
+	day := int(today - dayRange)
+
+	deleteCondition := "SELECT COALESCE(min(id), 0) from stats_meta_p where day <= $1"
+	deleteConditionGeneral := "SELECT COALESCE(min(id), 0) from stats_process where meta_id <= $1"
+
+	var metaID uint64
+	row := FrontendDB.QueryRow(deleteCondition, day)
+	err := row.Scan(&metaID)
+	if err != nil {
+		return err
+	}
+
+	var generalID uint64
+	row = FrontendDB.QueryRow(deleteConditionGeneral, metaID)
+	err = row.Scan(&generalID)
+	if err != nil {
+		return err
+	}
+	metaID += deleteLIMIT
+	generalID += deleteLIMIT
+
+	tx, err := FrontendDB.Begin()
+
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec("DELETE FROM stats_system WHERE id IN (SELECT id from stats_system where meta_id <= $1 ORDER BY meta_id asc)", metaID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_add_beaconnode WHERE id IN (SELECT id from stats_add_beaconnode WHERE general_id <= $1 ORDER BY general_id asc)", generalID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_add_validator WHERE id IN (SELECT id from stats_add_validator WHERE general_id <= $1 ORDER BY general_id asc)", generalID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_process WHERE id IN (SELECT id FROM stats_process WHERE id <= $1 ORDER BY id asc)", generalID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DELETE FROM stats_meta_p WHERE day < $2 AND id IN (SELECT id from stats_meta_p where day < $2 AND id <= $1 ORDER BY id asc)", metaID, day)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec("DROP TABLE IF EXISTS stats_meta_" + strconv.Itoa(day-2))
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func GetStatsMachineCount(userID uint64) (uint64, error) {
