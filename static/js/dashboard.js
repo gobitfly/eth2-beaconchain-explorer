@@ -431,7 +431,7 @@ $(document).ready(function() {
             return data
           }
           // return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
-          return `<a href="/validator/${data}">0x${data.substr(0, 8)}...</a><i style="padding: .25rem;" class="fa fa-copy fa-lg text-muted" role="button" data-toggle="tooltip" title="Copy Public Key to clipboard" data-clipboard-text="0x${data}"></i>`
+          return `<a href="/validator/${data}">0x${data.substr(0, 8)}...</a><i style="padding: .25rem;" class="fa fa-copy fa-lg text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data}"></i>`
         }
       },
       {

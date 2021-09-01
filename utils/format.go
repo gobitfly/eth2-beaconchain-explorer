@@ -379,9 +379,9 @@ func FormatHash(hash []byte) template.HTML {
 	// }
 	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
 	if len(hash) > 3 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span><i style=\"padding: .25rem;\" class=\"fa fa-copy fa-lg ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", hash[:3], hash))
+		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span><i onclick=\"event.preventDefault()\" style=\"padding: .25rem;\" class=\"fa fa-copy fa-lg ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", hash[:3], hash))
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span><i style=\"padding: .25rem;\" class=\"fa fa-copy fa-lg ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", hash, hash))
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span><i onclick=\"event.preventDefault()\" style=\"padding: .25rem;\" class=\"fa fa-copy fa-lg ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", hash, hash))
 }
 
 func FormatBitlist(bits []byte) template.HTML {
