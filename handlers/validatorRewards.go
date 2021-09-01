@@ -108,8 +108,8 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-
-	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	validatorLimit := getUserPremium(r).MaxValidators
+	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		logger.Errorf("error retrieving active validators %v", err)
 		http.Error(w, "Invalid query", 400)
@@ -144,8 +144,8 @@ func RewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-
-	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	validatorLimit := getUserPremium(r).MaxValidators
+	validatorArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		logger.Errorf("error retrieving active validators %v", err)
 		http.Error(w, "Invalid query", 400)
@@ -191,7 +191,7 @@ func DownloadRewardsHistoricalData(w http.ResponseWriter, r *http.Request) {
 
 func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r)
-	user := getUser(w, r)
+	user := getUser(r)
 	if !user.Authenticated {
 		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
 		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
@@ -213,7 +213,8 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	validatorArr := q.Get("validators")
-	_, err = parseValidatorsFromQueryString(validatorArr)
+	validatorLimit := getUserPremium(r).MaxValidators
+	_, err = parseValidatorsFromQueryString(validatorArr, validatorLimit)
 	if err != nil {
 		http.Error(w, "Invalid query, Invalid Validators", 400)
 		return
@@ -251,7 +252,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 
 func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r)
-	user := getUser(w, r)
+	user := getUser(r)
 	if !user.Authenticated {
 		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
 		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)
@@ -293,7 +294,7 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r)
-	user := getUser(w, r)
+	user := getUser(r)
 	if !user.Authenticated {
 		logger.WithField("route", r.URL.String()).Error("User not Authenticated")
 		http.Error(w, "Internal server error, User Not Authenticated", http.StatusInternalServerError)

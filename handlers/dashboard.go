@@ -19,9 +19,8 @@ import (
 )
 
 var dashboardTemplate = template.Must(template.New("dashboard").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/dashboard.html"))
-var validatorLimit = 280
 
-func parseValidatorsFromQueryString(str string) ([]uint64, error) {
+func parseValidatorsFromQueryString(str string, validatorLimit int) ([]uint64, error) {
 	if str == "" {
 		return []uint64{}, nil
 	}
@@ -55,6 +54,7 @@ func parseValidatorsFromQueryString(str string) ([]uint64, error) {
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
+	validatorLimit := getUserPremium(r).MaxValidators
 
 	dashboardData := types.DashboardData{}
 	dashboardData.ValidatorLimit = validatorLimit
@@ -78,8 +78,8 @@ func DashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-
-	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"))
+	validatorLimit := getUserPremium(r).MaxValidators
+	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)
@@ -156,8 +156,8 @@ func DashboardDataProposals(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	validatorLimit := getUserPremium(r).MaxValidators
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		http.Error(w, "Invalid query", 400)
 		return
@@ -200,8 +200,8 @@ func DashboardDataMissedAttestations(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	validatorLimit := getUserPremium(r).MaxValidators
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		http.Error(w, "Invalid query", 400)
 		return
@@ -257,8 +257,8 @@ func DashboardDataValidators(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	validatorLimit := getUserPremium(r).MaxValidators
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		http.Error(w, "Invalid query", 400)
 		return
@@ -388,8 +388,8 @@ func DashboardDataEarnings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-
-	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"))
+	validatorLimit := getUserPremium(r).MaxValidators
+	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		http.Error(w, "Invalid query", 400)
 		return
@@ -417,8 +417,8 @@ func DashboardDataEffectiveness(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	validatorLimit := getUserPremium(r).MaxValidators
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		logger.Errorf("error retrieving active validators %v", err)
 		http.Error(w, "Invalid query", 400)
@@ -469,8 +469,8 @@ func DashboardDataProposalsHistory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	q := r.URL.Query()
-
-	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"))
+	validatorLimit := getUserPremium(r).MaxValidators
+	filterArr, err := parseValidatorsFromQueryString(q.Get("validators"), validatorLimit)
 	if err != nil {
 		http.Error(w, "Invalid query", 400)
 		return

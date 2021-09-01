@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/stripe/stripe-go/v72"
 	portalsession "github.com/stripe/stripe-go/v72/billingportal/session"
@@ -20,29 +21,22 @@ import (
 	"github.com/stripe/stripe-go/v72/webhook"
 )
 
+func getCleanProductID(priceId string) string {
+	if priceId == utils.Config.Frontend.Stripe.Whale {
+		return "whale"
+	}
+	if priceId == utils.Config.Frontend.Stripe.Goldfish {
+		return "goldfish"
+	}
+	if priceId == utils.Config.Frontend.Stripe.Plankton {
+		return "plankton"
+	}
+	return ""
+}
+
 // StripeCreateCheckoutSession creates a session to checkout api pricing subscription
 func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
-	user := getUser(w, r)
-
-	// check if a subscription exists
-	subscription, err := db.StripeGetUserAPISubscription(user.UserID)
-	if err != nil {
-		logger.Errorf("error retrieving user subscriptions %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	// don't let the user checkout another subscription
-	if subscription.Active != nil && *subscription.Active {
-		logger.Errorf("error there is an active subscription cannot create another one %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		writeJSON(w, struct {
-			ErrorData string `json:"error"`
-		}{
-			ErrorData: "could not create a new stripe session",
-		})
-		return
-	}
+	user := getUser(r)
 
 	// get the product that the user wants to subscribe to
 	var req struct {
@@ -55,23 +49,52 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 	rq := "required"
 
-	// taxRates := utils.StripeDynamicRatesLive
-	// if strings.HasPrefix(utils.Config.Frontend.Stripe.SecretKey, "sk_test") {
-	// 	taxRates = utils.StripeDynamicRatesTest
-	// }
+	purchaseGroup := utils.GetPurchaseGroup(req.Price)
 
-	if req.Price != utils.Config.Frontend.Stripe.Sapphire && req.Price != utils.Config.Frontend.Stripe.Emerald && req.Price != utils.Config.Frontend.Stripe.Diamond {
+	if purchaseGroup == "" {
 		http.Error(w, "Error invalid price item provided. Must be the price ID of Sapphire, Emerald or Diamond", http.StatusBadRequest)
 		logger.Errorf("error invalid stripe price id provided: %v, expected one of [%v, %v, %v]", req.Price, utils.Config.Frontend.Stripe.Sapphire, utils.Config.Frontend.Stripe.Emerald, utils.Config.Frontend.Stripe.Diamond)
 		return
 	}
 
+	// check if a subscription exists
+	subscription, err := db.StripeGetUserSubscription(user.UserID, purchaseGroup)
+	if err != nil {
+		logger.Errorf("error retrieving user subscriptions %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	// don't let the user checkout another subscription in the same group
+	if subscription.Active != nil && *subscription.Active {
+		logger.Errorf("error there is an active subscription cannot create another one %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		writeJSON(w, struct {
+			ErrorData string `json:"error"`
+		}{
+			ErrorData: "could not create a new stripe session",
+		})
+		return
+	}
+
+	// taxRates := utils.StripeDynamicRatesLive
+	// if strings.HasPrefix(utils.Config.Frontend.Stripe.SecretKey, "sk_test") {
+	// 	taxRates = utils.StripeDynamicRatesTest
+	// }
+
 	enabled := true
 	auto := "auto"
 
+	var successUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api")
+	var cancelUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/pricing")
+	if purchaseGroup == utils.GROUP_MOBILE {
+		successUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings#account")
+		cancelUrl = stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/premium")
+	}
+
 	params := &stripe.CheckoutSessionParams{
-		SuccessURL: stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api"),
-		CancelURL:  stripe.String("https://" + utils.Config.Frontend.SiteDomain + "/pricing"),
+		SuccessURL: successUrl,
+		CancelURL:  cancelUrl,
 		// if the customer exists use the existing customer
 		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{},
 
@@ -125,7 +148,7 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 
 // StripeCustomerPortal redirects the user to the customer portal
 func StripeCustomerPortal(w http.ResponseWriter, r *http.Request) {
-	user := getUser(w, r)
+	user := getUser(r)
 
 	var req struct {
 		ReturnURL string `json:"returnURL"`
@@ -270,11 +293,15 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = db.StripeCreateSubscription(subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID, event.Data.Raw)
-		if err != nil {
-			logger.WithError(err).Error("error updating user with subscription", event.Data.Object)
-			http.Error(w, "error updating user with subscription, customer: "+subscription.Customer.ID, 503)
-			return
+		// to handle race condition errors where subscription.updated is executed before customer.subscription.created, do nothing since it's already processed
+		_, err = db.StripeGetSubscription(subscription.ID)
+		if err == sql.ErrNoRows {
+			err = createNewStripeSubscription(subscription, event)
+			if err != nil {
+				logger.WithError(err).Error(err.Error(), event.Data.Object)
+				http.Error(w, "error "+err.Error()+" customer: "+subscription.Customer.ID, 503)
+				return
+			}
 		}
 
 	case "customer.subscription.updated":
@@ -302,16 +329,18 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		currSub, err := db.StripeGetSubscription(subscription.ID)
 		if err == sql.ErrNoRows {
 			// subscription does not exist, create it
-			err = db.StripeCreateSubscription(subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID, event.Data.Raw)
+			err = createNewStripeSubscription(subscription, event)
 			if err != nil {
-				logger.WithError(err).Error("error updating user with subscription", event.Data.Object)
-				http.Error(w, "error updating user with subscription, customer: "+subscription.Customer.ID, 503)
+				logger.WithError(err).Error(err.Error(), event.Data.Object)
+				logger.Warn(" customer: " + subscription.Customer.ID + " | subscriptionID: " + subscription.ID + " | priceID: " + priceID)
+				http.Error(w, "error updating "+err.Error()+" customer: "+subscription.Customer.ID+" | subscriptionID: "+subscription.ID+" | priceID: "+priceID, 503)
 				return
 			}
+
 			currSub = &types.StripeSubscription{
 				CustomerID:     &subscription.Customer.ID,
-				SubscriptionID: &subscription.Items.Data[0].Price.ID,
-				PriceID:        &subscription.ID,
+				SubscriptionID: &subscription.ID,
+				PriceID:        &subscription.Items.Data[0].Price.ID,
 			}
 		}
 		if err != nil && err != sql.ErrNoRows {
@@ -326,7 +355,16 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if currSub.PriceID != nil && *currSub.PriceID != priceID {
+		if utils.GetPurchaseGroup(priceID) == utils.GROUP_MOBILE {
+			err := db.ChangeProductIDFromStripe(subscription.ID, getCleanProductID(priceID))
+			if err != nil {
+				logger.WithError(err).Error("error updating stripe mobile subscription", subscription.ID)
+				http.Error(w, "error updating stripe mobile subscription customer: "+subscription.Customer.ID, 503)
+				return
+			}
+		}
+
+		if currSub.PriceID != nil && *currSub.PriceID != priceID && utils.GetPurchaseGroup(*currSub.PriceID) == utils.GetPurchaseGroup(priceID) {
 			email, err := db.StripeGetCustomerEmail(subscription.Customer.ID)
 			if err != nil {
 				logger.WithError(err).Error("error retrieving customer email for subscription ", subscription.ID)
@@ -350,6 +388,18 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			logger.WithError(err).Error("error while deactivating subscription", event.Data.Object)
 			http.Error(w, "error while deactivating subscription, customer:"+subscription.Customer.ID, 503)
 			return
+		}
+
+		if utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_MOBILE {
+			appSubID, err := db.GetUserSubscriptionIDByStripe(subscription.ID)
+			if err != nil {
+				logger.WithError(err).Error("error updating stripe mobile subscription, no users_app_subs id found for subscription id", subscription.ID)
+				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+subscription.Customer.ID, 503)
+				return
+			}
+			now := time.Now()
+			nowTs := now.Unix()
+			db.UpdateUserSubscription(appSubID, false, nowTs, "user_canceled")
 		}
 
 	// inform the user when the subscription will expire
@@ -390,6 +440,16 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if utils.GetPurchaseGroup(invoice.Lines.Data[0].Price.ID) == utils.GROUP_MOBILE {
+			appSubID, err := db.GetUserSubscriptionIDByStripe(invoice.Lines.Data[0].Subscription)
+			if err != nil {
+				logger.WithError(err).Error("error updating stripe mobile subscription (paid), no users_app_subs id found for subscription id", invoice.Lines.Data[0].Subscription)
+				http.Error(w, "error updating stripe mobile subscription, no users_app_subs id  found for subscription id, customer: "+invoice.Customer.ID, 503)
+				return
+			}
+			db.UpdateUserSubscription(appSubID, true, 0, "")
+		}
+
 	case "invoice.payment_failed":
 		// The payment failed or the customer does not have a valid payment method.
 		// The subscription becomes past_due. Notify your customer and send them to the
@@ -408,8 +468,39 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func createNewStripeSubscription(subscription stripe.Subscription, event stripe.Event) error {
+	err := db.StripeCreateSubscription(subscription.Customer.ID, subscription.Items.Data[0].Price.ID, subscription.ID, event.Data.Raw)
+	if err != nil {
+		return err
+	}
+
+	if utils.GetPurchaseGroup(subscription.Items.Data[0].Price.ID) == utils.GROUP_MOBILE {
+		userID, err := db.StripeGetCustomerUserId(subscription.Customer.ID)
+		if err != nil {
+			return err
+		}
+		details := types.MobileSubscription{
+			ProductID:   getCleanProductID(subscription.Items.Data[0].Price.ID),
+			PriceMicros: uint64(subscription.Items.Data[0].Price.UnitAmount),
+			Currency:    string(subscription.Items.Data[0].Price.Currency),
+			Transaction: types.MobileSubscriptionTransactionGeneric{
+				Type:    "stripe",
+				Receipt: subscription.ID,
+				ID:      subscription.Items.Data[0].Price.ID,
+			},
+			Valid: false,
+		}
+		err = db.InsertMobileSubscription(userID, details, details.Transaction.Type, details.Transaction.Receipt, 0, "", subscription.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func emailCustomerAboutFailedPayment(email string) {
-	msg := fmt.Sprintf("Payment processing failed. Could not provision your API key. Please contact support at support@beaconcha.in. Manage Subscription: https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
+	msg := fmt.Sprintf("Payment processing failed. Could not activate your subscription. Please contact support at support@beaconcha.in. Manage Subscription: https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 	err := mail.SendMail(email, "Failed Payment", msg, []types.EmailAttachment{})
@@ -425,6 +516,12 @@ func emailCustomerAboutPlanChange(email, plan string) {
 		p = "Emerald"
 	} else if plan == utils.Config.Frontend.Stripe.Diamond {
 		p = "Diamond"
+	} else if plan == utils.Config.Frontend.Stripe.Plankton {
+		p = "Plankton"
+	} else if plan == utils.Config.Frontend.Stripe.Goldfish {
+		p = "Goldfish"
+	} else if plan == utils.Config.Frontend.Stripe.Whale {
+		p = "Whale"
 	}
 	msg := fmt.Sprintf("You have successfully changed your payment plan to " + p + " to manage your subscription go to https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api")
 	// escape html

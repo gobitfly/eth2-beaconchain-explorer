@@ -46,6 +46,11 @@ func checkSubscriptions() {
 				logger.Errorf("subscription verification failed in service for [%v]: %w", receipt.ID, err)
 				continue
 			}
+
+			if valid.RejectReason == "invalid_store" {
+				continue
+
+			}
 			updateValidationState(receipt, valid)
 		}
 
