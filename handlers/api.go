@@ -1084,7 +1084,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	validationResult, _ := exporter.VerifyReceipt(nil, verifyPackage)
 	parsedBase.Valid = validationResult.Valid
 
-	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason, "")
+	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason)
 	if err != nil {
 		logger.Errorf("could not save subscription data %v", err)
 		sendErrorResponse(j, r.URL.String(), "Can not save subscription data")
@@ -1107,27 +1107,19 @@ type PremiumUser struct {
 	MaxNodes               uint64
 	WidgetSupport          bool
 	NotificationThresholds bool
-	NoAds                  bool
 }
 
 func getUserPremium(r *http.Request) PremiumUser {
-	var pkg string = ""
-	if IsMobileAuth(r) {
-		claims := getAuthClaims(r)
-		if claims != nil {
-			pkg = claims.Package
-		}
-	} else {
-		sessionUser := getUser(r)
-		if sessionUser.Authenticated {
-			pkg = sessionUser.Subscription
-		}
+	claims := getAuthClaims(r)
+
+	if claims == nil {
+		return getUserPremiumByPackage("")
 	}
 
-	return GetUserPremiumByPackage(pkg)
+	return getUserPremiumByPackage(claims.Package)
 }
 
-func GetUserPremiumByPackage(pkg string) PremiumUser {
+func getUserPremiumByPackage(pkg string) PremiumUser {
 	result := PremiumUser{
 		Package:                "standard",
 		MaxValidators:          100,
@@ -1135,17 +1127,15 @@ func GetUserPremiumByPackage(pkg string) PremiumUser {
 		MaxNodes:               1,
 		WidgetSupport:          false,
 		NotificationThresholds: false,
-		NoAds:                  false,
 	}
 
-	if pkg == "" || pkg == "standard" {
+	if pkg == "" {
 		return result
 	}
 
 	result.Package = pkg
 	result.MaxStats = 43200
 	result.NotificationThresholds = true
-	result.NoAds = true
 
 	if result.Package != "plankton" {
 		result.WidgetSupport = true
@@ -1283,7 +1273,7 @@ func MobileDeviceSettingsPOST(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		userDeviceID = temp
-		sessionUser := getUser(r)
+		sessionUser := getUser(w, r)
 		if !sessionUser.Authenticated {
 			sendErrorResponse(j, r.URL.String(), "not authenticated")
 			return
@@ -1535,7 +1525,7 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 		return false
 	}
 
-	maxNodes := GetUserPremiumByPackage(userData.Product.String).MaxNodes
+	maxNodes := getUserPremiumByPackage(userData.Product.String).MaxNodes
 
 	count, err := db.GetStatsMachineCount(userData.ID)
 	if err != nil {
@@ -1684,7 +1674,7 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 
-	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"), 100)
+	queryValidators, err := parseValidatorsFromQueryString(q.Get("validators"))
 	if err != nil {
 		logger.WithError(err).WithField("route", r.URL.String()).Error("error parsing validators from query string")
 		http.Error(w, "Invalid query", 400)

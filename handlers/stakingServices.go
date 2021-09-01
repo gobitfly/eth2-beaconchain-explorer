@@ -26,7 +26,6 @@ func StakingServices(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-	pageData.NoAds = data.NoAds
 	data.Data = pageData
 
 	err = stakingServicesTemplate.ExecuteTemplate(w, "layout", data)
