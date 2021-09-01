@@ -1,0 +1,411 @@
+{{ define "js" }}
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="/js/payment.js" defer></script>
+    <script src="https://www.google.com/recaptcha/api.js" async></script>
+    <script>
+        function onSubmit(token) {
+            var form = document.getElementById('contact')
+            if(form.reportValidity()) {
+                form.submit();
+            }
+        }
+      </script>
+     
+
+    <script>
+        // If a fetch error occurs, log it to the console
+        var handleFetchResult = function (result) {
+            if (!result.ok) {
+                return result.json().then(function (json) {
+                    if (json.error && json.error.message) {
+                        showError("Something went wrong connecting to stripe: " + json.error.message)
+                        throw new Error(result.url + ' ' + result.status + ' ' + json.error.message);
+                    }
+                });
+            }
+            return result.json();
+        };
+
+        // Create a Checkout Session with the selected plan ID
+        var createCheckoutSession = function (priceId) {
+            var csrfToken = ""
+            if (document.getElementsByName("CsrfField").length) {
+                csrfToken = document.getElementsByName("CsrfField")[0].value
+            }
+            return fetch("/user/stripe/create-checkout-session", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    priceId: priceId
+                })
+            })
+                .then(handleFetchResult)
+                .catch(err => {
+                    console.error("error posting to create checkout session endpoint", err)
+                });
+        };
+
+        // Handle any errors returned from Checkout
+        var handleResult = function (result) {
+            if (result.error) {
+                showError(result.error.message)
+                console.log("ERROR:", result)
+            }
+        };
+
+        function showError(message) {
+            $('#error-modal-content').text(message)
+            $('#error-modal').modal('show')
+        }
+
+        var setupStripe = function () {
+            try {
+                var stripe = Stripe({{.StripePK}});
+                // Setup event handler to create a Checkout Session when button is clicked
+                document
+                    .getElementById("plankton")
+                    .addEventListener("click", function (evt) {
+                        createCheckoutSession({{.Plankton}}).then(function (data) {
+                            // Call Stripe.js method to redirect to the new Checkout page
+                            stripe
+                                .redirectToCheckout({
+                                    sessionId: data.sessionId
+                                })
+                                .then(handleResult)
+                                .catch(err => {
+                                    console.log("error: ", err)
+                                    showError("Failed to create Stripe Checkout Session")
+                                });
+                        }).catch(err => {
+                            console.log("error: ", err)
+                            showError("Failed to create Stripe Checkout Session")
+                        })
+
+                    });
+
+                // Setup event handler to create a Checkout Session when button is clicked
+                document
+                    .getElementById("goldfish")
+                    .addEventListener("click", function (evt) {
+                        createCheckoutSession({{.Goldfish}}).then(function (data) {
+                            // Call Stripe.js method to redirect to the new Checkout page
+                            stripe
+                                .redirectToCheckout({
+                                    sessionId: data.sessionId
+                                })
+                                .then(handleResult)
+                                .catch(err => {
+                                    console.log("error: ", err)
+                                    showError("Failed to create Stripe Checkout Session")
+                                });
+                        }).catch(err => {
+                            console.log("error: ", err)
+                            showError("Failed to create Stripe Checkout Session")
+                        })
+                    });
+
+                document
+                    .getElementById("whale")
+                    .addEventListener("click", function (evt) {
+                        createCheckoutSession({{.Whale}}).then(function (data) {
+                            // Call Stripe.js method to redirect to the new Checkout page
+                            stripe
+                                .redirectToCheckout({
+                                    sessionId: data.sessionId
+                                })
+                                .then(handleResult)
+                                .catch(err => {
+                                    console.log("error: ", err)
+                                    showError("Failed to create Stripe Checkout Session")
+                                });
+                        }).catch(err => {
+                            console.log("error: ", err)
+                            showError("Failed to create Stripe Checkout Session")
+                        })
+                    });
+            } catch (err) {
+            }
+        }
+        setupStripe()
+    </script>
+{{ end }}
+
+{{ define "css" }}
+    <style>
+
+        .fa-times {
+            color: red;
+        }
+
+        .fa-check {
+            color: green;
+        }
+
+        .box-shadow {
+            border: 1px solid var(--shadow-light);
+        }
+        .hot-box {
+            border: 1px solid #ee7112;
+        }
+
+        .badge-hot {
+            color: #ee7112;
+        }
+
+        .container-pricing li {
+            margin-bottom: 12px;
+        }
+
+        .card {
+            min-width: 200px;
+        }
+
+        .plan-select {
+            appearance: none;
+            -moz-appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .pricing-card-title {
+            font-size: 2.1em;
+        }
+    </style>
+{{ end }}
+
+{{ define "content" }}
+    {{with .Data}}
+        {{.CsrfField}}
+
+        {{if ne .FlashMessage ""}}
+            <div
+                    class="alert container mt-2 {{if contains .FlashMessage "Error"}}alert-danger{{else}}alert-success{{end}} alert-dismissible fade show my-3 py-2"
+                    role="alert">
+                <div class="p-2">{{.FlashMessage | formatHTML}}</div>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {{end}}
+
+        <section style="background: var(--bg-color-light)">
+            <div class="container">
+                <div style="padding-top: 2rem;" class="row justify-content-between align-items-center">
+                    <div class="col-md-6 mb-5">
+                        <h1 class="h6 font-weight-bold text-primary">Beaconcha.in Premium</h1>
+                        <h2 class="mb-4">Premium offers an ad free experience on website & app, support for up to 280 validators, exclusive app features and more.</h2>
+                    </div>
+                    <div class="col-md-5 p-1" >
+                     
+                            {{ template "pricing_svg" }}
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="container mt-2 container-pricing">
+            {{if .User.Authenticated}}
+            {{if and .ActiveMobileStoreSub (not .Subscription.Active)}}
+            <div class="justify-content-center text-center position-relative">
+                <div class="alert alert-info " role="alert" style="margin-top: 30px;">
+                    You have an active premium subscription from the app store / play store. You can manage your active subscriptions from there.
+                  </div>
+            </div>
+            {{end}}
+            {{end}}
+
+            <section class="my-5">
+                <div class="card-deck mb-3 justify-content-center text-center position-relative">
+                    <div style="margin: 0" class="row justify-content-center">
+                        <div class="card mx-2 mb-4 box-shadow">
+                            <div class="card-header">
+                                <h4 class="my-0 font-weight-normal">Free</h4>
+                            </div>
+                            <div class="card-body">
+                                <h1 class="card-title pricing-card-title">0€ <small class="text-muted">/ mo</small></h1>
+                                <ul class="list-unstyled mt-3 mb-4">
+                                    <li>Dashboard Validators:<br/> <strong>100</strong></li>
+                                    <li>App Monitoring Machines:<br/> <strong>1</strong></li>
+                                    <li>App Monitoring History: <br/> <strong>3 hours</strong></li>
+                                    <li>No Ads: <br/><i class="fas fa-times"></i></li>
+                                    <li>Custom Alerts: <br/><i class="fas fa-times"></i> </li>
+                                    <li>App Custom Themes: <br/><i class="fas fa-times"></i></li>
+                                    <li>App Widget: <br/><i class="fas fa-times"></i></li>
+                                    <li>Support us: <br/><i class="fas fa-times"></i></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card mx-2 mb-4 box-shadow">
+                            <div class="card-header">
+                                <h4 class="my-0 font-weight-normal">Plankton </h4>
+                            </div>
+                            <div class="card-body">
+                                <h1 class="card-title pricing-card-title">1.99€* <small class="text-muted">/ mo</small></h1>
+                                <ul class="list-unstyled mt-3 mb-4">
+                                    <li>Dashboard Validators:<br/> <strong>100</strong></li>
+                                    <li>App Monitoring Machines:<br/> <strong>1</strong></li>
+                                    <li>App Monitoring History: <br/> <strong>30 days</strong></li>
+                                    <li>No Ads: <br/><i class="fas fa-check"></i></li>
+                                    <li>Custom Alerts: <br/> <i class="fas fa-check"></i> </li>
+                                    <li>App Custom Themes: <br/><i class="fas fa-times"></i></li>
+                                    <li>App Widget: <br/><i class="fas fa-times"></i></li>
+                                    <li>Support us: <br/><i class="fas fa-check"></i></li>
+                                </ul>
+                                {{if .User.Authenticated}}
+                                    {{if .Subscription.Active}}
+                                        <form class="manage-billing-form">
+                                            {{.CsrfField}}
+                                            <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing
+                                            </button>
+                                        </form>
+                                    {{else}}
+                                        {{ if and .StripePK .Plankton (not .ActiveMobileStoreSub) }}
+                                            <button id="plankton" class="btn btn-lg btn-block btn-outline-primary">
+                                                Select
+                                            </button>
+                                        {{end}}
+                                    {{end}}
+                                {{else}}
+                                    <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
+                                {{end}}
+
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin: 0" class="row justify-content-center position-relative">
+                        <div class="card mx-2 mb-4 box-shadow hot-box">
+                            <div class="card-header">
+                                <h4 class="my-0 font-weight-normal">Goldfish <span
+                                    class="badge badge-hot">Popular</span></h4>
+                            </div>
+                            <div class="card-body">
+                                <h1 class="card-title pricing-card-title">4.99€* <small class="text-muted">/ mo</small>
+                                </h1>
+                                <ul class="list-unstyled mt-3 mb-4">
+                                    <li>Dashboard Validators:<br/> <strong>100</strong></li>
+                                    <li>App Monitoring Machines:<br/> <strong>2</strong></li>
+                                    <li>App Monitoring History: <br/> <strong>30 days</strong></li>
+                                    <li>No Ads: <br/><i class="fas fa-check"></i></li>
+                                    <li>Custom Alerts: <br/> <i class="fas fa-check"></i> </li>
+                                    <li>App Custom Themes: <br/><i class="fas fa-check"></i></li>
+                                    <li>App Widget: <br/><i class="fas fa-check"></i></li>
+                                    <li>Support us: <br/><i class="fas fa-check"></i></li>
+                                </ul>
+                                {{if .User.Authenticated}}
+                                    {{if .Subscription.Active}}
+                                        <form class="manage-billing-form">
+                                            {{.CsrfField}}
+                                            <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing
+                                            </button>
+                                        </form>
+                                    {{else}}
+                                        {{ if and .StripePK .Goldfish (not .ActiveMobileStoreSub) }}
+                                            <button id="goldfish" class="btn btn-lg btn-block btn-outline-primary">
+                                                Select
+                                            </button>
+                                        {{end}}
+                                    {{end}}
+                                {{else}}
+                                    <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
+                                {{end}}
+                            </div>
+                        </div>
+                        <div class="card mx-2 mb-4 box-shadow">
+                            <div class="card-header">
+                                <h4 class="my-0 font-weight-normal">Whale</h4>
+                            </div>
+                            <div class="card-body">
+                                <h1 class="card-title pricing-card-title">20.99€* <small class="text-muted">/ mo</small>
+                                </h1>
+                                <ul class="list-unstyled mt-3 mb-4">
+                                    <li>Dashboard Validators:<br/> <strong>280</strong></li>
+                                    <li>App Monitoring Machines:<br/> <strong>10</strong></li>
+                                    <li>App Monitoring History: <br/> <strong>30 days</strong></li>
+                                    <li>No Ads: <br/><i class="fas fa-check"></i></li>
+                                    <li>Custom Alerts: <br/> <i class="fas fa-check"></i> </li>
+                                    <li>App Custom Themes: <br/><i class="fas fa-check"></i></li>
+                                    <li>App Widget: <br/><i class="fas fa-check"></i></li>
+                                    <li>Support us: <br/><i class="fas fa-check"></i></li>
+                                </ul>
+                                {{if .User.Authenticated}}
+                                    {{if .Subscription.Active}}
+                                        <form class="manage-billing-form">
+                                            {{.CsrfField}}
+                                            <button class="btn btn-lg btn-block btn-outline-primary">Manage Billing
+                                            </button>
+                                        </form>
+                                    {{else}}
+                                        {{ if and .StripePK .Whale (not .ActiveMobileStoreSub) }}
+                                            <button id="whale" class="btn btn-lg btn-block btn-outline-primary">
+                                                Select
+                                            </button>
+                                        {{end}}
+                                    {{end}}
+                                {{else}}
+                                    <a href="/register" class="btn btn-lg btn-block btn-outline-primary">Sign Up</a>
+                                {{end}}
+                            </div>
+                        </div>
+                        <div class="position-absolute" style="right: 1rem; bottom: -1rem;">
+                            <span class="text-muted">* All prices are excluding VAT</span>
+                        </div>
+                    </div>
+                </div>
+                
+            </section>
+         
+
+            <!-- Error Modal -->
+            <div class="modal fade" id="error-modal" tabindex="-1" role="dialog" aria-labelledby="error-modal-label"
+                 aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Something went wrong</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <p id="error-modal-content"></p>
+                            <p>Please contact us if this error persists</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- VAT Modal -->
+            <div class="modal fade" id="vat-modal" tabindex="-1" role="dialog" aria-labelledby="vat-modal-label"
+                 aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Select your Country</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <select name="contry-select" id="contry-select">
+                                <option value="AT">Austria</option>
+                                <option value="DE">Germany</option>
+                            </select>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    {{ end }}
+{{ end }}

@@ -232,7 +232,7 @@
                 </div>
             </div>
         </section>
-        {{ template "bannerStakingServices" }}
+        {{if not .NoAds}} {{ template "bannerStakingServices" }} {{end}}
         <div class="container mt-2">
             <section class="my-5">
                 <div class="row">
