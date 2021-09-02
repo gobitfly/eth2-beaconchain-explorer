@@ -306,11 +306,7 @@ function loadMonitoringData(data) {
         responsivePriority: 3,
         data: 'event',
         render: function(data, type, row, meta) {
-          return `
-            <i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" 
-              title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" 
-              data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?">
-            </i>`;
+          return `<i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle="modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`;
         }
       }
     ],
@@ -513,9 +509,9 @@ function loadValidatorsData(data) {
               }
             }
             if (!hasItems) {
-              return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
+              return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage notifications for the selected validator(s)" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
             }
-            return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
+            return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage notifications for the selected validator(s)" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
           }
           return null;
         }
