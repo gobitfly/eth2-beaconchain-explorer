@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/price"
 	"eth2-exporter/services"
@@ -114,6 +115,9 @@ func getUserFromSessionStore(r *http.Request) *types.User {
 
 func getUserSession(r *http.Request) (*types.User, *sessions.Session, error) {
 	u := &types.User{}
+	if utils.SessionStore == nil { // sanity check for production deployment where api runs independ of frontend and has no initialized sessionstore
+		return u, nil, errors.New("sessionstore not initialized")
+	}
 	session, err := utils.SessionStore.Get(r, authSessionName)
 	if err != nil {
 		logger.Errorf("error getting session from sessionStore: %v", err)

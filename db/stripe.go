@@ -5,6 +5,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"time"
 )
 
 // StripeRemoveCustomer removes the stripe customer and sets all subscriptions to inactive
@@ -14,6 +15,18 @@ func StripeRemoveCustomer(customerID string) error {
 		return err
 	}
 	defer tx.Rollback()
+
+	userID, err := StripeGetCustomerUserId(customerID)
+	if err == nil {
+		now := time.Now()
+		nowTs := now.Unix()
+		_, err = tx.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE user_id = $5 AND store = 'stripe';",
+			false, nowTs, nowTs, "stripe_user_deleted", userID,
+		)
+	} else {
+		// logg & continue anyway
+		logger.WithError(err).Error("error could not disable stripe mobile subs: " + customerID + "err: ")
+	}
 
 	// remove customer id entry from database
 	_, err = tx.Exec("UPDATE users SET stripe_customer_id = NULL WHERE stripe_customer_id = $1", customerID)
