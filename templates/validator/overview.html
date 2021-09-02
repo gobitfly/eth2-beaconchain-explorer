@@ -131,38 +131,12 @@
           <span class="font-weight-light text-muted mr-1">Balance </span><span class="h5 font-weight-bold text-nowrap">{{formatCurrentBalance .CurrentBalance $.Currency}}</span>
           <span class="d-block">{{formatEffectiveBalance .EffectiveBalance "ETH"}} <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"><a href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i class="fas fa-info-circle no-highlight"></i></a></span></span>
         </div>
-        <div class="my-2 my-md-0">
-          <span class="font-weight-light text-muted mr-1">Effectiveness </span><span class="h5 font-weight-bold text-nowrap">{{.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}}</span>
-        </div>
-      </div>
-      <!-- <div class="overview-container d-flex flex-wrap justify-content-center">
-        <div class="m-3 position-relative">
-          <span style="top: -1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>{{if gtf .RankPercentage 0.0}}{{if gtf .RankPercentage 0.001}}Rank {{formatPercentageWithGPrecision .RankPercentage 3}}%{{else}}Top 0.1%{{end}}{{else}}Rank{{end}}</small></span>
-          <a class="no-highlight" href="/validators/leaderboard">
-            <i class="fas fa-medal"></i>
-            <span id="validatorRank" style="font-weight: bold; font-size: 18px;">{{if gt .Rank7d 0}}{{.Rank7d}}{{else}}N/A{{end}}</span>
-          </a>
-        </div>
-        <div class="m-3 position-relative">
-          <span style="top: -1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
-          <div class="d-flex flex-column">
-            <span style="font-weight: bold; font-size: 18px;">{{formatCurrentBalance .CurrentBalance $.Currency}}</span>
-            <span style="font-size: .8rem; color: gray;">{{formatEffectiveBalance .EffectiveBalance "ETH"}} <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator">
-              <a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span>
-						</span>
-          </div>
-        </div>
-        <div class="m-3 position-relative">
-          <span style="top: -1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Status</small></span>
-          {{.Status | formatValidatorStatus}}
-        </div>
         {{if gtf .AttestationInclusionEffectiveness 0}}
-          <div class="m-3 position-relative">
-            <span style="top: -1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Effectiveness</small></span>
-            {{.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}}
+          <div class="my-2 my-md-0">
+            <span class="font-weight-light text-muted mr-1">Effectiveness </span><span class="h5 font-weight-bold text-nowrap">{{.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}}</span>
           </div>
         {{end}}
-      </div> -->
+      </div>
       {{template "validatorOverviewCount" .}}
   {{end}}
 {{end}}
@@ -185,64 +159,31 @@
         </div>
       {{end}}
     </div>
-    <!-- <div class="overview-container d-flex flex-wrap justify-content-center">
-      {{if .Slashed}}
-        <div style="width: 80px;" class="m-3 position-relative">
-          <span style="top: -1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Slashed by</small></span>
-          {{.SlashedBy | formatValidator}}
-        </div>
-      {{end}}
-      <div class="m-3 position-relative">
-        <span style="top: -1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Balance</small></span>
-        <div style="width: 8.32rem" class="d-flex flex-column">
-          <span style="font-weight: bold; font-size:18px;">{{formatCurrentBalance .CurrentBalance $.Currency }}</span>
-          <span>{{formatEffectiveBalance .EffectiveBalance "ETH"}} <span style="font-size: 0.8rem; color: gray" data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"><a class="no-highlight" href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i class="far ml-1 fa-question-circle"></i></a></span></span>
-        </div>
-      </div>
-      <div style="width: 80px;" class="m-3 position-relative">
-        <span style="top: -1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Status</small></span>
-        {{.Status | formatValidatorStatus}}
-      </div>
-      {{if .Slashed}}
-        <div style="width: 8.32rem" class="m-3 position-relative">
-          <span style="top: -1.2rem;" class="text-muted font-weight-lighter position-absolute"><small>Reason</small></span>
-          {{.SlashedFor}}
-        </div>
-      {{end}}
-    </div> -->
     <div class="mx-5 my-3" style="line-height: 1.8rem;">
       This validator has exited the system during epoch <a href="/epoch/{{.ExitEpoch}}">{{.ExitEpoch}}</a> and is no longer validating. There is no need to keep the validator running anymore. Funds will be withdrawable after epoch <span><a href="/epoch/{{.WithdrawableEpoch}}">{{.WithdrawableEpoch}}</a></span>.
       {{if .Slashed}}
         <div class="mt-3">Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason <b>{{.SlashedFor}}</b></div>
       {{end}}
     </div>
-    <!-- <div class="p-2 text-justify row justify-content-center">
-      <div class="col">
-        <div class="px-2 mx-auto" style="max-width: 50rem;">
-          <div class="p-2 text-justify">This validator has exited the system during epoch <a href="/epoch/{{.ExitEpoch}}">{{.ExitEpoch}}</a> and is no longer validating. There is no need to keep the validator running anymore. Funds will be withdrawable after epoch <span><a href="/epoch/{{.WithdrawableEpoch}}">{{.WithdrawableEpoch}}</a></span>.</div>
-          {{if .Slashed}}<div class="p-2">Slashed by {{.SlashedBy | formatValidator}} at Slot {{.SlashedAt | formatBlockSlot}}, Reason: {{.SlashedFor}}</div>{{end}}
-        </div>
-      </div>
-    </div> -->
     {{template "validatorOverviewCount" .}}
   {{end}}
 {{end}}
 
 {{define "validatorOverviewCount"}}
-  <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-start justify-content-sm-between mx-5 my-3">
-    <div class="mb-4 mb-sm-0">
+  <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-start justify-content-sm-between mx-5 my-3">
+    <div class="mb-4 mb-md-0">
       <span id="blockCount" class="h5" style="cursor: pointer;" data-toggle="tooltip" title="Proposed: {{.ProposedBlocksCount}}, Missed: {{.MissedBlocksCount}}, Orphaned: {{.OrphanedBlocksCount}}, Scheduled: {{.ScheduledBlocksCount}}"><i class="fas fa-cubes fa-lg mr-2"></i>{{.BlocksCount}}{{if ne .BlocksCount 0}} ({{formatPercentageColored .UnmissedBlocksPercentage ""}}){{end}}</span>
     </div>
-    <div class="mb-4 mb-sm-0">
+    <div class="mb-4 mb-md-0">
       <span id="attestationCount" class="h5" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{.ExecutedAttestationsCount}}, Missed: {{.MissedAttestationsCount}}, Orphaned: {{.OrphanedAttestationsCount}})"><i class="fas fa-file-signature mr-2"></i>{{.AttestationsCount}}{{if ne .AttestationsCount 0}} ({{formatPercentageColored .UnmissedAttestationsPercentage ""}}){{end}}</span>
     </div>
-    <div class="mb-4 mb-sm-0">
+    <div class="mb-4 mb-md-0">
       <span id="slashingsCount" class="h5" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash mr-2"></i>{{.SlashingsCount}}</span>
     </div>
-    <div class="mb-4 mb-sm-0">
+    <div class="mb-4 mb-md-0">
       <span id="depositCount" class="h5" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet mr-2"></i>{{.DepositsCount}}</span>
     </div>
-    <div class="mb-4 mb-sm-0">
+    <div class="mb-4 mb-md-0">
       {{if ne .CurrentAttestationStreak .LongestAttestationStreak}}
         <span id="attestationStreak" class="h5" style="cursor: default;" data-toggle="tooltip" title="Attestation Streaks (Current / Longest)"><i class="fas fa-fire mr-2"></i>{{.CurrentAttestationStreak}} / {{.LongestAttestationStreak}}</span>
       {{else}}
@@ -250,28 +191,9 @@
       {{end}}
     </div>
   </div>
-	<!-- <div class="row flex-wrap justify-content-center p-3 mb-3">
-  	<div class="mx-3">
-      <span id="blockCount" style="cursor: pointer;" data-toggle="tooltip" title="Proposed: {{.ProposedBlocksCount}}, Missed: {{.MissedBlocksCount}}, Orphaned: {{.OrphanedBlocksCount}}, Scheduled: {{.ScheduledBlocksCount}}"><i class="fas fa-cubes poin"></i> {{.BlocksCount}}{{if ne .BlocksCount 0}} ({{formatPercentageColored .UnmissedBlocksPercentage ""}}){{end}}</span>
-    </div>
-    <div class="mx-3">
-      <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{.ExecutedAttestationsCount}}, Missed: {{.MissedAttestationsCount}}, Orphaned: {{.OrphanedAttestationsCount}})"><i class="fas fa-file-signature"></i> {{.AttestationsCount}}{{if ne .AttestationsCount 0}} ({{formatPercentageColored .UnmissedAttestationsPercentage ""}}){{end}}</span>
-    </div>
-    <div class="mx-3">
-      <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash"></i> {{.SlashingsCount}}</span>
-    </div>
-    <div class="mx-3">
-      <span id="depositCount" style="cursor: pointer;" data-toggle="tooltip" title="Deposits made to the deposit contract"><i class="fas fa-wallet"></i> {{.DepositsCount}}</span>
-    </div>
-    <div class="mx-3">
-      {{if ne .CurrentAttestationStreak .LongestAttestationStreak}}
-        <span id="attestationStreak" style="cursor: default;" data-toggle="tooltip" title="Attestation Streaks (Current / Longest)"><i class="fas fa-fire"></i> {{.CurrentAttestationStreak}} / {{.LongestAttestationStreak}}</span>
-      {{else}}
-        <span id="attestationStreak" style="cursor: default;" data-toggle="tooltip" title="Attestation Streak"><i class="fas fa-fire"></i> {{.LongestAttestationStreak}}</span>
-      {{end}}
-    </div>
-	</div> -->
 	<script>
+    console.log('Attestation Inclusion Effectiveness is ', {{.AttestationInclusionEffectiveness | formatAttestationInclusionEffectiveness}});
+
     window.addEventListener('load', function() {
       $('#blockCount').on('click', function() {
         $('#blocks-tab').tab('show');
