@@ -258,7 +258,6 @@ function loadMonitoringData(data) {
         responsivePriority: 3,
         data: 'threshold',
         render: function(data, type, row, meta) {
-          console.log(data[0]);
           if (type === 'display') {
             let e = "";
             for (let i of data[1].Notifications) {
@@ -269,14 +268,23 @@ function loadMonitoringData(data) {
                 e += `${nn}:${i.Threshold},`;
               }
             }
-            // TODO: if data is 0 then return '<span class="threshold_non_editable">N/A</span>'
+
+            // for machine offline event, there is no threshold value; we show N/A and hide the edit button
             return `
               <input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden />
               <span class="threshold_non_editable">
-                <span class="threshold_non_editable_text">${(data[0] * 100).toFixed(2)}%</span> 
-                <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-monitoring-events-btn" title="Click to edit" style="padding: .5rem; cursor: pointer;" 
-                  data-toggle= "modal" data-target="#addMonitoringEventModal" pk="${data[1].Validator.Pubkey}" ind="${data[1].Validator.Index}" event="${e}">
-                </i>
+                <span class="threshold_non_editable_text">${data[0] === "0" ? "N/A" : (data[0] * 100).toFixed(2) + "%"}</span>
+                <i 
+                  class="fas fa-pen fa-xs text-muted i-custom ${data[0] === '0' ? 'd-none' : ''}" 
+                  id="edit-monitoring-events-btn" 
+                  title="Click to edit" 
+                  style="padding: .5rem; cursor: pointer;" 
+                  data-toggle= "modal" 
+                  data-target="#addMonitoringEventModal" 
+                  pk="${data[1].Validator.Pubkey}" 
+                  ind="${data[1].Validator.Index}" 
+                  event="${e}"
+                ></i>
               </span>`;
           }
 
@@ -480,7 +488,7 @@ function loadValidatorsData(data) {
           }
           let datahref = `/validator/${data.Index || data.Pubkey}`;
           // return `<span class="font-weight-bold"><i class="fas fa-male mr-1"></i><a style="padding: .25rem;" href="/validator/${data.Index}">` + data.Index + '</a></span>' + `<a class="heading-l4 d-none d-sm-block mt-2" style="width: 5rem;" href="/validator/${data.Pubkey}">0x` + data.Pubkey.substring(0, 6) + '...</a>';
-          return `<i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + data.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + data.Pubkey.substring(0, 6) + `</span></a>`;
+          return `<i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + data.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + data.Pubkey.substring(0, 6) + `...</span></a>`;
         }
       },
       {
