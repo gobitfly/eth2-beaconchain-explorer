@@ -983,6 +983,14 @@ type UserNotificationsPageData struct {
 	// Subscriptions []*Subscription
 }
 
+type UserNotificationsCenterPageData struct {
+	AuthData
+	Metrics    interface{}
+	Validators interface{}
+	Network    interface{}
+	// Subscriptions []*Subscription
+}
+
 type AdvertiseWithUsPageData struct {
 	FlashMessage string
 	CsrfField    template.HTML

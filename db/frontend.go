@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -249,6 +250,53 @@ func MobileNotificatonTokenUpdate(userID, deviceID uint64, notifyToken string) e
 	return err
 }
 
+// AddSubscription adds a new subscription to the database.
+func AddSubscription(userID uint64, network string, eventName types.EventName, eventFilter string, eventThreshold float64) error {
+	now := time.Now()
+	nowTs := now.Unix()
+	nowEpoch := utils.TimeToEpoch(now)
+
+	var onConflictDo string = "NOTHING"
+	if strings.HasPrefix(string(eventName), "monitoring_") {
+		onConflictDo = "UPDATE SET event_threshold = $6"
+	}
+
+	name := string(eventName)
+	if network != "" {
+		name = strings.ToLower(network) + ":" + string(eventName)
+	}
+
+	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, nowTs, nowEpoch, eventThreshold)
+	return err
+}
+
+// AddSubscription adds a new subscription to the database.
+func AddTestSubscription(userID uint64, network string, eventName types.EventName, eventFilter string, eventThreshold float64, epoch uint64) error {
+	var onConflictDo string = "NOTHING"
+	if strings.HasPrefix(string(eventName), "monitoring_") {
+		onConflictDo = "UPDATE SET event_threshold = $6"
+	}
+
+	name := string(eventName)
+	if network != "" {
+		name = strings.ToLower(network) + ":" + string(eventName)
+	}
+
+	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, utils.EpochToTime(epoch).Unix(), epoch, eventThreshold)
+	return err
+}
+
+// DeleteSubscription removes a subscription from the database.
+func DeleteSubscription(userID uint64, network string, eventName types.EventName, eventFilter string) error {
+	name := string(eventName)
+	if network != "" {
+		name = strings.ToLower(network) + ":" + string(eventName)
+	}
+
+	_, err := FrontendDB.Exec("DELETE FROM users_subscriptions WHERE user_id = $1 and event_name = $2 and event_filter = $3", userID, name, eventFilter)
+	return err
+}
+
 func InsertMobileSubscription(userID uint64, paymentDetails types.MobileSubscription, store, receipt string, expiration int64, rejectReson string, extSubscriptionId string) error {
 	now := time.Now()
 	nowTs := now.Unix()
@@ -313,6 +361,20 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 	)
 
 	return data, err
+}
+
+func DisableAllSubscriptionsFromStripeUser(stripeCustomerID string) error {
+	userID, err := StripeGetCustomerUserId(stripeCustomerID)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	nowTs := now.Unix()
+	_, err = FrontendDB.Exec("UPDATE users_app_subscriptions SET active = $1, updated_at = TO_TIMESTAMP($2), expires_at = TO_TIMESTAMP($3), reject_reason = $4 WHERE user_id = $5 AND store = 'stripe';",
+		false, nowTs, nowTs, "stripe_user_deleted", userID,
+	)
+	return err
 }
 
 func GetUserSubscriptionIDByStripe(stripeSubscriptionID string) (uint64, error) {
@@ -522,12 +584,12 @@ func CreateNewStatsMetaPartition() error {
 
 	_, err := FrontendDB.Exec("CREATE TABLE " + partitionName + " PARTITION OF stats_meta_p FOR VALUES IN (" + strconv.Itoa(day) + ")")
 	if err != nil {
-		logger.Error("error creating partition %v", err)
+		logger.Errorf("error creating partition %v", err)
 		return err
 	}
 	_, err = FrontendDB.Exec("CREATE UNIQUE INDEX " + partitionName + "_user_id_created_trunc_process_machine_key ON public." + partitionName + " USING btree (user_id, created_trunc, process, machine)")
 	if err != nil {
-		logger.Error("error creating index %v", err)
+		logger.Errorf("error creating index %v", err)
 		return err
 	}
 
@@ -668,7 +730,7 @@ func GetHistoricPrices(currency string) (map[uint64]float64, error) {
 		Currency float64
 	}{}
 
-	if currency != "eur" && currency != "usd" && currency != "rub" && currency != "cny" && currency != "cad" && currency != "gbp" && currency != "gbp" {
+	if currency != "eur" && currency != "usd" && currency != "rub" && currency != "cny" && currency != "cad" && currency != "gbp" {
 		return nil, fmt.Errorf("currency %v not supported", currency)
 	}
 

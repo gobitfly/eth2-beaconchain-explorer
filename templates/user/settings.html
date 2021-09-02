@@ -345,7 +345,7 @@
                                         {{else}}
                                         {{if eq .Premium.Package "goldfish"}} <strong style="color: #d89a3e; font-size: 1.1em">Goldfish </strong>
                                         {{else}}
-                                        {{if eq .Premium.Package "whale"}} <strong style="color: #44a1c5; font-size: 1.1em">Whale </strong> {{end}}
+                                        {{if eq .Premium.Package "whale"}} <strong style="color: #0f52ba; font-size: 1.1em">Whale </strong> {{end}}
     
                                         {{end}}
                                         {{end}}
@@ -361,7 +361,7 @@
                                     {{if or (not .Premium.Package) (not (eq .Premium.RejectReason "")) }}
                                        <a href="/premium" class="btn btn-outline-primary">Get Premium</a>
                                     {{else}}
-                                        {{if eq .Premium.Store "ios-appstore" }}
+                                        {{if eq .Premium.Store "ios-appstore "}}
                                             <span class="text-muted">via Apple</span>
                                         {{else}}
                                             <span class="text-muted">via Google</span>
@@ -373,9 +373,9 @@
                                 <div class="text-center">
 
                                     <div class="my-2">
-                                        <span class="text-muted" style="margin-left: 12px; margin-right: 12px;">
+                                        <span class="text-muted">
                                             {{if not .Premium.Active }}
-                                            Premium features for your beaconcha.in explorer and <a href="/mobile">beaconcha.in mobile app</a> experience. No ads, support for more validators and more.
+                                            Premium features for your beaconcha.in and Beaconchain Dashboard App experience. No ads, support for more validators and more.
                                             {{else}}
                                             Your premium subscription is active. Thank you for supporting us! 
                                             {{end}}
@@ -858,7 +858,7 @@
                                 </div>
                                 <div class="progress">
                                     {{$percentageDaily := formatPercentage (divInt .ApiStatistics.Daily .ApiStatistics.MaxDaily)}}
-                                    <div class="progress-bar" role="progressbar" style="width: {{$percentageDaily}}%;" aria-valuenow="{{.ApiStatistics.Daily}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxDaily}}">{{$percentageDaily}} %</div>
+                                    <div class="progress-bar" role="progressbar" style="width: {{$percentageDaily}}%; white-space: no-wrap;" aria-valuenow="{{.ApiStatistics.Daily}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxDaily}}">{{$percentageDaily}} %</div>
                                 </div>
                             </div>
                             {{ end }}
@@ -869,7 +869,7 @@
                                 </div>
                                 <div class="progress">
                                     {{$percentageMonthly := formatPercentage (divInt .ApiStatistics.Monthly .ApiStatistics.MaxMonthly)}}
-                                    <div class="progress-bar" role="progressbar" style="width: {{$percentageMonthly}}%;" aria-valuenow="{{.ApiStatistics.Monthly}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxMonthly}}">{{$percentageMonthly}} %</div>
+                                    <div class="progress-bar" role="progressbar" style="width: {{$percentageMonthly}}%; white-space: nowrap;" aria-valuenow="{{.ApiStatistics.Monthly}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxMonthly}}">{{$percentageMonthly}} %</div>
                                 </div>
                             </div>
                         </div>

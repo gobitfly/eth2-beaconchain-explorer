@@ -369,3 +369,8 @@ main a:not(.btn):not(.page-link):not(.nav-link):not(.dropdown-item):not(.no-high
   width: 1.3rem;
   height: 1.3rem;
 }
+
+
+label.btn.btn-light:hover {
+  color: var(--font-color);
+}
