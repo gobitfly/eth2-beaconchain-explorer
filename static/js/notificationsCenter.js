@@ -1,8 +1,5 @@
 var csrfToken = "";
-
-const VALIDATOR_EVENTS = ["validator_attestation_missed", "validator_balance_decreased",
-                          "validator_proposal_missed", "validator_proposal_submitted",
-                          "validator_got_slashed"];
+const VALIDATOR_EVENTS = ["validator_attestation_missed", "validator_balance_decreased", "validator_proposal_missed", "validator_proposal_submitted", "validator_got_slashed"];
 const MONITORING_EVENTS = ["monitoring_machine_offline", "monitoring_hdd_almostfull", "monitoring_cpu_load"];
 
 function create_typeahead(input_container) {
@@ -17,19 +14,17 @@ function create_typeahead(input_container) {
       wildcard: '%QUERY'
     }
   });
-
   var bhName = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,
     queryTokenizer: Bloodhound.tokenizers.whitespace,
     identify: function(obj) {
-      return obj.name
+      return obj.name;
     },
     remote: {
       url: '/search/indexed_validators_by_name/%QUERY',
       wildcard: '%QUERY'
     }
   });
-
   $(input_container).typeahead(
     {
       minLength: 1,
@@ -62,17 +57,14 @@ function create_typeahead(input_container) {
         }
       }
     });
-
   $(input_container).on('focus', function(e) {
     if (e.target.value !== "") {
       $(this).trigger($.Event('keydown', { keyCode: 40 }));
     }
   });
-
   $(input_container).on('input', function() {
     $('.tt-suggestion').first().addClass('tt-cursor');
   });
-
   $(input_container).on('typeahead:select', function(e, sug) {
     $(input_container).val(sug.index);
     $(input_container).attr('pk', sug.pubkey);
@@ -148,11 +140,6 @@ function loadMonitoringData(data) {
       // click event to monitoring table edit button
       $('#monitoring-notifications #edit-monitoring-events-btn').on('click', function(e) {
         $('#add-monitoring-validator-select').html("");
-        /* $('#cpu-input-range-val, #cpu-input-range').val(80);
-        $('#cpu-input-range').attr('style', `background-size: 80% 100%`);
-        $('#hdd-input-range-val, #hdd-input-range').val(80);
-        $('#hdd-input-range').attr('style', `background-size: 80% 100%`); */
-
         for (let item of $('input.monitoring')) {
           $(item).prop('checked', false);
         }
@@ -178,8 +165,7 @@ function loadMonitoringData(data) {
             }
           }
         }
-
-        $('#add-monitoring-validator-select').append(`<option value="${$(this).attr("pk")}">${$(this).attr("ind")}</option>`);
+        $('#add-monitoring-validator-select').append(`<option value="${$(this).attr('pk')}">${$(this).attr('ind')}</option>`);
       });
 
       // enter event to threshold input
@@ -270,10 +256,11 @@ function loadMonitoringData(data) {
             }
 
             // for machine offline event, there is no threshold value; we show N/A and hide the edit button
+            // replaced (data[0] * 100).toFixed(2) with Math.trunc(data[0] * 100)
             return `
               <input type="text" class="form-control input-sm threshold_editable" title="Numbers in 1-100 range (including)" style="width: 60px; height: 30px;" hidden />
               <span class="threshold_non_editable">
-                <span class="threshold_non_editable_text">${data[0] === "0" ? "N/A" : (data[0] * 100).toFixed(2) + "%"}</span>
+                <span class="threshold_non_editable_text">${data[0] === "0" ? "N/A" : Math.trunc(data[0] * 100) + "%"}</span>
                 <i 
                   class="fas fa-pen fa-xs text-muted i-custom ${data[0] === '0' ? 'd-none' : ''}" 
                   id="edit-monitoring-events-btn" 
@@ -287,7 +274,6 @@ function loadMonitoringData(data) {
                 ></i>
               </span>`;
           }
-
           return data[0];
         }
       },
@@ -296,7 +282,7 @@ function loadMonitoringData(data) {
         responsivePriority: 2,
         data: 'machine',
         render: function(data, type, row, meta) {
-          return `<span class="font-weight-bold"><i class="fas fa-male mr-2"></i><a style="padding: .25rem;" href="/validator/${data}">${data}</a></span>`
+          return `<span class="font-weight-bold"><i class="fas fa-male mr-2"></i><a style="padding: .25rem;" href="/validator/${data}">${data}</a></span>`;
         }
       },
       {
@@ -308,7 +294,6 @@ function loadMonitoringData(data) {
           if (type === 'sort' || type === 'type') {
             return data;
           }
-
           if (parseInt(data) === 0) {
             return 'N/A';
           }
@@ -325,7 +310,7 @@ function loadMonitoringData(data) {
             <i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" 
               title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" 
               data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?">
-            </i>`
+            </i>`;
         }
       }
     ],
@@ -334,7 +319,7 @@ function loadMonitoringData(data) {
 
 function loadNetworkData(data) {
   let networkTable = $('#network-notifications');
-  // console.log(NET, data)
+
   networkTable.DataTable({
     language: {
       info: '_TOTAL_ entries',
@@ -431,6 +416,7 @@ function loadNetworkData(data) {
 
 function loadValidatorsData(data) {
   let validatorsTable = $('#validators-notifications');
+
   validatorsTable.DataTable({
     language: {
       info: '_TOTAL_ entries',
@@ -488,7 +474,7 @@ function loadValidatorsData(data) {
           }
           let datahref = `/validator/${data.Index || data.Pubkey}`;
           // return `<span class="font-weight-bold"><i class="fas fa-male mr-1"></i><a style="padding: .25rem;" href="/validator/${data.Index}">` + data.Index + '</a></span>' + `<a class="heading-l4 d-none d-sm-block mt-2" style="width: 5rem;" href="/validator/${data.Pubkey}">0x` + data.Pubkey.substring(0, 6) + '...</a>';
-          return `<i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + data.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + data.Pubkey.substring(0, 6) + `...</span></a>`;
+          return `<i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + data.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + data.Pubkey.substring(0, 6) + ` ...</span></a>`;
         }
       },
       {
@@ -500,7 +486,7 @@ function loadValidatorsData(data) {
             let notifications = "";
             let hasItems = false;
             for (let notification of data) {
-              let n = notification.Notification.split(":")
+              let n = notification.Notification.split(':')
               n = n[n.length-1]
               // console.log(n)
               if (VALIDATOR_EVENTS.includes(n)) {
@@ -523,10 +509,9 @@ function loadValidatorsData(data) {
                     badgeColor = 'badge-light';
                     break;
                 }
-                notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + n.replaceAll("_", " ") + '</span>';
+                notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + n.replaceAll('_', " ") + '</span>';
               }
             }
-            // console.log(notifications)
             if (!hasItems) {
               return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events-btn" title="Manage the notifications you receive for the selected validator in the table" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
             }
@@ -555,7 +540,7 @@ function loadValidatorsData(data) {
         render: function(data, type, row, meta) {
           // let status = data.length > 0 ? 'checked="true"' : "";
           let status = data.length > 0 ? '<i class="fas fa-check fa-lg"></i>' : "";
-          return status
+          return status;
           /* `<div class="form-check">
             <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="" ${status} disabled="true">
           	<label class="form-check-label" for=""></label>
@@ -645,6 +630,7 @@ $(document).ready(function() {
   if (document.getElementsByName('CsrfField')[0] !== undefined) {
     csrfToken = document.getElementsByName('CsrfField')[0].value;
   }
+
   create_typeahead('.validator-typeahead');
   // create_typeahead('.monitoring-typeahead');
 
@@ -909,7 +895,7 @@ $(document).ready(function() {
         });
       }
     } catch {
-      alert('Invalid Validator Index!');  
+      alert('Invalid Validator Index');  
     }
   });
 
