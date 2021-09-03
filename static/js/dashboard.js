@@ -424,6 +424,7 @@ $(document).ready(function() {
         data: '0',
         createdCell: function(td, cellData, rowData, row, col) {
           $(td).css('display', 'flex');
+          $(td).css('align-items', 'center');
           $(td).css('justify-content', 'space-between');
       },
         render: function(data, type, row, meta) {

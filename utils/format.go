@@ -379,9 +379,9 @@ func FormatHash(hash []byte) template.HTML {
 	// }
 	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
 	if len(hash) > 3 {
-		return template.HTML(fmt.Sprintf("<div class=\"d-inline mr-4 mr-lg-0\" style=\"position: relative;\"><span style=\"display: inline-block; width: 60px;\" class=\"text-monospace\">%#x…</span><i onclick=\"event.preventDefault()\" style=\"position: relative; left: 25px; padding: .25rem;\" class=\"fa fa-copy text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i></div>", hash[:3], hash))
+		return template.HTML(fmt.Sprintf("<div class=\"d-inline mr-4 mr-lg-0\" style=\"position: relative;\"><span style=\"display: inline-block; width: 2.4rem;\" class=\"text-monospace\">%#x…</span><i onclick=\"event.preventDefault()\" style=\"position: relative; left: 2.6rem; padding: .25rem;\" class=\"fa fa-copy text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i></div>", hash[:3], hash))
 	}
-	return template.HTML(fmt.Sprintf("<div class=\"d-inline mr-4 mr-lg-0\" style=\"position: relative;\"><span style=\"display: inline-block; width: 60px;\" class=\"text-monospace\">%#x…</span><i onclick=\"event.preventDefault()\" style=\"position: relative; left: 25px; padding: .25rem;\" class=\"fa fa-copy text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i></div>", hash, hash))
+	return template.HTML(fmt.Sprintf("<div class=\"d-inline mr-4 mr-lg-0\" style=\"position: relative;\"><span style=\"display: inline-block; width: 2.4rem;\" class=\"text-monospace\">%#x…</span><i onclick=\"event.preventDefault()\" style=\"position: relative; left: 2.6rem; padding: .25rem;\" class=\"fa fa-copy text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i></div>", hash, hash))
 }
 
 func FormatBitlist(bits []byte) template.HTML {
