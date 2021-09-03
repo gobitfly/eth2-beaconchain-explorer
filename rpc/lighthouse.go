@@ -258,6 +258,37 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 		return nil, fmt.Errorf("error parsing epoch validators: %v", err)
 	}
 
+	epoch1d := int64(epoch) - 225
+	if epoch1d < 0 {
+		epoch1d = 0
+	}
+	start := time.Now()
+	validatorBalances1d, err := lc.getBalancesForEpoch(epoch1d)
+	if err != nil {
+		return nil, err
+	}
+	logger.Printf("retrieved data for %v validator balances for epoch %v (1d) took %v", len(parsedValidators.Data), epoch1d, time.Since(start))
+	epoch7d := int64(epoch) - 225*7
+	if epoch7d < 0 {
+		epoch7d = 0
+	}
+	start = time.Now()
+	validatorBalances7d, err := lc.getBalancesForEpoch(epoch7d)
+	if err != nil {
+		return nil, err
+	}
+	logger.Printf("retrieved data for %v validator balances for epoch %v (7d) took %v", len(parsedValidators.Data), epoch7d, time.Since(start))
+	start = time.Now()
+	epoch31d := int64(epoch) - 225*31
+	if epoch31d < 0 {
+		epoch31d = 0
+	}
+	validatorBalances31d, err := lc.getBalancesForEpoch(epoch31d)
+	if err != nil {
+		return nil, err
+	}
+	logger.Printf("retrieved data for %v validator balances for epoch %v (31d) took %v", len(parsedValidators.Data), epoch31d, time.Since(start))
+
 	for _, validator := range parsedValidators.Data {
 		data.Validators = append(data.Validators, &types.Validator{
 			Index:                      uint64(validator.Index),
@@ -270,6 +301,9 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 			ActivationEpoch:            uint64(validator.Validator.ActivationEpoch),
 			ExitEpoch:                  uint64(validator.Validator.ExitEpoch),
 			WithdrawableEpoch:          uint64(validator.Validator.WithdrawableEpoch),
+			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
+			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
+			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
 		})
 	}
 
@@ -378,6 +412,34 @@ func uint64List(li []uint64Str) []uint64 {
 		out[i] = uint64(v)
 	}
 	return out
+}
+
+func (lc *LighthouseClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, error) {
+
+	if epoch < 0 {
+		epoch = 0
+	}
+
+	var err error
+
+	validatorBalances := make(map[uint64]uint64)
+
+	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%d/validator_balances", lc.endpoint, epoch*int64(utils.Config.Chain.SlotsPerEpoch)))
+	if err != nil {
+		return validatorBalances, err
+	}
+
+	var parsedResponse StandardValidatorBalancesResponse
+	err = json.Unmarshal(resp, &parsedResponse)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing response for validator_balances")
+	}
+
+	for _, b := range parsedResponse.Data {
+		validatorBalances[uint64(b.Index)] = uint64(b.Balance)
+	}
+
+	return validatorBalances, nil
 }
 
 // GetBlocksBySlot will get the blocks by slot from Lighthouse RPC api
@@ -604,7 +666,7 @@ func (lc *LighthouseClient) GetFinalityCheckpoints(epoch uint64) (*types.Finalit
 var notFoundErr = errors.New("not found 404")
 
 func (lc *LighthouseClient) get(url string) ([]byte, error) {
-	client := &http.Client{Timeout: time.Second * 60}
+	client := &http.Client{Timeout: time.Second * 120}
 
 	resp, err := client.Get(url)
 	if err != nil {
@@ -889,5 +951,12 @@ type StandardSyncingResponse struct {
 		IsSyncing    bool      `json:"is_syncing"`
 		HeadSlot     uint64Str `json:"head_slot"`
 		SyncDistance uint64Str `json:"sync_distance"`
+	} `json:"data"`
+}
+
+type StandardValidatorBalancesResponse struct {
+	Data []struct {
+		Index   uint64Str `json:"index"`
+		Balance uint64Str `json:"balance"`
 	} `json:"data"`
 }
