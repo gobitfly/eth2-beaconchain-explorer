@@ -332,10 +332,14 @@ func FormatEth1Block(block uint64) template.HTML {
 
 // FormatEth1TxHash will return the eth1-tx-hash formated as html
 func FormatEth1TxHash(hash []byte) template.HTML {
+	copyBtn := CopyButton(hex.EncodeToString(hash))
+
 	if !Config.Chain.Mainnet {
-		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
+		// return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
+		return template.HTML(fmt.Sprintf(`<i class="fas fa-male"></i> <a style="font-family: 'Roboto Mono'" href=\"https://goerli.etherscan.io/tx/0x%x\">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 	}
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
+	// return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-male"></i> <a style="font-family: 'Roboto Mono'" href=\"https://goerli.etherscan.io/tx/0x%x\">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
@@ -380,9 +384,13 @@ func FormatHash(hash []byte) template.HTML {
 	// }
 	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
 	if len(hash) > 3 {
-		return template.HTML(fmt.Sprintf("<div class=\"d-inline mr-4 mr-lg-0\" style=\"position: relative;\"><span style=\"display: inline-block; width: 2.4rem;\" class=\"text-monospace\">%#x…</span><i onclick=\"event.preventDefault()\" style=\"position: relative; left: 2.6rem; padding: .25rem;\" class=\"fa fa-copy text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i></div>", hash[:3], hash))
+		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span>", hash[:3]))
 	}
-	return template.HTML(fmt.Sprintf("<div class=\"d-inline mr-4 mr-lg-0\" style=\"position: relative;\"><span style=\"display: inline-block; width: 2.4rem;\" class=\"text-monospace\">%#x…</span><i onclick=\"event.preventDefault()\" style=\"position: relative; left: 2.6rem; padding: .25rem;\" class=\"fa fa-copy text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i></div>", hash, hash))
+	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
+}
+
+func CopyButton(clipboardText interface{}) string {
+	return fmt.Sprintf(`<i style="padding: .25rem;" class="fa fa-copy ml-2 text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
 }
 
 func CopyButton(clipboardText interface{}) string {
@@ -514,6 +522,7 @@ func FormatPercentageWithGPrecision(percentage float64, precision int) string {
 // FormatPublicKey will return html formatted text for a validator-public-key
 func FormatPublicKey(validator []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(validator))
+	// return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
 	return template.HTML(fmt.Sprintf(`<i class="fas fa-male"></i> <a style="font-family: 'Roboto Mono'" href="/validator/0x%x">0x%v…</a>%v`, validator, hex.EncodeToString(validator)[:6], copyBtn))
 }
 
