@@ -54,6 +54,7 @@ type PoolsResp struct {
 	IdEthSeries         idEthSeriesDrill
 	TotalValidators     uint64
 	IsMainnet           bool
+	NoAds               bool
 }
 
 type PoolsInfo struct {
