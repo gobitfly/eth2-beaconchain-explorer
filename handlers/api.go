@@ -1446,13 +1446,13 @@ func ClientStatsPostNew(w http.ResponseWriter, r *http.Request) {
 // @Summary Used in eth2 clients to submit stats to your beaconcha.in account. This data can be accessed by the app or the user stats api call.
 // @Tags User
 // @Produce json
-// @Param apiKey path string true "User API key, can be found on https://beaconcha.in/user/settings"
-// @Param machine path string false "Name your device if you have multiple devices you want to monitor"
+// @Param apiKey query string true "User API key, can be found on https://beaconcha.in/user/settings"
+// @Param machine query string false "Name your device if you have multiple devices you want to monitor"
 // @Success 200 {object} types.ApiResponse
 // @Failure 400 {object} types.ApiResponse
 // @Failure 500 {object} types.ApiResponse
 // @Security ApiKeyAuth
-// @Router /api/v1/stats/{apiKey}/{machine} [get]
+// @Router /api/v1/client/metrics [POST]
 func ClientStatsPostOld(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
