@@ -297,7 +297,6 @@ func DeleteSubscription(userID uint64, network string, eventName types.EventName
 	return err
 }
 
-func InsertMobileSubscription(userID uint64, paymentDetails types.MobileSubscription, store, receipt string, expiration int64, rejectReson string) error {
 func InsertMobileSubscription(userID uint64, paymentDetails types.MobileSubscription, store, receipt string, expiration int64, rejectReson string, extSubscriptionId string) error {
 	now := time.Now()
 	nowTs := now.Unix()
