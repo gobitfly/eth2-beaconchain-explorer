@@ -393,10 +393,6 @@ func CopyButton(clipboardText interface{}) string {
 	return fmt.Sprintf(`<i style="padding: .25rem;" class="fa fa-copy ml-2 text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
 }
 
-func CopyButton(clipboardText interface{}) string {
-	return fmt.Sprintf(`<i style="padding: .25rem;" class="fa fa-copy ml-2 text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
-}
-
 func FormatBitlist(bits []byte) template.HTML {
 	var buf strings.Builder
 	buf.WriteString("<div class=\"text-bitlist\">")
