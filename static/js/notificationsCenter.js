@@ -574,7 +574,7 @@ function loadValidatorsData(data) {
           if (data[0].Timestamp === 0) {
             return no_time;
           }
-          return '<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-3">' + data[0].Notification + '</span>' + `<span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`;
+          return '<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-3">' + data[0].Notification.replace('validator', "").replaceAll('_', " ") + '</span>' + `<span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`;
         }
       },
       {
