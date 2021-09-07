@@ -250,7 +250,8 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 		entry = append(entry, row.IsCancelled)
 		entry = append(entry, row.IsExecuted)
 		if len(row.Payload) > 4 {
-			entry = append(entry, fmt.Sprintf(`<span>%x…%x<span> <button class="btn btn-dark text-white btn-sm" type="button" data-toggle="tooltip" title="" data-clipboard-text="%x" data-original-title="Copy to clipboard"><i class="fa fa-copy"></i></button>`, row.Payload[:2], row.Payload[len(row.Payload)-2:], row.Payload))
+			entry = append(entry, fmt.Sprintf(`<span>%x…%x<span><i class="fa fa-copy text-muted ml-3 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="%x"></i>`, row.Payload[:2], row.Payload[len(row.Payload)-2:], row.Payload))
+			// entry = append(entry, fmt.Sprintf(`<span>%x…%x<span> <button class="btn btn-dark text-white btn-sm" type="button" data-toggle="tooltip" title="" data-clipboard-text="%x" data-original-title="Copy to clipboard"><i class="fa fa-copy"></i></button>`, row.Payload[:2], row.Payload[len(row.Payload)-2:], row.Payload))
 			// entry = append(entry, fmt.Sprintf(`<span id="rocketpool-dao-proposal-payload-%v">%x…%x</span> <button></button>`, i, row.Payload[:2], row.Payload[len(row.Payload)-2:]))
 		} else {
 			entry = append(entry, fmt.Sprintf("%x", row.Payload))
