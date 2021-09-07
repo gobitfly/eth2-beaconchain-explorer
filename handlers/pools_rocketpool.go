@@ -86,7 +86,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 		entry := []interface{}{}
 		entry = append(entry, utils.FormatEth1Address(row.Address))
 		if c := bytes.Compare(row.Pubkey, zeroAddr); c == 0 {
-			entry = append(entry, "-")
+			entry = append(entry, "N/A")
 		} else {
 			entry = append(entry, utils.FormatValidatorWithName(row.Pubkey, row.ValidatorName))
 		}
