@@ -1,10 +1,10 @@
-{{ define "js"}}
+{{define "js"}}
 
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
 
     <script>
-        $(document).ready(function () {
+        $(document).ready(function() {
             var tblOpts = {
                 processing: true,
                 serverSide: true,
@@ -25,19 +25,19 @@
                     {
                         targets: 4,
                         data: '4',
-                        render: function (data, type, row) {
+                        render: function(data, type, row) {
                             return `<div data-toggle="tooltip" title="${data}" style="max-width: 130px;" class="text-truncate">${data}</div>`
                         }
                     }
                 ],
-                preDrawCallback: function () {
+                preDrawCallback: function() {
                     // this does not always work.. not sure how to solve the staying tooltip
                     try {
                         $('#block_deposits').find('[data-toggle="tooltip"]').tooltip('dispose')
                     } catch (e) {
                     }
                 },
-                drawCallback: function (settings) {
+                drawCallback: function(settings) {
                     formatTimestamps()
                     $('#block_deposits').find('[data-toggle="tooltip"]').tooltip()
                 },
@@ -52,7 +52,7 @@
     </script>
 
     <script>
-        window.addEventListener('popstate', function (event) {
+        window.addEventListener('popstate', function(event) {
             event.preventDefault();
             history.back();
         })
@@ -89,11 +89,11 @@
     </script>
 {{end}}
 
-{{ define "css"}}
+{{define "css"}}
     <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
 {{end}}
 
-{{ define "content"}}
+{{define "content"}}
     {{with .Data}}
         <div class="container mt-2">
             <div class="d-md-flex py-2 justify-content-md-between">
@@ -107,7 +107,7 @@
                     {{end}}
                 </h1>
                 <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                    <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
                         <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
                         <li class="breadcrumb-item"><a href="/blocks" title="Blocks">Blocks</a></li>
                         <li class="breadcrumb-item active" aria-current="page">Block details</li>
@@ -116,48 +116,32 @@
             </div>
             <ul style="margin-bottom: -1px;" class="nav nav-tabs justify-content-start" id="tab" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab"
-                       aria-controls="overview" aria-selected="true">Overview</a>
+                    <a class="nav-link active" id="overview-tab" data-toggle="tab" href="#overview" role="tab" aria-controls="overview" aria-selected="true">Overview</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="votes-tab" data-toggle="tab" href="#votes" role="tab" aria-controls="votes"
-                       aria-selected="false">Votes <span
-                                class="badge bg-secondary text-white">{{.VotesCount}}</span></a>
+                    <a class="nav-link" id="votes-tab" data-toggle="tab" href="#votes" role="tab" aria-controls="votes" aria-selected="false">Votes <span class="badge bg-secondary text-white">{{.VotesCount}}</span></a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab"
-                       aria-controls="attestations" aria-selected="false">Attestations <span
-                                class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
+                    <a class="nav-link" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false">Attestations <span class="badge bg-secondary text-white">{{.AttestationsCount}}</span></a>
                 </li>
                 {{if gt .DepositsCount 0}}
                     <li class="nav-item">
-                        <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab"
-                           aria-controls="deposits" aria-selected="false">Deposits <span
-                                    class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
+                        <a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab" aria-controls="deposits" aria-selected="false">Deposits <span class="badge bg-secondary text-white">{{.DepositsCount}}</span></a>
                     </li>
                 {{end}}
                 {{if gt .VoluntaryExitscount 0}}
                     <li class="nav-item">
-                        <a class="nav-link" id="voluntary-exits-tab" data-toggle="tab" href="#voluntary-exits"
-                           role="tab"
-                           aria-controls="voluntary-exits" aria-selected="false">Voluntary Exits <span
-                                    class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a>
+                        <a class="nav-link" id="voluntary-exits-tab" data-toggle="tab" href="#voluntary-exits" role="tab" aria-controls="voluntary-exits" aria-selected="false">Voluntary Exits <span class="badge bg-secondary text-white">{{.VoluntaryExitscount}}</span></a>
                     </li>
                 {{end}}
                 {{if gt .AttesterSlashingsCount 0}}
                     <li class="nav-item">
-                        <a class="nav-link" id="attester-slashings-tab" data-toggle="tab" href="#attester-slashings"
-                           role="tab"
-                           aria-controls="attester-slashings" aria-selected="false">Attester Slashings <span
-                                    class="badge bg-secondary text-white">{{.AttesterSlashingsCount}}</span></a>
+                        <a class="nav-link" id="attester-slashings-tab" data-toggle="tab" href="#attester-slashings" role="tab" aria-controls="attester-slashings" aria-selected="false">Attester Slashings <span class="badge bg-secondary text-white">{{.AttesterSlashingsCount}}</span></a>
                     </li>
                 {{end}}
                 {{if gt .ProposerSlashingsCount 0}}
                     <li class="nav-item">
-                        <a class="nav-link" id="proposer-slashings-tab" data-toggle="tab" href="#proposer-slashings"
-                           role="tab"
-                           aria-controls="proposer-slashings" aria-selected="false">Proposer Slashings <span
-                                    class="badge bg-secondary text-white">{{.ProposerSlashingsCount}}</span></a>
+                        <a class="nav-link" id="proposer-slashings-tab" data-toggle="tab" href="#proposer-slashings" role="tab" aria-controls="proposer-slashings" aria-selected="false">Proposer Slashings <span class="badge bg-secondary text-white">{{.ProposerSlashingsCount}}</span></a>
                     </li>
                 {{end}}
             </ul>
@@ -175,31 +159,28 @@
                 </div>
                 <div class="tab-pane fade" id="votes" role="tabpanel" aria-labelledby="votes-tab">
                     <div class="card block-card">
-                        {{template "block_votes" . }}
+                        {{template "block_votes" .}}
                     </div>
                 </div>
                 <div class="tab-pane fade" id="attestations" role="tabpanel" aria-labelledby="attestations-tab">
                     <div class="card block-card">
                         <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
                             <div class="row p-1 mx-0">
-                                <h3 class="h5 col-md-12 text-center"><b>Showing {{ .AttestationsCount }}
-                                        Attestations </b>
-                                </h3>
+                                <h3 class="h5 col-md-12 text-center"><b>Showing {{ .AttestationsCount }} Attestations </b></h3>
                             </div>
                         </div>
                     </div>
-                    {{ template "block_attestations" .}}
+                    {{template "block_attestations" .}}
                 </div>
                 {{if gt .DepositsCount 0}}
                     <div class="tab-pane fade" id="deposits" role="tabpanel" aria-labelledby="deposits-tab">
                         <div class="card block-card">
-                            {{ template "block_deposits" . }}
+                            {{template "block_deposits" .}}
                         </div>
                     </div>
                 {{end}}
                 {{if gt .VoluntaryExitscount 0}}
-                    <div class="tab-pane fade" id="voluntary-exits" role="tabpanel"
-                         aria-labelledby="voluntary-exits-tab">
+                    <div class="tab-pane fade" id="voluntary-exits" role="tabpanel" aria-labelledby="voluntary-exits-tab">
                         <div class="card block-card">
                             {{template "block_exits" .}}
                         </div>
@@ -207,31 +188,27 @@
                 {{end}}
                 {{if gt .AttesterSlashingsCount 0}}
                     <!-- Nav tabs -->
-                    <div class="tab-pane fade" id="attester-slashings" role="tabpanel"
-                         aria-labelledby="attester-slashings-tab">
+                    <div class="tab-pane fade" id="attester-slashings" role="tabpanel" aria-labelledby="attester-slashings-tab">
                         <div class="card block-card">
                             <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
                                 <div class="row p-1 mx-0">
-                                    <h3 class="h5 col-md-12 text-center"><b>Showing {{.AttesterSlashingsCount}} Attester
-                                            Slashing(s) </b></h3>
+                                    <h3 class="h5 col-md-12 text-center"><b>Showing {{.AttesterSlashingsCount}} Attester Slashing(s) </b></h3>
                                 </div>
                             </div>
                         </div>
-                        {{ template "block_attesterSlashing" .}}
+                        {{template "block_attesterSlashing" .}}
                     </div>
                 {{end}}
                 {{if gt .ProposerSlashingsCount 0}}
-                    <div class="tab-pane fade" id="proposer-slashings" role="tabpanel"
-                         aria-labelledby="proposer-slashings-tab">
+                    <div class="tab-pane fade" id="proposer-slashings" role="tabpanel" aria-labelledby="proposer-slashings-tab">
                         <div class="card block-card">
                             <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
                                 <div class="row p-1 mx-0">
-                                    <h3 class="h5 col-md-12 text-center"><b>Showing {{.ProposerSlashingsCount}} Proposer
-                                            Slashing(s) </b></h3>
+                                    <h3 class="h5 col-md-12 text-center"><b>Showing {{.ProposerSlashingsCount}} Proposer Slashing(s) </b></h3>
                                 </div>
                             </div>
                         </div>
-                        {{ template "block_proposerSlashing" .}}
+                        {{template "block_proposerSlashing" .}}
                     </div>
                 {{end}}
             </div>
