@@ -97,20 +97,22 @@ function loadMonitoringData(data) {
   }
 
   if (mdata.length !== 0) {
-    $('#monitoring-section-with-data').append(
-      `<table class="table table-borderless table-hover" id="monitoring-notifications">
-        <thead class="custom-table-head">
-          <tr>
-            <th scope="col" class="h6 border-bottom-0">Notification</th>
-            <th scope="col" class="h6 border-bottom-0">Threshold</th>
-            <th scope="col" class="h6 border-bottom-0">Machine</th>
-            <th scope="col" class="h6 border-bottom-0">Most Recent</th>
-            <th scope="col" class="h6 border-bottom-0"></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>`
-    );
+    if ($('#monitoring-section-with-data').children().length === 0) {
+      $('#monitoring-section-with-data').append(
+        `<table class="table table-borderless table-hover" id="monitoring-notifications">
+          <thead class="custom-table-head">
+            <tr>
+              <th scope="col" class="h6 border-bottom-0">Notification</th>
+              <th scope="col" class="h6 border-bottom-0">Threshold</th>
+              <th scope="col" class="h6 border-bottom-0">Machine</th>
+              <th scope="col" class="h6 border-bottom-0">Most Recent</th>
+              <th scope="col" class="h6 border-bottom-0"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>`
+      );
+    }
   } else {
     $('#monitoring-section-empty').removeAttr('hidden');
   }
@@ -155,6 +157,7 @@ function loadMonitoringData(data) {
                 $(item).prop('checked', true);
                 let p = parseInt(parseFloat(t[1]) * 100);
                 if (e.includes('_cpu_')) {
+                  // check why ranges don't work
                   $('#cpu-input-range-val, #cpu-input-range').val(p);
                   $('#cpu-input-range').attr('style', `background-size: ${p}% 100%`);
                 } else if (e.includes('_hdd_')) {
@@ -169,12 +172,12 @@ function loadMonitoringData(data) {
       });
 
       // enter event to threshold input
-      $('.threshold_editable').on('keypress', function(e) {
+      /* $('.threshold_editable').on('keypress', function(e) {
         if (e.which == 13) {
           const rowId = $(this).parent().parent().attr('id');
           let newThreshold = $(this).val();
 
-          // validate input
+          
           let isValid = false;
           if (isNaN(newThreshold) == false) {
             const parsed = parseInt(newThreshold, 10);
@@ -199,14 +202,14 @@ function loadMonitoringData(data) {
 
             data[index].threshold = newThreshold;
 
-            // destroy and reload table after edit
+            
             $('#monitoring-notifications').DataTable().clear().destroy();
             loadMonitoringData(data);
           } else {
             alert('Enter an integer between 1 and 100');
           }
         }
-      });
+      }); */
 
       // click event to table remove button
       $('#monitoring-notifications #remove-btn').on('click', function(e) {
@@ -461,7 +464,7 @@ function loadValidatorsData(data) {
       },
       {
         targets: 0,
-        responsivePriority: 1,
+        responsivePriority: 2,
         data: 'Validator',
         render: function(data, type, row, meta) {
           // for sorting and type checking use the original data (unformatted)
@@ -574,7 +577,7 @@ function loadValidatorsData(data) {
           if (data[0].Timestamp === 0) {
             return no_time;
           }
-          return '<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-3">' + data[0].Notification.replace('validator', "").replaceAll('_', " ") + '</span>' + `<span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`;
+          return '<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-2">' + data[0].Notification.replace('validator', "").replaceAll('_', " ") + '</span>' + `<span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`;
         }
       },
       {
@@ -674,7 +677,7 @@ $(document).ready(function() {
         }).then(res => {
           if (res.status == 200) {
             $('#confirmRemoveModal').modal('hide');
-            window.location.reload(false);
+            window.location.reload();
           } else {
             alert('Error updating validators subscriptions');
             $('#confirmRemoveModal').modal('hide');
