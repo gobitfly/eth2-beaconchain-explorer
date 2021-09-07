@@ -1,8 +1,8 @@
-{{ define "js"}}
+{{define "js"}}
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script>
-        $(document).ready(function () {
+        $(document).ready(function() {
             $('#deposits').DataTable({
                 processing: true,
                 serverSide: true,
@@ -22,12 +22,12 @@
             })
         })
     </script>
-{{end}} {{ define "css"}}
+{{end}} {{define "css"}}
     <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
 
 
 {{end}}
-{{ define "content"}}
+{{define "content"}}
     {{with .Data}}
         <div class="container mt-2">
             <div class="my-3">
