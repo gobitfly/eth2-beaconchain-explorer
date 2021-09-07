@@ -9,26 +9,40 @@
             searching: false,
             paging: true,
             pagingType: 'input',
-            ajax: '/pools/rocketpool/data/minipools',
-            language: {
-                // searchPlaceholder: 'Search by Epoch Number',
-                // search: '',
-                paginate: {
-                    previous: "<",
-                    next: ">",
+            // ajax: '/pools/rocketpool/data/minipools',
+            ajax: {
+                url: '/pools/rocketpool/data/minipools',
+                data: function(data) {
+                    console.log(data);
                 }
             },
-            preDrawCallback: function () {
+            language: {
+                info: '_TOTAL_ entries',
+                paginate: {
+                    previous: '<',
+                    next: '>'
+                }
+            },
+            columnDefs: [
+                {
+                    targets: '_all',
+                    createdCell: function(td, cellData, rowData, row, col) {
+                        $(td).css('padding-top', '20px');
+                        $(td).css('padding-bottom', '20px');
+                    }
+                }
+            ],
+            preDrawCallback: function() {
                 // this does not always work.. not sure how to solve the staying tooltip
                 try {
-                    $('#minipools').find('[data-toggle="tooltip"]').tooltip('dispose')
-                } catch (e) {
-                }
+                    $('#minipools').find('[data-toggle="tooltip"]').tooltip('dispose');
+                } catch(e) {}
             },
-            drawCallback: function () {
-                formatTimestamps()
-            },
-        })
+            drawCallback: function() {
+                formatTimestamps();
+            }
+        });
+
         $('#nodes').DataTable({
             processing: true,
             serverSide: true,
@@ -36,26 +50,40 @@
             searching: false,
             paging: true,
             pagingType: 'input',
-            ajax: '/pools/rocketpool/data/nodes',
-            language: {
-                // searchPlaceholder: 'Search by Epoch Number',
-                // search: '',
-                paginate: {
-                    previous: "<",
-                    next: ">",
+            // ajax: '/pools/rocketpool/data/nodes',
+            ajax: {
+                url: '/pools/rocketpool/data/nodes',
+                data: function(data) {
+                    console.log(data);
                 }
             },
-            preDrawCallback: function () {
+            language: {
+                info: '_TOTAL_ entries',
+                paginate: {
+                    previous: '<',
+                    next: '>'
+                }
+            },
+            columnDefs: [
+                {
+                    targets: '_all',
+                    createdCell: function(td, cellData, rowData, row, col) {
+                        $(td).css('padding-top', '20px');
+                        $(td).css('padding-bottom', '20px');
+                    }
+                }
+            ],
+            preDrawCallback: function() {
                 // this does not always work.. not sure how to solve the staying tooltip
                 try {
-                    $('#nodes').find('[data-toggle="tooltip"]').tooltip('dispose')
-                } catch (e) {
-                }
+                    $('#nodes').find('[data-toggle="tooltip"]').tooltip('dispose');
+                } catch(e) {}
             },
-            drawCallback: function () {
-                formatTimestamps()
-            },
-        })
+            drawCallback: function() {
+                formatTimestamps();
+            }
+        });
+
         $('#dao_proposals').DataTable({
             processing: true,
             serverSide: true,
@@ -63,26 +91,40 @@
             searching: false,
             paging: true,
             pagingType: 'input',
-            ajax: '/pools/rocketpool/data/dao_proposals',
-            language: {
-                // searchPlaceholder: 'Search by Epoch Number',
-                // search: '',
-                paginate: {
-                    previous: "<",
-                    next: ">",
+            // ajax: '/pools/rocketpool/data/dao_proposals',
+            ajax: {
+                url: '/pools/rocketpool/data/dao_proposals',
+                data: function(data) {
+                    console.log(data);
                 }
             },
-            preDrawCallback: function () {
+            language: {
+                info: '_TOTAL_ entries',
+                paginate: {
+                    previous: '<',
+                    next: '>'
+                }
+            },
+            columnDefs: [
+                {
+                    targets: '_all',
+                    createdCell: function(td, cellData, rowData, row, col) {
+                        $(td).css('padding-top', '20px');
+                        $(td).css('padding-bottom', '20px');
+                    }
+                }
+            ],
+            preDrawCallback: function() {
                 // this does not always work.. not sure how to solve the staying tooltip
                 try {
-                    $('#dao_proposals').find('[data-toggle="tooltip"]').tooltip('dispose')
-                } catch (e) {
-                }
+                    $('#dao_proposals').find('[data-toggle="tooltip"]').tooltip('dispose');
+                } catch(e) {}
             },
-            drawCallback: function () {
-                formatTimestamps()
-            },
-        })
+            drawCallback: function() {
+                formatTimestamps();
+            }
+        });
+
         $('#dao_members').DataTable({
             processing: true,
             serverSide: true,
@@ -90,26 +132,39 @@
             searching: false,
             paging: true,
             pagingType: 'input',
-            ajax: '/pools/rocketpool/data/dao_members',
-            language: {
-                // searchPlaceholder: 'Search by Epoch Number',
-                // search: '',
-                paginate: {
-                    previous: "<",
-                    next: ">",
+            // ajax: '/pools/rocketpool/data/dao_members',
+            ajax: {
+                url: '/pools/rocketpool/data/dao_members',
+                data: function(data) {
+                    console.log(data);
                 }
             },
-            preDrawCallback: function () {
+            language: {
+                info: '_TOTAL_ entries',
+                paginate: {
+                    previous: '<',
+                    next: '>',
+                }
+            },
+            columnDefs: [
+                {
+                    targets: '_all',
+                    createdCell: function(td, cellData, rowData, row, col) {
+                        $(td).css('padding-top', '20px');
+                        $(td).css('padding-bottom', '20px');
+                    }
+                }
+            ],
+            preDrawCallback: function() {
                 // this does not always work.. not sure how to solve the staying tooltip
                 try {
-                    $('#dao_members').find('[data-toggle="tooltip"]').tooltip('dispose')
-                } catch (e) {
-                }
+                    $('#dao_members').find('[data-toggle="tooltip"]').tooltip('dispose');
+                } catch(e) {}
             },
-            drawCallback: function () {
-                formatTimestamps()
-            },
-        })
+            drawCallback: function() {
+                formatTimestamps();
+            }
+        });
     </script>
 {{end}}
 
@@ -124,7 +179,7 @@
 
 {{define "content"}}
     {{with .Data}}
-        <div class="container">
+        <div class="container-fluid container-xl">
             <div class="mt-4">
                 <div class="d-flex align-items-center justify-content-md-end">
                     <nav aria-label="breadcrumb">
@@ -136,97 +191,88 @@
                     </nav>
                 </div>
             </div>
-            <!-- TODO: decide on font size, weight, letter spacing etc. -->
-            <h1 class="mt-2 mb-5">Rocketpool</h1>
-            <h2 class="mb-3">Minipools</h2>
-            <div class="card mb-5">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover" id="minipools" width="100%">
-                            <thead>
+            <h1 class="mt-2 mb-5 text-nowrap" style="font-size: 1.8rem; letter-spacing: 2px;">Rocketpool</h1>
+            <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Minipools</h2>
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem;">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="minipools" width="100%">
+                        <thead>
                             <tr>
-                                <th scope="col">Minipool</th>
-                                <th scope="col">Validator</th>
-                                <th scope="col">Node</th>
-                                <th scope="col">Node Fee</th>
-                                <th scope="col">Deposit Type</th>
-                                <th scope="col">Status</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Minipool</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Validator</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Node</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Node Fee</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Deposit Type</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Status</th>
                             </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
-            <h2 class="mb-3">Nodes</h2>
-            <div class="card mb-5">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover" id="nodes" width="100%">
-                            <thead>
+            <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Nodes</h2>
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem;">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="nodes" width="100%">
+                        <thead>
                             <tr>
-                                <th scope="col">Address</th>
-                                <th scope="col">Timezone Location</th>
-                                <th scope="col">RPL Stake</th>
-                                <th scope="col">Min RPL Stake</th>
-                                <th scope="col">Max RPL Stake</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Address</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Timezone Location</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">RPL Stake</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Min RPL Stake</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Max RPL Stake</th>
                             </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
-            <h2 class="mb-3">DAO Members</h2>
-            <div class="card mb-5">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover" id="dao_members" width="100%">
-                            <thead>
+            <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">DAO Members</h2>
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem;">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="dao_members" width="100%">
+                        <thead>
                             <tr>
-                                <th scope="col">Address</th>
-                                <th scope="col">ID</th>
-                                <th scope="col">URL</th>
-                                <th scope="col">Joined Time</th>
-                                <th scope="col">Last Proposal Time</th>
-                                <th scope="col">RPL Bond Amount</th>
-                                <th scope="col">Unbonded Validator Count</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Address</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">ID</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">URL</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Joined Time</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Last Proposal Time</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">RPL Bond Amount</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Unbonded Validator Count</th>
                             </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
-            <h2 class="mb-3">Proposals</h2>
-            <div class="card mb-5">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover" id="dao_proposals" width="100%">
-                            <thead>
+            <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Proposals</h2>
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem;">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="dao_proposals" width="100%">
+                        <thead>
                             <tr>
-                                <th scope="col">ID</th>
-                                <th scope="col">DAO</th>
-                                <th scope="col">Proposer</th>
-                                <th scope="col">Message</th>
-                                <th scope="col">Created Time</th>
-                                <th scope="col">Start Time</th>
-                                <th scope="col">End Time</th>
-                                <th scope="col">Expiry Time</th>
-                                <th scope="col">Votes Required</th>
-                                <th scope="col">Votes For</th>
-                                <th scope="col">Votes Against</th>
-                                <th scope="col">Member Voted</th>
-                                <th scope="col">Member Supported</th>
-                                <th scope="col">Is Cancelled</th>
-                                <th scope="col">Is Executed</th>
-                                <th scope="col">Payload</th>
-                                <th scope="col">State</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">ID</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">DAO</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Proposer</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Message</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Created Time</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Start Time</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">End Time</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Expiry Time</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Votes Required</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Votes For</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Votes Against</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Member Voted</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Member Supported</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Is Cancelled</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Is Executed</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">Payload</th>
+                                <th scope="col" style="font-size: .9rem; letter-spacing: 1px;">State</th>
                             </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </div>
             <div class="d-flex align-items-center" style="margin-top: 5rem;">
