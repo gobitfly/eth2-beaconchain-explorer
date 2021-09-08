@@ -98,8 +98,8 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatBlockSlot(d.BlockSlot),
 			utils.FormatPublicKey(d.Publickey),
 			utils.FormatDepositAmount(d.Amount, currency),
-			utils.FormatHash(d.Withdrawalcredentials),
-			utils.FormatHash(d.Signature),
+			utils.FormatHashFull(d.Withdrawalcredentials),
+			utils.FormatHashFull(d.Signature),
 		}
 	}
 
