@@ -147,7 +147,6 @@ function loadMonitoringData(data) {
         }
 
         let ev = $(this).attr('event').split(',');
-        console.log(ev);
         for (let i of ev) {
           if (i.length > 0) {
             let t = i.split(':');
@@ -157,7 +156,6 @@ function loadMonitoringData(data) {
                 $(item).prop('checked', true);
                 let p = parseInt(parseFloat(t[1]) * 100);
                 if (e.includes('_cpu_')) {
-                  // check why ranges don't work
                   $('#cpu-input-range-val, #cpu-input-range').val(p);
                   $('#cpu-input-range').attr('style', `background-size: ${p}% 100%`);
                 } else if (e.includes('_hdd_')) {
@@ -351,7 +349,7 @@ function loadNetworkData(data) {
         responsivePriority: 1,
         data: 'Notification',
         render: function(data, type, row, meta) {
-          return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>';
+          return '<span class="badge badge-pill badge-light badge-custom-size">' + data.toLowerCase() + '</span>';
         }
       },
       {
@@ -485,9 +483,9 @@ function loadValidatorsData(data) {
             let notifications = "";
             let hasItems = false;
             for (let notification of data) {
-              let n = notification.Notification.split(':')
-              n = n[n.length-1]
-              // console.log(n)
+              let n = notification.Notification.split(':');
+              n = n[n.length-1];
+
               if (VALIDATOR_EVENTS.includes(n)) {
                 hasItems = true;
                 let badgeColor = "";
@@ -508,7 +506,7 @@ function loadValidatorsData(data) {
                     badgeColor = 'badge-light';
                     break;
                 }
-                notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + n.replaceAll('_', " ") + '</span>';
+                notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + n.replace('validator', "").replaceAll('_', " ") + '</span>';
               }
             }
             if (!hasItems) {
@@ -640,12 +638,12 @@ $(document).ready(function() {
 
   $(document).on('click', function(e) {
     // if click outside input while any threshold input visible, reset value and hide input
-    if (e.target.className.indexOf('threshold_editable') < 0) {
+    /* if (e.target.className.indexOf('threshold_editable') < 0) {
       $('.threshold_editable').each(function() {
         $(this).attr('hidden', true);
         $(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
       });
-    }
+    } */
 
     // remove selected class from rows on click outside
     if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
