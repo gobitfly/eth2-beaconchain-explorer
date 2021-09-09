@@ -32,7 +32,7 @@
   {{if (or (eq .Status 1) (eq .Status 3))}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash-tree-root of the BeaconBlock">Block Root:</span></div>
-    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}} <i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .BlockRoot}}></i></div>
+    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .BlockRoot}}></i></div>
   </div>
   {{if ne .Slot 0}}
   <div class="row border-bottom p-3 mx-0">
@@ -43,16 +43,16 @@
   {{end}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash-tree-root of the BeaconState">State Root:</span></div>
-    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .StateRoot}} <i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .StateRoot}}></i></div>
+    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .StateRoot}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .StateRoot}}></i></div>
   </div>
   {{if ne .Slot 0}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The BLS signature obtained by using the BeaconState, BeaconBlock and private key">Signature:</span></div>
-    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .Signature}} <i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Signature}}></i></div>
+    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .Signature}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Signature}}></i></div>
   </div>
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Signature verifying the proposer">Randao Reveal:</span></div>
-    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .RandaoReveal}} <i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .RandaoReveal}}></i></div>
+    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .RandaoReveal}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .RandaoReveal}}></i></div>
   </div>
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="32 byte long message included by the block proposer">Graffiti:</span></div>
@@ -75,9 +75,9 @@
         <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The Hash of the received Eth1 Block">Block Hash:</span></div>
         <div class="col-md-10 text-monospace text-break">
           {{if .Mainnet}}
-            <a href="https://etherchain.org/block/0x{{printf "%x" .Eth1dataBlockhash}}">0x{{printf "%x" .Eth1dataBlockhash}}</a> <i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Eth1dataBlockhash}}></i>
+            <a href="https://etherchain.org/block/0x{{printf "%x" .Eth1dataBlockhash}}">0x{{printf "%x" .Eth1dataBlockhash}}</a> <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Eth1dataBlockhash}}></i>
           {{else}}
-            <a href="https://goerli.etherscan.io/block/0x{{printf "%x" .Eth1dataBlockhash}}">0x{{printf "%x" .Eth1dataBlockhash}}</a> <i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Eth1dataBlockhash}}></i>
+            <a href="https://goerli.etherscan.io/block/0x{{printf "%x" .Eth1dataBlockhash}}">0x{{printf "%x" .Eth1dataBlockhash}}</a> <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Eth1dataBlockhash}}></i>
           {{end}}
         </div>
       </div>
@@ -88,7 +88,7 @@
       <div class="row p-1">
         <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The root of the merkle tree of deposits">Deposit Root:</span></div>
         <div class="col-md-10 text-monospace text-break">
-          0x{{printf "%x" .Eth1dataDepositroot}} <i style="padding: .5rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Eth1dataDepositroot}}></i>
+          0x{{printf "%x" .Eth1dataDepositroot}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Eth1dataDepositroot}}></i>
         </div>
       </div>
     </div>
