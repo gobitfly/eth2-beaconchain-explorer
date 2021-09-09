@@ -71,7 +71,6 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatEth1TxHash":                        FormatEth1TxHash,
 		"formatGraffiti":                          FormatGraffiti,
 		"formatHash":                              FormatHash,
-		"formatHashFull":                          FormatHashFull,
 		"formatBitlist":                           FormatBitlist,
 		"formatParticipation":                     FormatParticipation,
 		"formatIncome":                            FormatIncome,

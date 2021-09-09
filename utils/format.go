@@ -380,18 +380,21 @@ func FormatGraffitiAsLink(graffiti []byte) template.HTML {
 }
 
 // FormatHash will return a hash formated as html
-func FormatHash(hash []byte) template.HTML {
+// hash is required, trunc is optional.
+// Only the first value in trunc_opt will be used.
+func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
+	trunc := true
+	if len(trunc_opt) > 0 {
+		trunc = trunc_opt[0]
+	}
+
 	// if len(hash) > 6 {
 	// 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x…%x</span>", hash[:3], hash[len(hash)-3:]))
 	// }
 	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
-	if len(hash) > 3 {
+	if len(hash) > 3 && trunc {
 		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span>", hash[:3]))
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
-}
-
-func FormatHashFull(hash []byte) template.HTML {
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
