@@ -169,46 +169,6 @@ function loadMonitoringData(data) {
         $('#add-monitoring-validator-select').append(`<option value="${$(this).attr('pk')}">${$(this).attr('ind')}</option>`);
       });
 
-      // enter event to threshold input
-      /* $('.threshold_editable').on('keypress', function(e) {
-        if (e.which == 13) {
-          const rowId = $(this).parent().parent().attr('id');
-          let newThreshold = $(this).val();
-
-          
-          let isValid = false;
-          if (isNaN(newThreshold) == false) {
-            const parsed = parseInt(newThreshold, 10);
-            if (isNaN(parsed)) {
-              isValid = false;
-            } else {
-              if (parsed > 0 && parsed <= 100) {
-                newThreshold = parsed / 100;
-                isValid = true;
-              } else {
-                isValid = false;
-              }
-            }
-          } else {
-            isValid = false;
-          }
-
-          if (isValid) {
-            index = data.findIndex(function(item) {
-              return item.id.toString() === rowId.toString();
-            });
-
-            data[index].threshold = newThreshold;
-
-            
-            $('#monitoring-notifications').DataTable().clear().destroy();
-            loadMonitoringData(data);
-          } else {
-            alert('Enter an integer between 1 and 100');
-          }
-        }
-      }); */
-
       // click event to table remove button
       $('#monitoring-notifications #remove-btn').on('click', function(e) {
         $('#modaltext').text($(this).data('modaltext'));
@@ -637,13 +597,6 @@ $(document).ready(function() {
   loadNetworkData(NET.Events_ts);
 
   $(document).on('click', function(e) {
-    // if click outside input while any threshold input visible, reset value and hide input
-    /* if (e.target.className.indexOf('threshold_editable') < 0) {
-      $('.threshold_editable').each(function() {
-        $(this).attr('hidden', true);
-        $(this).parent().find('.threshold_non_editable').css('display', 'inline-block');
-      });
-    } */
 
     // remove selected class from rows on click outside
     if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
@@ -932,6 +885,7 @@ $(document).ready(function() {
     }
   });
 
+  // TODO: on change do some alerts to check if threhsold saved is correct
   $('#add-monitoring-event-btn').on('click', function() {
     let pubkey = $('#add-monitoring-validator-select option:selected').val();
     events = [];
