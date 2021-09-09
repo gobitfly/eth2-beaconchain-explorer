@@ -202,10 +202,11 @@ func FormatAddCommas(n uint64) template.HTML {
 
 // FormatBlockRoot will return the block-root formated as html
 func FormatBlockRoot(blockRoot []byte) template.HTML {
+	copyBtn := CopyButton(hex.EncodeToString(blockRoot))
 	if len(blockRoot) < 32 {
 		return "N/A"
 	}
-	return template.HTML(fmt.Sprintf("<a href=\"/block/%x\">%v</a>", blockRoot, FormatHash(blockRoot)))
+	return template.HTML(fmt.Sprintf("<a href=\"/block/%x\">%v</a>%v", blockRoot, FormatHash(blockRoot), copyBtn))
 }
 
 // FormatBlockSlot will return the block-slot formated as html
@@ -313,13 +314,14 @@ func FormatEth1AddressString(addr []byte) template.HTML {
 
 // FormatEth1Address will return the eth1-address formated as html
 func FormatEth1Address(addr []byte) template.HTML {
+	copyBtn := CopyButton(hex.EncodeToString(addr))
 	eth1Addr := eth1common.BytesToAddress(addr)
 
 	if !Config.Chain.Mainnet {
-		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a><i style=\"padding: .25rem;\" class=\"fa fa-copy ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", addr, eth1Addr.Hex()[:8], addr))
+		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 	}
 
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…</a><i style=\"padding: .25rem;\" class=\"fa fa-copy ml-2 text-muted\" role=\"button\" data-toggle=\"tooltip\" title=\"Copy to clipboard\" data-clipboard-text=0x%x></i>", addr, eth1Addr.Hex()[:8], addr))
+	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
 }
 
 // FormatEth1Block will return the eth1-block formated as html
@@ -336,10 +338,10 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 
 	if !Config.Chain.Mainnet {
 		// return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
-		return template.HTML(fmt.Sprintf(`<i class="fas fa-male"></i> <a style="font-family: 'Roboto Mono'" href=\"https://goerli.etherscan.io/tx/0x%x\">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a style=\"font-family: 'Roboto Mono'\" href=\"https://goerli.etherscan.io/tx/0x%x\">0x%v…</a>%v", hash, hex.EncodeToString(hash)[:6], copyBtn))
 	}
 	// return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
-	return template.HTML(fmt.Sprintf(`<i class="fas fa-male"></i> <a style="font-family: 'Roboto Mono'" href=\"https://goerli.etherscan.io/tx/0x%x\">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a style=\"font-family: 'Roboto Mono'\" href=\"https://goerli.etherscan.io/tx/0x%x\">0x%v…</a>%v", hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
@@ -378,19 +380,26 @@ func FormatGraffitiAsLink(graffiti []byte) template.HTML {
 }
 
 // FormatHash will return a hash formated as html
-func FormatHash(hash []byte) template.HTML {
+// hash is required, trunc is optional.
+// Only the first value in trunc_opt will be used.
+func FormatHash(hash []byte, trunc_opt ...bool) template.HTML {
+	trunc := true
+	if len(trunc_opt) > 0 {
+		trunc = trunc_opt[0]
+	}
+
 	// if len(hash) > 6 {
 	// 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x…%x</span>", hash[:3], hash[len(hash)-3:]))
 	// }
 	// return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">0x%x</span>", hash))
-	if len(hash) > 3 {
+	if len(hash) > 3 && trunc {
 		return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x…</span>", hash[:3]))
 	}
 	return template.HTML(fmt.Sprintf("<span class=\"text-monospace\">%#x</span>", hash))
 }
 
 func CopyButton(clipboardText interface{}) string {
-	return fmt.Sprintf(`<i style="padding: .25rem;" class="fa fa-copy ml-2 text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
+	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
 }
 
 func FormatBitlist(bits []byte) template.HTML {
