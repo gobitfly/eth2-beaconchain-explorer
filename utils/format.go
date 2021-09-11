@@ -406,7 +406,7 @@ func FormatBitlist(bits []byte) template.HTML {
 	var buf strings.Builder
 	buf.WriteString("<div class=\"text-bitlist\">")
 	perLine := 8
-	for y := 0; y < len(bits)/perLine; y++ {
+	for y := 0; y < len(bits); y += perLine {
 		start, end := y, y+perLine
 		if end > len(bits) {
 			end = len(bits)
