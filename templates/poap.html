@@ -134,7 +134,7 @@
                         previous: "<",
                         next: ">",
                     }
-                },
+                }
             })
 
 
@@ -150,6 +150,7 @@
                     requestAnimationFrame(() => {
                         poapTable.columns.adjust()
                     })
+                    $('[data-toggle="tooltip"]').tooltip();
                 }
             })
 

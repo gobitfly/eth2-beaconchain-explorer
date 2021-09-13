@@ -18,6 +18,9 @@
                         next: ">",
                     }
                 },
+                initComplete: function(settings, json) {
+                    $('[data-toggle="tooltip"]').tooltip();
+                },
                 columnDefs: [
                     {
                         targets: 0,
