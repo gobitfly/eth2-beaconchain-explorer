@@ -464,7 +464,13 @@
           lengthChange: false,
           ordering: false,
           searching: false,
-          ajax: '/validator/' + index + '/history',
+          // ajax: '/validator/' + index + '/history',
+          ajax: {
+            url: '/validator/' + index + '/history',
+            data: function(d) {
+              console.log(d);
+            }
+          },
           pagingType: 'input',
           pageLength: 10,
           language: {
