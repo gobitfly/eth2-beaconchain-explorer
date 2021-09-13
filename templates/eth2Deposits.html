@@ -24,21 +24,17 @@
                         targets: 3,
                         data: '3',
                         render: function(data, type, row, meta) {
-                            /* const $cliptextobj = $($.parseHTML(row[5])); 
-                            const $cliptextobj = $(row[5]); */
                             // make the span we get from the backend into a DOM element and extract the text value from it (because clipboard text takes only string, not HTML elements)
-                            const cliptext = $(row[5]).text();
-                            return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${cliptext}"></i>`;
+                            const clipboardtext = $(row[5]).text();
+                            return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`;
                         }
                     },
                     {
                         targets: 4,
                         data: '4',
                         render: function(data, type, row, meta) {
-                            /* const $cliptextobj = $($.parseHTML(row[6]));
-                            const $cliptextobj = $(row[6]); */
-                            const cliptext = $(row[6]).text();
-                            return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${cliptext}"></i>`;
+                            const clipboardtext = $(row[6]).text();
+                            return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`;
                         }
                     }
                 ]
