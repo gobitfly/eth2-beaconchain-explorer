@@ -5,10 +5,9 @@
         var clients = {{.PoapClients}}
         var graffitiFlagData = {
             address: "",
-            client: "prysm",
+            client: "prysm"
         }
         var hexRE = /^[0-9A-F]{40}$/i
-
         var clientRefs = ['prysm-graffiti', 'lighthouse-graffiti', 'teku-graffiti', 'nimbus-graffiti', 'lodestar-graffiti']
 
         function setAddress(addr) {
@@ -16,10 +15,10 @@
             renderFlag()
         }
 
-        // function setClient(client) {
-        // 	graffitiFlagData.client = client
-        // 	renderFlag()
-        // }
+        /* function setClient(client) {
+         	graffitiFlagData.client = client
+         	renderFlag()
+        } */
 
         setAddress('')
 
@@ -28,11 +27,11 @@
             for (var i = 0; i < clientRefs.length; i++) {
                 var ref = clientRefs[i]
                 clientId = ('00' + (i).toString(16)).substr(-2)
-                // if (clientId === '') {
-                // 	console.error('invalid client: '+graffitiFlagData.client)
-                // 	log('invalid client: '+graffitiFlagData.client)
-                // 	return
-                // }
+                /* if (clientId === '') {
+                 	console.error('invalid client: '+graffitiFlagData.client)
+                 	log('invalid client: '+graffitiFlagData.client)
+                 	return
+                } */
                 var addr = graffitiFlagData.address
                 if (addr.length === 0) {
                     log('Enter Address Above', ref)
@@ -91,9 +90,9 @@
                 targets: 0,
                 data: '0',
                 createdCell: function(td, cellData, rowData, row, col) {
-                    $(td).css('display', 'flex');
-                    $(td).css('align-items', 'center');
-                    $(td).css('justify-content', 'space-between');
+                    $(td).css('display', 'flex')
+                    $(td).css('align-items', 'center')
+                    $(td).css('justify-content', 'space-between')
                 },
                 render: function(data, type, row) {
                     return `<a style="display: inline-block; max-width: 130px;" class="text-truncate" href="https://etherchain.org/account/${data}">${data}</a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i>`
@@ -132,11 +131,13 @@
                     search: '',
                     paginate: {
                         previous: "<",
-                        next: ">",
+                        next: ">"
                     }
                 },
+                drawCallback: function(settings) {
+                    $('[data-toggle="tooltip"]').tooltip()
+                }
             })
-
 
             $.ajax({
                 url: '/poap/data',
@@ -153,24 +154,24 @@
                 }
             })
 
-            // var data = []
-            // for (var i=0; i<1000; i++) {
-            // 	data.push(['0x'+genHexString(40),Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0])
-            // }
-            // poapTable.rows.add(data).draw()
+            /* var data = []
+            for (var i=0; i<1000; i++) {
+             	data.push(['0x'+genHexString(40),Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0])
+            }
+            poapTable.rows.add(data).draw() */
         })
 
         function genHexString(len) {
-            const hex = '0123456789ABCDEF';
-            let output = '';
+            const hex = '0123456789ABCDEF'
+            let output = ''
             for (let i = 0; i < len; ++i) {
-                output += hex.charAt(Math.floor(Math.random() * hex.length));
+                output += hex.charAt(Math.floor(Math.random() * hex.length))
             }
-            return output;
+            return output
         }
 
         function createCopyButton(id) {
-            var clipboard = new ClipboardJS(id);
+            var clipboard = new ClipboardJS(id)
             var copyButton = $(id)
 
             clipboard.on('success', function(e) {
@@ -183,17 +184,15 @@
 
         $(document).ready(function() {
             for (let i = 0; i < clientRefs.length; i++) {
-                const client = clientRefs[i];
+                const client = clientRefs[i]
                 createCopyButton('#copy-' + client)
             }
         })
-
     </script>
 {{end}}
 
 {{define "css"}}
-    <link rel="stylesheet" type="text/css"
-          href="/css/datatables.min.css"/>
+    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
     <style>
         .poap-how-list > li {
             padding: .2rem 0;

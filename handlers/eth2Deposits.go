@@ -100,6 +100,8 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatDepositAmount(d.Amount, currency),
 			utils.FormatHash(d.Withdrawalcredentials),
 			utils.FormatHash(d.Signature),
+			utils.FormatHash(d.Withdrawalcredentials, false),
+			utils.FormatHash(d.Signature, false),
 		}
 	}
 
