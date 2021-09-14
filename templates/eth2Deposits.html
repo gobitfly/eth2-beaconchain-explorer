@@ -19,8 +19,8 @@
                         next: ">"
                     }
                 },
-                initComplete: function(settings, json) {
-                    $('[data-toggle="tooltip"]').tooltip();
+                drawCallback: function(settings) {
+                    $('[data-toggle="tooltip"]').tooltip()
                 },
                 columnDefs: [
                     {
@@ -28,16 +28,16 @@
                         data: '3',
                         render: function(data, type, row, meta) {
                             // make the span we get from the backend into a DOM element and extract the text value from it (because clipboard text takes only string, not HTML elements)
-                            const clipboardtext = $(row[5]).text();
-                            return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`;
+                            const clipboardtext = $(row[5]).text()
+                            return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
                         }
                     },
                     {
                         targets: 4,
                         data: '4',
                         render: function(data, type, row, meta) {
-                            const clipboardtext = $(row[6]).text();
-                            return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`;
+                            const clipboardtext = $(row[6]).text()
+                            return `${data}<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${clipboardtext}"></i>`
                         }
                     }
                 ]
