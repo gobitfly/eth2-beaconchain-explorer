@@ -393,8 +393,10 @@ function loadValidatorsData(data) {
     },
     fixedHeader: true,
     data: data,
-    initComplete: function(settings, json) {
+    drawCallback: function(settings) {
       $('[data-toggle="tooltip"]').tooltip();
+    },
+    initComplete: function(settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar');
 
       // click event to validators table edit button
