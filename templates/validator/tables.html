@@ -21,7 +21,7 @@
     </table>
   </div>
   <script>
-    var index = {{.Index}};
+    var index = {{.Index}}
     window.addEventListener('load', function() {
       $('#blocks-table').DataTable({
         processing: true,
@@ -38,7 +38,7 @@
           search: '',
           paginate: {
             previous: "<",
-            next: ">",
+            next: ">"
           }
         },
         columnDefs: [
@@ -65,9 +65,9 @@
         ],
         drawCallback: function(settings) {
           formatTimestamps()
-        },
-      });
-    });
+        }
+      })
+    })
   </script>
 {{end}}
 
@@ -90,20 +90,20 @@
     </table>
   </div>
   <script>
-  	var index = {{.Index}};
+  	var index = {{.Index}}
     window.addEventListener('load', function() {
-      var activeTab = $('#chartTabs .active');
-      var initializedAttestationTable = false;
+      var activeTab = $('#chartTabs .active')
+      var initializedAttestationTable = false
                 
       if(activeTab.attr('id') === 'attestations-tab') {
-        initializedAttestationTable = true;
-        createAttestationTable();
+        initializedAttestationTable = true
+        createAttestationTable()
       }
                 
       $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
         if(e.target.id === 'attestations-tab' && !initializedAttestationTable) {
-          initializedAttestationTable = true;
-          createAttestationTable();
+          initializedAttestationTable = true
+          createAttestationTable()
         }
       });
 
@@ -123,7 +123,7 @@
             search: '',
             paginate: {
               previous: "<",
-              next: ">",
+              next: ">"
             }
           },
           columnDefs: [
@@ -145,10 +145,10 @@
           ],
           drawCallback: function(settings) {
             formatTimestamps()
-          },
-        });
+          }
+        })
       }
-    });
+    })
   </script>
 {{end}}
 
@@ -168,7 +168,7 @@
     </table>
   </div>
   <script>
-    var index = {{.Index}};
+    var index = {{.Index}}
     window.addEventListener('load', function() {
       $('#slashings-table').DataTable({
         processing: true,
@@ -184,14 +184,14 @@
           search: '',
           paginate: {
             previous: "<",
-            next: ">",
+            next: ">"
           }
         },
         drawCallback: function(settings) {
           formatTimestamps()
-        },
-      });
-    });
+        }
+      })
+    })
   </script>
 {{end}}
 
@@ -455,7 +455,7 @@
       </table>
     </div>
     <script>
-      var index = {{.Index}};
+      var index = {{.Index}}
       window.addEventListener('load', function() {
         $('#validator-history-table').DataTable({
           processing: true,
@@ -468,7 +468,7 @@
           ajax: {
             url: '/validator/' + index + '/history',
             data: function(d) {
-              console.log(d);
+              console.log(d)
             }
           },
           pagingType: 'input',
@@ -478,21 +478,21 @@
             search: '',
             paginate: {
               previous: "<",
-              next: ">",
+              next: ">"
             }
           },
           drawCallback: function(settings) {
             formatTimestamps()
-          },
-        });
-        $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(1)').removeClass('col-md-5').removeClass('col-sm-12');
-        $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(2)').removeClass('col-md-7').removeClass('col-sm-12');
-        $('#validator-history-table_wrapper > div:nth-child(3)').addClass('justify-content-center');
-        $('#validator-history-table_wrapper > div:nth-child(3)').attr('style', 'margin-top: .5rem !important');
-        $('#validator-history-table_paginate').attr('style', 'padding-right: 0 !important');
-        $('#validator-history-table_info').attr('style', 'padding-top: 0;');
-        $('#validator-history-table_info').attr('style', 'display: none;');
-      });
+          }
+        })
+        $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(1)').removeClass('col-md-5').removeClass('col-sm-12')
+        $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(2)').removeClass('col-md-7').removeClass('col-sm-12')
+        $('#validator-history-table_wrapper > div:nth-child(3)').addClass('justify-content-center')
+        $('#validator-history-table_wrapper > div:nth-child(3)').attr('style', 'margin-top: .5rem !important')
+        $('#validator-history-table_paginate').attr('style', 'padding-right: 0 !important')
+        $('#validator-history-table_info').attr('style', 'padding-top: 0;')
+        $('#validator-history-table_info').attr('style', 'display: none;')
+      })
     </script>
 	{{end}}
 {{end}}

@@ -1,8 +1,8 @@
 {{define "js"}}
 	<script>
 		window.addEventListener('popstate', function(event) {
-			event.preventDefault();
-			history.back();
+			event.preventDefault()
+			history.back()
 		})
 	</script>
 
@@ -75,9 +75,9 @@
 		<div class="container validator-content">
 			{{template "flashMessage" .}}
 			{{template "validatorHeading" .}}
-			<div class="row align-items-stretch">
-				<div class="col-lg-8 my-3 px-lg-2">
-					<div class="card d-flex flex-column justify-content-center h-100 px-0 py-0 card-body" style="min-width: 300px;">
+			<div class="row mx-0">
+				<div class="col-lg-8 my-4 px-0 pr-lg-2">
+					<div class="card card-body d-flex flex-column justify-content-center h-100 px-0 py-0" style="min-width: 300px; border-radius: .5rem;">
 						<div class="row mx-0">
 							<div class="col">
 								{{template "validatorLifeCycleDiagram" .}}
@@ -99,8 +99,8 @@
 						</div>
 					</div>
 				</div>
-				<div class="col-lg-4 my-3 px-lg-2">
-					<div class="card card-body px-0 h-100 d-flex align-items-center" style="min-width: 300px;">
+				<div class="col-lg-4 my-4 px-0 pl-lg-2">
+					<div class="card card-body d-flex align-items-center h-100 px-0" style="min-width: 300px; border-radius: .5rem;">
 						{{if $deposited}}
 							{{template "validatorNetworkStatsTable" .}}
 						{{end}}
@@ -116,9 +116,9 @@
 					</div>
 				</div>					
 			</div>
-			<div class="row align-items-stretch">
-				<div class="col-lg-8 px-lg-2 my-3">
-					<div class="card h-100 px-0 py-0 card-body" style="min-width: 300px;">
+			<div class="row mx-0">
+				<div class="col-lg-8 my-4 px-0 pr-lg-2">
+					<div class="card card-body h-100 px-0 py-0" style="min-width: 300px; border-radius: .5rem;">
 						<ul style="margin-top: -1px; margin-left: -1px;" class="nav nav-tabs" id="chartTabs" role="tablist">
 							<li class="nav-item">
 								<a class="nav-link active" id="incomeChart-tab" data-toggle="tab" href="#incomeChart" role="tab" aria-controls="incomeChart-tab-content" aria-selected="true">
@@ -188,9 +188,10 @@
 						</div>
 					</div>
 				</div>
-				<div class="col-lg-4 px-lg-2 d-flex align-items-center my-3">
-					<div class="card h-100 px-0 px-xl-4 pt-1 pt-sm-3 card-body" style="min-width: 300px;">
-						<div style="height: 42px;" class="d-flex align-items-center justify-content-center border-bottom">
+				<div class="col-lg-4 my-4 px-0 pl-lg-2 d-flex align-items-center">
+					<!-- TODO: fix border radius for this card -->
+					<div class="card card-body h-100 px-0 px-xl-4 pt-1 pt-sm-3" style="min-width: 300px; border-radius: .5rem;">
+						<div style="height: 42px;" class="d-flex align-items-center justify-content-center">
 							<span class="h5 ml-5 ml-xl-0 mr-auto mb-0">Validator History</span>
 						</div>
 						{{if or $validating $exited}}

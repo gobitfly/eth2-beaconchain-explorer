@@ -12,7 +12,7 @@
     <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-md-between mt-3">
       <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-center justify-content-sm-start">
         <div class="d-flex align-items-center justify-content-start">
-          <h1 class="mb-0 mr-1 h3 text-nowrap" style="letter-spacing: 2px;">Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</h1>
+          <h1 class="mb-0 mr-1 text-nowrap" style="font-size: 1.8rem; letter-spacing: 2px;">Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</h1>
           <span data-toggle="tooltip" title="Edit name">
             <i class="fa fa-edit fa-lg mb-3 text-muted" role="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal" style="padding: .5rem;"></i>
           </span>
@@ -51,46 +51,6 @@
       <h2 class="mb-0 mr-1 h6 font-weight-light text-monospace text-secondary text-truncate text-sm" id="copy-input">0x{{printf "%x" .PublicKey}}</h2>
       <i class="fa fa-copy fa-lg mb-3 text-muted" role="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}" style="padding: .5rem;"></i>
     </div>
-    <!-- <div>
-      <button class="btn btn-dark text-white btn-sm" type="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}">
-        <i class="fa fa-copy"></i>
-      </button>
-      <span data-toggle="tooltip" title="Edit validator name">
-        <button class="btn btn-dark text-white btn-sm" type="button" id="edit-button" data-toggle="modal" data-target="#edit-validator-modal">
-          <i class="fa fa-edit"></i>
-        </button>
-      </span>
-      {{if len .Watchlist}}
-        <span data-toggle="tooltip" title="Stop receiving updates for this validator.">
-          <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/remove" method="post">
-            <button class="btn btn-dark text-white btn-sm" type="submit" id="unfollow-button">
-              <i class="fas fa-bookmark"></i>
-            </button>
-          </form>
-        </span>
-      {{else}}
-        {{if .User.Authenticated}}
-          <span data-toggle="tooltip" title="Follow this validator and receive email notifications">
-            <button class="btn btn-dark text-white btn-sm" id="follow-button" data-toggle="modal" data-target="#bookmark-validator-modal">
-              <i class="far fa-bookmark"></i>
-            </button>
-          </span>
-        {{else}}
-          <span data-toggle="tooltip" title="Follow this validator and receive email notifications">
-            <form class="d-inline-block" action="{{printf "%#x" .PublicKey}}/add" method="post">
-              <button class="btn btn-dark text-white btn-sm" id="follow-button">
-                <i class="far fa-bookmark"></i>
-              </button>
-            </form>
-          </span>
-        {{end}}
-      {{end}}
-      <span data-toggle="tooltip" title="View daily statistics">
-        <a class="btn btn-dark text-white btn-sm" href="/validator/{{.Index}}/stats">
-          <i class="fas fa-table"></i>
-        </a>
-      </span>
-    </div> -->
     <div><span class="mr-2 h6 font-weight-light text-muted">Tags: </span>{{if .Tags}} {{formatValidatorTags .Tags}} {{end}}</div>
   </div>
 {{end}}
