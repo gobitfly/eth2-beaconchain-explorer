@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -449,9 +448,6 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 		} else if strings.HasPrefix(string(sub.EventName), "monitoring_") {
 			pubkey = utils.FormatMachineName(sub.EventFilter)
 		}
-
-		log.Println("event", sub.EventName)
-
 		if sub.EventName != types.ValidatorBalanceDecreasedEventName {
 			tableData = append(tableData, []interface{}{
 				pubkey,
