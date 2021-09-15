@@ -16,6 +16,7 @@
             monitoring_machine_offline: 'machine offline',
             monitoring_hdd_almostfull: 'machine disk full',
             monitoring_cpu_load: 'machine cpu load',
+            network_liveness_increased: 'network liveness'
 
         }
         var evetnsArr = [
@@ -158,11 +159,12 @@
                             if (row.length) {
                                 var address = (/0x[0-9a-fA-F]{96}/).exec(row[1])
                                 if (address.length) {
-                                    data.map(function (event) {
-                                        if (event === 'validator_balance_decreased') {
-                                            checked = 'checked'
-                                        }
-                                    })
+                                    // data.map(function (event) {
+                                    //     console.log('event', event)
+                                    //     if (event === 'validator_balance_decreased') {
+                                    //         checked = 'checked'
+                                    //     }
+                                    // })
                                     var checkboxes = evetnsArr.map(function (event) {
                                         var type = event[0]
                                         var text = event[1]
@@ -224,7 +226,7 @@
                     targets: 1,
                     data: '1',
                     render: function (data, type, row, meta) {
-                        return events[data]
+                        return events[data] ? events[data] : ''
                     }
                 }],
                 drawCallback: function (settings) {
