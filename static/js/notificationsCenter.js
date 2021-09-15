@@ -197,7 +197,7 @@ function loadMonitoringData(data) {
         responsivePriority: 1,
         data: 'notification',
         render: function(data, type, row, meta) {
-          return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>';
+          return `<span class="badge badge-light badge-custom-size font-weight-normal">${data}</span>`;
         }
       },
       {
@@ -309,7 +309,7 @@ function loadNetworkData(data) {
         responsivePriority: 1,
         data: 'Notification',
         render: function(data, type, row, meta) {
-          return '<span class="badge badge-pill badge-light badge-custom-size">' + data.toLowerCase() + '</span>';
+          return `<span class="badge badge-light badge-custom-size font-weight-normal">${data.toLowerCase()}</span>`;
         }
       },
       {
@@ -472,13 +472,13 @@ function loadValidatorsData(data) {
                     badgeColor = 'badge-light';
                     break;
                 }
-                notifications += '<span class="badge badge-pill ' + badgeColor + ' badge-custom-size mr-1 my-1">' + n.replace('validator', "").replaceAll('_', " ") + '</span>';
+                notifications += `<span class="badge ${badgeColor} badge-custom-size mr-1 my-1 font-weight-normal">${n.replace('validator', "").replaceAll('_', " ")}</span>`;
               }
             }
             if (!hasItems) {
               return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
             }
-            return '<div style="white-space: normal; max-width: 400px;">' + notifications + '</div>' + ' <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>';
+            return `<div style="white-space: normal; max-width: 400px;">${notifications}</div> <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>`;
           }
           return null;
         }
@@ -540,7 +540,7 @@ function loadValidatorsData(data) {
           if (data[0].Timestamp === 0) {
             return no_time;
           }
-          return '<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-2">' + data[0].Notification.replace('validator', "").replaceAll('_', " ") + '</span>' + `<span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`;
+          return `<span class="badge badge-light badge-custom-size mr-1 mr-sm-2 font-weight-normal">${data[0].Notification.replace('validator', "").replaceAll('_', " ")}</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`;
         }
       },
       {
@@ -713,9 +713,9 @@ $(document).ready(function() {
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data();
     if (rowData) {
       $('#selected-validators-events-container').append(
-        `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Validator.Pubkey}>
+        `<span id="validator-event-badge" class="d-inline-block badge badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Validator.Pubkey}>
         		Validator ${rowData.Validator.Index}
-          	<i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowData.Validator.Pubkey}')"></i>
+          	<i class="fas fa-times ml-2" style="cursor: pointer;" title="Remove from selected validators" onclick="remove_item_from_event_container('${rowData.Validator.Pubkey}')"></i>
         </span>`
       );
 
