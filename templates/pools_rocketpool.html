@@ -25,51 +25,52 @@
                         $(td).css('padding-bottom', '20px')
                     }
                 },
-                {
+                /* {
                     targets: 0,
                     data: '0',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         return data
                     }
-                },
-                {
+                }, */
+                /* {
                     targets: 1,
                     data: '1',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         return data
                     }
-                },
-                {
+                }, */
+                /* {
                     targets: 2,
                     data: '2',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         return data
                     }
-                },
+                }, */
                 {
                     targets: 3,
                     data: '3',
-                    render: function (data, type, row, meta) {
+                    className: 'text-right',
+                    render: function(data, type, row, meta) {
                         return data.toFixed(2)
                     }
                 },
                 {
                     targets: 4,
                     data: '4',
-                    render: function (data, type, row, meta) {
-                        return '<span class="badge badge-light badge-custom-size font-weight-normal">' + data + '</span>'
+                    render: function(data, type, row, meta) {
+                        return `<span class="badge badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
                 },
                 {
                     targets: 5,
                     data: '5',
-                    render: function (data, type, row, meta) {
-                        return '<span class="badge badge-light badge-custom-size font-weight-normal">' + data + '</span>'
+                    render: function(data, type, row, meta) {
+                        return `<span class="badge badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
                 }
             ],
             preDrawCallback: function() {
-                // this does not always work.. not sure how to solve the staying tooltip
+                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#minipools').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -102,17 +103,17 @@
                         $(td).css('padding-bottom', '20px')
                     }
                 }, 
-                {
+                /* {
                     targets: 0,
                     data: '0',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         return data
                     }
-                },
+                }, */
                 {
                     targets: 1,
                     data: '1',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         if (data === 'Hidden/Hidden') {
                             return 'Hidden'
                         }
@@ -122,27 +123,30 @@
                 {
                     targets: 2,
                     data: '2',
-                    render: function (data, type, row, meta) {
+                    className: 'text-right',
+                    render: function(data, type, row, meta) {
                         return data
                     }
                 },
                 {
                     targets: 3,
                     data: '3',
-                    render: function (data, type, row, meta) {
+                    className: 'text-right',
+                    render: function(data, type, row, meta) {
                         return data
                     }
                 },
                 {
                     targets: 4,
                     data: '4',
-                    render: function (data, type, row, meta) {
+                    className: 'text-right',
+                    render: function(data, type, row, meta) {
                         return data
                     }
                 }
             ],
             preDrawCallback: function() {
-                // this does not always work.. not sure how to solve the staying tooltip
+                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#nodes').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -175,59 +179,65 @@
                         $(td).css('padding-bottom', '20px')
                     }
                 }, 
-                {
+                /* {
                     targets: 0,
                     data: '0',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         return data
                     }
-                },
-                {
+                }, */
+                /* {
                     targets: 1,
                     data: '1',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         return data
                     }
-                },
+                }, */
                 {
                     targets: 2,
                     data: '2',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
+                        if (data.startsWith('http')) {
+                            return `<span class="d-block text-wrap" style="max-width: 300px;"><a href=${data} target="_blank">${data}</a></span>`
+                        }
                         return data
                     }
                 },
                 {
                     targets: 3,
                     data: '3',
-                    render: function (data, type, row, meta) {
-                        console.log(data)
-                        return data
+                    render: function(data, type, row, meta) {
+                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+                        // return data
                     }
                 },
                 {
                     targets: 4,
                     data: '4',
-                    render: function (data, type, row, meta) {
-                        return data
+                    render: function(data, type, row, meta) {
+                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+                        // return data
                     }
                 },
                 {
                     targets: 5,
                     data: '5',
-                    render: function (data, type, row, meta) {
+                    className: 'text-right',
+                    render: function(data, type, row, meta) {
                         return data
                     }
                 },
                 {
                     targets: 6,
                     data: '6',
-                    render: function (data, type, row, meta) {
+                    className: 'text-right',
+                    render: function(data, type, row, meta) {
                         return data
                     }
                 }
             ],
             preDrawCallback: function() {
-                // this does not always work.. not sure how to solve the staying tooltip
+                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#dao_members').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -260,140 +270,145 @@
                         $(td).css('padding-bottom', '20px')
                     }
                 },
-                {
+                /* {
                     targets: 0,
                     data: '0',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         return data
                     }
-                },
-                {
+                }, */
+                /* {
                     targets: 1,
                     data: '1',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         return data
                     }
-                },
-                {
+                }, */
+                /* {
                     targets: 2,
                     data: '2',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         return data
                     }
-                },
+                }, */
                 {
                     targets: 3,
                     data: '3',
-                    render: function (data, type, row, meta) {
-                        return '<span class="d-block text-wrap" style="max-width: 400px; line-height: 1.4rem; letter-spacing: .05rem;">' + data + '</span>'
+                    render: function(data, type, row, meta) {
+                        return `<span class="d-block text-wrap" style="max-width: 400px; line-height: 1.4rem; letter-spacing: .05rem;">${data}</span>`
                     }
                 },
                 {
                     targets: 4,
                     data: '4',
-                    render: function (data, type, row, meta) {
-                        return data
+                    render: function(data, type, row, meta) {
+                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+                        // return data
                     }
                 },
                 {
                     targets: 5,
                     data: '5',
-                    render: function (data, type, row, meta) {
-                        return data
+                    render: function(data, type, row, meta) {
+                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+                        // return data
                     }
                 },
                 {
                     targets: 6,
                     data: '6',
-                    render: function (data, type, row, meta) {
-                        return data
+                    render: function(data, type, row, meta) {
+                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+                        // return data
                     }
                 },
                 {
                     targets: 7,
                     data: '7',
-                    render: function (data, type, row, meta) {
-                        return data
+                    render: function(data, type, row, meta) {
+                        return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
+                        // return data
                     }
                 },
                 {
                     targets: 8,
                     data: '8',
-                    render: function (data, type, row, meta) {
+                    className: 'text-right',
+                    render: function(data, type, row, meta) {
                         return data
                     }
                 },
                 {
                     targets: 9,
                     data: '9',
-                    render: function (data, type, row, meta) {
-                        return '<span class="d-flex align-items-center">' + data + '<i class="fas fa-thumbs-up ml-2 text-muted"></i></span>'
+                    render: function(data, type, row, meta) {
+                        return `<span class="d-flex align-items-center">${data}<i class="fas fa-thumbs-up ml-2 text-muted"></i></span>`
                     }
                 },
                 {
                     targets: 10,
                     data: '10',
-                    render: function (data, type, row, meta) {
-                        return '<span class="d-flex align-items-center">' + data + '<i class="fas fa-thumbs-down ml-2 text-muted"></i></span>'
+                    render: function(data, type, row, meta) {
+                        return `<span class="d-flex align-items-center">${data}<i class="fas fa-thumbs-down ml-2 text-muted"></i></span>`
                     }
                 },
                 {
                     targets: 11,
                     data: '11',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         if (data) {
-                            return '<span class="badge badge-success badge-custom-size font-weight-normal">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                            return `<span class="badge badge-success badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
                         }
-                        return '<span class="badge badge-danger badge-custom-size font-weight-normal">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                        return `<span class="badge badge-danger badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
                     }
                 },
                 {
                     targets: 12,
                     data: '12',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         if (data) {
-                            return '<span class="badge badge-success badge-custom-size font-weight-normal">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                            return `<span class="badge badge-success badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
                         }
-                        return '<span class="badge badge-danger badge-custom-size font-weight-normal">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                        return `<span class="badge badge-danger badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
                     }
                 },
                 {
                     targets: 13,
                     data: '13',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         if (data) {
-                            return '<span class="badge badge-success badge-custom-size font-weight-normal">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                            return `<span class="badge badge-success badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
                         }
-                        return '<span class="badge badge-danger badge-custom-size font-weight-normal">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                        return `<span class="badge badge-danger badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
                     }
                 },
                 {
                     targets: 14,
                     data: '14',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         if (data) {
-                            return '<span class="badge badge-success badge-custom-size font-weight-normal">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                            return `<span class="badge badge-success badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
                         }
-                        return '<span class="badge badge-danger badge-custom-size font-weight-normal">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                        return `<span class="badge badge-danger badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
                     }
                 },
-                {
+                /* {
                     targets: 15,
                     data: '15',
-                    render: function (data, type, row, meta) {
+                    render: function(data, type, row, meta) {
                         return data
                     }
-                },
+                }, */
                 {
                     targets: 16,
                     data: '16',
-                    render: function (data, type, row, meta) {
-                        return '<span class="badge badge-light badge-custom-size font-weight-normal">' + data + '</span>'
+                    render: function(data, type, row, meta) {
+                        return `<span class="badge badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
                 }
             ],
             preDrawCallback: function() {
-                // this does not always work.. not sure how to solve the staying tooltip
+                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#dao_proposals').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
