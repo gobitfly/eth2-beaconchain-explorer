@@ -50,21 +50,21 @@
                     targets: 3,
                     data: '3',
                     render: function (data, type, row, meta) {
-                        return data
+                        return data.toFixed(2)
                     }
                 },
                 {
                     targets: 4,
                     data: '4',
                     render: function (data, type, row, meta) {
-                        return data
+                        return data.toLowerCase()
                     }
                 },
                 {
                     targets: 5,
                     data: '5',
                     render: function (data, type, row, meta) {
-                        return data
+                        return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>'
                     }
                 }
             ],
@@ -337,28 +337,40 @@
                     targets: 11,
                     data: '11',
                     render: function (data, type, row, meta) {
-                        return data
+                        if (data) {
+                            return '<span class="badge badge-success badge-pill badge-custom-size">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                        }
+                        return '<span class="badge badge-danger badge-pill badge-custom-size">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
                     }
                 },
                 {
                     targets: 12,
                     data: '12',
                     render: function (data, type, row, meta) {
-                        return data
+                        if (data) {
+                            return '<span class="badge badge-success badge-pill badge-custom-size">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                        }
+                        return '<span class="badge badge-danger badge-pill badge-custom-size">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
                     }
                 },
                 {
                     targets: 13,
                     data: '13',
                     render: function (data, type, row, meta) {
-                        return data
+                        if (data) {
+                            return '<span class="badge badge-success badge-pill badge-custom-size">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                        }
+                        return '<span class="badge badge-danger badge-pill badge-custom-size">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
                     }
                 },
                 {
                     targets: 14,
                     data: '14',
                     render: function (data, type, row, meta) {
-                        return data
+                        if (data) {
+                            return '<span class="badge badge-success badge-pill badge-custom-size">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
+                        }
+                        return '<span class="badge badge-danger badge-pill badge-custom-size">' + data.toString().charAt(0).toUpperCase() + data.toString().slice(1) + '</span>'
                     }
                 },
                 {
@@ -372,7 +384,7 @@
                     targets: 16,
                     data: '16',
                     render: function (data, type, row, meta) {
-                        return data
+                        return '<span class="badge badge-pill badge-light badge-custom-size">' + data + '</span>'
                     }
                 }
             ],
@@ -392,6 +404,10 @@
 {{define "css"}}
     <link rel="stylesheet" type="text/css" href="/css//datatables.min.css" />
     <style>
+        .badge-custom-size {
+            font-size: .82rem;
+        }
+
         #slashings td:first-child {
             white-space: break-spaces;
         }
