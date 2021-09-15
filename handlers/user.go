@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -449,12 +450,17 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 			pubkey = utils.FormatMachineName(sub.EventFilter)
 		}
 
-		tableData = append(tableData, []interface{}{
-			pubkey,
-			sub.EventName,
-			utils.FormatTimestamp(sub.CreatedTime.Unix()),
-			ls,
-		})
+		log.Println("event", sub.EventName)
+
+		if sub.EventName != types.ValidatorBalanceDecreasedEventName {
+			tableData = append(tableData, []interface{}{
+				pubkey,
+				sub.EventName,
+				utils.FormatTimestamp(sub.CreatedTime.Unix()),
+				ls,
+			})
+		}
+
 	}
 
 	// log.Println("COUNT", len(watchlist))
