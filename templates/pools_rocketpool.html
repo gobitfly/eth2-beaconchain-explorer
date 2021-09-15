@@ -9,13 +9,7 @@
             searching: false,
             paging: true,
             pagingType: 'input',
-            // ajax: '/pools/rocketpool/data/minipools',
-            ajax: {
-                url: '/pools/rocketpool/data/minipools',
-                data: function(data) {
-                    console.log(data);
-                }
-            },
+            ajax: '/pools/rocketpool/data/minipools',
             language: {
                 info: '_TOTAL_ entries',
                 paginate: {
@@ -27,21 +21,63 @@
                 {
                     targets: '_all',
                     createdCell: function(td, cellData, rowData, row, col) {
-                        $(td).css('padding-top', '20px');
-                        $(td).css('padding-bottom', '20px');
+                        $(td).css('padding-top', '20px')
+                        $(td).css('padding-bottom', '20px')
+                    }
+                },
+                {
+                    targets: 0,
+                    data: '0',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 1,
+                    data: '1',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 2,
+                    data: '2',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 3,
+                    data: '3',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 4,
+                    data: '4',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 5,
+                    data: '5',
+                    render: function (data, type, row, meta) {
+                        return data
                     }
                 }
             ],
             preDrawCallback: function() {
                 // this does not always work.. not sure how to solve the staying tooltip
                 try {
-                    $('#minipools').find('[data-toggle="tooltip"]').tooltip('dispose');
+                    $('#minipools').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
             },
             drawCallback: function() {
-                formatTimestamps();
+                formatTimestamps()
             }
-        });
+        })
 
         $('#nodes').DataTable({
             processing: true,
@@ -50,13 +86,7 @@
             searching: false,
             paging: true,
             pagingType: 'input',
-            // ajax: '/pools/rocketpool/data/nodes',
-            ajax: {
-                url: '/pools/rocketpool/data/nodes',
-                data: function(data) {
-                    console.log(data);
-                }
-            },
+            ajax: '/pools/rocketpool/data/nodes',
             language: {
                 info: '_TOTAL_ entries',
                 paginate: {
@@ -68,62 +98,56 @@
                 {
                     targets: '_all',
                     createdCell: function(td, cellData, rowData, row, col) {
-                        $(td).css('padding-top', '20px');
-                        $(td).css('padding-bottom', '20px');
+                        $(td).css('padding-top', '20px')
+                        $(td).css('padding-bottom', '20px')
                     }
-                }
-            ],
-            preDrawCallback: function() {
-                // this does not always work.. not sure how to solve the staying tooltip
-                try {
-                    $('#nodes').find('[data-toggle="tooltip"]').tooltip('dispose');
-                } catch(e) {}
-            },
-            drawCallback: function() {
-                formatTimestamps();
-            }
-        });
-
-        $('#dao_proposals').DataTable({
-            processing: true,
-            serverSide: true,
-            ordering: false,
-            searching: false,
-            paging: true,
-            pagingType: 'input',
-            // ajax: '/pools/rocketpool/data/dao_proposals',
-            ajax: {
-                url: '/pools/rocketpool/data/dao_proposals',
-                data: function(data) {
-                    console.log(data);
-                }
-            },
-            language: {
-                info: '_TOTAL_ entries',
-                paginate: {
-                    previous: '<',
-                    next: '>'
-                }
-            },
-            columnDefs: [
+                }, 
                 {
-                    targets: '_all',
-                    createdCell: function(td, cellData, rowData, row, col) {
-                        $(td).css('padding-top', '20px');
-                        $(td).css('padding-bottom', '20px');
+                    targets: 0,
+                    data: '0',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 1,
+                    data: '1',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 2,
+                    data: '2',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 3,
+                    data: '3',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 4,
+                    data: '4',
+                    render: function (data, type, row, meta) {
+                        return data
                     }
                 }
             ],
             preDrawCallback: function() {
                 // this does not always work.. not sure how to solve the staying tooltip
                 try {
-                    $('#dao_proposals').find('[data-toggle="tooltip"]').tooltip('dispose');
+                    $('#nodes').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
             },
             drawCallback: function() {
-                formatTimestamps();
+                formatTimestamps()
             }
-        });
+        })
 
         $('#dao_members').DataTable({
             processing: true,
@@ -132,39 +156,236 @@
             searching: false,
             paging: true,
             pagingType: 'input',
-            // ajax: '/pools/rocketpool/data/dao_members',
-            ajax: {
-                url: '/pools/rocketpool/data/dao_members',
-                data: function(data) {
-                    console.log(data);
-                }
-            },
+            ajax: '/pools/rocketpool/data/dao_members',
             language: {
                 info: '_TOTAL_ entries',
                 paginate: {
                     previous: '<',
-                    next: '>',
+                    next: '>'
                 }
             },
             columnDefs: [
                 {
                     targets: '_all',
                     createdCell: function(td, cellData, rowData, row, col) {
-                        $(td).css('padding-top', '20px');
-                        $(td).css('padding-bottom', '20px');
+                        $(td).css('padding-top', '20px')
+                        $(td).css('padding-bottom', '20px')
+                    }
+                }, 
+                {
+                    targets: 0,
+                    data: '0',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 1,
+                    data: '1',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 2,
+                    data: '2',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 3,
+                    data: '3',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 4,
+                    data: '4',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 5,
+                    data: '5',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 6,
+                    data: '6',
+                    render: function (data, type, row, meta) {
+                        return data
                     }
                 }
             ],
             preDrawCallback: function() {
                 // this does not always work.. not sure how to solve the staying tooltip
                 try {
-                    $('#dao_members').find('[data-toggle="tooltip"]').tooltip('dispose');
+                    $('#dao_members').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
             },
             drawCallback: function() {
-                formatTimestamps();
+                formatTimestamps()
             }
-        });
+        })
+
+        $('#dao_proposals').DataTable({
+            processing: true,
+            serverSide: true,
+            ordering: false,
+            searching: false,
+            paging: true,
+            pagingType: 'input',
+            ajax: '/pools/rocketpool/data/dao_proposals',
+            language: {
+                info: '_TOTAL_ entries',
+                paginate: {
+                    previous: '<',
+                    next: '>'
+                }
+            },
+            columnDefs: [
+                {
+                    targets: '_all',
+                    createdCell: function(td, cellData, rowData, row, col) {
+                        $(td).css('padding-top', '20px')
+                        $(td).css('padding-bottom', '20px')
+                    }
+                },
+                {
+                    targets: 0,
+                    data: '0',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 1,
+                    data: '1',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 2,
+                    data: '2',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 3,
+                    data: '3',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 4,
+                    data: '4',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 5,
+                    data: '5',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 6,
+                    data: '6',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 7,
+                    data: '7',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 8,
+                    data: '8',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 9,
+                    data: '9',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 10,
+                    data: '10',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 11,
+                    data: '11',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 12,
+                    data: '12',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 13,
+                    data: '13',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 14,
+                    data: '14',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 15,
+                    data: '15',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 16,
+                    data: '16',
+                    render: function (data, type, row, meta) {
+                        return data
+                    }
+                }
+            ],
+            preDrawCallback: function() {
+                // this does not always work.. not sure how to solve the staying tooltip
+                try {
+                    $('#dao_proposals').find('[data-toggle="tooltip"]').tooltip('dispose')
+                } catch(e) {}
+            },
+            drawCallback: function() {
+                formatTimestamps()
+            }
+        })
     </script>
 {{end}}
 
