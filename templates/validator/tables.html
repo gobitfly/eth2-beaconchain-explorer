@@ -469,8 +469,14 @@
                   <td>{{formatSlotToTimestamp $deposit.BlockSlot}}</td>
                   <td class="text-right">{{formatDepositAmount $deposit.Amount $.Currency}}</td>
                   <!-- <td>{{formatHash $deposit.Proof}}</td> -->
-                  <td>{{formatHash $deposit.Withdrawalcredentials}}</td>
-                  <td>{{formatHash $deposit.Signature}}</td>
+                  <td>
+                    {{formatHash $deposit.Withdrawalcredentials}}
+                    <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text={{formatHash $deposit.Withdrawalcredentials false}}></i>
+                  </td>
+                  <td>
+                    {{formatHash $deposit.Signature}}
+                    <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text={{formatHash $deposit.Signature false}}></i>
+                  </td>
                 </tr>
               {{end}}
             </tbody>
