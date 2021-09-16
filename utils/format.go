@@ -246,13 +246,13 @@ func FormatSlotToTimestamp(blockSlot uint64) template.HTML {
 func FormatBlockStatus(status uint64) template.HTML {
 	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
 	if status == 0 {
-		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
+		return `<span class="badge badge-pill bg-light font-weight-normal text-dark" style="font-size: .82rem;">Scheduled</span>`
 	} else if status == 1 {
-		return "<span class=\"badge bg-success text-white\">Proposed</span>"
+		return `<span class="badge badge-pill bg-success font-weight-normal text-white" style="font-size: .82rem;">Proposed</span>`
 	} else if status == 2 {
-		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+		return `<span class="badge badge-pill bg-warning font-weight-normal text-dark" style="font-size: .82rem;">Missed</span>`
 	} else if status == 3 {
-		return "<span class=\"badge bg-secondary text-white\">Orphaned</span>"
+		return `<span class="badge badge-pill bg-secondary font-weight-normal text-white" style="font-size: .82rem;">Orphaned</span>`
 	} else {
 		return "Unknown"
 	}
