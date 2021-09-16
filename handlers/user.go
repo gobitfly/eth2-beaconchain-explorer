@@ -875,13 +875,15 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 		} else if strings.HasPrefix(string(sub.EventName), "monitoring_") {
 			pubkey = utils.FormatMachineName(sub.EventFilter)
 		}
+		if sub.EventName != types.ValidatorBalanceDecreasedEventName {
+			tableData = append(tableData, []interface{}{
+				pubkey,
+				sub.EventName,
+				utils.FormatTimestamp(sub.CreatedTime.Unix()),
+				ls,
+			})
+		}
 
-		tableData = append(tableData, []interface{}{
-			pubkey,
-			sub.EventName,
-			utils.FormatTimestamp(sub.CreatedTime.Unix()),
-			ls,
-		})
 	}
 
 	// log.Println("COUNT", len(watchlist))
