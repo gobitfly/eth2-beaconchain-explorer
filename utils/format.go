@@ -29,13 +29,13 @@ func FormatMessageToHtml(message string) template.HTML {
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatus(status uint64) template.HTML {
 	if status == 0 {
-		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
+		return `<span class="badge badge-pill bg-light font-weight-normal text-dark" style="font-size: .82rem;">Scheduled</span>`
 	} else if status == 1 {
-		return "<span class=\"badge bg-success text-white\">Attested</span>"
+		return `<span class="badge badge-pill bg-success font-weight-normal text-white" style="font-size: .82rem;">Attested</span>`
 	} else if status == 2 {
-		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+		return `<span class="badge badge-pill bg-warning font-weight-normal text-dark" style="font-size: .82rem;">Missed</span>`
 	} else if status == 3 {
-		return "<span class=\"badge bg-warning text-dark\">Orphaned</span>"
+		return `<span class="badge badge-pill bg-warning font-weight-normal text-dark" style="font-size: .82rem;">Orphaned</span>`
 	} else {
 		return "Unknown"
 	}
@@ -44,17 +44,17 @@ func FormatAttestationStatus(status uint64) template.HTML {
 // FormatAttestationStatusShort will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatusShort(status uint64) template.HTML {
 	if status == 0 {
-		return "<span title=\"Scheduled\" data-toggle=\"tooltip\"  class=\"badge bg-light text-dark\">Sche.</span>"
+		return `<span title="Scheduled" data-toggle="tooltip" class="badge badge-pill bg-light font-weight-normal text-dark" style="font-size: .82rem;">Sche.</span>`
 	} else if status == 1 {
-		return "<span title=\"Attested\" data-toggle=\"tooltip\"   class=\"badge bg-success text-white\">Att.</span>"
+		return `<span title="Attested" data-toggle="tooltip" class="badge badge-pill bg-success font-weight-normal text-white" style="font-size: .82rem;">Att.</span>`
 	} else if status == 2 {
-		return "<span title=\"Missed\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Miss.</span>"
+		return `<span title="Missed" data-toggle="tooltip" class="badge badge-pill bg-warning font-weight-normal text-dark" style="font-size: .82rem;">Miss.</span>`
 	} else if status == 3 {
-		return "<span title=\"Orphaned\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Orph.</span>"
+		return `<span title="Orphaned" data-toggle="tooltip" class="badge badge-pill bg-warning font-weight-normal text-dark" style="font-size: .82rem;">Orph.</span>`
 	} else if status == 4 {
-		return "<span title=\"Inactivity Leak\" data-toggle=\"tooltip\"  class=\"badge bg-danger text-dark\">Leak</span>"
+		return `<span title="Inactivity Leak" data-toggle="tooltip" class="badge badge-pill bg-danger font-weight-normal text-dark" style="font-size: .82rem;">Leak</span>`
 	} else if status == 5 {
-		return "<span title=\"Inactive\" data-toggle=\"tooltip\"  class=\"badge bg-light text-dark\">Inac.</span>"
+		return `<span title="Inactive" data-toggle="tooltip" class="badge badge-pill bg-light font-weight-normal text-dark" style="font-size: .82rem;">Inac.</span>`
 	} else {
 		return "Unknown"
 	}
