@@ -1,4 +1,5 @@
 {{define "js"}}
+    <script type="text/javascript" src="/js/datatablesNew.min.js"></script>
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script>
@@ -16,6 +17,7 @@
             pagingType: 'input',
             processing: true,
             ordering: false,
+            responsive: true,
             searching: false,
             serverSide: true,
             columnDefs: [
@@ -74,6 +76,7 @@
             pagingType: 'input',
             processing: true,
             ordering: false,
+            responsive: true,
             searching: false,
             serverSide: true,
             columnDefs: [
@@ -144,6 +147,7 @@
             pagingType: 'input',
             processing: true,
             ordering: false,
+            responsive: true,
             searching: false,
             serverSide: true,
             columnDefs: [
@@ -212,6 +216,7 @@
             pagingType: 'input',
             processing: true,
             ordering: false,
+            responsive: true,
             searching: false,
             serverSide: true,
             columnDefs: [
@@ -234,7 +239,6 @@
                     data: '4',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                        // return data
                     }
                 },
                 {
@@ -242,7 +246,6 @@
                     data: '5',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                        // return data
                     }
                 },
                 {
@@ -250,7 +253,6 @@
                     data: '6',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                        // return data
                     }
                 },
                 {
@@ -258,13 +260,11 @@
                     data: '7',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                        // return data
                     }
                 },
                 {
                     targets: 8,
                     data: '8',
-                    className: 'text-right',
                     render: function(data, type, row, meta) {
                         return data
                     }
@@ -345,7 +345,8 @@
 {{end}}
 
 {{define "css"}}
-    <link rel="stylesheet" type="text/css" href="/css//datatables.min.css" />
+    <link rel="stylesheet" type="text/css" href="/css/datatablesNew.min.css" />
+    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
     <style>
         .badge-custom-size {
             font-size: .82rem;
