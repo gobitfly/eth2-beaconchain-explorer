@@ -228,6 +228,22 @@
                     }
                 },
                 {
+                    targets: 0,
+                    data: '0',
+                    responsivePriority: 3,
+                    render: function(data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
+                    targets: 1,
+                    data: '1',
+                    responsivePriority: 2,
+                    render: function(data, type, row, meta) {
+                        return data
+                    }
+                },
+                {
                     targets: 3,
                     data: '3',
                     render: function(data, type, row, meta) {
@@ -321,6 +337,14 @@
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
                         return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                    }
+                },
+                {
+                    targets: 15,
+                    data: '15',
+                    responsivePriority: 1,
+                    render: function(data, type, row, meta) {
+                        return data
                     }
                 },
                 {
