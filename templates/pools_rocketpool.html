@@ -3,12 +3,6 @@
     <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script>
         $('#minipools').DataTable({
-            processing: true,
-            serverSide: true,
-            ordering: false,
-            searching: false,
-            paging: true,
-            pagingType: 'input',
             ajax: '/pools/rocketpool/data/minipools',
             language: {
                 info: '_TOTAL_ entries',
@@ -17,6 +11,12 @@
                     next: '>'
                 }
             },
+            paging: true,
+            pagingType: 'input',
+            processing: true,
+            ordering: false,
+            searching: false,
+            serverSide: true,
             columnDefs: [
                 {
                     targets: '_all',
@@ -60,12 +60,6 @@
         })
 
         $('#nodes').DataTable({
-            processing: true,
-            serverSide: true,
-            ordering: false,
-            searching: false,
-            paging: true,
-            pagingType: 'input',
             ajax: '/pools/rocketpool/data/nodes',
             language: {
                 info: '_TOTAL_ entries',
@@ -74,6 +68,12 @@
                     next: '>'
                 }
             },
+            paging: true,
+            pagingType: 'input',
+            processing: true,
+            ordering: false,
+            searching: false,
+            serverSide: true,
             columnDefs: [
                 {
                     targets: '_all',
@@ -129,12 +129,6 @@
         })
 
         $('#dao_members').DataTable({
-            processing: true,
-            serverSide: true,
-            ordering: false,
-            searching: false,
-            paging: true,
-            pagingType: 'input',
             ajax: '/pools/rocketpool/data/dao_members',
             language: {
                 info: '_TOTAL_ entries',
@@ -143,6 +137,12 @@
                     next: '>'
                 }
             },
+            paging: true,
+            pagingType: 'input',
+            processing: true,
+            ordering: false,
+            searching: false,
+            serverSide: true,
             columnDefs: [
                 {
                     targets: '_all',
@@ -166,7 +166,6 @@
                     data: '3',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                        // return data
                     }
                 },
                 {
@@ -174,7 +173,6 @@
                     data: '4',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
-                        // return data
                     }
                 },
                 {
@@ -198,12 +196,6 @@
         })
 
         $('#dao_proposals').DataTable({
-            processing: true,
-            serverSide: true,
-            ordering: false,
-            searching: false,
-            paging: true,
-            pagingType: 'input',
             ajax: '/pools/rocketpool/data/dao_proposals',
             language: {
                 info: '_TOTAL_ entries',
@@ -212,6 +204,12 @@
                     next: '>'
                 }
             },
+            paging: true,
+            pagingType: 'input',
+            processing: true,
+            ordering: false,
+            searching: false,
+            serverSide: true,
             columnDefs: [
                 {
                     targets: '_all',
@@ -371,10 +369,10 @@
             </div>
             <h1 class="mt-2 mb-5 text-nowrap" style="font-size: 1.8rem; letter-spacing: 2px;">Rocketpool</h1>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Minipools</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem;">
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
                 <div class="table-responsive">
                     <table class="table table-hover" id="minipools" width="100%">
-                        <thead>
+                        <thead style="background-color: var(--bg);">
                             <tr>
                                 <th scope="col" class="h6 border-bottom-0">Minipool</th>
                                 <th scope="col" class="h6 border-bottom-0">Validator</th>
@@ -389,10 +387,10 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Nodes</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem;">
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
                 <div class="table-responsive">
                     <table class="table table-hover" id="nodes" width="100%">
-                        <thead>
+                        <thead style="background-color: var(--bg);">
                             <tr>
                                 <th scope="col" class="h6 border-bottom-0">Address</th>
                                 <th scope="col" class="h6 border-bottom-0">Timezone Location</th>
@@ -406,10 +404,10 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">DAO Members</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem;">
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
                 <div class="table-responsive">
                     <table class="table table-hover" id="dao_members" width="100%">
-                        <thead>
+                        <thead style="background-color: var(--bg);">
                             <tr>
                                 <th scope="col" class="h6 border-bottom-0">Address</th>
                                 <th scope="col" class="h6 border-bottom-0">ID</th>
@@ -425,10 +423,10 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Proposals</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem;">
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
                 <div class="table-responsive">
                     <table class="table table-hover" id="dao_proposals" width="100%">
-                        <thead>
+                        <thead style="background-color: var(--bg);">
                             <tr>
                                 <th scope="col" class="h6 border-bottom-0">ID</th>
                                 <th scope="col" class="h6 border-bottom-0">DAO</th>
