@@ -323,17 +323,21 @@ type ValidatorPageData struct {
 	InclusionDelay                      int64
 	CurrentAttestationStreak            uint64
 	LongestAttestationStreak            uint64
-	// rocketpool
-	RocketpoolNodeAddress          *[]byte    `db:"rocketpool_node_address"`
-	RocketpoolMinipoolAddress      *[]byte    `db:"rocketpool_minipool_address"`
-	RocketpoolMinipoolNodeFee      *float64   `db:"rocketpool_minipool_node_fee"`
-	RocketpoolMinipoolDepositType  *string    `db:"rocketpool_minipool_deposit_type"`
-	RocketpoolMinipoolStatus       *string    `db:"rocketpool_minipool_status"`
-	RocketpoolMinipoolStatusTime   *time.Time `db:"rocketpool_minipool_status_time"`
-	RocketpoolNodeTimezoneLocation *string    `db:"rocketpool_node_timezone_location"`
-	RocketpoolNodeRPLStake         *string    `db:"rocketpool_node_rpl_stake"`
-	RocketpoolNodeMinRPLStake      *string    `db:"rocketpool_node_min_rpl_stake"`
-	RocketpoolNodeMaxRPLStake      *string    `db:"rocketpool_node_max_rpl_stake"`
+	IsRocketpool                        bool
+	Rocketpool                          *RocketpoolValidatorPageData
+}
+
+type RocketpoolValidatorPageData struct {
+	NodeAddress          *[]byte    `db:"node_address"`
+	MinipoolAddress      *[]byte    `db:"minipool_address"`
+	MinipoolNodeFee      *float64   `db:"minipool_node_fee"`
+	MinipoolDepositType  *string    `db:"minipool_deposit_type"`
+	MinipoolStatus       *string    `db:"minipool_status"`
+	MinipoolStatusTime   *time.Time `db:"minipool_status_time"`
+	NodeTimezoneLocation *string    `db:"node_timezone_location"`
+	NodeRPLStake         *string    `db:"node_rpl_stake"`
+	NodeMinRPLStake      *string    `db:"node_min_rpl_stake"`
+	NodeMaxRPLStake      *string    `db:"node_max_rpl_stake"`
 }
 
 type ValidatorStatsTablePageData struct {

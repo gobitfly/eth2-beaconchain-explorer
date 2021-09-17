@@ -188,20 +188,22 @@
 										{{template "validatorDepositsTable" $}}
 									</div>
 								</div>
+								{{if .IsRocketpool}}
 								<div class="tab-pane fade h-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
 									<!-- TODO:madalina please make a proper layout for this table -->
 									<pre style="margin: 20px">
-minipool_address:       {{formatEth1Address .RocketpoolMinipoolAddress}}
-minipool_node_fee:      {{.RocketpoolMinipoolNodeFee}}
-minipool_deposit_type:  {{.RocketpoolMinipoolDepositType}}
-minipool_status:        {{.RocketpoolMinipoolStatus}}
-node_address:           {{formatEth1Address .RocketpoolNodeAddress}}
-node_timezone_location: {{.RocketpoolNodeTimezoneLocation}}
-node_rpl_stake:         {{.RocketpoolNodeRPLStake}}
-node_min_rpl_stake:     {{.RocketpoolNodeMinRPLStake}}
-node_max_rpl_stake:     {{.RocketpoolNodeMaxRPLStake}}
+minipool_address:       {{formatEth1Address .Rocketpool.MinipoolAddress}}
+minipool_node_fee:      {{.Rocketpool.MinipoolNodeFee}}
+minipool_deposit_type:  {{.Rocketpool.MinipoolDepositType}}
+minipool_status:        {{.Rocketpool.MinipoolStatus}}
+node_address:           {{formatEth1Address .Rocketpool.NodeAddress}}
+node_timezone_location: {{.Rocketpool.NodeTimezoneLocation}}
+node_rpl_stake:         {{.Rocketpool.NodeRPLStake}}
+node_min_rpl_stake:     {{.Rocketpool.NodeMinRPLStake}}
+node_max_rpl_stake:     {{.Rocketpool.NodeMaxRPLStake}}
 									</pre>
 								</div>
+								{{end}}
 							</div>
 						</div>
 					</div>
