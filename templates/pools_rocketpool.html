@@ -25,27 +25,33 @@
                         $(td).css('padding-bottom', '20px')
                     }
                 },
-                /* {
+                {
                     targets: 0,
                     data: '0',
                     render: function(data, type, row, meta) {
+                        console.log(data)
+
                         return data
                     }
-                }, */
-                /* {
+                },
+                {
                     targets: 1,
                     data: '1',
                     render: function(data, type, row, meta) {
+                        console.log(data)
+
                         return data
                     }
-                }, */
-                /* {
+                },
+                {
                     targets: 2,
                     data: '2',
                     render: function(data, type, row, meta) {
+                        console.log(data)
+
                         return data
                     }
-                }, */
+                },
                 {
                     targets: 3,
                     data: '3',
@@ -58,14 +64,14 @@
                     targets: 4,
                     data: '4',
                     render: function(data, type, row, meta) {
-                        return `<span class="badge badge-light badge-custom-size font-weight-normal">${data}</span>`
+                        return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
                 },
                 {
                     targets: 5,
                     data: '5',
                     render: function(data, type, row, meta) {
-                        return `<span class="badge badge-light badge-custom-size font-weight-normal">${data}</span>`
+                        return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
                 }
             ],
@@ -103,13 +109,15 @@
                         $(td).css('padding-bottom', '20px')
                     }
                 }, 
-                /* {
+                {
                     targets: 0,
                     data: '0',
                     render: function(data, type, row, meta) {
+                        console.log(data)
+
                         return data
                     }
-                }, */
+                },
                 {
                     targets: 1,
                     data: '1',
@@ -179,13 +187,15 @@
                         $(td).css('padding-bottom', '20px')
                     }
                 }, 
-                /* {
+                {
                     targets: 0,
                     data: '0',
                     render: function(data, type, row, meta) {
+                        console.log(data)
+                        
                         return data
                     }
-                }, */
+                },
                 /* {
                     targets: 1,
                     data: '1',
@@ -357,9 +367,9 @@
                     data: '11',
                     render: function(data, type, row, meta) {
                         if (data) {
-                            return `<span class="badge badge-success badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal">${data}</span>`
                         }
-                        return `<span class="badge badge-danger badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom-size font-weight-normal">${data}</span>`
                     }
                 },
                 {
@@ -367,9 +377,9 @@
                     data: '12',
                     render: function(data, type, row, meta) {
                         if (data) {
-                            return `<span class="badge badge-success badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal">${data}</span>`
                         }
-                        return `<span class="badge badge-danger badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom-size font-weight-normal">${data}</span>`
                     }
                 },
                 {
@@ -377,9 +387,9 @@
                     data: '13',
                     render: function(data, type, row, meta) {
                         if (data) {
-                            return `<span class="badge badge-success badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal">${data}</span>`
                         }
-                        return `<span class="badge badge-danger badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom-size font-weight-normal">${data}</span>`
                     }
                 },
                 {
@@ -387,9 +397,9 @@
                     data: '14',
                     render: function(data, type, row, meta) {
                         if (data) {
-                            return `<span class="badge badge-success badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal">${data}</span>`
                         }
-                        return `<span class="badge badge-danger badge-custom-size font-weight-normal">${data.toString().charAt(0).toUpperCase() + data.toString().slice(1)}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom-size font-weight-normal">${data}</span>`
                     }
                 },
                 /* {
@@ -403,7 +413,7 @@
                     targets: 16,
                     data: '16',
                     render: function(data, type, row, meta) {
-                        return `<span class="badge badge-light badge-custom-size font-weight-normal">${data}</span>`
+                        return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
                 }
             ],
