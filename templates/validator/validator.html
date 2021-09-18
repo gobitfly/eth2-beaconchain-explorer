@@ -22,36 +22,59 @@
 		</script>
   {{end}}
 {{end}}
+
 {{define "css"}}
 	<link rel="stylesheet" type="text/css" href="/css/validator.css" />
 	<link rel="stylesheet" type="text/css" href="/css/datatablesNew.min.css" />
 	<!-- <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" /> -->
 	<style>
 		/* TODO: stefan maybe make this prettier somehow? */
+		#chartTabs .nav-link {
+			padding: .5rem .8rem;
+		}
 		#slashings-table td:first-child {
 			white-space: break-spaces;
 		}
-		.validator-summary-div {
-			border-right-color: rgba(50,50,50,0.5);
-			border-right-style: solid;
+		#blocks-table_wrapper div.dataTables_paginate ul li { 
+  		background-color: var(--new-card-bg);
+		}
+		#attestations-table_wrapper div.dataTables_paginate ul li { 
+  		background-color: var(--new-card-bg);
+		}
+		#validator-history-table_wrapper div.dataTables_paginate ul li { 
+  		background-color: var(--new-card-bg);
 		}
 		.validator-border-bottom {
-			border-bottom-color: rgba(50,50,50,0.5);
+			border-bottom-color: rgba(50, 50, 50, 0.5);
 			border-bottom-style: solid;
 		}
 		.validator-charts-div {
-			border-right-color: rgba(50,50,50,0.5);
+			border-right-color: rgba(50, 50, 50, 0.5);
 			border-right-style: solid;
-			border-top-color: rgba(50,50,50,0.5);
+			border-top-color: rgba(50, 50, 50, 0.5);
 			border-top-style: solid;
-			border-bottom-color: rgba(50,50,50,0.5);
+			border-bottom-color: rgba(50, 50, 50, 0.5);
 			border-bottom-style: solid;
 		}
 		.validator-content .nav-tabs .nav-item { 
 			margin-top: 0 !important;
 		}
-		#chartTabs .nav-link {
-			padding: .5rem .8rem;
+		.validator-summary-div {
+			border-right-color: rgba(50, 50, 50, 0.5);
+			border-right-style: solid;
+		}
+		table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, 
+		table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
+  		top: 1.6rem !important;
+  		background-color: transparent !important;
+  		box-shadow: none !important;
+  		line-height: 1.1rem !important;
+  		color: var(--dark) !important;
+		}
+		div.dataTables_info {
+  		padding-top: 2.15rem !important;
+  		font-size: .9rem;
+  		text-align: left !important;
 		}
 		/* .overview-container {
 			max-width: 600px;
@@ -61,6 +84,7 @@
 		} */
 	</style>
 {{end}}
+
 {{define "content"}}
 	{{with .Data}}
 		<!-- possible states: deposited, deposited_valid deposited_invalid pending slashing_offline slashing_online active_offline active_online slashed exited -->
@@ -74,12 +98,12 @@
 			<div class="row mx-0 mt-5">
 				<div class="col-lg-8 px-0 pr-lg-2">
 					<div class="div border w-100 h-100 p-2" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
-						<div class="row mx-0">
+						<div class="row mx-0" style="background-color: aqua;">
 							<div class="col">
 								{{template "validatorLifeCycleDiagram" .}}
 							</div>
 						</div>
-						<div class="d-flex flex-column justify-content-center">
+						<div class="d-flex flex-column justify-content-center" style="background-color: aquamarine;">
 							{{if $deposited}} {{template "validatorOverviewDeposited" .}} {{end}}
 							{{if $pending}} {{template "validatorOverviewPending" .}} {{end}}
 							{{if $validating}} {{template "validatorOverviewValidating" $}} {{end}}

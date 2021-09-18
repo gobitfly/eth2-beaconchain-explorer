@@ -558,38 +558,27 @@ func FormatTimestampTs(ts time.Time) template.HTML {
 // pending, active_online, active_offline, exiting_online, exciting_offline, slashing_online, slashing_offline, exited, slashed
 func FormatValidatorStatus(status string) template.HTML {
 	if status == "deposited" || status == "deposited_valid" || status == "deposited_invalid" {
-		// return "<span><b>Deposited</b></span>"
-		return "<span class=\"badge badge-warning\" style=\"font-size: 1rem;\">DEPOSITED</span>"
+		return `<span class="badge badge-pill badge-warning font-weight-normal" style="font-size: 1rem;">Deposited</span>`
 	} else if status == "pending" {
-		// return "<span><b>Pending</b></span>"
-		return "<span class=\"badge badge-warning\" style=\"font-size: 1rem;\">PENDING</span>"
+		return `<span class="badge badge-pill badge-warning font-weight-normal" style="font-size: 1rem;">Pending</span>`
 	} else if status == "active_online" {
-		// return "<b>Active</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
-		return "<span class=\"badge badge-success\" style=\"font-size: 1rem;\">ACTIVE</span>"
+		return `<span class="badge badge-pill badge-success font-weight-normal" style="font-size: 1rem;">Active<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "active_offline" {
-		// return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Active</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\" class=\"badge badge-danger\" style=\"font-size: 1rem;\">ACTIVE</span>"
+		return `<span data-toggle="tooltip" title="No attestation in the last 2 epochs" class="badge badge-pill badge-danger font-weight-normal" style="font-size: 1rem;">Active<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "exiting_online" {
-		// return "<b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
-		return "<span class=\"badge badge-success\" style=\"font-size: 1rem;\">EXITING</span>"
+		return `<span class="badge badge-pill badge-success font-weight-normal" style="font-size: 1rem;">Exiting<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "exiting_offline" {
-		// return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Exiting</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\" class=\"badge badge-danger\" style=\"font-size: 1rem;\">EXITING</span>"
+		return `<span data-toggle="tooltip" title="No attestation in the last 2 epochs" class="badge badge-pill badge-danger font-weight-normal" style="font-size: 1rem;">Exiting<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "slashing_online" {
-		// return "<b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-success\"></i>"
-		return "<span class=\"badge badge-success\" style=\"font-size: 1rem;\">SLASHING</span>"
+		return `<span class="badge badge-pill badge-success font-weight-normal" style="font-size: 1rem;">Slashing<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "slashing_offline" {
-		// return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\"><b>Slashing</b> <i class=\"fas fa-power-off fa-sm text-danger\"></i></span>"
-		return "<span data-toggle=\"tooltip\" title=\"No attestation in the last 2 epochs\" class=\"badge badge-danger\" style=\"font-size: 1rem;\">SLASHING</span>"
+		return `<span data-toggle="tooltip" title="No attestation in the last 2 epochs" class="badge badge-pill badge-danger font-weight-normal" style="font-size: 1rem;">Slashing<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "exited" {
-		// return "<span><b>Exited</b></span>"
-		return "<span class=\"badge badge-danger\" style=\"font-size: 1rem;\">EXITED</span>"
+		return `<span class="badge badge-pill badge-danger font-weight-normal" style="font-size: 1rem;">Exited</span>`
 	} else if status == "slashed" {
-		// return "<span><b>Slashed</b></span>"
-		return "<span class=\"badge badge-danger\" style=\"font-size: 1rem;\"><b>SLASHED</b></span>"
+		return `<span class="badge badge-pill badge-danger font-weight-normal" style="font-size: 1rem;">Slashed</span>`
 	}
-	// return "<b>Unknown</b>"
-	return "<span class=\"badge badge-secondary text-white\" style=\"font-size: 1rem;\">UNKNOWN</span>"
+	return `<span class="badge badge-pill badge-secondary font-weight-normal text-white" style="font-size: 1rem;">Unknown</span>`
 }
 
 func formatPool(tag []string) string {
@@ -650,14 +639,14 @@ func FormatValidatorTags(tags []string) template.HTML {
 
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i><a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
 func FormatValidatorWithName(validator uint64, name string) template.HTML {
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validator))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i><a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validator))
 	} else {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i><a href=\"/validator/%v\">%v</a>", validator, validator))
 	}
 }
 
@@ -677,18 +666,18 @@ func FormatValidatorInt64(validator int64) template.HTML {
 
 // FormatSlashedValidatorInt64 will return html formatted text for a slashed validator
 func FormatSlashedValidatorInt64(validator int64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger mr-2\"></i><a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
 // FormatSlashedValidator will return html formatted text for a slashed validator
 func FormatSlashedValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger mr-2\"></i><a href=\"/validator/%v\">%v</a>", validator, validator))
 }
 
 // FormatSlashedValidator will return html formatted text for a slashed validator
 func FormatSlashedValidatorWithName(validator uint64, name string) template.HTML {
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v (<span class=\"text-truncate\">"+html.EscapeString(name)+"</span>)</a>", validator, validator))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger mr-2\"></i><a href=\"/validator/%v\">%v (<span class=\"text-truncate\">"+html.EscapeString(name)+"</span>)</a>", validator, validator))
 	} else {
 		return FormatSlashedValidator(validator)
 	}
@@ -699,9 +688,9 @@ func FormatSlashedValidatorsInt64(validators []int64) template.HTML {
 	str := ""
 	for i, v := range validators {
 		if i == len(validators)+1 {
-			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", v, v)
+			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger mr-2\"></i><a href=\"/validator/%v\">%v</a>", v, v)
 		} else {
-			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>, ", v, v)
+			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger mr-2\"></i><a href=\"/validator/%v\">%v</a>, ", v, v)
 		}
 	}
 	return template.HTML(str)
@@ -711,7 +700,7 @@ func FormatSlashedValidatorsInt64(validators []int64) template.HTML {
 func FormatSlashedValidators(validators []uint64) template.HTML {
 	vals := make([]string, 0, len(validators))
 	for _, v := range validators {
-		vals = append(vals, fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", v, v))
+		vals = append(vals, fmt.Sprintf("<i class=\"fas fa-user-slash text-danger mr-2\"></i><a href=\"/validator/%v\">%v</a>", v, v))
 	}
 	return template.HTML(strings.Join(vals, ","))
 }
