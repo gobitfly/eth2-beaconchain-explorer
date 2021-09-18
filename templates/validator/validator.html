@@ -5,7 +5,8 @@
 			history.back()
 		})
 	</script>
-	<script src="/js/validator.js"></script>
+	<script type="text/javascript" src="/js/validator.js"></script>
+	<script type="text/javascript" src="/js/datatablesNew.min.js"></script>
 	<script>
 		setValidatorStatus({{.Status}})
 	</script>
@@ -22,8 +23,9 @@
   {{end}}
 {{end}}
 {{define "css"}}
-	<link rel="stylesheet" href="/css/validator.css" />
-	<link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
+	<link rel="stylesheet" type="text/css" href="/css/validator.css" />
+	<link rel="stylesheet" type="text/css" href="/css/datatablesNew.min.css" />
+	<!-- <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" /> -->
 	<style>
 		/* TODO: stefan maybe make this prettier somehow? */
 		#slashings-table td:first-child {
