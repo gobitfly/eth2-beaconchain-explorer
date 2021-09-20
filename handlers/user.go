@@ -301,7 +301,7 @@ func getUserMetrics(userId uint64) (interface{}, error) {
 		ProposalsMissed    uint64 `db:"proposals_missed"`
 		ProposalsSubmitted uint64 `db:"proposals_submitted"`
 	}{}
-
+	net := strings.ToLower(utils.GetNetwork())
 	err := db.FrontendDB.Get(&metricsdb, `
 		SELECT COUNT(user_id) as validators,
 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS') AS notifications,
@@ -310,26 +310,26 @@ func getUserMetrics(userId uint64) (interface{}, error) {
 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS' AND event_name=$4) AS proposals_submitted
 		FROM users_validators_tags  
 		WHERE user_id=$1;
-		`, userId, types.ValidatorMissedAttestationEventName, types.ValidatorMissedProposalEventName, types.ValidatorExecutedProposalEventName)
+		`, userId, net+":"+string(types.ValidatorMissedAttestationEventName),
+		net+":"+string(types.ValidatorMissedProposalEventName),
+		net+":"+string(types.ValidatorExecutedProposalEventName))
 	return metricsdb, err
 }
 
 func getValidatorTableData(userId uint64) (interface{}, error) {
 	validatordb := []struct {
-		Index        uint64  `db:"index"`
 		Pubkey       string  `db:"pubkey"`
 		Notification *string `db:"event_name"`
 		LastSent     *uint64 `db:"last_sent_ts"`
 		Threshold    *string `db:"event_threshold"`
 	}{}
 
-	err := db.DB.Select(&validatordb, `
-	SELECT validatorindex AS index, pubkeyhex AS pubkey, a.event_name, extract( epoch from a.last_sent_ts)::Int as last_sent_ts, a.event_threshold
-	FROM validators 
-	INNER JOIN ( SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, us.last_sent_ts, us.event_threshold FROM users_validators_tags uvt 
+	err := db.FrontendDB.Select(&validatordb, `
+	SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold 
+	FROM users_validators_tags uvt 
 	LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id
-	WHERE uvt.user_id = $1) a ON a.pubkey=pubkeyhex;
-		`, userId)
+	WHERE uvt.user_id = $1;`, userId)
+
 	if err != nil {
 		return validatordb, err
 	}
@@ -353,18 +353,29 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	result_map := map[uint64]validator{}
 
 	for _, item := range validatordb {
-		if _, exists := result_map[item.Index]; !exists {
-			result_map[item.Index] = validator{Validator: validatorDetails{Pubkey: item.Pubkey, Index: item.Index}, Notifications: []notification{}}
+		var index uint64
+
+		err = db.DB.Get(&index, `
+		SELECT validatorindex
+		FROM validators WHERE pubkeyhex=$1
+			`, item.Pubkey)
+
+		if err != nil {
+			return validatordb, err
+		}
+
+		if _, exists := result_map[index]; !exists {
+			result_map[index] = validator{Validator: validatorDetails{Pubkey: item.Pubkey, Index: index}, Notifications: []notification{}}
 		}
 
 		if item.Notification != nil {
-			map_item := result_map[item.Index]
+			map_item := result_map[index]
 			var ts uint64 = 0
 			if item.LastSent != nil {
 				ts = *item.LastSent
 			}
 			map_item.Notifications = append(map_item.Notifications, notification{Notification: *item.Notification, Timestamp: ts, Threshold: *item.Threshold})
-			result_map[item.Index] = map_item
+			result_map[index] = map_item
 		}
 
 	}
@@ -393,7 +404,7 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 		SELECT count(user_id)                 
 		FROM users_subscriptions      
 		WHERE user_id=$1 AND event_name=$2;
-	`, userId, types.NetworkLivenessIncreasedEventName)
+	`, userId, strings.ToLower(utils.GetNetwork())+":"+string(types.NetworkLivenessIncreasedEventName))
 
 	if c > 0 {
 		net.IsSubscribed = true
@@ -412,7 +423,9 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 }
 
 func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
+
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
+
 	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -439,7 +452,9 @@ func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
+
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
+
 	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -500,7 +515,9 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
+
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
+
 	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -535,12 +552,13 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	net := strings.ToLower(utils.GetNetwork())
 	pqPubkeys := pq.Array(reqData.Pubkeys)
-	pqEventNames := pq.Array([]string{string(types.ValidatorMissedAttestationEventName),
-		string(types.ValidatorBalanceDecreasedEventName),
-		string(types.ValidatorMissedProposalEventName),
-		string(types.ValidatorExecutedProposalEventName),
-		string(types.ValidatorGotSlashedEventName)})
+	pqEventNames := pq.Array([]string{net + ":" + string(types.ValidatorMissedAttestationEventName),
+		net + ":" + string(types.ValidatorBalanceDecreasedEventName),
+		net + ":" + string(types.ValidatorMissedProposalEventName),
+		net + ":" + string(types.ValidatorExecutedProposalEventName),
+		net + ":" + string(types.ValidatorGotSlashedEventName)})
 
 	_, err = db.FrontendDB.Exec(`
 			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
@@ -580,7 +598,9 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
+
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
+
 	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -615,12 +635,13 @@ func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	net := strings.ToLower(utils.GetNetwork())
 	pqPubkeys := pq.Array(reqData.Pubkeys)
-	pqEventNames := pq.Array([]string{string(types.MonitoringMachineCpuLoadEventName),
-		string(types.MonitoringMachineDiskAlmostFullEventName),
-		string(types.MonitoringMachineOfflineEventName),
-		string(types.MonitoringMachineSwitchedToETH1FallbackEventName),
-		string(types.MonitoringMachineSwitchedToETH2FallbackEventName)})
+	pqEventNames := pq.Array([]string{net + ":" + string(types.MonitoringMachineCpuLoadEventName),
+		net + ":" + string(types.MonitoringMachineDiskAlmostFullEventName),
+		net + ":" + string(types.MonitoringMachineOfflineEventName),
+		net + ":" + string(types.MonitoringMachineSwitchedToETH1FallbackEventName),
+		net + ":" + string(types.MonitoringMachineSwitchedToETH2FallbackEventName)})
 
 	_, err = db.FrontendDB.Exec(`
 			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
@@ -862,13 +883,15 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 		} else if strings.HasPrefix(string(sub.EventName), "monitoring_") {
 			pubkey = utils.FormatMachineName(sub.EventFilter)
 		}
+		if sub.EventName != types.ValidatorBalanceDecreasedEventName {
+			tableData = append(tableData, []interface{}{
+				pubkey,
+				sub.EventName,
+				utils.FormatTimestamp(sub.CreatedTime.Unix()),
+				ls,
+			})
+		}
 
-		tableData = append(tableData, []interface{}{
-			pubkey,
-			sub.EventName,
-			utils.FormatTimestamp(sub.CreatedTime.Unix()),
-			ls,
-		})
 	}
 
 	// log.Println("COUNT", len(watchlist))
