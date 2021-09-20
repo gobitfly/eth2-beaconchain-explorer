@@ -341,7 +341,9 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a style=\"font-family: 'Roboto Mono'\" href=\"https://goerli.etherscan.io/tx/0x%x\">0x%v…</a>%v", hash, hex.EncodeToString(hash)[:6], copyBtn))
 	}
 	// return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
+
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a style=\"font-family: 'Roboto Mono'\" href=\"https://etherchain.org/tx/0x%x\">0x%v…</a>%v", hash, hex.EncodeToString(hash)[:6], copyBtn))
+
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
@@ -366,9 +368,9 @@ func FormatGraffiti(graffiti []byte) template.HTML {
 		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, h))
 	}
 	if len(h) >= 8 {
-		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:8]))
+		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s…</span>", graffiti, h, h[:8]))
 	}
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:]))
+	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s…</span>", graffiti, h, h[:]))
 }
 
 // FormatGraffitiAsLink will return the graffiti formated as html-link
