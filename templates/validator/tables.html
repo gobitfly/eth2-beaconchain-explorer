@@ -149,6 +149,10 @@
               targets: 5,
               data: '5',
               orderable: false
+            },
+            {
+              targets: 6,
+              data: '6'
             }
           ],
           drawCallback: function(settings) {
@@ -226,9 +230,7 @@
     <div class="table-eth1 mx-2">
       <h2 class="mt-2 mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Eth1 Deposits</h2>
       {{if not .Deposits.Eth1Deposits}}
-        <h3 style="font-size: 1.05rem; letter-spacing: 1px;">
-          No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a> for a deposit to be processed by the beacon chain.
-        </h3>
+        <h3 style="font-size: 1.05rem; letter-spacing: 1px;">No beacon chain deposits found for this validator.</h3>
         <div class="wip d-flex justify-content-center p-1">
           <svg style="width: 100%; height: auto; max-height: 200px;" id="a1bb6ffe-8d83-4899-8fa0-fcb3165ea164" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 884.595 628.60077">
             <ellipse cx="75.17704" cy="619.60077" rx="75.13932" ry="9" fill="#e6e6e6" />
