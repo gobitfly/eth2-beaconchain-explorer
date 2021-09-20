@@ -368,15 +368,27 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 	return deposits, nil
 }
 
-func GetEth2DepositsCount() (uint64, error) {
+func GetEth2DepositsCount(search string) (uint64, error) {
 	deposits := uint64(0)
-
-	err := DB.Get(&deposits, `
-	SELECT 
-		Count(*)
-	FROM 
-		blocks_deposits
-	`)
+	var err error
+	if search == "" {
+		err = DB.Get(&deposits, `
+		SELECT 
+			Count(*)
+		FROM 
+			blocks_deposits
+		`)
+	} else {
+		err = DB.Get(&deposits, `
+		SELECT 
+			Count(*)
+		FROM 
+			blocks_deposits
+		WHERE ENCODE(publickey::bytea, 'hex') LIKE $1 
+			  OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $1 
+			  OR CAST(block_slot as varchar) LIKE $1
+		`, search)
+	}
 	if err != nil {
 		return 0, err
 	}
