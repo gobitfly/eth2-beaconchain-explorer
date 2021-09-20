@@ -107,13 +107,13 @@
 			{{template "validatorHeading" .}}
 			<div class="row mx-0 mt-5">
 				<div class="col-lg-8 px-0 pr-lg-2">
-					<div class="div border w-100 h-100 p-2" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
-						<div class="row mx-0" style="background-color: aqua;">
+					<div class="d-flex flex-column justify-content-around border w-100 h-100 p-2" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+						<div class="row mx-0">
 							<div class="col">
 								{{template "validatorLifeCycleDiagram" .}}
 							</div>
 						</div>
-						<div class="d-flex flex-column justify-content-center" style="background-color: aquamarine;">
+						<div class="d-flex flex-column justify-content-center">
 							{{if $deposited}} {{template "validatorOverviewDeposited" .}} {{end}}
 							{{if $pending}} {{template "validatorOverviewPending" .}} {{end}}
 							{{if $validating}} {{template "validatorOverviewValidating" $}} {{end}}
@@ -121,7 +121,7 @@
 						</div>
 					</div>
 				</div>
-				<div class="col-lg-4 px-0 pl-lg-2">
+				<div class="col-lg-4 mt-5 mt-lg-0 px-0 pl-lg-2">
 					<div class="div border d-flex flex-column justify-content-center w-100 h-100 p-2" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
 						{{if $deposited}} {{template "validatorNetworkStatsTable" .}} {{end}}
 						{{if $pending}} {{template "validatorIncomeTable" $}} {{end}}
@@ -199,7 +199,7 @@
 						</div>
 					</div>
 				</div>
-				<div class="col-lg-4 px-0 pl-lg-2 d-flex align-items-center">
+				<div class="col-lg-4 mt-5 mt-lg-0 px-0 pl-lg-2 d-flex align-items-center">
 					<div class="div border w-100 h-100 p-2" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
 						<h2 class="mt-2 mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Validator History</h2>
 						{{if or $validating $exited}}

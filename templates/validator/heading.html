@@ -9,7 +9,7 @@
         </ol>
       </nav>
     </div>
-    <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-md-between mt-3">
+    <div class="d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-lg-between mt-3">
       <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-center justify-content-sm-start">
         <div class="d-flex align-items-center justify-content-start">
           <h1 class="mb-0 mr-1 text-nowrap" style="font-size: 1.8rem; letter-spacing: 2px;">Validator{{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}} {{.Index}}{{end}}{{if ne .Name ""}} ({{formatValidatorName .Name}}){{end}}</h1>
@@ -41,7 +41,7 @@
           {{end}}
         </div>
         <div class="d-flex align-items-center justify-content-start mb-4 mb-sm-0">
-          <div class="ml-sm-3"><span class="badge badge-secondary text-white" style="font-size: 1rem;">RANK #<a href="/validators/leaderboard">{{if gt .Rank7d 0}}{{.Rank7d}}{{else}}N/A{{end}}</a></span></div>
+          <div class="ml-sm-3"><span class="badge badge-pill badge-new-primary font-weight-normal text-white" style="font-size: 1rem;">Rank #<a href="/validators/leaderboard">{{if gt .Rank7d 0}}{{.Rank7d}}{{else}}N/A{{end}}</a></span></div>
           <div class="ml-2">{{.Status | formatValidatorStatus}}</div>
         </div>
       </div>
