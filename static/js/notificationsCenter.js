@@ -431,14 +431,7 @@ function loadValidatorsData(data) {
             return data.Index
           }
           let datahref = `/validator/${data.Index || data.Pubkey}`
-          // return `<span class="font-weight-bold"><i class="fas fa-male mr-1"></i><a style="padding: .25rem;" href="/validator/${data.Index}">` + data.Index + '</a></span>' + `<a class="heading-l4 d-none d-sm-block mt-2" style="width: 5rem;" href="/validator/${data.Pubkey}">0x` + data.Pubkey.substring(0, 6) + '...</a>'
-          return `
-            <span class="d-block"><i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` 
-            + data.Index + `</span>`  
-            + `<span class="heading-l4 d-none d-sm-inline mt-2">0x` 
-            + data.Pubkey.substring(0, 6) + `...</span></a>
-            <i class="fa fa-copy text-muted d-none d-sm-inline p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data.Pubkey}"></i>
-          `
+          return `<i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + data.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + data.Pubkey.substring(0, 6) + ` ...</span></a><i class="fa fa-copy text-muted d-none d-sm-inline p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data.Pubkey}"></i>`
         }
       },
       {
