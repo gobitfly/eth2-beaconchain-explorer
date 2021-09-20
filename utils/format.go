@@ -362,12 +362,12 @@ func FormatGlobalParticipationRate(e uint64, r float64, currency string) templat
 func FormatGraffiti(graffiti []byte) template.HTML {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
 	h := template.HTMLEscapeString(s)
-	/* if len(s) <= 6 {
+	if len(s) <= 6 {
 		return template.HTML(fmt.Sprintf(`<span aria-graffiti="%#x">%s</span>`, graffiti, h))
 	}
 	if len(h) >= 8 {
 		return template.HTML(fmt.Sprintf(`<span aria-graffiti="%#x" data-toggle="tooltip" data-placement="top" title="%s">%s...</span>`, graffiti, h, h[:8]))
-	} */
+	}
 	return template.HTML(fmt.Sprintf(`<span aria-graffiti="%#x" data-toggle="tooltip" data-placement="top" title="%s">%s...</span>`, graffiti, h, h[:]))
 }
 

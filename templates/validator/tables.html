@@ -73,6 +73,9 @@
           formatTimestamps()
         }
       })
+      $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+        $('#blocks-table').DataTable().responsive.recalc()
+      })
     })
   </script>
 {{end}}
@@ -219,6 +222,9 @@
 {{define "validatorDepositsTable"}}
   <script>
     window.addEventListener('load', function() {
+      $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+        $('#deposits-eth1-table').DataTable().responsive.recalc()
+      })
       $('#deposits-eth1-table').DataTable({
         info: false,
         lengthChange: false,
@@ -229,6 +235,9 @@
     })
 
     window.addEventListener('load', function() {
+      $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+        $('#deposits-eth2-table').DataTable().responsive.recalc()
+      })
       $('#deposits-eth2-table').DataTable({
         info: false,
         lengthChange: false,
@@ -685,6 +694,9 @@
     <script>
       var index = {{.Index}}
       window.addEventListener('load', function() {
+      $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+        $('#validator-history-table').DataTable().responsive.recalc()
+      })
         $('#validator-history-table').DataTable({
           ajax: '/validator/' + index + '/history',
           details: false,
