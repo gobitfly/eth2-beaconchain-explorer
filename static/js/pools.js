@@ -154,7 +154,7 @@ function updateEthSupply() {
 function getPoolEffectiveness(id, data) {
     let load = async () => {
         let query = "?validators="
-        for (let item of data.slice(0, 200)) {
+        for (let item of data.slice(0, 100)) {
             query += item.validatorindex + ","
         }
         query = query.substring(0, query.length - 1)
