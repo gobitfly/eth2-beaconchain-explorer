@@ -35,7 +35,7 @@ function appendBlocks(blocks) {
 var selectedBTNindex = null
 var VALLIMIT = 280
 function showValidatorHist (index) {
-  if ($.fn.dataTable.isDataTable('#dash-validator-history-table')){
+  if ($.fn.dataTable.isDataTable('#dash-validator-history-table')) {
         $('#dash-validator-history-table').DataTable().destroy();
   }
 
@@ -58,7 +58,7 @@ function showValidatorHist (index) {
                   next: ">",
               }
         },
-        drawCallback: function (settings) {
+        drawCallback: function(settings) {
               formatTimestamps()
         },
   })
@@ -75,15 +75,15 @@ function showValidatorHist (index) {
   updateValidatorInfo(index)
 }
 
-function toggleFirstrow(){
+function toggleFirstrow() {
   $("#dashChartTabs a:first").tab("show")
   let id = $("#validators tbody>tr:nth-child(1)>td>button").attr('id')
-  setTimeout(function (){
+  setTimeout(function() {
         $('#'+id).focus()
   }, 200)
 }
 
-function updateValidatorInfo(index){
+function updateValidatorInfo(index) {
   fetch(`/validator/${index}/proposedblocks?draw=1&start=1&length=1`,{
     method: "GET"
   }).then((res)=>{
@@ -120,7 +120,7 @@ function updateValidatorInfo(index){
   })
 }
 
-function getValidatorQueryString(){
+function getValidatorQueryString() {
   return window.location.href.slice(window.location.href.indexOf("?"), window.location.href.length)
 }
 
@@ -168,7 +168,7 @@ window.addEventListener('load', function() {
   })
 })
 
-function addValidatorUpdateUI(){
+function addValidatorUpdateUI() {
   $('#validators-tab').removeClass('disabled')
   $('#validator-art').attr('class', "d-none")
   $('#dash-validator-history-info').removeClass('d-none')
@@ -191,8 +191,8 @@ function addValidatorUpdateUI(){
   }).then((res)=>{
     res.json().then((data)=>{
       let eff = 0.0
-      for (let incDistance of data){
-        if (incDistance===0.0){
+      for (let incDistance of data) {
+        if (incDistance===0.0) {
           continue
         }
         eff+=(1.0/incDistance)*100.0
@@ -206,42 +206,42 @@ function addValidatorUpdateUI(){
 
 function showSelectedValidator(){
   setTimeout(function(){
-    $( 'span[id^=dropdownMenuButton]' ).each(function(el, item){
-      if ($(item).attr('id')==="dropdownMenuButton"+selectedBTNindex){
+    $( 'span[id^=dropdownMenuButton]' ).each(function(el, item) {
+      if ($(item).attr('id')==="dropdownMenuButton"+selectedBTNindex) {
         $(item).addClass('bg-primary')
       }else{
-        if (selectedBTNindex != null){
+        if (selectedBTNindex != null) {
           $(item).removeClass('bg-primary')
         }
       }
     })
   }, 100)//if deselected index is not clearing increase the time
 
-  $('.hbtn').hover(function () {
+  $('.hbtn').hover(function() {
     $(this).addClass('shadow');
     }, function () {
     $(this).removeClass('shadow');
   });
 }
 
-function showValidatorsInSearch(qty){
+function showValidatorsInSearch(qty) {
   qty = parseInt(qty)
   let i=0
   let l=[]
   $('#selected-validators-input li:not(:last)').remove()
-  $('#selected-validators.val-modal li').each(function(el, item){
+  $('#selected-validators.val-modal li').each(function(el, item) {
     if (i===qty) {return}
     l.push($(item).clone())
     i++
   })
-  for (let i=0; i<l.length; i++){
+  for (let i=0; i<l.length; i++) {
     $('#selected-validators-input').prepend(l[l.length-(i+1)])
   }
 }
 
 
-function renderProposedHistoryTable(data){
-  if ($.fn.dataTable.isDataTable('#proposals-table')){
+function renderProposedHistoryTable(data) {
+  if ($.fn.dataTable.isDataTable('#proposals-table')) {
     $('#proposals-table').DataTable().destroy();
   }
 
@@ -289,14 +289,14 @@ function renderProposedHistoryTable(data){
 }
 
 // var proposedHistTableData = []
-function showProposedHistoryTable(){
+function showProposedHistoryTable() {
   // if (proposedHistTableData.length===0){
     fetch('/dashboard/data/proposalshistory'+getValidatorQueryString(), {
       method: "GET",
     }).then((res)=>{
-        res.json().then(function(data){
+        res.json().then(function(data) {
         let proposedHistTableData=[]
-        for (let item of data){
+        for (let item of data) {
           proposedHistTableData.push([item[0], item[1], [item[2], item[3], item[4]]])
         }
         renderProposedHistoryTable(proposedHistTableData)
@@ -307,7 +307,7 @@ function showProposedHistoryTable(){
   // }
 }
 
-function switchFrom(el1, el2, el3, el4){
+function switchFrom(el1, el2, el3, el4) {
   $(el1).removeClass("proposal-switch-selected")
   $(el2).addClass("proposal-switch-selected")
   $(el3).addClass("d-none")
@@ -334,7 +334,7 @@ $(document).ready(function() {
     }
   })
 
-  $('#validators').on("page.dt", function(){
+  $('#validators').on("page.dt", function() {
     showSelectedValidator()
   })
   //bookmark button adds all validators in the dashboard to the watchlist
@@ -394,7 +394,7 @@ $(document).ready(function() {
 
   clearSearch.on('click', function() {
     clearSearch.empty().append(tickIcon);
-    setTimeout(function(){
+    setTimeout(function() {
       clearSearch.empty().append(copyIcon);
     }, 500)
   })
@@ -422,9 +422,17 @@ $(document).ready(function() {
       {
         targets: 0,
         data: '0',
+        createdCell: function(td, cellData, rowData, row, col) {
+          $(td).css('display', 'flex');
+          $(td).css('align-items', 'center');
+          $(td).css('justify-content', 'space-between');
+      },
         render: function(data, type, row, meta) {
-          if (type == 'sort' || type == 'type') return data
-          return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+          if (type == 'sort' || type == 'type') {
+            return data
+          }
+          // return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+          return `<a href="/validator/${data}">0x${data.substr(0, 8)}...</a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data}"></i>`
         }
       },
       {
@@ -674,7 +682,7 @@ $(document).ready(function() {
     // window.location = "/dashboard"
   })
 
-  function setInitialState () {
+  function setInitialState() {
     var _state = {}
     _state.validators = []
     _state.validatorsCount = {
@@ -1083,7 +1091,7 @@ function createBalanceChart(income) {
       type: 'datetime',
       range: 31 * 24 * 60 * 60 * 1000,
       labels: {
-        formatter: function(){
+        formatter: function() {
           var epoch = timeToEpoch(this.value)
           var orig = this.axis.defaultLabelFormatter.call(this)
           return `${orig}<br/>Epoch ${epoch}`

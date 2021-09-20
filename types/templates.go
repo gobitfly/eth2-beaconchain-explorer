@@ -55,6 +55,7 @@ type PageData struct {
 	IsUserClientUpdated   func(uint64) bool
 	Phase0                Phase0
 	Lang                  string
+	NoAds                 bool
 }
 
 // Meta is a struct to hold metadata about the page
@@ -145,6 +146,7 @@ type IndexPageData struct {
 	Mainnet                   bool                   `json:"-"`
 	DepositChart              *ChartsPageDataChart
 	DepositDistribution       *ChartsPageDataChart
+	Countdown                 interface{}
 }
 
 type IndexPageDataEpochs struct {
@@ -915,6 +917,7 @@ type MyCryptoSignature struct {
 type User struct {
 	UserID        uint64 `json:"user_id"`
 	Authenticated bool   `json:"authenticated"`
+	Subscription  string `json:"subscription"`
 }
 
 type UserSubscription struct {
@@ -925,6 +928,14 @@ type UserSubscription struct {
 	SubscriptionID *string `db:"subscription_id"`
 	PriceID        *string `db:"price_id"`
 	ApiKey         *string `db:"api_key"`
+}
+
+type UserPremiumSubscription struct {
+	UserID       uint64 `db:"user_id"`
+	Store        string `db:"store"`
+	Active       bool   `db:"active"`
+	Package      string `db:"product_id"`
+	RejectReason string `db:"reject_reason"`
 }
 
 type StripeSubscription struct {
@@ -954,6 +965,7 @@ type UserSettingsPageData struct {
 	CsrfField template.HTML
 	AuthData
 	Subscription        UserSubscription
+	Premium             UserPremiumSubscription
 	PairedDevices       []PairedDevice
 	Sapphire            *string
 	Emerald             *string
@@ -1004,9 +1016,23 @@ type ApiPricing struct {
 	Diamond      string
 }
 
+type MobilePricing struct {
+	FlashMessage         string
+	User                 *User
+	CsrfField            template.HTML
+	RecaptchaKey         string
+	Subscription         UserSubscription
+	StripePK             string
+	Plankton             string
+	Goldfish             string
+	Whale                string
+	ActiveMobileStoreSub bool
+}
+
 type StakeWithUsPageData struct {
 	FlashMessage string
 	RecaptchaKey string
+	NoAds        bool
 }
 type RateLimitError struct {
 	TimeLeft time.Duration

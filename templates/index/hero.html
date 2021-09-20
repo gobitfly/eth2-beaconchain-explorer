@@ -5,6 +5,14 @@
       <ul class="d-flex flex-column align-items-center"></ul>
       <span class="donate-btn"><img src="/img/gitcoin_logo.svg" style="width: auto; height: 30px;" /></span>
     </div>
+    {{ if .Countdown.Enabled }}
+    <div class="countdown fade-in-top shadow-sm d-none d-lg-flex flex-column justify-content-center align-items-start">
+        <h1 style="" class="text-dark-bold ml-3">{{ .Countdown.Title }}</h1>
+        <h3 class="pt-1 text-dark-bold countdown-epoch ml-3" style=""></h3>
+        <h3 class="pt-2 pb-1 text-dark-bold countdown-time ml-3" style=""></h3>
+        <span class="text-dark-bold ml-3">{{ .Countdown.Info }}</span>
+    </div>
+    {{ end }}
     <svg id="b1dfe96f-fe37-4185-8264-ce8c2a4cb4b9" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg"
       xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1073 741.95">
       <defs>
@@ -149,19 +157,75 @@
   <div class="hero-text">
     <div class="hero-text-background"></div>
     <h1 class="mt-4 text-center">Open Source Ethereum 2.0 Beacon Chain Explorer</h1>
-    <h5 class="text-center">{{.}}</h5>
+    <h5 class="text-center">{{.Subtitle}}</h5>
     <h6 class="text-center">
       <!-- <a href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter</a> | --> <a
-        href="https://beaconcha.in/mobile"><i class="fas fa-mobile-alt mr-2"></i>Mobile App</a> |
+        href="/mobile"><i class="fas fa-mobile-alt mr-2"></i>Mobile App</a> |
       <a href="https://gitcoin.co/grants/258/beaconchain-open-source-eth2-blockchain-explorer"><img class="mr-1 mb-1"
           height="16" src="/img/gitcoin_logo.svg" />Gitcoin Grant</a> | <a class="my-1" href="/advertisewithus"><i
           class="fas fa-ad mr-2"></i>Advertise</a>
     </h6>
   </div>
+  {{ if .Countdown.Enabled }}
+  <div class="d-flex d-lg-none justify-content-center w-100">
+    <div class="d-flex justify-content-center align-items-center" style="position: relative; top: 0px;">
+        <h1 style="font-size: 14px;" class="w-60 text-dark d-flex justify-content-center">{{ .Countdown.Title }}</h1>
+        <h3 class="w-40 text-dark ml-3 countdown-time d-flex justify-content-center" style="font-size: 14px;"></h3>
+    </div>
+  </div>
+  {{ end }}
 </div>
 
 <script src="/js/jquery.min.js"></script>
+<script src="/js/luxon.min.js"></script>
 <script src="/js/herofeed.js"></script>
+{{ if .Countdown.Enabled }}
+<script>
+  let c_epoch = {{$.CurrentEpoch}}, c_slot = {{$.CurrentSlot}}, t=12;
+  function updateCountdown() {
+    let time_diff = luxon.DateTime.fromMillis({{ .Countdown.Timestamp }}).diff(luxon.DateTime.local())
+    if (time_diff.milliseconds <= 0) {$(".countdown-time").html("00:00:00"); return}
+    time_diff = time_diff.toObject()
+    let time_left = luxon.Duration.fromObject(time_diff).toFormat('MM-dd hh:mm:ss').split(" ")
+    let date = time_left[0].split("-")
+    let m = "Month", d = "Day";
+    if (parseInt(date[0])>1) m+="s";
+    if (parseInt(date[1])>1) d+="s";
+    if (parseInt(date[0])<=0) {m=""; date[0]=""}
+    if (parseInt(date[1])<=0) {d=""; date[1]=""}
+    $(".countdown-time").html(`${date[0]} ${m} ${date[1]} ${d} ${time_left[1]}`)
+
+    if (t<=0){
+      fetch("/latestState")
+      .then(res=>res.json().then((data)=>{
+        c_epoch = data.currentEpoch;
+        c_slot = data.currentSlot;
+        t=12;
+      }))
+      t=60; // prevent sending too many requests 
+    }
+
+    let epoch_left = timeToEpoch({{ .Countdown.Timestamp }}) - c_epoch;
+    let slots_left = timeToSlot({{ .Countdown.Timestamp }}) - c_slot;
+    epoch_left = epoch_left<0?0:epoch_left;
+    slots_left = slots_left<0?0:slots_left;
+    $(".countdown-epoch").html(`${epoch_left} Epoch${epoch_left>1?"s":""} ${slots_left} Slot${slots_left>1?"s":""} left`);
+    //console.log(epoch_left, slots_left)
+    t=t-1;
+  }
+
+  $(document).ready(()=>{
+    updateCountdown()
+    requestAnimationFrame(()=>{
+      setInterval(() => {
+        if (document.hasFocus()) {
+            updateCountdown()
+        }
+      }, 1000)
+    })
+  })
+</script>
+{{ end }}
 {{ end }}
 
 <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag

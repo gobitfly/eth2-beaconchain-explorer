@@ -1,23 +1,23 @@
-{{ define "js"}}
+{{define "js"}}
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script>
         var validatorsDataTable;
         var stateFilterDropDownHtml = `<div><label>
-  <div class="dropdown" style="display:inline-block;">
-    <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>All {{.TotalCount}}</span></button>
-    <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-      <h6 class="dropdown-header"><span>Filter state</span> <span><span class="text-success">online</span> | <span class="text-danger">offline</span></span></h6>
-      <hr style="margin:0.5rem 0">
-      <a class="dropdown-item" href="#all" data-filter-validators="all"><span>All</span> <span>{{.TotalCount}}</span></a>
-      <a class="dropdown-item" href="#pending" data-filter-validators="pending"><span>Pending</span> <span>{{.PendingCount}}</span></a>
-      <a class="dropdown-item" href="#active" data-filter-validators="active"><span>Active</span><span> <span class="text-success">{{.ActiveOnlineCount}}</span> | <span class="text-danger">{{.ActiveOfflineCount}}</span></span></a>
-      <a class="dropdown-item" href="#slashing" data-filter-validators="slashing"><span>Slashing</span><span> <span class="text-success">{{.SlashingOnlineCount}}</span> | <span class="text-danger">{{.SlashingOfflineCount}}</span></span></a>
-      <a class="dropdown-item" href="#exiting" data-filter-validators="exiting"><span>Exiting</span><span> <span class="text-success">{{.ExitingOnlineCount}}</span> | <span class="text-danger">{{.ExitingOfflineCount}}</span></span></a>
-      <a class="dropdown-item" href="#exited" data-filter-validators="exited"><span>Exited</span> <span>{{.ExitedCount}}</span></a>
+    <div class="dropdown" style="display:inline-block;">
+        <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>All {{.TotalCount}}</span></button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+        <h6 class="dropdown-header"><span>Filter state</span> <span><span class="text-success">online</span> | <span class="text-danger">offline</span></span></h6>
+        <hr style="margin:0.5rem 0">
+        <a class="dropdown-item" href="#all" data-filter-validators="all"><span>All</span> <span>{{.TotalCount}}</span></a>
+        <a class="dropdown-item" href="#pending" data-filter-validators="pending"><span>Pending</span> <span>{{.PendingCount}}</span></a>
+        <a class="dropdown-item" href="#active" data-filter-validators="active"><span>Active</span><span> <span class="text-success">{{.ActiveOnlineCount}}</span> | <span class="text-danger">{{.ActiveOfflineCount}}</span></span></a>
+        <a class="dropdown-item" href="#slashing" data-filter-validators="slashing"><span>Slashing</span><span> <span class="text-success">{{.SlashingOnlineCount}}</span> | <span class="text-danger">{{.SlashingOfflineCount}}</span></span></a>
+        <a class="dropdown-item" href="#exiting" data-filter-validators="exiting"><span>Exiting</span><span> <span class="text-success">{{.ExitingOnlineCount}}</span> | <span class="text-danger">{{.ExitingOfflineCount}}</span></span></a>
+        <a class="dropdown-item" href="#exited" data-filter-validators="exited"><span>Exited</span> <span>{{.ExitedCount}}</span></a>
+        </div>
     </div>
-  </div>
-</label></div>`;
+    </label></div>`;
 
         function adaptTableToState(state) {
             $('.filter-by-status a.dropdown-item').removeClass('active');
@@ -55,7 +55,7 @@
             }
         }
 
-        $(document).ready(function () {
+        $(document).ready(function() {
             var state = 'all';
             var possibleStates = {
                 all: true,
@@ -90,11 +90,11 @@
                 dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" +
                     "<'row'<'col-sm-12'tr>>" +
                     "<'row'<'col-sm-12 col-md-5'l><'col-sm-12 col-md-7'p>>",
-                fnInitComplete: function () {
+                fnInitComplete: function() {
                     $('.filter-by-status')
                         .html(stateFilterDropDownHtml)
                         .find('[data-filter-validators]')
-                        .click(function () {
+                        .click(function() {
                             var f = $(this).data('filter-validators');
                             validatorsDataTable.ajax.url(`/validators/data?filterByState=${f}`);
                             validatorsDataTable.ajax.reload();
@@ -102,14 +102,14 @@
                         });
                     adaptTableToState(state)
                 },
-                preDrawCallback: function () {
+                preDrawCallback: function() {
                     // this does not always work.. not sure how to solve the staying tooltip
                     try {
                         $('#validators').find('[data-toggle="tooltip"]').tooltip('dispose')
                     } catch (e) {
                     }
                 },
-                drawCallback: function () {
+                drawCallback: function() {
                     $('#validators').find('[data-toggle="tooltip"]').tooltip();
                     validatorsDataTable.columns.adjust().responsive.recalc()
                 },
@@ -117,14 +117,20 @@
                     {
                         targets: 0,
                         data: '0',
-                        render: function (data, type, row, meta) {
-                            return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+                        createdCell: function(td, cellData, rowData, row, col) {
+                            $(td).css('display', 'flex');
+                            $(td).css('align-items', 'center');
+                            $(td).css('justify-content', 'space-between');
+                        },
+                        render: function(data, type, row, meta) {
+                            // return '<a href="/validator/' + data + '">0x' + data.substr(0, 8) + '...</a>'
+                            return `<a href="/validator/${data}">0x${data.substr(0, 8)}...</a><i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data}"></i>`
                         }
                     },
                     {
                         targets: 1,
                         data: '1',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             var title = data
                             if (row[9]) { // If a name for a validator is present display it alongside the index
                                 title = data + ' (<span class="text-truncate">' + row[9] + '</span>)'
@@ -135,14 +141,14 @@
                     {
                         targets: 2,
                         data: '2',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             return `${data[0]} (${data[1]})`
                         }
                     },
                     {
                         targets: 3,
                         data: '3',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             var d = data.split('_');
                             var s = d[0].charAt(0).toUpperCase() + d[0].slice(1);
                             if (d[1] === 'offline')
@@ -155,7 +161,7 @@
                     {
                         targets: 4,
                         data: '4',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             if (data === null || data[0] === 9223372036854775807)
                                 return '-';
                             return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
@@ -164,7 +170,7 @@
                     {
                         targets: 5,
                         data: '5',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             if (data === null)
                                 return '-';
                             return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
@@ -173,7 +179,7 @@
                     {
                         targets: 6,
                         data: '6',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             if (data === null)
                                 return '-';
                             return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/epoch/${data[0]}">Epoch ${addCommas(data[0])}</a>)</span>`
@@ -182,7 +188,7 @@
                     {
                         targets: 7,
                         data: '7',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             if (data === null)
                                 return 'No Attestation found';
                             return `<span data-toggle="tooltip" data-placement="top" title="${luxon.DateTime.fromMillis(data[1] * 1000).toFormat('ff')}">${luxon.DateTime.fromMillis(data[1] * 1000).toRelative({ style: "short"})} (<a href="/block/${data[0]}">Block ${addCommas(data[0])}</a>)</span>`
@@ -191,7 +197,7 @@
                     {
                         targets: 8,
                         data: '8',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             if (data === true) {
                                return `<span data-toggle="tooltip" data-placement="top" title="slashed" class="text-danger">true</span>`
                             }
@@ -200,7 +206,7 @@
                     },
                 ]
             })
-            $("#validators_filter > label > input").on('input', function (ev) {
+            $("#validators_filter > label > input").on('input', function(ev) {
                 if (ev && ev.target && ev.target.value) {
                     var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
                     window.history.replaceState(null, 'Validators Overview', newUrl)
@@ -210,7 +216,7 @@
             })
         })
     </script>
-{{end}} {{ define "css"}}
+{{end}} {{define "css"}}
     <link rel="stylesheet" type="text/css"
           href="/css//datatables.min.css"/>
     <style>
@@ -274,7 +280,7 @@
         }
     </style>
 {{end}}
-{{ define "content"}}
+{{define "content"}}
     {{with .Data}}
         <div class="container mt-2">
             <div class="my-3">

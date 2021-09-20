@@ -78,7 +78,7 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 
 	orderDir := q.Get("order[0][dir]")
 
-	depositCount, err := db.GetEth2DepositsCount()
+	depositCount, err := db.GetEth2DepositsCount(search)
 	if err != nil {
 		logger.Errorf("error retrieving eth2_deposit count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -100,6 +100,8 @@ func Eth2DepositsData(w http.ResponseWriter, r *http.Request) {
 			utils.FormatDepositAmount(d.Amount, currency),
 			utils.FormatHash(d.Withdrawalcredentials),
 			utils.FormatHash(d.Signature),
+			utils.FormatHash(d.Withdrawalcredentials, false),
+			utils.FormatHash(d.Signature, false),
 		}
 	}
 

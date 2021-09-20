@@ -332,6 +332,61 @@
                 <div class="tab-content h-100" id="dashTabContent">
                     <div id="account" class="tab-pane fade h-100 show active" role="tabpanel"
                         aria-labelledby="account-tab">
+                        <!-- Upgrade to premium -->
+                        <div class="card my-3">
+                            <div class="card-header justify-content-between d-flex align-items-center">
+                                <h3 class="h5">
+                                    <span>Beaconcha.in Premium</span> <span class="mx-1">|</span>
+                                    <span style="font-size: 80%;" class="font-weight-light">
+                                        {{if not .Premium.Active }}
+                                        Free Tier {{if and (.Premium.Store) (eq .Premium.RejectReason "")}}(waiting on payment){{end}}
+                                        {{else}}
+                                        {{if eq .Premium.Package "plankton"}} <strong style="color: #50c878; font-size: 1.1em">Plankton </strong>
+                                        {{else}}
+                                        {{if eq .Premium.Package "goldfish"}} <strong style="color: #d89a3e; font-size: 1.1em">Goldfish </strong>
+                                        {{else}}
+                                        {{if eq .Premium.Package "whale"}} <strong style="color: #44a1c5; font-size: 1.1em">Whale </strong> {{end}}
+    
+                                        {{end}}
+                                        {{end}}
+                                        {{end}}
+                                    </span>
+                                </h3>
+                                {{if and (eq .Premium.Store "stripe") (eq .Premium.RejectReason "" )}}
+                                <form class="manage-billing-form">
+                                    {{ .CsrfField }}
+                                    <button class="btn btn-outline-primary">Manage Subscription</button>
+                                </form>
+                                {{else}}
+                                    {{if or (not .Premium.Package) (not (eq .Premium.RejectReason "")) }}
+                                       <a href="/premium" class="btn btn-outline-primary">Get Premium</a>
+                                    {{else}}
+                                        {{if eq .Premium.Store "ios-appstore" }}
+                                            <span class="text-muted">via Apple</span>
+                                        {{else}}
+                                            <span class="text-muted">via Google</span>
+                                        {{end}}
+                                    {{end}}
+                                {{end}}
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center">
+
+                                    <div class="my-2">
+                                        <span class="text-muted" style="margin-left: 12px; margin-right: 12px;">
+                                            {{if not .Premium.Active }}
+                                            Premium features for your beaconcha.in explorer and <a href="/mobile">beaconcha.in mobile app</a> experience. No ads, support for more validators and more.
+                                            {{else}}
+                                            Your premium subscription is active. Thank you for supporting us! 
+                                            {{end}}
+                                        </span>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+
                         <!-- Update Email -->
                         <div class="card my-3">
                             <div class="card-header">
