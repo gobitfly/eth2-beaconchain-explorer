@@ -695,22 +695,24 @@
           lengthChange: false,
           ordering: false,
           pageLength: 10,
-          pagingType: 'input',
+          pagingType: 'simple',
           processing: true,
           responsive: true,
           searching: false,
           serverSide: true,
+          columnDefs: [
+            {
+              targets: '_all',
+                createdCell: function(td, cellData, rowData, row, col) {
+                  $(td).css('padding-top', '20px')
+                  $(td).css('padding-bottom', '20px')
+                }
+            },
+          ],
           drawCallback: function(settings) {
             formatTimestamps()
           }
         })
-
-        // TODO: fix
-        $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(1)').removeClass('col-md-5').removeClass('col-sm-12')
-        $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(2)').removeClass('col-md-7').removeClass('col-sm-12')
-        $('#validator-history-table_wrapper > div:nth-child(3)').addClass('justify-content-center')
-        $("#validator-history-table_paginate").attr('style', 'padding-right: 0 !important')
-        $("#validator-history-table_info").attr('style', 'padding-top: 0')
       })
     </script>
 	{{end}}
