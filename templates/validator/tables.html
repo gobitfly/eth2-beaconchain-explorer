@@ -451,7 +451,7 @@
         </div>
       {{end}}
     </div>
-    <div class="text-center my-4"><i class="fas fa-caret-down fa-3x text-muted"></i></div>
+    <hr />
     <div class="table-eth2 mx-2">
       <h2 class="mt-2 mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Eth2 Deposits</h2>
       {{if not .Deposits.Eth2Deposits}}
@@ -721,26 +721,26 @@
     <h2 class="mt-2 mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Income</h2>
     <table class="table table-borderless" style="margin-top: 0 !important;" width="100%">
       <tbody>
-        <tr style="font-size: 1.05rem; letter-spacing: 1px;">
-          <th scope="row" class="border-0">Day</th>
+        <tr>
+          <th scope="row" class="border-0" style="font-size: 1.05rem;">Day</th>
           <td class="border-0 text-right">{{formatIncome .Income1d $.Currency}}</td>
         </tr>
-        <tr style="font-size: 1.05rem; letter-spacing: 1px;">
-          <th scope="row" class="border-0">Week</th>
+        <tr>
+          <th scope="row" class="border-0" style="font-size: 1.05rem;">Week</th>
           <td class="border-0 text-right">{{formatIncome .Income7d $.Currency}}</td>
         </tr>
-        <tr style="font-size: 1.05rem; letter-spacing: 1px;">
-          <th scope="row" class="border-0">Month</th>
+        <tr>
+          <th scope="row" class="border-0" style="font-size: 1.05rem;">Month</th>
           <td class="border-0 text-right">{{formatIncome .Income31d $.Currency}}</td>
         </tr>
-        <tr style="font-size: 1.05rem; letter-spacing: 1px;">
-          <th scope="row" class="border-0">APR <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="fas fa-info-circle text-muted"></i></span></th>
+        <tr>
+          <th scope="row" class="border-0" style="font-size: 1.05rem;">APR <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="fas fa-info-circle text-muted"></i></span></th>
           <td class="border-0 text-right">
             <span class="{{if gtf .Apr 0}}text-success{{end}} {{if gtf  0 .Apr}}text-danger{{end}}"><b>{{.Apr | formatPercentage}}%</b></span>
           </td>
         </tr>
-        <tr style="font-size: 1.05rem; letter-spacing: 1px;">
-          <th scope="row" class="border-0">Eligible since</th>
+        <tr>
+          <th scope="row" class="border-0" style="font-size: 1.05rem;">Eligible since</th>
             <td class="border-0 text-right">
               {{if eq .ActivationEligibilityEpoch 9223372036854775807}}
                 -
@@ -749,11 +749,11 @@
               {{end}}
             </td>
         </tr>
-        <tr style="font-size: 1.05rem; letter-spacing: 1px;">
+        <tr>
           {{if gt .NetworkStats.CurrentEpoch .ActivationEpoch}}
-            <th scope="row" class="border-0">Active since</th>
+            <th scope="row" class="border-0" style="font-size: 1.05rem;">Active since</th>
           {{else}}
-            <th scope="row" class="border-0">Activation</th>
+            <th scope="row" class="border-0" style="font-size: 1.05rem;">Activation</th>
           {{end}}
           <td class="border-0 text-right">
             {{if eq .ActivationEpoch 9223372036854775807}}
@@ -766,8 +766,8 @@
           </td>
         </tr>
         {{if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0))}}
-					<tr style="font-size: 1.05rem; letter-spacing: 1px;">
-						<th scope="row" class="border-0">Exited since</th>
+					<tr>
+						<th scope="row" class="border-0" style="font-size: 1.05rem;">Exited since</th>
 						<td class="border-0 text-right">
 							<a href="/epoch/{{.ExitEpoch}}">
 								<span aria-ethereum-date="{{.ExitTs.Unix}}"></span>
@@ -776,7 +776,7 @@
 					</tr>
         {{end}}
         {{if not (eq .WithdrawableEpoch 9223372036854775807)}}
-        	<tr style="font-size: 1.05rem; letter-spacing: 1px;">
+        	<tr style="font-size: 1.05rem;">
             <th scope="row" class="border-0">Withdrawable</th>
              <td class="border-0 text-right">
               {{if gt .NetworkStats.CurrentEpoch .WithdrawableEpoch}}
