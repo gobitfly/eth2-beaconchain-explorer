@@ -193,7 +193,7 @@
 /* end validator lifecycle */
 
 /* responsive tabs for mobile screens (shows icons when tab is not selected and text when selected */
-@media screen and (max-width: 960px) {
+@media screen and (max-width: 1450px) {
   .validator__lifecycle-container {
     width: 80%;
   }
