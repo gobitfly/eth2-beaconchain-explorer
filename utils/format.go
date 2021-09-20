@@ -564,19 +564,19 @@ func FormatValidatorStatus(status string) template.HTML {
 	} else if status == "active_online" {
 		return `<span class="badge badge-pill badge-success font-weight-normal" style="font-size: 1rem;">Active<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "active_offline" {
-		return `<span data-toggle="tooltip" title="No attestation in the last 2 epochs" class="badge badge-pill badge-danger font-weight-normal" style="font-size: 1rem;">Active<i class="fas fa-power-off fa-sm ml-2"></i></span>`
+		return `<span data-toggle="tooltip" title="No attestation in the last 2 epochs" class="badge badge-pill badge-new-red font-weight-normal text-white" style="font-size: 1rem;">Active<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "exiting_online" {
 		return `<span class="badge badge-pill badge-success font-weight-normal" style="font-size: 1rem;">Exiting<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "exiting_offline" {
-		return `<span data-toggle="tooltip" title="No attestation in the last 2 epochs" class="badge badge-pill badge-danger font-weight-normal" style="font-size: 1rem;">Exiting<i class="fas fa-power-off fa-sm ml-2"></i></span>`
+		return `<span data-toggle="tooltip" title="No attestation in the last 2 epochs" class="badge badge-pill badge-new-red font-weight-normal text-white" style="font-size: 1rem;">Exiting<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "slashing_online" {
 		return `<span class="badge badge-pill badge-success font-weight-normal" style="font-size: 1rem;">Slashing<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "slashing_offline" {
-		return `<span data-toggle="tooltip" title="No attestation in the last 2 epochs" class="badge badge-pill badge-danger font-weight-normal" style="font-size: 1rem;">Slashing<i class="fas fa-power-off fa-sm ml-2"></i></span>`
+		return `<span data-toggle="tooltip" title="No attestation in the last 2 epochs" class="badge badge-pill badge-new-red font-weight-normal text-white" style="font-size: 1rem;">Slashing<i class="fas fa-power-off fa-sm ml-2"></i></span>`
 	} else if status == "exited" {
-		return `<span class="badge badge-pill badge-danger font-weight-normal" style="font-size: 1rem;">Exited</span>`
+		return `<span class="badge badge-pill badge-new-red font-weight-normal text-white" style="font-size: 1rem;">Exited</span>`
 	} else if status == "slashed" {
-		return `<span class="badge badge-pill badge-danger font-weight-normal" style="font-size: 1rem;">Slashed</span>`
+		return `<span class="badge badge-pill badge-new-red font-weight-normal text-white" style="font-size: 1rem;">Slashed</span>`
 	}
 	return `<span class="badge badge-pill badge-secondary font-weight-normal text-white" style="font-size: 1rem;">Unknown</span>`
 }
