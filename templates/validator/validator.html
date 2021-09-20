@@ -235,15 +235,15 @@
 
 											<tr>
 												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node RPL Stake</th>
-												<td class="border-0">{{.Rocketpool.NodeRPLStake / (1000000000000000000)}} ETH</td>
+												<td class="border-0">{{.formatWeiToEth .Rocketpool.NodeRPLStake}} ETH</td>
 											</tr>
 											<tr>
 												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Min RPL Stake</th>
-												<td class="border-0">{{.Rocketpool.NodeMinRPLStake / (1000000000000000000)}} ETH</td>
+												<td class="border-0">{{.formatWeiToEth .Rocketpool.NodeMinRPLStake}} ETH</td>
 											</tr>
 											<tr>
 												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Max RPL Stake</th>
-												<td class="border-0">{{.Rocketpool.NodeMaxRPLStake / (1000000000000000000)}} ETH</td>
+												<td class="border-0">{{.formatWeiToEth .Rocketpool.NodeMaxRPLStake}} ETH</td>
 											</tr>
 
 

@@ -799,3 +799,7 @@ func KFormatterEthPrice(price uint64) string {
 	}
 	return fmt.Sprint(price)
 }
+
+func FormatWeiToEth(no uint64) float64 {
+	return float64(no) / math.Pow(float64(10), float64(18))
+}
