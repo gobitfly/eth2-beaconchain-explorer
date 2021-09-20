@@ -21,6 +21,16 @@
 			setupDashboardButtons({{.Index }} + '')
 		</script>
   {{end}}
+	<script>
+		$('.income-chart-btn').on('click', () => {
+			$('#incomeChart').removeClass('d-none')
+			$('#proposedChart').addClass('d-none')
+		})
+		$('.proposed-chart-btn').on('click', () => {
+			$('#incomeChart').addClass('d-none')
+			$('#proposedChart').removeClass('d-none')
+		})
+	</script>
 {{end}}
 
 {{define "css"}}
@@ -125,15 +135,9 @@
 					<div class="div border w-100 h-100 p-2" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
 						<ul class="nav nav-tabs" id="chartTabs" role="tablist">
 							<li class="nav-item">
-								<a class="nav-link active" id="incomeChart-tab" data-toggle="tab" href="#incomeChart" role="tab" aria-controls="incomeChart-tab-content" aria-selected="true">
-									<i class="tab-icon mr-md-2 fas fa-chart-line"></i>
-									<span class="tab-text">Income</span>
-								</a>
-							</li>
-							<li class="nav-item">
-								<a class="nav-link {{if eq .BlocksCount 0}}disabled{{end}}" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart-tab-content" aria-selected="false">
+								<a class="nav-link" id="charts-tab" data-toggle="tab" href="#charts" role="tab" aria-controls="charts-tab-content" aria-selected="false">
 									<i class="tab-icon mr-md-2 fas fa-chart-bar"></i>
-									<span class="tab-text">Proposals</span>
+									<span class="tab-text">Charts</span>
 								</a>
 							</li>
 							<li class="nav-item">
@@ -162,11 +166,17 @@
 							</li>
 						</ul>
 						<div class="tab-content w-100 h-100" id="myTabContent">
-							<div id="incomeChart" class="tab-pane fade w-100 h-100 show active" role="tabpanel" aria-labelledby="incomeChart-tab">
-								{{template "validatorIncomeChart" $}}
-							</div>
-							<div id="proposedChart" class="tab-pane fade w-100 h-100" role="tabpanel" aria-labelledby="proposedChart-tab">
-								{{template "validatorProposedChart" .}}
+							<div id="charts" class="tab-pane fade w-100 h-100 show active" role="tabpanel" aria-labelledby="charts-tab">
+								<div class="btn-group mt-2 charts-btn-group" role="group" aria-label="Charts buttons group">
+									<button type="button" class="btn btn-outline-secondary btn-sm income-chart-btn">Income</button>
+									<button type="button" class="btn btn-outline-secondary btn-sm proposed-chart-btn">Proposals</button>
+								</div>
+								<div id="incomeChart" class="w-100 h-100" aria-labelledby="incomeChart-tab">
+									{{template "validatorIncomeChart" $}}
+								</div>
+								<div id="proposedChart" class="w-100 h-100 d-none" aria-labelledby="proposedChart-tab">
+									{{template "validatorProposedChart" .}}
+								</div>
 							</div>
 							{{if gt .BlocksCount 0}}
 								<div class="tab-pane fade w-100 h-100" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">

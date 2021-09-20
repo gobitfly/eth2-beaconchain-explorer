@@ -148,11 +148,23 @@
             {
               targets: 5,
               data: '5',
-              orderable: false
+              orderable: false,
+              render: function(data, type, row, meta) {
+                if (data === '-') {
+                  return 'N/A'
+                }
+                return data
+              }
             },
             {
               targets: 6,
-              data: '6'
+              data: '6',
+              render: function(data, type, row, meta) {
+                if (data === '-') {
+                  return 'N/A'
+                }
+                return data
+              }
             }
           ],
           drawCallback: function(settings) {
