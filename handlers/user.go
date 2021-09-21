@@ -303,12 +303,12 @@ func getUserMetrics(userId uint64) (interface{}, error) {
 	}{}
 	net := strings.ToLower(utils.GetNetwork())
 	err := db.FrontendDB.Get(&metricsdb, `
-		SELECT COUNT(user_id) as validators,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS') AS notifications,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS' AND event_name=$2) AS attestations_missed,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS' AND event_name=$3) AS proposals_missed,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '7 DAYS' AND event_name=$4) AS proposals_submitted
-		FROM users_validators_tags  
+		SELECT COUNT(uvt.user_id) as validators,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND COUNT(uvt.user_id)>0) AS notifications,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND event_name=$2 AND COUNT(uvt.user_id)>0) AS attestations_missed,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND event_name=$3 AND COUNT(uvt.user_id)>0) AS proposals_missed,
+		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND event_name=$4 AND COUNT(uvt.user_id)>0) AS proposals_submitted
+		FROM users_validators_tags  uvt
 		WHERE user_id=$1;
 		`, userId, net+":"+string(types.ValidatorMissedAttestationEventName),
 		net+":"+string(types.ValidatorMissedProposalEventName),
@@ -552,7 +552,6 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 	net := strings.ToLower(utils.GetNetwork())
 	pqPubkeys := pq.Array(reqData.Pubkeys)
 	pqEventNames := pq.Array([]string{net + ":" + string(types.ValidatorMissedAttestationEventName),
-		net + ":" + string(types.ValidatorBalanceDecreasedEventName),
 		net + ":" + string(types.ValidatorMissedProposalEventName),
 		net + ":" + string(types.ValidatorExecutedProposalEventName),
 		net + ":" + string(types.ValidatorGotSlashedEventName)})
