@@ -1,5 +1,7 @@
 var csrfToken = ""
-const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_balance_decreased', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed']
+
+const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed']
+
 const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
 
 function create_typeahead(input_container) {
@@ -449,9 +451,6 @@ function loadValidatorsData(data) {
                 hasItems = true
                 let badgeColor = ""
                 switch (n) {
-                  case 'validator_balance_decreased':
-                    badgeColor = 'badge-light'
-                    break
                   case 'validator_attestation_missed':
                     badgeColor = 'badge-warning'
                     break
