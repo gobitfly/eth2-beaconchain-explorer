@@ -48,6 +48,10 @@
               }
           },
           {
+            targets: 0,
+            className: 'first-col'
+          },
+          {
             targets: 1,
             data: '1',
             orderable: false
@@ -69,6 +73,11 @@
             orderable: false
           }
         ],
+        initComplete: function(settings, json) {
+          $('#blocks-table .first-col a').on('click', function(e) {
+            e.stopPropagation()
+          })
+        },
         drawCallback: function(settings) {
           formatTimestamps()
         }
