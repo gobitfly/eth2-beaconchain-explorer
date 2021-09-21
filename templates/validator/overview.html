@@ -128,8 +128,8 @@
           <span class="font-weight-light text-muted mr-1">Rank Position </span><span class="h5 font-weight-bold text-nowrap">{{if gtf .RankPercentage 0.0}}{{if gtf .RankPercentage 0.001}}{{formatPercentageWithGPrecision .RankPercentage 3}}%{{else}}Top 0.1%{{end}}{{else}}{{end}}</span>
         </div>
         <div class="my-2 my-md-0">
-          <span class="font-weight-light text-muted mr-1">Balance </span><span class="font-weight-bold text-nowrap" style="font-size: 1.4rem; letter-spacing: .5px;">{{formatCurrentBalance .CurrentBalance $.Currency}}</span>
-          <span class="d-block">{{formatEffectiveBalance .EffectiveBalance "ETH"}} <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"><a href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i class="fas fa-info-circle no-highlight"></i></a></span></span>
+          <span class="d-block d-sm-inline font-weight-light text-muted mr-1">Balance </span><span class="h5 font-weight-bold text-nowrap">{{formatCurrentBalance .CurrentBalance $.Currency}}</span>
+          <span class="d-block text-sm-right">{{formatEffectiveBalance .EffectiveBalance "ETH"}} <span data-toggle="tooltip" title="The effective balance is used to calculate the base rewards of a validator"><a href="https://kb.beaconcha.in/glossary#current-balance-and-effective-balance"><i class="fas fa-info-circle no-highlight"></i></a></span></span>
         </div>
         {{if gtf .AttestationInclusionEffectiveness 0}}
           <div class="my-2 my-md-0">
