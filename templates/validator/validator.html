@@ -164,12 +164,14 @@
 									<span class="tab-text">Deposits</span>
 								</a>
 							</li>
-							<li class="nav-item">
-								<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#rocketpool" role="tab" aria-controls="deposits" aria-selected="false">
-									<i class="tab-icon mr-md-2 fas fa-rocket"></i>
-									<span class="tab-text">Rocketpool</span>
-								</a>
-							</li>
+							{{if .IsRocketpool}}
+								<li class="nav-item">
+									<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#rocketpool" role="tab" aria-controls="deposits" aria-selected="false">
+										<i class="tab-icon mr-md-2 fas fa-rocket"></i>
+										<span class="tab-text">Rocketpool</span>
+									</a>
+								</li>
+							{{end}}
 						</ul>
 						<div class="tab-content w-100 h-100" id="myTabContent">
 							<div id="charts" class="tab-pane fade w-100 h-100 show active" role="tabpanel" aria-labelledby="charts-tab">
