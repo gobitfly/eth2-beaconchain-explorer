@@ -1112,6 +1112,7 @@ type PremiumUser struct {
 
 func getUserPremium(r *http.Request) PremiumUser {
 	var pkg string = ""
+
 	if IsMobileAuth(r) {
 		claims := getAuthClaims(r)
 		if claims != nil {

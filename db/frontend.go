@@ -363,6 +363,7 @@ func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 	return data, err
 }
 
+
 func DisableAllSubscriptionsFromStripeUser(stripeCustomerID string) error {
 	userID, err := StripeGetCustomerUserId(stripeCustomerID)
 	if err != nil {
