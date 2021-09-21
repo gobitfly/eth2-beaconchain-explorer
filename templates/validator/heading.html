@@ -51,6 +51,8 @@
       <h3 style="font-size: 1.05rem;" class="mb-0 mr-1 font-weight-light text-monospace text-secondary text-truncate text-sm" id="copy-input">0x{{printf "%x" .PublicKey}}</h3>
       <i class="fa fa-copy fa-lg text-muted" role="button" id="copy-button" data-toggle="tooltip" title="Copy public key to clipboard" data-clipboard-text="0x{{printf "%x" .PublicKey}}" style="padding: .5rem;"></i>
     </div>
-    <div><span style="font-size: 1.05rem;" class="mr-2 font-weight-light text-muted">Tags: </span>{{if .Tags}} {{formatValidatorTags .Tags}} {{end}}</div>
+    {{if .Tags}}
+      <div><span style="font-size: 1.05rem;" class="mr-2 font-weight-light text-muted">Tags: </span>{{formatValidatorTags .Tags}}</div>
+    {{end}}
   </div>
 {{end}}
