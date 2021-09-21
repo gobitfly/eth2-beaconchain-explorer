@@ -528,7 +528,7 @@ func FormatPercentageWithGPrecision(percentage float64, precision int) string {
 func FormatPublicKey(validator []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(validator))
 	// return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
-	return template.HTML(fmt.Sprintf(`<i class="fas fa-male"></i> <a style="font-family: 'Roboto Mono'" href="/validator/0x%x">0x%v…</a>%v`, validator, hex.EncodeToString(validator)[:6], copyBtn))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/validator/0x%x">0x%v…</a>%v`, validator, hex.EncodeToString(validator)[:6], copyBtn))
 }
 
 func FormatMachineName(machineName string) template.HTML {
@@ -735,9 +735,9 @@ func FormatSlashedValidatorsWithName(validators []uint64, nameMap map[uint64]str
 // FormatYesNo will return yes or no formated as html
 func FormatYesNo(yes bool) template.HTML {
 	if yes {
-		return `<span class="badge bg-success text-white">Yes</span>`
+		return `<span class="badge badge-pill bg-success font-weight-normal text-white" style="font-size: .82rem;">Yes</span>`
 	}
-	return `<span class="badge bg-warning text-dark">No</span>`
+	return `<span class="badge badge-pill bg-warning font-weight-normal text-dark" style="font-size: .82rem;">No</span>`
 }
 
 func FormatValidatorName(name string) template.HTML {
