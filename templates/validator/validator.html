@@ -234,7 +234,8 @@
 											</tr>
 											<tr>
 												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node RPL Stake</th>
-												<td class="border-0">{{.Rocketpool.NodeRPLStake}}</td>
+												<!-- <td class="border-0">{{.Rocketpool.NodeRPLStake}}</td> -->
+												<td class="border-0">{{(div .Rocketpool.NodeRPLStake 1000000000) | FormatBalance}} ETH</td>
 											</tr>
 											<tr>
 												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Min RPL Stake</th>
