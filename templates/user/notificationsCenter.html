@@ -51,7 +51,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="notifications">{{.Metrics.Notifications}}</span>
-						<span class="metric-description">notifications <span class="d-block">in <span class="d-inline d-lg-none d-xl-inline">the</span> past 7 days</span></span>
+						<span class="metric-description">notifications <span class="d-block">in <span class="d-inline d-lg-none d-xl-inline">the</span> past month</span></span>
 					</div>
 				</div>
 			</div>
@@ -62,7 +62,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="attestationsMissed">{{.Metrics.AttestationsMissed}}</span>
-						<span class="metric-description">att<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">estations</span> missed <span class="d-block">in <span class="d-none d-xl-inline">the</span> past 7 days</span></span>
+						<span class="metric-description">att<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">estations</span> missed <span class="d-block">in <span class="d-none d-xl-inline">the</span> past month</span></span>
 					</div>
 				</div>
 			</div>
@@ -73,7 +73,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsSubmitted">{{.Metrics.ProposalsSubmitted}}</span>
-						<span class="metric-description">proposals <span class="d-block">in <span class="d-none d-xl-inline">the</span> past 7 days</span></span>
+						<span class="metric-description">proposals <span class="d-block">in <span class="d-none d-xl-inline">the</span> past month</span></span>
 					</div>
 				</div>
 			</div>
@@ -84,7 +84,7 @@
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsMissed">{{.Metrics.ProposalsMissed}}</span>
-						<span class="metric-description">prop<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">osals</span> missed <span class="d-block">in <span class="d-none d-xl-inline">the</span> past 7 days</span></span>
+						<span class="metric-description">prop<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">osals</span> missed <span class="d-block">in <span class="d-none d-xl-inline">the</span> past month</span></span>
 					</div>
 				</div>
 			</div>
@@ -324,12 +324,6 @@
 							<input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="">
 							<!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
 						</div>
-						<div class="form-check form-check-inline w-100 my-2" id="manage_validator_balance_decreased">
-							<label class="form-check-label mr-auto font-weight-normal">Balance decrease</label>
-							<!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-							<input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="">
-							<!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-						</div>
 						<div class="form-check form-check-inline w-100 my-2" id="manage_validator_proposal_missed">
 							<label class="form-check-label mr-auto font-weight-normal">Proposals missed</label>
 							<!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
@@ -387,12 +381,6 @@
 						</div>
 						<div class="form-check form-check-inline w-100 my-2" id="validator_attestation_missed">
 							<label class="form-check-label mr-auto font-weight-normal">Attestations missed</label>
-							<!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
-							<input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="">
-							<!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
-						</div>
-						<div class="form-check form-check-inline w-100 my-2" id="validator_balance_decreased">
-							<label class="form-check-label mr-auto font-weight-normal">Balance decrease</label>
 							<!--<input class="form-check-input checkbox-custom-size mr-4" type="checkbox" id="push" value="">-->
 							<input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="email" value="">
 							<!--<input class="form-check-input checkbox-custom-size mr-2" type="checkbox" id="web" value="">-->
