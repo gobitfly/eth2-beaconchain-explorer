@@ -180,6 +180,50 @@
 										{{template "validatorDepositsTable" $}}
 									</div>
 								</div>
+								{{if .IsRocketpool}}
+								<div class="tab-pane fade w-100 h-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
+									<table class="table table-borderless" width="100%">
+										<tbody>
+											<tr>
+												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Address</th>
+												<td class="border-0">{{formatEth1Address .Rocketpool.MinipoolAddress}}</td>
+											</tr>
+											<tr>
+												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Fee</th>
+												<td class="border-0">{{.Rocketpool.MinipoolNodeFee}}</td>
+											</tr>
+											<tr>
+												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Deposit Type</th>
+												<td class="border-0"><span class="badge badge-pill badge-light font-weight-normal" style="font-size: .82rem;">{{.Rocketpool.MinipoolDepositType}}</span></td>
+											</tr>
+											<tr>
+												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Status</th>
+												<td class="border-0"><span class="badge badge-pill badge-light font-weight-normal" style="font-size: .82rem;">{{.Rocketpool.MinipoolStatus}}</span></td>
+											</tr>
+											<tr>
+												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Address</th>
+												<td class="border-0">{{formatEth1Address .Rocketpool.NodeAddress}}</td>
+											</tr>
+											<tr>
+												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Timezone</th>
+												<td class="border-0">{{.Rocketpool.NodeTimezoneLocation}}</td>
+											</tr>
+											<tr>
+												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node RPL Stake</th>
+												<td class="border-0">{{formatWeiToEth .Rocketpool.NodeRPLStake}}</td>
+											</tr>
+											<tr>
+												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Min RPL Stake</th>
+												<td class="border-0">{{formatWeiToEth .Rocketpool.NodeMinRPLStake}}</td>
+											</tr>
+											<tr>
+												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Max RPL Stake</th>
+												<td class="border-0">{{formatWeiToEth .Rocketpool.NodeMaxRPLStake}}</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							{{end}}
 							</div>
 						</div>
 					</div>
