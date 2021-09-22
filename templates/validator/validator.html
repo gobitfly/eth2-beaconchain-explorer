@@ -131,13 +131,11 @@
 						<div class="card h-100 px-0 py-0 card-body">
 							<ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="chartTabs" role="tablist">
 								<li class="nav-item">
-									<a class="nav-link active" id="incomeChart-tab" data-toggle="tab" href="#incomeChart" role="tab" aria-controls="incomeChart-tab-content" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-chart-line"></i><span class="tab-text">Income</span></a>
+									<a class="nav-link active" id="charts-tab" data-toggle="tab" href="#charts" role="tab" aria-controls="charts-tab-content" aria-selected="false">
+										<i class="tab-icon mr-md-2 fas fa-chart-bar"></i>
+										<span class="tab-text">Charts</span>
+									</a>
 								</li>
-								<li class="nav-item">
-									<a class="nav-link {{if eq .BlocksCount 0}}disabled{{end}}" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart-tab-content" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-chart-bar"></i><span class="tab-text">Proposals</span></a>
-								</li>
-								<!-- Tables -->
-								
 								<li class="nav-item">
 									<a class="nav-link {{if eq .BlocksCount 0}}disabled{{end}}" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
 									aria-controls="blocks" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Blocks</span></a>
