@@ -19,6 +19,16 @@
 		<script>
             setupDashboardButtons({{.Index }}+'')
 		</script>
+		<script>
+			$('.income-chart-btn').on('click', () => {
+				$('#incomeChart').removeClass('d-none')
+				$('#proposedChart').addClass('d-none')
+			})
+			$('.proposed-chart-btn').on('click', () => {
+				$('#incomeChart').addClass('d-none')
+				$('#proposedChart').removeClass('d-none')
+			})
+		</script>
     {{end}}
 {{end}}
 
