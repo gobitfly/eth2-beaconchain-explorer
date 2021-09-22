@@ -610,7 +610,7 @@ func formatSpecialTag(tag string) string {
 			return formatPool(special_tag)
 		}
 	}
-	return fmt.Sprintf(`<span style="font-size: .82rem;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
+	return fmt.Sprintf(`<span style="font-size: 1rem;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
 }
 
 // FormatValidatorTag will return html formated text of a validator-tag.
@@ -619,9 +619,9 @@ func FormatValidatorTag(tag string) template.HTML {
 	var result string
 	switch tag {
 	case "rocketpool":
-		result = fmt.Sprintf(`<span style="background: yellow; font-size: .82rem;" class="badge-pill font-weight-normal text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
+		result = fmt.Sprintf(`<span style="background: yellow; font-size: 1rem;" class="badge-pill font-weight-normal text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
 	case "ssv":
-		result = fmt.Sprintf(`<span style="background: orange; font-size: .82rem;" class="badge-pill font-weight-normal text-dark mr-1" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
+		result = fmt.Sprintf(`<span style="background: orange; font-size: 1rem;" class="badge-pill font-weight-normal text-dark mr-1" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
 	default:
 		result = formatSpecialTag(tag)
 	}
@@ -797,4 +797,9 @@ func KFormatterEthPrice(price uint64) string {
 		return ethTruncPrice
 	}
 	return fmt.Sprint(price)
+}
+
+func FormatWeiToEth(num string) string {
+	floatNum, _ := strconv.ParseFloat(num, 64)
+	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " ETH"
 }

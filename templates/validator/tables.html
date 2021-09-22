@@ -53,23 +53,19 @@
           },
           {
             targets: 1,
-            data: '1',
             orderable: false
           },
           {
             targets: 3,
-            data: '3',
             orderable: false
           },
           {
             targets: 4,
-            data: '4',
             responsivePriority: 1,
             orderable: false
           },
           {
             targets: 7,
-            data: '7',
             orderable: false
           }
         ],
@@ -148,18 +144,19 @@
                 }
             },
             {
+              targets: 0,
+              className: 'first-col'
+            },
+            {
               targets: 1,
-              data: '1',
               orderable: false
             },
             {
               targets: 3,
-              data: '3',
               orderable: false
             },
             {
               targets: 5,
-              data: '5',
               orderable: false,
               render: function(data, type, row, meta) {
                 if (data === '-') {
@@ -170,7 +167,6 @@
             },
             {
               targets: 6,
-              data: '6',
               render: function(data, type, row, meta) {
                 if (data === '-') {
                   return 'N/A'
@@ -179,6 +175,11 @@
               }
             }
           ],
+          initComplete: function(settings, json) {
+            $('#attestations-table .first-col a').on('click', function(e) {
+              e.stopPropagation()
+            })
+          },
           drawCallback: function(settings) {
             formatTimestamps()
           }
@@ -239,7 +240,25 @@
         lengthChange: false,
         paging: false,
         responsive: true,
-        searching: false
+        searching: false,
+        columnDefs: [
+          {
+            targets: '_all',
+              createdCell: function(td, cellData, rowData, row, col) {
+                $(td).css('padding-top', '14px')
+                $(td).css('padding-bottom', '14px')
+              }
+          },
+          {
+            targets: 0,
+            className: 'first-col'
+          }
+        ],
+        initComplete: function(settings, json) {
+          $('#deposits-eth1-table .first-col a').on('click', function(e) {
+            e.stopPropagation()
+          })
+        }
       })
     })
 
@@ -252,7 +271,25 @@
         lengthChange: false,
         paging: false,
         responsive: true,
-        searching: false
+        searching: false,
+        columnDefs: [
+          {
+            targets: '_all',
+              createdCell: function(td, cellData, rowData, row, col) {
+                $(td).css('padding-top', '14px')
+                $(td).css('padding-bottom', '14px')
+              }
+          },
+          {
+            targets: 0,
+            className: 'first-col'
+          }
+        ],
+        initComplete: function(settings, json) {
+          $('#deposits-eth2-table .first-col a').on('click', function(e) {
+            e.stopPropagation()
+          })
+        }
       })
     })
   </script>
@@ -729,7 +766,16 @@
                   $(td).css('padding-bottom', '14px')
                 }
             },
+            {
+              targets: 0,
+              className: 'first-col'
+            },
           ],
+          initComplete: function(settings, json) {
+            $('#validator-history-table .first-col a').on('click', function(e) {
+              e.stopPropagation()
+            })
+          },
           drawCallback: function(settings) {
             formatTimestamps()
           }
@@ -799,8 +845,8 @@
 					</tr>
         {{end}}
         {{if not (eq .WithdrawableEpoch 9223372036854775807)}}
-        	<tr style="font-size: 1.05rem;">
-            <th scope="row" class="border-0">Withdrawable</th>
+        	<tr>
+            <th scope="row" class="border-0" style="font-size: 1.05rem;">Withdrawable</th>
              <td class="border-0 text-right">
               {{if gt .NetworkStats.CurrentEpoch .WithdrawableEpoch}}
               	<a href="/epoch/{{.WithdrawableEpoch}}">
@@ -824,23 +870,23 @@
   <h2 class="mt-2 mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">{{firstCharToUpper .NetworkStats.NetworkName}} Statistics</h2>
   <table class="table table-borderless" style="margin-top: 0 !important;" width="100%">
     <tbody>
-      <tr style="font-size: 1.05rem; letter-spacing: 1px;">
-        <th scope="row">Active Validators</th>
+      <tr>
+        <th scope="row" style="font-size: 1.05rem;">Active Validators</th>
         <td>{{.NetworkStats.ActiveValidators}}</td>
       </tr>
-      <tr style="font-size: 1.05rem; letter-spacing: 1px;">
-        <th scope="row">Pending Validators</th>
+      <tr>
+        <th scope="row" style="font-size: 1.05rem;">Pending Validators</th>
         <td>
 					<span data-toggle="tooltip" data-placement="top" title="Entering">{{.NetworkStats.EnteringValidators}}</span>/
           <span data-toggle="tooltip" data-placement="top" title="Exiting">{{.NetworkStats.ExitingValidators}}</span>
 				</td>
       </tr>
-      <tr style="font-size: 1.05rem; letter-spacing: 1px;">
-        <th scope="row">Staked Ether</th>
+      <tr>
+        <th scope="row" style="font-size: 1.05rem;">Staked Ether</th>
         <td>{{.NetworkStats.StakedEther}}</td>
       </tr>
-      <tr style="font-size: 1.05rem; letter-spacing: 1px;">
-        <th scope="row">Average Balance</th>
+      <tr>
+        <th scope="row" style="font-size: 1.05rem;">Average Balance</th>
         <td>{{.NetworkStats.AverageBalance}}</td>
       </tr>
     </tbody>

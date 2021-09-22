@@ -75,7 +75,7 @@
 		}
 		table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, 
 		table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
-  		top: 1.15rem !important;
+  		top: 1.35rem !important;
   		background-color: transparent !important;
   		box-shadow: none !important;
   		line-height: 1.1rem !important;
@@ -234,18 +234,15 @@
 											</tr>
 											<tr>
 												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node RPL Stake</th>
-												<!-- <td class="border-0">{{.Rocketpool.NodeRPLStake}}</td> -->
-												<td class="border-0">{{(div .Rocketpool.NodeRPLStake 1000000000) | .formatBalance}}</td>
+												<td class="border-0">{{formatWeiToEth .Rocketpool.NodeRPLStake}}</td>
 											</tr>
 											<tr>
 												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Min RPL Stake</th>
-												<!-- <td class="border-0">{{.Rocketpool.NodeMinRPLStake}}</td> -->
-												<td class="border-0">{{(div .Rocketpool.NodeMinRPLStake 1000000000) | .formatBalance}}</td>
+												<td class="border-0">{{formatWeiToEth .Rocketpool.NodeMinRPLStake}}</td>
 											</tr>
 											<tr>
 												<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Max RPL Stake</th>
-												<!-- <td class="border-0">{{.Rocketpool.NodeMaxRPLStake}}</td> -->
-												<td class="border-0">{{(div .Rocketpool.NodeMaxRPLStake 1000000000) | .formatBalance}}</td>
+												<td class="border-0">{{formatWeiToEth .Rocketpool.NodeMaxRPLStake}}</td>
 											</tr>
 										</tbody>
 									</table>

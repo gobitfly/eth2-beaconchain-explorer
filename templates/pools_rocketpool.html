@@ -29,27 +29,39 @@
                     }
                 },
                 {
+                    targets: 0,
+                    className: 'first-col'
+                },
+                {
                     targets: 3,
-                    data: '3',
                     render: function(data, type, row, meta) {
                         return data.toFixed(2)
                     }
                 },
                 {
                     targets: 4,
-                    data: '4',
                     render: function(data, type, row, meta) {
                         return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
                 },
                 {
                     targets: 5,
-                    data: '5',
                     render: function(data, type, row, meta) {
+                        if (data === 'Initialized') {
+                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
+                        if (data === 'Dissolved') {
+                            return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
                         return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
                 }
             ],
+            initComplete: function(settings, json) {
+                $('#minipools .first-col a').on('click', function(e) {
+                    e.stopPropagation()
+                })
+            },
             preDrawCallback: function() {
                 // this does not always work... not sure how to solve the staying tooltip
                 try {
@@ -85,10 +97,13 @@
                         $(td).css('padding-top', '20px')
                         $(td).css('padding-bottom', '20px')
                     }
-                }, 
+                },
+                {
+                    targets: 0,
+                    className: 'first-col'
+                },
                 {
                     targets: 1,
-                    data: '1',
                     render: function(data, type, row, meta) {
                         if (data === 'Hidden/Hidden') {
                             return 'Hidden'
@@ -98,7 +113,6 @@
                 },
                 {
                     targets: 2,
-                    data: '2',
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
                             return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
@@ -108,7 +122,6 @@
                 },
                 {
                     targets: 3,
-                    data: '3',
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
                             return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
@@ -118,7 +131,6 @@
                 },
                 {
                     targets: 4,
-                    data: '4',
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
                             return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
@@ -127,6 +139,11 @@
                     }
                 }
             ],
+            initComplete: function(settings, json) {
+                $('#nodes .first-col a').on('click', function(e) {
+                    e.stopPropagation()
+                })
+            },
             preDrawCallback: function() {
                 // this does not always work... not sure how to solve the staying tooltip
                 try {
@@ -162,10 +179,13 @@
                         $(td).css('padding-top', '20px')
                         $(td).css('padding-bottom', '20px')
                     }
-                }, 
+                },
+                {
+                    targets: 0,
+                    className: 'first-col'
+                },
                 {
                     targets: 2,
-                    data: '2',
                     render: function(data, type, row, meta) {
                         if (data.startsWith('http')) {
                             return `<span class="d-block text-wrap" style="max-width: 300px;"><a href=${data} target="_blank">${data}</a></span>`
@@ -175,21 +195,18 @@
                 },
                 {
                     targets: 3,
-                    data: '3',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
                     }
                 },
                 {
                     targets: 4,
-                    data: '4',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
                     }
                 },
                 {
                     targets: 5,
-                    data: '5',
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
                             return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
@@ -199,12 +216,16 @@
                 },
                 {
                     targets: 5,
-                    data: '5',
                     render: function(data, type, row, meta) {
                         return data
                     }
                 }
             ],
+            initComplete: function(settings, json) {
+                $('#dao_members .first-col a').on('click', function(e) {
+                    e.stopPropagation()
+                })
+            },
             preDrawCallback: function() {
                 // this does not always work... not sure how to solve the staying tooltip
                 try {
@@ -243,79 +264,56 @@
                 },
                 {
                     targets: 0,
-                    data: '0',
-                    responsivePriority: 3,
-                    render: function(data, type, row, meta) {
-                        return data
-                    }
+                    responsivePriority: 3
                 },
                 {
                     targets: 1,
-                    data: '1',
-                    responsivePriority: 2,
-                    render: function(data, type, row, meta) {
-                        return data
-                    }
+                    responsivePriority: 2
                 },
                 {
                     targets: 3,
-                    data: '3',
                     render: function(data, type, row, meta) {
                         return `<span class="d-block text-wrap" style="max-width: 400px; line-height: 1.4rem; letter-spacing: .05rem;">${data}</span>`
                     }
                 },
                 {
                     targets: 4,
-                    data: '4',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
                     }
                 },
                 {
                     targets: 5,
-                    data: '5',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
                     }
                 },
                 {
                     targets: 6,
-                    data: '6',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
                     }
                 },
                 {
                     targets: 7,
-                    data: '7',
                     render: function(data, type, row, meta) {
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
                     }
                 },
                 {
-                    targets: 8,
-                    data: '8',
-                    render: function(data, type, row, meta) {
-                        return data
-                    }
-                },
-                {
                     targets: 9,
-                    data: '9',
                     render: function(data, type, row, meta) {
                         return `<span class="d-flex align-items-center">${data}<i class="fas fa-thumbs-up ml-2 text-muted"></i></span>`
                     }
                 },
                 {
                     targets: 10,
-                    data: '10',
                     render: function(data, type, row, meta) {
                         return `<span class="d-flex align-items-center">${data}<i class="fas fa-thumbs-down ml-2 text-muted"></i></span>`
                     }
                 },
                 {
                     targets: 11,
-                    data: '11',
                     render: function(data, type, row, meta) {
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
@@ -325,7 +323,6 @@
                 },
                 {
                     targets: 12,
-                    data: '12',
                     render: function(data, type, row, meta) {
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
@@ -335,7 +332,6 @@
                 },
                 {
                     targets: 13,
-                    data: '13',
                     render: function(data, type, row, meta) {
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
@@ -345,8 +341,7 @@
                 },
                 {
                     targets: 14,
-                    data: '14',
-                    responsivePriority: 1,
+                    responsivePriority: 2,
                     render: function(data, type, row, meta) {
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
@@ -356,16 +351,18 @@
                 },
                 {
                     targets: 15,
-                    data: '15',
-                    responsivePriority: 1,
-                    render: function(data, type, row, meta) {
-                        return data
-                    }
+                    responsivePriority: 1
                 },
                 {
                     targets: 16,
-                    data: '16',
+                    responsivePriority: 1,
                     render: function(data, type, row, meta) {
+                        if (data === 'Executed') {
+                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
+                        if (data === 'Cancelled') {
+                            return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
                         return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
                 }
@@ -412,7 +409,7 @@
         }
         table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, 
         table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
-            top: 1.6rem !important;
+            top: 1.8rem !important;
             background-color: transparent !important;
             box-shadow: none !important;
             line-height: 1.1rem !important;
