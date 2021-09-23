@@ -451,6 +451,39 @@ func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type valEvent struct {
+	Event string `json:"event"`
+	Email bool   `json:"email"`
+	Push  bool   `json:"push"`
+	Web   bool   `json:"web"`
+}
+
+func addValidatorAndSubscribe(user_id uint64, pubkey string, events []valEvent, w http.ResponseWriter, r *http.Request) bool {
+	err := db.AddToWatchlist([]db.WatchlistEntry{{UserId: user_id, Validator_publickey: pubkey}}, utils.GetNetwork())
+	if err != nil {
+		logger.Errorf("error adding to watchlist: %v", err)
+		return false
+	}
+
+	result := true
+	m := map[string]bool{}
+	for _, item := range events {
+		if item.Email {
+			if m[item.Event] && pubkey == "" {
+				continue
+			}
+
+			result = result && internUserNotificationsSubscribe(item.Event, pubkey, 0, w, r)
+			m[item.Event] = true
+			if !result {
+				break
+			}
+		}
+	}
+
+	return result
+}
+
 func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
@@ -465,13 +498,8 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reqData := struct {
-		Pubkey string `json:"pubkey"`
-		Events []struct {
-			Event string `json:"event"`
-			Email bool   `json:"email"`
-			Push  bool   `json:"push"`
-			Web   bool   `json:"web"`
-		} `json:"events"`
+		Indices []uint64   `json:"indices"`
+		Events  []valEvent `json:"events"`
 	}{}
 
 	// pubkeys := make([]string, 0)
@@ -482,31 +510,25 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if reqData.Pubkey == "" {
-		logger.Errorf("error invalid pubkey: %v, %v", r.URL.String(), err)
+	if len(reqData.Indices) == 0 {
+		logger.Errorf("error invalid indices: %v, %v", r.URL.String(), err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	err = db.AddToWatchlist([]db.WatchlistEntry{{UserId: user.UserID, Validator_publickey: reqData.Pubkey}}, utils.GetNetwork())
+
+	pubkeys := []string{}
+	err = db.DB.Select(&pubkeys, `
+		SELECT pubkeyhex FROM validators WHERE validatorindex=ANY($1);
+		`, pq.Array(reqData.Indices))
 	if err != nil {
-		logger.Errorf("error adding to watchlist: %v, %v", r.URL.String(), err)
+		logger.Errorf("error retrieving pubkeys: %v", err)
+		http.Error(w, "Internal server error", 503)
 		return
 	}
 
 	result := true
-	m := map[string]bool{}
-	for _, item := range reqData.Events {
-		if item.Email {
-			if m[item.Event] && reqData.Pubkey == "" {
-				continue
-			}
-
-			result = result && internUserNotificationsSubscribe(item.Event, reqData.Pubkey, 0, w, r)
-			m[item.Event] = true
-			if !result {
-				break
-			}
-		}
+	for _, pk := range pubkeys {
+		result = addValidatorAndSubscribe(user.UserID, pk, reqData.Events, w, r)
 	}
 
 	if result {
