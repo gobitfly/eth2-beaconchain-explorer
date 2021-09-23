@@ -24,7 +24,7 @@
 					<li class="breadcrumb-item active" aria-current="page">Notifications</li>
 				</ol>
 			</nav>
-			<a href="/user/notifications">Old version</a>
+			<!-- <a href="/user/notifications">Old version</a> -->
 		</div>
 		<div class="row d-flex align-items-center justify-content-between mx-0 my-5 container-min-width heading-section">
 			<div class="col-12 col-md pl-0">
@@ -130,7 +130,7 @@
 						<h4 class="mt-2 heading-l3">Subscribe to events to receive notifications</h4>
 					</div>
 				{{else}}
-					<div class="px-0 px-md-3 py-1">
+					<div class="px-0 py-1">
 						<table class="table table-borderless table-hover" id="network-notifications">
 							<thead class="custom-table-head">
 								<tr>
@@ -174,8 +174,8 @@
 					<h4 class="mt-2 heading-l3">Start adding Validators and subscribe to events to receive notifications</h4>
 				</div>
 			{{else}}
-				<div class="mx-3 mb-3 pb-1 heading-l4">Hold down CTRL to select multiple rows in the table</div>
-				<div class="px-3 py-3">
+				<div class="mx-3 mb-3 pb-1 heading-l4">Hold down <kbd>Ctrl</kbd> to select multiple rows in the table</div>
+				<div style="margin: 0 -.25rem !important" class="px-0 py-3">
 					<table class="table table-borderless table-hover" id="validators-notifications">
 						<thead class="custom-table-head">
 							<tr>

@@ -727,10 +727,11 @@ $(document).ready(function() {
           )
         }
       } else {
-        $('#selected-validators-events-container').prev('span').text('No validators selected')
-        $('#selected-validators-events-container').html('<span>Select validators from the table. Hold down SHIFT ⇧ to select multiple rows.</span>')
+        $('#selected-validators-events-container').prev('span').text('ℹ️ No validators selected')
+        $('#selected-validators-events-container').html('<span>Select validators from the table. Hold down <kbd>Ctrl</kbd> to select multiple rows.</span>')
+        $('#update-subs-button').attr('disabled', '')
       }
-    }
+    }1234
   })
 
   // on modal close
