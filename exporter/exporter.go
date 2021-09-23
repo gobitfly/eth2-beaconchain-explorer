@@ -33,6 +33,9 @@ func Start(client rpc.Client) error {
 	if utils.Config.SSVExporter.Enabled {
 		go ssvExporter()
 	}
+	if utils.Config.RocketpoolExporter.Enabled {
+		go rocketpoolExporter()
+	}
 
 	if utils.Config.Indexer.PubKeyTagsExporter.Enabled {
 		go UpdatePubkeyTag()
