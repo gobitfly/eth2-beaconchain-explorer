@@ -156,6 +156,9 @@ div.dataTables_length {
   margin-left: .25rem;
   margin-right: .25rem;
 }
+.border .dataTables_scroll {
+  margin: 0 -0.25rem !important;
+}
 div.dataTables_scrollBody {
   background: none !important;
 }
@@ -335,6 +338,23 @@ div.dataTables_scrollBody table {
   }
   .custom-remove-modal-close { 
     right: -1rem;
+  }
+  div.dataTables_filter,
+  div.dataTables_filter label {
+    width: 100% !important;
+  }
+  div.dataTables_filter label {
+    padding: 0 1rem;
+  }
+  div.dataTables_filter {
+    /* margin: 0 .5rem !important; */
+  }
+  div.dataTables_filter input {
+    margin: 0 !important;
+    width: 100% !important;
+    height: 2.5rem;
+    font-size: 1.1rem;
+    /* padding: 1rem; */
   }
 }
 @media screen and (max-width: 640px) {
