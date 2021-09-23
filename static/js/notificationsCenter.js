@@ -1,8 +1,8 @@
 var csrfToken = ""
 const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed']
 const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
-const VALLIMIT = 100;
-var indices = [];
+const VALLIMIT = 100
+var indices = []
 
 function create_typeahead(input_container) {
   var bhValidators = new Bloodhound({
@@ -51,7 +51,7 @@ function create_typeahead(input_container) {
       source: bhValidators,
       display: 'index',
       templates: {
-        header: '<h5 class="font-weight-bold ml-3">Validators</h5>',
+        header: '<h5 class="font-weight-bold ml-3">Validators by Index</h5>',
         suggestion: function(data) {
           return `<div class="font-weight-normal text-truncate high-contrast">${data.index}</div>`
         }
@@ -63,10 +63,10 @@ function create_typeahead(input_container) {
       source: bhEth1Addresses,
       display: 'address',
       templates: {
-        header: '<h3>Validators by ETH1 Addresses</h3>',
+        header: '<h5 class="font-weight-bold ml-3">Validators by ETH1 Address</h5>',
         suggestion: function(data) {
-          var len = data.validator_indices.length > VALLIMIT ? VALLIMIT+'+' : data.validator_indices.length 
-          return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+          var len = data.validator_indices.length > VALLIMIT ? VALLIMIT + '+' : data.validator_indices.length 
+          return `<div class="font-weight-normal text-monospace high-contrast" style="display: flex;"><div class="text-truncate" style="flex: 1 1 auto;">${data.eth1_address}</div><div style="max-width: fit-content; white-space: nowrap;">${len}</div></div>`
         }
       }
     },
@@ -88,27 +88,24 @@ function create_typeahead(input_container) {
       $(this).trigger($.Event('keydown', { keyCode: 40 }))
     }
   })
-  // $(input_container).on('blur', function() {
-  //   $(input_container).typeahead('val', '')
-  // })
   $(input_container).on('input', function() {
     $('.tt-suggestion').first().addClass('tt-cursor')
   })
   $(input_container).on('typeahead:select', function(e, sug) {
-    console.log(sug)
+    // console.log(sug)
     $(input_container).typeahead('val', '')
     if (sug.eth1_address) {
-      indices = sug.validator_indices;
+      indices = sug.validator_indices
       $(input_container).typeahead('val', sug.eth1_address)
-      console.log(1)
-    } else if(sug.name){
-      indices = sug.validator_indices;
+      // console.log(1)
+    } else if (sug.name) {
+      indices = sug.validator_indices
       $(input_container).typeahead('val', $(sug.name).text())
-      console.log(2)
-    } else{
+      // console.log(2)
+    } else {
       indices = [parseInt(sug.index)]
       $(input_container).typeahead('val', sug.index)
-      console.log(3)
+      // console.log(3)
     }
     // $(input_container).attr('pk', sug.pubkey)
   })
