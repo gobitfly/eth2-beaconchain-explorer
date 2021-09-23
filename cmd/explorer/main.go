@@ -300,6 +300,11 @@ func main() {
 			router.HandleFunc("/pools", handlers.Pools).Methods("GET")
 			router.HandleFunc("/pools/streak/current", handlers.GetAvgCurrentStreak).Methods("GET")
 			router.HandleFunc("/pools/chart/income_per_eth", handlers.GetIncomePerEthChart).Methods("GET")
+			router.HandleFunc("/pools/rocketpool", handlers.PoolsRocketpool).Methods("GET")
+			router.HandleFunc("/pools/rocketpool/data/minipools", handlers.PoolsRocketpoolDataMinipools).Methods("GET")
+			router.HandleFunc("/pools/rocketpool/data/nodes", handlers.PoolsRocketpoolDataNodes).Methods("GET")
+			router.HandleFunc("/pools/rocketpool/data/dao_proposals", handlers.PoolsRocketpoolDataDAOProposals).Methods("GET")
+			router.HandleFunc("/pools/rocketpool/data/dao_members", handlers.PoolsRocketpoolDataDAOMembers).Methods("GET")
 
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUs).Methods("GET")
 			router.HandleFunc("/advertisewithus", handlers.AdvertiseWithUsPost).Methods("POST")
