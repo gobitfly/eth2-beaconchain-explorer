@@ -124,7 +124,6 @@ function loadMonitoringData(data) {
       info: '_TOTAL_ entries',
       infoEmpty: 'No entries match',
       infoFiltered: '(from _MAX_ entries)',
-      processing: 'Loading. Please wait...',
       search: '',
       searchPlaceholder: 'Search...',
       zeroRecords: 'No entries match'
@@ -282,7 +281,6 @@ function loadNetworkData(data) {
       info: '_TOTAL_ entries',
       infoEmpty: 'No entries match',
       infoFiltered: '(from _MAX_ entries)',
-      processing: 'Loading. Please wait...',
       search: '',
       searchPlaceholder: 'Search...',
       zeroRecords: 'No entries match'
@@ -378,7 +376,6 @@ function loadValidatorsData(data) {
       info: '_TOTAL_ entries',
       infoEmpty: 'No entries match',
       infoFiltered: '(from _MAX_ entries)',
-      processing: 'Loading. Please wait...',
       search: '',
       searchPlaceholder: 'Search...',
       zeroRecords: 'No entries match'
@@ -398,6 +395,9 @@ function loadValidatorsData(data) {
     },
     initComplete: function(settings, json) {
       $('body').find('.dataTables_scrollBody').addClass('scrollbar')
+      $('#validators-notifications .first-col a').on('click', function(e) {
+        e.stopPropagation()
+      })
 
       // click event to validators table edit button
       $('#validators-notifications #edit-validator-events').on('click', function(e) {
@@ -424,6 +424,7 @@ function loadValidatorsData(data) {
       },
       {
         targets: 0,
+        className: 'first-col',
         responsivePriority: 2,
         data: 'Validator',
         render: function(data, type, row, meta) {
@@ -431,7 +432,7 @@ function loadValidatorsData(data) {
             return data.Index
           }
           let datahref = `/validator/${data.Index || data.Pubkey}`
-          return `<i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + data.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + data.Pubkey.substring(0, 6) + ` ...</span></a><i class="fa fa-copy text-muted d-none d-sm-inline p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data.Pubkey}"></i>`
+          return `<div style="position: absolute;"><i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + data.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + data.Pubkey.substring(0, 6) + `...</span></a><i style="position: absolute; top: 1rem; right: -.9rem;" class="fa fa-copy text-muted d-none d-sm-inline p-1" role="button" data-toggle="tooltip" title="Copy Public Key to clipboard" data-clipboard-text="0x${data.Pubkey}"></i></div>`
         }
       },
       {
@@ -468,7 +469,7 @@ function loadValidatorsData(data) {
             if (!hasItems) {
               return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>'
             }
-            return `<div style="white-space: normal; max-width: 400px;">${notifications}</div> <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>`
+            return `<div style="white-space: normal; max-width: 400px;">${notifications}</div><i class="fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>`
           }
           return null
         }

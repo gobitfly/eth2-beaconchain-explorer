@@ -162,6 +162,9 @@ div.dataTables_scrollBody {
 div.dataTables_scrollBody table {
   background-color: rgba(0, 0, 0, 0.0) !important;
 }
+div.dataTables_wrapper span.select-item {
+  display: none;
+}
 .custom-table-head {
   background-color: var(--bg) !important;
 }
