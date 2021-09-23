@@ -1,6 +1,8 @@
 var csrfToken = ""
 const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed']
 const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
+const VALLIMIT = 100;
+var indices = [];
 
 function create_typeahead(input_container) {
   var bhValidators = new Bloodhound({
@@ -25,6 +27,17 @@ function create_typeahead(input_container) {
       wildcard: '%QUERY'
     }
   })
+  var bhEth1Addresses = new Bloodhound({
+    datumTokenizer: Bloodhound.tokenizers.whitespace,
+    queryTokenizer: Bloodhound.tokenizers.whitespace,
+    identify: function(obj) {
+      return obj.eth1_address
+    },
+    remote: {
+      url: '/search/indexed_validators_by_eth1_addresses/%QUERY',
+      wildcard: '%QUERY'
+    }
+  })
   $(input_container).typeahead(
     {
       minLength: 1,
@@ -46,6 +59,19 @@ function create_typeahead(input_container) {
     },
     {
       limit: 5,
+      name: 'addresses',
+      source: bhEth1Addresses,
+      display: 'address',
+      templates: {
+        header: '<h3>Validators by ETH1 Addresses</h3>',
+        suggestion: function(data) {
+          var len = data.validator_indices.length > VALLIMIT ? VALLIMIT+'+' : data.validator_indices.length 
+          return `<div class="text-monospace high-contrast" style="display:flex"><div class="text-truncate" style="flex:1 1 auto;">${data.eth1_address}</div><div style="max-width:fit-content;white-space:nowrap;">${len}</div></div>`
+        }
+      }
+    },
+    {
+      limit: 5,
       name: 'name',
       source: bhName,
       display: 'name',
@@ -55,19 +81,36 @@ function create_typeahead(input_container) {
           var len = data.validator_indices.length > VALLIMIT ? VALLIMIT + '+' : data.validator_indices.length
           return `<div class="font-weight-normal high-contrast" style="display: flex;"><div class="text-truncate" style="flex: 1 1 auto;">${data.name}</div><div style="max-width: fit-content; white-space: nowrap;">${len}</div></div>`
         }
-      }
-    })
+      },
+    });
   $(input_container).on('focus', function(e) {
     if (e.target.value !== "") {
       $(this).trigger($.Event('keydown', { keyCode: 40 }))
     }
   })
+  // $(input_container).on('blur', function() {
+  //   $(input_container).typeahead('val', '')
+  // })
   $(input_container).on('input', function() {
     $('.tt-suggestion').first().addClass('tt-cursor')
   })
   $(input_container).on('typeahead:select', function(e, sug) {
-    $(input_container).val(sug.index)
-    $(input_container).attr('pk', sug.pubkey)
+    console.log(sug)
+    $(input_container).typeahead('val', '')
+    if (sug.eth1_address) {
+      indices = sug.validator_indices;
+      $(input_container).typeahead('val', sug.eth1_address)
+      console.log(1)
+    } else if(sug.name){
+      indices = sug.validator_indices;
+      $(input_container).typeahead('val', $(sug.name).text())
+      console.log(2)
+    } else{
+      indices = [parseInt(sug.index)]
+      $(input_container).typeahead('val', sug.index)
+      console.log(3)
+    }
+    // $(input_container).attr('pk', sug.pubkey)
   })
 }
 
@@ -762,12 +805,14 @@ $(document).ready(function() {
   }
 
   $('#update-subs-button').on('click', function() {
+    let bc = $(this).html()
     $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Saving...</span></div>')
     let pubkeys = []
     for (let item of $('#selected-validators-events-container').find('span')) {
       pubkeys.push($(item).attr('pk'))
     }
     if (pubkeys.length === 0) {
+      $(this).html(bc)
       return
     }
     let events = get_validator_manage_sub_events();
@@ -785,7 +830,7 @@ $(document).ready(function() {
         $('#manageNotificationsModal').modal('hide')
         window.location.reload()
       }
-      $(this).html('Save')
+      $(this).html(bc)
     })
   })
 
@@ -804,14 +849,16 @@ $(document).ready(function() {
 
   $('#add-validator-button').on('click', function() {
     try {
-      let index = parseInt($('#add-validator-input').val())
+      // let index = parseInt($('#add-validator-input').val())
       let events = get_validator_sub_events()
-      if (!isNaN(index)) {
+      if (indices.length>0) {
+        let bc = $(this).html()
+        $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Saving...</span></div>')
         fetch(`/user/notifications-center/validatorsub`, {
           method: 'POST',
           headers: { "X-CSRF-Token": csrfToken },
           credentials: 'include',
-          body: JSON.stringify({ pubkey: $('#add-validator-input').attr('pk'), events: events })
+          body: JSON.stringify({ indices: indices, events: events })
         }).then(res => {
           if (res.status == 200) {
             $('#addValidatorModal').modal('hide')
@@ -821,6 +868,7 @@ $(document).ready(function() {
             $('#addValidatorModal').modal('hide')
             window.location.reload()
           }
+          $(this).html(bc)
         });
       }
     } catch {
