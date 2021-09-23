@@ -24,7 +24,7 @@
 					<li class="breadcrumb-item active" aria-current="page">Notifications</li>
 				</ol>
 			</nav>
-			<a href="/user/notifications">Old version</a>
+			<!-- <a href="/user/notifications">Old version</a> -->
 		</div>
 		<div class="row d-flex align-items-center justify-content-between mx-0 my-5 container-min-width heading-section">
 			<div class="col-12 col-md pl-0">
@@ -32,8 +32,8 @@
         <h2 class="heading-l3 text-muted font-weight-light">Manage the notifications you want to receive</h2>
 			</div>
 		</div>
-		<div class="row flex-sm-nowrap mx-0 my-2 container-min-width metrics-section">
-		  <div class="col-12 col-sm col-xl mr-3 mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
+		<div class="row flex-column flex-sm-row justify-content-center align-content-center mx-0 my-2 metrics-section mx-auto">
+		  <div class="col-12 col-sm col-xl mr-sm-3 mt-1 mb-2 p-2 shadow-sm border custom-border-radius custom-background-color">
 			  <div class="row d-flex align-items-center mx-1 metric-card-row">
 				  <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 					  <i class="fas fa-user"></i>
@@ -44,18 +44,18 @@
 				  </div>
 			  </div>
 		  </div>
-			<div class="col-12 col-sm col-xl mr-3 mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
+			<div class="col-12 col-sm col-xl mr-sm-3 mt-1 mb-2 p-2 shadow-sm border custom-border-radius custom-background-color">
 				<div class="row d-flex align-items-center mx-1 metric-card-row">
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-bell"></i>
 					</div>
 					<div class="col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="notifications">{{.Metrics.Notifications}}</span>
-						<span class="metric-description">notifications <span class="d-block">in <span class="d-inline d-lg-none d-xl-inline">the</span> past month</span></span>
+						<span class="metric-description">notifications in <span class="d-inline d-lg-none d-xl-inline">the</span> past month</span>
 					</div>
 				</div>
 			</div>
-			<div class="col d-none d-lg-block mr-3 mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
+			<div class="col d-none d-md-block mr-3 mt-1 mb-2 p-2 shadow-sm border container-max-width metric-card custom-border-radius custom-background-color">
 				<div class="row d-flex align-items-center mx-1 metric-card-row">
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-bullseye"></i>
@@ -91,12 +91,13 @@
 		</div>
 		<div class="row flex-xl-nowrap mx-0 my-3 container-min-width">
 			<div class="col-12 col-xl mb-3 p-1 shadow-sm border container-height custom-border-radius custom-background-color">
-				<div class="d-flex flex-column align-items-start flex-sm-row align-items-sm-center justify-content-sm-between mx-3 mb-2">
-					<div class="mt-3">
+				<div class="mt-3 d-flex flex-row align-items-start align-items-center justify-content-between mx-3 mb-2">
+					<div>
 						<h2 class="heading-l2">Monitoring</h2>
 					</div>
 					<button id="add-monitoring-event-modal-button" class="btn btn-new-primary ml-sm-3 text-white" data-toggle="modal" data-target="#addMonitoringEventModal">
-						<span class="text-nowrap">Add monitoring event</span>
+						<span class="text-nowrap d-none d-sm-inline">Add monitoring event</span>
+						<span class="text-nowrap d-sm-none">Add</span>
 					</button>
 				</div>
 				<div class="text-sm-center text-empty-section" id="monitoring-section-empty" hidden>
@@ -114,12 +115,13 @@
 				<div class="px-0 px-md-3 py-1" id="monitoring-section-with-data"></div>
 			</div>
 			<div class="col-12 col-xl mt-3 mt-xl-0 mb-3 ml-xl-3 p-1 shadow-sm border container-height custom-border-radius custom-background-color">
-				<div class="d-flex flex-column align-items-start flex-sm-row align-items-sm-center justify-content-sm-between mx-3 mb-2">
-					<div class="mt-3">
+				<div class="mt-3 d-flex align-items-start flex-row align-items-center justify-content-between mx-3 mb-2">
+					<div>
 						<h2 class="heading-l2">Network</h2>
 					</div>
 					<button class="btn btn-new-primary ml-sm-3 text-white" data-toggle="modal" data-target="#addNetworkEventModal">
-						<span class="text-nowrap">Add network event</span>
+						<span class="text-nowrap d-none d-sm-inline">Add network event</span>
+						<span class="text-nowrap d-sm-none">Add</span>
 					</button>
 				</div>
 				{{if eq (len .Network.Events_ts) 0}}
@@ -128,7 +130,7 @@
 						<h4 class="mt-2 heading-l3">Subscribe to events to receive notifications</h4>
 					</div>
 				{{else}}
-					<div class="px-0 px-md-3 py-1">
+					<div class="px-0 py-1">
 						<table class="table table-borderless table-hover" id="network-notifications">
 							<thead class="custom-table-head">
 								<tr>
@@ -172,8 +174,8 @@
 					<h4 class="mt-2 heading-l3">Start adding Validators and subscribe to events to receive notifications</h4>
 				</div>
 			{{else}}
-				<div class="mx-3 mb-3 pb-1 heading-l4">Hold down CTRL to select multiple rows in the table</div>
-				<div class="px-3 py-3">
+				<div class="mx-3 mb-3 pb-1 heading-l4">Hold down <kbd>Ctrl</kbd> to select multiple rows in the table</div>
+				<div style="margin: 0 -.25rem !important" class="px-0 py-3">
 					<table class="table table-borderless table-hover" id="validators-notifications">
 						<thead class="custom-table-head">
 							<tr>

@@ -1,3 +1,19 @@
+kbd {
+  padding: 0.1em 0.6em;
+  margin: 0 0.1em;
+  font-family: Arial, Helvetica, Liberation Sans, sans-serif;
+  font-weight: normal;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #003366;
+  text-shadow: 0 1px 0 #fff;
+  background-color: #f7f7f7;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-shadow: 0 1px 0px rgba(0, 0, 0, 0.2),0 0 0 2px #fff inset;
+  white-space: nowrap;
+  display: inline-block;
+}
 .badge-custom-size {
   font-size: .82rem;
 }
@@ -155,6 +171,14 @@ div.dataTables_length {
 .dataTables_wrapper .dataTables_length select {
   margin-left: .25rem;
   margin-right: .25rem;
+}
+/* @media screen and (min-width: 1440px) { */
+  .dataTables_wrapper > div:nth-child(1) {
+    margin: 0 .15rem;
+  }
+/* } */
+.border .dataTables_scroll {
+  margin: 0 -0.25rem !important;
 }
 div.dataTables_scrollBody {
   background: none !important;
@@ -335,6 +359,28 @@ div.dataTables_scrollBody table {
   }
   .custom-remove-modal-close { 
     right: -1rem;
+  }
+  div.dataTables_filter,
+  div.dataTables_filter label {
+    width: 100% !important;
+  }
+  div.dataTables_filter label {
+    padding: 0 1rem;
+  }
+  div.dataTables_filter {
+    /* margin: 0 .5rem !important; */
+  }
+  div.dataTables_filter input {
+    margin: 0 !important;
+    width: 100% !important;
+    height: 2.5rem;
+    font-size: 1.1rem;
+    /* padding: 1rem; */
+  }
+  .dataTables_length > label {
+    width: 100%;
+    margin: 1rem 0;
+    text-align: center !important;
   }
 }
 @media screen and (max-width: 640px) {
