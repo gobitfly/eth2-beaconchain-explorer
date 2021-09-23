@@ -391,7 +391,7 @@ function loadValidatorsData(data) {
     pagingType: 'first_last_numbers',
     select: {
       items: 'row',
-      toggleable: false
+      toggleable: true
     },
     fixedHeader: true,
     data: data,
@@ -695,15 +695,11 @@ $(document).ready(function() {
     }
   })
 
-  $('#validators-notifications tbody').on('click', 'tr', function() {
-    $(this).toggleClass('selected')
-  })
-
   // on modal open after click event to validators table edit button
   $('#manageNotificationsModal').on('show.bs.modal', function(e) {
     // get the selected row (single row selected)
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data()
-    if (rowData) {
+    if (rowData && rowData.Validator) {
       $('#selected-validators-events-container').append(
         `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Validator.Pubkey}>
         		Validator ${rowData.Validator.Index}
@@ -721,13 +717,18 @@ $(document).ready(function() {
     } else {
       // get the selected rows (mutiple rows selected)
       const rowsSelected = $('#validators-notifications').DataTable().rows('.selected').data()
-      for (let i = 0; i < rowsSelected.length; i++) {
-        $('#selected-validators-events-container').append(
-          `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowsSelected[i].Validator.Pubkey}>
-            Validator ${rowsSelected[i].Validator.Index}
-            <i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowsSelected[i].Validator.Pubkey}')"></i>
-          </span>`
-        )
+      if (rowsSelected && rowsSelected.length) {
+        for (let i = 0; i < rowsSelected.length; i++) {
+          $('#selected-validators-events-container').append(
+            `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowsSelected[i].Validator.Pubkey}>
+              Validator ${rowsSelected[i].Validator.Index}
+              <i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowsSelected[i].Validator.Pubkey}')"></i>
+            </span>`
+          )
+        }
+      } else {
+        $('#selected-validators-events-container').prev('span').text('No validators selected')
+        $('#selected-validators-events-container').html('<span>Select validators from the table. Hold down SHIFT ⇧ to select multiple rows.</span>')
       }
     }
   })
