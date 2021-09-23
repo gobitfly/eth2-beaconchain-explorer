@@ -99,6 +99,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,
+		"roundDecimals":                           RoundDecimals,
 		"mod":                                     func(i, j int) bool { return i%j == 0 },
 		"sub":                                     func(i, j int) int { return i - j },
 		"add":                                     func(i, j int) int { return i + j },
