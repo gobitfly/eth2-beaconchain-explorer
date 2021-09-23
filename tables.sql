@@ -745,3 +745,83 @@ create table finality_checkpoints (
     finalized_root           bytea not null,
     primary key (head_epoch, head_root)
 );
+
+drop table if exists rocketpool_export_status;
+create table rocketpool_export_status
+(
+    rocketpool_storage_address bytea not null,
+    eth1_block int not null,
+    primary key (rocketpool_storage_address)
+);
+
+drop table if exists rocketpool_minipools;
+create table rocketpool_minipools
+(
+    rocketpool_storage_address bytea not null,
+
+    address bytea not null,
+    pubkey bytea not null,
+    node_address bytea not null,
+    node_fee float not null,
+    deposit_type varchar(20) not null, -- none (invalid), full, half, empty .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolDeposit.sol
+    status text not null, -- Initialized, Prelaunch, Staking, Withdrawable, Dissolved .. see: https://github.com/rocket-pool/rocketpool/blob/683addf4ac/contracts/types/MinipoolStatus.sol
+    status_time timestamp without time zone,
+
+    primary key(rocketpool_storage_address, address)
+);
+
+drop table if exists rocketpool_nodes;
+create table rocketpool_nodes
+(
+    rocketpool_storage_address bytea not null,
+
+    address bytea not null,
+    timezone_location varchar(200) not null,
+    rpl_stake numeric not null,
+    min_rpl_stake numeric not null,
+    max_rpl_stake numeric not null,
+
+    primary key(rocketpool_storage_address, address)
+);
+
+drop table if exists rocketpool_dao_proposals;
+create table rocketpool_dao_proposals
+(
+    rocketpool_storage_address bytea not null,
+
+    id int not null,
+    dao text not null,
+    proposer_address bytea not null,
+    message text not null,
+    created_time timestamp without time zone,
+    start_time timestamp without time zone,
+    end_time timestamp without time zone,
+    expiry_time timestamp without time zone,
+    votes_required float not null,
+    votes_for float not null,
+    votes_against float not null,
+    member_voted boolean not null,
+    member_supported boolean not null,
+    is_cancelled boolean not null,
+    is_executed boolean not null,
+    payload bytea not null,
+    state text not null,
+
+    primary key(rocketpool_storage_address, id)
+);
+
+drop table if exists rocketpool_dao_members;
+create table rocketpool_dao_members
+(
+    rocketpool_storage_address bytea not null,
+
+    address bytea not null,
+    id varchar(200) not null,
+    url varchar(200) not null,
+    joined_time timestamp without time zone,
+    last_proposal_time timestamp without time zone,
+    rpl_bond_amount numeric not null,
+    unbonded_validator_count int not null,
+
+    primary key(rocketpool_storage_address, address)
+);
