@@ -1,5 +1,7 @@
 var csrfToken = ""
+
 const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed']
+
 const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
 const VALLIMIT = 100;
 var indices = [];
