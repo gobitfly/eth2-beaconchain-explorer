@@ -2,24 +2,19 @@
 .validator__lifecycle-container {
   position: relative;
   display: flex;
-  justify-content: center;
   align-items: center;
-  margin: 3rem auto 2rem auto;
-  font-size: .9rem;
-  width: 80%;
+  justify-content: center;
+  margin: 3rem auto 2rem;
+  font-size: .85rem;
 }
-
 .validator__lifecycle-content {
   display: flex;
-  justify-content: space-around;
-  max-width: 375px;
+  max-width: 600px;
   width: 100%;
 }
-
 .validator__lifecycle-node-container {
   position: relative;
 }
-
 .validator__lifecycle-node-header {
   position: absolute;
   top: -28px;
@@ -27,7 +22,6 @@
   transform: translateX(-50%);
   opacity: 20%;
 }
-
 .validator__lifecycle-node::before {
   content: '';
   position: absolute;
@@ -36,76 +30,66 @@
   border-right: solid 1px var(--font-color, black);
   top: -12px;
 }
-
 .validator__lifecycle-node {
   width: 18px;
   height: 18px;
   position: relative;
-  border-radius: 50%;
-  border: solid 4px var(--shadow-light, #00000033);
   left: 50%;
   transform: translateX(-50%);
+  border-radius: 50%;
+  border: solid 4px var(--shadow-light, #00000033);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
 }
-
-.validator__lifecycle-node,   .validator__lifecycle-node > * {
+.validator__lifecycle-node, .validator__lifecycle-node > * {
   box-sizing: content-box;
 }
-
 .validator__lifecycle-progress {
   position: relative;
   flex: 1 1 20px;
 }
-
 .validator__lifecycle-progress::before {
   content: '';
   position: absolute;
-  border-bottom: solid 1px var(--font-color, black);
   top: 50%;
   left: 50%;
-  width: 85%;
   transform: translateX(-50%);
+  border-bottom: solid 1px var(--font-color, black);
+  width: 85%;
   opacity: 20%;
 }
-
 .validator__lifecycle-progress-epoch {
   position: absolute;
-  color: black;
-  transform: translateX(-50%);
   left: 50%;
+  transform: translateX(-50%);
+  bottom: -10px;
+  color: black;
   width: 85%;
-  bottom: -5px;
-  font-size: 85%;
+  font-size: 90%;
 }
-
 .validator__lifecycle-progress-epoch > div {
   display: flex;
   justify-content: center;
   width: 100%;
 }
-
 .validator__lifecycle-container .validator__lifecycle-progress::after {
   content: '';
   position: absolute;
   top: 50%;
 }
-
 .validator__lifecycle-container .active.validator__lifecycle-progress::after {
   position: absolute;
-  border-bottom: solid 1px var(--font-color, black);
   left: 7.5%;
+  border-bottom: solid 1px var(--font-color, black);
   width: 45%;
 }
-
 .validator__lifecycle-container .complete.validator__lifecycle-progress::after {
   position: absolute;
   border-bottom: solid 1px var(--font-color, black);
   left: 7.5%;
   width: 85%;
 }
-
 .validator__lifecycle-container .active .validator__lifecycle-node-header,
 .validator__lifecycle-container .failed .validator__lifecycle-node-header,
 .validator__lifecycle-container .online .validator__lifecycle-node-header,
@@ -113,26 +97,21 @@
 .validator__lifecycle-container .done .validator__lifecycle-node-header {
   opacity: 1;
 }
-
 .validator__lifecycle-container .done .validator__lifecycle-node,
 .validator__lifecycle-container .online.validator__lifecycle-active .validator__lifecycle-node {
   border-color: var(--success, green);
   background-color: var(--success, green);
 }
-
 .validator__lifecycle-container .failed .validator__lifecycle-node,
 .validator__lifecycle-container .offline.validator__lifecycle-active .validator__lifecycle-node {
-  border-color: var(--danger, red);
-  background-color: var(--danger, red);
+  border-color: var(--new-red);
+  background-color: var(--new-red);
 }
-
 .validator__lifecycle-container i {
-  /* display: none; */
   visibility: hidden;
   position: absolute;
   color: white;
 }
-
 .validator__lifecycle-container .done.validator__lifecycle-deposited .deposit-success,
 .validator__lifecycle-container .failed.validator__lifecycle-deposited .deposit-fail,
 .validator__lifecycle-container .done .fa-check,
@@ -142,13 +121,11 @@
 .validator__lifecycle-container .offline.validator__lifecycle-active .offline {
   visibility: visible;
 } 
-
-.validator__lifecycle-container  .spinner {
+.validator__lifecycle-container .spinner {
   position: absolute;
   width: 100%;
   height: 100%;
 }
-
 .validator__lifecycle-container .double-bounce1,
 .validator__lifecycle-container .double-bounce2 {
   position: absolute;
@@ -163,36 +140,29 @@
   -webkit-animation: sk-bounce 3.0s infinite ease-in-out;
   animation: sk-bounce 3.0s infinite ease-in-out;
 }
-
 .validator__lifecycle-container .active .double-bounce1,
 .validator__lifecycle-container .active .double-bounce2 {
   visibility: visible;
 }
-
 .validator__lifecycle-container .active.slashed .double-bounce1,
 .validator__lifecycle-container .active.slashed .double-bounce2 {
-  background-color: red;
+  background-color: var(--new-red);
 }
-
 .validator__lifecycle-container .active .double-bounce2 {
   -webkit-animation-delay: -1.5s;
   animation-delay: -1.5s;
 }
-
 @-webkit-keyframes sk-bounce {
-
   0%,
   100% {
-    -webkit-transform: scale(0.0)
+    -webkit-transform: scale(0.0);
   }
 
   50% {
-    -webkit-transform: scale(1.5)
+    -webkit-transform: scale(1.5);
   }
 }
-
 @keyframes sk-bounce {
-
   0%,
   100% {
     transform: scale(0.0);
@@ -204,54 +174,45 @@
     -webkit-transform: scale(1.5);
   }
 }
-
 @media screen and (min-width: 960px) {
-  .validator__lifecycle-container {
-    max-width: 60rem;
-  }
-
   .validator__lifecycle-container i {
     margin-bottom: 0;
   }
-
   .validator__lifecycle-progress-epoch {
     bottom: -2px;
   }
-
   .validator__lifecycle-node {
     width: 24px;
     height: 24px;
     border-width: 5px;
   }
   .validator__lifecycle-node-header {
-    top: -30px;
+    /* top: -30px; */
   }
 }
 /* end validator lifecycle */
 
 /* responsive tabs for mobile screens (shows icons when tab is not selected and text when selected */
-@media screen and (max-width: 960px) {
+@media screen and (max-width: 1450px) {
+  .validator__lifecycle-container {
+    width: 80%;
+  }
   .nav-tabs .tab-text {
     display: none;
   }
-  
   .nav-tabs .active .tab-text {
     display: initial;
   }
-
   .nav-tabs .active .tab-icon {
     display: none;
   }
-
   .nav-tabs .active i {
     margin-right: .25rem;
   }
-
   .nav-tabs .tab-text + .badge {
     display: none;
   }
 }
-
 .validator-card {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
