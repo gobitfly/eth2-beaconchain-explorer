@@ -1113,7 +1113,7 @@ type PremiumUser struct {
 func getUserPremium(r *http.Request) PremiumUser {
 	var pkg string = ""
 
-	if IsMobileAuth(r) {
+	if strings.HasPrefix(r.URL.Path, "/api/") {
 		claims := getAuthClaims(r)
 		if claims != nil {
 			pkg = claims.Package
