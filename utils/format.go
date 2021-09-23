@@ -620,7 +620,7 @@ func FormatValidatorTag(tag string) template.HTML {
 	var result string
 	switch tag {
 	case "rocketpool":
-		result = fmt.Sprintf(`<span style="background:yellow; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
+		result = fmt.Sprintf(`<span style="background:yellow; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="/pools/rocketpool">%s</a></span>`, tag)
 	case "ssv":
 		result = fmt.Sprintf(`<span style="background:orange; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
 	default:
