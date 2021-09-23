@@ -696,7 +696,7 @@ $(document).ready(function() {
   })
 
   $('#validators-notifications tbody').on('click', 'tr', function() {
-    $(this).addClass('selected')
+    $(this).toggleClass('selected')
   })
 
   // on modal open after click event to validators table edit button
