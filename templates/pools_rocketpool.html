@@ -18,7 +18,7 @@
             processing: true,
             ordering: false,
             responsive: true,
-            searching: false,
+            // searching: false,
             serverSide: true,
             columnDefs: [
                 {
@@ -35,12 +35,18 @@
                 {
                     targets: 3,
                     render: function(data, type, row, meta) {
-                        return (data*100).toFixed(2) + '%'
+                        return `${(data * 100).toFixed(2) + '%'}`
                     }
                 },
                 {
                     targets: 4,
                     render: function(data, type, row, meta) {
+                        if (data === 'Half') {
+                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
+                        if (data === 'Full') {
+                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
                         return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
                 },
@@ -52,6 +58,9 @@
                         }
                         if (data === 'Dissolved') {
                             return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
+                        if (data === 'Withdrawable') {
+                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
                         return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
@@ -88,7 +97,7 @@
             processing: true,
             ordering: false,
             responsive: true,
-            searching: false,
+            // searching: false,
             serverSide: true,
             columnDefs: [
                 {
@@ -170,7 +179,7 @@
             processing: true,
             ordering: false,
             responsive: true,
-            searching: false,
+            // searching: false,
             serverSide: true,
             columnDefs: [
                 {
@@ -252,7 +261,7 @@
             processing: true,
             ordering: false,
             responsive: true,
-            searching: false,
+            // searching: false,
             serverSide: true,
             columnDefs: [
                 {
@@ -362,6 +371,9 @@
                         }
                         if (data === 'Cancelled') {
                             return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
+                        if (data === 'Defeated') {
+                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
                         return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
                     }
