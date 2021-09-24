@@ -242,6 +242,7 @@ function loadMonitoringData(data) {
       {
         targets: 1,
         responsivePriority: 3,
+        orderable: false,
         data: 'threshold',
         render: function(data, type, row, meta) {
           if (type === 'display') {
