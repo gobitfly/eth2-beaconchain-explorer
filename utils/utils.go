@@ -95,7 +95,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatAttestationInclusionEffectiveness": FormatAttestationInclusionEffectiveness,
 		"formatValidatorTags":                     FormatValidatorTags,
 		"formatValidatorTag":                      FormatValidatorTag,
-		"formatWeiToEth":                          FormatWeiToEth,
+		"FormatRPL":                               FormatRPL,
 		"epochOfSlot":                             EpochOfSlot,
 		"dayToTime":                               DayToTime,
 		"contains":                                strings.Contains,

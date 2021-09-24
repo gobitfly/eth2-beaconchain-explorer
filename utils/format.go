@@ -800,7 +800,7 @@ func KFormatterEthPrice(price uint64) string {
 	return fmt.Sprint(price)
 }
 
-func FormatWeiToEth(num string) string {
+func FormatRPL(num string) string {
 	floatNum, _ := strconv.ParseFloat(num, 64)
 	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " RPL"
 }
