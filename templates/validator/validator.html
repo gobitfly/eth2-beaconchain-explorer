@@ -203,7 +203,7 @@
 													<td class="border-0">{{formatEth1Address .Rocketpool.MinipoolAddress}}</td>
 												</tr>
 												<tr>
-													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Fee</th>
+													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Commission</th>
 													<td class="border-0">{{roundDecimals .Rocketpool.MinipoolNodeFee 2}}</td>
 												</tr>
 												<tr>
@@ -224,15 +224,15 @@
 												</tr>
 												<tr>
 													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node RPL Stake</th>
-													<td class="border-0">{{formatWeiToEth .Rocketpool.NodeRPLStake}}</td>
+													<td class="border-0">{{FormatRPL .Rocketpool.NodeRPLStake}}</td>
 												</tr>
 												<tr>
 													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Min RPL Stake</th>
-													<td class="border-0">{{formatWeiToEth .Rocketpool.NodeMinRPLStake}}</td>
+													<td class="border-0">{{FormatRPL .Rocketpool.NodeMinRPLStake}}</td>
 												</tr>
 												<tr>
 													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Max RPL Stake</th>
-													<td class="border-0">{{formatWeiToEth .Rocketpool.NodeMaxRPLStake}}</td>
+													<td class="border-0">{{FormatRPL .Rocketpool.NodeMaxRPLStake}}</td>
 												</tr>
 											</tbody>
 										</table>
