@@ -92,20 +92,16 @@ function create_typeahead(input_container) {
     $('.tt-suggestion').first().addClass('tt-cursor')
   })
   $(input_container).on('typeahead:select', function(e, sug) {
-    // console.log(sug)
     $(input_container).typeahead('val', '')
     if (sug.eth1_address) {
       indices = sug.validator_indices
       $(input_container).typeahead('val', sug.eth1_address)
-      // console.log(1)
     } else if (sug.name) {
       indices = sug.validator_indices
       $(input_container).typeahead('val', $(sug.name).text())
-      // console.log(2)
     } else {
       indices = [parseInt(sug.index)]
       $(input_container).typeahead('val', sug.index)
-      // console.log(3)
     }
     // $(input_container).attr('pk', sug.pubkey)
   })
@@ -221,7 +217,7 @@ function loadMonitoringData(data) {
         $('#confirmRemoveModal').attr('tablename', 'monitoring')
         $('#confirmRemoveModal').attr('pk', $(this).attr('pk'))
         $('#confirmRemoveModal').attr('event', $(this).attr('event'))
-      });
+      })
     },
     columnDefs: [
       {
@@ -233,7 +229,7 @@ function loadMonitoringData(data) {
       },
       {
         targets: 0,
-        responsivePriority: 1,
+        responsivePriority: 2,
         data: 'notification',
         render: function(data, type, row, meta) {
           return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data.charAt(0).toUpperCase() + data.slice(1)}</span>`
@@ -241,7 +237,7 @@ function loadMonitoringData(data) {
       },
       {
         targets: 1,
-        responsivePriority: 3,
+        responsivePriority: 2,
         orderable: false,
         data: 'threshold',
         render: function(data, type, row, meta) {
@@ -280,7 +276,7 @@ function loadMonitoringData(data) {
       },
       {
         targets: 2,
-        responsivePriority: 2,
+        responsivePriority: 1,
         data: 'machine',
         render: function(data, type, row, meta) {
           return `<span class="font-weight-bold"><i class="fas fa-male mr-2"></i><a style="padding: .25rem;" href="/validator/${data}">${data}</a></span>`
@@ -304,7 +300,7 @@ function loadMonitoringData(data) {
       {
         targets: 4,
         orderable: false,
-        responsivePriority: 3,
+        responsivePriority: 1,
         data: 'event',
         render: function(data, type, row, meta) {
           return `<i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle="modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
@@ -533,7 +529,6 @@ function loadValidatorsData(data) {
         responsivePriority: 4,
         data: 'Notifications',
         render: function(data, type, row, meta) {
-          // let status = data.length > 0 ? 'checked="true"' : ""
           let status = data.length > 0 ? '<i class="fas fa-check fa-lg"></i>' : ""
           return status
           /* `<div class="form-check">
@@ -736,6 +731,7 @@ $(document).ready(function() {
   })
 
   $('#validators-notifications tbody').on('click', 'tr', function() {
+    $('#manage-notifications-btn').removeAttr('disabled')
     $(this).addClass('selected')
   })
 
@@ -774,6 +770,7 @@ $(document).ready(function() {
 
   // on modal close
   $('#manageNotificationsModal').on('hide.bs.modal', function(e) {
+    $('#manage-notifications-btn').attr('disabled', true)
     $(this).removeAttr('rowId')
     $('#selected-validators-events-container #validator-event-badge').remove()
     for (let event of $('#manage_all_events :input')) {
