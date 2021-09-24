@@ -1506,6 +1506,11 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Drilldown: "Kraken",
 			},
 			{
+				Name:      "Lido",
+				Y:         0,
+				Drilldown: "Lido",
+			},
+			{
 				Name:      "Binance",
 				Y:         0,
 				Drilldown: "Binance",
@@ -1531,11 +1536,6 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Drilldown: "Staked.us",
 			},
 			{
-				Name:      "Lido",
-				Y:         0,
-				Drilldown: "Lido",
-			},
-			{
 				Name:      "Stakefish",
 				Y:         0,
 				Drilldown: "Stakefish",
@@ -1550,11 +1550,21 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Y:         0,
 				Drilldown: "Guarda",
 			},
+			{
+				Name:      "Rocketpool",
+				Y:         0,
+				Drilldown: "Rocketpool",
+			},
 		}
 		drillSeries = []drillSeriesData{
 			{
 				Name: "Kraken",
 				ID:   "Kraken",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Lido",
+				ID:   "Lido",
 				Data: [][2]string{},
 			},
 			{
@@ -1583,11 +1593,6 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Data: [][2]string{},
 			},
 			{
-				Name: "Lido",
-				ID:   "Lido",
-				Data: [][2]string{},
-			},
-			{
 				Name: "Stakefish",
 				ID:   "Stakefish",
 				Data: [][2]string{},
@@ -1600,6 +1605,11 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 			{
 				Name: "Guarda",
 				ID:   "Guarda",
+				Data: [][2]string{},
+			},
+			{
+				Name: "Rocketpool",
+				ID:   "Rocketpool",
 				Data: [][2]string{},
 			},
 			{ // always must be the last
