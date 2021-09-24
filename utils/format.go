@@ -802,5 +802,5 @@ func KFormatterEthPrice(price uint64) string {
 
 func FormatWeiToEth(num string) string {
 	floatNum, _ := strconv.ParseFloat(num, 64)
-	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " ETH"
+	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " RPL"
 }

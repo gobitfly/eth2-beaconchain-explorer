@@ -35,7 +35,7 @@
                 {
                     targets: 3,
                     render: function(data, type, row, meta) {
-                        return data.toFixed(2)
+                        return data.toFixed(2) + '%'
                     }
                 },
                 {
@@ -115,27 +115,27 @@
                     targets: 2,
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
+                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
-                        return `${data} ETH`
+                        return `${data} RPL`
                     }
                 },
                 {
                     targets: 3,
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
+                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
-                        return `${data} ETH`
+                        return `${data} RPL`
                     }
                 },
                 {
                     targets: 4,
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
+                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
-                        return `${data} ETH`
+                        return `${data} RPL`
                     }
                 }
             ],
@@ -209,9 +209,9 @@
                     targets: 5,
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
+                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
-                        return `${data} ETH`
+                        return `${data} RPL`
                     }
                 },
                 {
