@@ -503,7 +503,7 @@ function loadValidatorsData(data) {
                     badgeColor = 'badge-light'
                     break
                 }
-                notifications += `<span class="badge badge-pill ${badgeColor} badge-custom-size mr-1 my-1 font-weight-normal">${n.replace('validator', "").replaceAll('_', " ")}</span>`
+                notifications += `<span class="badge badge-pill ${badgeColor} badge-custom-size mr-1 my-1 font-weight-normal">${n.replaceAll('_', " ")}</span>`
               }
             }
             if (!hasItems) {
