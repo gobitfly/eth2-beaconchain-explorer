@@ -207,8 +207,6 @@ function loadMonitoringData(data) {
       // click event to table remove button
       $('#monitoring-notifications #remove-btn').on('click', function(e) {
         $('#modaltext').text($(this).data('modaltext'))
-
-        // set the row id 
         let rowId = $(this).parent().parent().attr('id')
         if (rowId === undefined) {
           rowId = 0
@@ -531,10 +529,6 @@ function loadValidatorsData(data) {
         render: function(data, type, row, meta) {
           let status = data.length > 0 ? '<i class="fas fa-check fa-lg"></i>' : ""
           return status
-          /* `<div class="form-check">
-            <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="" ${status} disabled="true">
-          	<label class="form-check-label" for=""></label>
-          </div>` */
         }
       },
       {
@@ -630,6 +624,7 @@ $(document).ready(function() {
   $(document).on('click', function(e) {
     // remove selected class from rows on click outside
     if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
+      $('#manage-notifications-btn').attr('disabled', true)
       $('#validators-notifications .selected').removeClass('selected')
     }
   })

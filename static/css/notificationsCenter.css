@@ -31,11 +31,6 @@
   border-radius: .5rem;
   padding: .6rem;
 }
-/* style not used  
-.custom-dropdown {
-  height: 10rem;
-  overflow-y: auto;
-} */
 .custom-remove-modal { 
   position: relative;
   min-width: 280px;
@@ -171,10 +166,6 @@ div.dataTables_wrapper span.select-item {
 .custom-table-head {
   background-color: var(--bg) !important;
 }
-/* style not used  
-.row-selected {
-  background-color: var(--light) !important;
-} */
 #monitoring-notifications_wrapper div.dataTables_length,
 #monitoring-notifications_wrapper div.dataTables_paginate,
 #network-notifications_wrapper div.dataTables_length,
