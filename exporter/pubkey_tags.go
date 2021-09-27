@@ -20,6 +20,7 @@ func UpdatePubkeyTag() {
 		SELECT publickey, FORMAT('pool:%s', sps.name) tag
 		FROM eth1_deposits
 		inner join stake_pools_stats as sps on ENCODE(from_address::bytea, 'hex')=sps.address
+		WHERE sps.name NOT LIKE '%Rocketpool -%'
 		ON CONFLICT (publickey, tag) DO NOTHING;`)
 		if err != nil {
 			logger.WithError(err).Error("Error updating validator_tags")
