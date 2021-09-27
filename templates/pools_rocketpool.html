@@ -20,6 +20,7 @@
             processing: true,
             ordering: false,
             responsive: true,
+            searching: true,
             serverSide: true,
             columnDefs: [
                 {
@@ -63,7 +64,7 @@
                         if (data === 'Withdrawable') {
                             return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
+                        return `<span class="badge badge-pill badge-info badge-custom-size font-weight-normal text-white">${data}</span>`
                     }
                 }
             ],
@@ -100,6 +101,7 @@
             processing: true,
             ordering: false,
             responsive: true,
+            searching: true,
             serverSide: true,
             columnDefs: [
                 {
@@ -183,6 +185,7 @@
             processing: true,
             ordering: false,
             responsive: true,
+            searching: true,
             serverSide: true,
             columnDefs: [
                 {
@@ -225,12 +228,6 @@
                         }
                         return `${data} RPL`
                     }
-                },
-                {
-                    targets: 5,
-                    render: function(data, type, row, meta) {
-                        return data
-                    }
                 }
             ],
             initComplete: function(settings, json) {
@@ -266,6 +263,7 @@
             processing: true,
             ordering: false,
             responsive: true,
+            searching: true,
             serverSide: true,
             columnDefs: [
                 {
@@ -379,7 +377,7 @@
                         if (data === 'Defeated') {
                             return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
+                        return `<span class="badge badge-pill badge-info badge-custom-size font-weight-normal text-white">${data}</span>`
                     }
                 }
             ],
