@@ -195,47 +195,83 @@
 									</div>
 								</div>
 								{{if .IsRocketpool}}
-									<div class="tab-pane fade w-100 h-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
-										<table class="table table-borderless" width="100%">
+									<div class="tab-pane fade w-100 h-100 d-flex flex-column align-items-center justify-content-center" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
+										<div class="w-75 d-flex align-items-center justify-content-between my-4">
+											<div><i class="fas fa-map-marker-alt fa-lg mr-3 text-muted"></i>Minipool Address</div>
+											<div>{{formatEth1Address .Rocketpool.MinipoolAddress}}</div>
+										</div>
+										<div class="w-75 d-flex align-items-center justify-content-between mb-4">
+											<div><i class="fas fa-money-bill-wave fa-lg mr-1 text-muted"></i>Minipool Commission</div>
+											<div>{{.Rocketpool.MinipoolNodeFee}}</div>
+										</div>
+										<div class="w-75 d-flex align-items-center justify-content-between mb-4">
+											<div><i class="fas fa-wallet fa-lg mr-2 text-muted"></i>Minipool Deposit Type</div>
+											<div>{{.Rocketpool.MinipoolDepositType}}</div>
+										</div>
+										<div class="w-75 d-flex align-items-center justify-content-between mb-4">
+											<div><i class="fas fa-check fa-lg mr-2 text-muted"></i>Minipool Status</div>
+											<div>{{.Rocketpool.MinipoolStatus}}</div>
+										</div>
+										<div class="w-75 d-flex align-items-center justify-content-between mb-4">
+											<div><i class="fas fa-map-marker-alt fa-lg mr-2 text-muted"></i> Node Address</div>
+											<div>{{formatEth1Address .Rocketpool.NodeAddress}}</div>
+										</div>
+										<div class="w-75 d-flex align-items-center justify-content-between mb-4">
+											<div><i class="fas fa-globe fa-lg mr-2 text-muted"></i>Node Timezone</div>
+											<div>{{.Rocketpool.NodeTimezoneLocation}}</div>
+										</div>
+										<div class="w-75 d-flex align-items-center justify-content-between mb-4">
+											<div><i class="fas fa-cubes fa-lg mr-2 text-muted"></i>Node RPL Stake</div>
+											<div>{{FormatRPL .Rocketpool.NodeRPLStake}}</div>
+										</div>
+										<div class="w-75 d-flex align-items-center justify-content-between mb-4">
+											<div><i class="fas fa-cubes fa-lg mr-2 text-muted"></i>Node Min RPL Stake</div>
+											<div>{{FormatRPL .Rocketpool.NodeMinRPLStake}}</div>
+										</div>
+										<div class="w-75 d-flex align-items-center justify-content-between mb-4">
+											<div><i class="fas fa-cubes fa-lg mr-2 text-muted"></i>Node Max RPL Stake</div>
+											<div>{{FormatRPL .Rocketpool.NodeMaxRPLStake}}</div>
+										</div>
+										<!-- <table class="table" width="100%">
 											<tbody>
 												<tr>
-													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Address</th>
+													<th scope="row" class="border-0" style="width: 5rem;">Minipool Address</th>
 													<td class="border-0">{{formatEth1Address .Rocketpool.MinipoolAddress}}</td>
 												</tr>
 												<tr>
-													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Commission</th>
+													<th scope="row" class="border-0" style="width: 5rem;">Minipool Commission</th>
 													<td class="border-0">{{roundDecimals .Rocketpool.MinipoolNodeFee 2}}</td>
 												</tr>
 												<tr>
-													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Deposit Type</th>
+													<th scope="row" class="border-0" style="width: 5rem;">Minipool Deposit Type</th>
 													<td class="border-0"><span class="badge badge-pill badge-light font-weight-normal" style="font-size: .82rem;">{{.Rocketpool.MinipoolDepositType}}</span></td>
 												</tr>
 												<tr>
-													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Status</th>
+													<th scope="row" class="border-0" style="width: 5rem;">Minipool Status</th>
 													<td class="border-0"><span class="badge badge-pill badge-light font-weight-normal" style="font-size: .82rem;">{{.Rocketpool.MinipoolStatus}}</span></td>
 												</tr>
 												<tr>
-													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Address</th>
+													<th scope="row" class="border-0" style="width: 5rem;">Node Address</th>
 													<td class="border-0">{{formatEth1Address .Rocketpool.NodeAddress}}</td>
 												</tr>
 												<tr>
-													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Timezone</th>
+													<th scope="row" class="border-0" style="width: 5rem;">Node Timezone</th>
 													<td class="border-0">{{.Rocketpool.NodeTimezoneLocation}}</td>
 												</tr>
 												<tr>
-													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node RPL Stake</th>
+													<th scope="row" class="border-0" style="width: 5rem;">Node RPL Stake</th>
 													<td class="border-0">{{FormatRPL .Rocketpool.NodeRPLStake}}</td>
 												</tr>
 												<tr>
-													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Min RPL Stake</th>
+													<th scope="row" class="border-0" style="width: 5rem;">Node Min RPL Stake</th>
 													<td class="border-0">{{FormatRPL .Rocketpool.NodeMinRPLStake}}</td>
 												</tr>
 												<tr>
-													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Max RPL Stake</th>
+													<th scope="row" class="border-0" style="width: 5rem;">Node Max RPL Stake</th>
 													<td class="border-0">{{FormatRPL .Rocketpool.NodeMaxRPLStake}}</td>
 												</tr>
 											</tbody>
-										</table>
+										</table> -->
 									</div>
 								{{end}}
 							</div>
