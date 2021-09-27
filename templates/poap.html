@@ -1,14 +1,13 @@
-{{ define "js"}}
+{{define "js"}}
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script>
         var clients = {{.PoapClients}}
         var graffitiFlagData = {
             address: "",
-            client: "prysm",
+            client: "prysm"
         }
         var hexRE = /^[0-9A-F]{40}$/i
-
         var clientRefs = ['prysm-graffiti', 'lighthouse-graffiti', 'teku-graffiti', 'nimbus-graffiti', 'lodestar-graffiti']
 
         function setAddress(addr) {
@@ -16,10 +15,10 @@
             renderFlag()
         }
 
-        // function setClient(client) {
-        // 	graffitiFlagData.client = client
-        // 	renderFlag()
-        // }
+        /* function setClient(client) {
+         	graffitiFlagData.client = client
+         	renderFlag()
+        } */
 
         setAddress('')
 
@@ -28,11 +27,11 @@
             for (var i = 0; i < clientRefs.length; i++) {
                 var ref = clientRefs[i]
                 clientId = ('00' + (i).toString(16)).substr(-2)
-                // if (clientId === '') {
-                // 	console.error('invalid client: '+graffitiFlagData.client)
-                // 	log('invalid client: '+graffitiFlagData.client)
-                // 	return
-                // }
+                /* if (clientId === '') {
+                 	console.error('invalid client: '+graffitiFlagData.client)
+                 	log('invalid client: '+graffitiFlagData.client)
+                 	return
+                } */
                 var addr = graffitiFlagData.address
                 if (addr.length === 0) {
                     log('Enter Address Above', ref)
@@ -45,7 +44,7 @@
                     continue;
                 }
                 var flagHex = addr + clientId
-                var flagB64 = btoa(flagHex.match(/\w{2}/g).map(function (a) {
+                var flagB64 = btoa(flagHex.match(/\w{2}/g).map(function(a) {
                     return String.fromCharCode(parseInt(a, 16))
                 }).join(""))
                 // console.log(flagHex, flagB64, b64ToHex(flagB64))
@@ -82,20 +81,27 @@
             }
         }
 
-        $(document).ready(function () {
+        $(document).ready(function() {
             var columnDefs = [{
                 orderable: false,
                 targets: [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-            }, {
+            }, 
+            {
                 targets: 0,
                 data: '0',
-                render: function (data, type, row) {
-                    return `<a style="display: block; max-width:130px;" class="text-truncate" href="https://etherchain.org/account/${data}">${data}</a>`
+                createdCell: function(td, cellData, rowData, row, col) {
+                    $(td).css('display', 'flex')
+                    $(td).css('align-items', 'center')
+                    $(td).css('justify-content', 'space-between')
+                },
+                render: function(data, type, row) {
+                    return `<a style="display: inline-block; max-width: 130px;" class="text-truncate" href="https://etherchain.org/account/${data}">${data}</a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="${data}"></i>`
                 }
-            }, {
+            }, 
+            {
                 targets: 1,
                 data: '1',
-                render: function (data, type, row) {
+                render: function(data, type, row) {
                     if (data == 0) return 0
                     return `<a href="/blocks?q=${encodeURIComponent(addrClientToFlag(row[0].slice(2), 0).substr(0, 31))}">${data}</a>`
                 }
@@ -104,8 +110,8 @@
                 columnDefs.push({
                     targets: i * 2 + 3,
                     data: (i * 2 + 3) + '',
-                    render: function (i) {
-                        return function (data, type, row) {
+                    render: function(i) {
+                        return function(data, type, row) {
                             if (data == 0) return 0
                             return `<a href="/blocks?q=${encodeURIComponent(addrClientToFlag(row[0].slice(2), i))}">${data}</a>`
                         }
@@ -125,15 +131,17 @@
                     search: '',
                     paginate: {
                         previous: "<",
-                        next: ">",
+                        next: ">"
                     }
                 },
+                drawCallback: function(settings) {
+                    $('[data-toggle="tooltip"]').tooltip()
+                }
             })
-
 
             $.ajax({
                 url: '/poap/data',
-                success: function (result) {
+                success: function(result) {
                     if (!result || !result.data.length) {
                         document.getElementById('poap-table').style.display = 'none'
                         return
@@ -146,47 +154,45 @@
                 }
             })
 
-            // var data = []
-            // for (var i=0; i<1000; i++) {
-            // 	data.push(['0x'+genHexString(40),Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0])
-            // }
-            // poapTable.rows.add(data).draw()
+            /* var data = []
+            for (var i=0; i<1000; i++) {
+             	data.push(['0x'+genHexString(40),Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0,Math.random()*100|0])
+            }
+            poapTable.rows.add(data).draw() */
         })
 
         function genHexString(len) {
-            const hex = '0123456789ABCDEF';
-            let output = '';
+            const hex = '0123456789ABCDEF'
+            let output = ''
             for (let i = 0; i < len; ++i) {
-                output += hex.charAt(Math.floor(Math.random() * hex.length));
+                output += hex.charAt(Math.floor(Math.random() * hex.length))
             }
-            return output;
+            return output
         }
 
         function createCopyButton(id) {
-            var clipboard = new ClipboardJS(id);
+            var clipboard = new ClipboardJS(id)
             var copyButton = $(id)
 
-            clipboard.on('success', function (e) {
+            clipboard.on('success', function(e) {
                 copyButton.find('span').removeClass('fa-copy').removeClass('fa').addClass('fas').addClass('fa-check')
-                setTimeout(function () {
+                setTimeout(function() {
                     copyButton.find('span').removeClass('fas').removeClass('fa-check').addClass('fa').addClass('fa-copy')
                 }, 500)
             });
         }
 
-        $(document).ready(function () {
+        $(document).ready(function() {
             for (let i = 0; i < clientRefs.length; i++) {
-                const client = clientRefs[i];
+                const client = clientRefs[i]
                 createCopyButton('#copy-' + client)
             }
         })
-
     </script>
 {{end}}
 
-{{ define "css"}}
-    <link rel="stylesheet" type="text/css"
-          href="/css/datatables.min.css"/>
+{{define "css"}}
+    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
     <style>
         .poap-how-list > li {
             padding: .2rem 0;
@@ -211,7 +217,7 @@
     </style>
 {{end}}
 
-{{ define "content"}}
+{{define "content"}}
     {{with .Data}}
         <div class="container mt-2">
             <div class="my-3">

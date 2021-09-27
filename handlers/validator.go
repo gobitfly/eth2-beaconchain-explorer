@@ -232,12 +232,10 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			COALESCE(validators.balanceactivation, 0) AS balanceactivation,
 			COALESCE(validators.balance7d, 0) AS balance7d,
 			COALESCE(validators.balance31d, 0) AS balance31d,
-			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') as tags
+			COALESCE((SELECT ARRAY_AGG(tag) FROM validator_tags WHERE publickey = validators.pubkey),'{}') AS tags
 		FROM validators
-		LEFT JOIN validator_names
-			ON validators.pubkey = validator_names.publickey
-		LEFT JOIN validator_performance 
-			ON validators.validatorindex = validator_performance.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex
 		LEFT JOIN (SELECT MAX(validatorindex)+1 FROM validator_performance) validator_performance_count(total_count) ON true
 		WHERE validators.validatorindex = $1`, index)
 
@@ -556,6 +554,32 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
+
+	// add rocketpool-data if available
+	validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
+	err = db.DB.Get(validatorPageData.Rocketpool, `
+		SELECT
+			rplm.node_address      AS node_address,
+			rplm.address           AS minipool_address,
+			rplm.node_fee          AS minipool_node_fee,
+			rplm.deposit_type      AS minipool_deposit_type,
+			rplm.status            AS minipool_status,
+			rplm.status_time       AS minipool_status_time,
+			rpln.timezone_location AS node_timezone_location,
+			rpln.rpl_stake         AS node_rpl_stake,
+			rpln.max_rpl_stake     AS node_max_rpl_stake,
+			rpln.min_rpl_stake     AS node_min_rpl_stake
+		FROM validators
+		LEFT JOIN rocketpool_minipools rplm ON rplm.pubkey = validators.pubkey
+		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
+		WHERE validators.validatorindex = $1`, index)
+	if err == nil && (validatorPageData.Rocketpool.MinipoolAddress != nil || validatorPageData.Rocketpool.NodeAddress != nil) {
+		validatorPageData.IsRocketpool = true
+	} else if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("error getting rocketpool-data for validator for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
 	data.Data = validatorPageData
 

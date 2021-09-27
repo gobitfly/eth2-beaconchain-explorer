@@ -162,41 +162,31 @@
                     <i class="fas fa-home"></i> <span>|</span>
                 </a>
 
-                <div id="banner-epoch" class="info-item d-flex mr-2 mr-lg-3">
+                <div data-toggle="tooltip" title="" data-original-title="Epoch" id="banner-epoch" class="info-item d-flex mr-2 mr-lg-3">
                     <div class="info-item-header mr-1">
-              			<span class="item-icon">
-               				 <i class="fas fa-history"></i>
-						</span>
+              			<span class="item-icon"><i class="fas fa-history"></i></span>
                         <span class="d-none d-sm-inline item-text">Ep<span class="d-none d-xl-inline">och</span></span>
                     </div>
-                    <div class="info-item-body" data-toggle="tooltip" title="" data-original-title="Epoch">
-                        <a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{formatAddCommas .CurrentEpoch}}</a>
-                    </div>
+                    <div class="info-item-body"><a id="banner-epoch-data" href="/epoch/{{.CurrentEpoch}}">{{formatAddCommas .CurrentEpoch}}</a></div>
                 </div>
 
-                <div class="d-none d-lg-block">
+                <div data-toggle="tooltip" title="" data-original-title="Slot" class="d-none d-lg-block">
                     <div id="banner-slot" class="info-item d-flex mr-2 mr-lg-3">
                         <div class="info-item-header mr-1">
-							<span class="item-icon">
-								<i class="fas fa-cubes"></i>
-							</span>
+							<span class="item-icon"><i class="fas fa-cubes"></i></span>
                             <span class="item-text">Slot</span>
                         </div>
-                        <div class="info-item-body" data-toggle="tooltip" title="" data-original-title="Slot">
-                            <a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{formatAddCommas .CurrentSlot}}</a>
-                        </div>
+                        <div class="info-item-body"><a id="banner-slot-data" href="/block/{{.CurrentSlot}}">{{formatAddCommas .CurrentSlot}}</a></div>
                     </div>
                 </div>
 
-                <div id="banner-eth-price">
+                <div data-toggle="tooltip" title="" data-original-title="Price" id="banner-eth-price">
                     <div class="info-item d-flex mr-2 mr-lg-3">
                         <div class="info-item-header mr-1">
-							<span class="item-icon">
-								<i class="fas fa-cubes"></i>
-							</span>
+							<span class="item-icon"><i class="fas fa-cubes"></i></span>
                             <span class="d-none d-xl-inline item-text">Price</span>
                         </div>
-                        <div class="info-item-body" data-toggle="tooltip" title="" data-original-title="Price">
+                        <div class="info-item-body">
                             <a id="banner-eth-price-data">
                                 <span id="currentCurrencySymbol" class="currency-symbol">{{.CurrentSymbol}}</span>
                                 <span id="initialPrice">{{.CurrentPriceFormatted}}</span>
@@ -209,25 +199,21 @@
 
                 {{if not .ShowSyncingMessage}}
                     {{if gt .FinalizationDelay 3}}
-                        <div id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
+                        <div data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{.FinalizationDelay}} epochs ago" id="banner-fin" class="info-item d-flex mr-2 mr-lg-3">
                             <div class="info-item-header mr-1">
-                                <span class="item-icon">
-                                    <i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago"></i>
-                                </span>
+                                <span class="item-icon"><i class="fas fa-exclamation-triangle" data-toggle="tooltip" title="" data-original-title="The last finalized epoch was {{.FinalizationDelay}} epochs ago"></i></span>
                             </div>
                             <div class="info-item-body text-warning">
                                 <span id="banner-fin-data">{{.FinalizationDelay}}</span>
-                                <i class="fas fa-exclamation-triangle item-text" data-toggle="tooltip" title="" data-original-title="Finality: the last finalized epoch was {{.FinalizationDelay}} epochs ago"></i>
+                                <i class="fas fa-exclamation-triangle item-text"></i>
                             </div>
                         </div>
                     {{end}}
                 {{end}}
 
                 {{if .ShowSyncingMessage}}
-                    <div id="banner-status" class="info-item d-flex mr-1  mr-lg-3">
-                        <div class="info-item-body">
-                            <i class="fas fa-sync" data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network"></i>
-                        </div>
+                    <div data-toggle="tooltip" title="" data-original-title="The explorer is currently syncing with the network" id="banner-status" class="info-item d-flex mr-1 mr-lg-3">
+                        <div class="info-item-body"><i class="fas fa-sync"></i></div>
                     </div>
                 {{end}}
             </div>
@@ -322,6 +308,9 @@
                             <i class="fas fa-user-circle m-0 p-0"></i>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
+                            {{if not .NoAds}} 
+                                <a class="dropdown-item" href="/premium">Premium</a>
+                            {{end}}
                             <a class="dropdown-item" href="/user/notifications">Watchlist</a>
                             <a class="dropdown-item" href="/user/settings">Settings</a>
                             <a data-no-instant class="dropdown-item" href="/logout">Logout</a>
@@ -696,8 +685,8 @@
         <!-- <div class="p-1" style="overflow-wrap: break-word;background-color: var(--bg-color-light); height: 40px; display: flex; justify-content:center; align-items:center;"> 
           <span class="d-none d-md-block">
 
-            <span>Watch the 
-                <span>
+            <span>
+                 <span>
                     <a style="color: #ff6600;" href="https://ethernodes.org/london" target="_blank">
                     London Hardfork
                     </a>
@@ -711,14 +700,14 @@
                         <a style="color: #ff6600;" href="https://discord.gg/NvCxbCu" target="_blank">
                             Ethstaker
                         </a>
-                    </span> on Thursday, Aug 5, 2021
+                    </span> on Thursday, Aug 5, 2021 
                 </span>
 
 
         </span>
         <span class="d-md-none p-1" style="font-size:90%">
             <span>
-                <span>
+                 <span>
                     Watch the 
                     <a style="color: #ff6600;" href="https://ethernodes.org/london" target="_blank">
                         London Hardfork
@@ -728,7 +717,7 @@
                 <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=afAFQY--GlI" target="_blank">
                     on YouTube
                 </a>
-                </span>
+                </span> 
             </span>
         </span>
         </div>  -->
@@ -782,6 +771,7 @@
                     <h5>Resources</h5>
                     <div class="d-flex flex-column">
                         <a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-2"></i>Advertise</a>
+                        <a class="my-1" href="/premium"><i class="fas fa-user-astronaut mr-2"></i></i>Beaconcha.in Premium</a>
                         <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag
                             Shop</a>
                         <a class="my-1" href="/pricing"><i class="fas fa-laptop-code mr-2"></i></i>API Pricing</a>
@@ -983,7 +973,10 @@
         {{end}}
     {{end}}
 
-    <script type="text/javascript" async src="/js/revive.min.js"></script>
+    {{if not .NoAds}} 
+        <script type="text/javascript" async src="/js/revive.min.js"></script>
+    {{end}}
+    
     </body>
     </html>
 {{end}}

@@ -1,7 +1,7 @@
-{{ define "js"}}
+{{define "js"}}
 {{end}}
 
-{{ define "css"}}
+{{define "css"}}
     <style>
         .epoch__container {
             position: relative;
@@ -90,10 +90,9 @@
     </style>
 {{end}}
 
-{{ define "content"}}
+{{define "content"}}
     {{with .Data}}
         <div class="container mt-2">
-
             <div class="my-3">
                 <div class="d-md-flex py-2 justify-content-md-between">
                     <h1 class="h4 mb-1 mb-md-0">
@@ -106,7 +105,7 @@
                 {{end}} -->
                     </h1>
                     <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                        <ol class="breadcrumb font-size-1 mb-0" style="padding: 0; background-color: transparent;">
                             <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
                             <li class="breadcrumb-item"><a href="/epochs" title="Epochs">Epochs</a></li>
                             <li class="breadcrumb-item active" aria-current="page">Epoch Details</li>
@@ -197,7 +196,7 @@
                                 <small
                                         class="text-muted ml-1">({{formatPercentageWithPrecision .GlobalParticipationRate 1}}
                                     %)</small></div>
-                            <div class="progress" style="height:5px; width: 250px;">
+                            <div class="progress" style="height: 5px; width: 250px;">
                                 <div class="progress-bar" role="progressbar"
                                      style="width: {{.GlobalParticipationRate | formatPercentage}}%;"
                                      aria-valuenow="{{.GlobalParticipationRate | formatPercentage}}" aria-valuemin="0"
@@ -251,10 +250,10 @@
                                     <td aria-ethereum-date="{{.Ts.Unix}}"
                                         aria-ethereum-date-format="FROMNOW">{{.Ts.Format "2006-01-02T15:04:05"}}</td>
                                     <td><a href="/validator/{{.Proposer}}">{{formatAddCommas .Proposer}}</a></td>
-                                    <td class="text-monospace">
-                                        {{ if eq .Status 1}}
-                                            <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}
-                                                ...</a>
+                                    <td class="d-flex align-items-center text-monospace">
+                                        {{if eq .Status 1}}
+                                            <a href="/block/{{printf "%x" .BlockRoot}}">0x{{printf "%.4x" .BlockRoot}}...</a>
+                                            <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .BlockRoot}}></i>
                                         {{else}}
                                             N/A
                                         {{end}}

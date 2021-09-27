@@ -19,6 +19,16 @@
 		<script>
             setupDashboardButtons({{.Index }}+'')
 		</script>
+		<script>
+			$('.income-chart-btn').on('click', () => {
+				$('#incomeChart').removeClass('d-none')
+				$('#proposedChart').addClass('d-none')
+			})
+			$('.proposed-chart-btn').on('click', () => {
+				$('#incomeChart').addClass('d-none')
+				$('#proposedChart').removeClass('d-none')
+			})
+		</script>
     {{end}}
 {{end}}
 
@@ -121,13 +131,11 @@
 						<div class="card h-100 px-0 py-0 card-body">
 							<ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="chartTabs" role="tablist">
 								<li class="nav-item">
-									<a class="nav-link active" id="incomeChart-tab" data-toggle="tab" href="#incomeChart" role="tab" aria-controls="incomeChart-tab-content" aria-selected="true"><i class="tab-icon mr-md-1 fas fa-chart-line"></i><span class="tab-text">Income</span></a>
+									<a class="nav-link active" id="charts-tab" data-toggle="tab" href="#charts" role="tab" aria-controls="charts-tab-content" aria-selected="false">
+										<i class="tab-icon mr-md-2 fas fa-chart-bar"></i>
+										<span class="tab-text">Charts</span>
+									</a>
 								</li>
-								<li class="nav-item">
-									<a class="nav-link {{if eq .BlocksCount 0}}disabled{{end}}" id="proposedChart-tab" data-toggle="tab" href="#proposedChart" role="tab" aria-controls="proposedChart-tab-content" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-chart-bar"></i><span class="tab-text">Proposals</span></a>
-								</li>
-								<!-- Tables -->
-								
 								<li class="nav-item">
 									<a class="nav-link {{if eq .BlocksCount 0}}disabled{{end}}" id="blocks-tab" data-toggle="tab" href="#blocks" role="tab"
 									aria-controls="blocks" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-cubes"></i><span class="tab-text">Blocks</span></a>
@@ -144,13 +152,27 @@
 									<a class="nav-link" id="deposits-tab" data-toggle="tab" href="#deposits" role="tab"
 									aria-controls="deposits" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-wallet"></i> <span class="tab-text">Deposits</span></a>
 								</li>
+								{{if .IsRocketpool}}
+									<li class="nav-item">
+										<a class="nav-link" id="rocketpool-tab" data-toggle="tab" href="#rocketpool" role="tab" aria-controls="rocketpool" aria-selected="false">
+											<i class="tab-icon mr-md-1 fas fa-rocket"></i>
+											<span class="tab-text">Rocketpool</span>
+										</a>
+									</li>
+								{{end}}
 							</ul>
 							<div class="tab-content h-100" id="myTabContent">
-								<div id="incomeChart" class="tab-pane fade h-100 show active" role="tabpanel" aria-labelledby="incomeChart-tab">
-									{{template "validatorIncomeChart"  $ }}
-								</div>
-								<div id="proposedChart" class="tab-pane fade h-100" role="tabpanel" aria-labelledby="proposedChart-tab">
-									{{template "validatorProposedChart"  . }}
+								<div id="charts" class="tab-pane fade w-100 h-100 show active" role="tabpanel" aria-labelledby="charts-tab">
+									<div class="btn-group mt-2 ml-2 charts-btn-group" role="group" aria-label="Charts buttons group">
+										<button type="button" class="btn btn-outline-secondary btn-sm income-chart-btn">Income</button>
+										<button type="button" class="btn btn-outline-secondary btn-sm proposed-chart-btn">Proposals</button>
+									</div>
+									<div id="incomeChart" class="w-100 h-100" aria-labelledby="incomeChart-tab">
+										{{template "validatorIncomeChart" $}}
+									</div>
+									<div id="proposedChart" class="w-100 h-100 d-none" aria-labelledby="proposedChart-tab">
+										{{template "validatorProposedChart" .}}
+									</div>
 								</div>
 								{{if gt .BlocksCount 0}}
 								<div class="tab-pane fade h-100" id="blocks" role="tabpanel" aria-labelledby="blocks-tab" aria-controls="blocks">
@@ -172,6 +194,50 @@
 										{{template "validatorDepositsTable" $}}
 									</div>
 								</div>
+								{{if .IsRocketpool}}
+									<div class="tab-pane fade w-100 h-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
+										<table class="table table-borderless" width="100%">
+											<tbody>
+												<tr>
+													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Address</th>
+													<td class="border-0">{{formatEth1Address .Rocketpool.MinipoolAddress}}</td>
+												</tr>
+												<tr>
+													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Commission</th>
+													<td class="border-0">{{roundDecimals .Rocketpool.MinipoolNodeFee 2}}</td>
+												</tr>
+												<tr>
+													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Deposit Type</th>
+													<td class="border-0"><span class="badge badge-pill badge-light font-weight-normal" style="font-size: .82rem;">{{.Rocketpool.MinipoolDepositType}}</span></td>
+												</tr>
+												<tr>
+													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Status</th>
+													<td class="border-0"><span class="badge badge-pill badge-light font-weight-normal" style="font-size: .82rem;">{{.Rocketpool.MinipoolStatus}}</span></td>
+												</tr>
+												<tr>
+													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Address</th>
+													<td class="border-0">{{formatEth1Address .Rocketpool.NodeAddress}}</td>
+												</tr>
+												<tr>
+													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Timezone</th>
+													<td class="border-0">{{.Rocketpool.NodeTimezoneLocation}}</td>
+												</tr>
+												<tr>
+													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node RPL Stake</th>
+													<td class="border-0">{{FormatRPL .Rocketpool.NodeRPLStake}}</td>
+												</tr>
+												<tr>
+													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Min RPL Stake</th>
+													<td class="border-0">{{FormatRPL .Rocketpool.NodeMinRPLStake}}</td>
+												</tr>
+												<tr>
+													<th scope="row" class="border-0" style="width: 5rem; font-size: 1.05rem;">Node Max RPL Stake</th>
+													<td class="border-0">{{FormatRPL .Rocketpool.NodeMaxRPLStake}}</td>
+												</tr>
+											</tbody>
+										</table>
+									</div>
+								{{end}}
 							</div>
 						</div>
 					</div>

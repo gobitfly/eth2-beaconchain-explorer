@@ -358,22 +358,24 @@
 {{end}}
 
 {{ define "content"}}
-    {{with .Data}}
         <div class="container mt-2">
             <div id="app" v-cloak>
-                {{if and (and (not .ShowSyncingMessage) .Genesis) (not .GenesisPeriod)}}
-                    {{ template "participationWarning" .}}
+                {{with .Data}}
+                    {{if and (and (not .ShowSyncingMessage) .Genesis) (not .GenesisPeriod)}}
+                        {{ template "participationWarning" .}}
+                    {{end}}
+                    {{ template "hero" . }}
                 {{end}}
-                {{ template "hero" . }}
-                {{ template "banner"}}
-                {{ if and (not .Genesis) (not .GenesisPeriod) }}
-                    {{ template "preGenesis" $}}
-                {{ else if .GenesisPeriod}}
-                    {{template "genesis" .}}
-                {{else}}
-                    {{template "postGenesis" .}}
+                {{if not .NoAds}} {{template "banner"}} {{end}}
+                {{with .Data}}
+                    {{ if and (not .Genesis) (not .GenesisPeriod) }}
+                        {{ template "preGenesis" $}}
+                    {{ else if .GenesisPeriod}}
+                        {{template "genesis" .}}
+                    {{else}}
+                        {{template "postGenesis" .}}
+                    {{end}}
                 {{end}}
             </div>
         </div>
-    {{end}}
 {{end}}
