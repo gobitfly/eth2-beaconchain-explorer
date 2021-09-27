@@ -489,16 +489,16 @@ function loadValidatorsData(data) {
                     badgeColor = 'badge-warning'
                     break
                   case 'validator_proposal_submitted':
-                    badgeColor = 'badge-light'
+                    badgeColor = 'badge-success'
                     break
                   case 'validator_proposal_missed':
                     badgeColor = 'badge-warning'
                     break
                   case 'validator_got_slashed':
-                    badgeColor = 'badge-light'
+                    badgeColor = 'badge-new-red'
                     break
                 }
-                notifications += `<span class="badge badge-pill ${badgeColor} badge-custom-size mr-1 my-1 font-weight-normal">${n.replaceAll('_', " ")}</span>`
+                notifications += `<span class="badge badge-pill ${badgeColor} badge-custom-size mr-1 my-1 font-weight-normal text-white">${n.replaceAll('_', " ")}</span>`
               }
             }
             if (!hasItems) {
