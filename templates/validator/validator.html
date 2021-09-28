@@ -182,8 +182,6 @@
 							<div class="tab-pane fade h-100" id="deposits" role="tabpanel" aria-labelledby="deposits-tab" aria-controls="deposits">
 								<div class="px-3">{{template "validatorDepositsTable" $}}</div>
 							</div>
-
-
 							{{if .IsRocketpool}}
 								<div class="tab-pane fade w-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-5 mb-4">
@@ -201,7 +199,7 @@
 										{{else if eq (derefString .Rocketpool.MinipoolDepositType) "Half"}}
 											<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
 										{{else}}
-											<span class="badge badge-pill badge-success badge-custom-size font-weight-normal mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
+											<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
 										{{end}}
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
@@ -238,8 +236,6 @@
 									</div>
 								</div>
 							{{end}}
-
-
 						</div>
 					</div>
 				</div>
