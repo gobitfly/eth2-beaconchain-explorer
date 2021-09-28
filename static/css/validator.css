@@ -104,8 +104,8 @@
 }
 .validator__lifecycle-container .failed .validator__lifecycle-node,
 .validator__lifecycle-container .offline.validator__lifecycle-active .validator__lifecycle-node {
-  border-color: var(--new-red);
-  background-color: var(--new-red);
+  border-color: var(--danger, red);
+  background-color: var(--danger, red);
 }
 .validator__lifecycle-container i {
   visibility: hidden;
