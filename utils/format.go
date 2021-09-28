@@ -757,7 +757,7 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	} else if eff > 60 {
 		return template.HTML(fmt.Sprintf(`<span class="text-warning" data-toggle="tooltip" title="%s"> %.0f%% - Fair <i class="fas fa-meh"></i></span>`, tooltipText, eff))
 	} else {
-		return template.HTML(fmt.Sprintf(`<span class="text-new-red" data-toggle="tooltip" title="%s"> %.0f%% - Bad <i class="fas fa-frown"></i></span>`, tooltipText, eff))
+		return template.HTML(fmt.Sprintf(`<span class="text-danger" data-toggle="tooltip" title="%s"> %.0f%% - Bad <i class="fas fa-frown"></i></span>`, tooltipText, eff))
 	}
 }
 
@@ -776,7 +776,7 @@ func FormatPercentageColored(percentage float64, tooltipText string) template.HT
 	} else if percentage >= 60 {
 		return template.HTML(fmt.Sprintf(`<span class="text-warning">%.0f%% <i class="fas fa-meh"></i></span>`, percentage))
 	}
-	return template.HTML(fmt.Sprintf(`<span class="text-new-red">%.0f%% <i class="fas fa-frown"></i></span>`, percentage))
+	return template.HTML(fmt.Sprintf(`<span class="text-danger">%.0f%% <i class="fas fa-frown"></i></span>`, percentage))
 }
 
 func DerefString(str *string) string {
@@ -800,7 +800,11 @@ func KFormatterEthPrice(price uint64) string {
 	return fmt.Sprint(price)
 }
 
-func FormatWeiToEth(num string) string {
+func FormatRPL(num string) string {
 	floatNum, _ := strconv.ParseFloat(num, 64)
-	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " ETH"
+	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " RPL"
+}
+
+func FormatFloatWithPrecision(precision int, num float64) string {
+	return fmt.Sprintf("%.*f", precision, num)
 }

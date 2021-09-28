@@ -8,6 +8,8 @@
             language: {
                 info: '_TOTAL_ entries',
                 infoEmpty: 'No entries match',
+                search: '',
+                searchPlaceholder: 'Search...',
                 paginate: {
                     previous: '<',
                     next: '>'
@@ -18,7 +20,7 @@
             processing: true,
             ordering: false,
             responsive: true,
-            searching: false,
+            searching: true,
             serverSide: true,
             columnDefs: [
                 {
@@ -35,13 +37,19 @@
                 {
                     targets: 3,
                     render: function(data, type, row, meta) {
-                        return data.toFixed(2)
+                        return `${(data * 100).toFixed(2) + '%'}`
                     }
                 },
                 {
                     targets: 4,
                     render: function(data, type, row, meta) {
-                        return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
+                        if (data === 'Empty') {
+                            return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
+                        }
+                        if (data === 'Half') {
+                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
+                        return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal">${data}</span>`
                     }
                 },
                 {
@@ -53,7 +61,10 @@
                         if (data === 'Dissolved') {
                             return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
+                        if (data === 'Withdrawable') {
+                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
+                        return `<span class="badge badge-pill badge-info badge-custom-size font-weight-normal text-white">${data}</span>`
                     }
                 }
             ],
@@ -78,6 +89,8 @@
             language: {
                 info: '_TOTAL_ entries',
                 infoEmpty: 'No entries match',
+                search: '',
+                searchPlaceholder: 'Search...',
                 paginate: {
                     previous: '<',
                     next: '>'
@@ -88,7 +101,7 @@
             processing: true,
             ordering: false,
             responsive: true,
-            searching: false,
+            searching: true,
             serverSide: true,
             columnDefs: [
                 {
@@ -115,27 +128,27 @@
                     targets: 2,
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
+                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
-                        return `${data} ETH`
+                        return `${data} RPL`
                     }
                 },
                 {
                     targets: 3,
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
+                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
-                        return `${data} ETH`
+                        return `${data} RPL`
                     }
                 },
                 {
                     targets: 4,
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
+                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
-                        return `${data} ETH`
+                        return `${data} RPL`
                     }
                 }
             ],
@@ -160,6 +173,8 @@
             language: {
                 info: '_TOTAL_ entries',
                 infoEmpty: 'No entries match',
+                search: '',
+                searchPlaceholder: 'Search...',
                 paginate: {
                     previous: '<',
                     next: '>'
@@ -170,7 +185,7 @@
             processing: true,
             ordering: false,
             responsive: true,
-            searching: false,
+            searching: true,
             serverSide: true,
             columnDefs: [
                 {
@@ -209,15 +224,9 @@
                     targets: 5,
                     render: function(data, type, row, meta) {
                         if (parseInt(data) !== 0) {
-                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} ETH`
+                            return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
-                        return `${data} ETH`
-                    }
-                },
-                {
-                    targets: 5,
-                    render: function(data, type, row, meta) {
-                        return data
+                        return `${data} RPL`
                     }
                 }
             ],
@@ -242,6 +251,8 @@
             language: {
                 info: '_TOTAL_ entries',
                 infoEmpty: 'No entries match',
+                search: '',
+                searchPlaceholder: 'Search...',
                 paginate: {
                     previous: '<',
                     next: '>'
@@ -252,7 +263,7 @@
             processing: true,
             ordering: false,
             responsive: true,
-            searching: false,
+            searching: true,
             serverSide: true,
             columnDefs: [
                 {
@@ -363,7 +374,10 @@
                         if (data === 'Cancelled') {
                             return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
+                        if (data === 'Defeated') {
+                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
+                        }
+                        return `<span class="badge badge-pill badge-info badge-custom-size font-weight-normal text-white">${data}</span>`
                     }
                 }
             ],
@@ -387,7 +401,6 @@
         .badge-custom-size {
             font-size: .82rem;
         }
-
         #slashings td:first-child {
             white-space: break-spaces;
         }
@@ -401,6 +414,12 @@
             padding-top: 2.15rem !important;
             font-size: .9rem;
             text-align: left !important;
+        }
+        div.dataTables_filter {
+            padding-right: 0 !important;
+        }
+        .dataTables_filter input { 
+            width: 265px !important;
         }
         div.dataTables_length {
             padding-left: 0 !important;
