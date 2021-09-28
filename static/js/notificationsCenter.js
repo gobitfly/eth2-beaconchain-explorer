@@ -484,21 +484,26 @@ function loadValidatorsData(data) {
               if (VALIDATOR_EVENTS.includes(n)) { 
                 hasItems = true
                 let badgeColor = ""
+                let badgeTextColor = ""
                 switch (n) {
                   case 'validator_attestation_missed':
                     badgeColor = 'badge-warning'
+                    badgeTextColor = ""
                     break
                   case 'validator_proposal_submitted':
                     badgeColor = 'badge-success'
+                    badgeTextColor = 'text-white'
                     break
                   case 'validator_proposal_missed':
                     badgeColor = 'badge-warning'
+                    badgeTextColor = ""
                     break
                   case 'validator_got_slashed':
                     badgeColor = 'badge-new-red'
+                    badgeTextColor = 'text-white'
                     break
                 }
-                notifications += `<span class="badge badge-pill ${badgeColor} badge-custom-size mr-1 my-1 font-weight-normal text-white">${n.replaceAll('_', " ")}</span>`
+                notifications += `<span class="badge badge-pill ${badgeColor} ${badgeTextColor} badge-custom-size mr-1 my-1 font-weight-normal">${n.replaceAll('_', " ")}</span>`
               }
             }
             if (!hasItems) {
