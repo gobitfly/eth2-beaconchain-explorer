@@ -2,12 +2,15 @@ package exporter
 
 import (
 	"eth2-exporter/db"
+	"eth2-exporter/metrics"
 	"time"
 )
 
 func UpdatePubkeyTag() {
+	logger.Infoln("Started Pubkey Tags Updater")
 	for true {
-		logger.Infoln("Updating Pubkey Tags")
+		start := time.Now()
+
 		tx, err := db.DB.Beginx()
 		if err != nil {
 			logger.WithError(err).Error("Error connecting to DB")
@@ -17,6 +20,7 @@ func UpdatePubkeyTag() {
 		SELECT publickey, FORMAT('pool:%s', sps.name) tag
 		FROM eth1_deposits
 		inner join stake_pools_stats as sps on ENCODE(from_address::bytea, 'hex')=sps.address
+		WHERE sps.name NOT LIKE '%Rocketpool -%'
 		ON CONFLICT (publickey, tag) DO NOTHING;`)
 		if err != nil {
 			logger.WithError(err).Error("Error updating validator_tags")
@@ -28,6 +32,10 @@ func UpdatePubkeyTag() {
 			logger.WithError(err).Error("Error commiting transaction")
 		}
 		tx.Rollback()
+
+		logger.Infof("Updating Pubkey Tags took %v sec.", time.Now().Sub(start).Seconds())
+		metrics.TaskDuration.WithLabelValues("validator_pubkey_tag_updater").Observe(time.Since(start).Seconds())
+
 		time.Sleep(time.Minute * 10)
 	}
 }
