@@ -424,7 +424,7 @@
                             </a>
                         </div>
                     </li>
-                    <li class="nav-item {{ if eq .Active "stats"}}active{{end}} dropdown">
+                    <!-- <li class="nav-item {{ if eq .Active "stats"}}active{{end}} dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 							<span class="nav-icon">
@@ -451,7 +451,7 @@
                                 <span class="nav-text">Nodes</span>
                             </a>
                         </div>
-                    </li>
+                    </li> -->
                     <style>
                         .nav-cube {
                             --mainColor: rgba(75, 75, 75, .7);
@@ -571,7 +571,7 @@
                 </li>
                 
 
-                <li class="nav-item {{ if eq .Active "services"}}active{{end}} dropdown">
+                <!-- <li class="nav-item {{ if eq .Active "services"}}active{{end}} dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">  
                         <span class="nav-icon">
@@ -617,18 +617,18 @@
                     </a>
                     
                     </div>
-                </li>
-                    <li class="nav-item dropdown {{ if eq .Active "more"}}active{{end}}">
+                </li> -->
+                    <li class="nav-item dropdown {{ if eq .Active "services"}}active{{end}}">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 							<span class="nav-icon">
-								<i class="fas fa-info mr-2"></i>
+								<i class="fas fa-tools mr-2"></i>
 							</span>
                             <span class="nav-text">
-								More
+								Services
 							</span>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <div class="dropdown-menu dropdown-menu-right " aria-labelledby="navbarDropdown" style="width: 1000px;">
                             <!--<a class="dropdown-item" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121">
 								<span class="nav-icon">
 									<i class="fab fa-apple mr-2"></i>
@@ -641,7 +641,7 @@
 								</span>
                                 <span class="nav-text">Android App</span>
                             </a>-->
-                            <a class="dropdown-item" href="/mobile">
+                            <!-- <a class="dropdown-item" href="/mobile">
 								<span class="nav-icon">
 									<i class="fas fa-mobile-alt mr-2"></i>
 								</span>
@@ -670,7 +670,138 @@
                                     <i class="fas fa-external-link-alt mr-2"></i>
                                 </span>
                                 <span class="nav-text">Knowledge Base</span>
-                            </a>
+                            </a> -->
+                            <div class="row g-2">
+                                <div class="col-lg-3 col-6">
+                                    <div class="col-megamenu">
+                                        <h6 class="title">Staking Pools</h6>
+                                        <ul class="list-unstyled">
+                                            <li>
+                                                <a class="dropdown-item" href="/stakingServices">
+                                                    <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
+                                                    <span class="nav-text">Staking Services</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="/pools">
+                                                    <span class="nav-icon"><i class="fas fa-chart-pie mr-2"></i></span>
+                                                    <span class="nav-text">Pool Benchmarks</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="/pools/rocketpool">
+                                                    <span class="nav-icon"><i class="fas fa-chart-pie mr-2"></i></span>
+                                                    <span class="nav-text">Rocketpool Stats</span>
+                                                </a>      
+                                            </li>
+                                        </ul>
+                                    </div>  <!-- col-megamenu.// -->
+                                </div><!-- end col-3 -->
+                                <div class="col-lg-3 col-6">
+                                    <div class="col-megamenu" >
+                                        <h6 class="title">Services</h6>
+                                        <ul class="list-unstyled">
+                                            <li>
+                                                <a ga-outbound class="dropdown-item" href="https://kb.beaconcha.in">
+                                                    <span class="nav-icon">
+                                                        <i class="fas fa-external-link-alt mr-2"></i>
+                                                    </span>
+                                                    <span class="nav-text">Knowledge Base</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="/poap">
+                                                    <span class="nav-icon">
+                                                        <i class="fas fa-medal mr-1"></i>
+                                                    </span>
+                                                    <span class="nav-text">
+                                                        POAP
+                                                    </span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="/graffitiwall">
+                                                    <span class="nav-icon">
+                                                        <i class="fas fa-paint-brush mr-1"></i>
+                                                    </span>
+                                                    <span class="nav-text">
+                                                        Graffiti Wall
+                                                    </span>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>  <!-- col-megamenu.// -->
+                                </div><!-- end col-3 -->
+                                <div class="col-lg-3 col-6">
+                                    <div class="col-megamenu">
+                                        <h6 class="title">Charts & Stats</h6>
+                                        <ul class="list-unstyled">
+                                            <li>
+                                                <a class="dropdown-item" href="/charts">
+                                                    <span class="nav-icon"><i class="fas fa-chart-bar mr-2"></i></span>
+                                                    <span class="nav-text">Charts</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                    <a class="dropdown-item" href="/rewards">
+                                                        <span class="nav-icon">
+                                                            <i class="far fa-money-bill-alt mr-2"></i></span>
+                                                        <span class="nav-text">Income History</span>
+                                                    </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="/calculator">
+                                                    <span class="nav-icon"><i class="fas fa-calculator mr-2"></i></span>
+                                                    <span class="nav-text">Profit Calculator</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="/vis">
+                                                    <span class="nav-icon"><i class="fas fa-project-diagram mr-2"></i></span>
+                                                    <span class="nav-text">Block Viz</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a ga-outbound class="dropdown-item" href="https://eth2.ethernodes.org/">
+                                                    <span class="nav-icon"><i class="fas fa-network-wired mr-2"></i></span>
+                                                    <span class="nav-text">Nodes</span>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>  <!-- col-megamenu.// -->
+                                </div>    
+                                <div class="col-lg-3 col-6">
+                                    <div class="col-megamenu">
+                                        <h6 class="title">Tools</h6>
+                                        <ul class="list-unstyled">
+                                            <li>
+                                                <a class="dropdown-item" href="/mobile">
+                                                    <span class="nav-icon">
+                                                        <i class="fas fa-mobile-alt mr-2"></i>
+                                                    </span>
+                                                    <span class="nav-text">Beaconchain App</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
+                                                    <span class="nav-icon">
+                                                        <i class="fas fa-laptop-code mr-2"></i>
+                                                    </span>
+                                                    <span class="nav-text">API Docs</span>
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="/pricing">
+                                                    <span class="nav-icon">
+                                                        <i class="fas fa-laptop-code mr-2"></i>
+                                                    </span>
+                                                    <span class="nav-text">API Pricing</span>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>   
+                                </div> 
+                            </div><!-- end row --> 
                         </div>
                     </li>
                 </ul>

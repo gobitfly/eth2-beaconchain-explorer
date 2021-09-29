@@ -84,3 +84,23 @@ input:checked + .slider:before {
 .slider.round:before {
   border-radius: 50%;
 }
+
+@media all and (min-width: 992px) {
+	
+	.has-megamenu{
+    position:static!important;
+  }
+	.megamenu{left:0; right:0; width:500px; margin-top:0;  }
+	
+}	
+/* ============ desktop view .end// ============ */
+
+
+/* ============ mobile view ============ */
+@media(max-width: 991px){
+	.navbar.fixed-top .navbar-collapse, .navbar.sticky-top .navbar-collapse{
+		overflow-y: auto;
+	    max-height: 90vh;
+	    margin-top:10px;
+	}
+}
