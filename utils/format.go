@@ -29,13 +29,13 @@ func FormatMessageToHtml(message string) template.HTML {
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatus(status uint64) template.HTML {
 	if status == 0 {
-		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
+		return `<span class="badge bg-light text-dark font-weight-normal">Scheduled</span>`
 	} else if status == 1 {
-		return "<span class=\"badge bg-success text-white\">Attested</span>"
+		return `<span class="badge bg-success text-white font-weight-normal">Attested</span>`
 	} else if status == 2 {
-		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+		return `<span class="badge bg-warning text-white font-weight-normal">Missed</span>`
 	} else if status == 3 {
-		return "<span class=\"badge bg-warning text-dark\">Orphaned</span>"
+		return `<span class="badge bg-warning text-white font-weight-normal">Orphaned</span>`
 	} else {
 		return "Unknown"
 	}
@@ -44,17 +44,17 @@ func FormatAttestationStatus(status uint64) template.HTML {
 // FormatAttestationStatusShort will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatusShort(status uint64) template.HTML {
 	if status == 0 {
-		return "<span title=\"Scheduled\" data-toggle=\"tooltip\"  class=\"badge bg-light text-dark\">Sche.</span>"
+		return `<span title="Scheduled" data-toggle="tooltip" class="badge bg-light text-dark font-weight-normal">Sche.</span>`
 	} else if status == 1 {
-		return "<span title=\"Attested\" data-toggle=\"tooltip\"   class=\"badge bg-success text-white\">Att.</span>"
+		return `<span title="Attested" data-toggle="tooltip" class="badge bg-success text-white font-weight-normal">Att.</span>`
 	} else if status == 2 {
-		return "<span title=\"Missed\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Miss.</span>"
+		return `<span title="Missed" data-toggle="tooltip" class="badge bg-warning text-white font-weight-normal">Miss.</span>`
 	} else if status == 3 {
-		return "<span title=\"Orphaned\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Orph.</span>"
+		return `<span title="Orphaned" data-toggle="tooltip" class="badge bg-warning text-white font-weight-normal">Orph.</span>`
 	} else if status == 4 {
-		return "<span title=\"Inactivity Leak\" data-toggle=\"tooltip\"  class=\"badge bg-danger text-dark\">Leak</span>"
+		return `<span title="Inactivity Leak" data-toggle="tooltip" class="badge bg-danger text-dark font-weight-normal">Leak</span>`
 	} else if status == 5 {
-		return "<span title=\"Inactive\" data-toggle=\"tooltip\"  class=\"badge bg-light text-dark\">Inac.</span>"
+		return `<span title="Inactive" data-toggle="tooltip" class="badge bg-light text-dark font-weight-normal">Inac.</span>`
 	} else {
 		return "Unknown"
 	}
@@ -246,13 +246,13 @@ func FormatSlotToTimestamp(blockSlot uint64) template.HTML {
 func FormatBlockStatus(status uint64) template.HTML {
 	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
 	if status == 0 {
-		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
+		return `<span class="badge bg-light text-dark font-weight-normal">Scheduled</span>`
 	} else if status == 1 {
-		return "<span class=\"badge bg-success text-white\">Proposed</span>"
+		return `<span class="badge bg-success text-white font-weight-normal">Proposed</span>`
 	} else if status == 2 {
-		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+		return `<span class="badge bg-warning text-white font-weight-normal">Missed</span>`
 	} else if status == 3 {
-		return "<span class=\"badge bg-secondary text-white\">Orphaned</span>"
+		return `<span class="badge bg-secondary text-white font-weight-normal">Orphaned</span>`
 	} else {
 		return "Unknown"
 	}
@@ -262,13 +262,13 @@ func FormatBlockStatus(status uint64) template.HTML {
 func FormatBlockStatusShort(status uint64) template.HTML {
 	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
 	if status == 0 {
-		return "<span title=\"Scheduled\" data-toggle=\"tooltip\" class=\"badge bg-light text-dark\">Sche.</span>"
+		return `<span title="Scheduled" data-toggle="tooltip" class="badge bg-light text-dark font-weight-normal">Sche.</span>`
 	} else if status == 1 {
-		return "<span title=\"Proposed\" data-toggle=\"tooltip\" class=\"badge bg-success text-white\">Prop.</span>"
+		return `<span title="Proposed" data-toggle="tooltip" class="badge bg-success text-white font-weight-normal">Prop.</span>`
 	} else if status == 2 {
-		return "<span title=\"Missed\" data-toggle=\"tooltip\" class=\"badge bg-warning text-dark\">Miss.</span>"
+		return `<span title="Missed" data-toggle="tooltip" class="badge bg-warning text-white font-weight-normal">Miss.</span>`
 	} else if status == 3 {
-		return "<span title=\"Orphaned\" data-toggle=\"tooltip\" class=\"badge bg-secondary text-white\">Orph.</span>"
+		return `<span title="Orphaned" data-toggle="tooltip" class="badge bg-secondary text-white font-weight-normal">Orph.</span>`
 	} else {
 		return "Unknown"
 	}
@@ -338,10 +338,10 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 
 	if !Config.Chain.Mainnet {
 		// return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a style=\"font-family: 'Roboto Mono'\" href=\"https://goerli.etherscan.io/tx/0x%x\">0x%v…</a>%v", hash, hex.EncodeToString(hash)[:6], copyBtn))
+		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://goerli.etherscan.io/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 	}
 	// return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a style=\"font-family: 'Roboto Mono'\" href=\"https://etherchain.org/tx/0x%x\">0x%v…</a>%v", hash, hex.EncodeToString(hash)[:6], copyBtn))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://etherchain.org/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
@@ -363,12 +363,12 @@ func FormatGraffiti(graffiti []byte) template.HTML {
 	s := strings.Map(fixUtf, string(bytes.Trim(graffiti, "\x00")))
 	h := template.HTMLEscapeString(s)
 	if len(s) <= 6 {
-		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\">%s</span>", graffiti, h))
+		return template.HTML(fmt.Sprintf(`<span aria-graffiti="%#x">%s</span>`, graffiti, h))
 	}
 	if len(h) >= 8 {
-		return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:8]))
+		return template.HTML(fmt.Sprintf(`<span aria-graffiti="%#x" data-toggle="tooltip" data-placement="top" title="%s">%s...</span>`, graffiti, h, h[:8]))
 	}
-	return template.HTML(fmt.Sprintf("<span aria-graffiti=\"%#x\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"%s\" >%s...</span>", graffiti, h, h[:]))
+	return template.HTML(fmt.Sprintf(`<span aria-graffiti="%#x" data-toggle="tooltip" data-placement="top" title="%s">%s...</span>`, graffiti, h, h[:]))
 }
 
 // FormatGraffitiAsLink will return the graffiti formated as html-link
@@ -528,7 +528,7 @@ func FormatPercentageWithGPrecision(percentage float64, precision int) string {
 func FormatPublicKey(validator []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(validator))
 	// return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
-	return template.HTML(fmt.Sprintf(`<i class="fas fa-male"></i> <a style="font-family: 'Roboto Mono'" href="/validator/0x%x">0x%v…</a>%v`, validator, hex.EncodeToString(validator)[:6], copyBtn))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/validator/0x%x">0x%v…</a>%v`, validator, hex.EncodeToString(validator)[:6], copyBtn))
 }
 
 func FormatMachineName(machineName string) template.HTML {
@@ -620,7 +620,7 @@ func FormatValidatorTag(tag string) template.HTML {
 	var result string
 	switch tag {
 	case "rocketpool":
-		result = fmt.Sprintf(`<span style="background:yellow; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="https://www.rocketpool.net/">%s</a></span>`, tag)
+		result = fmt.Sprintf(`<span style="background:yellow; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="/pools/rocketpool">%s</a></span>`, tag)
 	case "ssv":
 		result = fmt.Sprintf(`<span style="background:orange; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
 	default:
@@ -639,14 +639,27 @@ func FormatValidatorTags(tags []string) template.HTML {
 
 // FormatValidator will return html formatted text for a validator
 func FormatValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a href="/validator/%v">%v</a>`, validator, validator))
 }
 
-func FormatValidatorWithName(validator uint64, name string) template.HTML {
+func FormatValidatorWithName(validator interface{}, name string) template.HTML {
+	var validatorRead string
+	var validatorLink string
+	switch v := validator.(type) {
+	case []byte:
+		if len(v) > 2 {
+			validatorRead = fmt.Sprintf("0x%x…%x", v[:2], v[len(v)-2:])
+		}
+		validatorLink = fmt.Sprintf("%x", v)
+	default:
+		validatorRead = fmt.Sprintf("%v", v)
+		validatorLink = fmt.Sprintf("%v", v)
+	}
+
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validator))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i><a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
 	} else {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i><a href=\"/validator/%v\">%v</a>", validatorLink, validatorRead))
 	}
 }
 
@@ -666,18 +679,18 @@ func FormatValidatorInt64(validator int64) template.HTML {
 
 // FormatSlashedValidatorInt64 will return html formatted text for a slashed validator
 func FormatSlashedValidatorInt64(validator int64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-user-slash text-danger mr-2"></i><a href="/validator/%v">%v</a>`, validator, validator))
 }
 
 // FormatSlashedValidator will return html formatted text for a slashed validator
 func FormatSlashedValidator(validator uint64) template.HTML {
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", validator, validator))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-user-slash text-danger mr-2"></i><a href="/validator/%v">%v</a>`, validator, validator))
 }
 
 // FormatSlashedValidator will return html formatted text for a slashed validator
 func FormatSlashedValidatorWithName(validator uint64, name string) template.HTML {
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v (<span class=\"text-truncate\">"+html.EscapeString(name)+"</span>)</a>", validator, validator))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger mr-2\"></i><a href=\"/validator/%v\">%v (<span class=\"text-truncate\">"+html.EscapeString(name)+"</span>)</a>", validator, validator))
 	} else {
 		return FormatSlashedValidator(validator)
 	}
@@ -688,9 +701,9 @@ func FormatSlashedValidatorsInt64(validators []int64) template.HTML {
 	str := ""
 	for i, v := range validators {
 		if i == len(validators)+1 {
-			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", v, v)
+			str += fmt.Sprintf(`<i class="fas fa-user-slash text-danger mr-2"></i><a href="/validator/%v">%v</a>`, v, v)
 		} else {
-			str += fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>, ", v, v)
+			str += fmt.Sprintf(`<i class="fas fa-user-slash text-danger mr-2"></i><a href="/validator/%v">%v</a>, `, v, v)
 		}
 	}
 	return template.HTML(str)
@@ -700,7 +713,7 @@ func FormatSlashedValidatorsInt64(validators []int64) template.HTML {
 func FormatSlashedValidators(validators []uint64) template.HTML {
 	vals := make([]string, 0, len(validators))
 	for _, v := range validators {
-		vals = append(vals, fmt.Sprintf("<i class=\"fas fa-user-slash text-danger\"></i> <a href=\"/validator/%v\">%v</a>", v, v))
+		vals = append(vals, fmt.Sprintf(`<i class="fas fa-user-slash text-danger mr-2"></i><a href="/validator/%v">%v</a>`, v, v))
 	}
 	return template.HTML(strings.Join(vals, ","))
 }
@@ -722,9 +735,9 @@ func FormatSlashedValidatorsWithName(validators []uint64, nameMap map[uint64]str
 // FormatYesNo will return yes or no formated as html
 func FormatYesNo(yes bool) template.HTML {
 	if yes {
-		return `<span class="badge bg-success text-white">Yes</span>`
+		return `<span class="badge bg-success text-white font-weight-normal">Yes</span>`
 	}
-	return `<span class="badge bg-warning text-dark">No</span>`
+	return `<span class="badge bg-warning text-white font-weight-normal">No</span>`
 }
 
 func FormatValidatorName(name string) template.HTML {
@@ -738,13 +751,13 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	if eff == 0 {
 		return ""
 	} else if eff >= 100 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Perfect <i class=\"fas fa-grin-stars\"></i>", tooltipText, eff))
+		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.0f%% - Perfect <i class="fas fa-grin-stars"></i>`, tooltipText, eff))
 	} else if eff > 80 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Good <i class=\"fas fa-smile\"></i></span>", tooltipText, eff))
+		return template.HTML(fmt.Sprintf(`<span class="text-success" data-toggle="tooltip" title="%s"> %.0f%% - Good <i class="fas fa-smile"></i></span>`, tooltipText, eff))
 	} else if eff > 60 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-warning\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Fair <i class=\"fas fa-meh\"></i></span>", tooltipText, eff))
+		return template.HTML(fmt.Sprintf(`<span class="text-warning" data-toggle="tooltip" title="%s"> %.0f%% - Fair <i class="fas fa-meh"></i></span>`, tooltipText, eff))
 	} else {
-		return template.HTML(fmt.Sprintf("<span class=\"text-danger\" data-toggle=\"tooltip\" title=\"%s\"> %.0f%% - Bad <i class=\"fas fa-frown\"></i></span>", tooltipText, eff))
+		return template.HTML(fmt.Sprintf(`<span class="text-danger" data-toggle="tooltip" title="%s"> %.0f%% - Bad <i class="fas fa-frown"></i></span>`, tooltipText, eff))
 	}
 }
 
@@ -755,15 +768,15 @@ func FormatPercentageColored(percentage float64, tooltipText string) template.HT
 		percentage = percentage * 100
 	}
 	if percentage == 100 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-grin-stars\"></i></span>", percentage))
+		return template.HTML(fmt.Sprintf(`<span class="text-success">%.0f%% <i class="fas fa-grin-stars"></i></span>`, percentage))
 	} else if percentage >= 90 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-success\">%.0f%% <i class=\"fas fa-smile\"></i></span>", percentage))
+		return template.HTML(fmt.Sprintf(`<span class="text-success">%.0f%% <i class="fas fa-smile"></i></span>`, percentage))
 	} else if percentage >= 80 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-warning\">%.0f%% <i class=\"fas fa-smile\"></i></span>", percentage))
+		return template.HTML(fmt.Sprintf(`<span class="text-warning">%.0f%% <i class="fas fa-smile"></i></span>`, percentage))
 	} else if percentage >= 60 {
-		return template.HTML(fmt.Sprintf("<span class=\"text-warning\">%.0f%% <i class=\"fas fa-meh\"></i></span>", percentage))
+		return template.HTML(fmt.Sprintf(`<span class="text-warning">%.0f%% <i class="fas fa-meh"></i></span>`, percentage))
 	}
-	return template.HTML(fmt.Sprintf("<span class=\"text-danger\">%.0f%% <i class=\"fas fa-frown\"></i></span>", percentage))
+	return template.HTML(fmt.Sprintf(`<span class="text-danger">%.0f%% <i class="fas fa-frown"></i></span>`, percentage))
 }
 
 func DerefString(str *string) string {
@@ -785,4 +798,13 @@ func KFormatterEthPrice(price uint64) string {
 		return ethTruncPrice
 	}
 	return fmt.Sprint(price)
+}
+
+func FormatRPL(num string) string {
+	floatNum, _ := strconv.ParseFloat(num, 64)
+	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " RPL"
+}
+
+func FormatFloatWithPrecision(precision int, num float64) string {
+	return fmt.Sprintf("%.*f", precision, num)
 }
