@@ -818,8 +818,8 @@
                                     <span style="font-weight:bold">
                                         <i class="fas fa-key"></i>
                                     </span>
-                                    <span style="font-size: 90%; user-select: all;">
-                                        {{.Subscription.ApiKey}}
+                                    <span style="font-size: 90%;">
+                                        <span style="user-select: all;">{{.Subscription.ApiKey}}</span>
                                         <a style="color: #fff" id="copy-apiKey" data-toggle="tooltip"
                                             data-original-title="Copy API Key"
                                             data-clipboard-text="{{.Subscription.ApiKey}}"
@@ -856,10 +856,12 @@
                                     <div>Daily:</div> 
                                     <div>{{formatThousandsInt .ApiStatistics.Daily}} / {{formatThousandsInt .ApiStatistics.MaxDaily}}</div>
                                 </div>
-                                <div class="progress">
+                                {{ if .ApiStatistics.Daily }}
+                                <div style="white-space: nowrap;" class="progress">
                                     {{$percentageDaily := formatPercentage (divInt .ApiStatistics.Daily .ApiStatistics.MaxDaily)}}
                                     <div class="progress-bar" role="progressbar" style="width: {{$percentageDaily}}%; white-space: no-wrap;" aria-valuenow="{{.ApiStatistics.Daily}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxDaily}}">{{$percentageDaily}} %</div>
                                 </div>
+                                {{end}}
                             </div>
                             {{ end }}
                             <div class="my-3">
@@ -867,10 +869,12 @@
                                     <div>Monthly:</div> 
                                     <div>{{formatThousandsInt .ApiStatistics.Monthly}} / {{formatThousandsInt .ApiStatistics.MaxMonthly}}</div>
                                 </div>
-                                <div class="progress">
+                                {{ if .ApiStatistics.Monthly}}
+                                <div style="white-space: nowrap;" class="progress">
                                     {{$percentageMonthly := formatPercentage (divInt .ApiStatistics.Monthly .ApiStatistics.MaxMonthly)}}
                                     <div class="progress-bar" role="progressbar" style="width: {{$percentageMonthly}}%; white-space: nowrap;" aria-valuenow="{{.ApiStatistics.Monthly}}" aria-valuemin="0" aria-valuemax="{{.ApiStatistics.MaxMonthly}}">{{$percentageMonthly}} %</div>
                                 </div>
+                                {{end}}
                             </div>
                         </div>
                     </div>

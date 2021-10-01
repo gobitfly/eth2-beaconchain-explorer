@@ -270,6 +270,17 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 	return err
 }
 
+func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
+	var subscriptions []*types.Subscription
+	query := `
+		SELECT * 
+		FROM users_subscriptions
+		WHERE user_id = $1 AND event_name LIKE $2
+	`
+	err := FrontendDB.Select(&subscriptions, query, userId, utils.GetNetwork()+":"+"monitoring_"+"%")
+	return subscriptions, err
+}
+
 // AddSubscription adds a new subscription to the database.
 func AddTestSubscription(userID uint64, network string, eventName types.EventName, eventFilter string, eventThreshold float64, epoch uint64) error {
 	var onConflictDo string = "NOTHING"

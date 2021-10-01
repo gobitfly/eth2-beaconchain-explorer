@@ -11,6 +11,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -697,6 +698,15 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// monitoring, err := getMonitoring
+
+	monitoringSubscriptions, err := db.GetMonitoringSubscriptions(user.UserID)
+	if err != nil {
+		logger.Errorf("error retrieving validators table data for users: %v ", user.UserID, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 	validatorTableData, err := getValidatorTableData(user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving validators table data for users: %v ", user.UserID, err)
@@ -715,6 +725,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	userNotificationsCenterData.Metrics = metricsdb
 	userNotificationsCenterData.Validators = validatorTableData
 	userNotificationsCenterData.Network = networkData
+	userNotificationsCenterData.MonitoringSubscriptions = monitoringSubscriptions
 	data.Data = userNotificationsCenterData
 	data.User = user
 
@@ -1561,7 +1572,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
-		logger.Errorf("error invalid event name: %v", err)
+		logger.Errorf("error invalid event name: %v event: %v", err, event)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -1685,7 +1696,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
-		logger.Errorf("error invalid event name: %v", err)
+		logger.Errorf("error invalid event name: %v event: %v", err, event)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return false
 	}
@@ -1752,7 +1763,7 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
-		logger.Errorf("error invalid event name: %v", err)
+		logger.Errorf("error invalid event name: %v event: %v", err, event)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -1808,6 +1819,122 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	OKResponse(w, r)
+}
+
+type UsersNotificationsRequest struct {
+	EventNames    []string `json:"event_names"`
+	EventFilters  []string `json:"event_filters"`
+	Search        string   `json:"search"`
+	Limit         uint64   `json:"limit"`
+	Offset        uint64   `json:"offset"`
+	JoinValidator bool     `json:"join_validator"`
+}
+
+// UserNotificationsSubscribed godoc
+// @Summary Get a set of events a user is subscribed to
+// @Tags User
+// @Param requestFilter body types.UsersNotificationsRequest false "An object that filters through the active subscriptions"
+// @Produce json
+// @Success 200 {object} types.ApiResponse{data=[]types.Subscription}
+// @Failure 400 {object} types.ApiResponse
+// @Failure 500 {object} types.ApiResponse
+// @Security ApiKeyAuth
+// @Router /api/v1/user/notifications [post]
+func UserNotificationsSubscribed(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+	q := r.URL.Query()
+	sessionUser := getUser(r)
+	if !sessionUser.Authenticated {
+		sendErrorResponse(j, r.URL.String(), "not authenticated")
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	req := &types.UsersNotificationsRequest{}
+
+	err := decoder.Decode(req)
+	if err != nil && err != io.EOF {
+		logger.WithError(err).Error("error decoding request body")
+		sendErrorResponse(j, r.URL.String(), "error decoding request body")
+		return
+	}
+
+	joinValidators := false
+
+	filters := req.EventFilters
+	names := req.EventNames
+	limit := req.Limit
+	offset := req.Offset
+	search := req.Search
+	joinValidators = req.JoinValidator
+
+	name := q.Get("name")
+	filter := q.Get("filter")
+	lim := q.Get("limit")
+	off := q.Get("offset")
+
+	if q.Get("search") != "" {
+		search = q.Get("search")
+	}
+	join := q.Get("join")
+
+	if join != "" {
+		joinValidators = true
+	}
+
+	if lim != "" {
+		limit, err = strconv.ParseUint(lim, 10, 64)
+		if err != nil {
+			sendErrorResponse(j, r.URL.String(), "error parsing limit")
+		}
+	}
+
+	if off != "" {
+		offset, err = strconv.ParseUint(off, 10, 64)
+		if err != nil {
+			sendErrorResponse(j, r.URL.String(), "error parsing offset")
+		}
+	}
+
+	if name != "" {
+		names = strings.Split(name, ",")
+	}
+
+	if filter != "" {
+		filters = strings.Split(filter, ",")
+	}
+
+	eventNames := make([]types.EventName, 0, len(names))
+	for _, en := range names {
+		n, err := types.EventNameFromString(en)
+		if err != nil {
+			logger.WithError(err).Errorf("error parsing provided event %v to a known event name type", en)
+			sendErrorResponse(j, r.URL.String(), "error invalid event name provided")
+		}
+		eventNames = append(eventNames, n)
+	}
+
+	users := make([]uint64, 1)
+	users[0] = sessionUser.UserID
+
+	queryFilter := db.GetSubscriptionsFilter{
+		EventNames:    &eventNames,
+		EventFilters:  &filters,
+		UserIDs:       &users,
+		Limit:         limit,
+		Offset:        offset,
+		Search:        search,
+		JoinValidator: joinValidators,
+	}
+
+	subs, err := db.GetSubscriptions(queryFilter)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "not authenticated")
+		return
+	}
+
+	sendOKResponse(j, r.URL.String(), []interface{}{subs})
 }
 
 func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {

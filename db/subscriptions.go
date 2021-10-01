@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"eth2-exporter/types"
+	"eth2-exporter/utils"
 	"fmt"
 	"strings"
 	"time"
@@ -146,7 +147,7 @@ type GetSubscriptionsFilter struct {
 // GetSubscriptions returns the subscriptions filtered by the provided filter.
 func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, error) {
 	subs := []*types.Subscription{}
-	qry := "SELECT * FROM users_subscriptions"
+	qry := "SELECT event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold FROM users_subscriptions"
 
 	if filter.JoinValidator {
 		qry = "SELECT id, user_id, event_name, event_filter, last_sent_ts, created_ts, validators.balance as balance FROM users_subscriptions INNER JOIN validators ON users_subscriptions.event_filter = ENCODE(validators.pubkey::bytea, 'hex')"
@@ -160,17 +161,22 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 	filters := []string{}
 	args := []interface{}{}
 
-	if filter.EventNames != nil {
-		args = append(args, pq.Array(*filter.EventNames))
+	if filter.EventNames != nil && len(*filter.EventFilters) != 0 {
+		eventNames := make([]string, 0, len(*filter.EventNames))
+		network := utils.GetNetwork()
+		for _, en := range *filter.EventNames {
+			eventNames = append(eventNames, network+":"+string(en))
+		}
+		args = append(args, pq.Array(eventNames))
 		filters = append(filters, fmt.Sprintf("event_name = ANY($%d)", len(args)))
 	}
 
-	if filter.UserIDs != nil {
+	if filter.UserIDs != nil && len(*filter.UserIDs) != 0 {
 		args = append(args, pq.Array(*filter.UserIDs))
 		filters = append(filters, fmt.Sprintf("user_id = ANY($%d)", len(args)))
 	}
 
-	if filter.EventFilters != nil {
+	if filter.EventFilters != nil && len(*filter.EventFilters) != 0 {
 		args = append(args, pq.Array(*filter.EventFilters))
 		filters = append(filters, fmt.Sprintf("event_filter = ANY($%d)", len(args)))
 	}
@@ -185,10 +191,10 @@ func GetSubscriptions(filter GetSubscriptionsFilter) ([]*types.Subscription, err
 		args = append(args, filter.Limit)
 		qry += fmt.Sprintf(" LIMIT $%d", len(args))
 	}
-
+	logger.Infof("user: %v getting subscriptions for query: %v and args: %+v", (*filter.UserIDs)[0], qry, filter)
 	args = append(args, filter.Offset)
 	qry += fmt.Sprintf(" OFFSET $%d", len(args))
-	err := DB.Select(&subs, qry, args...)
+	err := FrontendDB.Select(&subs, qry, args...)
 	return subs, err
 }
 

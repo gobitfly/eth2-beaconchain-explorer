@@ -1000,9 +1000,10 @@ type UserNotificationsPageData struct {
 
 type UserNotificationsCenterPageData struct {
 	AuthData
-	Metrics    interface{}
-	Validators interface{}
-	Network    interface{}
+	Metrics                 interface{}
+	Validators              interface{}
+	Network                 interface{}
+	MonitoringSubscriptions []*Subscription
 	// Subscriptions []*Subscription
 }
 
