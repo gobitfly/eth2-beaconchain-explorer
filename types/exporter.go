@@ -94,6 +94,24 @@ type SyncAggregate struct {
 	SyncAggregateParticipation float64
 }
 
+type ExecutionPayload struct {
+	ParentHash    []byte
+	CoinBase      []byte
+	StateRoot     []byte
+	ReceiptRoot   []byte
+	LogsBloom     []byte
+	Random        []byte
+	BlockNumber   uint64
+	GasLimit      uint64
+	GasUsed       uint64
+	Timestamp     uint64
+	ExtraData     []byte
+	BaseFeePerGas []byte
+	BlockHash     []byte
+	// TODO
+	Transactions [][]byte
+}
+
 // Block is a struct to hold block data
 type Block struct {
 	Status            uint64
@@ -112,7 +130,8 @@ type Block struct {
 	Attestations      []*Attestation
 	Deposits          []*Deposit
 	VoluntaryExits    []*VoluntaryExit
-	SyncAggregate     *SyncAggregate // warning: sync aggregate may be nil, for phase0 blocks
+	SyncAggregate     *SyncAggregate    // warning: sync aggregate may be nil, for phase0 blocks
+	ExecutionPayload  *ExecutionPayload // warning: payload may be nil, for phase0/altair blocks
 	Canonical         bool
 }
 
