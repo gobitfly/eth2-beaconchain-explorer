@@ -1114,3 +1114,4 @@ Thus, we have root0 = Tm(l + 1, ↑
 l+1 (m + 1)), which concludes.End-to-End Formal Verification of Ethereum 2.0 Deposit Smart Contract 23
 Mechanized Proofs. The loop invariant proofs of Lemma 7 and Lemma 9 are
 mechanized in the K framework, which can be found at [20].
+https://ethereum.org/
