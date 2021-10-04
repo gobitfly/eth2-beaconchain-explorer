@@ -127,9 +127,10 @@
                 },
                 {
                     targets: 2,
+                    orderable: true,
                     render: function(data, type, row, meta) {
                         if (type === 'sort' || type === 'type') {
-                            return data
+                            return parseInt(data)
                         }
                         if (parseInt(data) !== 0) {
                             return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
@@ -139,6 +140,7 @@
                 },
                 {
                     targets: 3,
+                    orderable: true,
                     render: function(data, type, row, meta) {
                         if (type === 'sort' || type === 'type') {
                             return data
@@ -151,6 +153,7 @@
                 },
                 {
                     targets: 4,
+                    orderable: true,
                     render: function(data, type, row, meta) {
                         if (type === 'sort' || type === 'type') {
                             return data
@@ -225,6 +228,7 @@
                 },
                 {
                     targets: 3,
+                    orderable: true,
                     render: function(data, type, row, meta) {
                         if (type === 'sort' || type === 'type') {
                             return data
@@ -234,6 +238,7 @@
                 },
                 {
                     targets: 4,
+                    orderable: true,
                     render: function(data, type, row, meta) {
                         if (type === 'sort' || type === 'type') {
                             return data
@@ -243,6 +248,7 @@
                 },
                 {
                     targets: 5,
+                    orderable: true,
                     render: function(data, type, row, meta) {
                         if (type === 'sort' || type === 'type') {
                             return data

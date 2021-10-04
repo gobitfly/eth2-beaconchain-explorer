@@ -800,9 +800,9 @@ func KFormatterEthPrice(price uint64) string {
 	return fmt.Sprint(price)
 }
 
-func FormatRPL(num string) string {
+func FormatRPL(num string) float64 {
 	floatNum, _ := strconv.ParseFloat(num, 64)
-	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " RPL"
+	return floatNum / math.Pow10(18)
 }
 
 func FormatFloatWithPrecision(precision int, num float64) string {

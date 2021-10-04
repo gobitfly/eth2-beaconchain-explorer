@@ -184,12 +184,19 @@
 							</div>
 							{{if .IsRocketpool}}
 								<div class="tab-pane fade w-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
-									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-5 mb-4">
-										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-male mr-3 text-muted"></i>Minipool Address</div>
+									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-3 mb-4">
+										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;">
+										<i class="fas fa-male mr-3 text-muted"></i>Minipool Address</div>
 										<div>{{formatEth1Address .Rocketpool.MinipoolAddress}}</div>
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-money-bill-wave mr-1 text-muted"></i>Minipool Commission</div>
+										<div 
+											class="text-nowrap font-weight-bold" 
+											data-toggle="tooltip" 
+											title="The fee that is taken from normal stakers and given to node operators. It can range from 5 - 20% with the ideal target of 10%."
+											style="font-size: .9rem;"
+										>
+											<i class="fas fa-money-bill-wave mr-1 text-muted"></i>Minipool Commission</div>
 										<div>{{formatFloatWithPrecision 2 (mul .Rocketpool.MinipoolNodeFee 100)}}%</div>
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
@@ -224,30 +231,30 @@
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node RPL Stake</div>
-										<div>{{formatRPL .Rocketpool.NodeRPLStake}}</div>
+										<div>{{formatFloatWithPrecision 2 (formatRPL .Rocketpool.NodeRPLStake)}} RPL</div>
+									</div>
+									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+										<div 
+											class="text-nowrap font-weight-bold"
+											data-toggle="tooltip" 
+											title="How much RPL collateral node operators have staked against their minipools, capped at 150%"
+											style="font-size: .9rem;"
+										>
+											<i class="fas fa-cubes mr-2 text-muted"></i>Effective RPL Stake</div>
+										<div>{{formatFloatWithPrecision 2 (mul (div (formatRPL .Rocketpool.NodeRPLStake) (formatRPL .Rocketpool.NodeMinRPLStake)) 10)}}%</div>
+									</div>
+									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-percentage mr-2 text-muted"></i>RPL Stake Percentage</div>
+										<div>{{formatFloatWithPrecision 2 (mul (div (formatRPL .Rocketpool.NodeRPLStake) (formatRPL .Rocketpool.NodeMaxRPLStake)) 100)}}%</div>
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Min RPL Stake</div>
-										<div>{{formatRPL .Rocketpool.NodeMinRPLStake}}</div>
+										<div>{{formatFloatWithPrecision 2 (formatRPL .Rocketpool.NodeMinRPLStake)}} RPL</div>
 									</div>
 									<div class="w-75 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Max RPL Stake</div>
-										<div>{{formatRPL .Rocketpool.NodeMaxRPLStake}}</div>
+										<div>{{formatFloatWithPrecision 2 (formatRPL .Rocketpool.NodeMaxRPLStake)}} RPL</div>
 									</div>
-
-
-
-									<div class="w-75 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>RPL Stake Percentage</div>
-										<div><em>to be calculated</em></div>
-									</div>
-									<div class="w-75 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Max RPL Stake</div>
-										<div><em>to be calculated</em></div>
-									</div>
-
-
-									
 								</div>
 							{{end}}
 						</div>
