@@ -113,12 +113,10 @@
                 },
                 {
                     targets: 0,
-                    orderable: false,
                     className: 'first-col'
                 },
                 {
                     targets: 1,
-                    orderable: false,
                     render: function(data, type, row, meta) {
                         if (data === 'Hidden/Hidden') {
                             return 'Hidden'
@@ -128,11 +126,7 @@
                 },
                 {
                     targets: 2,
-                    orderable: true,
                     render: function(data, type, row, meta) {
-                        if (type === 'sort' || type === 'type') {
-                            return parseInt(data)
-                        }
                         if (parseInt(data) !== 0) {
                             return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
@@ -141,11 +135,7 @@
                 },
                 {
                     targets: 3,
-                    orderable: true,
                     render: function(data, type, row, meta) {
-                        if (type === 'sort' || type === 'type') {
-                            return data
-                        }
                         if (parseInt(data) !== 0) {
                             return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
@@ -154,11 +144,7 @@
                 },
                 {
                     targets: 4,
-                    orderable: true,
                     render: function(data, type, row, meta) {
-                        if (type === 'sort' || type === 'type') {
-                            return data
-                        }
                         if (parseInt(data) !== 0) {
                             return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
@@ -211,16 +197,10 @@
                 },
                 {
                     targets: 0,
-                    orderable: false,
                     className: 'first-col'
                 },
                 {
-                    targets: 1,
-                    orderable: false
-                },
-                {
                     targets: 2,
-                    orderable: false,
                     render: function(data, type, row, meta) {
                         if (data.startsWith('http')) {
                             return `<span class="d-block text-wrap" style="max-width: 300px;"><a href=${data} target="_blank">${data}</a></span>`
@@ -230,40 +210,24 @@
                 },
                 {
                     targets: 3,
-                    orderable: true,
                     render: function(data, type, row, meta) {
-                        if (type === 'sort' || type === 'type') {
-                            return data
-                        }
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
                     }
                 },
                 {
                     targets: 4,
-                    orderable: true,
                     render: function(data, type, row, meta) {
-                        if (type === 'sort' || type === 'type') {
-                            return data
-                        }
                         return `<span style="font-size: .9rem; font-weight: 400;">${luxon.DateTime.fromMillis(parseInt($(data).attr("data-timestamp")) * 1000).toRelative({ style: "long" })}</span>`
                     }
                 },
                 {
                     targets: 5,
-                    orderable: true,
                     render: function(data, type, row, meta) {
-                        if (type === 'sort' || type === 'type') {
-                            return data
-                        }
                         if (parseInt(data) !== 0) {
                             return `${(parseInt(data) / (10 ** 18)).toFixed(2)} RPL`
                         }
                         return `${data} RPL`
                     }
-                },
-                {
-                    targets: 6,
-                    orderable: false
                 }
             ],
             initComplete: function(settings, json) {

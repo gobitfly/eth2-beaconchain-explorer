@@ -240,11 +240,17 @@
 											title="How much RPL collateral node operators have staked against their minipools, capped at 150%"
 											style="font-size: .9rem;"
 										>
-											<i class="fas fa-cubes mr-2 text-muted"></i>Effective RPL Stake</div>
+											<i class="fas fa-cubes mr-2 text-muted"></i>Node Effective RPL Stake</div>
 										<div>{{formatFloatWithPrecision 2 (mul (div (formatRPL .Rocketpool.NodeRPLStake) (formatRPL .Rocketpool.NodeMinRPLStake)) 10)}}%</div>
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-percentage mr-2 text-muted"></i>RPL Stake Percentage</div>
+										<div 
+											class="text-nowrap font-weight-bold"
+											data-toggle="tooltip" 
+											title="Node RPL Stake expressed as % of the Node Max RPL Stake"
+											style="font-size: .9rem;"
+										>
+										<i class="fas fa-cubes mr-2 text-muted"></i>Node RPL Stake %</div>
 										<div>{{formatFloatWithPrecision 2 (mul (div (formatRPL .Rocketpool.NodeRPLStake) (formatRPL .Rocketpool.NodeMaxRPLStake)) 100)}}%</div>
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
@@ -263,7 +269,7 @@
 				<div class="col-lg-4 px-lg-2 d-flex align-items-center my-2">
 					<div class="card h-100 px-0 pt-0 card-body">
 						<div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
-							<span class="h4 text-center mb-0">Validator History</span>
+							<span class="h4 ml-3 mr-auto mx-lg-0 mb-0">Validator History</span>
 						</div>
 						{{if or $validating $exited}}
 							{{template "validatorHistoryTable" $}}
