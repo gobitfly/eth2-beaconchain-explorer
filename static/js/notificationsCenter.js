@@ -136,7 +136,7 @@ function loadMonitoringData(data) {
     if ($('#monitoring-section-with-data').children().length === 0) {
       $('#monitoring-section-with-data').append(
         `<table class="table table-borderless table-hover" id="monitoring-notifications">
-          <thead class="custom-table-head">
+          <thead>
             <tr>
               <th scope="col" class="h6 border-bottom-0">Notification</th>
               <th scope="col" class="h6 border-bottom-0">Threshold</th>
@@ -230,7 +230,19 @@ function loadMonitoringData(data) {
         responsivePriority: 2,
         data: 'notification',
         render: function(data, type, row, meta) {
-          return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data.charAt(0).toUpperCase() + data.slice(1)}</span>`
+          let badgeColor = ""
+          switch (data) {
+            case 'cpu':
+              badgeColor = 'badge-success'
+              break
+            case 'hdd':
+              badgeColor = 'badge-warning'
+              break
+            case 'offline':
+              badgeColor = 'badge-danger'
+              break
+          }
+          return `<span class="badge badge-pill ${badgeColor} badge-custom-size font-weight-normal" style="color: #000;">${data.charAt(0).toUpperCase() + data.slice(1)}</span>`
         }
       },
       {
@@ -498,7 +510,7 @@ function loadValidatorsData(data) {
                     badgeColor = 'badge-danger'
                     break
                 }
-                notifications += `<span class="badge badge-pill ${badgeColor} badge-custom-size mr-1 my-1 font-weight-normal text-white">${n.replaceAll('_', " ")}</span>`
+                notifications += `<span class="badge badge-pill ${badgeColor} badge-custom-size mr-1 my-1 font-weight-normal" style="color: #000;">${n.replaceAll('_', " ")}</span>`
               }
             }
             if (!hasItems) {

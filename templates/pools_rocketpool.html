@@ -47,7 +47,7 @@
                             return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
                         }
                         if (data === 'Half') {
-                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                         }
                         return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
                     }
@@ -59,12 +59,12 @@
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
                         if (data === 'Dissolved') {
-                            return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-danger badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                         }
                         if (data === 'Withdrawable') {
-                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-info badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-info badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                     }
                 }
             ],
@@ -74,7 +74,6 @@
                 })
             },
             preDrawCallback: function() {
-                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#minipools').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -158,7 +157,6 @@
                 })
             },
             preDrawCallback: function() {
-                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#nodes').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -236,7 +234,6 @@
                 })
             },
             preDrawCallback: function() {
-                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#dao_members').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -329,7 +326,7 @@
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                     }
                 },
                 {
@@ -338,7 +335,7 @@
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                     }
                 },
                 {
@@ -347,7 +344,7 @@
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                     }
                 },
                 {
@@ -357,7 +354,7 @@
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                     }
                 },
                 {
@@ -372,17 +369,16 @@
                             return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
                         }
                         if (data === 'Cancelled') {
-                            return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-danger badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                         }
                         if (data === 'Defeated') {
-                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-info badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-info badge-custom-size font-weight-normal" style="color: #000;">${data}</span>`
                     }
                 }
             ],
             preDrawCallback: function() {
-                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#dao_proposals').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -404,36 +400,6 @@
         #slashings td:first-child {
             white-space: break-spaces;
         }
-        #minipools_wrapper div.dataTables_paginate ul li,
-        #nodes_wrapper div.dataTables_paginate ul li,
-        #dao_members_wrapper div.dataTables_paginate ul li,
-        #dao_proposals_wrapper div.dataTables_paginate ul li { 
-            background-color: var(--new-card-bg);
-        }
-        div.dataTables_info {
-            padding-top: 2.15rem !important;
-            font-size: .9rem;
-            text-align: left !important;
-        }
-        div.dataTables_filter {
-            padding-right: 0 !important;
-        }
-        .dataTables_filter input { 
-            width: 265px !important;
-        }
-        div.dataTables_length {
-            padding-left: 0 !important;
-            font-size: .9rem;
-            text-align: left !important;
-        }
-        table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, 
-        table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
-            top: 1.8rem !important;
-            background-color: transparent !important;
-            box-shadow: none !important;
-            line-height: 1.1rem !important;
-            color: var(--dark) !important;
-        }
     </style>
 {{end}}
 
@@ -453,10 +419,10 @@
             </div>
             <h1 class="mt-2 mb-5 text-nowrap" style="font-size: 1.8rem; letter-spacing: 2px;">Rocketpool</h1>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Minipools</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--bg-color);">
                 <div class="table-responsive">
                     <table class="table table-hover" id="minipools" width="100%">
-                        <thead style="background-color: var(--bg);">
+                        <thead>
                             <tr>
                                 <th scope="col" class="h6 border-bottom-0">Minipool</th>
                                 <th scope="col" class="h6 border-bottom-0">Validator</th>
@@ -471,10 +437,10 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Nodes</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--bg-color);">
                 <div class="table-responsive">
                     <table class="table table-hover" id="nodes" width="100%">
-                        <thead style="background-color: var(--bg);">
+                        <thead>
                             <tr>
                                 <th scope="col" class="h6 border-bottom-0">Address</th>
                                 <th scope="col" class="h6 border-bottom-0">Timezone Location</th>
@@ -488,10 +454,10 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">DAO Members</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--bg-color);">
                 <div class="table-responsive">
                     <table class="table table-hover" id="dao_members" width="100%">
-                        <thead style="background-color: var(--bg);">
+                        <thead>
                             <tr>
                                 <th scope="col" class="h6 border-bottom-0">Address</th>
                                 <th scope="col" class="h6 border-bottom-0">ID</th>
@@ -507,10 +473,10 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Proposals</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--bg-color);">
                 <div class="table-responsive">
                     <table class="table table-hover" id="dao_proposals" width="100%">
-                        <thead style="background-color: var(--bg);">
+                        <thead>
                             <tr>
                                 <th scope="col" class="h6 border-bottom-0">ID</th>
                                 <th scope="col" class="h6 border-bottom-0">DAO</th>
