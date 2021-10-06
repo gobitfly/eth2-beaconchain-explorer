@@ -402,28 +402,44 @@ func CopyButton(clipboardText interface{}) string {
 	return fmt.Sprintf(`<i class="fa fa-copy text-muted ml-2 p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x%v></i>`, clipboardText)
 }
 
-func FormatBitlist(bits []byte) template.HTML {
+func Reverse(s string) string {
+	runes := []rune(s)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
+
+func FormatBitvector(b []byte) template.HTML {
+	return formatBits(b, false)
+}
+
+func FormatBitlist(b []byte) template.HTML {
+	return formatBits(b, true)
+}
+
+func formatBits(b []byte, hasDelimiterBit bool) template.HTML {
 	var buf strings.Builder
-	buf.WriteString("<div class=\"text-bitlist\">")
+	buf.WriteString("<div class=\"text-bitfield\">")
 	perLine := 8
-	for y := 0; y < len(bits); y += perLine {
+	for y := 0; y < len(b); y += perLine {
 		start, end := y, y+perLine
-		if end > len(bits) {
-			end = len(bits)
+		if end >= len(b) {
+			end = len(b)
 		}
 		for x := start; x < end; x++ {
-			v := bits[x]
+			v := b[x]
 			var vStr string
-			// if this is the last byte, strip the delimiter bit, and omit the trailing zeroes
-			if x == len(bits)-1 {
+			// if it has a delimiter, and this is the last byte, strip the delimiter bit, and omit the trailing zeroes
+			if hasDelimiterBit && x == end-1 {
 				i := bitfields.BitIndex(v)
 				// mask out the delimit bit
 				v &^= 1 << i
-				// no padding
-				vStr = fmt.Sprintf("%b", v)
+				// no padding. Reverse to put most significant bit on the right
+				vStr = Reverse(fmt.Sprintf("%b", v))
 			} else {
-				// pad to full 8 bits, don't omit zeroes
-				vStr = fmt.Sprintf("%08b", v)
+				// pad to full 8 bits, don't omit zeroes. Reverse to put most significant bit on the right
+				vStr = Reverse(fmt.Sprintf("%08b", v))
 			}
 			buf.WriteString(fmt.Sprintf(" <span class=\"text-monospace\">%s</span>", vStr))
 		}
