@@ -567,50 +567,6 @@
     </nav>
     {{template "css" .Data}}
     <main>
-        <div class="p-1" style="overflow-wrap: break-word;background-color: var(--bg-color-light); height: 40px; display: flex; justify-content:center; align-items:center;"> 
-            <span class="d-none d-md-block">
-        
-              <span>
-                   <span>
-                      <a style="color: #ff6600;" href="https://ethstaker.cc/rocket-pool-ama-mainnet-launch-livestream-events/" target="_blank">
-                      RocketPool Launch
-                      </a>
-                  </span> live on 
-                      <span>
-                          <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=PZ2g2FVWZQM" target="_blank">
-                              YouTube
-                          </a>
-                      </span> hosted by 
-                      <span>
-                          <a style="color: #ff6600;" href="https://discord.io/ethstaker" target="_blank">
-                              Ethstaker
-                          </a>
-                      </span> on Wednesday, Oct 6, 2021
-                  </span>
-          </span>
-          <span class="d-md-none p-1" style="font-size:90%">
-              <span>
-                   <span>
-                       
-                      <a style="color: #ff6600;" href="https://ethstaker.cc/rocket-pool-ama-mainnet-launch-livestream-events/" target="_blank">
-                          RocketPool Launch
-                      </a> 
-                  </span>, 6. October, 
-                  <span style="color: #ff6600;">
-                  <a style="color: #ff6600;" href="https://www.youtube.com/watch?v=PZ2g2FVWZQM" target="_blank">
-                      on YouTube
-                  </a>
-                  </span> 
-              </span>
-          </span>
-          </div> 
-        <!-- {{ if .HeaderAd }}
-			<div class="container">
-				<div class="d-flex justify-content-between pt-4 pb-3">
-					<ins data-revive-zoneid="1" data-revive-id="5b200397ccf8a9353bf44ef99b45268c"></ins>
-				</div>
-			</div>
-		{{end}} -->
         {{template "content" .}}
             {{if not .User.Authenticated}}
                 <div id="cookie-banner" class="d-none" style="position: fixed; display: flex; flex-direction: column; z-index: 999; bottom: 3%; left: 50%; transform: translateX(-50%); width: 100%; justify-content: center; align-items: center;">
@@ -647,29 +603,16 @@
                         </div>
                     </div>
                     <div class="col-md-4 mb-2">
-                        <h5>Resources</h5>
-                        <div class="d-flex flex-column">
-                            <a class="my-1" href="/advertisewithus"><i class="fas fa-ad mr-2"></i>Advertise</a>
-                            <a class="my-1" href="/premium"><i class="fas fa-user-astronaut mr-2"></i></i>Beaconcha.in Premium</a>
-                            <a class="my-1" href="https://shop.beaconcha.in"><i class="fas fa-shopping-cart mr-2"></i>Swag Shop</a>
-                            <a class="my-1" href="/pricing"><i class="fas fa-laptop-code mr-2"></i></i>API Pricing</a>
-                            <!-- <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>Github</a> -->
-                        </div>
-                    </div>
-                    <div class="col-md-4 mb-2">
                         <h5>Links</h5>
                         <div class="d-flex flex-column">
                             <a class="my-1" href="https://twitter.com/beaconcha_in"><i class="fab fa-twitter mr-2"></i>Beaconcha.in</a>
                             <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer"><i class="fab fa-github mr-2"></i>Github</a>
-                            <a class="my-1" href="https://github.com/gobitfly/eth2-beaconchain-explorer-app"><i class="fab fa-github mr-2"></i>Github Mobile App</a>
-                            <!-- <a class="my-1" href="https://www.reddit.com/u/etherchain/"><i class="fab fa-reddit mr-2"></i>Reddit</a> -->
-                            <!-- <a class="my-1" href="https://gitter.im/gobitfly/beaconchain-explorer"><i class="fab fa-gitter"></i> Gitter Channel</a> -->
                         </div>
                     </div>
                 </div>
                 <div class="text-center row justify-content-center">
                     <div class="col-12">
-                        <span>© bitfly gmbh 2021 | {{.Version}} |</span>
+                        <span>© bitfly gmbh 2021 | Fork by @protolambda for the Merge testnets</span>
                         <div class="theme-switch-wrapper">
                             <label class="theme-switch" for="toggleSwitch">
                                 <input type="checkbox" id="toggleSwitch"/>
