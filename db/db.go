@@ -1171,7 +1171,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 	defer stmtBlock.Close()
 
 	stmtTransaction, err := tx.Prepare(`
-		INSERT INTO blocks_transactions (block_slot, block_index, block_root, raw, txhash, nonce, gasprice, gaslimit, sender, recipient, amount, payload, max_priority_fee_per_gas, max_fee_per_gas)
+		INSERT INTO blocks_transactions (block_slot, block_index, block_root, raw, txhash, nonce, gas_price, gas_limit, sender, recipient, amount, payload, max_priority_fee_per_gas, max_fee_per_gas)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (block_slot, block_index) DO NOTHING`)
 	if err != nil {

@@ -603,14 +603,14 @@ type BlockPageTransaction struct {
 	TxHash       []byte `db:"txhash"`
 	AccountNonce uint64 `db:"nonce"`
 	// big endian
-	Price       []byte `db:"gasprice"`
-	PricePretty string // TODO
-	GasLimit    uint64 `db:"gaslimit"`
+	Price       []byte `db:"gas_price"`
+	PricePretty string
+	GasLimit    uint64 `db:"gas_limit"`
 	Sender      []byte `db:"sender"`
 	Recipient   []byte `db:"recipient"`
 	// big endian
 	Amount       []byte `db:"amount"`
-	AmountPretty string // TODO
+	AmountPretty string
 	Payload      []byte `db:"payload"`
 
 	// TODO: transaction type
