@@ -423,9 +423,8 @@ func getUserNetworkEvents(userId uint64) (interface{}, error) {
 }
 
 func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
-
-	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-
+	SetAutoContentType(w, r)
+	// w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -485,9 +484,8 @@ func addValidatorAndSubscribe(user_id uint64, pubkey string, events []valEvent, 
 }
 
 func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
-
-	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-
+	SetAutoContentType(w, r)
+	// w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -537,9 +535,8 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
-
-	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-
+	SetAutoContentType(w, r)
+	// w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -619,9 +616,8 @@ func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
-
-	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-
+	SetAutoContentType(w, r)
+	// w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)

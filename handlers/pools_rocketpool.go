@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 var poolsRocketpoolTemplate = template.Must(template.New("rocketpool").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/pools_rocketpool.html"))
@@ -53,24 +54,76 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	if length > 100 {
 		length = 100
 	}
+	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
+	if len(search) > 128 {
+		search = search[:128]
+	}
+
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "address",
+		"1": "pubkey",
+		"2": "node_address",
+		"3": "node_fee",
+		"4": "deposit_type",
+		"5": "status",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "address"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
 
 	recordsTotal := uint64(0)
 	recordsFiltered := uint64(0)
 	var minipools []types.RocketpoolPageDataMinipool
-	err = db.DB.Select(&minipools, `
-		select 
-			rocketpool_minipools.*, 
-			coalesce(validator_names.name,'') as validator_name,
-			cnt.total_count
-		from rocketpool_minipools
-		left join validator_names on rocketpool_minipools.pubkey = validator_names.publickey
-		left join (select count(*) from rocketpool_minipools) cnt(total_count) ON true
-		limit $1
-		offset $2`, length, start)
-	if err != nil {
-		logger.Errorf("error getting rocketpool-minipools from db: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+	if search == "" {
+		err = db.DB.Select(&minipools, fmt.Sprintf(`
+			select 
+				rocketpool_minipools.*, 
+				validators.validatorindex as validator_index,
+				coalesce(validator_names.name,'') as validator_name,
+				cnt.total_count
+			from rocketpool_minipools
+			left join validator_names on rocketpool_minipools.pubkey = validator_names.publickey
+			left join validators on rocketpool_minipools.pubkey = validators.pubkey
+			left join (select count(*) from rocketpool_minipools) cnt(total_count) ON true
+			order by %s %s
+			limit $1
+			offset $2`, orderBy, orderDir), length, start)
+		if err != nil {
+			logger.Errorf("error getting rocketpool-minipools from db: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	} else {
+		err = db.DB.Select(&minipools, fmt.Sprintf(`
+			with matched_minipools as (
+				select address from rocketpool_minipools where encode(pubkey::bytea,'hex') like $3
+				union select address from rocketpool_minipools where encode(address::bytea,'hex') like $3
+				union (select address from validator_names inner join rocketpool_minipools on rocketpool_minipools.pubkey = validator_names.publickey where name ilike $4)
+			)
+			select 
+				rocketpool_minipools.*, 
+				validators.validatorindex as validator_index,
+				coalesce(validator_names.name,'') as validator_name,
+				cnt.total_count
+			from rocketpool_minipools
+			inner join matched_minipools on rocketpool_minipools.address = matched_minipools.address
+			left join validator_names on rocketpool_minipools.pubkey = validator_names.publickey
+			left join validators on rocketpool_minipools.pubkey = validators.pubkey
+			left join (select count(*) from matched_minipools) cnt(total_count) ON true
+			order by %s %s
+			limit $1
+			offset $2`, orderBy, orderDir), length, start, search+"%", "%"+search+"%")
+		if err != nil {
+			logger.Errorf("error getting rocketpool-minipools from db (with search: %v): %v", search, err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 	}
 
 	if len(minipools) > 0 {
@@ -81,7 +134,6 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	tableData := make([][]interface{}, 0, len(minipools))
 	zeroAddr := make([]byte, 48)
 
-	fmt.Printf("%x\n", zeroAddr)
 	for _, row := range minipools {
 		entry := []interface{}{}
 		entry = append(entry, utils.FormatEth1Address(row.Address))
@@ -136,20 +188,61 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	if length > 100 {
 		length = 100
 	}
+	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
+	if len(search) > 128 {
+		search = search[:128]
+	}
+
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "address",
+		"1": "timezone_location",
+		"2": "rpl_stake",
+		"3": "min_rpl_stake",
+		"4": "max_rpl_stake",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "address"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
 
 	recordsTotal := uint64(0)
 	recordsFiltered := uint64(0)
 	var dbResult []types.RocketpoolPageDataNode
-	err = db.DB.Select(&dbResult, `
-		select rocketpool_nodes.*, cnt.total_count
-		from rocketpool_nodes
-		left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
-		limit $1
-		offset $2`, length, start)
-	if err != nil {
-		logger.Errorf("error getting rocketpool-nodes from db: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+	if search == "" {
+		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+			select rocketpool_nodes.*, cnt.total_count
+			from rocketpool_nodes
+			left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
+			order by %s %s
+			limit $1
+			offset $2`, orderBy, orderDir), length, start)
+		if err != nil {
+			logger.Errorf("error getting rocketpool-nodes from db: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	} else {
+		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+			with matched_nodes as (
+				select address from rocketpool_nodes where encode(address::bytea,'hex') like $3
+			)
+			select rocketpool_nodes.*, cnt.total_count
+			from rocketpool_nodes
+			inner join matched_nodes on matched_nodes.address = rocketpool_nodes.address
+			left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
+			order by %s %s
+			limit $1
+			offset $2`, orderBy, orderDir), length, start, search+"%")
+		if err != nil {
+			logger.Errorf("error getting rocketpool-nodes from db (with search: %v): %v", search, err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 	}
 
 	if len(dbResult) > 0 {
@@ -208,21 +301,69 @@ func PoolsRocketpoolDataDAOProposals(w http.ResponseWriter, r *http.Request) {
 	if length > 100 {
 		length = 100
 	}
+	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
+	if len(search) > 128 {
+		search = search[:128]
+	}
+
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0":  "id",
+		"1":  "dao",
+		"2":  "proposer",
+		"3":  "message",
+		"14": "is_executed",
+		"15": "payload",
+		"16": "state",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "id"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
 
 	recordsTotal := uint64(0)
 	recordsFiltered := uint64(0)
 	var dbResult []types.RocketpoolPageDataDAOProposal
-	err = db.DB.Select(&dbResult, `
-		select rocketpool_dao_proposals.*, cnt.total_count
-		from rocketpool_dao_proposals
-		left join (select count(*) from rocketpool_dao_proposals) cnt(total_count) ON true
-		order by rocketpool_dao_proposals.id desc
-		limit $1
-		offset $2`, length, start)
-	if err != nil {
-		logger.Errorf("error getting rocketpool-nodes from db: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+	if search == "" {
+		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+			select rocketpool_dao_proposals.*, cnt.total_count
+			from rocketpool_dao_proposals
+			left join (select count(*) from rocketpool_dao_proposals) cnt(total_count) ON true
+			order by %s %s
+			limit $1
+			offset $2`, orderBy, orderDir), length, start)
+		if err != nil {
+			logger.Errorf("error getting rocketpool-proposals from db: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	} else {
+		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+			with matched_proposals as (
+				select id from rocketpool_dao_proposals where cast(id as text) like $3
+				union select id from rocketpool_dao_proposals where dao like $5
+				union select id from rocketpool_dao_proposals where message ilike $5
+				union select id from rocketpool_dao_proposals where state = $3
+				union select id from rocketpool_dao_proposals where encode(proposer_address::bytea,'hex') like $4
+			)
+			select 
+				rocketpool_dao_proposals.*, 
+				cnt.total_count
+			from rocketpool_dao_proposals
+			inner join matched_proposals on matched_proposals.id = rocketpool_dao_proposals.id
+			left join (select count(*) from matched_proposals) cnt(total_count) ON true
+			order by %s %s
+			limit $1
+			offset $2`, orderBy, orderDir), length, start, search, search+"%", "%"+search+"%")
+		if err != nil {
+			logger.Errorf("error getting rocketpool-proposals from db (with search: %v): %v", search, err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 	}
 
 	if len(dbResult) > 0 {
@@ -300,20 +441,65 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 	if length > 100 {
 		length = 100
 	}
+	search := strings.Replace(q.Get("search[value]"), "0x", "", -1)
+	if len(search) > 128 {
+		search = search[:128]
+	}
+
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "address",
+		"1": "id",
+		"2": "url",
+		"3": "joined_time",
+		"4": "last_proposal_time",
+		"5": "rpl_bond_amount",
+		"6": "unbonded_validator_count",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "id"
+	}
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
 
 	recordsTotal := uint64(0)
 	recordsFiltered := uint64(0)
 	var dbResult []types.RocketpoolPageDataDAOMember
-	err = db.DB.Select(&dbResult, `
-		select rocketpool_dao_members.*, cnt.total_count
-		from rocketpool_dao_members
-		left join (select count(*) from rocketpool_dao_members) cnt(total_count) ON true
-		limit $1
-		offset $2`, length, start)
-	if err != nil {
-		logger.Errorf("error getting rocketpool-nodes from db: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
+	if search == "" {
+		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+			select rocketpool_dao_members.*, cnt.total_count
+			from rocketpool_dao_members
+			left join (select count(*) from rocketpool_dao_members) cnt(total_count) ON true
+			order by %s %s
+			limit $1
+			offset $2`, orderBy, orderDir), length, start)
+		if err != nil {
+			logger.Errorf("error getting rocketpool-members from db: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+	} else {
+		err = db.DB.Select(&dbResult, fmt.Sprintf(`
+			with matched_members as (
+				select address from rocketpool_dao_members where encode(address::bytea,'hex') like $3
+				union select address from rocketpool_dao_members where id ilike $4
+				union select address from rocketpool_dao_members where url ilike $4
+			)
+			select rocketpool_dao_members.*, cnt.total_count
+			from rocketpool_dao_members
+			inner join matched_members on matched_members.address = rocketpool_dao_members.address
+			left join (select count(*) from matched_members) cnt(total_count) ON true
+			order by %s %s
+			limit $1
+			offset $2`, orderBy, orderDir), length, start, search+"%", "%"+search+"%")
+		if err != nil {
+			logger.Errorf("error getting rocketpool-members from db (with search: %v): %v", search, err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 	}
 
 	if len(dbResult) > 0 {
