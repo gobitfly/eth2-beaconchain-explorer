@@ -103,6 +103,8 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 	id := hex.EncodeToString(parsedHead.Data.Header.Message.StateRoot)
 	if parsedHead.Data.Header.Message.Slot == 0 {
 		id = "genesis"
+	} else {
+		id = "0x" + id
 	}
 	finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, id))
 	if err != nil {
@@ -193,7 +195,7 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 	}
 
 	// fetch the block root that the proposer data is dependent on
-	headerResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/%s", lc.endpoint, parsedProposerResponse.DependentRoot))
+	headerResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/0x%x", lc.endpoint, parsedProposerResponse.DependentRoot[:]))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving chain header: %v", err)
 	}
@@ -205,7 +207,7 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 	depStateRoot := parsedHeader.Data.Header.Message.StateRoot
 
 	// Now use the state root to make a consistent committee query
-	committeesResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/committees?epoch=%d", lc.endpoint, depStateRoot, epoch))
+	committeesResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/0x%x/committees?epoch=%d", lc.endpoint, depStateRoot, epoch))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving chain header: %v", err)
 	}
@@ -457,7 +459,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		return []*types.Block{}, nil
 	}
 
-	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%s", lc.endpoint, parsedRoot.Data.Root))
+	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/0x%x", lc.endpoint, parsedRoot.Data.Root[:]))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block data at slot %v: %v", slot, err)
 	}
@@ -731,6 +733,9 @@ type bytesHexStr []byte
 func (s *bytesHexStr) UnmarshalText(b []byte) error {
 	if s == nil {
 		return fmt.Errorf("cannot unmarshal bytes into nil")
+	}
+	if len(b) >= 2 && b[0] == '0' && b[1] == 'x' {
+		b = b[2:]
 	}
 	out := make([]byte, len(b)/2, len(b)/2)
 	hex.Decode(out, b)

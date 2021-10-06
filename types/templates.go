@@ -529,21 +529,21 @@ type BlockPageData struct {
 	VotingValidatorsCount  uint64
 	Mainnet                bool
 
-	ExecBlockHash  []byte `db:"exec_blockhash"`
-	ExecParentHash []byte `db:"exec_parenthash"`
-	ExecCoinbase   []byte `db:"exec_coinbase"`
-	ExecStateRoot  []byte `db:"exec_stateroot"`
-	ExecNumber     uint64 `db:"exec_number"`
-	ExecGasLimit   uint64 `db:"exec_gaslimit"`
-	ExecGasUsed    uint64 `db:"exec_gasused"`
-
-	ExecTimestamp         uint64 `db:"exec_timestamp"`
-	ExecTime              time.Time
+	ExecParentHash        []byte `db:"exec_parenthash"`
+	ExecCoinbase          []byte `db:"exec_coinbase"`
+	ExecStateRoot         []byte `db:"exec_stateroot"`
 	ExecReceiptRoot       []byte `db:"exec_receiptroot"`
 	ExecLogsBloom         []byte `db:"exec_logsbloom"`
+	ExecRandom            []byte `db:"exec_random"`
+	ExecNumber            uint64 `db:"exec_block_number"`
+	ExecGasLimit          uint64 `db:"exec_gas_limit"`
+	ExecGasUsed           uint64 `db:"exec_gas_used"`
+	ExecTimestamp         uint64 `db:"exec_timestamp"`
+	ExecTime              time.Time
+	ExecExtraData         []byte `db:"exec_extra_data"`
+	ExecBaseFeePerGas     uint64 `db:"exec_base_fee_per_gas"`
+	ExecBlockHash         []byte `db:"exec_blockhash"`
 	ExecTransactionsCount uint64 `db:"exec_transactioncount"`
-
-	ExecBaseFeePerGas uint64 `db:"exec_base_fee_per_gas"`
 
 	Transactions []*BlockPageTransaction
 
