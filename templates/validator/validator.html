@@ -8,7 +8,8 @@
 	<script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}})</script>
   {{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
-		<script type="text/javascript" src="/js/datatables.min.js"></script>
+		<!-- <script type="text/javascript" src="/js/datatables.min.js"></script> -->
+		<script type="text/javascript" src="/js/datatablesNew.min.js"></script>
 		<script type="text/javascript" src="/js/datatable_input.js"></script>
 		<script src="/js/highcharts/highstock.min.js"></script>
 		<script src="/js/highcharts/exporting.min.js"></script>
@@ -30,32 +31,33 @@
 
 {{define "css"}}
 	<link rel="stylesheet" href="/css/validator.css">
-	<link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
+	<!-- <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" /> -->
+	<link rel="stylesheet" type="text/css" href="/css/datatablesNew.min.css" />
 	<style>
-		/* #TODO:stefan maybe make this prettier somehow? */
 		#chartTabs .nav-link {
 			padding: .5rem .8rem;
 		}
 		#slashings-table td:first-child {
 			white-space: break-spaces;
 		}
-		.badge-custom-size {
+		.badge-custom {
       font-size: .82rem;
+			font-weight: 500;
     }
 		.validator-summary-div {
-			border-right-color: rgba(50, 50, 50, 0.5);
+			border-right-color: rgba(50, 50, 50, .5);
 			border-right-style: solid;
 		}
 		.validator-border-bottom {
-			border-bottom-color: rgba(50, 50, 50, 0.5);
+			border-bottom-color: rgba(50, 50, 50, .5);
 			border-bottom-style: solid;
 		}
 		.validator-charts-div {
-			border-right-color: rgba(50, 50, 50, 0.5);
+			border-right-color: rgba(50, 50, 50, .5);
 			border-right-style: solid;
-			border-top-color: rgba(50, 50, 50, 0.5);
+			border-top-color: rgba(50, 50, 50, .5);
 			border-top-style: solid;
-			border-bottom-color: rgba(50, 50, 50, 0.5);
+			border-bottom-color: rgba(50, 50, 50, .5);
 			border-bottom-style: solid;
 		}
 		.validator-content .nav-tabs .nav-item { 
@@ -202,23 +204,23 @@
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-wallet mr-2 text-muted"></i>Minipool Deposit Type</div>
 										{{if eq (derefString .Rocketpool.MinipoolDepositType) "Empty"}}
-											<span class="badge badge-pill badge-light badge-custom-size font-weight-normal mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
+											<span class="badge badge-pill badge-light badge-custom font-weight-normal mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
 										{{else if eq (derefString .Rocketpool.MinipoolDepositType) "Half"}}
-											<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
+											<span class="badge badge-pill badge-warning badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
 										{{else}}
-											<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
+											<span class="badge badge-pill badge-success badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
 										{{end}}
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-check mr-2 text-muted"></i>Minipool Status</div>
 										{{if eq (derefString .Rocketpool.MinipoolStatus) "Initialized"}}
-											<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
+											<span class="badge badge-pill badge-success badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{else if eq (derefString .Rocketpool.MinipoolStatus) "Dissolved"}}
-											<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
+											<span class="badge badge-pill badge-new-red badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{else if eq (derefString .Rocketpool.MinipoolStatus) "Withdrawable"}}
-											<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
+											<span class="badge badge-pill badge-warning badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{else}}
-											<span class="badge badge-pill badge-info badge-custom-size font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
+											<span class="badge badge-pill badge-info badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{end}}
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
@@ -282,10 +284,8 @@
 					</div>	
 				</div>
 
-				<!-- Edit Validator Modals -->
-				{{template "validatorEditModal"  .}}
-				<!-- Add Validator to Watchlist Modal -->
-				{{template "validatorBookmarkModal"  .}}
+				{{template "validatorEditModal" .}}
+				{{template "validatorBookmarkModal" .}}
 			</div>
 	{{end}}
 {{end}}
