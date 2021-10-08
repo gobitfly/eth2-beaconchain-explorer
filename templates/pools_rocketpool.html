@@ -331,12 +331,12 @@
                         if (row[9] === 0 & row[10] === 0) {
                             return '0'
                         } else {
-                            const totalWidth = 200
-                            const votesYes = (row[9] / Math.ceil(row[8])) * 100
-                            const widthYes = (votesYes * totalWidth) / 100
-                            return `<span style="${totalWidth}px;">
-                                <div class="badge-custom text-white" style="display: inline-block; width: ${widthYes}px; height: 20px; line-height: 20px; border-radius: ${row[10] !== 0 ? '10px 0 0 10px' : '10px'}; background-color: var(--green); text-align: center;">${row[9]}
-                                    </div><div class="badge-custom text-white" style="display: inline-block; width: ${totalWidth - widthYes}px; height: 20px; line-height: 20px; border-radius: ${row[9] !== 0 ? '0 10px 10px 0' : '10px'}; background-color: var(--new-red); text-align: center;">${row[10] !== 0 ? row[10] : ''}</div>
+                            const totalWidth = 160
+                            const votesYesPercentage = (row[9] / (row[9] + row[10])) * 100
+                            const widthVotesYes = (votesYesPercentage * totalWidth) / 100
+                            return `<span style="width: ${totalWidth}px;">
+                                <div class="badge-custom text-white" style="display: inline-block; width: ${widthVotesYes}px; height: 20px; line-height: 20px; border-radius: ${row[10] !== 0 ? '10px 0 0 10px' : '10px'}; background-color: var(--green); text-align: center;">${row[9]}
+                                    </div><div class="badge-custom text-white" style="display: inline-block; width: ${totalWidth - widthVotesYes}px; height: 20px; line-height: 20px; border-radius: ${row[9] !== 0 ? '0 10px 10px 0' : '10px'}; background-color: var(--new-red); text-align: center;">${row[10] !== 0 ? row[10] : ''}</div>
                                 </span>`
                         }
                     }
