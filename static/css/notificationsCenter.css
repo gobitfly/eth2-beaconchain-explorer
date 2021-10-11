@@ -202,8 +202,15 @@ div.dataTables_scrollBody table {
 #validators-notifications_wrapper div.dataTables_paginate ul li { 
   background-color: var(--new-card-bg);
 }
-#validators-notifications { 
-  min-height: 610px; 
+#validators-notifications_wrapper > div:nth-child(2) {
+  min-height: 650px; 
+}
+
+#validators-notifications_paginate {
+  display: flex;
+  height: 100%;
+  justify-content: flex-end;
+  align-items: flex-end;
 }
 /* custom scrollbar */
 .scrollbar::-webkit-scrollbar {

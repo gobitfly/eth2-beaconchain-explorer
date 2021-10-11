@@ -76,7 +76,10 @@ function create_typeahead(input_container) {
 function loadMonitoringData(data) {
   let mdata = []
   let id = 0
-  console.log('load monitoring: ', data)
+
+  if(!data) {
+    data = []
+  }
 
   for (let i = 0; i < data.length; i++) {
      mdata.push({
