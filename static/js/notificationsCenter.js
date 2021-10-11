@@ -198,7 +198,7 @@ function loadMonitoringData(data) {
         }
         $('#confirmRemoveModal').attr('rowId', rowId)
         $('#confirmRemoveModal').attr('tablename', 'monitoring')
-        $('#confirmRemoveModal').attr('pk', $(this).attr('pk'))
+        $('#confirmRemoveModal').attr('filter', $(this).attr('filter'))
         $('#confirmRemoveModal').attr('event', $(this).attr('event'))
       });
     },
@@ -216,11 +216,11 @@ function loadMonitoringData(data) {
         data: 'notification',
         render: function (data, type, row, meta) {
           data = data.replace(/^[a-zA-Z]+:/, '')
-          var monitoringEvents = {
-            'monitoring_machine_offline': 'Machine Offline',
-          }
-          data = monitoringEvents[data]
-          return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data.charAt(0).toUpperCase() + data.slice(1)}</span>`
+          // var monitoringEvents = {
+          //   'monitoring_machine_offline': 'Machine Offline',
+          // }
+          // data = monitoringEvents[data]
+          return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
         }
       },
       {
@@ -258,7 +258,7 @@ function loadMonitoringData(data) {
           //       ></i>
           //     </span>`
           // }
-          return data
+          return (data * 100).toFixed(0) + '%'
         }
       },
       {
@@ -290,7 +290,7 @@ function loadMonitoringData(data) {
         responsivePriority: 3,
         data: 'event',
         render: function (data, type, row, meta) {
-          return `<i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle="modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
+          return `<i class="fas fa-times fa-lg i-custom" filter="${row.machine}" event="${row.notification}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle="modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
         }
       }
     ]
@@ -636,7 +636,8 @@ $(document).ready(function () {
     if (rowId !== undefined) {
       if (tablename === 'monitoring') {
         $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Removing...</span></div>')
-        fetch(`/user/notifications/unsubscribe?event=${$('#confirmRemoveModal').attr('event')}&filter=0x${$('#confirmRemoveModal').attr('pk')}`, {
+        console.log('removing', $('#confirmRemoveModal').attr('filter'))
+        fetch(`/user/notifications/unsubscribe?event=${encodeURI($('#confirmRemoveModal').attr('event'))}&filter=${encodeURI($('#confirmRemoveModal').attr('filter'))}`, {
           method: 'POST',
           headers: { "X-CSRF-Token": csrfToken },
           credentials: 'include',
@@ -882,15 +883,25 @@ $(document).ready(function () {
   }
 
   $('#add-monitoring-event-modal-button').on('click', function () {
-    $('#add-monitoring-validator-select').html('')
-    for (let item of DATA.sort((a, b) => { return a.Validator.Index - b.Validator.Index })) {
-      $('#add-monitoring-validator-select').append(`<option value="${item.Validator.Pubkey}">${item.Validator.Index}</option>`)
+    if(!MACHINES.length) {
+      $('#add-monitoring-validator-select').replaceWith(`
+      <span>
+        No machine found. Learn more about monitoring your validator and beacon node
+        <a href="https://kb.beaconcha.in/beaconcha.in-explorer/mobile-app-less-than-greater-than-beacon-node">here</a>.
+      </span>`)
+    } else {
+      $('#add-monitoring-validator-select').html('')
+      for (let i = 0; i < MACHINES.length; i++) {
+        if (MACHINES[i]) {
+          $('#add-monitoring-validator-select').append(`<option value="${MACHINES[i]}">${MACHINES[i]}</option>`)
+        }
+      }
     }
   })
 
   $('#add-monitoring-event').on('click', function () {
-    let pubkey = $('#add-monitoring-validator-select option:selected').val()
-    events = []
+    let events = []
+    let filter = $('#add-monitoring-validator-select option:selected').val()
     for (let item of $('input.monitoring')) {
       if ($(item).prop('checked')) {
         let e = $(item).attr('event')
@@ -905,18 +916,19 @@ $(document).ready(function () {
           default:
             t = 0
         }
+
         events.push({
-          event: e,
-          email: true,
-          threshold: t
+          event_name: e,
+          event_filter: filter,
+          event_threshold: t, 
         })
       }
     }
-    fetch(`/user/notifications-center/monitoring/updatesubs`, {
+    fetch(`/user/notifications/bundled/subscribe`, {
       method: 'POST',
       headers: { "X-CSRF-Token": csrfToken },
       credentials: 'include',
-      body: JSON.stringify({ pubkeys: [pubkey], events: events })
+      body: JSON.stringify(events)
     }).then(res => {
       if (res.status == 200) {
         $('#manageNotificationsModal').modal('hide')

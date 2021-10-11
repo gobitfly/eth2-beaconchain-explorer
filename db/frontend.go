@@ -569,6 +569,22 @@ func GetStatsMachineCount(userID uint64) (uint64, error) {
 	return count, err
 }
 
+func GetStatsMachine(userID uint64) ([]string, error) {
+	now := time.Now()
+	nowTs := now.Unix()
+	var day int = int(nowTs / 86400)
+	// for testing
+	// day = 18893
+	// log.Println("getting machine for day: ", day)
+
+	var machines []string
+	err := FrontendDB.Select(&machines,
+		"SELECT DISTINCT machine from stats_meta_p WHERE day = $2 AND user_id = $1 LIMIT 300",
+		userID, day,
+	)
+	return machines, err
+}
+
 func InsertStatsMeta(tx *sql.Tx, userID uint64, data *types.StatsMeta) (uint64, error) {
 	now := time.Now()
 	nowTs := now.Unix()

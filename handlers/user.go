@@ -13,6 +13,7 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -515,87 +516,87 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
+// func UserUpdateSubscriptions(w http.ResponseWriter, r *http.Request) {
 
-	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
+// 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
 
-	user := getUser(r)
+// 	user := getUser(r)
 
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+// 	body, err := ioutil.ReadAll(r.Body)
+// 	if err != nil {
+// 		logger.Errorf("error reading body of request: %v, %v", r.URL.String(), err)
+// 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+// 		return
+// 	}
 
-	reqData := struct {
-		Pubkeys []string `json:"pubkeys"`
-		Events  []struct {
-			Event     string  `json:"event"`
-			Email     bool    `json:"email"`
-			Push      bool    `json:"push"`
-			Web       bool    `json:"web"`
-			Threshold float64 `json:"threshold"`
-		} `json:"events"`
-	}{}
+// 	reqData := struct {
+// 		Events []struct {
+// 			Filter    string  `json:"filter"`
+// 			Event     string  `json:"event"`
+// 			Email     bool    `json:"email"`
+// 			Push      bool    `json:"push"`
+// 			Web       bool    `json:"web"`
+// 			Threshold float64 `json:"threshold"`
+// 		} `json:"events"`
+// 	}{}
 
-	// pubkeys := make([]string, 0)
-	err = json.Unmarshal(body, &reqData)
-	if err != nil {
-		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+// 	// pubkeys := make([]string, 0)
+// 	err = json.Unmarshal(body, &reqData)
+// 	if err != nil {
+// 		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
+// 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+// 		return
+// 	}
 
-	if len(reqData.Pubkeys) == 0 {
-		logger.Errorf("error invalid pubkey: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+// 	if len(reqData.Pubkeys) == 0 {
+// 		logger.Errorf("error invalid pubkey: %v, %v", r.URL.String(), err)
+// 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+// 		return
+// 	}
 
-	net := strings.ToLower(utils.GetNetwork())
-	pqPubkeys := pq.Array(reqData.Pubkeys)
-	pqEventNames := pq.Array([]string{net + ":" + string(types.ValidatorMissedAttestationEventName),
-		net + ":" + string(types.ValidatorMissedProposalEventName),
-		net + ":" + string(types.ValidatorExecutedProposalEventName),
-		net + ":" + string(types.ValidatorGotSlashedEventName)})
+// 	net := strings.ToLower(utils.GetNetwork())
+// 	pqPubkeys := pq.Array(reqData.Pubkeys)
+// 	pqEventNames := pq.Array([]string{net + ":" + string(types.ValidatorMissedAttestationEventName),
+// 		net + ":" + string(types.ValidatorMissedProposalEventName),
+// 		net + ":" + string(types.ValidatorExecutedProposalEventName),
+// 		net + ":" + string(types.ValidatorGotSlashedEventName)})
 
-	_, err = db.FrontendDB.Exec(`
-			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
-		`, user.UserID, pqPubkeys, pqEventNames)
-	if err != nil {
-		logger.Errorf("error removing old events: %v, %v", r.URL.String(), err)
-		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+// 	_, err = db.FrontendDB.Exec(`
+// 			DELETE FROM users_subscriptions WHERE user_id=$1 AND event_filter=ANY($2) AND event_name=ANY($3);
+// 		`, user.UserID, pqPubkeys, pqEventNames)
+// 	if err != nil {
+// 		logger.Errorf("error removing old events: %v, %v", r.URL.String(), err)
+// 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+// 		return
+// 	}
 
-	all_success := true
-	for _, pubkey := range reqData.Pubkeys {
-		result := true
-		m := map[string]bool{}
-		for _, item := range reqData.Events {
-			if item.Email {
-				if m[item.Event] && pubkey == "" {
-					continue
-				}
+// 	all_success := true
+// 	for _, pubkey := range reqData.Pubkeys {
+// 		result := true
+// 		m := map[string]bool{}
+// 		for _, item := range reqData.Events {
+// 			if item.Email {
+// 				if m[item.Event] && pubkey == "" {
+// 					continue
+// 				}
 
-				result = result && internUserNotificationsSubscribe(item.Event, pubkey, item.Threshold, w, r)
-				m[item.Event] = true
-				if !result {
-					break
-				}
-			}
-		}
-		if !result {
-			all_success = false
-			break
-		}
-	}
+// 				result = result && internUserNotificationsSubscribe(item.Event, pubkey, item.Threshold, w, r)
+// 				m[item.Event] = true
+// 				if !result {
+// 					break
+// 				}
+// 			}
+// 		}
+// 		if !result {
+// 			all_success = false
+// 			break
+// 		}
+// 	}
 
-	if all_success {
-		OKResponse(w, r)
-	}
-}
+// 	if all_success {
+// 		OKResponse(w, r)
+// 	}
+// }
 
 func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
 
@@ -698,7 +699,12 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// monitoring, err := getMonitoring
+	machines, err := db.GetStatsMachine(user.UserID)
+	if err != nil {
+		logger.Errorf("error retrieving user machines: %v ", user.UserID, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
 	monitoringSubscriptions, err := db.GetMonitoringSubscriptions(user.UserID)
 	if err != nil {
@@ -726,6 +732,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	userNotificationsCenterData.Validators = validatorTableData
 	userNotificationsCenterData.Network = networkData
 	userNotificationsCenterData.MonitoringSubscriptions = monitoringSubscriptions
+	userNotificationsCenterData.Machines = machines
 	data.Data = userNotificationsCenterData
 	data.User = user
 
@@ -1565,10 +1572,65 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+func MultipleUsersNotificationsSubscribeWeb(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	type SubIntent struct {
+		EventName      string  `json:"event_name"`
+		EventFilter    string  `json:"event_filter"`
+		EventThreshold float64 `json:"event_threshold"`
+	}
+
+	var jsonObjects []SubIntent
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body %v URL: %v", err, r.URL.String())
+		sendErrorResponse(j, r.URL.String(), "could not parse body")
+		return
+	}
+
+	err = json.Unmarshal(b, &jsonObjects)
+	if err != nil {
+		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not parse request")
+		return
+	}
+
+	if len(jsonObjects) > 100 {
+		logger.Errorf("Max number bundle subscribe is 100", err)
+		sendErrorResponse(j, r.URL.String(), "Max number bundle subscribe is 100")
+		return
+	}
+
+	var result bool = true
+	m := make(map[string]bool)
+	for i := 0; i < len(jsonObjects); i++ {
+		obj := jsonObjects[i]
+
+		// make sure expensive operations without filter can only be done once per request
+		if m[obj.EventName] && obj.EventFilter == "" {
+			continue
+		}
+
+		result = result && internUserNotificationsSubscribe(obj.EventName, obj.EventFilter, obj.EventThreshold, w, r)
+		m[obj.EventName] = true
+		if !result {
+			break
+		}
+	}
+
+	if result {
+		OKResponse(w, r)
+	}
+}
+
 func internUserNotificationsSubscribe(event, filter string, threshold float64, w http.ResponseWriter, r *http.Request) bool {
 	w.Header().Set("Content-Type", "text/html")
 	user := getUser(r)
 	filter = strings.Replace(filter, "0x", "", -1)
+
+	event = strings.TrimPrefix(event, utils.GetNetwork()+":")
 
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
@@ -1630,7 +1692,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 				threshold = 0.8
 			}
 		}
-
+		log.Println("adding subscription with thershold:", threshold)
 		err = db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, filter, threshold)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
@@ -1693,6 +1755,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 	user := getUser(r)
 
 	filter = strings.Replace(filter, "0x", "", -1)
+	event = strings.TrimPrefix(event, utils.GetNetwork()+":")
 
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {
@@ -1760,6 +1823,8 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	event := q.Get("event")
 	filter := q.Get("filter")
 	filter = strings.Replace(filter, "0x", "", -1)
+
+	event = strings.TrimPrefix(event, utils.GetNetwork()+":")
 
 	eventName, err := types.EventNameFromString(event)
 	if err != nil {

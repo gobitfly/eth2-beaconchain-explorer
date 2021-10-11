@@ -1004,6 +1004,7 @@ type UserNotificationsCenterPageData struct {
 	Validators              interface{}
 	Network                 interface{}
 	MonitoringSubscriptions []*Subscription
+	Machines                []string
 	// Subscriptions []*Subscription
 }
 
