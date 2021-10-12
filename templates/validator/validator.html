@@ -41,8 +41,8 @@
 			white-space: break-spaces;
 		}
 		.badge-custom {
-      font-size: .82rem;
-			font-weight: 500;
+      font-size: 12px;
+      font-weight: 500;
     }
 		.validator-summary-div {
 			border-right-color: rgba(50, 50, 50, .5);
@@ -179,14 +179,14 @@
 						</ul>
 						<div class="tab-content h-100" id="myTabContent">
 							<div id="charts" class="tab-pane fade w-100 h-100 show active" role="tabpanel" aria-labelledby="charts-tab">
-								<div class="btn-group mt-2 ml-2 charts-btn-group" role="group" aria-label="Charts buttons group">
-									<button type="button" class="btn btn-outline-secondary btn-sm income-chart-btn">Income</button>
-									<button type="button" class="btn btn-outline-secondary btn-sm proposed-chart-btn">Proposals</button>
+								<div class="btn-group border rounded mt-2 ml-2 charts-btn-group" role="group" aria-label="Charts buttons group">
+									<button type="button" class="btn btn-link btn-sm border-right income-chart-btn nav-link">Income</button>
+									<button type="button" class="btn btn-link btn-sm proposed-chart-btn nav-link">Proposals</button>
 								</div>
-								<div id="incomeChart" class="w-100 h-100" aria-labelledby="incomeChart-tab">
+								<div id="incomeChart" class="w-100 mb-2" aria-labelledby="incomeChart-tab">
 									{{template "validatorIncomeChart" $}}
 								</div>
-								<div id="proposedChart" class="w-100 h-100 d-none" aria-labelledby="proposedChart-tab">
+								<div id="proposedChart" class="w-100 mb-2 d-none" aria-labelledby="proposedChart-tab">
 									{{template "validatorProposedChart" .}}
 								</div>
 							</div>
@@ -228,23 +228,23 @@
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-wallet mr-2 text-muted"></i>Minipool Deposit Type</div>
 										{{if eq (derefString .Rocketpool.MinipoolDepositType) "Empty"}}
-											<span class="badge badge-pill badge-light badge-custom font-weight-normal mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
+											<span class="badge badge-pill badge-light badge-custom mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
 										{{else if eq (derefString .Rocketpool.MinipoolDepositType) "Half"}}
-											<span class="badge badge-pill badge-warning badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
+											<span class="badge badge-pill badge-warning badge-custom text-white mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
 										{{else}}
-											<span class="badge badge-pill badge-success badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
+											<span class="badge badge-pill badge-success badge-custom text-white mb-1">{{.Rocketpool.MinipoolDepositType}}</span>
 										{{end}}
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-check mr-2 text-muted"></i>Minipool Status</div>
 										{{if eq (derefString .Rocketpool.MinipoolStatus) "Initialized"}}
-											<span class="badge badge-pill badge-success badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
+											<span class="badge badge-pill badge-success badge-custom text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{else if eq (derefString .Rocketpool.MinipoolStatus) "Dissolved"}}
-											<span class="badge badge-pill badge-new-red badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
+											<span class="badge badge-pill badge-new-red badge-custom text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{else if eq (derefString .Rocketpool.MinipoolStatus) "Withdrawable"}}
-											<span class="badge badge-pill badge-warning badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
+											<span class="badge badge-pill badge-warning badge-custom text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{else}}
-											<span class="badge badge-pill badge-info badge-custom font-weight-normal text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
+											<span class="badge badge-pill badge-info badge-custom text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{end}}
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">

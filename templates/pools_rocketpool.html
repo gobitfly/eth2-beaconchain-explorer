@@ -11,10 +11,8 @@
                 search: '',
                 searchPlaceholder: 'Search...',
                 paginate: {
-                    /* previous: '<',
-                    next: '>' */
-                    previous: '<i class="fas fa-angle-left"></i>',
-                    next: '<i class="fas fa-angle-right"></i>'
+                    previous: '<i class="fas fa-chevron-left"></i>',
+                    next: '<i class="fas fa-chevron-right"></i>'
                 }
             },
             paging: true,
@@ -93,10 +91,8 @@
                 search: '',
                 searchPlaceholder: 'Search...',
                 paginate: {
-                    /* previous: '<',
-                    next: '>' */
-                    previous: '<i class="fas fa-angle-left"></i>',
-                    next: '<i class="fas fa-angle-right"></i>'
+                    previous: '<i class="fas fa-chevron-left"></i>',
+                    next: '<i class="fas fa-chevron-right"></i>'
                 }
             },
             paging: true,
@@ -179,10 +175,8 @@
                 search: '',
                 searchPlaceholder: 'Search...',
                 paginate: {
-                    /* previous: '<',
-                    next: '>' */
-                    previous: '<i class="fas fa-angle-left"></i>',
-                    next: '<i class="fas fa-angle-right"></i>'
+                    previous: '<i class="fas fa-chevron-left"></i>',
+                    next: '<i class="fas fa-chevron-right"></i>'
                 }
             },
             paging: true,
@@ -259,10 +253,8 @@
                 search: '',
                 searchPlaceholder: 'Search...',
                 paginate: {
-                    /* previous: '<',
-                    next: '>' */
-                    previous: '<i class="fas fa-angle-left"></i>',
-                    next: '<i class="fas fa-angle-right"></i>'
+                    previous: '<i class="fas fa-chevron-left"></i>',
+                    next: '<i class="fas fa-chevron-right"></i>'
                 }
             },
             paging: true,
@@ -424,7 +416,7 @@
     <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
     <style>
         .badge-custom {
-            font-size: .82rem;
+            font-size: 12px;
             font-weight: 500;
         }
         #slashings td:first-child {
@@ -434,14 +426,11 @@
         #nodes_wrapper div.dataTables_paginate ul li,
         #dao_members_wrapper div.dataTables_paginate ul li,
         #dao_proposals_wrapper div.dataTables_paginate ul li { 
-            background-color: var(--new-card-bg);
-        }
-        div.dataTables_info {
-            padding-top: 2.15rem !important;
-            font-size: .9rem;
-            text-align: left !important;
+            background-color: var(--bg-color);
         }
         div.dataTables_filter {
+            margin-top: 2.5px;
+            margin-right: 3px;
             padding-right: 0 !important;
         }
         .dataTables_filter input { 
@@ -479,7 +468,7 @@
             </div>
             <h1 class="mt-2 mb-5 text-nowrap" style="font-size: 1.8rem; letter-spacing: 2px;">Rocketpool</h1>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Minipools</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
                 <div class="table-responsive">
                     <table class="table table-hover" id="minipools" width="100%">
                         <thead style="background-color: var(--bg);">
@@ -497,7 +486,7 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Nodes</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
                 <div class="table-responsive">
                     <table class="table table-hover" id="nodes" width="100%">
                         <thead style="background-color: var(--bg);">
@@ -514,7 +503,7 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">DAO Members</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
                 <div class="table-responsive">
                     <table class="table table-hover" id="dao_members" width="100%">
                         <thead style="background-color: var(--bg);">
@@ -533,7 +522,7 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Proposals</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
                 <div class="table-responsive">
                     <table class="table table-hover" id="dao_proposals" width="100%">
                         <thead style="background-color: var(--bg);">
