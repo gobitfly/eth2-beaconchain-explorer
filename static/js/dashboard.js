@@ -441,7 +441,7 @@ $(document).ready(function() {
         render: function(data, type, row, meta) {
           if (type == 'sort' || type == 'type') return data
           // return '<a href="/validator/' + data + '">' + data + '</a>'
-          return `<span class="m-0 p-2 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer; color: #fff;" onclick="showValidatorHist('${data}')">
+          return `<span class="m-0 p-2 hbtn" id="dropdownMenuButton${data}" style="cursor: pointer;" onclick="showValidatorHist('${data}')">
                       ${data}
                   </span>
                  `
