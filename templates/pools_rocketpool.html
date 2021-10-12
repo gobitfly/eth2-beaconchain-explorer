@@ -59,7 +59,7 @@
                             return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
                         if (data === 'Dissolved') {
-                            return `<span class="badge badge-pill badge-new-red badge-custom text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                         }
                         if (data === 'Withdrawable') {
                             return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
@@ -331,12 +331,12 @@
                         if (row[9] === 0 & row[10] === 0) {
                             return '0'
                         } else {
-                            const totalWidth = 160
+                            const totalWidth = 120
                             const votesYesPercentage = (row[9] / (row[9] + row[10])) * 100
                             const widthVotesYes = (votesYesPercentage * totalWidth) / 100
                             return `<span style="width: ${totalWidth}px;">
-                                <div class="badge-custom text-white" style="display: inline-block; width: ${widthVotesYes}px; height: 20px; line-height: 20px; border-radius: ${row[10] !== 0 ? '10px 0 0 10px' : '10px'}; background-color: var(--green); text-align: center;">${row[9]}
-                                    </div><div class="badge-custom text-white" style="display: inline-block; width: ${totalWidth - widthVotesYes}px; height: 20px; line-height: 20px; border-radius: ${row[9] !== 0 ? '0 10px 10px 0' : '10px'}; background-color: var(--new-red); text-align: center;">${row[10] !== 0 ? row[10] : ''}</div>
+                                <div data-toggle="tooltip" title="Votes for" class="badge-custom text-white" style="display: inline-block; width: ${widthVotesYes}px; height: 20px; line-height: 20px; border-radius: ${row[10] !== 0 ? '10px 0 0 10px' : '10px'}; background-color: var(--green); text-align: center;">${row[9]}
+                                    </div><div data-toggle="tooltip" title="Votes against" class="badge-custom text-white" style="display: inline-block; width: ${totalWidth - widthVotesYes}px; height: 20px; line-height: 20px; border-radius: ${row[9] !== 0 ? '0 10px 10px 0' : '10px'}; background-color: var(--new-red); text-align: center;">${row[10] !== 0 ? row[10] : ''}</div>
                                 </span>`
                         }
                     }
@@ -347,7 +347,7 @@
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                     }
                 },
                 {
@@ -356,7 +356,7 @@
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                     }
                 },
                 {
@@ -365,7 +365,7 @@
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                     }
                 },
                 {
@@ -375,7 +375,7 @@
                         if (data) {
                             return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                     }
                 },
                 {
@@ -390,7 +390,7 @@
                             return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
                         if (data === 'Cancelled') {
-                            return `<span class="badge badge-pill badge-new-red badge-custom text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                         }
                         if (data === 'Defeated') {
                             return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
