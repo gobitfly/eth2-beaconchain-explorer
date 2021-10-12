@@ -595,10 +595,10 @@ func formatPool(tag []string) string {
 					}
 					name += s + " "
 				}
-				return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 12px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, name)
+				return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 18px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, name)
 			}
 		}
-		return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 12px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, tag[len(tag)-1])
+		return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 18px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, tag[len(tag)-1])
 	}
 	return ""
 }
@@ -610,8 +610,7 @@ func formatSpecialTag(tag string) string {
 			return formatPool(special_tag)
 		}
 	}
-
-	return fmt.Sprintf(`<span style="font-size: 12px;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
+	return fmt.Sprintf(`<span style="font-size: 18px;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
 }
 
 // FormatValidatorTag will return html formated text of a validator-tag.
@@ -620,9 +619,9 @@ func FormatValidatorTag(tag string) template.HTML {
 	var result string
 	switch tag {
 	case "rocketpool":
-		result = fmt.Sprintf(`<span style="background:yellow; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="/pools/rocketpool">%s</a></span>`, tag)
+		result = fmt.Sprintf(`<span style="background-color: rgba(240, 149, 45, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="RocketPool Validator"><a style="color: var(--yellow);" href="/pools/rocketpool">%s</a></span>`, tag)
 	case "ssv":
-		result = fmt.Sprintf(`<span style="background:orange; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
+		result = fmt.Sprintf(`<span style="background-color: rgba(238, 113, 18, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Secret Shared Validator"><a style="color: var(--orange);" href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
 	default:
 		result = formatSpecialTag(tag)
 	}
