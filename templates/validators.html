@@ -4,20 +4,20 @@
     <script>
         var validatorsDataTable
         var stateFilterDropDownHtml = `<div><label>
-            <div class="dropdown" style="display: inline-block;">
-                <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>All {{.TotalCount}}</span></button>
-                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                <h6 class="dropdown-header"><span>Filter state</span> <span><span class="text-success">online</span> | <span class="text-danger">offline</span></span></h6>
-                <hr style="margin: .5rem 0;">
-                <a class="dropdown-item" href="#all" data-filter-validators="all"><span>All</span> <span>{{.TotalCount}}</span></a>
-                <a class="dropdown-item" href="#pending" data-filter-validators="pending"><span>Pending</span> <span>{{.PendingCount}}</span></a>
-                <a class="dropdown-item" href="#active" data-filter-validators="active"><span>Active</span><span> <span class="text-success">{{.ActiveOnlineCount}}</span> | <span class="text-danger">{{.ActiveOfflineCount}}</span></span></a>
-                <a class="dropdown-item" href="#slashing" data-filter-validators="slashing"><span>Slashing</span><span> <span class="text-success">{{.SlashingOnlineCount}}</span> | <span class="text-danger">{{.SlashingOfflineCount}}</span></span></a>
-                <a class="dropdown-item" href="#exiting" data-filter-validators="exiting"><span>Exiting</span><span> <span class="text-success">{{.ExitingOnlineCount}}</span> | <span class="text-danger">{{.ExitingOfflineCount}}</span></span></a>
-                <a class="dropdown-item" href="#exited" data-filter-validators="exited"><span>Exited</span> <span>{{.ExitedCount}}</span></a>
-                </div>
-            </div>
-            </label></div>`
+    <div class="dropdown" style="display:inline-block;">
+        <button class="btn btn-primary dropdown-toggle text-white" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>All {{.TotalCount}}</span></button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+        <h6 class="dropdown-header"><span>Filter state</span> <span><span class="text-success">online</span> | <span class="text-danger">offline</span></span></h6>
+        <hr style="margin:0.5rem 0">
+        <a class="dropdown-item" href="#all" data-filter-validators="all"><span>All</span> <span>{{.TotalCount}}</span></a>
+        <a class="dropdown-item" href="#pending" data-filter-validators="pending"><span>Pending</span> <span>{{.PendingCount}}</span></a>
+        <a class="dropdown-item" href="#active" data-filter-validators="active"><span>Active</span><span> <span class="text-success">{{.ActiveOnlineCount}}</span> | <span class="text-danger">{{.ActiveOfflineCount}}</span></span></a>
+        <a class="dropdown-item" href="#slashing" data-filter-validators="slashing"><span>Slashing</span><span> <span class="text-success">{{.SlashingOnlineCount}}</span> | <span class="text-danger">{{.SlashingOfflineCount}}</span></span></a>
+        <a class="dropdown-item" href="#exiting" data-filter-validators="exiting"><span>Exiting</span><span> <span class="text-success">{{.ExitingOnlineCount}}</span> | <span class="text-danger">{{.ExitingOfflineCount}}</span></span></a>
+        <a class="dropdown-item" href="#exited" data-filter-validators="exited"><span>Exited</span> <span>{{.ExitedCount}}</span></a>
+        </div>
+    </div>
+    </label></div>`;
 
         function adaptTableToState(state) {
             $('.filter-by-status a.dropdown-item').removeClass('active')
@@ -83,9 +83,11 @@
                 pagingType: 'input',
                 language: {
                     paginate: {
-                        previous: "<",
-                        next: ">"
-                    }
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
+                    },
+                    search: '',
+                    searchPlaceholder: 'Search...'
                 },
                 dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" +
                     "<'row'<'col-sm-12'tr>>" +
@@ -216,14 +218,6 @@
 
         .filter-by-status {
             padding-left: 1rem !important;
-        }
-
-        #dropdownMenuButton * {
-            color: #000;
-        }
-
-        #dropdownMenuButton::after {
-            color: #000;
         }
 
         #validators_wrapper .dropdown-item:focus,
