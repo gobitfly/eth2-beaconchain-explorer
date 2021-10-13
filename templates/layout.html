@@ -381,8 +381,6 @@
                                 </a>
                             </div>
                         </li>
-
-                        <!-- TODO: integrate in megamenu -->
                         <!-- <li class="nav-item {{ if eq .Active "stats"}}active{{end}} dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <span class="nav-icon"><i class="fas fa-cubes"></i></span>
@@ -413,7 +411,6 @@
                                 </a>
                             </div>
                         </li> -->
-
                         <style>
                             .nav-cube {
                                 --mainColor: rgba(75, 75, 75, .7);
@@ -502,8 +499,6 @@
                                 <span class="nav-text">Dashboard</span>
                             </a>
                         </li>
-
-                        <!-- TODO: integrate in megamenu -->
                         <!-- <li class="nav-item {{ if eq .Active "services"}}active{{end}} dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">  
                                 <span class="nav-icon"><i class="fas fa-tools"></i></span>
@@ -541,13 +536,12 @@
                                 </a>
                             </div>
                         </li> -->
-
                         <li class="nav-item dropdown {{ if eq .Active "more"}}active{{end}}">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <!-- <span class="nav-icon"><i class="fas fa-info mr-2"></i></span> -->
                                 <span class="nav-text">More</span>
                             </a>
-                            <div class="dropdown-menu dropdown-menu-right p-3" aria-labelledby="navbarDropdown">
+                            <div class="dropdown-menu dropdown-menu-right p-sm-2 p-md-4 px-lg-0" aria-labelledby="navbarDropdown">
                                 <!--<a class="dropdown-item" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121">
                                     <span class="nav-icon"><i class="fab fa-apple mr-2"></i></span>
                                     <span class="nav-text">iOS App</span>
@@ -557,81 +551,78 @@
                                     <span class="nav-text">Android App</span>
                                 </a>-->
 
-
-                                <div class="d-flex">
-                                    <div>
+                                <!-- MEGAMENU -->
+                                <div class="d-flex align-content-around flex-wrap flex-lg-nowrap">
+                                    <div class="mx-lg-4">
                                         <span class="ml-4" style="font-size: 18px; font-weight: 700; letter-spacing: .3px;">Staking Pools</span>
                                         <a class="dropdown-item mt-3" href="/stakingServices">
-                                            <span class="nav-icon"><i class="fas fa-drumstick-bite mr-2"></i></span>
-                                            <span class="nav-text">Staking Services</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-drumstick-bite mr-2"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">Staking Services</span>
                                         </a>
                                         <a class="dropdown-item" href="/">
-                                            <span class="nav-icon"><i class="fas fa-chart-pie mr-1"></i></span>
-                                            <span class="nav-text">Pool Benchmarks</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-chart-pie mr-1"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">Pool Benchmarks</span>
                                         </a>
                                         <a class="dropdown-item" href="/pools/rocketpool">
-                                            <span class="nav-icon"><i class="fas fa-chart-pie mr-1"></i></span>
-                                            <span class="nav-text">Rocketpool Stats</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-chart-pie mr-1"></i></span>
+                                            <span class="nav-text  ml-3 ml-md-0 mb-4 mb-md-0">Rocketpool Stats</span>
                                         </a>
                                     </div>
-                                    <div>
+                                    <div class="mx-lg-4">
                                         <span class="ml-4" style="font-size: 18px; font-weight: 700; letter-spacing: .3px;">Services</span>
                                         <a ga-outbound class="dropdown-item mt-3" href="https://kb.beaconcha.in">
-                                            <span class="nav-icon"><i class="fas fa-external-link-alt mr-2"></i></span>
-                                            <span class="nav-text">Knowledge Base</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-external-link-alt mr-2"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">Knowledge Base</span>
                                         </a>
                                         <a class="dropdown-item" href="/poap">
-                                            <span class="nav-icon"><i class="fas fa-medal mr-1"></i></span>
-                                            <span class="nav-text">POAP</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-medal mr-1"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">POAP</span>
                                         </a>
                                         <a class="dropdown-item" href="/graffitiwall">
-                                            <span class="nav-icon"><i class="fas fa-paint-brush mr-1"></i></span>
-                                            <span class="nav-text">Graffiti Wall</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-paint-brush mr-1"></i></span>
+                                            <span class="nav-text  ml-3 ml-md-0 mb-4 mb-md-0">Graffiti Wall</span>
                                         </a>
                                     </div>
-                                    <div>
+                                    <div class="mx-lg-4">
                                         <span class="ml-4" style="font-size: 18px; font-weight: 700; letter-spacing: .3px;">Stats</span>
                                         <a class="dropdown-item mt-3" href="/charts">
-                                            <span class="nav-icon"><i class="fas fa-chart-bar mr-2"></i></span>
-                                            <span class="nav-text">Charts</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-chart-bar mr-2"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">Charts</span>
                                         </a>
                                         <a class="dropdown-item" href="/rewards">
-                                            <span class="nav-icon"><i class="far fa-money-bill-alt mr-2"></i></span>
-                                            <span class="nav-text">Income History</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="far fa-money-bill-alt mr-2"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">Income History</span>
                                         </a>
                                         <a class="dropdown-item" href="/calculator">
-                                            <span class="nav-icon"><i class="fas fa-calculator mr-2"></i></span>
-                                            <span class="nav-text">Profit Calculator</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-calculator mr-2"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">Profit Calculator</span>
                                         </a>
                                         <a class="dropdown-item" href="/vis">
-                                            <span class="nav-icon"><i class="fas fa-project-diagram mr-2"></i></span>
-                                            <span class="nav-text">Block Viz</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-project-diagram mr-2"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">Block Viz</span>
                                         </a>
                                         <a ga-outbound class="dropdown-item" href="https://eth2.ethernodes.org/">
-                                            <span class="nav-icon"><i class="fas fa-network-wired mr-2"></i></span>
-                                            <span class="nav-text">Nodes</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-network-wired mr-2"></i></span>
+                                            <span class="nav-text  ml-3 ml-md-0 mb-4 mb-sm-0">Nodes</span>
                                         </a>
                                     </div>
-                                    <div>
+                                    <div class="mx-lg-4">
                                         <span class="ml-4" style="font-size: 18px; font-weight: 700; letter-spacing: .3px;">Tools</span>
                                         <a class="dropdown-item mt-3" href="/mobile">
-                                            <span class="nav-icon"><i class="fas fa-mobile-alt mr-2"></i></span>
-                                            <span class="nav-text">Beaconchain App (iOS/Android)</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-mobile-alt mr-2"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">Beaconchain App</span>
                                         </a>
                                         <a class="dropdown-item" href="https://beaconcha.in/api/v1/docs/index.html">
-                                            <span class="nav-icon"><i class="fas fa-laptop-code mr-2"></i></span>
-                                            <span class="nav-text">API Docs</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-laptop-code mr-2"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">API Docs</span>
                                         </a>
                                         <a class="dropdown-item" href="/pricing">
-                                            <span class="nav-icon"><i class="fas fa-laptop-code mr-2"></i></span>
-                                            <span class="nav-text">API Pricing</span>
+                                            <span class="nav-icon d-none d-md-inline"><i class="fas fa-laptop-code mr-2"></i></span>
+                                            <span class="nav-text ml-3 ml-md-0">API Pricing</span>
                                         </a>
                                     </div>
                                 </div>
                             </div>
-
-
-
                         </li>
                     </ul>
                 </div>
