@@ -5,7 +5,7 @@
         var validatorsDataTable;
         var stateFilterDropDownHtml = `<div><label>
     <div class="dropdown" style="display:inline-block;">
-        <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>All {{.TotalCount}}</span></button>
+        <button class="btn btn-primary dropdown-toggle text-white" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>All {{.TotalCount}}</span></button>
         <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
         <h6 class="dropdown-header"><span>Filter state</span> <span><span class="text-success">online</span> | <span class="text-danger">offline</span></span></h6>
         <hr style="margin:0.5rem 0">
@@ -83,9 +83,11 @@
                 pagingType: 'input',
                 language: {
                     paginate: {
-                        previous: "<",
-                        next: ">",
-                    }
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
+                    },
+                    search: '',
+                    searchPlaceholder: 'Search...'
                 },
                 dom: "<'row'<'col-sm-12 col-md-6 filter-by-status'><'col-sm-12 col-md-6'f>>" +
                     "<'row'<'col-sm-12'tr>>" +
@@ -226,14 +228,6 @@
 
         .filter-by-status {
             padding-left: 1rem !important;
-        }
-
-        #dropdownMenuButton * {
-            color: var(--font-color) !important;
-        }
-
-        #dropdownMenuButton::after {
-            color: var(--font-color);
         }
 
         #validators_wrapper .dropdown-item:focus,
