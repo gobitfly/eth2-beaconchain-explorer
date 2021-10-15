@@ -1,23 +1,5 @@
 #hero-feed, .countdown {
-    /* Comment to enable new design */
-    min-width: 450px;
-    min-height: 250px;
-    max-width: 450px;
-    max-height: 260px;
-    position: absolute;
-    top: 70px;
-    right: 0px;
-    border-radius: 12px;
-    border-style: none;
-    z-index: 1;
-    padding-top: 2%;
-    padding-bottom: 2%;
-    background: rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-
-    /* Comment out to enable new design */
-    /* width: 450px;
+    width: 450px;
     min-height: 250px;
     max-height: 260px;
     position: absolute;
@@ -30,11 +12,15 @@
     background-color: rgba(255, 255, 255, .5);
     box-shadow: rgba(0, 0, 0, .15) 1.95px 1.95px 2.6px;
     backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px); */
+    -webkit-backdrop-filter: blur(12px);
 }
 
 .rotated-icon {
     transform: rotate(8deg);
+}
+
+.countdown-headline a {
+    color: #343a40;
 }
 
 #hero-feed ul {
