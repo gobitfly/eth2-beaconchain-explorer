@@ -54,8 +54,8 @@ function showValidatorHist (index) {
               searchPlaceholder: 'Search by Epoch Number',
               search: '',
               paginate: {
-                  previous: "<",
-                  next: ">",
+                previous: '<i class="fas fa-chevron-left"></i>',
+                next: '<i class="fas fa-chevron-right"></i>'
               }
         },
         drawCallback: function(settings) {
@@ -408,6 +408,10 @@ $(document).ready(function() {
     pagingType: 'full_numbers',
     lengthMenu: [10, 25, 50],
     info: false,
+    language: {
+      search: '',
+      searchPlaceholder: 'Search...'
+    },
     preDrawCallback: function() {
       // this does not always work.. not sure how to solve the staying tooltip
       try {

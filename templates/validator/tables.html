@@ -35,8 +35,8 @@
                     searchPlaceholder: 'Search by Epoch Number',
                     search: '',
                     paginate: {
-                        previous: "<",
-                        next: ">"
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
                     }
                 },
                 columnDefs: [
@@ -119,8 +119,8 @@
                         searchPlaceholder: 'Search by Epoch Number',
                         search: '',
                         paginate: {
-                            previous: "<",
-                            next: ">"
+                            previous: '<i class="fas fa-chevron-left"></i>',
+                            next: '<i class="fas fa-chevron-right"></i>'
                         }
                     },
                     columnDefs: [
@@ -180,8 +180,8 @@
                     searchPlaceholder: 'Search by Epoch Number',
                     search: '',
                     paginate: {
-                        previous: "<",
-                        next: ">"
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
                     }
                 },
                 drawCallback: function(settings) {
@@ -217,7 +217,7 @@
                         <td>{{formatEth1Block $deposit.BlockNumber}}</td>
                         <td>{{formatTimestamp $deposit.BlockTs}}</td>
                         <td>{{formatDepositAmount $deposit.Amount $.Currency}}</td>
-                        <td>{{$deposit.ValidSignature}}</td>
+                        <td><span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">{{$deposit.ValidSignature}}</span></td>
                     </tr>
                 {{end}}
                 </tbody>
@@ -491,8 +491,8 @@
                     searchPlaceholder: 'Search by Epoch Number',
                     search: '',
                     paginate: {
-                        previous: "<",
-                        next: ">"
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
                     }
                 },
                 drawCallback: function(settings) {

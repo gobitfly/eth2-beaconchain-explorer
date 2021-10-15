@@ -11,8 +11,8 @@
                 search: '',
                 searchPlaceholder: 'Search...',
                 paginate: {
-                    previous: '<',
-                    next: '>'
+                    previous: '<i class="fas fa-chevron-left"></i>',
+                    next: '<i class="fas fa-chevron-right"></i>'
                 }
             },
             paging: true,
@@ -44,27 +44,27 @@
                     targets: 4,
                     render: function(data, type, row, meta) {
                         if (data === 'Empty') {
-                            return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
+                            return `<span class="badge badge-pill badge-light badge-custom">${data}</span>`
                         }
                         if (data === 'Half') {
-                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                     }
                 },
                 {
                     targets: 5,
                     render: function(data, type, row, meta) {
                         if (data === 'Initialized') {
-                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
                         if (data === 'Dissolved') {
-                            return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                         }
                         if (data === 'Withdrawable') {
-                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-info badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-info badge-custom text-white">${data}</span>`
                     }
                 }
             ],
@@ -74,7 +74,6 @@
                 })
             },
             preDrawCallback: function() {
-                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#minipools').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -92,8 +91,8 @@
                 search: '',
                 searchPlaceholder: 'Search...',
                 paginate: {
-                    previous: '<',
-                    next: '>'
+                    previous: '<i class="fas fa-chevron-left"></i>',
+                    next: '<i class="fas fa-chevron-right"></i>'
                 }
             },
             paging: true,
@@ -158,7 +157,6 @@
                 })
             },
             preDrawCallback: function() {
-                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#nodes').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -176,8 +174,8 @@
                 search: '',
                 searchPlaceholder: 'Search...',
                 paginate: {
-                    previous: '<',
-                    next: '>'
+                    previous: '<i class="fas fa-chevron-left"></i>',
+                    next: '<i class="fas fa-chevron-right"></i>'
                 }
             },
             paging: true,
@@ -236,7 +234,6 @@
                 })
             },
             preDrawCallback: function() {
-                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#dao_members').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -254,8 +251,8 @@
                 search: '',
                 searchPlaceholder: 'Search...',
                 paginate: {
-                    previous: '<',
-                    next: '>'
+                    previous: '<i class="fas fa-chevron-left"></i>',
+                    next: '<i class="fas fa-chevron-right"></i>'
                 }
             },
             paging: true,
@@ -327,27 +324,27 @@
                     targets: 11,
                     render: function(data, type, row, meta) {
                         if (data) {
-                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                     }
                 },
                 {
                     targets: 12,
                     render: function(data, type, row, meta) {
                         if (data) {
-                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                     }
                 },
                 {
                     targets: 13,
                     render: function(data, type, row, meta) {
                         if (data) {
-                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                     }
                 },
                 {
@@ -355,9 +352,9 @@
                     responsivePriority: 2,
                     render: function(data, type, row, meta) {
                         if (data) {
-                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom-size text-white" style="font-size: 12px; font-weight: 500;">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom-size text-white" style="font-size: 12px; font-weight: 500;">${data}</span>`
                     }
                 },
                 {
@@ -369,20 +366,19 @@
                     responsivePriority: 1,
                     render: function(data, type, row, meta) {
                         if (data === 'Executed') {
-                            return `<span class="badge badge-pill badge-success badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
                         if (data === 'Cancelled') {
-                            return `<span class="badge badge-pill badge-new-red badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                         }
                         if (data === 'Defeated') {
-                            return `<span class="badge badge-pill badge-warning badge-custom-size font-weight-normal text-white">${data}</span>`
+                            return `<span class="badge badge-pill badge-warning badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-info badge-custom-size font-weight-normal text-white">${data}</span>`
+                        return `<span class="badge badge-pill badge-info badge-custom text-white">${data}</span>`
                     }
                 }
             ],
             preDrawCallback: function() {
-                // this does not always work... not sure how to solve the staying tooltip
                 try {
                     $('#dao_proposals').find('[data-toggle="tooltip"]').tooltip('dispose')
                 } catch(e) {}
@@ -398,8 +394,9 @@
     <link rel="stylesheet" type="text/css" href="/css/datatablesNew.min.css" />
     <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
     <style>
-        .badge-custom-size {
-            font-size: .82rem;
+        .badge-custom {
+            font-size: 12px;
+            font-weight: 500;
         }
         #slashings td:first-child {
             white-space: break-spaces;
@@ -408,31 +405,12 @@
         #nodes_wrapper div.dataTables_paginate ul li,
         #dao_members_wrapper div.dataTables_paginate ul li,
         #dao_proposals_wrapper div.dataTables_paginate ul li { 
-            background-color: var(--new-card-bg);
-        }
-        div.dataTables_info {
-            padding-top: 2.15rem !important;
-            font-size: .9rem;
-            text-align: left !important;
+            background-color: var(--bg-color);
         }
         div.dataTables_filter {
+            margin-top: 2.5px;
+            margin-right: 3px;
             padding-right: 0 !important;
-        }
-        .dataTables_filter input { 
-            width: 265px !important;
-        }
-        div.dataTables_length {
-            padding-left: 0 !important;
-            font-size: .9rem;
-            text-align: left !important;
-        }
-        table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, 
-        table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
-            top: 1.8rem !important;
-            background-color: transparent !important;
-            box-shadow: none !important;
-            line-height: 1.1rem !important;
-            color: var(--dark) !important;
         }
     </style>
 {{end}}
@@ -453,7 +431,7 @@
             </div>
             <h1 class="mt-2 mb-5 text-nowrap" style="font-size: 1.8rem; letter-spacing: 2px;">Rocketpool</h1>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Minipools</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
                 <div class="table-responsive">
                     <table class="table table-hover" id="minipools" width="100%">
                         <thead style="background-color: var(--bg);">
@@ -471,7 +449,7 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Nodes</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
                 <div class="table-responsive">
                     <table class="table table-hover" id="nodes" width="100%">
                         <thead style="background-color: var(--bg);">
@@ -488,7 +466,7 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">DAO Members</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
                 <div class="table-responsive">
                     <table class="table table-hover" id="dao_members" width="100%">
                         <thead style="background-color: var(--bg);">
@@ -507,7 +485,7 @@
                 </div>
             </div>
             <h2 class="mb-3" style="font-size: 1.4rem; letter-spacing: .5px;">Proposals</h2>
-            <div class="mb-5 px-3 py-4 shadow-sm border" style="min-width: 320px; border-radius: .5rem; background-color: var(--new-card-bg);">
+            <div class="card mb-5 px-3 py-4" style="min-width: 320px;">
                 <div class="table-responsive">
                     <table class="table table-hover" id="dao_proposals" width="100%">
                         <thead style="background-color: var(--bg);">
