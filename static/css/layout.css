@@ -297,6 +297,10 @@ table {
 }
 
 @media (max-width: 1140px) {
+  .dropdown-item {
+    padding: .5rem 1.5rem;
+  }
+
   .nav-icon {
     width: 38px;
     overflow: hidden;
