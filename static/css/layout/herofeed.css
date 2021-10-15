@@ -1,23 +1,29 @@
-#hero-feed, .countdown{
-    min-width: 450px;
+#hero-feed, .countdown {
+    width: 450px;
     min-height: 250px;
-    max-width: 450px;
     max-height: 260px;
     position: absolute;
-    top: 70px;
-    right: 0px;
+    top: 85px;
+    right: 0;
+    border: none;
     border-radius: 12px;
-    border-style: none;
     z-index: 1;
-    padding-top: 2%;
-    padding-bottom: 2%;
-    background: rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    
+    padding: 4%;
+    background-color: rgba(255, 255, 255, .5);
+    box-shadow: rgba(0, 0, 0, .15) 1.95px 1.95px 2.6px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
-#hero-feed ul{
+.rotated-icon {
+    transform: rotate(8deg);
+}
+
+.countdown-headline a {
+    color: #343a40;
+}
+
+#hero-feed ul {
     min-width: 100%;
     min-height: 240px;
     max-width: 100%;
@@ -31,7 +37,7 @@
     scrollbar-width: thin;
 }
 
-#hero-feed ul li{
+#hero-feed ul li {
     min-height: 80px;
     width: 100%;
     border-bottom: var(--primary);
@@ -40,7 +46,7 @@
     padding-top: 3%;
 }
 
-.donate-btn{
+.donate-btn {
     position: absolute;
     bottom: 10px;
     right: 7px;
@@ -55,7 +61,7 @@
     z-index: 9999;
 }
 
-#hero-feed ul li img{
+#hero-feed ul li img {
     min-width: 50px;
     max-width: 50px;
     /* height: auto; */
@@ -68,22 +74,22 @@
     animation: color-shift 4s 2;
 }
 
-.pkey{
+.pkey {
     margin-left: 1%;
     color: var(--primary);
 }
 
-.usrdiv{
+.usrdiv {
     padding-left: 2%;
 }
 
 
-#hero-feed ul::-webkit-scrollbar{
+#hero-feed ul::-webkit-scrollbar {
     width: 5px;
     /* background-color: var(--bg-color-secondary); */
   }
   
-#hero-feed ul::-webkit-scrollbar-thumb{
+#hero-feed ul::-webkit-scrollbar-thumb {
     background-color: var(--primary);
     border-color: var(--primary);
     border-radius: 12px;
@@ -91,35 +97,35 @@
     border-width: 2px;
 }
 
-.umsg{
+.umsg {
     font-size: 12px;
     word-wrap: break-word;
 }
 
-.border-rounded{
+.border-rounded {
     border-radius: 12px;
     border-style: none;
     border-width: 2px;
 }
 
-.fade-in{
-    animation: fade 2s 1;
+.fade-in {
+    animation: fade 4s 1;
 }
 
-.fade-in-top{
+.fade-in-top {
     animation: fade-top 1s 1;
 }
 
-.color-shift-anim{
+.color-shift-anim {
     animation: color-shift 5s infinite;
 }
 
-.text-dark-bold{
+.text-dark-bold {
     color: black;
     font-weight: bold;
   }
 
-.text-gradient{
+.text-gradient {
     background: linear-gradient(45deg, var(--dark) 30%, var(--light) 140%);
     background-size: 200% auto;
     background-clip: text;
@@ -157,7 +163,7 @@
     0% {
       opacity: 0;
     }
-    50%{
+    50% {
         opacity: 1;
     }
     100% {
@@ -180,4 +186,3 @@
         background-color: rgba(238, 113, 19, 0.2);
     }
 }
-
