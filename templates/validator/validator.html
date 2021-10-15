@@ -240,7 +240,7 @@
 										{{if eq (derefString .Rocketpool.MinipoolStatus) "Initialized"}}
 											<span class="badge badge-pill badge-success badge-custom text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{else if eq (derefString .Rocketpool.MinipoolStatus) "Dissolved"}}
-											<span class="badge badge-pill badge-new-red badge-custom text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
+											<span class="badge badge-pill badge-danger badge-custom text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{else if eq (derefString .Rocketpool.MinipoolStatus) "Withdrawable"}}
 											<span class="badge badge-pill badge-warning badge-custom text-white mb-1">{{.Rocketpool.MinipoolStatus}}</span>
 										{{else}}
