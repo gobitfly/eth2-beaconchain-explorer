@@ -1,5 +1,7 @@
 package types
 
+import "html/template"
+
 // Config is a struct to hold the configuration data
 type Config struct {
 	Database struct {
@@ -120,10 +122,10 @@ type Config struct {
 			URL     string `yaml:"gitcoinURL" envconfig:"FRONTEND_GITCOIN_URL"`
 		} `yaml:"showDonors"`
 		Countdown struct {
-			Enabled   bool   `yaml:"enabled" envconfig:"FRONTEND_COUNTDOWN_ENABLED"`
-			Title     string `yaml:"title" envconfig:"FRONTEND_COUNTDOWN_TITLE"`
-			Timestamp uint64 `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
-			Info      string `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
+			Enabled   bool          `yaml:"enabled" envconfig:"FRONTEND_COUNTDOWN_ENABLED"`
+			Title     template.HTML `yaml:"title" envconfig:"FRONTEND_COUNTDOWN_TITLE"`
+			Timestamp uint64        `yaml:"timestamp" envconfig:"FRONTEND_COUNTDOWN_TIMESTAMP"`
+			Info      string        `yaml:"info" envconfig:"FRONTEND_COUNTDOWN_INFO"`
 		} `yaml:"countdown"`
 	} `yaml:"frontend"`
 	Metrics struct {
