@@ -102,6 +102,7 @@
             responsive: true,
             searching: true,
             serverSide: true,
+            order: [],
             columnDefs: [
                 {
                     targets: '_all',
@@ -185,6 +186,7 @@
             responsive: true,
             searching: true,
             serverSide: true,
+            order: [],
             columnDefs: [
                 {
                     targets: '_all',
@@ -312,12 +314,34 @@
                     targets: 9,
                     render: function(data, type, row, meta) {
                         return `<span class="d-flex align-items-center">${data}<i class="fas fa-thumbs-up ml-2 text-muted"></i></span>`
-                    }
+                    },
+                    visible: false
                 },
                 {
                     targets: 10,
                     render: function(data, type, row, meta) {
                         return `<span class="d-flex align-items-center">${data}<i class="fas fa-thumbs-down ml-2 text-muted"></i></span>`
+                    },
+                    visible: false
+                },
+                {
+                    targets: 17,
+                    data: null,
+                    render: function(data, type, row, meta) {
+                        if (row[9] === 0 & row[10] === 0) {
+                            return '0'
+                        } else {
+                            const totalWidth = 120
+                            const votesYesPercentage = (row[9] / (row[9] + row[10])) * 100
+                            const widthVotesYes = (votesYesPercentage * totalWidth) / 100
+
+                            // TODO: somehow include required votes
+                            
+                            return `<span style="width: ${totalWidth}px;">
+                                <div data-toggle="tooltip" title="Votes for" class="badge-custom text-white" style="display: inline-block; width: ${widthVotesYes}px; height: 20px; line-height: 20px; border-radius: ${row[10] !== 0 ? '10px 0 0 10px' : '10px'}; background-color: var(--green); text-align: center;">${row[9]}
+                                    </div><div data-toggle="tooltip" title="Votes against" class="badge-custom text-white" style="display: inline-block; width: ${totalWidth - widthVotesYes}px; height: 20px; line-height: 20px; border-radius: ${row[9] !== 0 ? '0 10px 10px 0' : '10px'}; background-color: var(--new-red); text-align: center;">${row[10] !== 0 ? row[10] : ''}</div>
+                                </span>`
+                        }
                     }
                 },
                 {
@@ -352,9 +376,9 @@
                     responsivePriority: 2,
                     render: function(data, type, row, meta) {
                         if (data) {
-                            return `<span class="badge badge-pill badge-success badge-custom-size text-white" style="font-size: 12px; font-weight: 500;">${data}</span>`
+                            return `<span class="badge badge-pill badge-success badge-custom text-white">${data}</span>`
                         }
-                        return `<span class="badge badge-pill badge-danger badge-custom-size text-white" style="font-size: 12px; font-weight: 500;">${data}</span>`
+                        return `<span class="badge badge-pill badge-danger badge-custom text-white">${data}</span>`
                     }
                 },
                 {
@@ -507,6 +531,7 @@
                                 <th scope="col" class="h6 border-bottom-0">Is Executed</th>
                                 <th scope="col" class="h6 border-bottom-0">Payload</th>
                                 <th scope="col" class="h6 border-bottom-0">State</th>
+                                <th scope="col" class="h6 border-bottom-0">Votes Received</th>
                             </tr>
                         </thead>
                         <tbody></tbody>

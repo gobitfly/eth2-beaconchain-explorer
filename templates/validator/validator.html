@@ -8,7 +8,8 @@
 	<script src="/js/validator.js"></script>
 	<script>setValidatorStatus({{.Status}})</script>
   {{if and (ne .Status "deposited") (ne .Status "deposited_invalid") (ne .Status "deposited_valid")}}
-		<script type="text/javascript" src="/js/datatables.min.js"></script>
+		<!-- <script type="text/javascript" src="/js/datatables.min.js"></script> -->
+		<script type="text/javascript" src="/js/datatablesNew.min.js"></script>
 		<script type="text/javascript" src="/js/datatable_input.js"></script>
 		<script src="/js/highcharts/highstock.min.js"></script>
 		<script src="/js/highcharts/exporting.min.js"></script>
@@ -30,9 +31,9 @@
 
 {{define "css"}}
 	<link rel="stylesheet" href="/css/validator.css">
-	<link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
+	<!-- <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" /> -->
+	<link rel="stylesheet" type="text/css" href="/css/datatablesNew.min.css" />
 	<style>
-		/* #TODO:stefan maybe make this prettier somehow? */
 		#chartTabs .nav-link {
 			padding: .5rem .8rem;
 		}
@@ -44,19 +45,19 @@
       font-weight: 500;
     }
 		.validator-summary-div {
-			border-right-color: rgba(50, 50, 50, 0.5);
+			border-right-color: rgba(50, 50, 50, .5);
 			border-right-style: solid;
 		}
 		.validator-border-bottom {
-			border-bottom-color: rgba(50, 50, 50, 0.5);
+			border-bottom-color: rgba(50, 50, 50, .5);
 			border-bottom-style: solid;
 		}
 		.validator-charts-div {
-			border-right-color: rgba(50, 50, 50, 0.5);
+			border-right-color: rgba(50, 50, 50, .5);
 			border-right-style: solid;
-			border-top-color: rgba(50, 50, 50, 0.5);
+			border-top-color: rgba(50, 50, 50, .5);
 			border-top-style: solid;
-			border-bottom-color: rgba(50, 50, 50, 0.5);
+			border-bottom-color: rgba(50, 50, 50, .5);
 			border-bottom-style: solid;
 		}
 		.validator-content .nav-tabs .nav-item { 
@@ -68,6 +69,30 @@
 		.overview-container > div {
 			flex: 0 1 100px;
 		} */
+		div.dataTables_info {
+      padding-top: 2.15rem !important;
+      font-size: .9rem;
+      text-align: left !important;
+      }
+      div.dataTables_filter {
+        padding-right: 0 !important;
+      }
+      .dataTables_filter input { 
+        width: 265px !important;
+      }
+      div.dataTables_length {
+        padding-left: 0 !important;
+        font-size: .9rem;
+        text-align: left !important;
+      }
+      table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, 
+      table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
+        top: 1.15rem !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        line-height: 1.1rem !important;
+        color: var(--dark) !important;
+      }
 	</style>
 {{end}}
 
@@ -185,12 +210,19 @@
 							</div>
 							{{if .IsRocketpool}}
 								<div class="tab-pane fade w-100" id="rocketpool" role="tabpanel" aria-labelledby="rocketpool-tab" aria-controls="rocketpool">
-									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-5 mb-4">
-										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-male mr-3 text-muted"></i>Minipool Address</div>
+									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mt-3 mb-4">
+										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;">
+										<i class="fas fa-male mr-3 text-muted"></i>Minipool Address</div>
 										<div>{{formatEth1Address .Rocketpool.MinipoolAddress}}</div>
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
-										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-money-bill-wave mr-1 text-muted"></i>Minipool Commission</div>
+										<div 
+											class="text-nowrap font-weight-bold" 
+											data-toggle="tooltip" 
+											title="The fee that is taken from normal stakers and given to node operators. It can range from 5 - 20% with the ideal target of 10%."
+											style="font-size: .9rem;"
+										>
+											<i class="fas fa-money-bill-wave mr-1 text-muted"></i>Minipool Commission</div>
 										<div>{{formatFloatWithPrecision 2 (mul .Rocketpool.MinipoolNodeFee 100)}}%</div>
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
@@ -225,15 +257,35 @@
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node RPL Stake</div>
-										<div>{{formatRPL .Rocketpool.NodeRPLStake}}</div>
+										<div>{{formatFloatWithPrecision 2 (formatRPL .Rocketpool.NodeRPLStake)}} RPL</div>
+									</div>
+									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+										<div 
+											class="text-nowrap font-weight-bold"
+											data-toggle="tooltip" 
+											title="How much RPL collateral node operators have staked against their minipools, capped at 150%"
+											style="font-size: .9rem;"
+										>
+											<i class="fas fa-cubes mr-2 text-muted"></i>Node Effective RPL Stake</div>
+										<div>{{formatFloatWithPrecision 2 (mul (div (formatRPL .Rocketpool.NodeRPLStake) (formatRPL .Rocketpool.NodeMinRPLStake)) 10)}}%</div>
+									</div>
+									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
+										<div 
+											class="text-nowrap font-weight-bold"
+											data-toggle="tooltip" 
+											title="Node RPL Stake expressed as % of the Node Max RPL Stake"
+											style="font-size: .9rem;"
+										>
+										<i class="fas fa-cubes mr-2 text-muted"></i>Node RPL Stake %</div>
+										<div>{{formatFloatWithPrecision 2 (mul (div (formatRPL .Rocketpool.NodeRPLStake) (formatRPL .Rocketpool.NodeMaxRPLStake)) 100)}}%</div>
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Min RPL Stake</div>
-										<div>{{formatRPL .Rocketpool.NodeMinRPLStake}}</div>
+										<div>{{formatFloatWithPrecision 2 (formatRPL .Rocketpool.NodeMinRPLStake)}} RPL</div>
 									</div>
 									<div class="w-75 d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-cubes mr-2 text-muted"></i>Node Max RPL Stake</div>
-										<div>{{formatRPL .Rocketpool.NodeMaxRPLStake}}</div>
+										<div>{{formatFloatWithPrecision 2 (formatRPL .Rocketpool.NodeMaxRPLStake)}} RPL</div>
 									</div>
 								</div>
 							{{end}}
@@ -243,7 +295,7 @@
 				<div class="col-lg-4 px-lg-2 d-flex align-items-center my-2">
 					<div class="card h-100 px-0 pt-0 card-body">
 						<div style="height: 42px;" class="d-flex justify-content-center align-items-center border-bottom">
-							<span class="h4 text-center mb-0">Validator History</span>
+							<span class="h4 ml-3 mr-auto mx-lg-0 mb-0">Validator History</span>
 						</div>
 						{{if or $validating $exited}}
 							{{template "validatorHistoryTable" $}}
@@ -256,10 +308,8 @@
 					</div>	
 				</div>
 
-				<!-- Edit Validator Modals -->
-				{{template "validatorEditModal"  .}}
-				<!-- Add Validator to Watchlist Modal -->
-				{{template "validatorBookmarkModal"  .}}
+				{{template "validatorEditModal" .}}
+				{{template "validatorBookmarkModal" .}}
 			</div>
 	{{end}}
 {{end}}
