@@ -103,7 +103,6 @@ function create_typeahead(input_container) {
       indices = [parseInt(sug.index)]
       $(input_container).typeahead('val', sug.index)
     }
-    // $(input_container).attr('pk', sug.pubkey)
   })
 }
 
@@ -136,7 +135,7 @@ function loadMonitoringData(data) {
     if ($('#monitoring-section-with-data').children().length === 0) {
       $('#monitoring-section-with-data').append(
         `<table class="table table-borderless table-hover" id="monitoring-notifications">
-          <thead class="custom-table-head">
+          <thead>
             <tr>
               <th scope="col" class="h6 border-bottom-0">Notification</th>
               <th scope="col" class="h6 border-bottom-0">Threshold</th>
@@ -230,7 +229,7 @@ function loadMonitoringData(data) {
         responsivePriority: 2,
         data: 'notification',
         render: function(data, type, row, meta) {
-          return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data.charAt(0).toUpperCase() + data.slice(1)}</span>`
+          return `<span class="badge badge-pill badge-light badge-custom">${data.charAt(0).toUpperCase() + data.slice(1)}</span>`
         }
       },
       {
@@ -301,7 +300,7 @@ function loadMonitoringData(data) {
         responsivePriority: 1,
         data: 'event',
         render: function(data, type, row, meta) {
-          return `<i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle="modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
+          return `<i class="fas fa-times fa-lg i-custom" pk="${data.pk}" event="${data.e}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle="modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
         }
       }
     ]
@@ -342,7 +341,7 @@ function loadNetworkData(data) {
         responsivePriority: 1,
         data: 'Notification',
         render: function(data, type, row, meta) {
-          return `<span class="badge badge-pill badge-light badge-custom-size font-weight-normal">${data}</span>`
+          return `<span class="badge badge-pill badge-light badge-custom">${data}</span>`
         }
       },
       {
@@ -484,26 +483,21 @@ function loadValidatorsData(data) {
               if (VALIDATOR_EVENTS.includes(n)) { 
                 hasItems = true
                 let badgeColor = ""
-                let badgeTextColor = ""
                 switch (n) {
                   case 'validator_attestation_missed':
                     badgeColor = 'badge-warning'
-                    badgeTextColor = ""
                     break
                   case 'validator_proposal_submitted':
                     badgeColor = 'badge-success'
-                    badgeTextColor = 'text-white'
                     break
                   case 'validator_proposal_missed':
                     badgeColor = 'badge-warning'
-                    badgeTextColor = ""
                     break
                   case 'validator_got_slashed':
-                    badgeColor = 'badge-new-red'
-                    badgeTextColor = 'text-white'
+                    badgeColor = 'badge-danger'
                     break
                 }
-                notifications += `<span class="badge badge-pill ${badgeColor} ${badgeTextColor} badge-custom-size mr-1 my-1 font-weight-normal">${n.replaceAll('_', " ")}</span>`
+                notifications += `<span class="badge badge-pill ${badgeColor} badge-custom mr-1 my-1 text-white">${n.replaceAll('_', " ")}</span>`
               }
             }
             if (!hasItems) {
@@ -566,7 +560,7 @@ function loadValidatorsData(data) {
           if (data[0].Timestamp === 0) {
             return no_time
           }
-          return `<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-2 font-weight-normal">${data[0].Notification.replace('validator', "").replaceAll('_', " ")}</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`
+          return `<span class="badge badge-pill badge-light badge-custom mr-1 mr-sm-2">${data[0].Notification.replace('validator', "").replaceAll('_', " ")}</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`
         }
       },
       {
@@ -574,7 +568,7 @@ function loadValidatorsData(data) {
         orderable: false,
         responsivePriority: 3,
         data: null,
-        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
+        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
       }
     ],
     rowId: function(data, type, row, meta) {
@@ -620,7 +614,6 @@ $(document).ready(function() {
   }
 
   create_typeahead('.validator-typeahead')
-  // create_typeahead('.monitoring-typeahead')
 
   loadValidatorsData(DATA)
   loadMonitoringData(DATA)
@@ -741,7 +734,7 @@ $(document).ready(function() {
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data()
     if (rowData) {
       $('#selected-validators-events-container').append(
-        `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Validator.Pubkey}>
+        `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom mr-2 mb-2" pk=${rowData.Validator.Pubkey}>
         		Validator ${rowData.Validator.Index}
           	<i class="fas fa-times ml-2" style="cursor: pointer;" title="Remove from selected validators" onclick="remove_item_from_event_container('${rowData.Validator.Pubkey}')"></i>
         </span>`
@@ -759,7 +752,7 @@ $(document).ready(function() {
       const rowsSelected = $('#validators-notifications').DataTable().rows('.selected').data()
       for (let i = 0; i < rowsSelected.length; i++) {
         $('#selected-validators-events-container').append(
-          `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowsSelected[i].Validator.Pubkey}>
+          `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom mr-2 mb-2" pk=${rowsSelected[i].Validator.Pubkey}>
             Validator ${rowsSelected[i].Validator.Index}
             <i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowsSelected[i].Validator.Pubkey}')"></i>
           </span>`

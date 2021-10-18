@@ -1,5 +1,6 @@
-.badge-custom-size {
+.badge-custom {
   font-size: .82rem;
+  font-weight: 500;
 }
 .breadcrumb-custom {
   background-color: transparent;
@@ -19,10 +20,7 @@
   min-width: 300px; 
 }
 .custom-background-color { 
-  background-color: var(--new-card-bg);
-}
-.custom-border-radius { 
-  border-radius: .5rem; 
+  background-color: var(--bg-color);
 }
 .custom-container {
   height: 6rem;
@@ -72,11 +70,11 @@
 }
 .icon { 
   font-size: 2.4rem;
-  color: var(--new-primary);
+  color: var(--primary);
 }
 .icon-small { 
   font-size: 1.2rem;
-  color: var(--new-primary);
+  color: var(--primary);
 }
 .metrics-section { 
   min-height: 120px; 
@@ -111,14 +109,6 @@
 table.dataTable>tbody>tr.child ul.dtr-details>li {
   border-bottom: 0 !important;
 }
-table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before, 
-table.dataTable.dtr-inline.collapsed>tbody>tr>th.dtr-control:before {
-  top: 1.8rem !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  line-height: 1.1rem !important;
-  color: var(--dark) !important;
-}
 table.dataTable tbody tr.selected, 
 table.dataTable tbody th.selected, 
 table.dataTable tbody td.selected {
@@ -127,28 +117,18 @@ table.dataTable tbody td.selected {
 table.dataTable tbody tr.selected a, 
 table.dataTable tbody th.selected a, 
 table.dataTable tbody td.selected a {
-  color: var(--link-color, #2d5986) !important;
+  color: var(--link-color) !important;
 }
 table.dataTable tbody>tr.selected, 
 table.dataTable tbody>tr>.selected {
   background-color: var(--light) !important;
 }
 div.dataTables_info {
-  padding-top: 2.15rem !important;
-  font-size: .9rem;
   text-align: left !important;
 }
 div.dataTables_filter {
   padding-right: 0 !important;
   text-align: right !important;
-}
-div.dataTables_length {
-  padding-left: 0 !important;
-  font-size: .9rem;
-  text-align: left !important;
-}
-.dataTables_filter input { 
-  width: 265px !important;
 }
 .dataTables_wrapper .dataTables_length select {
   margin-left: .25rem;
@@ -163,17 +143,11 @@ div.dataTables_scrollBody table {
 div.dataTables_wrapper span.select-item {
   display: none !important;
 }
-.custom-table-head {
-  background-color: var(--bg) !important;
-}
 #monitoring-notifications_wrapper div.dataTables_length,
 #monitoring-notifications_wrapper div.dataTables_paginate,
 #network-notifications_wrapper div.dataTables_length,
 #network-notifications_wrapper div.dataTables_paginate { 
   display: none; 
-}
-#validators-notifications_wrapper div.dataTables_paginate ul li { 
-  background-color: var(--new-card-bg);
 }
 #validators-notifications { 
   min-height: 610px; 
@@ -289,7 +263,7 @@ div.dataTables_wrapper span.select-item {
 }
 #add-validator-search-container .tt-suggestion .tt-cursor,
 #add-validator-search-container .tt-suggestion:hover {
-  background-color: var(--new-primary);
+  background-color: var(--primary);
   cursor: pointer;
 }
 #add-validator-search-container .tt-menu {
@@ -297,7 +271,7 @@ div.dataTables_wrapper span.select-item {
   max-height: 19rem;
   margin-top: 4px;
   padding: .5rem;
-  background-color: var(--new-card-bg);
+  background-color: var(--bg-color);
   -webkit-border-radius: 4px;
   -moz-border-radius: 4px;
   border-radius: 4px;
