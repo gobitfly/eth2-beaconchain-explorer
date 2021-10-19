@@ -147,10 +147,10 @@
       </h6>
     </div>
     {{if .Countdown.Enabled}}
-      <div class="d-flex d-lg-none justify-content-center w-100">
-        <div class="d-flex justify-content-center align-items-center" style="position: relative; top: 0px;">
-          <h1 style="font-size: 14px;" class="w-60 text-dark d-flex justify-content-center">{{ .Countdown.Title }}</h1>
-          <h3 class="w-40 text-dark ml-3 countdown-time d-flex justify-content-center" style="font-size: 14px;"></h3>
+      <div class="d-flex d-lg-none align-items-center justify-content-center w-100 mt-2">
+        <div class="d-flex flex-column" style="position: relative; top: 0;">
+          <h1 class="countdown-headline" style="font-size: 24px; font-weight: 700; letter-spacing: 2px; color: #343a40;">{{.Countdown.Title}}</h1>
+          <h2 class="countdown-time" style="font-size: 18px; font-weight: 700; letter-spacing: 3px; color: #343a40;"></h2>
         </div>
       </div>
     {{end}}
