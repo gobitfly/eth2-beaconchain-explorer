@@ -618,10 +618,10 @@ func formatSpecialTag(tag string) string {
 func FormatValidatorTag(tag string) template.HTML {
 	var result string
 	switch tag {
-	case "Rocket Pool":
-		result = fmt.Sprintf(`<span style="background-color: rgba(240, 149, 45, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Rocket Pool Validator"><a style="color: var(--yellow);" href="/pools/rocketpool">%s</a></span>`, tag)
-	case "SSV":
-		result = fmt.Sprintf(`<span style="background-color: rgba(238, 113, 18, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Secret Shared Validator"><a style="color: var(--orange);" href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
+	case "rocketpool":
+		result = `<span style="background-color: rgba(240, 149, 45, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Rocket Pool Validator"><a style="color: var(--yellow);" href="/pools/rocketpool">Rocket Pool</a></span>`
+	case "ssv":
+		result = `<span style="background-color: rgba(238, 113, 18, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Secret Shared Validator"><a style="color: var(--orange);" href="https://github.com/bloxapp/ssv/">SSV</a></span>`
 	default:
 		result = formatSpecialTag(tag)
 	}
