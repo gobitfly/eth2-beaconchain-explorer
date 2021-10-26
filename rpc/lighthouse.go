@@ -386,7 +386,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 		data.EpochParticipationStats = &types.ValidatorParticipation{
 			Epoch:                   epoch,
 			Finalized:               false,
-			GlobalParticipationRate: 100,
+			GlobalParticipationRate: 1.0,
 			VotedEther:              0,
 			EligibleEther:           0,
 		}
