@@ -31,7 +31,7 @@ func NewLighthouseClient(endpoint string) (*LighthouseClient, error) {
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
 	}
-	client.assignmentsCache, _ = lru.New(128)
+	client.assignmentsCache, _ = lru.New(10)
 
 	return client, nil
 }
@@ -386,7 +386,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 		data.EpochParticipationStats = &types.ValidatorParticipation{
 			Epoch:                   epoch,
 			Finalized:               false,
-			GlobalParticipationRate: 0,
+			GlobalParticipationRate: 1.0,
 			VotedEther:              0,
 			EligibleEther:           0,
 		}

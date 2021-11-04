@@ -1088,6 +1088,7 @@ type RocketpoolPageDataMinipool struct {
 	TotalCount               uint64    `db:"total_count"`
 	RocketpoolStorageAddress []byte    `db:"rocketpool_storage_address"`
 	ValidatorName            string    `db:"validator_name"`
+	ValidatorIndex           *uint64   `db:"validator_index"`
 	Address                  []byte    `db:"address"`
 	Pubkey                   []byte    `db:"pubkey"`
 	NodeAddress              []byte    `db:"node_address"`

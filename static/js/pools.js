@@ -197,6 +197,10 @@ function randerTable(tableData) {
         pagingType: 'first_last_numbers',
         data: tableData,
         lengthMenu: [10, 25],
+        language: {
+            search: '',
+            searchPlaceholder: 'Search...'
+        },
         preDrawCallback: function () {
             try {
                 $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip('dispose')

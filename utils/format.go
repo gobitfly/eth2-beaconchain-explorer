@@ -29,13 +29,13 @@ func FormatMessageToHtml(message string) template.HTML {
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatus(status uint64) template.HTML {
 	if status == 0 {
-		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
+		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`
 	} else if status == 1 {
-		return "<span class=\"badge bg-success text-white\">Attested</span>"
+		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Attested</span>`
 	} else if status == 2 {
-		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Missed</span>`
 	} else if status == 3 {
-		return "<span class=\"badge bg-warning text-dark\">Orphaned</span>"
+		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Orphaned</span>`
 	} else {
 		return "Unknown"
 	}
@@ -44,17 +44,17 @@ func FormatAttestationStatus(status uint64) template.HTML {
 // FormatAttestationStatusShort will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatusShort(status uint64) template.HTML {
 	if status == 0 {
-		return "<span title=\"Scheduled\" data-toggle=\"tooltip\"  class=\"badge bg-light text-dark\">Sche.</span>"
+		return `<span title="Scheduled" data-toggle="tooltip" class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
 	} else if status == 1 {
-		return "<span title=\"Attested\" data-toggle=\"tooltip\"   class=\"badge bg-success text-white\">Att.</span>"
+		return `<span title="Attested" data-toggle="tooltip" class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Att.</span>`
 	} else if status == 2 {
-		return "<span title=\"Missed\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Miss.</span>"
+		return `<span title="Missed" data-toggle="tooltip" class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
 	} else if status == 3 {
-		return "<span title=\"Orphaned\" data-toggle=\"tooltip\"  class=\"badge bg-warning text-dark\">Orph.</span>"
+		return `<span title="Orphaned" data-toggle="tooltip" class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
 	} else if status == 4 {
-		return "<span title=\"Inactivity Leak\" data-toggle=\"tooltip\"  class=\"badge bg-danger text-dark\">Leak</span>"
+		return `<span title="Inactivity Leak" data-toggle="tooltip" class="badge badge-pill bg-danger text-white" style="font-size: 12px; font-weight: 500;">Leak</span>`
 	} else if status == 5 {
-		return "<span title=\"Inactive\" data-toggle=\"tooltip\"  class=\"badge bg-light text-dark\">Inac.</span>"
+		return `<span title="Inactive" data-toggle="tooltip" class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Inac.</span>`
 	} else {
 		return "Unknown"
 	}
@@ -246,13 +246,13 @@ func FormatSlotToTimestamp(blockSlot uint64) template.HTML {
 func FormatBlockStatus(status uint64) template.HTML {
 	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
 	if status == 0 {
-		return "<span class=\"badge bg-light text-dark\">Scheduled</span>"
+		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`
 	} else if status == 1 {
-		return "<span class=\"badge bg-success text-white\">Proposed</span>"
+		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Proposed</span>`
 	} else if status == 2 {
-		return "<span class=\"badge bg-warning text-dark\">Missed</span>"
+		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Missed</span>`
 	} else if status == 3 {
-		return "<span class=\"badge bg-secondary text-white\">Orphaned</span>"
+		return `<span class="badge badge-pill bg-secondary text-white" style="font-size: 12px; font-weight: 500;">Orphaned</span>`
 	} else {
 		return "Unknown"
 	}
@@ -262,13 +262,13 @@ func FormatBlockStatus(status uint64) template.HTML {
 func FormatBlockStatusShort(status uint64) template.HTML {
 	// genesis <span class="badge text-dark" style="background: rgba(179, 159, 70, 0.8) none repeat scroll 0% 0%;">Genesis</span>
 	if status == 0 {
-		return "<span title=\"Scheduled\" data-toggle=\"tooltip\" class=\"badge bg-light text-dark\">Sche.</span>"
+		return `<span title="Scheduled" data-toggle="tooltip" class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Sche.</span>`
 	} else if status == 1 {
-		return "<span title=\"Proposed\" data-toggle=\"tooltip\" class=\"badge bg-success text-white\">Prop.</span>"
+		return `<span title="Proposed" data-toggle="tooltip" class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Prop.</span>`
 	} else if status == 2 {
-		return "<span title=\"Missed\" data-toggle=\"tooltip\" class=\"badge bg-warning text-dark\">Miss.</span>"
+		return `<span title="Missed" data-toggle="tooltip" class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Miss.</span>`
 	} else if status == 3 {
-		return "<span title=\"Orphaned\" data-toggle=\"tooltip\" class=\"badge bg-secondary text-white\">Orph.</span>"
+		return `<span title="Orphaned" data-toggle="tooltip" class="badge badge-pill bg-secondary text-white" style="font-size: 12px; font-weight: 500;">Orph.</span>`
 	} else {
 		return "Unknown"
 	}
@@ -338,10 +338,10 @@ func FormatEth1TxHash(hash []byte) template.HTML {
 
 	if !Config.Chain.Mainnet {
 		// return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a style=\"font-family: 'Roboto Mono'\" href=\"https://goerli.etherscan.io/tx/0x%x\">0x%v…</a>%v", hash, hex.EncodeToString(hash)[:6], copyBtn))
+		return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://goerli.etherscan.io/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 	}
 	// return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/tx/0x%x\">%v</a>", hash, FormatHash(hash)))
-	return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a style=\"font-family: 'Roboto Mono'\" href=\"https://etherchain.org/tx/0x%x\">0x%v…</a>%v", hash, hex.EncodeToString(hash)[:6], copyBtn))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="https://etherchain.org/tx/0x%x">0x%v…</a>%v`, hash, hex.EncodeToString(hash)[:6], copyBtn))
 }
 
 // FormatGlobalParticipationRate will return the global-participation-rate formated as html
@@ -528,7 +528,7 @@ func FormatPercentageWithGPrecision(percentage float64, precision int) string {
 func FormatPublicKey(validator []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(validator))
 	// return template.HTML(fmt.Sprintf("<i class=\"fas fa-male\"></i> <a href=\"/validator/0x%x\">%v</a>", validator, FormatHash(validator)))
-	return template.HTML(fmt.Sprintf(`<i class="fas fa-male"></i> <a style="font-family: 'Roboto Mono'" href="/validator/0x%x">0x%v…</a>%v`, validator, hex.EncodeToString(validator)[:6], copyBtn))
+	return template.HTML(fmt.Sprintf(`<i class="fas fa-male mr-2"></i><a style="font-family: 'Roboto Mono'" href="/validator/0x%x">0x%v…</a>%v`, validator, hex.EncodeToString(validator)[:6], copyBtn))
 }
 
 func FormatMachineName(machineName string) template.HTML {
@@ -595,10 +595,10 @@ func formatPool(tag []string) string {
 					}
 					name += s + " "
 				}
-				return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 12px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, name)
+				return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 18px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, name)
 			}
 		}
-		return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 12px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, tag[len(tag)-1])
+		return fmt.Sprintf(`<a href='/pools' style="all: unset; cursor: pointer;" data-toggle="tooltip" title="This validator is part of a staking-pool"><span style="font-size: 18px;" class="bg-light text-dark badge-pill pr-2 pl-0 mr-1"><span class="bg-dark text-light rounded-left mr-1 px-1">%s</span> %s</span></a>`, tagType, tag[len(tag)-1])
 	}
 	return ""
 }
@@ -610,8 +610,7 @@ func formatSpecialTag(tag string) string {
 			return formatPool(special_tag)
 		}
 	}
-
-	return fmt.Sprintf(`<span style="font-size: 12px;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
+	return fmt.Sprintf(`<span style="font-size: 18px;" class="badge bg-dark text-light mr-1">%s</span>`, tag)
 }
 
 // FormatValidatorTag will return html formated text of a validator-tag.
@@ -620,9 +619,9 @@ func FormatValidatorTag(tag string) template.HTML {
 	var result string
 	switch tag {
 	case "rocketpool":
-		result = fmt.Sprintf(`<span style="background:yellow; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="RocketPool Validator"><a href="/pools/rocketpool">%s</a></span>`, tag)
+		result = `<span style="background-color: rgba(240, 149, 45, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Rocket Pool Validator"><a style="color: var(--yellow);" href="/pools/rocketpool">Rocket Pool</a></span>`
 	case "ssv":
-		result = fmt.Sprintf(`<span style="background:orange; font-size: 12px;" class="badge-pill text-dark mr-1" data-toggle="tooltip" title="Secret Shared Validator"><a href="https://github.com/bloxapp/ssv/">%s</a></span>`, tag)
+		result = `<span style="background-color: rgba(238, 113, 18, .2); font-size: 18px;" class="badge-pill mr-1 font-weight-normal" data-toggle="tooltip" title="Secret Shared Validator"><a style="color: var(--orange);" href="https://github.com/bloxapp/ssv/">SSV</a></span>`
 	default:
 		result = formatSpecialTag(tag)
 	}
@@ -735,9 +734,9 @@ func FormatSlashedValidatorsWithName(validators []uint64, nameMap map[uint64]str
 // FormatYesNo will return yes or no formated as html
 func FormatYesNo(yes bool) template.HTML {
 	if yes {
-		return `<span class="badge bg-success text-white">Yes</span>`
+		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Yes</span>`
 	}
-	return `<span class="badge bg-warning text-dark">No</span>`
+	return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">No</span>`
 }
 
 func FormatValidatorName(name string) template.HTML {
@@ -757,7 +756,7 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	} else if eff > 60 {
 		return template.HTML(fmt.Sprintf(`<span class="text-warning" data-toggle="tooltip" title="%s"> %.0f%% - Fair <i class="fas fa-meh"></i></span>`, tooltipText, eff))
 	} else {
-		return template.HTML(fmt.Sprintf(`<span class="text-new-red" data-toggle="tooltip" title="%s"> %.0f%% - Bad <i class="fas fa-frown"></i></span>`, tooltipText, eff))
+		return template.HTML(fmt.Sprintf(`<span class="text-danger" data-toggle="tooltip" title="%s"> %.0f%% - Bad <i class="fas fa-frown"></i></span>`, tooltipText, eff))
 	}
 }
 
@@ -776,7 +775,7 @@ func FormatPercentageColored(percentage float64, tooltipText string) template.HT
 	} else if percentage >= 60 {
 		return template.HTML(fmt.Sprintf(`<span class="text-warning">%.0f%% <i class="fas fa-meh"></i></span>`, percentage))
 	}
-	return template.HTML(fmt.Sprintf(`<span class="text-new-red">%.0f%% <i class="fas fa-frown"></i></span>`, percentage))
+	return template.HTML(fmt.Sprintf(`<span class="text-danger">%.0f%% <i class="fas fa-frown"></i></span>`, percentage))
 }
 
 func DerefString(str *string) string {
@@ -800,7 +799,11 @@ func KFormatterEthPrice(price uint64) string {
 	return fmt.Sprint(price)
 }
 
-func FormatWeiToEth(num string) string {
+func FormatRPL(num string) string {
 	floatNum, _ := strconv.ParseFloat(num, 64)
-	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " ETH"
+	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " RPL"
+}
+
+func FormatFloatWithPrecision(precision int, num float64) string {
+	return fmt.Sprintf("%.*f", precision, num)
 }
