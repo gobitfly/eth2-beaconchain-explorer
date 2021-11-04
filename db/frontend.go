@@ -275,7 +275,7 @@ type PremiumResult struct {
 func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
 	var pkg PremiumResult
 	err := FrontendDB.Get(&pkg,
-		"SELECT product_id, store from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
+		"SELECT COALESCE(product_id, '') as product_id, COALESCE(store, '') as store from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
 		userID,
 	)
 	return pkg, err
