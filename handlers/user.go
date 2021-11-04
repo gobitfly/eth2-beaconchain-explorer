@@ -695,6 +695,7 @@ func UserUpdateMonitoringSubscriptions(w http.ResponseWriter, r *http.Request) {
 func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsCenterData := &types.UserNotificationsCenterPageData{}
+	data := InitPageData(w, r, "user", "/user", "")
 
 	user := getUser(r)
 
@@ -737,7 +738,29 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := InitPageData(w, r, "user", "/user", "")
+	var watchlistIndices []uint64
+	err = db.DB.Select(&watchlistIndices, `
+	SELECT validators.validatorindex as index
+	FROM users_validators_tags
+	INNER JOIN validators
+	ON
+	  users_validators_tags.validator_publickey = validators.pubkey
+	WHERE user_id = $1 and tag = $2
+	`, user.UserID, types.ValidatorTagsWatchlist)
+	if err != nil {
+		logger.Errorf("error retrieving watchlist validator count %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	link := "/dashboard?validators="
+	for _, i := range watchlistIndices {
+		link += strconv.FormatUint(i, 10) + ","
+	}
+
+	link = link[:len(link)-1]
+	userNotificationsCenterData.DashboardLink = link
+
 	userNotificationsCenterData.Metrics = metricsdb
 	userNotificationsCenterData.Validators = validatorTableData
 	userNotificationsCenterData.Network = networkData

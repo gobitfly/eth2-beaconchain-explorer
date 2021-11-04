@@ -572,7 +572,8 @@ function loadValidatorsData(data) {
   // show manage-notifications button and remove-all button only if there is data in the validator table
   if (DATA.length !== 0) {
     $('#manage-notifications-btn').removeAttr('hidden')
-    $('#remove-all-btn').removeAttr('hidden')
+    // $('#remove-all-btn').removeAttr('hidden')
+    $('#view-dashboard').removeAttr('hidden')
     if ($(window).width() < 620) {
       $('#add-validator-btn-text').attr('hidden', true)
       $('#add-validator-btn-icon').removeAttr('hidden')
@@ -620,11 +621,11 @@ $(document).ready(function () {
     }
   })
 
-  $('#remove-all-btn').on('click', function (e) {
-    $('#modaltext').text($(this).data('modaltext'))
-    $('#confirmRemoveModal').removeAttr('rowId')
-    $('#confirmRemoveModal').attr('tablename', 'validators')
-  })
+  // $('#remove-all-btn').on('click', function (e) {
+  //   $('#modaltext').text($(this).data('modaltext'))
+  //   $('#confirmRemoveModal').removeAttr('rowId')
+  //   $('#confirmRemoveModal').attr('tablename', 'validators')
+  // })
 
   // click event to modal remove button
   $('#remove-button').on('click', function (e) {

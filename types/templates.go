@@ -1005,6 +1005,7 @@ type UserNotificationsCenterPageData struct {
 	Network                 interface{}
 	MonitoringSubscriptions []*Subscription
 	Machines                []string
+	DashboardLink           string `json:"dashboardLink"`
 	// Subscriptions []*Subscription
 }
 

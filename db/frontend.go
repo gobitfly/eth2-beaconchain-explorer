@@ -570,11 +570,11 @@ func GetStatsMachineCount(userID uint64) (uint64, error) {
 }
 
 func GetStatsMachine(userID uint64) ([]string, error) {
-	now := time.Now()
-	nowTs := now.Unix()
-	var day int = int(nowTs / 86400)
+	// now := time.Now()
+	// nowTs := now.Unix()
+	// var day int = int(nowTs / 86400)
 	// for testing
-	// day = 18893
+	day := 18893
 	// log.Println("getting machine for day: ", day)
 
 	var machines []string

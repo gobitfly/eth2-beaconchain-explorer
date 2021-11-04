@@ -206,6 +206,10 @@ div.dataTables_scrollBody table {
   min-height: 650px; 
 }
 
+#validators-notifications_wrapper tr td {
+  vertical-align: middle !important;
+}
+
 #validators-notifications_paginate {
   display: flex;
   height: 100%;
