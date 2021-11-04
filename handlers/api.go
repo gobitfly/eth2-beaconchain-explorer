@@ -1096,7 +1096,7 @@ func RegisterEthpoolSubscription(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, 0, "")
+	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, 0, "", "")
 	if err != nil {
 		logger.Errorf("could not save subscription data %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
