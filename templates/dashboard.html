@@ -1,4 +1,4 @@
-{{ define "js"}}
+{{define "js"}}
 
 <script type="text/javascript" src="/js/datatables.min.js"></script>
 <script src="/js/highcharts/highstock.min.js"></script>
@@ -15,12 +15,12 @@
 </script>
 {{end}}
 
-{{ define "css"}}
+{{define "css"}}
   <link rel="stylesheet" type="text/css" href="/css/datatables.min.css"/>
   <link rel="stylesheet" type="text/css" href="/css/dashboard.css"/>
 {{end}}
 
-{{ define "content"}}
+{{define "content"}}
 {{with .Data}}
 <div class="container mt-2 outer-container" style="min-width:300px;">
   <div class="dashboard-container">
@@ -197,16 +197,16 @@
             <div class="multiselect-container" class="row border-bottom p-3">
               <span style="display:flex;justify-content:flex-end;font-size:.9rem;padding:.1rem 0;">
                 <button data-toggle="tooltip" title="Open in reward history" style="visibility:hidden;" id="rewards-button" class="btn btn-primary btn-sm m-1">
-                  <i class="far fa-money-bill-alt" style="width:18px;"></i>
+                  <i class="far fa-money-bill-alt text-white" style="width:18px;"></i>
                 </button>
                 <button data-toggle="tooltip" title="Save all to Watchlist" style="visibility:hidden;" id="bookmark-button" type="button" class="btn btn-primary btn-sm m-1">
-                  <i class="far fa-bookmark" style="width:18px;"></i>
+                  <i class="far fa-bookmark text-white" style="width:18px;"></i>
                 </button>
                 <button data-toggle="tooltip" data-original-title="Copy Link to Dashboard" style="visibility:hidden;" id="copy-button" data-clipboard-text="https://beaconcha.in/dashboard" type="button" class="btn btn-primary btn-sm m-1">
-                  <i class="fa fa-copy" style="width:18px;"></i>
+                  <i class="fa fa-copy text-white" style="width:18px;"></i>
                 </button>
                 <button data-toggle="tooltip" title="Clear Dashboard" style="visibility:hidden;" id="clear-search" type="button" class="btn btn-primary btn-sm m-1">
-                  <i class="fa fa-trash-alt" style="width:18px;"></i>
+                  <i class="fa fa-trash-alt text-white" style="width:18px;"></i>
                 </button>
               </span>
               <span class="multiselect-border" style="margin:1rem 0;">

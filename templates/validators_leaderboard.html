@@ -1,8 +1,8 @@
-{{ define "js"}}
+{{define "js"}}
     <script type="text/javascript" src="/js/datatables.min.js"></script>
     <script type="text/javascript" src="/js/datatable_input.js"></script>
     <script>
-        $(document).ready(function () {
+        $(document).ready(function() {
             var tblOpts = {
                 processing: true,
                 serverSide: true,
@@ -14,9 +14,12 @@
                     searchPlaceholder: 'Search by Public Key / Index / Name',
                     search: '',
                     paginate: {
-                        previous: "<",
-                        next: ">",
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
                     }
+                },
+                drawCallback: function(settings) {
+                    $('[data-toggle="tooltip"]').tooltip()
                 },
                 columnDefs: [
                     {
@@ -34,7 +37,7 @@
                     }, {
                         targets: 3,
                         data: '3',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             return (data / 10e8).toFixed(4) + ' ETH'
                         },
                         "orderable": false
@@ -48,7 +51,7 @@
                 tblOpts.search = {"search": q}
             }
             var tbl = $('#leaderboard').DataTable(tblOpts)
-            $("#leaderboard_filter > label > input").on('input', function (ev) {
+            $("#leaderboard_filter > label > input").on('input', function(ev) {
                 if (ev && ev.target && ev.target.value) {
                     var newUrl = window.location.pathname + "?q=" + encodeURIComponent(ev.target.value)
                     window.history.replaceState(null, 'Validators Leaderboard', newUrl)
@@ -60,13 +63,11 @@
     </script>
 {{end}}
 
-{{ define "css"}}
-    <link rel="stylesheet" type="text/css"
-          href="/css/datatables.min.css"/>
-
+{{define "css"}}
+    <link rel="stylesheet" type="text/css" href="/css/datatables.min.css" />
 {{end}}
 
-{{ define "content"}}
+{{define "content"}}
     {{with .Data}}
         <div class="container mt-2">
             <div class="my-3">
