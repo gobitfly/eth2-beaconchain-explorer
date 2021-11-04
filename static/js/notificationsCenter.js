@@ -290,7 +290,7 @@ function loadMonitoringData(data) {
         responsivePriority: 3,
         data: 'event',
         render: function (data, type, row, meta) {
-          return `<i class="fas fa-times fa-lg i-custom" filter="${row.machine}" event="${row.notification}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle="modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
+          return `<i class="fas fa-times fa-lg i-custom" filter="${row.machine}" event="${row.notification}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle="modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
         }
       }
     ]
@@ -561,7 +561,7 @@ function loadValidatorsData(data) {
         orderable: false,
         responsivePriority: 3,
         data: null,
-        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--new-red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
+        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
       }
     ],
     rowId: function (data, type, row, meta) {
@@ -836,7 +836,7 @@ $(document).ready(function () {
           method: 'POST',
           headers: { "X-CSRF-Token": csrfToken },
           credentials: 'include',
-          body: JSON.stringify({ pubkey: $('#add-validator-input').attr('pk'), events: events })
+          body: JSON.stringify({ index, pubkey: $('#add-validator-input').attr('pk'), events: events })
         }).then(res => {
           if (res.status == 200) {
             $('#addValidatorModal').modal('hide')
@@ -884,6 +884,8 @@ $(document).ready(function () {
 
   $('#add-monitoring-event-modal-button').on('click', function () {
     if(!MACHINES.length) {
+      $('#add-validator-search-container > div:not(:first-child)').css('opacity', '.3')
+      $('#add-monitoring-event').attr('disabled', true)
       $('#add-monitoring-validator-select').replaceWith(`
       <span>
         No machine found. Learn more about monitoring your validator and beacon node

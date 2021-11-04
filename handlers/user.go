@@ -13,7 +13,6 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -453,6 +452,7 @@ func RemoveAllValidatorsAndUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// AddValidatorsAndSubscribe adds a validator to a users watchlist and subscribes to the validator
 func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
@@ -467,6 +467,7 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reqData := struct {
+		Index  uint64 `json:"index"`
 		Pubkey string `json:"pubkey"`
 		Events []struct {
 			Event string `json:"event"`
@@ -482,6 +483,14 @@ func AddValidatorsAndSubscribe(w http.ResponseWriter, r *http.Request) {
 		logger.Errorf("error parsing request body: %v, %v", r.URL.String(), err)
 		ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+	if reqData.Pubkey == "" {
+		err := db.DB.Get(&reqData.Pubkey, "SELECT ENCODE(pubkey, 'hex') as pubkey from validators where validatorindex = $1", reqData.Index)
+		if err != nil {
+			logger.Errorf("error getting pubkey from validator index route: %v, %v", r.URL.String(), err)
+			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if reqData.Pubkey == "" {
@@ -1682,7 +1691,6 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 			}
 		}
 	} else { // add filtered one
-
 		if !userPremium.NotificationThresholds {
 			if eventName == types.MonitoringMachineDiskAlmostFullEventName {
 				threshold = 0.1
@@ -1692,7 +1700,6 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 				threshold = 0.8
 			}
 		}
-		log.Println("adding subscription with thershold:", threshold)
 		err = db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, filter, threshold)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
