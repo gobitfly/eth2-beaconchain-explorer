@@ -77,20 +77,20 @@ function loadMonitoringData(data) {
   let mdata = []
   let id = 0
 
-  if(!data) {
+  if (!data) {
     data = []
   }
 
   for (let i = 0; i < data.length; i++) {
-     mdata.push({
-       id: data[i].ID,
-       notification: data[i].EventName,
-       threshold: data[i].EventThreshold,
-       mostRecent: data[i].LastSent || 0,
-       machine: data[i].EventFilter,
-       event: {}
-     })
-    
+    mdata.push({
+      id: data[i].ID,
+      notification: data[i].EventName,
+      threshold: data[i].EventThreshold,
+      mostRecent: data[i].LastSent || 0,
+      machine: data[i].EventFilter,
+      event: {}
+    })
+
   }
   // for (let item of data) {
   //   for (let n of item.Notifications) {
@@ -616,7 +616,7 @@ $(document).ready(function () {
   $(document).on('click', function (e) {
     // remove selected class from rows on click outside
     if (!$('#validators-notifications').is(e.target) && $('#validators-notifications').has(e.target).length === 0 && !$('#manage-notifications-btn').is(e.target) && $('#manage-notifications-btn').has(e.target).length === 0) {
-      $('#validators-notifications .selected').removeClass('selected')
+      // $('#validators-notifications .selected').removeClass('selected')
     }
   })
 
@@ -739,7 +739,10 @@ $(document).ready(function () {
     } else {
       // get the selected rows (mutiple rows selected)
       const rowsSelected = $('#validators-notifications').DataTable().rows('.selected').data()
+      $('#selected-validators-events-container').html('')
+      $("#selected-validators-events-container ~ div").css('opacity', 1)
       if (rowsSelected && rowsSelected.length) {
+        $('#update-subs-button').attr('disabled', false)
         for (let i = 0; i < rowsSelected.length; i++) {
           $('#selected-validators-events-container').append(
             `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowsSelected[i].Validator.Pubkey}>
@@ -749,11 +752,12 @@ $(document).ready(function () {
           )
         }
       } else {
+        $("#selected-validators-events-container ~ div").css('opacity', 0.3)
         $('#selected-validators-events-container').prev('span').text('ℹ️ No validators selected')
         $('#selected-validators-events-container').html('<span>Select validators from the table. Hold down <kbd>Ctrl</kbd> to select multiple rows.</span>')
         $('#update-subs-button').attr('disabled', '')
       }
-    } 1234
+    }
   })
 
   // on modal close
@@ -770,7 +774,7 @@ $(document).ready(function () {
     $('[id^=all_events]').attr('checked', false)
 
     // remove selected class from rows when modal closed
-    $('#validators-notifications .selected').removeClass('selected')
+    // $('#validators-notifications .selected').removeClass('selected')
   });
 
   function get_validator_manage_sub_events() {
@@ -883,7 +887,7 @@ $(document).ready(function () {
   }
 
   $('#add-monitoring-event-modal-button').on('click', function () {
-    if(!MACHINES.length) {
+    if (!MACHINES.length) {
       $('#add-validator-search-container > div:not(:first-child)').css('opacity', '.3')
       $('#add-monitoring-event').attr('disabled', true)
       $('#add-monitoring-validator-select').replaceWith(`
@@ -922,7 +926,7 @@ $(document).ready(function () {
         events.push({
           event_name: e,
           event_filter: filter,
-          event_threshold: t, 
+          event_threshold: t,
         })
       }
     }
