@@ -289,20 +289,24 @@ func GetAppSubscriptionCount(userID uint64) (int64, error) {
 	return count, err
 }
 
+type PremiumResult struct {
+	Package string `db:"product_id"`
+	Store   string `db:"store"`
+}
+
+func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
+	var pkg PremiumResult
+	err := FrontendDB.Get(&pkg,
+		"SELECT COALESCE(product_id, '') as product_id, COALESCE(store, '') as store from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
+		userID,
+	)
+	return pkg, err
+}
+
 func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error) {
 	userSub := types.UserPremiumSubscription{}
 	err := FrontendDB.Get(&userSub, "SELECT user_id, store, active, COALESCE(product_id, '') as product_id, COALESCE(reject_reason, '') as reject_reason FROM users_app_subscriptions WHERE user_id = $1 ORDER BY active desc, id desc LIMIT 1", id)
 	return userSub, err
-}
-
-func GetUserPremiumPackage(userID uint64) (string, error) {
-	var pkg string
-	row := FrontendDB.QueryRow(
-		"SELECT COALESCE(product_id, '') as product_id from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
-		userID,
-	)
-	err := row.Scan(&pkg)
-	return pkg, err
 }
 
 func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
@@ -388,7 +392,7 @@ func MobileDeviceSettingsUpdate(userID, deviceID uint64, notifyEnabled, active s
 }
 
 func MobileDeviceDelete(userID, deviceID uint64) error {
-	_, err := FrontendDB.Exec("DELETE FROM users_devices WHERE user_id = $1 AND id = $2;", userID, deviceID)
+	_, err := FrontendDB.Exec("DELETE FROM users_devices WHERE user_id = $1 AND id = $2 AND id != 2;", userID, deviceID)
 	return err
 }
 
