@@ -267,13 +267,17 @@ func GetAppSubscriptionCount(userID uint64) (int64, error) {
 	return count, err
 }
 
-func GetUserPremiumPackage(userID uint64) (string, error) {
-	var pkg string
-	row := FrontendDB.QueryRow(
-		"SELECT product_id from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
+type PremiumResult struct {
+	Package string `db:"product_id"`
+	Store   string `db:"store"`
+}
+
+func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
+	var pkg PremiumResult
+	err := FrontendDB.Get(&pkg,
+		"SELECT product_id, store from users_app_subscriptions WHERE user_id = $1 AND active = true order by id desc",
 		userID,
 	)
-	err := row.Scan(&pkg)
 	return pkg, err
 }
 

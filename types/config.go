@@ -55,14 +55,15 @@ type Config struct {
 		} `yaml:"pubkeyTagsExporter"`
 	} `yaml:"indexer"`
 	Frontend struct {
-		Kong               string `yaml:"kong" envconfig:"FRONTEND_KONG"`
-		OnlyAPI            bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
-		CsrfAuthKey        string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY`
-		CsrfInsecure       bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`
-		DisableCharts      bool   `yaml:"disableCharts" envconfig:"disableCharts"`
-		RecaptchaSiteKey   string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
-		RecaptchaSecretKey string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
-		Enabled            bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
+		BeaconchainETHPoolBridgeSecret string `yaml:"beaconchainETHPoolBridgeSecret" envconfig:"FRONTEND_BEACONCHAIN_ETHPOOL_BRIDGE_SECRET"`
+		Kong                           string `yaml:"kong" envconfig:"FRONTEND_KONG"`
+		OnlyAPI                        bool   `yaml:"onlyAPI" envconfig:"FRONTEND_ONLY_API"`
+		CsrfAuthKey                    string `yaml:"csrfAuthKey" envconfig:"FRONTEND_CSRF_AUTHKEY`
+		CsrfInsecure                   bool   `yaml:"csrfInsecure" envconfig:"FRONTEND_CSRF_INSECURE"`
+		DisableCharts                  bool   `yaml:"disableCharts" envconfig:"disableCharts"`
+		RecaptchaSiteKey               string `yaml:"recaptchaSiteKey" envconfig:"FRONTEND_RECAPTCHA_SITEKEY"`
+		RecaptchaSecretKey             string `yaml:"recaptchaSecretKey" envconfig:"FRONTEND_RECAPTCHA_SECRETKEY"`
+		Enabled                        bool   `yaml:"enabled" envconfig:"FRONTEND_ENABLED"`
 		// Imprint is deprecated place imprint file into the legal directory
 		Imprint      string `yaml:"imprint" envconfig:"FRONTEND_IMPRINT"`
 		LegalDir     string `yaml:"legalDir" envconfig:"FRONTEND_LEGAL"`

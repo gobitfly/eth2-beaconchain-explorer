@@ -40,6 +40,10 @@ func checkSubscriptions() {
 				valid, err = VerifyManuall(receipt)
 			}
 
+			if receipt.Store == "ethpool" {
+				continue
+			}
+
 			if err != nil {
 				// error might indicate a connection problem, ignore validation response
 				// for this iteration
