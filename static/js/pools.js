@@ -154,7 +154,7 @@ function updateEthSupply() {
 function getPoolEffectiveness(id, data) {
     let load = async () => {
         let query = "?validators="
-        for (let item of data.slice(0, 200)) {
+        for (let item of data.slice(0, 100)) {
             query += item.validatorindex + ","
         }
         query = query.substring(0, query.length - 1)
@@ -197,6 +197,10 @@ function randerTable(tableData) {
         pagingType: 'first_last_numbers',
         data: tableData,
         lengthMenu: [10, 25],
+        language: {
+            search: '',
+            searchPlaceholder: 'Search...'
+        },
         preDrawCallback: function () {
             try {
                 $('#staking-pool-table').find('[data-toggle="tooltip"]').tooltip('dispose')

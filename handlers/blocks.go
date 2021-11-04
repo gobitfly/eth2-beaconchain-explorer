@@ -110,7 +110,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		// we seach for blocks matching the search-string:
+		// we search for blocks matching the search-string:
 		//
 		// - block-slot (exact when number)
 		// - block-graffiti (infix)
@@ -138,14 +138,14 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		searchProposersQrys := []string{}
 
 		args = append(args, "%"+search+"%")
-		searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where graffiti_text ilike $%d limit %d)`, len(args), searchLimit))
+		searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where graffiti_text ilike $%d order by slot desc limit %d)`, len(args), searchLimit))
 		searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select publickey as pubkey from validator_names where name ilike $%d limit %d)`, len(args), searchLimit))
 
 		searchNumber, err := strconv.ParseUint(search, 10, 64)
 		if err == nil {
 			// if the search-string is a number we can look for exact matchings
 			args = append(args, searchNumber)
-			searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where slot = $%d limit %d)`, len(args), searchLimit))
+			searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`(select slot from blocks where slot = $%d order by slot desc limit %d)`, len(args), searchLimit))
 			searchProposersQrys = append(searchProposersQrys, fmt.Sprintf(`(select pubkey from validators where validatorindex = $%d limit %d)`, len(args), searchLimit))
 		}
 		if searchPubkeyExactRE.MatchString(search) {
@@ -161,7 +161,7 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// join proposer-queries and append to block-queries looking for proposers
-		searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`select slot from blocks where proposer in (select v.validatorindex from (%v) a left join validators v on v.pubkey = a.pubkey)`, strings.Join(searchProposersQrys, " union ")))
+		searchBlocksQrys = append(searchBlocksQrys, fmt.Sprintf(`select slot from blocks where proposer in (select v.validatorindex from (%v) a left join validators v on v.pubkey = a.pubkey) order by slot desc`, strings.Join(searchProposersQrys, " union ")))
 		searchBlocksQry := strings.Join(searchBlocksQrys, " union ")
 
 		args = append(args, length)

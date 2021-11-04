@@ -232,7 +232,7 @@
                 </div>
             </div>
         </section>
-        {{ template "bannerStakingServices" }}
+        {{if not .NoAds}} {{ template "bannerStakingServices" }} {{end}}
         <div class="container mt-2">
             <section class="my-5">
                 <div class="row">
@@ -266,6 +266,22 @@
                                 </tr>
                                 </thead>
                                 <tbody>
+                                    <tr>
+                                        <td data-column="Service"><a href="https://ethpool.org/">Ethpool</a></td>
+                                        <td data-column="Validator key owner">User & Service</td>
+                                        <td data-column="Withdrawal key owner">User</td>
+                                        <td data-column="Pool token">No</td>
+                                        <td data-column="3rd Party Software">No</td>
+                                        <td data-column="Min. Stake">32 ETH</td>
+                                        <td data-column="Fee">Free</td>
+                                        <td data-column="Open Source">No</td>
+                                        <td data-column="Social"><a href="https://discord.io/ethermine  " target="_blank"><i
+                                                        class="fab fa-discord ml-1 mr-1"></i></a><a
+                                                    href="https://twitter.com/ethermine_org" target="_blank"><i
+                                                        class="fab fa-twitter ml-1 mr-1"></i></a><i
+                                                        class="fab fa-telegram ml-1 mr-1"></i><i
+                                                    class="fa fa-mail-bulk ml-1 mr-1"></i></td>
+                                    </tr>
                                     <tr>
                                         <td data-column="Service"><a href="https://www.rocketpool.net/">Rocket Pool (Validator)</a></td>
                                         <td data-column="Validator key owner">User</td>
@@ -886,7 +902,7 @@
                                                       name="comments"></textarea>
                                         </div>
                                     </div>
-                                    <button data-sitekey="{{.RecaptchaKey}}" data-callback='onSubmit' data-action='submit' type="submit" class="g-recaptcha btn btn-primary text-center">Send Request</button>
+                                    <button data-sitekey="{{.RecaptchaKey}}" data-callback='onSubmit' data-action='submit' type="submit" class="g-recaptcha btn btn-primary text-center text-white">Send Request</button>
                                 </form>
                             </div>
                         </div>

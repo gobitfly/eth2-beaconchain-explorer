@@ -54,6 +54,7 @@ type PoolsResp struct {
 	IdEthSeries         idEthSeriesDrill
 	TotalValidators     uint64
 	IsMainnet           bool
+	NoAds               bool
 }
 
 type PoolsInfo struct {
@@ -141,7 +142,7 @@ func getPoolInfo() []PoolsInfo {
 	var stakePools []Pools
 	// addrName := map[string]Pools{}
 
-	if utils.Config.Chain.Network == "mainnet" {
+	if utils.Config.Chain.Network == "mainnet" || utils.Config.Chain.Network == "prater" {
 		err := db.DB.Select(&stakePools, `
 		select sps.address, sps.name, sps.category, sps.deposit, b.vcount
 		from (select ENCODE(from_address::bytea, 'hex') as address, count(*) as vcount

@@ -1,48 +1,45 @@
-{{ define "validatorProposedTable"}}
+{{define "validatorProposedTable"}}
     <div class="table-responsive">
-        <table class="table" style="margin-top: 0 !important" id="blocks-table" width="100%">
+        <table class="table" style="margin-top: 0 !important;" id="blocks-table" width="100%">
             <thead>
-            <tr>
-                <th>Epoch</th>
-                <th>Slot</th>
-                <th>Status</th>
-                <th>Time</th>
-                <th>Root Hash</th>
-                <th><span data-toggle="tooltip" data-placement="top" title="Attestations">Att.</span></th>
-                <th><span data-toggle="tooltip" title="Deposits">Dep.</span></th>
-                <th><span data-toggle="tooltip" title="Slashings">Sl.</span> <span data-toggle="tooltip"
-                                                                                   data-placement="top"
-                                                                                   title="Proposers">Pro</span>/
-                    <span data-toggle="tooltip" data-placement="top" title="Attesters">Att</span></th>
-                <th><span data-toggle="tooltip" title="Exits">Ex.</span></th>
-                <th>Graffiti</th>
-            </tr>
+                <tr>
+                    <th>Epoch</th>
+                    <th>Slot</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                    <th>Root Hash</th>
+                    <th><span data-toggle="tooltip" data-placement="top" title="Attestations">Att.</span></th>
+                    <th><span data-toggle="tooltip" title="Deposits">Dep.</span></th>
+                    <th><span data-toggle="tooltip" title="Slashings">Sl.</span> <span data-toggle="tooltip" data-placement="top" title="Proposers">Pro</span>/<span data-toggle="tooltip" data-placement="top" title="Attesters">Att</span></th>
+                    <th><span data-toggle="tooltip" title="Exits">Ex.</span></th>
+                    <th>Graffiti</th>
+                </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
     <script>
         var index = {{.Index}}
-            window.addEventListener('load', function () {
-                $('#blocks-table').DataTable({
-                    processing: true,
-                    serverSide: true,
-                    ordering: true,
-                    order: [[0, 'desc']],
-                    lengthChange: false,
-                    searching: false,
-                    ajax: '/validator/' + index + '/proposedblocks',
-                    pagingType: 'input',
-                    pageLength: 10,
-                    language: {
-                        searchPlaceholder: 'Search by Epoch Number',
-                        search: '',
-                        paginate: {
-                            previous: "<",
-                            next: ">",
-                        }
-                    },
-                    columnDefs: [
+        window.addEventListener('load', function() {
+            $('#blocks-table').DataTable({
+                processing: true,
+                serverSide: true,
+                ordering: true,
+                order: [[0, 'desc']],
+                lengthChange: false,
+                searching: false,
+                ajax: '/validator/' + index + '/proposedblocks',
+                pagingType: 'input',
+                pageLength: 10,
+                language: {
+                    searchPlaceholder: 'Search by Epoch Number',
+                    search: '',
+                    paginate: {
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
+                    }
+                },
+                columnDefs: [
                     {
                         targets: 1,
                         data: '1',
@@ -63,156 +60,154 @@
                         data: '7',
                         "orderable": false
                     },
-                  ],
-                    drawCallback: function (settings) {
-                        formatTimestamps()
-                    },
-                });
+                ],
+                drawCallback: function(settings) {
+                    formatTimestamps()
+                }
             })
+        })
     </script>
 {{end}}
 
-{{ define "validatorAttestationsTable"}}
+{{define "validatorAttestationsTable"}}
     <div class="table-responsive">
-        <table class="table" style="margin-top: 0 !important" id="attestations-table" width="100%">
+        <table class="table" style="margin-top: 0 !important;" id="attestations-table" width="100%">
             <thead>
-            <tr>
-                <th>Epoch</th>
-                <th>Slot</th>
-                <th>Status</th>
-                <th>Time</th>
-                <th>Committee</th>
-                <th><span data-toggle="tooltip" title="Inclusion Slot">Incl. Slot</span></th>
-                <th class="text-truncate" data-toggle="tooltip"
-                    title="The optimal inclusion distance shows the difference between the inclusion slot and the earliest slot it could have been included. The best case for the optimal inclusion distance is 0.">
-                    Opt.Incl.Dist.
-            </tr>
+                <tr>
+                    <th>Epoch</th>
+                    <th>Slot</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                    <th>Committee</th>
+                    <th><span data-toggle="tooltip" title="Inclusion Slot">Incl. Slot</span></th>
+                    <th class="text-truncate" data-toggle="tooltip" title="The optimal inclusion distance shows the difference between the inclusion slot and the earliest slot it could have been included. The best case for the optimal inclusion distance is 0.">Opt.Incl.Dist.</th>
+                </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
     <script>
         var index = {{.Index}}
-            window.addEventListener('load', function () {
-                var activeTab = $('#chartTabs .active')
-                var initializedAttestationTable = false
+        window.addEventListener('load', function() {
+            var activeTab = $('#chartTabs .active')
+            var initializedAttestationTable = false
                 
-                if (activeTab.attr('id') === 'attestations-tab') {
+            if (activeTab.attr('id') === 'attestations-tab') {
+                initializedAttestationTable = true
+                createAttestationTable()
+            }
+                
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                if (e.target.id === 'attestations-tab' && !initializedAttestationTable) {
                     initializedAttestationTable = true
                     createAttestationTable()
                 }
-                
-                $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
-                    if (e.target.id === 'attestations-tab' && !initializedAttestationTable) {
-                        initializedAttestationTable = true
-                        createAttestationTable()
-                    }
-                })
+            });
 
-                function createAttestationTable() {
-                    $('#attestations-table').DataTable({
-                            processing: true,
-                            serverSide: true,
-                            ordering: true,
-                            order: [[0, 'desc']],
-                            lengthChange: false,
-                            searching: false,
-                            ajax: '/validator/' + index + '/attestations',
-                            pagingType: 'input',
-                            pageLength: 10,
-                            language: {
-                                searchPlaceholder: 'Search by Epoch Number',
-                                search: '',
-                                paginate: {
-                                    previous: "<",
-                                    next: ">",
-                                }
-                            },
-                            columnDefs: [
-                            {
-                                targets: 1,
-                                data: '1',
-                                "orderable": false
-                            },
-                            {
-                                targets: 3,
-                                data: '3',
-                                "orderable": false
-                            },
-                            {
-                                targets: 5,
-                                data: '5',
-                                "orderable": false
-                            },
-                        ],
-                            drawCallback: function (settings) {
-                                formatTimestamps()
-                            },
-                        })
-                }
-            })
-    </script>
-{{end}}
-
-{{ define "validatorSlashingsTable"}}
-    <div class="table-responsive">
-        <table class="table" style="margin-top: 0 !important" id="slashings-table" width="100%">
-            <thead>
-            <tr>
-                <th>Slashed Validators</th>
-                <th>Time</th>
-                <th>Reason</th>
-                <th>Slot</th>
-                <th>Epoch</th>
-            </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-    <script>
-        var index = {{.Index}}
-            window.addEventListener('load', function () {
-                $('#slashings-table').DataTable({
+            function createAttestationTable() {
+                $('#attestations-table').DataTable({
                     processing: true,
                     serverSide: true,
-                    ordering: false,
+                    ordering: true,
+                    order: [[0, 'desc']],
                     lengthChange: false,
                     searching: false,
-                    ajax: '/validator/' + index + '/slashings',
+                    ajax: '/validator/' + index + '/attestations',
                     pagingType: 'input',
                     pageLength: 10,
                     language: {
                         searchPlaceholder: 'Search by Epoch Number',
                         search: '',
                         paginate: {
-                            previous: "<",
-                            next: ">",
+                            previous: '<i class="fas fa-chevron-left"></i>',
+                            next: '<i class="fas fa-chevron-right"></i>'
                         }
                     },
-                    drawCallback: function (settings) {
+                    columnDefs: [
+                        {
+                            targets: 1,
+                            data: '1',
+                            "orderable": false
+                        },
+                        {
+                            targets: 3,
+                            data: '3',
+                            "orderable": false
+                        },
+                        {
+                            targets: 5,
+                            data: '5',
+                            "orderable": false
+                        },
+                    ],
+                    drawCallback: function(settings) {
                         formatTimestamps()
                     },
                 })
+            }
+        })
+    </script>
+{{end}}
+
+{{define "validatorSlashingsTable"}}
+    <div class="table-responsive">
+        <table class="table" style="margin-top: 0 !important;" id="slashings-table" width="100%">
+            <thead>
+                <tr>
+                    <th>Slashed Validators</th>
+                    <th>Time</th>
+                    <th>Reason</th>
+                    <th>Slot</th>
+                    <th>Epoch</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <script>
+        var index = {{.Index}}
+        window.addEventListener('load', function() {
+            $('#slashings-table').DataTable({
+                processing: true,
+                serverSide: true,
+                ordering: false,
+                lengthChange: false,
+                searching: false,
+                ajax: '/validator/' + index + '/slashings',
+                pagingType: 'input',
+                pageLength: 10,
+                language: {
+                    searchPlaceholder: 'Search by Epoch Number',
+                    search: '',
+                    paginate: {
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
+                    }
+                },
+                drawCallback: function(settings) {
+                    formatTimestamps()
+                },
             })
+        })
     </script>
 {{end}}
 
 {{define "validatorDepositsTable"}}
-{{ with .Data }}
+{{with .Data}}
     <div class="table-eth1">
         <h4 class="my-3">Eth1 Deposits</h4>
         <h6 class="">This table displays the deposits made to the Eth1 deposit contract.</h6>
         <div class="table-responsive card card-body p-0">
-            <table class="table" style="margin-top: 0 !important" id="deposits-eth1-table" width="100%">
+            <table class="table" style="margin-top: 0 !important;" id="deposits-eth1-table" width="100%">
                 <thead>
-                <tr>
-                    <th>From Address</th>
-                    <th>Tx Hash</th>
-                    <th>Block</th>
-                    <th>Time</th>
-                    <th>Amount</th>
-                    <th>Valid</th>
-                </tr>
+                    <tr>
+                        <th>From Address</th>
+                        <th>Tx Hash</th>
+                        <th>Block</th>
+                        <th>Time</th>
+                        <th>Amount</th>
+                        <th>Valid</th>
+                    </tr>
                 </thead>
                 <tbody>
                 {{range $i, $deposit := .Deposits.Eth1Deposits}}
@@ -222,7 +217,7 @@
                         <td>{{formatEth1Block $deposit.BlockNumber}}</td>
                         <td>{{formatTimestamp $deposit.BlockTs}}</td>
                         <td>{{formatDepositAmount $deposit.Amount $.Currency}}</td>
-                        <td>{{$deposit.ValidSignature}}</td>
+                        <td><span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">{{$deposit.ValidSignature}}</span></td>
                     </tr>
                 {{end}}
                 </tbody>
@@ -235,8 +230,7 @@
     <div class="table-eth2">
         <h4 class="my-3">Eth2 Deposits</h4>
         {{if not .Deposits.Eth2Deposits}}
-            <h6 class="">No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a> for a deposit to be
-                processed by the beacon chain.</h6>
+            <h6 class="">No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a> for a deposit to be processed by the beacon chain.</h6>
             <div class="wip d-flex justify-content-center p-3">
                 <svg style="width: 100%; height: auto; max-height: 200px;" id="a1bb6ffe-8d83-4899-8fa0-fcb3165ea164"
                      data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 884.595 628.60077">
@@ -444,8 +438,14 @@
                             <td>{{formatSlotToTimestamp $deposit.BlockSlot}}</td>
                             <td>{{formatDepositAmount $deposit.Amount $.Currency}}</td>
                             <!-- <td>{{formatHash $deposit.Proof}}</td> -->
-                            <td>{{formatHash $deposit.Withdrawalcredentials}}</td>
-                            <td>{{formatHash $deposit.Signature}}</td>
+                            <td>
+                                {{formatHash $deposit.Withdrawalcredentials}}
+                                <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text={{formatHash $deposit.Withdrawalcredentials false}}></i>
+                            </td>
+                            <td>
+                                {{formatHash $deposit.Signature}}
+                                <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text={{formatHash $deposit.Signature false}}></i>
+                            </td>
                         </tr>
                     {{end}}
                     </tbody>
@@ -454,12 +454,12 @@
         {{end}}
     </div>
     {{end}}
-{{ end }}
+{{end}}
 
 
 
-{{ define "validatorHistoryTable"}}
-{{ with .Data }}
+{{define "validatorHistoryTable"}}
+{{with .Data}}
     <div class="table-responsive px-0 py-0">
         <table style="margin-top: 0px !important;" class="table" id="validator-history-table" width="100%">
             <thead>
@@ -476,116 +476,114 @@
 
     <script>
         var index = {{.Index}}
-            window.addEventListener('load', function () {
-                $('#validator-history-table').DataTable({
-                    processing: true,
-                    details: false,
-                    serverSide: true,
-                    lengthChange: false,
-                    ordering: false,
-                    searching: false,
-                    ajax: '/validator/' + index + '/history',
-                    pagingType: 'input',
-                    pageLength: 10,
-                    language: {
-                        searchPlaceholder: 'Search by Epoch Number',
-                        search: '',
-                        paginate: {
-                            previous: "<",
-                            next: ">",
-                        }
-                    },
-                    drawCallback: function (settings) {
-                        formatTimestamps()
-                    },
-                })
-                $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(1)').removeClass('col-md-5').removeClass('col-sm-12')
-                $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(2)').removeClass('col-md-7').removeClass('col-sm-12')
-                $('#validator-history-table_wrapper > div:nth-child(3)').addClass('justify-content-center')
-                $("#validator-history-table_paginate").attr('style', 'padding-right: 0 !important')
-                $("#validator-history-table_info").attr('style', 'padding-top: 0;')
+        window.addEventListener('load', function() {
+            $('#validator-history-table').DataTable({
+                processing: true,
+                details: false,
+                serverSide: true,
+                lengthChange: false,
+                ordering: false,
+                searching: false,
+                ajax: '/validator/' + index + '/history',
+                pagingType: 'input',
+                pageLength: 10,
+                language: {
+                    searchPlaceholder: 'Search by Epoch Number',
+                    search: '',
+                    paginate: {
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
+                    }
+                },
+                drawCallback: function(settings) {
+                    formatTimestamps()
+                },
             })
+            $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(1)').removeClass('col-md-5').removeClass('col-sm-12')
+            $('#validator-history-table_wrapper > div:nth-child(3) > div:nth-child(2)').removeClass('col-md-7').removeClass('col-sm-12')
+            $('#validator-history-table_wrapper > div:nth-child(3)').addClass('justify-content-center')
+            $("#validator-history-table_paginate").attr('style', 'padding-right: 0 !important')
+            $("#validator-history-table_info").attr('style', 'padding-top: 0;')
+        })
     </script>
 {{end}}
-{{ end }}
+{{end}}
 
 
-{{ define "validatorIncomeTable"}}
-{{ with .Data }}
+{{define "validatorIncomeTable"}}
+{{with .Data}}
     <span class="h4">Income</span>
     <table class="table" style="margin-top: 0 !important" width="100%">
         <tbody>
-        <tr>
-            <th scope="row">Day</th>
-            <td>{{formatIncome .Income1d $.Currency}}</td>
-        </tr>
-        <tr>
-            <th scope="row">Week</th>
-            <td>{{formatIncome .Income7d $.Currency}}</td>
-        </tr>
-        <tr>
-            <th scope="row">Month</th>
-            <td>{{formatIncome .Income31d $.Currency}}</td>
-        </tr>
-        <tr>
-            <th scope="row">APR <span data-toggle="tooltip"
-                                      title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i
-                            class="far fa-question-circle"></i></span></th>
-            <td>
-                <span class="{{if gtf .Apr 0}}text-success{{end}} {{if gtf  0 .Apr}}text-danger{{end}}"><b>{{.Apr | formatPercentage}} %</b></span>
-            </td>
-        </tr>
-        <tr>
-            <th scope="row">Eligible since</th>
-            <td>
-                {{if eq .ActivationEligibilityEpoch 9223372036854775807}}
-                    -
-                {{else}}
-                    <a href="/epoch/{{.ActivationEligibilityEpoch}}">{{if eq .ActivationEligibilityEpoch 0}}genesis{{else}}<span aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}"></span>{{end}}</a>
-                {{end}}
-            </td>
-
-        </tr>
-        <tr>
-            {{ if gt .NetworkStats.CurrentEpoch .ActivationEpoch  }}
-              <th scope="row">Active since</th>
-            {{else}}
-              <th scope="row">Activation</th>
-            {{end}}
-            <td>
-                {{if eq .ActivationEpoch 9223372036854775807}}
-                    -
-                {{else}}
-                    <a href="/epoch/{{.ActivationEpoch}}">
-                        {{if eq .ActivationEpoch 0}}genesis{{else}}<span aria-ethereum-date="{{.ActivationTs.Unix}}"></span>{{end}}
-                    </a>
-                {{end}}
-            </td>
-        </tr>
-        {{if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0))}}
-        <tr>
-            <th scope="row">Exited since</th>
-            <td>
-                    <a href="/epoch/{{.ExitEpoch}}">
-                        <span aria-ethereum-date="{{.ExitTs.Unix}}"></span>
-                    </a>
+            <tr>
+                <th scope="row">Day</th>
+                <td>{{formatIncome .Income1d $.Currency}}</td>
+            </tr>
+            <tr>
+                <th scope="row">Week</th>
+                <td>{{formatIncome .Income7d $.Currency}}</td>
+            </tr>
+            <tr>
+                <th scope="row">Month</th>
+                <td>{{formatIncome .Income31d $.Currency}}</td>
+            </tr>
+            <tr>
+                <th scope="row">APR <span data-toggle="tooltip" title="Annual Percentage Rate - Estimated yearly return based on the last 7 days"><i class="far fa-question-circle"></i></span></th>
+                <td>
+                    <span class="{{if gtf .Apr 0}}text-success{{end}} {{if gtf  0 .Apr}}text-danger{{end}}"><b>{{.Apr | formatPercentage}}%</b></span>
                 </td>
             </tr>
-        {{end}}
-        {{if not (eq .WithdrawableEpoch 9223372036854775807)}}
-        <tr>
-            <th scope="row">Withdrawable</th>
-             <td>
-                {{ if gt .NetworkStats.CurrentEpoch .WithdrawableEpoch  }}
-                <a href="/epoch/{{.WithdrawableEpoch}}">
-                    <span title="Epoch: {{.WithdrawableEpoch}}" data-toggle="tooltip" aria-ethereum-date="{{.WithdrawableTs.Unix}}"></span>
-                </a>
+            <tr>
+                <th scope="row">Eligible since</th>
+                <td>
+                    {{if eq .ActivationEligibilityEpoch 9223372036854775807}}
+                        -
+                    {{else}}
+                        <a href="/epoch/{{.ActivationEligibilityEpoch}}">{{if eq .ActivationEligibilityEpoch 0}}genesis{{else}}<span aria-ethereum-date="{{.ActivationEligibilityTs.Unix}}"></span>{{end}}</a>
+                    {{end}}
+                </td>
+
+            </tr>
+            <tr>
+                {{if gt .NetworkStats.CurrentEpoch .ActivationEpoch}}
+                    <th scope="row">Active since</th>
                 {{else}}
-                    <span title="Epoch: {{.WithdrawableEpoch}}" data-toggle="tooltip" aria-ethereum-date="{{.WithdrawableTs.Unix}}"></span>
-                {{end}}                
-            </td>
-        </tr>
-        {{end}}
+                    <th scope="row">Activation</th>
+                {{end}}
+                <td>
+                    {{if eq .ActivationEpoch 9223372036854775807}}
+                        -
+                    {{else}}
+                        <a href="/epoch/{{.ActivationEpoch}}">
+                            {{if eq .ActivationEpoch 0}}genesis{{else}}<span aria-ethereum-date="{{.ActivationTs.Unix}}"></span>{{end}}
+                        </a>
+                    {{end}}
+                </td>
+            </tr>
+            {{if not (or (eq .ExitEpoch 9223372036854775807) (eq .ExitEpoch 0))}}
+                <tr>
+                    <th scope="row">Exited since</th>
+                    <td>
+                        <a href="/epoch/{{.ExitEpoch}}">
+                            <span aria-ethereum-date="{{.ExitTs.Unix}}"></span>
+                        </a>
+                    </td>
+                </tr>
+            {{end}}
+            {{if not (eq .WithdrawableEpoch 9223372036854775807)}}
+                <tr>
+                    <th scope="row">Withdrawable</th>
+                    <td>
+                        {{if gt .NetworkStats.CurrentEpoch .WithdrawableEpoch}}
+                            <a href="/epoch/{{.WithdrawableEpoch}}">
+                                <span title="Epoch: {{.WithdrawableEpoch}}" data-toggle="tooltip" aria-ethereum-date="{{.WithdrawableTs.Unix}}"></span>
+                            </a>
+                        {{else}}
+                            <span title="Epoch: {{.WithdrawableEpoch}}" data-toggle="tooltip" aria-ethereum-date="{{.WithdrawableTs.Unix}}"></span>
+                        {{end}}                
+                    </td>
+                </tr>
+            {{end}}
         <!--
          <tr>
             <th scope="row">Avg. optimal inclusion distance</th>
@@ -601,29 +599,26 @@
     {{end}}
 {{end}}
 
-{{ define "validatorNetworkStatsTable"}}
-    <span class="h4">{{ firstCharToUpper .NetworkStats.NetworkName}} Statistics</span>
-    <table class="table" style="margin-top: 0 !important" width="100%">
+{{define "validatorNetworkStatsTable"}}
+    <span class="h4">{{firstCharToUpper .NetworkStats.NetworkName}} Statistics</span>
+    <table class="table" style="margin-top: 0 !important;" width="100%">
         <tbody>
-        <tr>
-            <th scope="row">Active Validators</th>
-            <td>{{.NetworkStats.ActiveValidators}}</td>
-        </tr>
-        <tr>
-            <th scope="row">Pending Validators</th>
-            <td><span data-toggle="tooltip" data-placement="top"
-                      title="Entering">{{.NetworkStats.EnteringValidators}}</span>/
-                <span data-toggle="tooltip" data-placement="top"
-                      title="Exiting">{{.NetworkStats.ExitingValidators}}</span></td>
-        </tr>
-        <tr>
-            <th scope="row">Staked Ether</th>
-            <td>{{.NetworkStats.StakedEther}}</td>
-        </tr>
-        <tr>
-            <th scope="row">Average Balance</th>
-            <td>{{.NetworkStats.AverageBalance}}</td>
-        </tr>
+            <tr>
+                <th scope="row">Active Validators</th>
+                <td>{{.NetworkStats.ActiveValidators}}</td>
+            </tr>
+            <tr>
+                <th scope="row">Pending Validators</th>
+                <td><span data-toggle="tooltip" data-placement="top" title="Entering">{{.NetworkStats.EnteringValidators}}</span>/<span data-toggle="tooltip" data-placement="top" title="Exiting">{{.NetworkStats.ExitingValidators}}</span></td>
+            </tr>
+            <tr>
+                <th scope="row">Staked Ether</th>
+                <td>{{.NetworkStats.StakedEther}}</td>
+            </tr>
+            <tr>
+                <th scope="row">Average Balance</th>
+                <td>{{.NetworkStats.AverageBalance}}</td>
+            </tr>
         </tbody>
     </table>
 {{end}}

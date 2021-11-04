@@ -32,7 +32,7 @@ var authorizeTemplate = template.Must(template.New("user").Funcs(utils.GetTempla
 
 func UserAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := getUser(w, r)
+		user := getUser(r)
 		if !user.Authenticated {
 			logger.Errorf("User not authorized")
 			utils.SetFlash(w, r, authSessionName, "Error: Please login first")
@@ -48,14 +48,23 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	userSettingsData := &types.UserSettingsPageData{}
 
-	user, session, err := getUserSession(w, r)
+	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	subscription, err := db.StripeGetUserAPISubscription(user.UserID)
+	premiumSubscription, err := db.GetUserPremiumSubscription(user.UserID)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("Error retrieving the premium subscriptions for user: %v %v", user.UserID, err)
+		session.Flashes("Error: Something went wrong.")
+		session.Save(r, w)
+		http.Redirect(w, r, "/user/settings", http.StatusSeeOther)
+		return
+	}
+
+	subscription, err := db.StripeGetUserSubscription(user.UserID, utils.GROUP_API)
 	if err != nil && err != sql.ErrNoRows {
 		logger.Errorf("Error retrieving the subscriptions for user: %v %v", user.UserID, err)
 		session.Flashes("Error: Something went wrong.")
@@ -108,6 +117,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 
 	userSettingsData.PairedDevices = pairedDevices
 	userSettingsData.Subscription = subscription
+	userSettingsData.Premium = premiumSubscription
 	userSettingsData.Sapphire = &utils.Config.Frontend.Stripe.Sapphire
 	userSettingsData.Emerald = &utils.Config.Frontend.Stripe.Emerald
 	userSettingsData.Diamond = &utils.Config.Frontend.Stripe.Diamond
@@ -120,6 +130,14 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 	data.Data = userSettingsData
 	data.User = user
 
+	var premiumPkg = ""
+	if premiumSubscription.Active {
+		premiumPkg = premiumSubscription.Package
+	}
+
+	session.Values["subscription"] = premiumPkg
+	session.Save(r, w)
+
 	err = userTemplate.ExecuteTemplate(w, "layout", data)
 	if err != nil {
 		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
@@ -131,7 +149,7 @@ func UserSettings(w http.ResponseWriter, r *http.Request) {
 // GenerateAPIKey generates an API key for users that do not yet have a key.
 func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
+	user := getUser(r)
 
 	err := db.CreateAPIKey(user.UserID)
 	if err != nil {
@@ -148,7 +166,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	authorizeData := &types.UserAuthorizeConfirmPageData{}
 
-	user, session, err := getUserSession(w, r)
+	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -201,7 +219,7 @@ func UserAuthorizeConfirm(w http.ResponseWriter, r *http.Request) {
 
 // UserAuthorizationCancel cancels oauth authorization session states and redirects to frontpage
 func UserAuthorizationCancel(w http.ResponseWriter, r *http.Request) {
-	_, session, err := getUserSession(w, r)
+	_, session, err := getUserSession(r)
 	if err != nil {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
@@ -219,7 +237,7 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	userNotificationsData := &types.UserNotificationsPageData{}
 
-	user := getUser(w, r)
+	user := getUser(r)
 
 	userNotificationsData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userNotificationsData.CsrfField = csrf.TemplateField(r)
@@ -305,7 +323,7 @@ func UserNotificationsData(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
-	user := getUser(w, r)
+	user := getUser(r)
 
 	type watchlistSubscription struct {
 		Index     *uint64 // consider validators that only have deposited but do not have an index yet
@@ -396,7 +414,7 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
-	user := getUser(w, r)
+	user := getUser(r)
 
 	subs := []types.Subscription{}
 	err = db.DB.Select(&subs, `
@@ -430,13 +448,15 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 		} else if strings.HasPrefix(string(sub.EventName), "monitoring_") {
 			pubkey = utils.FormatMachineName(sub.EventFilter)
 		}
+		if sub.EventName != types.ValidatorBalanceDecreasedEventName {
+			tableData = append(tableData, []interface{}{
+				pubkey,
+				sub.EventName,
+				utils.FormatTimestamp(sub.CreatedTime.Unix()),
+				ls,
+			})
+		}
 
-		tableData = append(tableData, []interface{}{
-			pubkey,
-			sub.EventName,
-			utils.FormatTimestamp(sub.CreatedTime.Unix()),
-			ls,
-		})
 	}
 
 	// log.Println("COUNT", len(watchlist))
@@ -474,7 +494,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, session, err := getUserSession(w, r)
+	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		callback := appData.RedirectURI + "?error=access_denied&error_description=no_session" + stateAppend
@@ -518,7 +538,7 @@ func UserAuthorizeConfirmPost(w http.ResponseWriter, r *http.Request) {
 
 func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 	logger := logger.WithField("route", r.URL.String())
-	user, session, err := getUserSession(w, r)
+	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -544,7 +564,7 @@ func UserDeletePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdateFlagsPost(w http.ResponseWriter, r *http.Request) {
-	user, _, err := getUserSession(w, r)
+	user, _, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -563,7 +583,7 @@ func UserUpdateFlagsPost(w http.ResponseWriter, r *http.Request) {
 func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 	var GenericUpdatePasswordError = "Error: Something went wrong updating your password 😕. If this error persists please contact <a href=\"https://support.bitfly.at/support/home\">support</a>"
 
-	user, session, err := getUserSession(w, r)
+	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -637,7 +657,7 @@ func UserUpdatePasswordPost(w http.ResponseWriter, r *http.Request) {
 
 // UserUpdateEmailPost gets called from the settings page to request a new email update. Only once the update link is pressed does the email actually change.
 func UserUpdateEmailPost(w http.ResponseWriter, r *http.Request) {
-	user, session, err := getUserSession(w, r)
+	user, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -701,7 +721,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	hash := vars["hash"]
 
-	_, session, err := getUserSession(w, r)
+	_, session, err := getUserSession(r)
 	if err != nil {
 		logger.Errorf("error retrieving session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -761,6 +781,7 @@ func UserConfirmUpdateEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	session.Values["subscription"] = ""
 	session.Values["authenticated"] = false
 	delete(session.Values, "user_id")
 
@@ -833,7 +854,7 @@ Best regards,
 // @Router /api/v1/user/validator/{pubkey}/add [post]
 func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r)
-	user := getUser(w, r)
+	user := getUser(r)
 	vars := mux.Vars(r)
 
 	pubKey := strings.Replace(vars["pubkey"], "0x", "", -1)
@@ -937,7 +958,7 @@ func UserValidatorWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 // @Router /api/v1/user/validator/{pubkey}/remove [post]
 func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r) //w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
+	user := getUser(r)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -1003,7 +1024,7 @@ func UserDashboardWatchlistAdd(w http.ResponseWriter, r *http.Request) {
 func UserValidatorWatchlistRemove(w http.ResponseWriter, r *http.Request) {
 	SetAutoContentType(w, r)
 
-	user := getUser(w, r)
+	user := getUser(r)
 	vars := mux.Vars(r)
 
 	pubKey := strings.Replace(vars["pubkey"], "0x", "", -1)
@@ -1103,7 +1124,7 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 
 func internUserNotificationsSubscribe(event, filter string, threshold float64, w http.ResponseWriter, r *http.Request) bool {
 	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
+	user := getUser(r)
 	filter = strings.Replace(filter, "0x", "", -1)
 
 	eventName, err := types.EventNameFromString(event)
@@ -1225,7 +1246,7 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 
 func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWriter, r *http.Request) bool {
 	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
+	user := getUser(r)
 
 	filter = strings.Replace(filter, "0x", "", -1)
 
@@ -1290,7 +1311,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 
 func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	user := getUser(w, r)
+	user := getUser(r)
 	q := r.URL.Query()
 	event := q.Get("event")
 	filter := q.Get("filter")
@@ -1373,7 +1394,7 @@ func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		userDeviceID = temp
-		sessionUser := getUser(w, r)
+		sessionUser := getUser(r)
 		if !sessionUser.Authenticated {
 			sendErrorResponse(j, r.URL.String(), "not authenticated")
 			return

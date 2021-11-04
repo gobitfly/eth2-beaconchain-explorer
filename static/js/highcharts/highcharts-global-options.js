@@ -34,7 +34,8 @@ Highcharts.setOptions({
       },
       backgroundColor: 'var(--bg-color)'
     },
-    colors: ["#7cb5ec", "#90ed7d", "#f7a35c", "#8085e9", "#f15c80", "#e4d354", "#2b908f", "#f45b5b", "#91e8e1", "#A0AC53", "#5F53AC"],
+    colors: ["#7cb5ec", "#90ed7d", "#f7a35c", "#D87F98", "#FFF3EC", "#A99F9F", "#2b908f", "#f45b5b",
+             "#91e8e1", "#A0AC53", "#5F53AC", "#8085e9", "#f15c80", "#e4d354"],
     legend: {
       enabled: true,
       layout: 'horizontal',
