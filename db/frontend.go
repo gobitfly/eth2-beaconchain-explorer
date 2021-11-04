@@ -303,6 +303,12 @@ func GetUserPremiumPackage(userID uint64) (PremiumResult, error) {
 	return pkg, err
 }
 
+func GetUserPremiumSubscription(id uint64) (types.UserPremiumSubscription, error) {
+	userSub := types.UserPremiumSubscription{}
+	err := FrontendDB.Get(&userSub, "SELECT user_id, store, active, COALESCE(product_id, '') as product_id, COALESCE(reject_reason, '') as reject_reason FROM users_app_subscriptions WHERE user_id = $1 ORDER BY active desc, id desc LIMIT 1", id)
+	return userSub, err
+}
+
 func GetAllAppSubscriptions() ([]*types.PremiumData, error) {
 	data := []*types.PremiumData{}
 
