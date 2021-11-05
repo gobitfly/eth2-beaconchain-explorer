@@ -738,17 +738,26 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var watchlistIndices []uint64
-	err = db.DB.Select(&watchlistIndices, `
-	SELECT validators.validatorindex as index
+	var watchlistPubkeys [][]byte
+	err = db.DB.Select(&watchlistPubkeys, `
+	SELECT validator_publickey
 	FROM users_validators_tags
-	INNER JOIN validators
-	ON
-	  users_validators_tags.validator_publickey = validators.pubkey
 	WHERE user_id = $1 and tag = $2
 	`, user.UserID, types.ValidatorTagsWatchlist)
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("error retrieving pubkeys from watchlist validator count %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	var watchlistIndices []uint64
+	err = db.DB.Select(&watchlistIndices, `
+	SELECT validatorindex as index
+	FROM validators 
+	WHERE pubkey = ANY($1)
+	`, pq.ByteaArray(watchlistPubkeys))
 	if err != nil {
-		logger.Errorf("error retrieving watchlist validator count %v route: %v", r.URL.String(), err)
+		logger.Errorf("error retrieving watchlist indices validator count %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
