@@ -326,10 +326,10 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	}{}
 
 	err := db.FrontendDB.Select(&validatordb, `
-	SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold 
-	FROM users_validators_tags uvt 
-	LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id
-	WHERE uvt.user_id = $1;`, userId)
+SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold
+FROM users_validators_tags uvt
+LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id
+WHERE uvt.user_id = $1;`, userId)
 
 	if err != nil {
 		return validatordb, err
@@ -359,7 +359,7 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 		err = db.DB.Get(&index, `
 		SELECT validatorindex
 		FROM validators WHERE pubkeyhex=$1
-			`, item.Pubkey)
+		`, item.Pubkey)
 
 		if err != nil {
 			return validatordb, err
@@ -701,6 +701,93 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	userNotificationsCenterData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userNotificationsCenterData.CsrfField = csrf.TemplateField(r)
+
+	var watchlistPubkeys [][]byte
+	err := db.FrontendDB.Select(&watchlistPubkeys, `
+	SELECT validator_publickey
+	FROM users_validators_tags
+	WHERE user_id = $1 and tag = $2
+	`, user.UserID, utils.GetNetwork()+":"+string(types.ValidatorTagsWatchlist))
+	if err != nil && err != sql.ErrNoRows {
+		logger.Errorf("error retrieving pubkeys from watchlist validator count %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	type watchlistValidators struct {
+		Index  uint64 `db:"index"`
+		Pubkey string `db:"pubkey"`
+	}
+
+	watchlist := []watchlistValidators{}
+	err = db.DB.Select(&watchlist, `
+	SELECT 
+		validatorindex as index,
+		ENCODE(pubkey, 'hex') as pubkey
+	FROM validators 
+	WHERE pubkey = ANY($1)
+	`, pq.ByteaArray(watchlistPubkeys))
+	if err != nil {
+		logger.Errorf("error retrieving watchlist indices validator count %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	var subscriptions []types.Subscription
+	err = db.FrontendDB.Select(&subscriptions, `
+	SELECT event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold
+	FROM users_subscriptions
+	WHERE user_id = $1
+	`, user.UserID)
+	if err != nil {
+		logger.Errorf("error retrieving subscriptions for user %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	validatorMap := make(map[string]types.UserValidatorNotificationTableData, len(watchlist))
+	link := "/dashboard?validators="
+	for _, val := range watchlist {
+		link += strconv.FormatUint(val.Index, 10) + ","
+		validatorMap[val.Pubkey] = types.UserValidatorNotificationTableData{
+			Index:  val.Index,
+			Pubkey: val.Pubkey,
+		}
+	}
+	link = link[:len(link)-1]
+
+	monitoringSubscriptions := make([]types.Subscription, 0)
+	for _, sub := range subscriptions {
+		val, ok := validatorMap[sub.EventFilter]
+		if !ok {
+			if (utils.GetNetwork() == "mainnet" && strings.HasPrefix(string(sub.EventName), "monitoring_")) || strings.HasPrefix(string(sub.EventName), utils.GetNetwork()+":"+"monitoring_") {
+				monitoringSubscriptions = append(monitoringSubscriptions, sub)
+			}
+			continue
+		}
+
+		if sub.LastSent == nil {
+			zeroTime := time.Unix(0, 0)
+			sub.LastSent = &zeroTime
+		}
+
+		val.Notification = append(val.Notification, struct {
+			Notification string
+			Timestamp    uint64
+			Threshold    string
+		}{
+			Notification: string(sub.EventName),
+			Timestamp:    uint64(sub.LastSent.Unix()),
+			Threshold:    fmt.Sprintf("%.f", sub.EventThreshold),
+		})
+
+		validatorMap[sub.EventFilter] = val
+	}
+	validatorTableData := make([]types.UserValidatorNotificationTableData, 0, len(validatorMap))
+	for _, val := range validatorMap {
+		validatorTableData = append(validatorTableData, val)
+	}
+
 	//add notification-center data
 	// type metrics
 	metricsdb, err := getUserMetrics(user.UserID)
@@ -717,20 +804,6 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	monitoringSubscriptions, err := db.GetMonitoringSubscriptions(user.UserID)
-	if err != nil {
-		logger.Errorf("error retrieving validators table data for users: %v ", user.UserID, err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
-	validatorTableData, err := getValidatorTableData(user.UserID)
-	if err != nil {
-		logger.Errorf("error retrieving validators table data for users: %v ", user.UserID, err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
-
 	networkData, err := getUserNetworkEvents(user.UserID)
 	if err != nil {
 		logger.Errorf("error retrieving network data for users: %v ", user.UserID, err)
@@ -738,38 +811,14 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var watchlistPubkeys [][]byte
-	err = db.DB.Select(&watchlistPubkeys, `
-	SELECT validator_publickey
-	FROM users_validators_tags
-	WHERE user_id = $1 and tag = $2
-	`, user.UserID, types.ValidatorTagsWatchlist)
-	if err != nil && err != sql.ErrNoRows {
-		logger.Errorf("error retrieving pubkeys from watchlist validator count %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	// validatorTableData, err := getValidatorTableData(user.UserID)
+	// if err != nil {
+	// 	logger.Errorf("error retrieving validators table data for users: %v ", user.UserID, err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
 
-	var watchlistIndices []uint64
-	err = db.DB.Select(&watchlistIndices, `
-	SELECT validatorindex as index
-	FROM validators 
-	WHERE pubkey = ANY($1)
-	`, pq.ByteaArray(watchlistPubkeys))
-	if err != nil {
-		logger.Errorf("error retrieving watchlist indices validator count %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	link := "/dashboard?validators="
-	for _, i := range watchlistIndices {
-		link += strconv.FormatUint(i, 10) + ","
-	}
-
-	link = link[:len(link)-1]
 	userNotificationsCenterData.DashboardLink = link
-
 	userNotificationsCenterData.Metrics = metricsdb
 	userNotificationsCenterData.Validators = validatorTableData
 	userNotificationsCenterData.Network = networkData

@@ -271,12 +271,22 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 }
 
 func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
+
 	var subscriptions []*types.Subscription
 	query := `
 		SELECT * 
 		FROM users_subscriptions
 		WHERE user_id = $1 AND event_name LIKE $2
 	`
+
+	if utils.GetNetwork() == "mainnet" {
+		query = `
+			SELECT * 
+			FROM users_subscriptions
+			WHERE user_id = $1 AND (event_name LIKE $2 OR event_name LIKE 'monitoring_%')
+		`
+	}
+
 	err := FrontendDB.Select(&subscriptions, query, userId, utils.GetNetwork()+":"+"monitoring_"+"%")
 	return subscriptions, err
 }
@@ -570,11 +580,12 @@ func GetStatsMachineCount(userID uint64) (uint64, error) {
 }
 
 func GetStatsMachine(userID uint64) ([]string, error) {
-	// now := time.Now()
-	// nowTs := now.Unix()
-	// var day int = int(nowTs / 86400)
+	now := time.Now()
+	nowTs := now.Unix()
+	var day int = int(nowTs / 86400)
+	// log.Println("current day: ", day)
 	// for testing
-	day := 18893
+	// day := 18893
 	// log.Println("getting machine for day: ", day)
 
 	var machines []string

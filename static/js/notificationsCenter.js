@@ -81,6 +81,8 @@ function loadMonitoringData(data) {
     data = []
   }
 
+  console.log('LOADING MONITORING DATA', data)
+
   for (let i = 0; i < data.length; i++) {
     mdata.push({
       id: data[i].ID,
@@ -124,7 +126,7 @@ function loadMonitoringData(data) {
               <th scope="col" class="h6 border-bottom-0">Threshold</th>
               <th scope="col" class="h6 border-bottom-0">Machine</th>
               <th scope="col" class="h6 border-bottom-0">Most Recent</th>
-              <th scope="col" class="h6 border-bottom-0"></th>
+              <!-- <th scope="col" class="h6 border-bottom-0"></th> -->
             </tr>
           </thead>
           <tbody></tbody>
@@ -281,18 +283,18 @@ function loadMonitoringData(data) {
           if (parseInt(data) === 0) {
             return 'N/A'
           }
-          return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" })}</span>`
+          return `<span class="heading-l4">${luxon.DateTime.fromMillis(data * 1000).toRelative({ style: "long" }) || 'N/A'}</span>`
         }
       },
-      {
-        targets: 4,
-        orderable: false,
-        responsivePriority: 3,
-        data: 'event',
-        render: function (data, type, row, meta) {
-          return `<i class="fas fa-times fa-lg i-custom" filter="${row.machine}" event="${row.notification}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle="modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
-        }
-      }
+      // {
+      //   targets: 4,
+      //   orderable: false,
+      //   responsivePriority: 3,
+      //   data: 'event',
+      //   render: function (data, type, row, meta) {
+      //     return `<i class="fas fa-times fa-lg i-custom" filter="${row.machine}" event="${row.notification}" id="remove-btn" title="Remove notification" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle="modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>`
+      //   }
+      // }
     ]
   })
 }
@@ -395,7 +397,7 @@ function loadNetworkData(data) {
 
 function loadValidatorsData(data) {
   let validatorsTable = $('#validators-notifications')
-
+  console.log('CREATING VALIDATOR TABLE: ', data)
   validatorsTable.DataTable({
     language: {
       info: '_TOTAL_ entries',
@@ -448,25 +450,25 @@ function loadValidatorsData(data) {
       {
         targets: 0,
         responsivePriority: 2,
-        data: 'Validator',
+        data: null,
         render: function (data, type, row, meta) {
           if (type === 'sort' || type === 'type') {
-            return data.Index
+            return row.Index
           }
-          let datahref = `/validator/${data.Index || data.Pubkey}`
-          return `<i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + data.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + data.Pubkey.substring(0, 6) + ` ...</span></a><i class="fa fa-copy text-muted d-none d-sm-inline p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${data.Pubkey}"></i>`
+          let datahref = `/validator/${row.Index || row.Pubkey}`
+          return `<i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + row.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + row.Pubkey.substring(0, 6) + ` ...</span></a><i class="fa fa-copy text-muted d-none d-sm-inline p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${row.Pubkey}"></i>`
         }
       },
       {
         targets: 1,
         responsivePriority: 2,
-        data: 'Notifications',
+        data: null,
         render: function (data, type, row, meta) {
           if (type === 'display') {
             let notifications = ""
             let hasItems = false
-            for (let notification of data) {
-              let n = notification.Notification.split(':')
+            for (let i = 0; i < row.Notification.length; i++) {
+              let n = row.Notification[i].Notification.split(':')
               n = n[n.length - 1]
               if (VALIDATOR_EVENTS.includes(n)) {
                 hasItems = true
@@ -512,10 +514,10 @@ function loadValidatorsData(data) {
         targets: 3,
         orderable: false,
         responsivePriority: 4,
-        data: 'Notifications',
+        data: null,
         render: function (data, type, row, meta) {
           // let status = data.length > 0 ? 'checked="true"' : ""
-          let status = data.length > 0 ? '<i class="fas fa-check fa-lg"></i>' : ""
+          let status = row.Notification.length > 0 ? '<i class="fas fa-check fa-lg"></i>' : ""
           return status
           /* `<div class="form-check">
             <input class="form-check-input checkbox-custom-size" type="checkbox" value="" id="" ${status} disabled="true">
@@ -538,22 +540,22 @@ function loadValidatorsData(data) {
       {
         targets: 5,
         responsivePriority: 1,
-        data: 'Notifications',
+        data: null,
         render: function (data, type, row, meta) {
           let no_time = 'N/A'
-          if (data.length === 0) {
+          if (row.Notification.length === 0) {
             return no_time
           }
-          data.sort((a, b) => {
+          row.Notification.sort((a, b) => {
             return b.Timestamp - a.Timestamp
           });
           if (type === 'sort' || type === 'type') {
-            return data[0].Timestamp
+            return row.Notification[0].Timestamp
           }
-          if (data[0].Timestamp === 0) {
+          if (row.Notification[0].Timestamp === 0) {
             return no_time
           }
-          return `<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-2 font-weight-normal">${data[0].Notification.replace('validator', "").replaceAll('_', " ")}</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(data[0].Timestamp * 1000).toRelative({ style: "long" })}</span>`
+          return `<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-2 font-weight-normal">${ row.Notification && row.Notification.length ? row.Notification[0].Notification.replace('validator', "").replaceAll('_', " ") : 'N/A'}</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(row.Notification[0].Timestamp * 1000).toRelative({ style: "long" }) || 'N/A'}</span>`
         }
       },
       {
@@ -565,7 +567,7 @@ function loadValidatorsData(data) {
       }
     ],
     rowId: function (data, type, row, meta) {
-      return data.Validator.Pubkey
+      return data && data.length ? data[0].Pubkey : null
     }
   })
 
@@ -722,16 +724,16 @@ $(document).ready(function () {
   $('#manageNotificationsModal').on('show.bs.modal', function (e) {
     // get the selected row (single row selected)
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data()
-    if (rowData && rowData.Validator) {
+    console.log('rowDATA', rowData)
+    if (rowData && rowData.Index) {
       $('#selected-validators-events-container').append(
-        `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Validator.Pubkey}>
-        		Validator ${rowData.Validator.Index}
-          	<i class="fas fa-times ml-2" style="cursor: pointer;" title="Remove from selected validators" onclick="remove_item_from_event_container('${rowData.Validator.Pubkey}')"></i>
+        `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Pubkey}>
+        		Validator ${rowData.Index}
+          	<i class="fas fa-times ml-2" style="cursor: pointer;" title="Remove from selected validators" onclick="remove_item_from_event_container('${rowData.Pubkey}')"></i>
         </span>`
       )
-
       for (let event of $('#manage_all_events :input')) {
-        for (let item of rowData.Notifications) {
+        for (let item of rowData.Notification) {
           let n = item.Notification.split(':')
           n = n[n.length - 1]
           $(`#manage_${n} input#${$(event).attr('id')}`).prop('checked', true)
@@ -746,9 +748,9 @@ $(document).ready(function () {
         $('#update-subs-button').attr('disabled', false)
         for (let i = 0; i < rowsSelected.length; i++) {
           $('#selected-validators-events-container').append(
-            `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowsSelected[i].Validator.Pubkey}>
-              Validator ${rowsSelected[i].Validator.Index}
-              <i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowsSelected[i].Validator.Pubkey}')"></i>
+            `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowsSelected[i].Pubkey}>
+              Validator ${rowsSelected[i].Index}
+              <i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowsSelected[i].Pubkey}')"></i>
             </span>`
           )
         }
