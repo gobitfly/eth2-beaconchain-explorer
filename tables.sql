@@ -137,8 +137,9 @@ CREATE TABLE sync_assignments_9 PARTITION OF sync_assignments_p FOR VALUES IN (9
 drop table if exists sync_committees;
 create table sync_committees
 (
-    period     int   not null,
-    validators []int not null,
+    period    int not null,
+    validator int not null,
+    primary key (period, validator)
 );
 
 drop table if exists validator_balances_p;

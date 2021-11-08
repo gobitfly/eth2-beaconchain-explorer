@@ -4,10 +4,11 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/rpc"
 	"eth2-exporter/utils"
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,7 +27,7 @@ func syncCommitteesExporter(rpcClient rpc.Client) {
 
 func exportSyncCommittees(rpcClient rpc.Client) error {
 	var dbPeriods []uint64
-	err := db.DB.Select(&dbPeriods, `select period from sync_committees`)
+	err := db.DB.Select(&dbPeriods, `select period from sync_committees group by period`)
 	if err != nil {
 		return err
 	}
@@ -35,32 +36,43 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 		dbPeriodsMap[p] = true
 	}
 	currEpoch := utils.TimeToEpoch(time.Now())
-	nextPeriod := utils.EpochToSyncPeriod(uint64(currEpoch) + 1)
-	for p := uint64(0); p <= nextPeriod; p++ {
+	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch) + 1)
+	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.AltairForkEpoch) + 1
+	for p := firstPeriod; p <= lastPeriod; p++ {
 		_, exists := dbPeriodsMap[p]
 		if !exists {
-			c, err := rpcClient.GetSyncCommittee("head", p*utils.Config.Chain.Altair.EpochsPerSyncCommitteePeriod)
+			t0 := time.Now()
+			err = exportSyncCommitteeAtPeriod(rpcClient, p)
 			if err != nil {
 				return err
 			}
-			validatorsI64 := make([]int64, 0)
-			for _, i := range c.Validators {
-				parsed, err := strconv.ParseInt(i, 10, 64)
-				if err != nil {
-					return err
-				}
-				validatorsI64 = append(validatorsI64, parsed)
-			}
-			pqValidators := pq.Int64Array(validatorsI64)
-			_, err = db.DB.Exec(
-				`insert into sync_committees (period, validators) values ($1, $2)`,
-				p,
-				pqValidators,
-			)
-			if err != nil {
-				return err
-			}
+			logrus.WithFields(logrus.Fields{"period": p, "duration": time.Since(t0)}).Infof("exported sync_committee")
 		}
+	}
+	return nil
+}
+
+func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
+	firstEpoch := utils.FirstEpochOfSyncPeriod(p)
+	c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", firstEpoch*utils.Config.Chain.SlotsPerEpoch), firstEpoch)
+	if err != nil {
+		return err
+	}
+	valueArgs := make([]interface{}, len(c.Validators)*2)
+	valueStrings := make([]string, len(c.Validators))
+	for i, idxStr := range c.Validators {
+		idxU64, err := strconv.ParseUint(idxStr, 10, 64)
+		if err != nil {
+			return err
+		}
+		valueArgs[i*2+0] = p
+		valueArgs[i*2+1] = idxU64
+		valueStrings[i] = fmt.Sprintf("($%d,$%d)", i*2+1, i*2+2)
+	}
+	stmt := fmt.Sprintf(`insert into sync_committees (period, validator) values %s`, strings.Join(valueStrings, ","))
+	_, err = db.DB.Exec(stmt, valueArgs...)
+	if err != nil {
+		return err
 	}
 	return nil
 }

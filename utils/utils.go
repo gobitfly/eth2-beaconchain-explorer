@@ -164,12 +164,19 @@ func fixUtf(r rune) rune {
 	return r
 }
 
-func EpochToSyncPeriod(epoch uint64) uint64 {
+func SyncPeriodOfEpoch(epoch uint64) uint64 {
+	if epoch < Config.Chain.AltairForkEpoch {
+		return 0
+	}
 	return epoch / Config.Chain.EpochsPerSyncCommitteePeriod
 }
 
+func FirstEpochOfSyncPeriod(syncPeriod uint64) uint64 {
+	return syncPeriod * Config.Chain.EpochsPerSyncCommitteePeriod
+}
+
 func TimeToSyncPeriod(t time.Time) uint64 {
-	return EpochToSyncPeriod(uint64(TimeToEpoch(t)))
+	return SyncPeriodOfEpoch(uint64(TimeToEpoch(t)))
 }
 
 // EpochOfSlot returns the corresponding epoch of a slot
@@ -185,10 +192,6 @@ func DayOfSlot(slot uint64) uint64 {
 // WeekOfSlot returns the corresponding week of a slot
 func WeekOfSlot(slot uint64) uint64 {
 	return Config.Chain.SecondsPerSlot * slot / (7 * 24 * 3600)
-}
-
-func SyncPeriodOfEpoch(epoch uint64) uint64 {
-	return Config.Chain.Altair.EpochsPerSyncCommitteePeriod / epoch
 }
 
 // SlotToTime returns a time.Time to slot

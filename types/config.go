@@ -25,9 +25,10 @@ type Config struct {
 		// Deprecated Use Phase0 config GENESIS_DELAY
 		GenesisDelay uint64 `yaml:"genesisDelay" envconfig:"CHAIN_GENESIS_DELAY"`
 		// Deprecated Use Phase0 config CONFIG_NAME == "mainnet"
-		Mainnet    bool   `yaml:"mainnet" envconfig:"CHAIN_MAINNET"`
-		Phase0Path string `yaml:"phase0path" envconfig:"CHAIN_PHASE0_PATH"`
-		AltairPath string `yaml:"altairPath" envconfig:"CHAIN_ALTAIR_PATH"`
+		Mainnet         bool   `yaml:"mainnet" envconfig:"CHAIN_MAINNET"`
+		Phase0Path      string `yaml:"phase0path" envconfig:"CHAIN_PHASE0_PATH"`
+		AltairPath      string `yaml:"altairPath" envconfig:"CHAIN_ALTAIR_PATH"`
+		AltairForkEpoch uint64 `yaml:"altairForkEpoch" envconfig:"CHAIN_ALTAIR_FORK_VERSION"`
 		Phase0
 		Altair
 	} `yaml:"chain"`
