@@ -172,17 +172,27 @@ func TimeToSyncPeriod(t time.Time) uint64 {
 	return EpochToSyncPeriod(uint64(TimeToEpoch(t)))
 }
 
-// EpochOfSlot will return the corresponding epoch of a slot
+// EpochOfSlot returns the corresponding epoch of a slot
 func EpochOfSlot(slot uint64) uint64 {
 	return slot / Config.Chain.SlotsPerEpoch
 }
 
-// SlotToTime will return a time.Time to slot
+// DayOfSlot returns the corresponding day of a slot
+func DayOfSlot(slot uint64) uint64 {
+	return Config.Chain.SecondsPerSlot * slot / (24 * 3600)
+}
+
+// WeekOfSlot returns the corresponding week of a slot
+func WeekOfSlot(slot uint64) uint64 {
+	return Config.Chain.SecondsPerSlot * slot / (7 * 24 * 3600)
+}
+
+// SlotToTime returns a time.Time to slot
 func SlotToTime(slot uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.SecondsPerSlot), 0)
 }
 
-// TimeToSlot will return time to slot in seconds
+// TimeToSlot returns time to slot in seconds
 func TimeToSlot(timestamp uint64) uint64 {
 	if Config.Chain.GenesisTimestamp > timestamp {
 		return 0

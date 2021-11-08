@@ -1354,21 +1354,24 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				if bitLen < valLen {
 					return fmt.Errorf("error getting sync_committee participants: bitLen != valLen: %v != %v", bitLen, valLen)
 				}
+				nArgs := 4
 				valueStrings := make([]string, valLen)
-				valueArgs := make([]interface{}, valLen*3)
+				valueArgs := make([]interface{}, valLen*nArgs)
 				for i, valIndex := range b.SyncAggregate.SyncCommitteeValidators {
-					valueStrings[i] = fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3)
-					valueArgs[i*3] = b.Slot
-					valueArgs[i*3+1] = valIndex
-					valueArgs[i*3+2] = 0
+					valueStrings[i] = fmt.Sprintf("($%d, $%d, $%d, $%d)", i*nArgs+1, i*nArgs+2, i*nArgs+3, i*nArgs+4)
+					valueArgs[i*nArgs] = b.Slot
+					valueArgs[i*nArgs+1] = valIndex
 					if utils.BitAtVector(b.SyncAggregate.SyncCommitteeBits, i) {
-						valueArgs[i*3+2] = 1
+						valueArgs[i*nArgs+2] = 1
+					} else {
+						valueArgs[i*nArgs+2] = 0
 					}
+					valueArgs[i*nArgs+3] = utils.WeekOfSlot(b.Slot)
 				}
 				stmt := fmt.Sprintf(`
-					INSERT INTO sync_assignments (slot, validatorindex, status)
+					INSERT INTO sync_assignments_p (slot, validatorindex, status, week)
 					VALUES %s
-					ON CONFLICT (slot, validatorindex) DO UPDATE SET status = excluded.status`, strings.Join(valueStrings, ","))
+					ON CONFLICT (slot, validatorindex, week) DO UPDATE SET status = excluded.status`, strings.Join(valueStrings, ","))
 				_, err := tx.Exec(stmt, valueArgs...)
 				if err != nil {
 					return fmt.Errorf("error executing sync_assignments insert for block %v: %w", b.Slot, err)

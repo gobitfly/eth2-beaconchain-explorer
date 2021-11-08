@@ -1,14 +1,18 @@
 package exporter
 
-import "time"
+import (
+	"eth2-exporter/rpc"
+	"time"
+)
 
-func syncCommitteesExporter() {
+func syncCommitteesExporter(rpcClient rpc.Client) {
 	for {
-		exportSyncCommittee()
+		exportSyncCommittee(rpcClient)
 		time.Sleep(time.Second * 12)
 	}
 }
 
-func exportSyncCommittee() error {
+func exportSyncCommittee(rpcClient rpc.Client) error {
+	//db.DB.Select(`select period from sync_committees`)
 	return nil
 }
