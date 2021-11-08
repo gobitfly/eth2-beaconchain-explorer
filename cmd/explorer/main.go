@@ -15,11 +15,9 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	httpSwagger "github.com/swaggo/http-swagger"
-	"gopkg.in/yaml.v2"
 
 	"github.com/sirupsen/logrus"
 
@@ -46,7 +44,7 @@ func initStripe(http *mux.Router) error {
 
 func main() {
 
-	configPath := flag.String("config", "config.yml", "Path to the config file")
+	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
 	flag.Parse()
 
 	logrus.Printf("config file path: %v", *configPath)
@@ -56,22 +54,6 @@ func main() {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	// decode phase0 config
-	if len(utils.Config.Chain.Phase0Path) > 0 {
-		phase0 := &types.Phase0{}
-		f, err := os.Open(utils.Config.Chain.Phase0Path)
-		if err != nil {
-			logrus.Errorf("error opening Phase0 Config file %v: %v", utils.Config.Chain.Phase0Path, err)
-		} else {
-			decoder := yaml.NewDecoder(f)
-			err = decoder.Decode(phase0)
-			if err != nil {
-				logrus.Errorf("error decoding Phase0 Config file %v: %v", utils.Config.Chain.Phase0Path, err)
-			} else {
-				utils.Config.Chain.Phase0 = *phase0
-			}
-		}
-	}
 
 	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
 	defer db.DB.Close()

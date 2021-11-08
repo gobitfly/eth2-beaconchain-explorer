@@ -113,6 +113,22 @@ CREATE TABLE attestation_assignments_7 PARTITION OF attestation_assignments_p FO
 CREATE TABLE attestation_assignments_8 PARTITION OF attestation_assignments_p FOR VALUES IN (8);
 CREATE TABLE attestation_assignments_9 PARTITION OF attestation_assignments_p FOR VALUES IN (9);
 
+drop table if exists sync_assignments;
+create table sync_assignments
+(
+    slot           int not null,
+    validatorindex int not null,
+    status         int not null, /* Can be 0 = scheduled, 1 = executed */
+    primary key (slot, validatorindex)
+);
+
+drop table if exists sync_committees;
+create table sync_committees
+(
+    period     int   not null,
+    validators []int not null,
+);
+
 drop table if exists validator_balances_p;
 create table validator_balances_p
 (

@@ -667,7 +667,7 @@ func (pc *PrysmClient) parseAltairBlock(block *ethpb.BeaconBlockContainerAltair)
 		bits := blk.Block.Body.SyncAggregate.SyncCommitteeBits.Bytes()
 		b.SyncAggregate = &types.SyncAggregate{
 			SyncCommitteeBits:          bits,
-			SyncAggregateParticipation: bitlistParticipation(bits),
+			SyncAggregateParticipation: syncCommitteeParticipation(bits),
 			SyncCommitteeSignature:     blk.Block.Body.SyncAggregate.SyncCommitteeSignature,
 		}
 	}

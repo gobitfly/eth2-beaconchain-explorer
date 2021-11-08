@@ -623,7 +623,7 @@ func SaveEpoch(data *types.EpochData) error {
 
 	tx, err := DB.Begin()
 	if err != nil {
-		return fmt.Errorf("error starting db transactions: %v", err)
+		return fmt.Errorf("error starting db transactions: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -633,31 +633,31 @@ func SaveEpoch(data *types.EpochData) error {
 	err = saveBlocks(data.Blocks, tx)
 	if err != nil {
 		logger.Fatalf("error saving blocks to db: %v", err)
-		return fmt.Errorf("error saving blocks to db: %v", err)
+		return fmt.Errorf("error saving blocks to db: %w", err)
 	}
 
 	logger.Infof("exporting validators data")
 	err = saveValidators(data.Epoch, data.Validators, tx)
 	if err != nil {
-		return fmt.Errorf("error saving validators to db: %v", err)
+		return fmt.Errorf("error saving validators to db: %w", err)
 	}
 
 	logger.Infof("exporting proposal assignments data")
 	err = saveValidatorProposalAssignments(data.Epoch, data.ValidatorAssignmentes.ProposerAssignments, tx)
 	if err != nil {
-		return fmt.Errorf("error saving validator assignments to db: %v", err)
+		return fmt.Errorf("error saving validator proposal assignments to db: %w", err)
 	}
 
 	logger.Infof("exporting attestation assignments data")
 	err = saveValidatorAttestationAssignments(data.Epoch, data.ValidatorAssignmentes.AttestorAssignments, tx)
 	if err != nil {
-		return fmt.Errorf("error saving validator assignments to db: %v", err)
+		return fmt.Errorf("error saving validator attestation assignments to db: %w", err)
 	}
 
 	logger.Infof("exporting validator balance data")
 	err = saveValidatorBalances(data.Epoch, data.Validators, tx)
 	if err != nil {
-		return fmt.Errorf("error saving validator balances to db: %v", err)
+		return fmt.Errorf("error saving validator balances to db: %w", err)
 	}
 
 	// only export recent validator balances if the epoch is within the threshold
@@ -665,7 +665,7 @@ func SaveEpoch(data *types.EpochData) error {
 		logger.Infof("exporting recent validator balance data")
 		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
 		if err != nil {
-			return fmt.Errorf("error saving recent validator balances to db: %v", err)
+			return fmt.Errorf("error saving recent validator balances to db: %w", err)
 		}
 	} else {
 		logger.Infof("skipping export of recent validator balance data")
@@ -747,16 +747,16 @@ func SaveEpoch(data *types.EpochData) error {
 		data.EpochParticipationStats.VotedEther)
 
 	if err != nil {
-		return fmt.Errorf("error executing save epoch statement: %v", err)
+		return fmt.Errorf("error executing save epoch statement: %w", err)
 	}
 
 	err = saveGraffitiwall(data.Blocks, tx)
 	if err != nil {
-		return fmt.Errorf("error saving graffitiwall: %v", err)
+		return fmt.Errorf("error saving graffitiwall: %w", err)
 	}
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("error committing db transaction: %v", err)
+		return fmt.Errorf("error committing db transaction: %w", err)
 	}
 
 	logger.Infof("export of epoch %v completed, took %v", data.Epoch, time.Since(start))
@@ -1345,8 +1345,38 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				}
 			}
 			logger.Tracef("done, took %v", time.Since(n))
-			n = time.Now()
 
+			n = time.Now()
+			logger.Tracef("writing sync_assignments data")
+			if b.SyncAggregate != nil {
+				bitLen := len(b.SyncAggregate.SyncCommitteeBits) * 8
+				valLen := len(b.SyncAggregate.SyncCommitteeValidators)
+				if bitLen < valLen {
+					return fmt.Errorf("error getting sync_committee participants: bitLen != valLen: %v != %v", bitLen, valLen)
+				}
+				valueStrings := make([]string, valLen)
+				valueArgs := make([]interface{}, valLen*3)
+				for i, valIndex := range b.SyncAggregate.SyncCommitteeValidators {
+					valueStrings[i] = fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3)
+					valueArgs[i*3] = b.Slot
+					valueArgs[i*3+1] = valIndex
+					valueArgs[i*3+2] = 0
+					if utils.BitAtVector(b.SyncAggregate.SyncCommitteeBits, i) {
+						valueArgs[i*3+2] = 1
+					}
+				}
+				stmt := fmt.Sprintf(`
+					INSERT INTO sync_assignments (slot, validatorindex, status)
+					VALUES %s
+					ON CONFLICT (slot, validatorindex) DO UPDATE SET status = excluded.status`, strings.Join(valueStrings, ","))
+				_, err := tx.Exec(stmt, valueArgs...)
+				if err != nil {
+					return fmt.Errorf("error executing sync_assignments insert for block %v: %w", b.Slot, err)
+				}
+			}
+			logger.Tracef("done, took %v", time.Since(n))
+
+			n = time.Now()
 			logger.Tracef("writing attestation data")
 
 			for i, a := range b.Attestations {

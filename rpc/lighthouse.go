@@ -12,8 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/protolambda/zssz/bitfields"
-
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prysmaticlabs/go-bitfield"
 )
@@ -205,22 +203,36 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 	// Now use the state root to make a consistent committee query
 	committeesResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/committees?epoch=%d", lc.endpoint, depStateRoot, epoch))
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving chain header: %v", err)
+		return nil, fmt.Errorf("error retrieving committees data: %w", err)
 	}
 	var parsedCommittees StandardCommitteesResponse
 	err = json.Unmarshal(committeesResp, &parsedCommittees)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing committees data: %v", err)
+		return nil, fmt.Errorf("error parsing committees data: %w", err)
+	}
+
+	syncCommitteesResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/sync_committees?epoch=%d", lc.endpoint, depStateRoot, epoch))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving sync_committees for epoch %v (state: %v): %w", epoch, depStateRoot, err)
+	}
+	var parsedSyncCommittees StandardSyncCommitteesResponse
+	err = json.Unmarshal(syncCommitteesResp, &parsedSyncCommittees)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing sync_committees data: %w", err)
 	}
 
 	assignments := &types.EpochAssignments{
 		ProposerAssignments: make(map[uint64]uint64),
 		AttestorAssignments: make(map[string]uint64),
+		SyncAssignments:     make([]uint64, len(parsedSyncCommittees.Data.Validators)),
 	}
+
+	// propose
 	for _, duty := range parsedProposerResponse.Data {
 		assignments.ProposerAssignments[uint64(duty.Slot)] = uint64(duty.ValidatorIndex)
 	}
 
+	// attest
 	for _, committee := range parsedCommittees.Data {
 		for i, valIndex := range committee.Validators {
 			valIndexU64, err := strconv.ParseUint(valIndex, 10, 64)
@@ -232,7 +244,16 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 		}
 	}
 
-	if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 {
+	// sync
+	for i, valIndexStr := range parsedSyncCommittees.Data.Validators {
+		valIndexU64, err := strconv.ParseUint(valIndexStr, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("in sync_committee for epoch %d validator %d has bad validator index: %q", epoch, i, valIndexStr)
+		}
+		assignments.SyncAssignments[i] = valIndexU64
+	}
+
+	if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 && len(assignments.SyncAssignments) > 0 {
 		lc.assignmentsCache.Add(epoch, assignments)
 	}
 
@@ -395,17 +416,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	return data, nil
 }
 
-func bitlistParticipation(bits []byte) float64 {
-	bitLen := bitfields.BitlistLen(bits)
-	participating := uint64(0)
-	for i := uint64(0); i < bitLen; i++ {
-		if bitfields.GetBit(bits, i) {
-			participating += 1
-		}
-	}
-	return float64(participating) / float64(bitLen)
-}
-
 func uint64List(li []uint64Str) []uint64 {
 	out := make([]uint64, len(li), len(li))
 	for i, v := range li {
@@ -496,11 +506,22 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		VoluntaryExits:    make([]*types.VoluntaryExit, len(parsedBlock.Message.Body.VoluntaryExits)),
 	}
 
+	epochAssignments, err := lc.GetEpochAssignments(slot / utils.Config.Chain.SlotsPerEpoch)
+	if err != nil {
+		return nil, err
+	}
+
 	if agg := parsedBlock.Message.Body.SyncAggregate; agg != nil {
 		bits := utils.MustParseHex(agg.SyncCommitteeBits)
+
+		if utils.Config.Chain.Altair.SyncCommitteeSize != uint64(len(bits)*8) {
+			return nil, fmt.Errorf("sync-aggregate-bits-size does not match sync-committee-size: %v != %v", len(bits)*8, utils.Config.Chain.Altair.SyncCommitteeSize)
+		}
+
 		block.SyncAggregate = &types.SyncAggregate{
+			SyncCommitteeValidators:    epochAssignments.SyncAssignments,
 			SyncCommitteeBits:          bits,
-			SyncAggregateParticipation: bitlistParticipation(bits),
+			SyncAggregateParticipation: syncCommitteeParticipation(bits),
 			SyncCommitteeSignature:     utils.MustParseHex(agg.SyncCommitteeSignature),
 		}
 	}
@@ -630,6 +651,16 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 	}
 
 	return []*types.Block{block}, nil
+}
+
+func syncCommitteeParticipation(bits []byte) float64 {
+	participating := 0
+	for i := 0; i < int(utils.Config.Chain.Altair.SyncCommitteeSize); i++ {
+		if utils.BitAtVector(bits, i) {
+			participating++
+		}
+	}
+	return float64(participating) / float64(utils.Config.Chain.Altair.SyncCommitteeSize)
 }
 
 // GetValidatorParticipation will get the validator participation from the Lighthouse RPC api
@@ -768,6 +799,15 @@ type StandardCommitteeEntry struct {
 
 type StandardCommitteesResponse struct {
 	Data []StandardCommitteeEntry `json:"data"`
+}
+
+type StandardSyncCommittee struct {
+	Validators          []string   `json:"validators"`
+	ValidatorAggregates [][]string `json:"validator_aggregates"`
+}
+
+type StandardSyncCommitteesResponse struct {
+	Data StandardSyncCommittee `json:"data"`
 }
 
 type LighthouseValidatorParticipationResponse struct {

@@ -30,6 +30,7 @@ func Start(client rpc.Client) error {
 	go genesisDepositsExporter()
 	go checkSubscriptions()
 	go cleanupOldMachineStats()
+	go syncCommitteesExporter()
 	if utils.Config.SSVExporter.Enabled {
 		go ssvExporter()
 	}

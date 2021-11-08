@@ -33,6 +33,7 @@ import (
 
 	"github.com/kataras/i18n"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/sirupsen/logrus"
 )
 
 // Config is the globally accessible configuration
@@ -163,6 +164,14 @@ func fixUtf(r rune) rune {
 	return r
 }
 
+func EpochToSyncPeriod(epoch uint64) uint64 {
+	return epoch / Config.Chain.EpochsPerSyncCommitteePeriod
+}
+
+func TimeToSyncPeriod(t time.Time) uint64 {
+	return EpochToSyncPeriod(uint64(TimeToEpoch(t)))
+}
+
 // EpochOfSlot will return the corresponding epoch of a slot
 func EpochOfSlot(slot uint64) uint64 {
 	return slot / Config.Chain.SlotsPerEpoch
@@ -220,7 +229,48 @@ func ReadConfig(cfg *types.Config, path string) error {
 	}
 
 	readConfigEnv(cfg)
-	return readConfigSecrets(cfg)
+	err = readConfigSecrets(cfg)
+	if err != nil {
+		return err
+	}
+
+	// decode phase0 config
+	if len(cfg.Chain.Phase0Path) == 0 {
+		cfg.Chain.Phase0Path = "config/phase0.yml"
+	}
+	phase0 := &types.Phase0{}
+	f, err := os.Open(cfg.Chain.Phase0Path)
+	if err != nil {
+		logrus.Errorf("error opening Phase0 Config file %v: %v", cfg.Chain.Phase0Path, err)
+	} else {
+		decoder := yaml.NewDecoder(f)
+		err = decoder.Decode(phase0)
+		if err != nil {
+			logrus.Errorf("error decoding Phase0 Config file %v: %v", cfg.Chain.Phase0Path, err)
+		} else {
+			cfg.Chain.Phase0 = *phase0
+		}
+	}
+
+	// decode altair config
+	if len(cfg.Chain.AltairPath) == 0 {
+		cfg.Chain.AltairPath = "config/altair.yml"
+	}
+	altair := &types.Altair{}
+	f, err = os.Open(cfg.Chain.AltairPath)
+	if err != nil {
+		logrus.Errorf("error opening altair config file %v: %v", cfg.Chain.AltairPath, err)
+	} else {
+		decoder := yaml.NewDecoder(f)
+		err = decoder.Decode(altair)
+		if err != nil {
+			logrus.Errorf("error decoding altair Config file %v: %v", cfg.Chain.AltairPath, err)
+		} else {
+			cfg.Chain.Altair = *altair
+		}
+	}
+
+	return nil
 }
 
 func readConfigFile(cfg *types.Config, path string) error {
@@ -510,4 +560,14 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 	}
 
 	return false, fmt.Errorf("Score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
+}
+
+func BitAtVector(b []byte, i int) bool {
+	bb := b[i/8]
+	return (bb & (1 << uint(i))) > 0
+}
+
+func BitAtVectorReversed(b []byte, i int) bool {
+	bb := b[i/8]
+	return (bb & (1 << uint(7-i))) > 0
 }
