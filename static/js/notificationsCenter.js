@@ -477,21 +477,24 @@ function loadValidatorsData(data) {
               if (VALIDATOR_EVENTS.includes(n)) {
                 hasItems = true
                 let badgeColor = ""
+                let textColor = ""
                 switch (n) {
                   case 'validator_attestation_missed':
                     badgeColor = 'badge-warning'
+                    textColor = 'text-white'
                     break
                   case 'validator_proposal_submitted':
                     badgeColor = 'badge-light'
                     break
                   case 'validator_proposal_missed':
                     badgeColor = 'badge-warning'
+                    textColor = 'text-white'
                     break
                   case 'validator_got_slashed':
                     badgeColor = 'badge-light'
                     break
                 }
-                notifications += `<span class="badge badge-pill ${badgeColor} badge-custom-size mr-1 my-1 font-weight-normal">${n.replace('validator', "").replaceAll('_', " ")}</span>`
+                notifications += `<span style="font-size: 12px; font-weight: 500;" class="badge badge-pill ${badgeColor} ${textColor} badge-custom-size mr-1 my-1">${n.replace('validator', "").replaceAll('_', " ")}</span>`
               }
             }
             if (!hasItems) {
@@ -559,7 +562,7 @@ function loadValidatorsData(data) {
           if (row.Notification[0].Timestamp === 0) {
             return no_time
           }
-          return `<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-2 font-weight-normal">${ row.Notification && row.Notification.length ? row.Notification[0].Notification.replace('validator', "").replaceAll('_', " ") : 'N/A'}</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(row.Notification[0].Timestamp * 1000).toRelative({ style: "long" }) || 'N/A'}</span>`
+          return `<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-2">${ row.Notification && row.Notification.length ? row.Notification[0].Notification.replace('validator', "").replaceAll('_', " ") : 'N/A'}</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(row.Notification[0].Timestamp * 1000).toRelative({ style: "long" }) || 'N/A'}</span>`
         }
       },
       {
@@ -733,7 +736,7 @@ $(document).ready(function () {
     console.log('rowDATA', rowData)
     if (rowData && rowData.Index) {
       $('#selected-validators-events-container').append(
-        `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowData.Pubkey}>
+        `<span style="font-size: 12px; font-weight: 500;" id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2" pk=${rowData.Pubkey}>
         		Validator ${rowData.Index}
           	<i class="fas fa-times ml-2" style="cursor: pointer;" title="Remove from selected validators" onclick="remove_item_from_event_container('${rowData.Pubkey}')"></i>
         </span>`
@@ -754,7 +757,7 @@ $(document).ready(function () {
         $('#update-subs-button').attr('disabled', false)
         for (let i = 0; i < rowsSelected.length; i++) {
           $('#selected-validators-events-container').append(
-            `<span id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2 font-weight-normal" pk=${rowsSelected[i].Pubkey}>
+            `<span style="font-size: 12px; font-weight: 500;" id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2" pk=${rowsSelected[i].Pubkey}>
               Validator ${rowsSelected[i].Index}
               <i class="fas fa-times ml-2" style="cursor: pointer;" onclick="remove_item_from_event_container('${rowsSelected[i].Pubkey}')"></i>
             </span>`
