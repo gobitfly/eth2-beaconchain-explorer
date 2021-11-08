@@ -211,20 +211,15 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 		return nil, fmt.Errorf("error parsing committees data: %w", err)
 	}
 
-	syncCommitteesResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/sync_committees?epoch=%d", lc.endpoint, depStateRoot, epoch))
+	parsedSyncCommittees, err := lc.GetSyncCommittee(depStateRoot, epoch)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving sync_committees for epoch %v (state: %v): %w", epoch, depStateRoot, err)
-	}
-	var parsedSyncCommittees StandardSyncCommitteesResponse
-	err = json.Unmarshal(syncCommitteesResp, &parsedSyncCommittees)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing sync_committees data: %w", err)
+		return nil, err
 	}
 
 	assignments := &types.EpochAssignments{
 		ProposerAssignments: make(map[uint64]uint64),
 		AttestorAssignments: make(map[string]uint64),
-		SyncAssignments:     make([]uint64, len(parsedSyncCommittees.Data.Validators)),
+		SyncAssignments:     make([]uint64, len(parsedSyncCommittees.Validators)),
 	}
 
 	// propose
@@ -245,7 +240,7 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 	}
 
 	// sync
-	for i, valIndexStr := range parsedSyncCommittees.Data.Validators {
+	for i, valIndexStr := range parsedSyncCommittees.Validators {
 		valIndexU64, err := strconv.ParseUint(valIndexStr, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("in sync_committee for epoch %d validator %d has bad validator index: %q", epoch, i, valIndexStr)
@@ -692,6 +687,19 @@ func (lc *LighthouseClient) GetFinalityCheckpoints(epoch uint64) (*types.Finalit
 	// 	return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
 	// }
 	return &types.FinalityCheckpoints{}, nil
+}
+
+func (lc *LighthouseClient) GetSyncCommittee(stateID string, epoch uint64) (*StandardSyncCommittee, error) {
+	syncCommitteesResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/sync_committees?epoch=%d", lc.endpoint, stateID, epoch))
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving sync_committees for epoch %v (state: %v): %w", epoch, stateID, err)
+	}
+	var parsedSyncCommittees StandardSyncCommitteesResponse
+	err = json.Unmarshal(syncCommitteesResp, &parsedSyncCommittees)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing sync_committees data for epoch %v (state: %v): %w", epoch, stateID, err)
+	}
+	return &parsedSyncCommittees.Data, nil
 }
 
 var notFoundErr = errors.New("not found 404")

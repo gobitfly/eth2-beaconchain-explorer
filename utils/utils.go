@@ -187,6 +187,10 @@ func WeekOfSlot(slot uint64) uint64 {
 	return Config.Chain.SecondsPerSlot * slot / (7 * 24 * 3600)
 }
 
+func SyncPeriodOfEpoch(epoch uint64) uint64 {
+	return Config.Chain.Altair.EpochsPerSyncCommitteePeriod / epoch
+}
+
 // SlotToTime returns a time.Time to slot
 func SlotToTime(slot uint64) time.Time {
 	return time.Unix(int64(Config.Chain.GenesisTimestamp+slot*Config.Chain.SecondsPerSlot), 0)
