@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
@@ -938,11 +940,16 @@ func getTokenByCode(w http.ResponseWriter, r *http.Request) {
 
 	pkg, err := db.GetUserPremiumPackage(codeAuthData.UserID)
 	if err != nil {
-		pkg = "standard"
+		pkg.Package = "standard"
+	}
+
+	var theme string = ""
+	if pkg.Store == "ethpool" {
+		theme = "ethpool"
 	}
 
 	// Create access token
-	token, expiresIn, err := utils.CreateAccessToken(codeAuthData.UserID, codeAuthData.AppID, deviceID, pkg)
+	token, expiresIn, err := utils.CreateAccessToken(codeAuthData.UserID, codeAuthData.AppID, deviceID, pkg.Package, theme)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.ServerError, "can not create access_token")
@@ -985,11 +992,16 @@ func getTokenByRefresh(w http.ResponseWriter, r *http.Request) {
 
 	pkg, err := db.GetUserPremiumPackage(userID)
 	if err != nil {
-		pkg = "standard"
+		pkg.Package = "standard"
+	}
+
+	var theme string = ""
+	if pkg.Store == "ethpool" {
+		theme = "ethpool"
 	}
 
 	// Create access token
-	token, expiresIn, err := utils.CreateAccessToken(userID, unsafeClaims.AppID, unsafeClaims.DeviceID, pkg)
+	token, expiresIn, err := utils.CreateAccessToken(userID, unsafeClaims.AppID, unsafeClaims.DeviceID, pkg.Package, theme)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		utils.SendOAuthErrorResponse(j, r.URL.String(), utils.ServerError, "can not create access_token")
@@ -1047,6 +1059,61 @@ func MobileNotificationUpdatePOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	OKResponse(w, r)
+}
+
+func RegisterEthpoolSubscription(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	j := json.NewEncoder(w)
+
+	pkg := FormValueOrJSON(r, "package")
+	ethpoolUserID := FormValueOrJSON(r, "user_id")
+	signature := FormValueOrJSON(r, "signature")
+
+	localSignature := hmacSign(fmt.Sprintf("ETHPOOL %v %v", pkg, ethpoolUserID))
+	if signature != localSignature {
+		w.WriteHeader(http.StatusInternalServerError)
+		logger.Errorf("signature missmatch %v | %v", signature, localSignature)
+		sendErrorResponse(j, r.URL.String(), "Unauthorized: signature not valid")
+		return
+	}
+
+	claims := getAuthClaims(r)
+
+	subscriptionCount, err := db.GetAppSubscriptionCount(claims.UserID)
+	if err != nil || subscriptionCount >= 5 {
+		w.WriteHeader(http.StatusInternalServerError)
+		sendErrorResponse(j, r.URL.String(), "reached max subscription limit")
+		return
+	}
+
+	parsedBase := types.MobileSubscription{
+		ProductID:   pkg,
+		Valid:       true,
+		PriceMicros: 0,
+		Currency:    "USD",
+		Transaction: types.MobileSubscriptionTransactionGeneric{
+			Type:    "ethpool",
+			Receipt: hmacSign(fmt.Sprintf("BEACONCHAIN %v", ethpoolUserID)), // use own signed message that excludes pkg to mitigate 2x free (goldfish and whale) keys
+			ID:      pkg,
+		},
+	}
+
+	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, 0, "", "")
+	if err != nil {
+		logger.Errorf("could not save subscription data %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		sendErrorResponse(j, r.URL.String(), "Can not save subscription data")
+		return
+	}
+
+	OKResponse(w, r)
+}
+
+func hmacSign(data string) string {
+	h := hmac.New(sha256.New, []byte(utils.Config.Frontend.BeaconchainETHPoolBridgeSecret))
+	h.Write([]byte(data))
+	sha := hex.EncodeToString(h.Sum(nil))
+	return sha
 }
 
 func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {

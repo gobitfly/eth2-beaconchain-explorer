@@ -44,7 +44,7 @@ func AddToWatchlist(watchlist []WatchlistEntry, network string) error {
 		qry += "),"
 	}
 
-	qry = qry[:len(qry)-1] + " ON CONFLICT DO NOTHING;"
+	qry = qry[:len(qry)-1] + " ON CONFLICT (user_id, validator_publickey, tag) DO NOTHING;"
 
 	_, err := FrontendDB.Exec(qry, args...)
 	return err

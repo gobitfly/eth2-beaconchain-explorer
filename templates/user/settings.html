@@ -724,6 +724,7 @@
                                         <h5>Device: {{ $value.DeviceName }}</h5>
                                         <h6>Linked App: {{ $value.AppName }}</h6>
                                     </div>
+                                    {{ if not (eq $value.AppName "Ethpool Solo Staking") }}
                                     <div >
                                         <a style="color: #fff" id="active_{{ $value.ID }}" data-deviceid="{{ $value.ID }}"
                                             class="btn btn-danger ml-2 btn-icon-inside btn-sm text-white device-delete-btn"
@@ -739,6 +740,7 @@
                                             CURRENT_DELETE_DEVICE_ID = deviceId;
                                         });
                                     </script>
+                                    {{end}}
                                 </div>
                                 <br />
                                 <span style="margin-left:4%;">
