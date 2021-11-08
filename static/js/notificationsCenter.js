@@ -465,6 +465,10 @@ function loadValidatorsData(data) {
         data: null,
         render: function (data, type, row, meta) {
           if (type === 'display') {
+            if (!row.Notification) {
+              row.Notification = []
+            }
+            console.log(row, row.Notification)
             let notifications = ""
             let hasItems = false
             for (let i = 0; i < row.Notification.length; i++) {
@@ -567,7 +571,8 @@ function loadValidatorsData(data) {
       }
     ],
     rowId: function (data, type, row, meta) {
-      return data && data.length ? data[0].Pubkey : null
+      console.log('setting row id:', data.Pubkey)
+      return data ? data.Pubkey : null
     }
   })
 
@@ -723,6 +728,7 @@ $(document).ready(function () {
   // on modal open after click event to validators table edit button
   $('#manageNotificationsModal').on('show.bs.modal', function (e) {
     // get the selected row (single row selected)
+    console.log('rowid', $(this).attr('rowId'))
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data()
     console.log('rowDATA', rowData)
     if (rowData && rowData.Index) {
