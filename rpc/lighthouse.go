@@ -211,15 +211,9 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 		return nil, fmt.Errorf("error parsing committees data: %w", err)
 	}
 
-	parsedSyncCommittees, err := lc.GetSyncCommittee(depStateRoot, epoch)
-	if err != nil {
-		return nil, err
-	}
-
 	assignments := &types.EpochAssignments{
 		ProposerAssignments: make(map[uint64]uint64),
 		AttestorAssignments: make(map[string]uint64),
-		SyncAssignments:     make([]uint64, len(parsedSyncCommittees.Validators)),
 	}
 
 	// propose
@@ -239,13 +233,25 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 		}
 	}
 
-	// sync
-	for i, valIndexStr := range parsedSyncCommittees.Validators {
-		valIndexU64, err := strconv.ParseUint(valIndexStr, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("in sync_committee for epoch %d validator %d has bad validator index: %q", epoch, i, valIndexStr)
+	if epoch >= utils.Config.Chain.AltairForkEpoch {
+		syncCommitteeState := depStateRoot
+		if epoch == utils.Config.Chain.AltairForkEpoch {
+			syncCommitteeState = fmt.Sprintf("%d", utils.Config.Chain.AltairForkEpoch*utils.Config.Chain.SlotsPerEpoch)
 		}
-		assignments.SyncAssignments[i] = valIndexU64
+		parsedSyncCommittees, err := lc.GetSyncCommittee(syncCommitteeState, epoch)
+		if err != nil {
+			return nil, err
+		}
+		assignments.SyncAssignments = make([]uint64, len(parsedSyncCommittees.Validators))
+
+		// sync
+		for i, valIndexStr := range parsedSyncCommittees.Validators {
+			valIndexU64, err := strconv.ParseUint(valIndexStr, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("in sync_committee for epoch %d validator %d has bad validator index: %q", epoch, i, valIndexStr)
+			}
+			assignments.SyncAssignments[i] = valIndexU64
+		}
 	}
 
 	if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 && len(assignments.SyncAssignments) > 0 {

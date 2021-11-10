@@ -36,8 +36,8 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 		dbPeriodsMap[p] = true
 	}
 	currEpoch := utils.TimeToEpoch(time.Now())
-	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch) + 1)
-	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.AltairForkEpoch) + 1
+	lastPeriod := utils.SyncPeriodOfEpoch(uint64(currEpoch) + 1) // we can look into the future
+	firstPeriod := utils.SyncPeriodOfEpoch(utils.Config.Chain.AltairForkEpoch)
 	for p := firstPeriod; p <= lastPeriod; p++ {
 		_, exists := dbPeriodsMap[p]
 		if !exists {
@@ -53,8 +53,12 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 }
 
 func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
-	firstEpoch := utils.FirstEpochOfSyncPeriod(p)
-	c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", firstEpoch*utils.Config.Chain.SlotsPerEpoch), firstEpoch)
+	stateID := (p - 1) * utils.Config.Chain.Altair.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
+	if utils.FirstEpochOfSyncPeriod(p) == utils.Config.Chain.AltairForkEpoch {
+		stateID = utils.Config.Chain.AltairForkEpoch * utils.Config.Chain.SlotsPerEpoch
+	}
+	epoch := utils.FirstEpochOfSyncPeriod(p)
+	c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", stateID), epoch)
 	if err != nil {
 		return err
 	}

@@ -581,10 +581,10 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 
 func BitAtVector(b []byte, i int) bool {
 	bb := b[i/8]
-	return (bb & (1 << uint(i))) > 0
+	return (bb & (1 << uint(i%8))) > 0
 }
 
 func BitAtVectorReversed(b []byte, i int) bool {
 	bb := b[i/8]
-	return (bb & (1 << uint(7-i))) > 0
+	return (bb & (1 << uint(7-(i%8)))) > 0
 }
