@@ -96,14 +96,14 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		SuccessURL: successUrl,
 		CancelURL:  cancelUrl,
 		// if the customer exists use the existing customer
-		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{},
-
+		SubscriptionData:         &stripe.CheckoutSessionSubscriptionDataParams{},
 		BillingAddressCollection: &rq,
 		CustomerEmail:            &subscription.Email,
 		PaymentMethodTypes: stripe.StringSlice([]string{
 			"card",
 		}),
-		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
+		AllowPromotionCodes: &enabled,
+		Mode:                stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			&stripe.CheckoutSessionLineItemParams{
 				Price:    stripe.String(req.Price),
