@@ -123,17 +123,6 @@ create table sync_assignments_p
     primary key (validatorindex, week, slot)
 ) PARTITION BY LIST (week);
 
-CREATE TABLE sync_assignments_0 PARTITION OF sync_assignments_p FOR VALUES IN (0);
-CREATE TABLE sync_assignments_1 PARTITION OF sync_assignments_p FOR VALUES IN (1);
-CREATE TABLE sync_assignments_2 PARTITION OF sync_assignments_p FOR VALUES IN (2);
-CREATE TABLE sync_assignments_3 PARTITION OF sync_assignments_p FOR VALUES IN (3);
-CREATE TABLE sync_assignments_4 PARTITION OF sync_assignments_p FOR VALUES IN (4);
-CREATE TABLE sync_assignments_5 PARTITION OF sync_assignments_p FOR VALUES IN (5);
-CREATE TABLE sync_assignments_6 PARTITION OF sync_assignments_p FOR VALUES IN (6);
-CREATE TABLE sync_assignments_7 PARTITION OF sync_assignments_p FOR VALUES IN (7);
-CREATE TABLE sync_assignments_8 PARTITION OF sync_assignments_p FOR VALUES IN (8);
-CREATE TABLE sync_assignments_9 PARTITION OF sync_assignments_p FOR VALUES IN (9);
-
 drop table if exists sync_committees;
 create table sync_committees
 (

@@ -28,7 +28,7 @@ var DBPGX *pgxpool.Conn
 // DB is a pointer to the explorer-database
 var DB *sqlx.DB
 
-var logger = logrus.New().WithField("module", "db")
+var logger = logrus.StandardLogger().WithField("module", "db")
 
 func mustInitDB(username, password, host, port, name string) *sqlx.DB {
 	dbConn, err := sqlx.Open("pgx", fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", username, password, host, port, name))
@@ -636,10 +636,14 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving blocks to db: %w", err)
 	}
 
-	logger.Infof("exporting validators data")
-	err = saveValidators(data.Epoch, data.Validators, tx)
-	if err != nil {
-		return fmt.Errorf("error saving validators to db: %w", err)
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+2 {
+		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because epoch is far behind head")
+	} else {
+		logger.Infof("exporting validators")
+		err = saveValidators(data.Epoch, data.Validators, tx)
+		if err != nil {
+			return fmt.Errorf("error saving validators to db: %w", err)
+		}
 	}
 
 	logger.Infof("exporting proposal assignments data")
@@ -661,14 +665,14 @@ func SaveEpoch(data *types.EpochData) error {
 	}
 
 	// only export recent validator balances if the epoch is within the threshold
-	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch-5 {
-		logger.Infof("exporting recent validator balance data")
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+5 {
+		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting recent validator balance because epoch is far behind head")
+	} else {
+		logger.Infof("exporting recent validator balance")
 		err = saveValidatorBalancesRecent(data.Epoch, data.Validators, tx)
 		if err != nil {
 			return fmt.Errorf("error saving recent validator balances to db: %w", err)
 		}
-	} else {
-		logger.Infof("skipping export of recent validator balance data")
 	}
 
 	logger.Infof("exporting epoch statistics data")
@@ -1265,6 +1269,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 
 	for _, slot := range slots {
 		for _, b := range blocks[slot] {
+			start := time.Now()
 			blockLog := logger.WithFields(logrus.Fields{"slot": b.Slot, "blockRoot": fmt.Sprintf("%x", b.BlockRoot)})
 
 			var dbBlockRootHash []byte
@@ -1273,7 +1278,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				blockLog.Infof("skipping export of block as it is already present in the db")
 				continue
 			}
-			start := time.Now()
+			blockLog.WithField("duration", time.Since(start)).Tracef("check if exists")
+			t := time.Now()
 
 			res, err := tx.Exec("DELETE FROM blocks WHERE slot = $1 AND length(blockroot) = 1", b.Slot) // Delete placeholder block
 			if err != nil {
@@ -1283,15 +1289,13 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			if err != nil && ra > 0 {
 				blockLog.Infof("deleted placeholder block")
 			}
+			blockLog.WithField("duration", time.Since(t)).Tracef("delete placeholder")
+			t = time.Now()
 
 			// Set proposer to MAX_SQL_INTEGER if it is the genesis-block (since we are using integers for validator-indices right now)
 			if b.Slot == 0 {
 				b.Proposer = 2147483647
 			}
-
-			n := time.Now()
-
-			logger.Tracef("writing block data: %v", b.Eth1Data.DepositRoot)
 			syncAggBits := []byte{}
 			syncAggSig := []byte{}
 			syncAggParticipation := 0.0
@@ -1299,36 +1303,33 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				syncAggBits = b.SyncAggregate.SyncCommitteeBits
 				syncAggSig = b.SyncAggregate.SyncCommitteeSignature
 				syncAggParticipation = b.SyncAggregate.SyncAggregateParticipation
-				blockLog = blockLog.WithField("syncParticipation", b.SyncAggregate.SyncAggregateParticipation)
+				// blockLog = blockLog.WithField("syncParticipation", b.SyncAggregate.SyncAggregateParticipation)
 			}
 			_, err = stmtBlock.Exec(b.Slot/utils.Config.Chain.SlotsPerEpoch, b.Slot, b.BlockRoot, b.ParentRoot, b.StateRoot, b.Signature, b.RandaoReveal, b.Graffiti, utils.GraffitiToSring(b.Graffiti), b.Eth1Data.DepositRoot, b.Eth1Data.DepositCount, b.Eth1Data.BlockHash, syncAggBits, syncAggSig, syncAggParticipation, len(b.ProposerSlashings), len(b.AttesterSlashings), len(b.Attestations), len(b.Deposits), len(b.VoluntaryExits), b.Proposer, strconv.FormatUint(b.Status, 10))
 			if err != nil {
 				return fmt.Errorf("error executing stmtBlocks for block %v: %w", b.Slot, err)
 			}
+			blockLog.WithField("duration", time.Since(t)).Tracef("stmtBlock")
+			t = time.Now()
 
-			logger.Tracef("done, took %v", time.Since(n))
-			n = time.Now()
-			logger.Tracef("writing proposer slashings data")
 			for i, ps := range b.ProposerSlashings {
 				_, err := stmtProposerSlashing.Exec(b.Slot, i, b.BlockRoot, ps.ProposerIndex, ps.Header1.Slot, ps.Header1.ParentRoot, ps.Header1.StateRoot, ps.Header1.BodyRoot, ps.Header1.Signature, ps.Header2.Slot, ps.Header2.ParentRoot, ps.Header2.StateRoot, ps.Header2.BodyRoot, ps.Header2.Signature)
 				if err != nil {
 					return fmt.Errorf("error executing stmtProposerSlashing for block %v: %w", b.Slot, err)
 				}
 			}
-			logger.Tracef("done, took %v", time.Since(n))
-			n = time.Now()
+			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposerSlashing")
+			t = time.Now()
 
-			logger.Tracef("writing attester slashings data")
 			for i, as := range b.AttesterSlashings {
 				_, err := stmtAttesterSlashing.Exec(b.Slot, i, b.BlockRoot, pq.Array(as.Attestation1.AttestingIndices), as.Attestation1.Signature, as.Attestation1.Data.Slot, as.Attestation1.Data.CommitteeIndex, as.Attestation1.Data.BeaconBlockRoot, as.Attestation1.Data.Source.Epoch, as.Attestation1.Data.Source.Root, as.Attestation1.Data.Target.Epoch, as.Attestation1.Data.Target.Root, pq.Array(as.Attestation2.AttestingIndices), as.Attestation2.Signature, as.Attestation2.Data.Slot, as.Attestation2.Data.CommitteeIndex, as.Attestation2.Data.BeaconBlockRoot, as.Attestation2.Data.Source.Epoch, as.Attestation2.Data.Source.Root, as.Attestation2.Data.Target.Epoch, as.Attestation2.Data.Target.Root)
 				if err != nil {
 					return fmt.Errorf("error executing stmtAttesterSlashing for block %v: %w", b.Slot, err)
 				}
 			}
-			logger.Tracef("done, took %v", time.Since(n))
+			blockLog.WithField("duration", time.Since(t)).Tracef("stmtAttesterSlashing")
+			t = time.Now()
 
-			n = time.Now()
-			logger.Tracef("writing sync_assignments data")
 			if b.SyncAggregate != nil {
 				bitLen := len(b.SyncAggregate.SyncCommitteeBits) * 8
 				valLen := len(b.SyncAggregate.SyncCommitteeValidators)
@@ -1358,10 +1359,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 					return fmt.Errorf("error executing sync_assignments insert for block %v: %w", b.Slot, err)
 				}
 			}
-			logger.Tracef("done, took %v", time.Since(n))
-
-			n = time.Now()
-			logger.Tracef("writing attestation data")
+			blockLog.WithField("duration", time.Since(t)).Tracef("sync_assignments_p")
+			t = time.Now()
 
 			for i, a := range b.Attestations {
 				//attestationAssignmentsArgs := make([][]interface{}, 0, 20000)
@@ -1374,7 +1373,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 					attestingValidators = append(attestingValidators, strconv.FormatUint(validator, 10))
 				}
 
-				batchSize := 10000
+				batchSize := 20000
 
 				//for batch := 0; batch < len(attestationAssignmentsArgs); batch += batchSize {
 				//	start := batch
@@ -1432,35 +1431,34 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 					return fmt.Errorf("error executing stmtAttestations for block %v: %w", b.Slot, err)
 				}
 			}
+			blockLog.WithField("duration", time.Since(t)).Tracef("attestations")
+			t = time.Now()
 
-			logger.Tracef("done, took %v", time.Since(n))
-			n = time.Now()
-
-			logger.Tracef("writing deposits data")
 			for i, d := range b.Deposits {
 				_, err := stmtDeposits.Exec(b.Slot, i, b.BlockRoot, nil, d.PublicKey, d.WithdrawalCredentials, d.Amount, d.Signature)
 				if err != nil {
 					return fmt.Errorf("error executing stmtDeposits for block %v: %w", b.Slot, err)
 				}
 			}
-			logger.Tracef("done, took %v", time.Since(n))
-			n = time.Now()
+			blockLog.WithField("duration", time.Since(t)).Tracef("deposits")
+			t = time.Now()
 
-			logger.Tracef("writing voluntary exits data")
 			for i, ve := range b.VoluntaryExits {
 				_, err := stmtVoluntaryExits.Exec(b.Slot, i, b.BlockRoot, ve.Epoch, ve.ValidatorIndex, ve.Signature)
 				if err != nil {
 					return fmt.Errorf("error executing stmtVoluntaryExits for block %v: %w", b.Slot, err)
 				}
 			}
-			logger.Tracef("done, took %v", time.Since(n))
-			n = time.Now()
+			blockLog.WithField("duration", time.Since(t)).Tracef("exits")
+			t = time.Now()
 
-			logger.Tracef("writing proposal assignments data")
 			_, err = stmtProposalAssignments.Exec(b.Slot/utils.Config.Chain.SlotsPerEpoch, b.Proposer, b.Slot, b.Status)
 			if err != nil {
 				return fmt.Errorf("error executing stmtProposalAssignments for block %v: %w", b.Slot, err)
 			}
+			blockLog.WithField("duration", time.Since(t)).Tracef("stmtProposalAssignments")
+			t = time.Now()
+
 			blockLog.Infof("export of block completed, took %v", time.Since(start))
 		}
 	}

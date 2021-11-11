@@ -1,6 +1,8 @@
 package types
 
-import "html/template"
+import (
+	"html/template"
+)
 
 // Config is a struct to hold the configuration data
 type Config struct {
