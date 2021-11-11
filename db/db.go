@@ -627,7 +627,7 @@ func SaveEpoch(data *types.EpochData) error {
 	}
 	defer tx.Rollback()
 
-	logger.Infof("starting export of epoch %v", data.Epoch)
+	logger.WithFields(logrus.Fields{"chainEpoch": utils.TimeToEpoch(time.Now()), "exportEpoch": data.Epoch}).Infof("starting export of epoch %v", data.Epoch)
 
 	logger.Infof("exporting block data")
 	err = saveBlocks(data.Blocks, tx)
@@ -636,7 +636,7 @@ func SaveEpoch(data *types.EpochData) error {
 		return fmt.Errorf("error saving blocks to db: %w", err)
 	}
 
-	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+2 {
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting validators because epoch is far behind head")
 	} else {
 		logger.Infof("exporting validators")
@@ -665,7 +665,7 @@ func SaveEpoch(data *types.EpochData) error {
 	}
 
 	// only export recent validator balances if the epoch is within the threshold
-	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+5 {
+	if uint64(utils.TimeToEpoch(time.Now())) > data.Epoch+10 {
 		logger.WithFields(logrus.Fields{"exportEpoch": data.Epoch, "chainEpoch": utils.TimeToEpoch(time.Now())}).Infof("skipping exporting recent validator balance because epoch is far behind head")
 	} else {
 		logger.Infof("exporting recent validator balance")
