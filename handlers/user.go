@@ -1783,7 +1783,11 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 				threshold = 0.8
 			}
 		}
-		err = db.AddSubscription(user.UserID, utils.GetNetwork(), eventName, filter, threshold)
+		network := utils.GetNetwork()
+		if eventName == types.EthClientUpdateEventName {
+			network = ""
+		}
+		err = db.AddSubscription(user.UserID, network, eventName, filter, threshold)
 		if err != nil {
 			logger.Errorf("error could not ADD subscription for user %v eventName %v eventfilter %v: %v", user.UserID, eventName, filter, err)
 			ErrorOrJSONResponse(w, r, "Internal server error", http.StatusInternalServerError)

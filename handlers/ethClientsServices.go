@@ -7,7 +7,6 @@ import (
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/csrf"
 )
@@ -30,7 +29,7 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 			`select event_filter
 			 from users_subscriptions 
 			 where user_id = $1 AND event_name=$2
-			`, data.User.UserID, strings.ToLower(utils.GetNetwork())+":"+string(types.EthClientUpdateEventName))
+			`, data.User.UserID, string(types.EthClientUpdateEventName))
 		if err != nil {
 			logger.Errorf("error getting user subscriptions: %v route: %v", r.URL.String(), err)
 		}
