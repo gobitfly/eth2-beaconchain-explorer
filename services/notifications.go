@@ -26,7 +26,7 @@ func notificationsSender() {
 		// if IsSyncing() {
 
 		if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(LatestEpoch())) {
-			logger.Info("skipping notifications because the explorer is syncing")
+			logger.Infof("skipping notifications because the explorer is syncing, latest epoch: %v, time: %v", LatestEpoch(), utils.EpochToTime(LatestEpoch()))
 			time.Sleep(time.Second * 60)
 			continue
 		}
