@@ -67,6 +67,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	// 		logger.Errorf("error collecting validator_balance_decreased notifications: %v", err)
 	// 	}
 	// }
+	logger.Infof("Started collecting notifications")
 	err = collectValidatorGotSlashedNotifications(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
