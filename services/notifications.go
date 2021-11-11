@@ -59,7 +59,7 @@ func notificationsSender() {
 
 func collectNotifications() map[uint64]map[types.EventName][]types.Notification {
 	notificationsByUserID := map[uint64]map[types.EventName][]types.Notification{}
-	// start := time.Now()
+	start := time.Now()
 	var err error
 	// if utils.Config.Notifications.ValidatorBalanceDecreasedNotificationsEnabled {
 	// 	err = collectValidatorBalanceDecreasedNotifications(notificationsByUserID)
@@ -71,28 +71,28 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	if err != nil {
 		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
 	}
-	// fmt.Printf("Collecting validator got slashed notifications took: %v\n", time.Since(start))
+	logger.Infof("Collecting validator got slashed notifications took: %v\n", time.Since(start))
 
 	// executed Proposals
 	err = collectBlockProposalNotifications(notificationsByUserID, 1, types.ValidatorExecutedProposalEventName)
 	if err != nil {
 		logger.Errorf("error collecting validator_proposal_submitted notifications: %v", err)
 	}
-	// fmt.Printf("Collecting block proposal proposed notifications took: %v\n", time.Since(start))
+	logger.Infof("Collecting block proposal proposed notifications took: %v\n", time.Since(start))
 
 	// Missed proposals
 	err = collectBlockProposalNotifications(notificationsByUserID, 2, types.ValidatorMissedProposalEventName)
 	if err != nil {
 		logger.Errorf("error collecting validator_proposal_missed notifications: %v", err)
 	}
-	// fmt.Printf("Collecting block proposal missed notifications took: %v\n", time.Since(start))
+	logger.Infof("Collecting block proposal missed notifications took: %v\n", time.Since(start))
 
 	// Missed attestations
 	err = collectAttestationNotifications(notificationsByUserID, 0, types.ValidatorMissedAttestationEventName)
 	if err != nil {
 		logger.Errorf("error collecting validator_attestation_missed notifications: %v", err)
 	}
-	// fmt.Printf("Collecting attestation notifications took: %v\n", time.Since(start))
+	logger.Infof("Collecting attestation notifications took: %v\n", time.Since(start))
 
 	// Network liveness
 	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
