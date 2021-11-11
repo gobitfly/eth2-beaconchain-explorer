@@ -1621,7 +1621,7 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 	SlasherIndex           uint64 `db:"slasher"`
 	SlasherPubkey          string `db:"slasher_pubkey"`
 	SlashedValidatorIndex  uint64 `db:"slashedvalidator"`
-	SlashedValidatorPubkey string `db:"slashedvalidator_pubkey"`
+	SlashedValidatorPubkey []byte `db:"slashedvalidator_pubkey"`
 	Reason                 string `db:"reason"`
 }, error) {
 
@@ -1630,7 +1630,7 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 		SlasherIndex           uint64 `db:"slasher"`
 		SlasherPubkey          string `db:"slasher_pubkey"`
 		SlashedValidatorIndex  uint64 `db:"slashedvalidator"`
-		SlashedValidatorPubkey string `db:"slashedvalidator_pubkey"`
+		SlashedValidatorPubkey []byte `db:"slashedvalidator_pubkey"`
 		Reason                 string `db:"reason"`
 	}
 	err := DB.Select(&dbResult, `

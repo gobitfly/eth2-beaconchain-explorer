@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -818,4 +819,33 @@ func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 	}
 
 	return stats, nil
+}
+
+func GetSubsForEventFilter(eventName types.EventName) ([][]byte, map[string][]types.Subscription, error) {
+
+	var subs []types.Subscription
+	subQuery := `
+		SELECT id, user_id, event_filter from users_subscriptions where event_name = $1
+	`
+
+	subMap := make(map[string][]types.Subscription, 0)
+	err := FrontendDB.Select(&subs, subQuery, utils.GetNetwork()+":"+string(eventName))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	filtersEncode := make([][]byte, 0, len(subs))
+	for _, sub := range subs {
+		if _, ok := subMap[sub.EventFilter]; !ok {
+			subMap[sub.EventFilter] = make([]types.Subscription, 0)
+		}
+		subMap[sub.EventFilter] = append(subMap[sub.EventFilter], types.Subscription{
+			UserID: sub.UserID,
+			ID:     sub.ID,
+		})
+
+		b, _ := hex.DecodeString(sub.EventFilter)
+		filtersEncode = append(filtersEncode, b)
+	}
+	return filtersEncode, subMap, nil
 }
