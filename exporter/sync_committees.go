@@ -46,7 +46,11 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 			if err != nil {
 				return err
 			}
-			logrus.WithFields(logrus.Fields{"period": p, "duration": time.Since(t0)}).Infof("exported sync_committee")
+			logrus.WithFields(logrus.Fields{
+				"period":   p,
+				"epoch":    utils.FirstEpochOfSyncPeriod(p),
+				"duration": time.Since(t0),
+			}).Infof("exported sync_committee")
 		}
 	}
 	return nil

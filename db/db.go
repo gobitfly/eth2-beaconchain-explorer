@@ -1330,7 +1330,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtAttesterSlashing")
 			t = time.Now()
 
-			if b.SyncAggregate != nil {
+			if b.SyncAggregate != nil && len(b.SyncAggregate.SyncCommitteeValidators) > 0 {
 				bitLen := len(b.SyncAggregate.SyncCommitteeBits) * 8
 				valLen := len(b.SyncAggregate.SyncCommitteeValidators)
 				if bitLen < valLen {
