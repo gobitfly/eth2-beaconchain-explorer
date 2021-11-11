@@ -57,11 +57,17 @@ func exportSyncCommittees(rpcClient rpc.Client) error {
 }
 
 func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
-	stateID := (p - 1) * utils.Config.Chain.Altair.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
-	if utils.FirstEpochOfSyncPeriod(p) == utils.Config.Chain.AltairForkEpoch {
-		stateID = utils.Config.Chain.AltairForkEpoch * utils.Config.Chain.SlotsPerEpoch
+	stateID := uint64(0)
+	if p > 0 {
+		stateID = utils.FirstEpochOfSyncPeriod(p-1) * utils.Config.Chain.SlotsPerEpoch
 	}
 	epoch := utils.FirstEpochOfSyncPeriod(p)
+	fmt.Printf("========= exportSyncCommitteeAtPeriod p=%v stateID1=%v firstEpoch1=%v altairForkEpoch=%v\n", p, stateID, epoch, utils.Config.Chain.AltairForkEpoch)
+	if stateID/utils.Config.Chain.SlotsPerEpoch <= utils.Config.Chain.AltairForkEpoch {
+		stateID = utils.Config.Chain.AltairForkEpoch * utils.Config.Chain.SlotsPerEpoch
+		epoch = utils.Config.Chain.AltairForkEpoch
+		fmt.Printf("========= exportSyncCommitteeAtPeriod p=%v stateID2=%v firstEpoch2=%v\n", p, stateID, epoch)
+	}
 	c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", stateID), epoch)
 	if err != nil {
 		return err
