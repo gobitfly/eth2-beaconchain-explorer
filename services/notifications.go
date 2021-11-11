@@ -24,14 +24,9 @@ func notificationsSender() {
 	for {
 		// check if the explorer is not too far behind, if we set this value to close (10m) it could potentially never send any notifications
 		// if IsSyncing() {
-		var latestEpoch uint64
-		err := db.DB.Get(&latestEpoch, "SELECT COALESCE(MAX(epoch), 0) FROM epochs")
-		if err != nil {
-			logger.Errorf("error retrieving latest epoch from the database: %v", err)
-		}
 
-		if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(latestEpoch)) {
-			logger.Infof("skipping notifications because the explorer is syncing, latest epoch: %v", latestEpoch)
+		if time.Now().Add(time.Minute * -20).After(utils.EpochToTime(LatestEpoch())) {
+			logger.Infof("skipping notifications because the explorer is syncing, latest epoch: %v", LatestEpoch())
 			time.Sleep(time.Second * 60)
 			continue
 		}
