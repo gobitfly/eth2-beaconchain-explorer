@@ -18,8 +18,6 @@ func syncCommitteesExporter(rpcClient rpc.Client) {
 		err := exportSyncCommittees(rpcClient)
 		if err != nil {
 			logrus.WithFields(logrus.Fields{"error": err, "duration": time.Since(t0)}).Errorf("error exporting sync_committees")
-		} else {
-			logrus.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("exported sync_committees")
 		}
 		time.Sleep(time.Second * 12)
 	}
@@ -62,11 +60,9 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		stateID = utils.FirstEpochOfSyncPeriod(p-1) * utils.Config.Chain.SlotsPerEpoch
 	}
 	epoch := utils.FirstEpochOfSyncPeriod(p)
-	fmt.Printf("========= exportSyncCommitteeAtPeriod p=%v stateID1=%v firstEpoch1=%v altairForkEpoch=%v\n", p, stateID, epoch, utils.Config.Chain.AltairForkEpoch)
 	if stateID/utils.Config.Chain.SlotsPerEpoch <= utils.Config.Chain.AltairForkEpoch {
 		stateID = utils.Config.Chain.AltairForkEpoch * utils.Config.Chain.SlotsPerEpoch
 		epoch = utils.Config.Chain.AltairForkEpoch
-		fmt.Printf("========= exportSyncCommitteeAtPeriod p=%v stateID2=%v firstEpoch2=%v\n", p, stateID, epoch)
 	}
 	c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", stateID), epoch)
 	if err != nil {
