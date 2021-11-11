@@ -254,7 +254,7 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 		}
 	}
 
-	if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 && len(assignments.SyncAssignments) > 0 {
+	if len(assignments.AttestorAssignments) > 0 && len(assignments.ProposerAssignments) > 0 {
 		lc.assignmentsCache.Add(epoch, assignments)
 	}
 
@@ -711,6 +711,8 @@ func (lc *LighthouseClient) GetSyncCommittee(stateID string, epoch uint64) (*Sta
 var notFoundErr = errors.New("not found 404")
 
 func (lc *LighthouseClient) get(url string) ([]byte, error) {
+	// t0 := time.Now()
+	// defer func() { fmt.Println(url, time.Since(t0)) }()
 	client := &http.Client{Timeout: time.Second * 120}
 
 	resp, err := client.Get(url)
