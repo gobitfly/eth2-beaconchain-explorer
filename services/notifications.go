@@ -1296,7 +1296,7 @@ func collectNetworkNotifications(notificationsByUserID map[uint64]map[types.Even
 			FROM users_subscriptions AS us
 			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '1 hour' OR us.last_sent_ts IS NULL);
 			`,
-			eventName)
+			utils.GetNetwork()+":"+string(eventName))
 
 		if err != nil {
 			return err
