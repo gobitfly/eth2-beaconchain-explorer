@@ -81,7 +81,6 @@ function loadMonitoringData(data) {
     data = []
   }
 
-  console.log('LOADING MONITORING DATA', data)
 
   for (let i = 0; i < data.length; i++) {
     mdata.push({
@@ -731,9 +730,7 @@ $(document).ready(function () {
   // on modal open after click event to validators table edit button
   $('#manageNotificationsModal').on('show.bs.modal', function (e) {
     // get the selected row (single row selected)
-    console.log('rowid', $(this).attr('rowId'))
     let rowData = $('#validators-notifications').DataTable().row($('#' + $(this).attr('rowId'))).data()
-    console.log('rowDATA', rowData)
     if (rowData && rowData.Index) {
       $('#selected-validators-events-container').append(
         `<span style="font-size: 12px; font-weight: 500;" id="validator-event-badge" class="d-inline-block badge badge-pill badge-light badge-custom-size mr-2 mb-2" pk=${rowData.Pubkey}>
@@ -751,6 +748,7 @@ $(document).ready(function () {
     } else {
       // get the selected rows (mutiple rows selected)
       const rowsSelected = $('#validators-notifications').DataTable().rows('.selected').data()
+      $('#selected-validators-events-container').prev('span').text('')
       $('#selected-validators-events-container').html('')
       $("#selected-validators-events-container ~ div").css('opacity', 1)
       if (rowsSelected && rowsSelected.length) {

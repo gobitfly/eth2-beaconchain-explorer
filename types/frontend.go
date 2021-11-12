@@ -92,7 +92,7 @@ type Notification interface {
 type Subscription struct {
 	ID             *uint64    `db:"id,omitempty"`
 	UserID         *uint64    `db:"user_id,omitempty"`
-	EventName      EventName  `db:"event_name"`
+	EventName      string     `db:"event_name"`
 	EventFilter    string     `db:"event_filter"`
 	LastSent       *time.Time `db:"last_sent_ts"`
 	LastEpoch      *uint64    `db:"last_sent_epoch"`

@@ -43,7 +43,7 @@ func notificationsSender() {
 		// 		}
 		// 	}
 		// }
-		sendNotifications(notifications, db.DB)
+		sendNotifications(notifications, db.FrontendDB)
 
 		// Network DB Notifications (user related)
 		if utils.Config.Notifications.UserDBNotifications {

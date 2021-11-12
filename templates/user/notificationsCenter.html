@@ -40,9 +40,9 @@
 				  <div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 					  <i class="fas fa-user"></i>
 				  </div>
-				  <div class="col-9 col-sm-8 col-xl-8 metric-value">
+				  <div class="px-1 col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="validators">{{.Metrics.Validators}}</span>
-					  <span class="metric-description">validators in your watchlist</span>
+					  <span class="metric-description">Validators in your watchlist</span>
 				  </div>
 			  </div>
 		  </div>
@@ -51,9 +51,9 @@
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-bell"></i>
 					</div>
-					<div class="col-9 col-sm-8 col-xl-8 metric-value">
-						<span id="notifications">{{.Metrics.Notifications}}</span>
-						<span class="metric-description">notifications in <span class="d-inline d-lg-none d-xl-inline">the</span> past month</span>
+					<div class="px-1 col-9 col-sm-8 col-xl-8 metric-value">
+						<span id="notifications">{{.Metrics.Subscriptions}}</span>
+						<span class="metric-description">Number of subscriptions</span>
 					</div>
 				</div>
 			</div>
@@ -62,9 +62,9 @@
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-bullseye"></i>
 					</div>
-					<div class="col-9 col-sm-8 col-xl-8 metric-value">
+					<div class="px-1 col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="attestationsMissed">{{.Metrics.AttestationsMissed}}</span>
-						<span class="metric-description">att<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">estations</span> missed <span class="d-block">in <span class="d-none d-xl-inline">the</span> past month</span></span>
+						<span class="metric-description">Validator(s) missed an att<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">estations</span>in <span class="d-none d-xl-inline">the</span> past month</span>
 					</div>
 				</div>
 			</div>
@@ -73,9 +73,9 @@
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-envelope-open-text"></i>
 					</div>
-					<div class="col-9 col-sm-8 col-xl-8 metric-value">
+					<div class="px-1 col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsSubmitted">{{.Metrics.ProposalsSubmitted}}</span>
-						<span class="metric-description">proposals <span class="d-block">in <span class="d-none d-xl-inline">the</span> past month</span></span>
+						<span class="metric-description">Validator(s) proposed a block in <span class="d-none d-xl-inline">the</span> past month</span>
 					</div>
 				</div>
 			</div>
@@ -84,9 +84,9 @@
 					<div class="col-3 col-sm-4 col-xl-4 my-auto icon">
 						<i class="fas fa-bullseye"></i>
 					</div>
-					<div class="col-9 col-sm-8 col-xl-8 metric-value">
+					<div class="px-1 col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsMissed">{{.Metrics.ProposalsMissed}}</span>
-						<span class="metric-description">prop<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">osals</span> missed <span class="d-block">in <span class="d-none d-xl-inline">the</span> past month</span></span>
+						<span class="metric-description">Validator(s) that failed to prop<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">ose</span>in <span class="d-none d-xl-inline">the</span> past month</span>
 					</div>
 				</div>
 			</div>
@@ -105,7 +105,7 @@
 				{{if .Machines}}
 				<div class="text-sm-center text-empty-section" id="monitoring-section-empty" hidden>
 					<h3 class="mt-5 mb-3 heading-l2">We've detected 1 device(s)</h3>
-					<h4 class="heading-l3">Setup notifications in the <span class="font-weight-bold">Beaconchain app</span> and get notified about <span class="d-block">disk space usage, cpu usage and offline events.</span></h4>
+					<h4 class="heading-l3">Setup notifications in the <span class="font-weight-bold">Beaconchain app</span> and get notified about <span class="d-block">disk space usage, cpu usage and offline events. (currently only available on mainnet).</span></h4>
 					<div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-center mt-5 mb-1">
 						<a class="mx-2 my-2" href="https://apps.apple.com/at/app/beaconchain-dashboard/id1541822121" target="_blank">
 							<img src="../img/ios.png" class="badge-button" height="56" />

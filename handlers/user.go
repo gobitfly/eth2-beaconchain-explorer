@@ -294,29 +294,30 @@ func UserNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getUserMetrics(userId uint64) (interface{}, error) {
-	metricsdb := struct {
-		Validators         uint64 `db:"validators"`
-		Notifications      uint64 `db:"notifications"`
-		AttestationsMissed uint64 `db:"attestations_missed"`
-		ProposalsMissed    uint64 `db:"proposals_missed"`
-		ProposalsSubmitted uint64 `db:"proposals_submitted"`
-	}{}
-	net := strings.ToLower(utils.GetNetwork())
-	err := db.FrontendDB.Get(&metricsdb, `
-		SELECT COUNT(uvt.user_id) as validators,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND COUNT(uvt.user_id)>0) AS notifications,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND event_name=$2 AND COUNT(uvt.user_id)>0) AS attestations_missed,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND event_name=$3 AND COUNT(uvt.user_id)>0) AS proposals_missed,
-		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND event_name=$4 AND COUNT(uvt.user_id)>0) AS proposals_submitted
-		FROM users_validators_tags  uvt
-		WHERE user_id=$1 and tag LIKE $5;
-		`, userId, net+":"+string(types.ValidatorMissedAttestationEventName),
-		net+":"+string(types.ValidatorMissedProposalEventName),
-		net+":"+string(types.ValidatorExecutedProposalEventName),
-		net+":%")
-	return metricsdb, err
-}
+// func getUserMetrics(userId uint64) (interface{}, error) {
+// 	metricsdb := struct {
+// 		Validators         uint64 `db:"validators"`
+// 		Notifications      uint64 `db:"notifications"`
+// 		AttestationsMissed uint64 `db:"attestations_missed"`
+// 		ProposalsMissed    uint64 `db:"proposals_missed"`
+// 		ProposalsSubmitted uint64 `db:"proposals_submitted"`
+// 	}{}
+// 	net := strings.ToLower(utils.GetNetwork())
+// 	err := db.FrontendDB.Get(&metricsdb, `
+
+// 		SELECT COUNT(uvt.user_id) as validators,
+// 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND COUNT(uvt.user_id)>0) AS notifications,
+// 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND event_name=$2 AND COUNT(uvt.user_id)>0) AS attestations_missed,
+// 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND event_name=$3 AND COUNT(uvt.user_id)>0) AS proposals_missed,
+// 		(SELECT COUNT(event_name) FROM users_subscriptions WHERE user_id=$1 AND last_sent_ts > NOW() - INTERVAL '1 MONTH' AND event_name=$4 AND COUNT(uvt.user_id)>0) AS proposals_submitted
+// 		FROM users_validators_tags  uvt
+// 		WHERE user_id=$1 and tag LIKE $5;
+// 		`, userId, net+":"+string(types.ValidatorMissedAttestationEventName),
+// 		net+":"+string(types.ValidatorMissedProposalEventName),
+// 		net+":"+string(types.ValidatorExecutedProposalEventName),
+// 		net+":%")
+// 	return metricsdb, err
+// }
 
 func getValidatorTableData(userId uint64) (interface{}, error) {
 	validatordb := []struct {
@@ -702,7 +703,6 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	userNotificationsCenterData.Flashes = utils.GetFlashes(w, r, authSessionName)
 	userNotificationsCenterData.CsrfField = csrf.TemplateField(r)
-
 	var watchlistPubkeys [][]byte
 	err := db.FrontendDB.Select(&watchlistPubkeys, `
 	SELECT validator_publickey
@@ -738,8 +738,8 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	err = db.FrontendDB.Select(&subscriptions, `
 	SELECT event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold
 	FROM users_subscriptions
-	WHERE user_id = $1
-	`, user.UserID)
+	WHERE user_id = $1 AND event_name like $2 AND event_name != $3
+	`, user.UserID, utils.GetNetwork()+":%", utils.GetNetwork()+":"+"validator_balance_decreased")
 	if err != nil {
 		logger.Errorf("error retrieving subscriptions for user %v route: %v", r.URL.String(), err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -748,7 +748,11 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	validatorMap := make(map[string]types.UserValidatorNotificationTableData, len(watchlist))
 	link := "/dashboard?validators="
+
+	validatorCount := 0
+
 	for _, val := range watchlist {
+		validatorCount += 1
 		link += strconv.FormatUint(val.Index, 10) + ","
 		validatorMap[val.Pubkey] = types.UserValidatorNotificationTableData{
 			Index:  val.Index,
@@ -758,7 +762,34 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	link = link[:len(link)-1]
 
 	monitoringSubscriptions := make([]types.Subscription, 0)
+
+	type metrics struct {
+		Validators         uint64
+		Subscriptions      uint64
+		Notifications      uint64
+		AttestationsMissed uint64
+		ProposalsSubmitted uint64
+		ProposalsMissed    uint64
+	}
+
+	var metricsMonth metrics = metrics{
+		Validators:    uint64(validatorCount),
+		Subscriptions: uint64(len(subscriptions)),
+	}
+
 	for _, sub := range subscriptions {
+		monthAgo := time.Now().Add(time.Hour * 24 * 31 * -1)
+		if sub.LastSent != nil && sub.LastSent.After(monthAgo) {
+			metricsMonth.Notifications += 1
+			switch sub.EventName {
+			case utils.GetNetwork() + ":" + string(types.ValidatorMissedAttestationEventName):
+				metricsMonth.AttestationsMissed += 1
+			case utils.GetNetwork() + ":" + string(types.ValidatorExecutedProposalEventName):
+				metricsMonth.ProposalsSubmitted += 1
+			case utils.GetNetwork() + ":" + string(types.ValidatorMissedProposalEventName):
+				metricsMonth.ProposalsMissed += 1
+			}
+		}
 		val, ok := validatorMap[sub.EventFilter]
 		if !ok {
 			if (utils.GetNetwork() == "mainnet" && strings.HasPrefix(string(sub.EventName), "monitoring_")) || strings.HasPrefix(string(sub.EventName), utils.GetNetwork()+":"+"monitoring_") {
@@ -791,12 +822,12 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	//add notification-center data
 	// type metrics
-	metricsdb, err := getUserMetrics(user.UserID)
-	if err != nil {
-		logger.Errorf("error retrieving metrics data for users: %v ", user.UserID, err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
+	// metricsdb, err := getUserMetrics(user.UserID)
+	// if err != nil {
+	// 	logger.Errorf("error retrieving metrics data for users: %v ", user.UserID, err)
+	// 	http.Error(w, "Internal server error", 503)
+	// 	return
+	// }
 
 	machines, err := db.GetStatsMachine(user.UserID)
 	if err != nil {
@@ -820,7 +851,7 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	userNotificationsCenterData.DashboardLink = link
-	userNotificationsCenterData.Metrics = metricsdb
+	userNotificationsCenterData.Metrics = metricsMonth
 	userNotificationsCenterData.Validators = validatorTableData
 	userNotificationsCenterData.Network = networkData
 	userNotificationsCenterData.MonitoringSubscriptions = monitoringSubscriptions
@@ -987,12 +1018,12 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 			} else {
 				pubkey = utils.FormatPublicKey(h)
 			}
-		} else if sub.EventName == types.TaxReportEventName {
+		} else if sub.EventName == string(types.TaxReportEventName) {
 			pubkey = template.HTML(`<a href="/rewards">report</a>`)
 		} else if strings.HasPrefix(string(sub.EventName), "monitoring_") {
 			pubkey = utils.FormatMachineName(sub.EventFilter)
 		}
-		if sub.EventName != types.ValidatorBalanceDecreasedEventName {
+		if sub.EventName != string(types.ValidatorBalanceDecreasedEventName) {
 			tableData = append(tableData, []interface{}{
 				pubkey,
 				sub.EventName,
@@ -1003,7 +1034,6 @@ func UserSubscriptionsData(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	// log.Println("COUNT", len(watchlist))
 	data := &types.DataTableResponse{
 		Draw:            draw,
 		RecordsTotal:    uint64(len(subs)),

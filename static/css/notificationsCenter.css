@@ -119,6 +119,7 @@ kbd {
   font-size: .85rem;
   font-weight: 400;
   color: var(--body-color);
+  min-height: 61px;
 }
 .text-empty-section {
   margin-top: 10rem;
