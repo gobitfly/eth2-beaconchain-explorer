@@ -64,7 +64,7 @@
 					</div>
 					<div class="px-1 col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="attestationsMissed">{{.Metrics.AttestationsMissed}}</span>
-						<span class="metric-description">Validator(s) missed an att<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">estations </span>in <span class="d-none d-xl-inline">the</span> past month</span>
+						<span class="metric-description">Validator(s) missed an att<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">estations</span> in <span class="d-none d-xl-inline">the</span> past month</span>
 					</div>
 				</div>
 			</div>
@@ -75,7 +75,7 @@
 					</div>
 					<div class="px-1 col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsSubmitted">{{.Metrics.ProposalsSubmitted}}</span>
-						<span class="metric-description">Validator(s) proposed a block in <span class="d-none d-xl-inline">the</span> past month</span>
+						<span class="metric-description">Validator(s) prop<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">ose</span> a block in <span class="d-none d-xl-inline">the</span> past month</span>
 					</div>
 				</div>
 			</div>
@@ -198,7 +198,7 @@
 				</div>
 			{{else}}
 				<div class="mx-3 mb-3 pb-1 heading-l4">Hold down <kbd>Ctrl</kbd> to select multiple rows in the table</div>
-				<div style="margin: 0 -.25rem !important" class="px-0 py-3">
+				<div style="margin: 0 -.25rem !important; overflow-x: auto;" class="px-0 py-3">
 					<table class="table table-borderless table-hover" id="validators-notifications">
 						<thead class="custom-table-head">
 							<tr>

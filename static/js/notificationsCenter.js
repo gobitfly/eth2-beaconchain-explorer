@@ -312,7 +312,7 @@ function loadNetworkData(data) {
       zeroRecords: 'No entries match'
     },
     processing: true,
-    responsive: true,
+    responsive: false,
     scroller: true,
     scrollY: 380,
     paging: true,
@@ -396,7 +396,7 @@ function loadNetworkData(data) {
 
 function loadValidatorsData(data) {
   let validatorsTable = $('#validators-notifications')
-  console.log('CREATING VALIDATOR TABLE: ', data)
+  // console.log('CREATING VALIDATOR TABLE: ', data)
   validatorsTable.DataTable({
     language: {
       info: '_TOTAL_ entries',
@@ -408,7 +408,7 @@ function loadValidatorsData(data) {
       zeroRecords: 'No entries match'
     },
     processing: true,
-    responsive: true,
+    // responsive: true,
     paging: true,
     pagingType: 'first_last_numbers',
     select: {
