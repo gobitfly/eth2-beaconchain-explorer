@@ -26,6 +26,21 @@ func FormatMessageToHtml(message string) template.HTML {
 	return template.HTML(message)
 }
 
+// FormatSyncParticipationStatus will return a user-friendly format for an sync-participation-status number
+func FormatSyncParticipationStatus(status uint64) template.HTML {
+	if status == 0 {
+		return `<span class="badge badge-pill bg-light text-dark" style="font-size: 12px; font-weight: 500;">Scheduled</span>`
+	} else if status == 1 {
+		return `<span class="badge badge-pill bg-success text-white" style="font-size: 12px; font-weight: 500;">Participated</span>`
+	} else if status == 2 {
+		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Missed</span>`
+	} else if status == 3 {
+		return `<span class="badge badge-pill bg-warning text-white" style="font-size: 12px; font-weight: 500;">Orphaned</span>`
+	} else {
+		return "Unknown"
+	}
+}
+
 // FormatAttestationStatus will return a user-friendly attestation for an attestation status number
 func FormatAttestationStatus(status uint64) template.HTML {
 	if status == 0 {
@@ -449,6 +464,39 @@ func formatBits(b []byte, hasDelimiterBit bool) template.HTML {
 	return template.HTML(buf.String())
 }
 
+func formatBitvectorValidators(bits []byte, validators []uint64) template.HTML {
+	invalidLen := false
+	if len(bits)*8 != len(validators) {
+		invalidLen = true
+	}
+	var buf strings.Builder
+	buf.WriteString("<pre class=\"text-monospace\" style=\"font-size:1rem;\">")
+	for i := 0; i < len(bits)*8; i++ {
+		if invalidLen {
+			if BitAtVector(bits, i) {
+				buf.WriteString("1")
+			} else {
+				buf.WriteString("0")
+			}
+		} else {
+			val := validators[i]
+			if BitAtVector(bits, i) {
+				buf.WriteString(fmt.Sprintf("<a title=\"Validator %[1]d\" href=\"/validator/%[1]d\">1</a>", val))
+			} else {
+				buf.WriteString(fmt.Sprintf("<a title=\"Validator %[1]d\" href=\"/validator/%[1]d\">0</a>", val))
+			}
+		}
+
+		if (i+1)%64 == 0 {
+			buf.WriteString(fmt.Sprintf("\n"))
+		} else if (i+1)%8 == 0 {
+			buf.WriteString(fmt.Sprintf(" "))
+		}
+	}
+	buf.WriteString("</pre>")
+	return template.HTML(buf.String())
+}
+
 func FormatParticipation(v float64) template.HTML {
 	return template.HTML(fmt.Sprintf("<span>%.2f %%</span>", v*100.0))
 }
@@ -776,7 +824,7 @@ func FormatAttestationInclusionEffectiveness(eff float64) template.HTML {
 	}
 }
 
-func FormatPercentageColored(percentage float64, tooltipText string) template.HTML {
+func FormatPercentageColoredEmoji(percentage float64) template.HTML {
 	if math.IsInf(percentage, 0) || math.IsNaN(percentage) {
 		percentage = 0
 	} else {
@@ -792,6 +840,24 @@ func FormatPercentageColored(percentage float64, tooltipText string) template.HT
 		return template.HTML(fmt.Sprintf(`<span class="text-warning">%.0f%% <i class="fas fa-meh"></i></span>`, percentage))
 	}
 	return template.HTML(fmt.Sprintf(`<span class="text-danger">%.0f%% <i class="fas fa-frown"></i></span>`, percentage))
+}
+
+func FormatPercentageColored(percentage float64) template.HTML {
+	if math.IsInf(percentage, 0) || math.IsNaN(percentage) {
+		percentage = 0
+	} else {
+		percentage = percentage * 100
+	}
+	if percentage == 100 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success">%.0f%%</span>`, percentage))
+	} else if percentage >= 90 {
+		return template.HTML(fmt.Sprintf(`<span class="text-success">%.0f%%</span>`, percentage))
+	} else if percentage >= 80 {
+		return template.HTML(fmt.Sprintf(`<span class="text-warning">%.0f%%</span>`, percentage))
+	} else if percentage >= 60 {
+		return template.HTML(fmt.Sprintf(`<span class="text-warning">%.0f%% </span>`, percentage))
+	}
+	return template.HTML(fmt.Sprintf(`<span class="text-danger">%.0f%%</span>`, percentage))
 }
 
 func DerefString(str *string) string {

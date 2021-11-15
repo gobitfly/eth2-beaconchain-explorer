@@ -105,9 +105,7 @@
         </div>
         <div class="row p-1">
           <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Committee Aggregation Bits">Bits:</span></div>
-          <div class="col-md-10 text-monospace text-break">
-              <span>{{formatBitlist .SyncAggregateBits}}</span>
-          </div>
+          <div class="col-md-10 text-monospace text-break">{{formatBitvectorValidators .SyncAggregateBits .SyncCommittee}}</div>
         </div>
         <div class="row p-1">
             <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Committee Signature">Signature:</span></div>

@@ -514,17 +514,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// start = time.Now()
 
 	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, `
-	SELECT COALESCE(
-		AVG(1 + inclusionslot - COALESCE((
-			SELECT MIN(slot)
-			FROM blocks
-			WHERE slot > aa.attesterslot AND blocks.status = '1'
+		SELECT COALESCE(
+			AVG(1 + inclusionslot - COALESCE((
+				SELECT MIN(slot)
+				FROM blocks
+				WHERE slot > aa.attesterslot AND blocks.status = '1'
+			), 0)
 		), 0)
-	), 0)
-	FROM attestation_assignments_p aa
-	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
-	`, int64(validatorPageData.Epoch)-100, index)
+		FROM attestation_assignments_p aa
+		INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
+		`, int64(validatorPageData.Epoch)-100, index)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -554,6 +554,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
+
+	err = db.DB.Get(&validatorPageData.SyncCount, `SELECT count(*)*$1 FROM sync_committees WHERE validator = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
+	if err != nil {
+		logger.Errorf("error retrieving syncCount for validator %v: %v", index, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
 	// add rocketpool-data if available
 	validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
@@ -1402,4 +1409,111 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func ValidatorSync(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	q := r.URL.Query()
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data draw-parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	start, err := strconv.ParseInt(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start start-parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length length-parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	if length > 100 {
+		length = 100
+	}
+
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": "sa.week, sa.slot",
+		"1": "sa.week, sa.slot",
+		"2": "sa.week, sa.slot",
+		"3": "sa.status",
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = "sa.week, sa.slot"
+	}
+
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+
+	var totalCount uint64
+	err = db.DB.Get(&totalCount, `SELECT count(*)*$1 FROM sync_committees WHERE validator = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting total count of sync-assignments via sync_committees-table")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	tableData := [][]interface{}{}
+	if totalCount > 0 {
+		var dbRows []struct {
+			Slot              uint64  `db:"slot"`
+			Status            uint64  `db:"status"`
+			ParticipationRate float64 `db:"participation"`
+		}
+		err = db.DB.Select(&dbRows, `
+			SELECT sa.slot, sa.status, b.syncaggregate_participation as participation
+			FROM sync_assignments_p sa
+			LEFT JOIN blocks b ON sa.slot = b.slot
+			WHERE validatorindex = $1
+			ORDER BY `+orderBy+` `+orderDir+`
+			LIMIT $2 OFFSET $3`, index, length, start)
+		if err != nil {
+			logger.Errorf("error retrieving validator sync participations data: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		tableData = make([][]interface{}, len(dbRows))
+		for i, r := range dbRows {
+			epoch := utils.EpochOfSlot(r.Slot)
+			tableData[i] = []interface{}{
+				fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
+				utils.FormatEpoch(epoch),
+				utils.FormatBlockSlot(r.Slot),
+				utils.FormatSyncParticipationStatus(r.Status),
+				utils.FormatPercentageColored(r.ParticipationRate),
+			}
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }

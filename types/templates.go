@@ -302,6 +302,10 @@ type ValidatorPageData struct {
 	DepositsCount                       uint64
 	SlashingsCount                      uint64
 	PendingCount                        uint64
+	SyncCount                           uint64
+	ParticipatedSyncCount               uint64
+	MissedSyncCount                     uint64
+	OrphanedSyncCount                   uint64
 	Income1d                            int64
 	Income7d                            int64
 	Income31d                           int64
@@ -449,6 +453,13 @@ type ValidatorAttestation struct {
 	// EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
 }
 
+// ValidatorSyncParticipation hold information about sync-participation of a validator
+type ValidatorSyncParticipation struct {
+	Period uint64 `db:"period"`
+	Slot   uint64 `db:"slot"`
+	Status uint64 `db:"status"`
+}
+
 // type AvgInclusionDistance struct {
 // 	InclusionSlot         uint64 `db:"inclusionslot"`
 // 	EarliestInclusionSlot uint64 `db:"earliestinclusionslot"`
@@ -529,6 +540,7 @@ type BlockPageData struct {
 	VotingValidatorsCount  uint64
 	Mainnet                bool
 
+	SyncCommittee     []uint64
 	Attestations      []*BlockPageAttestation // Attestations included in this block
 	VoluntaryExits    []*BlockPageVoluntaryExits
 	Votes             []*BlockVote // Attestations that voted for that block
@@ -678,13 +690,14 @@ type EpochPageData struct {
 
 	Blocks []*IndexPageDataBlocks
 
-	Ts             time.Time
-	NextEpoch      uint64
-	PreviousEpoch  uint64
-	ProposedCount  uint64
-	MissedCount    uint64
-	ScheduledCount uint64
-	OrphanedCount  uint64
+	SyncParticipationRate float64
+	Ts                    time.Time
+	NextEpoch             uint64
+	PreviousEpoch         uint64
+	ProposedCount         uint64
+	MissedCount           uint64
+	ScheduledCount        uint64
+	OrphanedCount         uint64
 }
 
 // EpochPageMinMaxSlot is a struct for the min/max epoch data

@@ -118,7 +118,7 @@ create table sync_assignments_p
 (
     slot           int not null,
     validatorindex int not null,
-    status         int not null, /* Can be 0 = scheduled, 1 = executed */
+    status         int not null, /* Can be 0 = scheduled, 1 = executed, missed = 2 */
     week           int not null,
     primary key (validatorindex, week, slot)
 ) PARTITION BY LIST (week);
