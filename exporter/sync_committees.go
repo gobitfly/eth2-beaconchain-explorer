@@ -65,6 +65,23 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		stateID = utils.Config.Chain.AltairForkEpoch * utils.Config.Chain.SlotsPerEpoch
 		epoch = utils.Config.Chain.AltairForkEpoch
 	}
+
+	firstEpoch := utils.FirstEpochOfSyncPeriod(p)
+	lastEpoch := firstEpoch + utils.Config.Chain.EpochsPerSyncCommitteePeriod
+	firstWeek := firstEpoch / 1575
+	lastWeek := lastEpoch / 1575
+	for w := firstWeek; w <= lastWeek; w++ {
+		var one int
+		err := db.DB.Get(&one, fmt.Sprintf("SELECT 1 FROM information_schema.tables WHERE table_name = 'sync_assignments_%v'", w))
+		if err != nil {
+			logger.Infof("creating partition sync_assignments_%v", w)
+			_, err := db.DB.Exec(fmt.Sprintf("CREATE TABLE sync_assignments_%v PARTITION OF sync_assignments_p FOR VALUES IN (%v);", w, w))
+			if err != nil {
+				logger.Fatalf("unable to create partition sync_assignments_%v: %v", w, err)
+			}
+		}
+	}
+
 	c, err := rpcClient.GetSyncCommittee(fmt.Sprintf("%d", stateID), epoch)
 	if err != nil {
 		return err
