@@ -84,45 +84,42 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	}
 	defer tx.Rollback()
 
-	valueArgs := make([]interface{}, len(c.Validators)*2)
-	valueStrings := make([]string, len(c.Validators))
-	for i, idxStr := range c.Validators {
-		idxU64, err := strconv.ParseUint(idxStr, 10, 64)
-		if err != nil {
-			return err
-		}
-		valueArgs[i*2+0] = p
-		valueArgs[i*2+1] = idxU64
-		valueStrings[i] = fmt.Sprintf("($%d,$%d)", i*2+1, i*2+2)
+	nArgs := 2
+	valueArgs := make([]interface{}, len(c.Validators)*nArgs)
+	valueIds := make([]string, len(c.Validators))
+	for i, idxU64 := range validatorsU64 {
+		valueArgs[i*nArgs+0] = p
+		valueArgs[i*nArgs+1] = idxU64
+		valueIds[i] = fmt.Sprintf("($%d,$%d)", i*nArgs+1, i*nArgs+2)
 	}
 	_, err = tx.Exec(
 		fmt.Sprintf(`
 			INSERT INTO sync_committees (period, validatorindex) 
 			VALUES %s ON CONFLICT (period, validatorindex) NO NOTHING`,
-			strings.Join(valueStrings, ",")),
+			strings.Join(valueIds, ",")),
 		valueArgs...)
 	if err != nil {
 		return err
 	}
 
 	firstSlot := utils.FirstEpochOfSyncPeriod(p) * utils.Config.Chain.SlotsPerEpoch
-	nArgs := 4
+	nArgs = 4
 	valueArgs = make([]interface{}, int(utils.Config.Chain.EpochsPerSyncCommitteePeriod)*nArgs)
-	valueStrings = make([]string, utils.Config.Chain.EpochsPerSyncCommitteePeriod)
-	for _, idx := range validatorsU64 {
+	valueIds = make([]string, utils.Config.Chain.EpochsPerSyncCommitteePeriod)
+	for _, idxU64 := range validatorsU64 {
 		for i := 0; i < int(utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch); i++ {
 			slot := firstSlot + uint64(i)
 			valueArgs[i*nArgs+0] = slot
-			valueArgs[i*nArgs+1] = idx
+			valueArgs[i*nArgs+1] = idxU64
 			valueArgs[i*nArgs+2] = 0 // status = scheduled
 			valueArgs[i*nArgs+3] = utils.WeekOfSlot(slot)
-			valueStrings[i] = fmt.Sprintf("($%d,$%d,$%d,$%d)", i*nArgs+1, i*nArgs+2, i*nArgs+3, i*nArgs+4)
+			valueIds[i] = fmt.Sprintf("($%d,$%d,$%d,$%d)", i*nArgs+1, i*nArgs+2, i*nArgs+3, i*nArgs+4)
 		}
 		_, err = tx.Exec(
 			fmt.Sprintf(`
 				INSERT INTO sync_assignments_p (slot, validatorindex, status, week)
 				VALUES %s ON CONFLICT (slot, validatorindex, week) DO NOTHING`,
-				strings.Join(valueStrings, ",")),
+				strings.Join(valueIds, ",")),
 			valueArgs...)
 	}
 
