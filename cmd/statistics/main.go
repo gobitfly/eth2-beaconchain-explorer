@@ -47,6 +47,7 @@ func main() {
 		if err != nil {
 			logrus.Fatal(err)
 		}
+		logrus.Infof("exporting statistics for days %v-%v", firstDay, lastDay)
 		for d := firstDay; d <= lastDay; d++ {
 			_, err := db.DB.Exec("delete from validator_stats_status where day = $1", d)
 			if err != nil {
