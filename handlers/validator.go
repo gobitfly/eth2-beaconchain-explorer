@@ -555,7 +555,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
-	err = db.DB.Get(&validatorPageData.SyncCount, `SELECT count(*)*$1 FROM sync_committees WHERE validator = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
+	err = db.DB.Get(&validatorPageData.SyncCount, `SELECT count(*)*$1 FROM sync_committees WHERE validatorindex = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
 	if err != nil {
 		logger.Errorf("error retrieving syncCount for validator %v: %v", index, err)
 		http.Error(w, "Internal server error", 503)
@@ -1464,7 +1464,7 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var totalCount uint64
-	err = db.DB.Get(&totalCount, `SELECT count(*)*$1 FROM sync_committees WHERE validator = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
+	err = db.DB.Get(&totalCount, `SELECT count(*)*$1 FROM sync_committees WHERE validatorindex = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting total count of sync-assignments via sync_committees-table")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

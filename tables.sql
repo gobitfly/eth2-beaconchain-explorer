@@ -126,9 +126,9 @@ create table sync_assignments_p
 drop table if exists sync_committees;
 create table sync_committees
 (
-    period    int not null,
-    validator int not null,
-    primary key (period, validator)
+    period         int not null,
+    validatorindex int not null,
+    primary key (period, validatorindex)
 );
 
 drop table if exists validator_balances_p;

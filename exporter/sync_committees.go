@@ -79,7 +79,7 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		valueArgs[i*2+1] = idxU64
 		valueStrings[i] = fmt.Sprintf("($%d,$%d)", i*2+1, i*2+2)
 	}
-	stmt := fmt.Sprintf(`insert into sync_committees (period, validator) values %s`, strings.Join(valueStrings, ","))
+	stmt := fmt.Sprintf(`insert into sync_committees (period, validatorindex) values %s`, strings.Join(valueStrings, ","))
 	_, err = db.DB.Exec(stmt, valueArgs...)
 	if err != nil {
 		return err
