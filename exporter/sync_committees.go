@@ -102,12 +102,13 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		return err
 	}
 
+	slotsPerSyncPeriod := utils.Config.Chain.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
 	firstSlot := utils.FirstEpochOfSyncPeriod(p) * utils.Config.Chain.SlotsPerEpoch
 	nArgs = 4
-	valueArgs = make([]interface{}, int(utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch)*nArgs)
-	valueIds = make([]string, utils.Config.Chain.EpochsPerSyncCommitteePeriod)
+	valueArgs = make([]interface{}, int(slotsPerSyncPeriod)*nArgs)
+	valueIds = make([]string, slotsPerSyncPeriod)
 	for _, idxU64 := range validatorsU64 {
-		for i := 0; i < int(utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch); i++ {
+		for i := 0; i < int(slotsPerSyncPeriod); i++ {
 			slot := firstSlot + uint64(i)
 			valueArgs[i*nArgs+0] = slot
 			valueArgs[i*nArgs+1] = idxU64
