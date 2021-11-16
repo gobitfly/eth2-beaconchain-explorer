@@ -58,6 +58,7 @@ func main() {
 				logrus.Errorf("error exporting stats for day %v: %v", d, err)
 			}
 		}
+		return
 	} else if *statisticsDayToExport >= 0 {
 		_, err := db.DB.Exec("delete from validator_stats_status where day = $1", *statisticsDayToExport)
 		if err != nil {
