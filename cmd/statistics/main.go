@@ -4,6 +4,7 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"flag"
 	"strconv"
 	"strings"
@@ -22,7 +23,7 @@ func main() {
 
 	flag.Parse()
 
-	logrus.Printf("config file path: %v", *configPath)
+	logrus.Printf("version: %v, config file path: %v", version.Version, *configPath)
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
 
