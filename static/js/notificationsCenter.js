@@ -501,7 +501,7 @@ function loadValidatorsData(data) {
               }
             }
             if (!hasItems) {
-              return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>'
+              return '<span>Not subscribed to any events</span>'
             }
             return `<div style="white-space: normal;">${notifications}</div>`
           }
