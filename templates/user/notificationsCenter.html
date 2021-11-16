@@ -64,7 +64,7 @@
 					</div>
 					<div class="px-1 col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="attestationsMissed">{{.Metrics.AttestationsMissed}}</span>
-						<span class="metric-description">Validator(s) missed an att<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">estations</span> in <span class="d-none d-xl-inline">the</span> past month</span>
+						<span class="metric-description">Validator(s) that missed an att<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">estations</span> in <span class="d-none d-xl-inline">the</span> past month</span>
 					</div>
 				</div>
 			</div>
@@ -75,7 +75,7 @@
 					</div>
 					<div class="px-1 col-9 col-sm-8 col-xl-8 metric-value">
 						<span id="proposalsSubmitted">{{.Metrics.ProposalsSubmitted}}</span>
-						<span class="metric-description">Validator(s) prop<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">ose</span> a block in <span class="d-none d-xl-inline">the</span> past month</span>
+						<span class="metric-description">Validator(s) that prop<span class="d-inline d-xl-none">.</span><span class="d-none d-xl-inline">osed</span> a block in <span class="d-none d-xl-inline">the</span> past month</span>
 					</div>
 				</div>
 			</div>
@@ -314,6 +314,10 @@
 							<label class="form-check-label mr-auto font-weight-normal" for="finalityIssues">Finality issues</label>
 							<input class="form-check-input checkbox-custom-size" type="checkbox" id="finalityIssues" value="" event="network_liveness_increased" {{if .Network.IsSubscribed}}checked="true"{{end}}>
 						</div>
+						<!-- <div class="form-check form-check-inline w-100 my-2">
+							<label class="form-check-label mr-auto font-weight-normal" for="participationIssues">Participation issues</label>
+							<input class="form-check-input checkbox-custom-size" type="checkbox" id="participationIssues" value="" event="network_participation_decreased" {{if .Network.IsSubscribed}}checked="true"{{end}}>
+						</div> -->
 					</div> 
 				</div>
 				<div class="col-sm-12 d-flex align-items-center justify-content-between mt-auto mt-sm-1 px-0">

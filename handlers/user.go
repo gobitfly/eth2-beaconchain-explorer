@@ -736,9 +736,10 @@ func UserNotificationsCenter(w http.ResponseWriter, r *http.Request) {
 
 	var subscriptions []types.Subscription
 	err = db.FrontendDB.Select(&subscriptions, `
-	SELECT event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold
+	SELECT 
+		event_name, event_filter, last_sent_ts, last_sent_epoch, created_ts, created_epoch, event_threshold
 	FROM users_subscriptions
-	WHERE user_id = $1 AND event_name like $2 AND event_name != $3
+	WHERE user_id = $1 AND (event_name like $2 OR event_name like 'monitoring%') AND event_name != $3
 	`, user.UserID, utils.GetNetwork()+":%", utils.GetNetwork()+":"+"validator_balance_decreased")
 	if err != nil {
 		logger.Errorf("error retrieving subscriptions for user %v route: %v", r.URL.String(), err)

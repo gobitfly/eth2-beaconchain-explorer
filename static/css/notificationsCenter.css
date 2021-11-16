@@ -211,12 +211,25 @@ div.dataTables_scrollBody table {
   vertical-align: middle !important;
 }
 
+#validators-notifications_wrapper .row {
+  margin: 0;
+}
+
+#validators-notifications_wrapper .row > div.col-sm-12 {
+  padding: 0;
+}
+
+#validators-notifications_wrapper .row:first-child > div.col-sm-12 {
+  padding: 0 1rem;
+}
+
 #validators-notifications_paginate {
   display: flex;
   height: 100%;
   justify-content: flex-end;
   align-items: flex-end;
 }
+
 /* custom scrollbar */
 .scrollbar::-webkit-scrollbar {
   width: 8px;

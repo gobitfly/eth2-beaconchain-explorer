@@ -86,7 +86,7 @@ function loadMonitoringData(data) {
     mdata.push({
       id: data[i].ID,
       notification: data[i].EventName,
-      threshold: data[i].EventThreshold,
+      threshold:  data[i].EventThreshold ? 1 - data[i].EventThreshold : data[i].EventThreshold,
       mostRecent: data[i].LastSent || 0,
       machine: data[i].EventFilter,
       event: {}
@@ -259,7 +259,11 @@ function loadMonitoringData(data) {
           //       ></i>
           //     </span>`
           // }
-          return (data * 100).toFixed(0) + '%'
+          if (data) {
+            return (data * 100).toFixed(0) + '%'
+          } else {
+            return 'N/A'
+          }
         }
       },
       {
@@ -455,7 +459,7 @@ function loadValidatorsData(data) {
             return row.Index
           }
           let datahref = `/validator/${row.Index || row.Pubkey}`
-          return `<i class="fas fa-male mr-2"></i><a class="font-weight-bold" href=${datahref}>` + row.Index + `<span class="heading-l4 d-none d-sm-block mt-2">0x` + row.Pubkey.substring(0, 6) + ` ...</span></a><i class="fa fa-copy text-muted d-none d-sm-inline p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${row.Pubkey}"></i>`
+          return `<div class="d-flex align-items-center"><i style="flex 0 0 1rem" class="fas fa-male mr-2"></i><a style="flex: 1 1;" class="font-weight-bold no-highlight mx-2 d-flex flex-wrap" href=${datahref}><span>` + row.Index + `</span><span style="flex-basis: 100%;" class="heading-l4 d-none d-sm-inline-flex">0x` + row.Pubkey.substring(0, 6) + ` ...</span></a><span style="flex: 1 1 0;"></span><i style="flex: 0 0 1rem;" class="fa fa-copy text-muted d-none d-sm-inline p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="0x${row.Pubkey}"></i></div>`
         }
       },
       {
@@ -499,7 +503,7 @@ function loadValidatorsData(data) {
             if (!hasItems) {
               return '<span>Not subscribed to any events</span><i class="d-block fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="width: 1.5rem; padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>'
             }
-            return `<div style="white-space: normal; max-width: 400px;">${notifications}</div> <i class="fas fa-pen fa-xs text-muted i-custom" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i>`
+            return `<div style="white-space: normal;">${notifications}</div>`
           }
           return null
         }
@@ -569,7 +573,7 @@ function loadValidatorsData(data) {
         orderable: false,
         responsivePriority: 3,
         data: null,
-        defaultContent: '<i class="fas fa-times fa-lg i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i>'
+        defaultContent: '<div class="d-flex align-items-center"><i class="fas fa-pen fa-xs text-muted i-custom mx-2" id="edit-validator-events" title="Manage notifications for the selected validator(s)" style="padding: .5rem; cursor: pointer;" data-toggle= "modal" data-target="#manageNotificationsModal"></i><i class="fas fa-times fa-lg mx-2 i-custom" id="remove-btn" title="Remove validator" style="padding: .5rem; color: var(--red); cursor: pointer;" data-toggle= "modal" data-target="#confirmRemoveModal" data-modaltext="Are you sure you want to remove the entry?"></i></div>'
       }
     ],
     rowId: function (data, type, row, meta) {
