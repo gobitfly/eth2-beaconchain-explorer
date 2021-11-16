@@ -95,7 +95,7 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	_, err = tx.Exec(
 		fmt.Sprintf(`
 			INSERT INTO sync_committees (period, validatorindex) 
-			VALUES %s ON CONFLICT (period, validatorindex) NO NOTHING`,
+			VALUES %s ON CONFLICT (period, validatorindex) DO NOTHING`,
 			strings.Join(valueIds, ",")),
 		valueArgs...)
 	if err != nil {
