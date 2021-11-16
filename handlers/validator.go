@@ -1446,21 +1446,21 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		length = 100
 	}
 
-	orderColumn := q.Get("order[0][column]")
-	orderByMap := map[string]string{
-		"0": "sa.week, sa.slot",
-		"1": "sa.week, sa.slot",
-		"2": "sa.week, sa.slot",
-		"3": "sa.status",
-	}
-	orderBy, exists := orderByMap[orderColumn]
-	if !exists {
-		orderBy = "sa.week, sa.slot"
-	}
-
 	orderDir := q.Get("order[0][dir]")
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
+	}
+
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir),
+		"1": fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir),
+		"2": fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir),
+		"3": fmt.Sprintf("sa.status %[1]s", orderDir),
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir)
 	}
 
 	var totalCount uint64
@@ -1479,11 +1479,11 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			ParticipationRate float64 `db:"participation"`
 		}
 		err = db.DB.Select(&dbRows, `
-			SELECT sa.slot, sa.status, b.syncaggregate_participation as participation
+			SELECT sa.slot, sa.status, COALESCE(b.syncaggregate_participation,0) as participation
 			FROM sync_assignments_p sa
 			LEFT JOIN blocks b ON sa.slot = b.slot
 			WHERE validatorindex = $1
-			ORDER BY `+orderBy+` `+orderDir+`
+			ORDER BY `+orderBy+`
 			LIMIT $2 OFFSET $3`, index, length, start)
 		if err != nil {
 			logger.Errorf("error retrieving validator sync participations data: %v", err)
@@ -1493,12 +1493,16 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		tableData = make([][]interface{}, len(dbRows))
 		for i, r := range dbRows {
 			epoch := utils.EpochOfSlot(r.Slot)
+			participation := template.HTML("-") // scheduled block, participation is 0 anyway
+			if r.Status != 0 {
+				participation = utils.FormatPercentageColored(r.ParticipationRate)
+			}
 			tableData[i] = []interface{}{
 				fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
 				utils.FormatEpoch(epoch),
 				utils.FormatBlockSlot(r.Slot),
 				utils.FormatSyncParticipationStatus(r.Status),
-				utils.FormatPercentageColored(r.ParticipationRate),
+				participation,
 			}
 		}
 	}
