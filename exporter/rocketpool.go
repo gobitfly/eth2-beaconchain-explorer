@@ -140,7 +140,7 @@ func (rp *RocketpoolExporter) InitDAOMembers() error {
 }
 
 func (rp *RocketpoolExporter) Run() error {
-	errorInterval := time.Second * 2
+	errorInterval := time.Second * 10
 	t := time.NewTicker(rp.UpdateInterval)
 	defer t.Stop()
 	for {

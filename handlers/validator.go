@@ -562,6 +562,40 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if validatorPageData.SyncCount > 0 {
+		// get syncStats from validator_stats
+		syncStats := struct {
+			ParticipatedSync uint64 `db:"participated_sync"`
+			MissedSync       uint64 `db:"missed_sync"`
+			OrphanedSync     uint64 `db:"orphaned_sync"`
+		}{}
+		if lastStatsDay > 0 {
+			err = db.DB.Get(&syncStats, "select coalesce(sum(participated_sync), 0) as participated_sync, coalesce(sum(missed_sync), 0) as missed_sync, coalesce(sum(orphaned_sync), 0) as orphaned_sync from validator_stats where validatorindex = $1", index)
+			if err != nil {
+				logger.Errorf("error retrieving validator syncStats: %v", err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+		}
+
+		// add syncStats that are not yet in validator_stats
+		syncStatsNotInStats := struct {
+			ParticipatedSync uint64 `db:"participated_sync"`
+			MissedSync       uint64 `db:"missed_sync"`
+			OrphanedSync     uint64 `db:"orphaned_sync"`
+		}{}
+		err = db.DB.Get(&syncStatsNotInStats, "select coalesce(sum(case when status = 1 then 1 else 0 end), 0) as participated_sync, coalesce(sum(case when status = 2 then 1 else 0 end), 0) as missed_attestations, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_attestations from sync_assignments_p where week >= $1/7 and epoch >= ($1+1)*225 and epoch < $2 and validatorindex = $3", lastStatsDay, services.LatestEpoch(), index)
+		if err != nil {
+			logger.Errorf("error retrieving validator syncStatsAfterLastStatsDay: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+
+		validatorPageData.ParticipatedSyncCount = syncStats.ParticipatedSync + syncStatsNotInStats.ParticipatedSync
+		validatorPageData.MissedSyncCount = syncStats.MissedSync + syncStatsNotInStats.MissedSync
+		validatorPageData.OrphanedSyncCount = syncStats.OrphanedSync + syncStatsNotInStats.OrphanedSync
+	}
+
 	// add rocketpool-data if available
 	validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
 	err = db.DB.Get(validatorPageData.Rocketpool, `
