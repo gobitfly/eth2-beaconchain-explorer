@@ -1346,7 +1346,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 					if utils.BitAtVector(b.SyncAggregate.SyncCommitteeBits, i) {
 						valueArgs[i*nArgs+2] = 1
 					} else {
-						valueArgs[i*nArgs+2] = 0
+						valueArgs[i*nArgs+2] = 2
 					}
 					valueArgs[i*nArgs+3] = utils.WeekOfSlot(b.Slot)
 				}

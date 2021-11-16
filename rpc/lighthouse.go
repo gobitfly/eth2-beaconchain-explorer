@@ -455,22 +455,21 @@ func (lc *LighthouseClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64,
 
 // GetBlocksBySlot will get the blocks by slot from Lighthouse RPC api
 func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
-	respRoot, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%d/root", lc.endpoint, slot))
+	resHeaders, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/%d", lc.endpoint, slot))
 	if err != nil {
 		if err == notFoundErr {
 			// no block in this slot
 			return []*types.Block{}, nil
 		}
-		return nil, fmt.Errorf("error retrieving block root at slot %v: %v", slot, err)
+		return nil, fmt.Errorf("error retrieving headers at slot %v: %v", slot, err)
 	}
-	var parsedRoot StandardV1BlockRootResponse
-	err = json.Unmarshal(respRoot, &parsedRoot)
+	var parsedHeaders StandardBeaconHeaderResponse
+	err = json.Unmarshal(resHeaders, &parsedHeaders)
 	if err != nil {
-		logger.Errorf("error parsing block root at slot %v: %v", slot, err)
-		return []*types.Block{}, nil
+		return nil, fmt.Errorf("error parsing header-response at slot %v: %v", slot, err)
 	}
 
-	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%s", lc.endpoint, parsedRoot.Data.Root))
+	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%s", lc.endpoint, parsedHeaders.Data.Root))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block data at slot %v: %v", slot, err)
 	}
@@ -479,16 +478,16 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 	err = json.Unmarshal(resp, &parsedResponse)
 	if err != nil {
 		logger.Errorf("error parsing block data at slot %v: %v", slot, err)
-		return []*types.Block{}, nil
+		return nil, fmt.Errorf("error parsing block-response at slot %v: %v", slot, err)
 	}
 
 	parsedBlock := parsedResponse.Data
 
 	block := &types.Block{
 		Status:       1,
-		Canonical:    true,
+		Canonical:    parsedHeaders.Data.Canonical,
 		Proposer:     uint64(parsedBlock.Message.ProposerIndex),
-		BlockRoot:    utils.MustParseHex(parsedRoot.Data.Root),
+		BlockRoot:    utils.MustParseHex(parsedHeaders.Data.Root),
 		Slot:         slot,
 		ParentRoot:   utils.MustParseHex(parsedBlock.Message.ParentRoot),
 		StateRoot:    utils.MustParseHex(parsedBlock.Message.StateRoot),

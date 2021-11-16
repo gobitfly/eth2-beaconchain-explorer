@@ -68,6 +68,22 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	if err != nil {
 		return err
 	}
+
+	validatorsU64 := make([]uint64, len(c.Validators))
+	for i, idxStr := range c.Validators {
+		idxU64, err := strconv.ParseUint(idxStr, 10, 64)
+		if err != nil {
+			return err
+		}
+		validatorsU64[i] = idxU64
+	}
+
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	valueArgs := make([]interface{}, len(c.Validators)*2)
 	valueStrings := make([]string, len(c.Validators))
 	for i, idxStr := range c.Validators {
@@ -79,10 +95,36 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 		valueArgs[i*2+1] = idxU64
 		valueStrings[i] = fmt.Sprintf("($%d,$%d)", i*2+1, i*2+2)
 	}
-	stmt := fmt.Sprintf(`insert into sync_committees (period, validatorindex) values %s`, strings.Join(valueStrings, ","))
-	_, err = db.DB.Exec(stmt, valueArgs...)
+	_, err = tx.Exec(
+		fmt.Sprintf(`
+			INSERT INTO sync_committees (period, validatorindex) 
+			VALUES %s ON CONFLICT (period, validatorindex) NO NOTHING`,
+			strings.Join(valueStrings, ",")),
+		valueArgs...)
 	if err != nil {
 		return err
 	}
-	return nil
+
+	firstSlot := utils.FirstEpochOfSyncPeriod(p) * utils.Config.Chain.SlotsPerEpoch
+	nArgs := 4
+	valueArgs = make([]interface{}, int(utils.Config.Chain.EpochsPerSyncCommitteePeriod)*nArgs)
+	valueStrings = make([]string, utils.Config.Chain.EpochsPerSyncCommitteePeriod)
+	for _, idx := range validatorsU64 {
+		for i := 0; i < int(utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch); i++ {
+			slot := firstSlot + uint64(i)
+			valueArgs[i*nArgs+0] = slot
+			valueArgs[i*nArgs+1] = idx
+			valueArgs[i*nArgs+2] = 0 // status = scheduled
+			valueArgs[i*nArgs+3] = utils.WeekOfSlot(slot)
+			valueStrings[i] = fmt.Sprintf("($%d,$%d,$%d,$%d)", i*nArgs+1, i*nArgs+2, i*nArgs+3, i*nArgs+4)
+		}
+		_, err = tx.Exec(
+			fmt.Sprintf(`
+				INSERT INTO sync_assignments_p (slot, validatorindex, status, week)
+				VALUES %s ON CONFLICT (slot, validatorindex, week) DO NOTHING`,
+				strings.Join(valueStrings, ",")),
+			valueArgs...)
+	}
+
+	return tx.Commit()
 }
