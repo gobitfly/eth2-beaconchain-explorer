@@ -12,6 +12,7 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"flag"
 	"fmt"
 	"net/http"
@@ -43,11 +44,10 @@ func initStripe(http *mux.Router) error {
 }
 
 func main() {
-
 	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
 	flag.Parse()
 
-	logrus.Printf("config file path: %v", *configPath)
+	logrus.WithField("config", *configPath).WithField("version", version.Version).Printf("starting")
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
 	if err != nil {
