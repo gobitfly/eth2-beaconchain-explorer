@@ -1330,7 +1330,14 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtAttesterSlashing")
 			t = time.Now()
 
-			if b.SyncAggregate != nil && len(b.SyncAggregate.SyncCommitteeValidators) > 0 {
+			if b.Status == 2 {
+				// set status of sync_assignments to 3 if block is missed
+				_, err := tx.Exec(`UPDATE sync_assignments_p SET status = 3 WHERE slot = $1`, b.Slot)
+				if err != nil {
+					return fmt.Errorf("error updating status of sync_assignments to orhphan for block %v: %w", b.Slot, err)
+				}
+			} else if b.SyncAggregate != nil && len(b.SyncAggregate.SyncCommitteeValidators) > 0 {
+				// update sync_assignments table if block is a post-altair-activation-block with sync-aggregate
 				bitLen := len(b.SyncAggregate.SyncCommitteeBits) * 8
 				valLen := len(b.SyncAggregate.SyncCommitteeValidators)
 				if bitLen < valLen {
