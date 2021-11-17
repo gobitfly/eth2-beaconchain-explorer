@@ -1503,22 +1503,37 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		orderBy = fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir)
 	}
 
-	var totalCount uint64
-	err = db.DB.Get(&totalCount, `SELECT count(*)*$1 FROM sync_committees WHERE validatorindex = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
+	var countData []struct {
+		TotalCount uint64 `db:"totalcount"`
+		MaxPeriod  uint64 `db:"maxperiod"`
+	}
+	err = db.DB.Select(&countData, `
+		SELECT count(*)*$1 AS totalcount, max(period) AS maxperiod 
+		FROM sync_committees 
+		WHERE validatorindex = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
 	if err != nil {
-		logger.WithError(err).Errorf("error getting total count of sync-assignments via sync_committees-table")
+		logger.WithError(err).Errorf("error getting countData of sync-assignments")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
+	totalCount := uint64(0)
 	tableData := [][]interface{}{}
-	if totalCount > 0 {
+
+	if len(countData) > 0 {
 		var dbRows []struct {
 			Slot              uint64  `db:"slot"`
 			Status            uint64  `db:"status"`
 			ParticipationRate float64 `db:"participation"`
 		}
-		futureSlotsThreshold := (services.LatestEpoch()+1)*utils.Config.Chain.SlotsPerEpoch + 1 // only show 1 scheduled slot in the sync-table
+		// only show 1 scheduled slot in the sync-table
+		totalCount = countData[0].TotalCount
+		futureSlotsThreshold := (services.LatestEpoch()+1)*utils.Config.Chain.SlotsPerEpoch + 1
+		firstSyncSlot := countData[0].MaxPeriod * utils.Config.Chain.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
+		lastSyncSlot := (countData[0].MaxPeriod + 1) * utils.Config.Chain.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
+		if futureSlotsThreshold < lastSyncSlot {
+			totalCount = futureSlotsThreshold - firstSyncSlot
+		}
 		err = db.DB.Select(&dbRows, `
 			SELECT sa.slot, sa.status, COALESCE(b.syncaggregate_participation,0) AS participation
 			FROM sync_assignments_p sa
