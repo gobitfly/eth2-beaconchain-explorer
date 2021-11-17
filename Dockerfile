@@ -11,5 +11,5 @@ WORKDIR /app
 RUN apk --no-cache add libstdc++ libgcc
 COPY --from=build-env /src/bin /app/
 COPY --from=build-env /src/phase0.yml /app/phase0.yml
-COPY  ./config-example.yml /app/config.yml
-CMD ["./explorer", "--config", "config.yml"]
+COPY --from=build-env /src/config /app/config
+CMD ["./explorer", "--config", "./config/default.config.yml"]

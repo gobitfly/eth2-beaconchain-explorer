@@ -13,13 +13,13 @@ chain:
   genesisTimestamp: 1573489682
   minGenesisActiveValidatorCount: 16384
   altairForkEpoch: 74240  # Oct 27, 2021, 10:56:23am UTC
+  phase0path: "./config/phase0.yml"
+  altairPath: "./config/altair.yml"
 
 # Note: It is possible to run either the frontend or the indexer or both at the same time
 # Frontend config
 frontend:
   enabled: true # Enable or disable to web frontend
-  phase0path: "./config/phase0.yml"
-  altairPath: "./config/altair.yml"
   imprint: "templates/imprint.example.html}**"  # Path to the imprint page content
   siteName: "Ethereum 2.0 Beacon Chain (Phase 0) Block Chain Explorer" # Name of the site, displayed in the title tag
   siteSubtitle: "Showing the <a href='https://prylabs.net'>💎 Prysm Eth2 Testnet</a>" # Subtitle shown on the main page
