@@ -580,20 +580,26 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 		// add syncStats that are not yet in validator_stats
 		syncStatsNotInStats := struct {
+			ScheduledSync    uint64 `db:"scheduled_sync"`
 			ParticipatedSync uint64 `db:"participated_sync"`
 			MissedSync       uint64 `db:"missed_sync"`
 			OrphanedSync     uint64 `db:"orphaned_sync"`
 		}{}
-		err = db.DB.Get(&syncStatsNotInStats, "select coalesce(sum(case when status = 1 then 1 else 0 end), 0) as participated_sync, coalesce(sum(case when status = 2 then 1 else 0 end), 0) as missed_attestations, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_attestations from sync_assignments_p where week >= $1/7 and epoch >= ($1+1)*225 and epoch < $2 and validatorindex = $3", lastStatsDay, services.LatestEpoch(), index)
+		err = db.DB.Get(&syncStatsNotInStats, "select coalesce(sum(case when status = 0 then 1 else 0 end), 0) as scheduled_sync, coalesce(sum(case when status = 1 then 1 else 0 end), 0) as participated_sync, coalesce(sum(case when status = 2 then 1 else 0 end), 0) as missed_sync, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_sync from sync_assignments_p where week >= $1/7 and slot >= ($1+1)*225*32 and validatorindex = $2", lastStatsDay, index)
 		if err != nil {
 			logger.Errorf("error retrieving validator syncStatsAfterLastStatsDay: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
 
+		fmt.Printf("SyncCount: %v\nsnycStats: %+v\nsyncStatsNotInStats: %+v\n", validatorPageData.SyncCount, syncStats, syncStatsNotInStats)
+
+		validatorPageData.ScheduledSyncCount = syncStatsNotInStats.ScheduledSync
 		validatorPageData.ParticipatedSyncCount = syncStats.ParticipatedSync + syncStatsNotInStats.ParticipatedSync
 		validatorPageData.MissedSyncCount = syncStats.MissedSync + syncStatsNotInStats.MissedSync
 		validatorPageData.OrphanedSyncCount = syncStats.OrphanedSync + syncStatsNotInStats.OrphanedSync
+
+		validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCount-validatorPageData.MissedSyncCount) / float64(validatorPageData.SyncCount)
 	}
 
 	// add rocketpool-data if available

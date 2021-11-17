@@ -225,7 +225,7 @@
         <span id="attestationCount" style="cursor: pointer;" data-toggle="tooltip" title="Attestation Assignments (Executed: {{.ExecutedAttestationsCount}}, Missed: {{.MissedAttestationsCount}}, Orphaned: {{.OrphanedAttestationsCount}})"><i class="fas fa-file-signature"></i> {{.AttestationsCount}}{{if ne .AttestationsCount 0}} ({{formatPercentageColoredEmoji .UnmissedAttestationsPercentage}}){{end}}</span>
     </div>
     <div class="mx-3">
-        <span id="syncCount" style="cursor: pointer;" data-toggle="tooltip" title="Sync Participations (Participated: {{.ParticipatedSyncCount}}, Missed: {{.MissedSyncCount}}, Orphaned: {{.OrphanedSyncCount}})"><i class="fas fa-sync poin"></i> {{.BlocksCount}}{{if ne .BlocksCount 0}} ({{formatPercentageColoredEmoji .UnmissedBlocksPercentage}}){{end}}</span>
+        <span id="syncCount" style="cursor: pointer;" data-toggle="tooltip" title="Sync Participations (Participated: {{.ParticipatedSyncCount}}, Missed: {{.MissedSyncCount}}, Orphaned: {{.OrphanedSyncCount}}, Scheduled: {{.ScheduledSyncCount}})"><i class="fas fa-sync poin"></i> {{.SyncCount}}{{if ne .SyncCount 0}} ({{formatPercentageColoredEmoji .UnmissedSyncPercentage}}){{end}}</span>
     </div>
     <div class="mx-3">
         <span id="slashingsCount" style="cursor: pointer;" data-toggle="tooltip" title="Other validators slashed"><i class="fas fa-user-slash"></i> {{.SlashingsCount}}</span>

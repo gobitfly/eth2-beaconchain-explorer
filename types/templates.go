@@ -303,9 +303,11 @@ type ValidatorPageData struct {
 	SlashingsCount                      uint64
 	PendingCount                        uint64
 	SyncCount                           uint64
+	ScheduledSyncCount                  uint64
 	ParticipatedSyncCount               uint64
 	MissedSyncCount                     uint64
 	OrphanedSyncCount                   uint64
+	UnmissedSyncPercentage              float64 // missed/(participated+orphaned)
 	Income1d                            int64
 	Income7d                            int64
 	Income31d                           int64
