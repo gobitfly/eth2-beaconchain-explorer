@@ -1518,13 +1518,14 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 			Status            uint64  `db:"status"`
 			ParticipationRate float64 `db:"participation"`
 		}
+		futureSlotsThreshold := (services.LatestEpoch()+1)*utils.Config.Chain.SlotsPerEpoch + 1 // only show 1 scheduled slot in the sync-table
 		err = db.DB.Select(&dbRows, `
-			SELECT sa.slot, sa.status, COALESCE(b.syncaggregate_participation,0) as participation
+			SELECT sa.slot, sa.status, COALESCE(b.syncaggregate_participation,0) AS participation
 			FROM sync_assignments_p sa
 			LEFT JOIN blocks b ON sa.slot = b.slot
-			WHERE validatorindex = $1
+			WHERE validatorindex = $1 AND sa.slot < $4
 			ORDER BY `+orderBy+`
-			LIMIT $2 OFFSET $3`, index, length, start)
+			LIMIT $2 OFFSET $3`, index, length, start, futureSlotsThreshold)
 		if err != nil {
 			logger.Errorf("error retrieving validator sync participations data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
