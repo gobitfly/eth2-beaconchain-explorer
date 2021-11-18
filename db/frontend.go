@@ -840,8 +840,10 @@ func GetSubsForEventFilter(eventName types.EventName) ([][]byte, map[string][]ty
 			subMap[sub.EventFilter] = make([]types.Subscription, 0)
 		}
 		subMap[sub.EventFilter] = append(subMap[sub.EventFilter], types.Subscription{
-			UserID: sub.UserID,
-			ID:     sub.ID,
+			UserID:      sub.UserID,
+			ID:          sub.ID,
+			LastEpoch:   sub.LastEpoch,
+			EventFilter: sub.EventFilter,
 		})
 
 		b, _ := hex.DecodeString(sub.EventFilter)

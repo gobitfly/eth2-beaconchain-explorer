@@ -10,7 +10,6 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -469,7 +468,6 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 				return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
 			}
 			if sub.LastEpoch != nil {
-				log.Println("last sent epoch", *sub.LastEpoch, "epoch event: ", event.Epoch)
 				lastSentEpoch := *sub.LastEpoch
 				if lastSentEpoch >= event.Epoch {
 					continue
