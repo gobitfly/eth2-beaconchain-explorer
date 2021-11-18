@@ -285,6 +285,13 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = db.DB.Select(&blockPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1", utils.SyncPeriodOfEpoch(blockPageData.Epoch))
+	if err != nil {
+		logger.Errorf("error retrieving sync-committee of block %v: %v", blockPageData.Slot, err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	data.Data = blockPageData
 
 	if utils.IsApiRequest(r) {

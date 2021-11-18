@@ -4,7 +4,10 @@ import (
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"flag"
+	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -14,12 +17,13 @@ import (
 func main() {
 	configPath := flag.String("config", "", "Path to the config file")
 	statisticsDayToExport := flag.Int64("statistics.day", -1, "Day to export statistics (will export the day independent if it has been already exported or not")
+	statisticsDaysToExport := flag.String("statistics.days", "", "Days to export statistics (will export the day independent if it has been already exported or not")
 	streaksDisabledFlag := flag.Bool("streaks.disabled", false, "Disable exporting streaks")
 	poolsDisabledFlag := flag.Bool("pools.disabled", false, "Disable exporting pools")
 
 	flag.Parse()
 
-	logrus.Printf("config file path: %v", *configPath)
+	logrus.Printf("version: %v, config file path: %v", version.Version, *configPath)
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
 
@@ -31,7 +35,33 @@ func main() {
 	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
 	defer db.DB.Close()
 
-	if *statisticsDayToExport >= 0 {
+	if *statisticsDaysToExport != "" {
+		s := strings.Split(*statisticsDaysToExport, "-")
+		if len(s) < 2 {
+			logrus.Fatalf("invalid arg")
+		}
+		firstDay, err := strconv.ParseUint(s[0], 10, 64)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		lastDay, err := strconv.ParseUint(s[1], 10, 64)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		logrus.Infof("exporting statistics for days %v-%v", firstDay, lastDay)
+		for d := firstDay; d <= lastDay; d++ {
+			_, err := db.DB.Exec("delete from validator_stats_status where day = $1", d)
+			if err != nil {
+				logrus.Fatalf("error resetting status for day %v: %v", d, err)
+			}
+
+			err = db.WriteStatisticsForDay(uint64(d))
+			if err != nil {
+				logrus.Errorf("error exporting stats for day %v: %v", d, err)
+			}
+		}
+		return
+	} else if *statisticsDayToExport >= 0 {
 		_, err := db.DB.Exec("delete from validator_stats_status where day = $1", *statisticsDayToExport)
 		if err != nil {
 			logrus.Fatalf("error resetting status for day %v: %v", *statisticsDayToExport, err)
