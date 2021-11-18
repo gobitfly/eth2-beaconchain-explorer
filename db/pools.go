@@ -84,7 +84,7 @@ func getPoolInfo() {
 		group by from_address 
 		order by vcount desc limit 100`) // total at this point is 7k+, the limit is important
 	if err != nil {
-		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
+		logger.Errorf("error getting eth1-deposits-distribution for stake pools: %v", err)
 	}
 
 	loopstart := time.Now()
@@ -185,7 +185,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 				status
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
-		logger.Error("error selecting balances from validators: %v", err)
+		logger.Errorf("error selecting balances from validators: %v", err)
 		return
 	}
 
@@ -204,7 +204,7 @@ func getValidatorEarnings(validators []uint64, poolName string) {
 		WHERE validatorindex = ANY($1)
 	)`, validatorsPQArray)
 	if err != nil {
-		logger.Error("error selecting deposits from blocks_deposits: %v", err)
+		logger.Errorf("error selecting deposits from blocks_deposits: %v", err)
 		return
 	}
 

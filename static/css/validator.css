@@ -104,8 +104,8 @@
 }
 .validator__lifecycle-container .failed .validator__lifecycle-node,
 .validator__lifecycle-container .offline.validator__lifecycle-active .validator__lifecycle-node {
-  border-color: var(--danger, red);
-  background-color: var(--danger, red);
+  border-color: var(--red);
+  background-color: var(--red);
 }
 .validator__lifecycle-container i {
   visibility: hidden;
@@ -146,7 +146,7 @@
 }
 .validator__lifecycle-container .active.slashed .double-bounce1,
 .validator__lifecycle-container .active.slashed .double-bounce2 {
-  background-color: var(--new-red);
+  background-color: var(--red);
 }
 .validator__lifecycle-container .active .double-bounce2 {
   -webkit-animation-delay: -1.5s;

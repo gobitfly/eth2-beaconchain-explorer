@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -123,6 +124,10 @@ func accessTokenGetClaims(tokenStringFull string, validate bool) (*CustomClaims,
 	if err != nil && validate {
 		logger.Errorf("Error parsing jwt token: %v %v", err, token)
 		return nil, err
+	}
+
+	if token == nil {
+		return nil, fmt.Errorf("error token is not defined %v", tokenStringFull)
 	}
 
 	// Make sure header hasnt been tampered with

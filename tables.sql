@@ -145,6 +145,7 @@ create table validator_balances_recent
 );
 create index idx_validator_balances_recent_epoch on validator_balances_recent (epoch);
 create index idx_validator_balances_recent_validatorindex on validator_balances_recent (validatorindex);
+create index idx_validator_balances_recent_balance on validator_balances_recent (balance);
 
 drop table if exists validator_stats;
 create table validator_stats

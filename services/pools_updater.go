@@ -158,7 +158,7 @@ func getPoolInfo() []PoolsInfo {
 		order by vcount desc 
 		`)
 		if err != nil {
-			logger.Errorf("error getting eth1-deposits-distribution for stake pools mainnet: %w", err)
+			logger.Errorf("error getting eth1-deposits-distribution for stake pools mainnet: %v", err)
 		}
 	} else {
 		err := db.DB.Select(&stakePools, `
@@ -173,7 +173,7 @@ func getPoolInfo() []PoolsInfo {
 			group by from_address 
 			order by vcount desc limit 100`) // total at this point is 7k+, the limit is important
 		if err != nil {
-			logger.Errorf("error getting eth1-deposits-distribution for stake pools: %w", err)
+			logger.Errorf("error getting eth1-deposits-distribution for stake pools: %v", err)
 		}
 	}
 
@@ -273,7 +273,7 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 				status
 		FROM validators WHERE validatorindex = ANY($1)`, validatorsPQArray)
 	if err != nil {
-		logger.Error("error selecting balances from validators: %v", err)
+		logger.Errorf("error selecting balances from validators: %v", err)
 		return nil, err
 	}
 
@@ -292,7 +292,7 @@ func getValidatorEarnings(validators []uint64) (*types.ValidatorEarnings, error)
 		WHERE validatorindex = ANY($1)
 	)`, validatorsPQArray)
 	if err != nil {
-		logger.Error("error selecting deposits from blocks_deposits: %v", err)
+		logger.Errorf("error selecting deposits from blocks_deposits: %v", err)
 		return nil, err
 	}
 
@@ -395,7 +395,7 @@ func getIDEthChartSeries() idEthSeriesDrill {
 			   (CASE balance WHEN 0 THEN 1 ELSE balance END) as balance
 		FROM staking_pools_chart WHERE epoch >= $1 order by epoch asc`, lastMonthEpoch)
 	if err != nil {
-		logger.Error("error selecting balances from validators: %v", err)
+		logger.Errorf("error selecting balances from validators: %v", err)
 		return idEthSeriesDrill{}
 	}
 

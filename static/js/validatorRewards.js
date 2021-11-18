@@ -258,7 +258,7 @@ function showTable(data){
 }
 
 
-function unSubUser(filter){
+function unSubUser(filter) {
     // console.log(filter)
     showSpinner()
     fetch(`/user/rewards/unsubscribe?${filter}`, {

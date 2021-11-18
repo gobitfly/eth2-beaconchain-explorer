@@ -194,6 +194,7 @@ func main() {
 		apiV1AuthRouter.HandleFunc("/notifications/bundled/unsubscribe", handlers.MultipleUsersNotificationsUnsubscribe).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST", "OPTIONS")
+		apiV1AuthRouter.HandleFunc("/notifications", handlers.UserNotificationsSubscribed).Methods("POST", "GET", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/stats", handlers.ClientStats).Methods("GET", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/stats/{offset}/{limit}", handlers.ClientStats).Methods("GET", "OPTIONS")
 		apiV1AuthRouter.HandleFunc("/ethpool", handlers.RegisterEthpoolSubscription).Methods("POST", "OPTIONS")
@@ -352,10 +353,16 @@ func main() {
 			authRouter.HandleFunc("/settings/flags", handlers.UserUpdateFlagsPost).Methods("POST")
 			authRouter.HandleFunc("/settings/delete", handlers.UserDeletePost).Methods("POST")
 			authRouter.HandleFunc("/settings/email", handlers.UserUpdateEmailPost).Methods("POST")
-			authRouter.HandleFunc("/notifications", handlers.UserNotifications).Methods("GET")
+			authRouter.HandleFunc("/notifications", handlers.UserNotificationsCenter).Methods("GET")
 			authRouter.HandleFunc("/notifications/data", handlers.UserNotificationsData).Methods("GET")
 			authRouter.HandleFunc("/notifications/subscribe", handlers.UserNotificationsSubscribe).Methods("POST")
 			authRouter.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribe).Methods("POST")
+			authRouter.HandleFunc("/notifications/bundled/subscribe", handlers.MultipleUsersNotificationsSubscribeWeb).Methods("POST", "OPTIONS")
+			authRouter.HandleFunc("/notifications-center", handlers.UserNotificationsCenter).Methods("GET")
+			authRouter.HandleFunc("/notifications-center/removeall", handlers.RemoveAllValidatorsAndUnsubscribe).Methods("POST")
+			authRouter.HandleFunc("/notifications-center/validatorsub", handlers.AddValidatorsAndSubscribe).Methods("POST")
+			authRouter.HandleFunc("/notifications-center/updatesubs", handlers.UserUpdateSubscriptions).Methods("POST")
+			// authRouter.HandleFunc("/notifications-center/monitoring/updatesubs", handlers.UserUpdateMonitoringSubscriptions).Methods("POST")
 			authRouter.HandleFunc("/subscriptions/data", handlers.UserSubscriptionsData).Methods("GET")
 			authRouter.HandleFunc("/generateKey", handlers.GenerateAPIKey).Methods("POST")
 			authRouter.HandleFunc("/ethClients", handlers.EthClientsServices).Methods("GET")
@@ -419,7 +426,6 @@ func main() {
 			}
 		}()
 	}
-
 	if utils.Config.Notifications.Enabled {
 		services.InitNotifications()
 	}

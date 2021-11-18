@@ -511,3 +511,10 @@ func ValidateReCAPTCHA(recaptchaResponse string) (bool, error) {
 
 	return false, fmt.Errorf("Score too low threshold not reached, Score: %v - Required >0.5; %v", googleResponse.Score, err)
 }
+
+func GetNetwork() string {
+	if Config.Chain.Phase0.ConfigName == "" {
+		return strings.ToLower(Config.Chain.Network)
+	}
+	return strings.ToLower(Config.Chain.Phase0.ConfigName)
+}

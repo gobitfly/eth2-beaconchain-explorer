@@ -73,3 +73,12 @@ type WidgetResponse struct {
 	Validator interface{} `json:"validator"`
 	Epoch     int64       `json:"epoch"`
 }
+
+type UsersNotificationsRequest struct {
+	EventNames    []string `json:"event_names"`
+	EventFilters  []string `json:"event_filters"`
+	Search        string   `json:"search"`
+	Limit         uint64   `json:"limit"`
+	Offset        uint64   `json:"offset"`
+	JoinValidator bool     `json:"join_validator"`
+}

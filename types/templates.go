@@ -1001,6 +1001,27 @@ type UserNotificationsPageData struct {
 	// Subscriptions []*Subscription
 }
 
+type UserNotificationsCenterPageData struct {
+	AuthData
+	Metrics                 interface{}                          `json:"metrics"`
+	Validators              []UserValidatorNotificationTableData `json:"validators"`
+	Network                 interface{}                          `json:"network"`
+	MonitoringSubscriptions []Subscription                       `json:"monitoring_subscriptions"`
+	Machines                []string
+	DashboardLink           string `json:"dashboardLink"`
+	// Subscriptions []*Subscription
+}
+
+type UserValidatorNotificationTableData struct {
+	Index        uint64
+	Pubkey       string
+	Notification []struct {
+		Notification string
+		Timestamp    uint64
+		Threshold    string
+	}
+}
+
 type AdvertiseWithUsPageData struct {
 	FlashMessage string
 	CsrfField    template.HTML
