@@ -467,6 +467,12 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 			if sub.UserID == nil || sub.ID == nil {
 				return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
 			}
+			if sub.LastEpoch != nil {
+				lastSentEpoch := *sub.LastEpoch
+				if lastSentEpoch >= event.Epoch {
+					continue
+				}
+			}
 			n := &validatorProposalNotification{
 				SubscriptionID: *sub.ID,
 				ValidatorIndex: event.ValidatorIndex,
@@ -619,6 +625,12 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		for _, sub := range subscribers {
 			if sub.UserID == nil || sub.ID == nil {
 				return fmt.Errorf("error expected userId or subId to be defined but got user: %v, sub: %v", sub.UserID, sub.ID)
+			}
+			if sub.LastEpoch != nil {
+				lastSentEpoch := *sub.LastEpoch
+				if lastSentEpoch >= event.Epoch {
+					continue
+				}
 			}
 			n := &validatorAttestationNotification{
 				SubscriptionID: *sub.ID,

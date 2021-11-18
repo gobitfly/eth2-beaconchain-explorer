@@ -825,7 +825,7 @@ func GetSubsForEventFilter(eventName types.EventName) ([][]byte, map[string][]ty
 
 	var subs []types.Subscription
 	subQuery := `
-		SELECT id, user_id, event_filter from users_subscriptions where event_name = $1
+		SELECT id, user_id, event_filter, latest_sent_epoch from users_subscriptions where event_name = $1
 	`
 
 	subMap := make(map[string][]types.Subscription, 0)
