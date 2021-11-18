@@ -96,14 +96,14 @@ func StripeCreateCheckoutSession(w http.ResponseWriter, r *http.Request) {
 		SuccessURL: successUrl,
 		CancelURL:  cancelUrl,
 		// if the customer exists use the existing customer
-		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{},
-
+		SubscriptionData:         &stripe.CheckoutSessionSubscriptionDataParams{},
 		BillingAddressCollection: &rq,
 		CustomerEmail:            &subscription.Email,
 		PaymentMethodTypes: stripe.StringSlice([]string{
 			"card",
 		}),
-		Mode: stripe.String(string(stripe.CheckoutSessionModeSubscription)),
+		AllowPromotionCodes: &enabled,
+		Mode:                stripe.String(string(stripe.CheckoutSessionModeSubscription)),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			&stripe.CheckoutSessionLineItemParams{
 				Price:    stripe.String(req.Price),
@@ -238,6 +238,12 @@ func StripeWebhook(w http.ResponseWriter, r *http.Request) {
 			logger.WithError(err).Error("error parsing stripe webhook JSON", err)
 			http.Error(w, "error parsing stripe webhook JSON", 503)
 			return
+		}
+
+		err = db.DisableAllSubscriptionsFromStripeUser(customer.ID)
+		if err != nil {
+			logger.WithError(err).Error("error could not disable stripe mobile subs: " + customer.ID + "err: ")
+			// log & continue anyway
 		}
 
 		err = db.StripeRemoveCustomer(customer.ID)

@@ -370,3 +370,8 @@ table {
     display: none;
   }
 }
+
+
+label.btn.btn-light:hover {
+  color: var(--font-color);
+}

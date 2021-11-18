@@ -90,9 +90,9 @@ type Notification interface {
 }
 
 type Subscription struct {
-	ID             uint64     `db:"id"`
-	UserID         uint64     `db:"user_id"`
-	EventName      EventName  `db:"event_name"`
+	ID             *uint64    `db:"id,omitempty"`
+	UserID         *uint64    `db:"user_id,omitempty"`
+	EventName      string     `db:"event_name"`
 	EventFilter    string     `db:"event_filter"`
 	LastSent       *time.Time `db:"last_sent_ts"`
 	LastEpoch      *uint64    `db:"last_sent_epoch"`
@@ -102,9 +102,10 @@ type Subscription struct {
 }
 
 type TaggedValidators struct {
-	UserID uint64 `db:"user_id"`
-	Tag    string `db:"tag"`
-	Validator
+	UserID             uint64 `db:"user_id"`
+	Tag                string `db:"tag"`
+	ValidatorPublickey []byte `db:"validator_publickey"`
+	*Validator
 	Events []EventName `db:"events"`
 }
 

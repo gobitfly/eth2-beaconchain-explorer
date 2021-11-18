@@ -31,7 +31,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	err = db.DB.Select(&pricesDb,
 		`select * from price where ts >= TO_TIMESTAMP($1) and ts <= TO_TIMESTAMP($2) order by ts desc`, start, end)
 	if err != nil {
-		logger.Errorf("error getting prices: %w", err)
+		logger.Errorf("error getting prices: %v", err)
 	}
 
 	lowerBound := utils.TimeToDay(start)
@@ -44,7 +44,7 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 		 where validatorindex=ANY($1) AND day > $2 AND day <= $3
 		 order by day desc`, validatorFilter, lowerBound, upperBound)
 	if err != nil {
-		logger.Errorf("error getting incomes: %w", err)
+		logger.Errorf("error getting incomes: %v", err)
 	}
 
 	prices := map[string]float64{}
@@ -308,7 +308,7 @@ func getValidatorDetails(validators []uint64) [][]string {
 		 where validatorindex=ANY($1)
 		 order by validatorindex asc`, validatorFilter)
 	if err != nil {
-		logger.Errorf("error getting validators Data: %w", err)
+		logger.Errorf("error getting validators Data: %v", err)
 		return [][]string{}
 	}
 

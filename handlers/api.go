@@ -969,6 +969,8 @@ func getTokenByRefresh(w http.ResponseWriter, r *http.Request) {
 	// hash refreshtoken
 	refreshTokenHashed := utils.HashAndEncode(refreshToken)
 
+	logger.Info("access token:", accessToken, "refreshToken: ", refreshToken)
+
 	// Extract userId from JWT. Note that this is just an unvalidated claim!
 	// Do not use userIDClaim as userID until confirmed by refreshToken validation
 	unsafeClaims, err := utils.UnsafeGetClaims(accessToken)

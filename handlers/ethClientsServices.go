@@ -25,11 +25,11 @@ func EthClientsServices(w http.ResponseWriter, r *http.Request) {
 	// pageData.Banner = ethclients.GetBannerClients()
 	if data.User.Authenticated {
 		var dbData []string
-		err = db.DB.Select(&dbData,
+		err = db.FrontendDB.Select(&dbData,
 			`select event_filter
 			 from users_subscriptions 
 			 where user_id = $1 AND event_name=$2
-			`, data.User.UserID, types.EthClientUpdateEventName)
+			`, data.User.UserID, string(types.EthClientUpdateEventName))
 		if err != nil {
 			logger.Errorf("error getting user subscriptions: %v route: %v", r.URL.String(), err)
 		}

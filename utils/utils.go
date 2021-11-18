@@ -590,3 +590,10 @@ func BitAtVectorReversed(b []byte, i int) bool {
 	bb := b[i/8]
 	return (bb & (1 << uint(7-(i%8)))) > 0
 }
+
+func GetNetwork() string {
+	if Config.Chain.Phase0.ConfigName == "" {
+		return strings.ToLower(Config.Chain.Network)
+	}
+	return strings.ToLower(Config.Chain.Phase0.ConfigName)
+}

@@ -63,8 +63,8 @@ func ValidatorRewards(w http.ResponseWriter, r *http.Request) {
 
 func getUserRewardSubscriptions(uid uint64) [][]string {
 	var dbResp []types.Subscription
-	err := db.DB.Select(&dbResp,
-		`select * from users_subscriptions where event_name=$1 AND user_id=$2`, types.TaxReportEventName, uid)
+	err := db.FrontendDB.Select(&dbResp,
+		`select * from users_subscriptions where event_name=$1 AND user_id=$2`, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName), uid)
 	if err != nil {
 		logger.Errorf("error getting prices: %w", err)
 	}
@@ -199,10 +199,10 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var count uint64
-	err := db.DB.Get(&count,
+	err := db.FrontendDB.Get(&count,
 		`select count(event_name) 
 		from users_subscriptions 
-		where user_id=$1 AND event_name=$2;`, user.UserID, types.TaxReportEventName)
+		where user_id=$1 AND event_name=$2;`, user.UserID, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName))
 
 	if err != nil || count >= 5 {
 		logger.WithField("route", r.URL.String()).Info(fmt.Sprintf("User Subscription limit (%v) reached %v", count, err))
@@ -229,6 +229,7 @@ func RewardNotificationSubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = db.AddSubscription(user.UserID,
+		utils.Config.Chain.Phase0.ConfigName,
 		types.TaxReportEventName,
 		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency), 0)
 
@@ -272,6 +273,7 @@ func RewardNotificationUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := db.DeleteSubscription(user.UserID,
+		utils.GetNetwork(),
 		types.TaxReportEventName,
 		fmt.Sprintf("validators=%s&days=30&currency=%s", validatorArr, currency))
 
@@ -302,10 +304,10 @@ func RewardGetUserSubscriptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var count uint64
-	err := db.DB.Get(&count,
+	err := db.FrontendDB.Get(&count,
 		`select count(event_name) 
 		from users_subscriptions 
-		where user_id=$1 AND event_name=$2;`, user.UserID, types.TaxReportEventName)
+		where user_id=$1 AND event_name=$2;`, user.UserID, strings.ToLower(utils.GetNetwork())+":"+string(types.TaxReportEventName))
 
 	if err != nil {
 		logger.WithField("route", r.URL.String()).Error("Failed to get User Subscriptions Count")
