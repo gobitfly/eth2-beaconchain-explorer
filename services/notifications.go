@@ -469,7 +469,7 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 			}
 			if sub.LastEpoch != nil {
 				lastSentEpoch := *sub.LastEpoch
-				if lastSentEpoch >= event.Epoch {
+				if lastSentEpoch >= event.Epoch || event.Epoch < sub.CreatedEpoch {
 					continue
 				}
 			}
@@ -628,7 +628,7 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			}
 			if sub.LastEpoch != nil {
 				lastSentEpoch := *sub.LastEpoch
-				if lastSentEpoch >= event.Epoch {
+				if lastSentEpoch >= event.Epoch || event.Epoch < sub.CreatedEpoch {
 					continue
 				}
 			}
