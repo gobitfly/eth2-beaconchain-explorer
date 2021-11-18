@@ -75,18 +75,18 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	logger.Infof("Collecting validator got slashed notifications took: %v\n", time.Since(start))
 
 	// executed Proposals
-	// err = collectBlockProposalNotifications(notificationsByUserID, 1, types.ValidatorExecutedProposalEventName)
-	// if err != nil {
-	// 	logger.Errorf("error collecting validator_proposal_submitted notifications: %v", err)
-	// }
-	// logger.Infof("Collecting block proposal proposed notifications took: %v\n", time.Since(start))
+	err = collectBlockProposalNotifications(notificationsByUserID, 1, types.ValidatorExecutedProposalEventName)
+	if err != nil {
+		logger.Errorf("error collecting validator_proposal_submitted notifications: %v", err)
+	}
+	logger.Infof("Collecting block proposal proposed notifications took: %v\n", time.Since(start))
 
 	// Missed proposals
-	// err = collectBlockProposalNotifications(notificationsByUserID, 2, types.ValidatorMissedProposalEventName)
-	// if err != nil {
-	// 	logger.Errorf("error collecting validator_proposal_missed notifications: %v", err)
-	// }
-	// logger.Infof("Collecting block proposal missed notifications took: %v\n", time.Since(start))
+	err = collectBlockProposalNotifications(notificationsByUserID, 2, types.ValidatorMissedProposalEventName)
+	if err != nil {
+		logger.Errorf("error collecting validator_proposal_missed notifications: %v", err)
+	}
+	logger.Infof("Collecting block proposal missed notifications took: %v\n", time.Since(start))
 
 	// Missed attestations
 	err = collectAttestationNotifications(notificationsByUserID, 0, types.ValidatorMissedAttestationEventName)
