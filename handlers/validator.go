@@ -1521,11 +1521,6 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 	tableData := [][]interface{}{}
 
 	if len(countData) > 0 {
-		var dbRows []struct {
-			Slot              uint64  `db:"slot"`
-			Status            uint64  `db:"status"`
-			ParticipationRate float64 `db:"participation"`
-		}
 		// only show 1 scheduled slot in the sync-table
 		totalCount = countData[0].TotalCount
 		futureSlotsThreshold := (services.LatestEpoch()+1)*utils.Config.Chain.SlotsPerEpoch + 1
@@ -1533,6 +1528,11 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		lastSyncSlot := (countData[0].MaxPeriod + 1) * utils.Config.Chain.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
 		if futureSlotsThreshold < lastSyncSlot {
 			totalCount = futureSlotsThreshold - firstSyncSlot
+		}
+		var dbRows []struct {
+			Slot              uint64  `db:"slot"`
+			Status            uint64  `db:"status"`
+			ParticipationRate float64 `db:"participation"`
 		}
 		err = db.DB.Select(&dbRows, `
 			SELECT sa.slot, sa.status, COALESCE(b.syncaggregate_participation,0) AS participation
@@ -1549,8 +1549,8 @@ func ValidatorSync(w http.ResponseWriter, r *http.Request) {
 		tableData = make([][]interface{}, len(dbRows))
 		for i, r := range dbRows {
 			epoch := utils.EpochOfSlot(r.Slot)
-			participation := template.HTML("-") // scheduled block, participation is 0 anyway
-			if r.Status != 0 {
+			participation := template.HTML("-") // no participation fro scheduled and nonblock-slots
+			if r.Status != 0 && r.Status != 3 {
 				participation = utils.FormatPercentageColored(r.ParticipationRate)
 			}
 			tableData[i] = []interface{}{
