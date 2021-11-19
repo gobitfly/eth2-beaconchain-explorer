@@ -406,6 +406,10 @@ func (pc *PrysmClient) getBalancesForEpoch(epoch int64) (map[uint64]uint64, erro
 	return validatorBalances, err
 }
 
+func (lcpc *PrysmClient) GetBlockByBlockroot(blockroot []byte) (*types.Block, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 // GetBlocksBySlot will get blocks by slot from a Prysm client
 func (pc *PrysmClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error) {
 	logger.Infof("retrieving block at slot %v", slot)

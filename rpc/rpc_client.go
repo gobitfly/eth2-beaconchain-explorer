@@ -13,6 +13,7 @@ type Client interface {
 	GetValidatorQueue() (*types.ValidatorQueue, error)
 	GetEpochAssignments(epoch uint64) (*types.EpochAssignments, error)
 	GetBlocksBySlot(slot uint64) ([]*types.Block, error)
+	GetBlockByBlockroot(blockroot []byte) (*types.Block, error)
 	GetValidatorParticipation(epoch uint64) (*types.ValidatorParticipation, error)
 	GetNewBlockChan() chan *types.Block
 	GetBlockStatusByEpoch(slot uint64) ([]*types.CanonBlock, error)
