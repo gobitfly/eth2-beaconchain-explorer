@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -505,7 +506,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		}
 	}
 
-	if payload := parsedBlock.Message.Body.ExecutionPayload; payload != nil {
+	if payload := parsedBlock.Message.Body.ExecutionPayload; payload != nil && binary.BigEndian.Uint64(parsedBlock.Message.Body.ExecutionPayload.ParentHash) != 0 {
 		txs := make([]*types.Transaction, 0, len(payload.Transactions))
 		for _, txUnion := range payload.Transactions {
 			otx := txUnion.Value
