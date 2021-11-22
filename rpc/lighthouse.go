@@ -700,7 +700,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 func (lc *LighthouseClient) GetFinalityCheckpoints(epoch uint64) (*types.FinalityCheckpoints, error) {
 	// finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, id))
 	// if err != nil {
-	// 	return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
+	//      return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
 	// }
 	return &types.FinalityCheckpoints{}, nil
 }
@@ -961,7 +961,7 @@ type ExecutionPayload struct {
 	GasUsed       uint64Str     `json:"gas_used"`
 	Timestamp     uint64Str     `json:"timestamp"`
 	ExtraData     bytesHexStr   `json:"extra_data"`
-	BaseFeePerGas uint64Str   `json:"base_fee_per_gas"`
+	BaseFeePerGas uint64Str     `json:"base_fee_per_gas"`
 	BlockHash     bytesHexStr   `json:"block_hash"`
 	Transactions  []Transaction `json:"transactions"`
 }
