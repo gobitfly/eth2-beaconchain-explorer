@@ -568,9 +568,9 @@ func (u *BlockPageData) MarshalJSON() ([]byte, error) {
 
 // BlockVote stores a vote for a given block
 type BlockVote struct {
-	Validator      uint64
-	IncludedIn     uint64
-	CommitteeIndex uint64
+	Validator      uint64 `db:"validator"`
+	IncludedIn     uint64 `db:"included_in"`
+	CommitteeIndex uint64 `db:"committee_index"`
 }
 
 // BlockPageMinMaxSlot is a struct to hold min/max slot data

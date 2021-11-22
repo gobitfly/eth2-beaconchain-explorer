@@ -740,6 +740,15 @@ func FormatValidatorInt64(validator int64) template.HTML {
 	return FormatValidator(uint64(validator))
 }
 
+// FormatValidatosrInt64 will return html formatted text for validators
+func FormatValidatorsInt64(validators []int64) template.HTML {
+	formatedValidators := make([]string, len(validators))
+	for i, v := range validators {
+		formatedValidators[i] = string(FormatValidatorInt64(v))
+	}
+	return template.HTML(strings.Join(formatedValidators, " "))
+}
+
 // FormatSlashedValidatorInt64 will return html formatted text for a slashed validator
 func FormatSlashedValidatorInt64(validator int64) template.HTML {
 	return template.HTML(fmt.Sprintf("<i class=\"fas fa-user-slash text-danger mr-2\"></i><a href=\"/validator/%v\">%v</a>", validator, validator))
