@@ -5,19 +5,16 @@
         voted {{.VotesCount}} times for
         this block:</b></div>
   </div>
-  <div class="table-responsive">
-    <table class="table table-sm table-bordered text-center">
-      {{range $i, $vote := .Votes}}
-      {{if mod $i 10 }}
-      <tr>
-        {{end}}
-        <td style="border-bottom: 1px solid var(--border-color);" class="p-1" data-toggle="tooltip" data-placement="top" title="Voted on by validator {{$vote.Validator}} of committee {{$vote.CommitteeIndex}} included in block {{$vote.IncludedIn}}">
-          {{formatValidator $vote.Validator}}
-        </td>
-        {{if or (mod (add $i 1) 10) (eq $i (sub (len $.Votes) 1))}}
-      </tr>
-      {{end}}
-      {{end}}
+  <div class="px-0 py-3">
+    <table class="table" id="block_votes">
+      <thead>
+        <tr>
+          <th>Included in Block</th>
+          <th>Committee</th>
+          <th>Validators</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
     </table>
   </div>
 </div>

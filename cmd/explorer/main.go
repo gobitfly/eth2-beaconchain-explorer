@@ -219,6 +219,7 @@ func main() {
 			router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
 			router.HandleFunc("/block/{slotOrHash}", handlers.Block).Methods("GET")
 			router.HandleFunc("/block/{slotOrHash}/deposits", handlers.BlockDepositData).Methods("GET")
+			router.HandleFunc("/block/{slotOrHash}/votes", handlers.BlockVoteData).Methods("GET")
 			router.HandleFunc("/blocks", handlers.Blocks).Methods("GET")
 			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")

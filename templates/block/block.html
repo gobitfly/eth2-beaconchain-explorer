@@ -5,7 +5,7 @@
 
     <script>
         $(document).ready(function() {
-            var tblOpts = {
+            var depositsTblOpts = {
                 processing: true,
                 serverSide: true,
                 ordering: false,
@@ -50,9 +50,47 @@
             var usp = new URLSearchParams(window.location.search)
             var q = usp.get('q')
             if (q) {
-                tblOpts.search = {"search": q}
+                depositsTblOpts.search = {"search": q}
             }
-            var tbl = $('#block_deposits').DataTable(tblOpts)
+            var depositsTbl = $('#block_deposits').DataTable(depositsTblOpts)
+
+            var votesTblOpts = {
+                processing: true,
+                serverSide: true,
+                ordering: false,
+                searching: true,
+                ajax: window.location.pathname + '/votes',
+                pageLength: 10,
+                pagingType: 'input',
+                language: {
+                    searchPlaceholder: 'Validator',
+                    search: '',
+                    paginate: {
+                        previous: '<i class="fas fa-chevron-left"></i>',
+                        next: '<i class="fas fa-chevron-right"></i>'
+                    }
+                },
+                columnDefs: [
+                    { targets: [2], className: 'white-space-normal'},
+                ],
+                preDrawCallback: function() {
+                    // this does not always work.. not sure how to solve the staying tooltip
+                    try {
+                        $('#block_votes').find('[data-toggle="tooltip"]').tooltip('dispose')
+                    } catch (e) {
+                    }
+                },
+                drawCallback: function(settings) {
+                    formatTimestamps()
+                    $('#block_votes').find('[data-toggle="tooltip"]').tooltip()
+                },
+            }
+            var usp = new URLSearchParams(window.location.search)
+            var q = usp.get('q')
+            if (q) {
+                votesTblOpts.search = {"search": q}
+            }
+            var votesTbl = $('#block_votes').DataTable(votesTblOpts)
         })
     </script>
 
