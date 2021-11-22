@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"database/sql"
-	"encoding/binary"
 	"eth2-exporter/metrics"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -1333,7 +1332,7 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 				gasUsed = b.ExecutionPayload.GasUsed
 				timestamp = b.ExecutionPayload.Timestamp
 				extraData = b.ExecutionPayload.ExtraData
-				baseFeePerGas = binary.BigEndian.Uint64(b.ExecutionPayload.BaseFeePerGas[32-8:])
+				baseFeePerGas = b.ExecutionPayload.BaseFeePerGas
 				blockHash = b.ExecutionPayload.BlockHash
 				txCount = len(b.ExecutionPayload.Transactions)
 			}
