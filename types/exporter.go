@@ -147,7 +147,7 @@ type ExecutionPayload struct {
 	GasUsed       uint64
 	Timestamp     uint64
 	ExtraData     []byte
-	BaseFeePerGas []byte
+	BaseFeePerGas uint64
 	BlockHash     []byte
 	Transactions  []*Transaction
 }

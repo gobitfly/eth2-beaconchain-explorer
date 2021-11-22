@@ -635,7 +635,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			GasUsed:       uint64(payload.GasUsed),
 			Timestamp:     uint64(payload.Timestamp),
 			ExtraData:     payload.ExtraData,
-			BaseFeePerGas: payload.BaseFeePerGas,
+			BaseFeePerGas: uint64(payload.BaseFeePerGas),
 			BlockHash:     payload.BlockHash,
 			Transactions:  txs,
 			>>>>>>> 05a38a4 (lighthouse rpc update)
@@ -1090,7 +1090,7 @@ type ExecutionPayload struct {
 	GasUsed       uint64Str     `json:"gas_used"`
 	Timestamp     uint64Str     `json:"timestamp"`
 	ExtraData     bytesHexStr   `json:"extra_data"`
-	BaseFeePerGas bytesHexStr   `json:"base_fee_per_gas"`
+	BaseFeePerGas uint64Str   `json:"base_fee_per_gas"`
 	BlockHash     bytesHexStr   `json:"block_hash"`
 	Transactions  []Transaction `json:"transactions"`
 }
