@@ -101,18 +101,19 @@ func exportSyncCommitteeAtPeriod(rpcClient rpc.Client, p uint64) error {
 	}
 	defer tx.Rollback()
 
-	nArgs := 2
+	nArgs := 3
 	valueArgs := make([]interface{}, len(c.Validators)*nArgs)
 	valueIds := make([]string, len(c.Validators))
 	for i, idxU64 := range validatorsU64 {
 		valueArgs[i*nArgs+0] = p
 		valueArgs[i*nArgs+1] = idxU64
-		valueIds[i] = fmt.Sprintf("($%d,$%d)", i*nArgs+1, i*nArgs+2)
+		valueArgs[i*nArgs+2] = i
+		valueIds[i] = fmt.Sprintf("($%d,$%d,$%d)", i*nArgs+1, i*nArgs+2, i*nArgs+3)
 	}
 	_, err = tx.Exec(
 		fmt.Sprintf(`
-			INSERT INTO sync_committees (period, validatorindex) 
-			VALUES %s ON CONFLICT (period, validatorindex) DO NOTHING`,
+			INSERT INTO sync_committees (period, validatorindex, committeeindex) 
+			VALUES %s ON CONFLICT (period, validatorindex, committeeindex) DO NOTHING`,
 			strings.Join(valueIds, ",")),
 		valueArgs...)
 	if err != nil {

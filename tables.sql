@@ -128,7 +128,8 @@ create table sync_committees
 (
     period         int not null,
     validatorindex int not null,
-    primary key (period, validatorindex)
+    committeeindex int not null,
+    primary key (period, validatorindex, committeeindex)
 );
 
 drop table if exists validator_balances_p;
