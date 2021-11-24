@@ -606,11 +606,6 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		events = append(events, partial...)
 	}
 
-	name := string(types.ValidatorBalanceDecreasedEventName)
-	if utils.Config.Chain.Phase0.ConfigName != "" {
-		name = utils.Config.Chain.Phase0.ConfigName + ":" + name
-	}
-
 	for _, event := range events {
 		subscribers, ok := subMap[hex.EncodeToString(event.EventFilter)]
 		if !ok {
@@ -635,6 +630,15 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			}
 			if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
 				notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
+			}
+			isDuplicate := false
+			for _, nev := range notificationsByUserID[*sub.UserID][n.GetEventName()] {
+				if nev.GetSubscriptionID() == n.SubscriptionID {
+					isDuplicate = true
+				}
+			}
+			if isDuplicate {
+				continue
 			}
 			notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
 		}
