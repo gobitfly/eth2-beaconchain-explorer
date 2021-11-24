@@ -400,7 +400,6 @@ function loadNetworkData(data) {
 
 function loadValidatorsData(data) {
   let validatorsTable = $('#validators-notifications')
-  // console.log('CREATING VALIDATOR TABLE: ', data)
   validatorsTable.DataTable({
     language: {
       info: '_TOTAL_ entries',
@@ -429,12 +428,13 @@ function loadValidatorsData(data) {
 
       // click event to validators table edit button
       $('#validators-notifications #edit-validator-events').on('click', function (e) {
-        $('#manageNotificationsModal').attr('rowId', $(this).parent().parent().attr('id'))
+        $('#manageNotificationsModal').attr('rowId', $(this).parent().parent().parent().attr('id'))
       });
 
       // click event to remove button
       $('#validators-notifications #remove-btn').on('click', function (e) {
-        const rowId = $(this).parent().parent().attr('id')
+
+        const rowId = $(this).parent().parent().parent().attr('id')
         $('#modaltext').text($(this).data('modaltext'))
 
         // set the row id 
@@ -471,7 +471,6 @@ function loadValidatorsData(data) {
             if (!row.Notification) {
               row.Notification = []
             }
-            console.log(row, row.Notification)
             let notifications = ""
             let hasItems = false
             for (let i = 0; i < row.Notification.length; i++) {
@@ -577,7 +576,6 @@ function loadValidatorsData(data) {
       }
     ],
     rowId: function (data, type, row, meta) {
-      console.log('setting row id:', data.Pubkey)
       return data ? data.Pubkey : null
     }
   })
@@ -650,7 +648,6 @@ $(document).ready(function () {
     if (rowId !== undefined) {
       if (tablename === 'monitoring') {
         $(this).html('<div class="spinner-border spinner-border-sm" role="status"><span class="sr-only">Removing...</span></div>')
-        console.log('removing', $('#confirmRemoveModal').attr('filter'))
         fetch(`/user/notifications/unsubscribe?event=${encodeURI($('#confirmRemoveModal').attr('event'))}&filter=${encodeURI($('#confirmRemoveModal').attr('filter'))}`, {
           method: 'POST',
           headers: { "X-CSRF-Token": csrfToken },

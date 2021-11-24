@@ -372,6 +372,9 @@ type ValidatorStatsTableRow struct {
 	ProposerSlashings      sql.NullInt64 `db:"proposer_slashings"`
 	Deposits               sql.NullInt64 `db:"deposits"`
 	DepositsAmount         sql.NullInt64 `db:"deposits_amount"`
+	ParticipatedSync       sql.NullInt64 `db:"participated_sync"`
+	MissedSync             sql.NullInt64 `db:"missed_sync"`
+	OrphanedSync           sql.NullInt64 `db:"orphaned_sync"`
 }
 
 type ChartDataPoint struct {
