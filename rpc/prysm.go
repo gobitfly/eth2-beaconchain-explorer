@@ -667,7 +667,7 @@ func (pc *PrysmClient) parseAltairBlock(block *ethpb.BeaconBlockContainerAltair)
 		bits := blk.Block.Body.SyncAggregate.SyncCommitteeBits.Bytes()
 		b.SyncAggregate = &types.SyncAggregate{
 			SyncCommitteeBits:          bits,
-			SyncAggregateParticipation: bitlistParticipation(bits),
+			SyncAggregateParticipation: syncCommitteeParticipation(bits),
 			SyncCommitteeSignature:     blk.Block.Body.SyncAggregate.SyncCommitteeSignature,
 		}
 	}
@@ -822,4 +822,8 @@ func (pc *PrysmClient) GetFinalityCheckpoints(epoch uint64) (*types.FinalityChec
 	// 	return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
 	// }
 	return nil, fmt.Errorf("not implemented yet")
+}
+
+func (pc *PrysmClient) GetSyncCommittee(stateID string, epoch uint64) (*StandardSyncCommittee, error) {
+	return nil, fmt.Errorf("not implemented")
 }

@@ -138,6 +138,9 @@
 								<a class="nav-link {{ if eq .AttestationsCount 0 }}disabled{{end}}" id="attestations-tab" data-toggle="tab" href="#attestations" role="tab" aria-controls="attestations" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-file-signature"></i><span class="tab-text">Attestations</span></a>
 							</li>
 							<li class="nav-item">
+								<a class="nav-link {{ if eq .SyncCount 0 }}disabled{{end}}" id="sync-tab" data-toggle="tab" href="#sync" role="tab" aria-controls="sync" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-sync"></i><span class="tab-text">Sync</span></a>
+							</li>
+							<li class="nav-item">
 								<a class="nav-link {{if eq .SlashingsCount 0}}disabled{{end}}" id="slashings-tab" data-toggle="tab" href="#slashings" role="tab" aria-controls="slashings" aria-selected="false"><i class="tab-icon mr-md-1 fas fa-user-slash"></i><span class="tab-text">Slashings</span></a>
 							</li>
 							<li class="nav-item">
@@ -173,6 +176,11 @@
 							{{if gt .AttestationsCount 0}}
 								 <div class="tab-pane fade h-100" id="attestations" role="tabpanel" aria-labelledby="attestations-tab" aria-controls="attestations">
 									{{template "validatorAttestationsTable" .}}
+								</div>
+							{{end}}
+							{{if gt .SyncCount 0}}
+								 <div class="tab-pane fade h-100" id="sync" role="tabpanel" aria-labelledby="sync-tab" aria-controls="sync">
+									{{template "validatorSyncTable" .}}
 								</div>
 							{{end}}
 							{{if gt .SlashingsCount 0}}

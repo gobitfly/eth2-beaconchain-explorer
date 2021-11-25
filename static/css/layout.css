@@ -21,6 +21,10 @@ table {
   table-layout: auto;
 }
 
+.white-space-normal {
+  white-space: normal;
+}
+
 .btn-icon-inside {
   position: relative;
   line-height: 0;

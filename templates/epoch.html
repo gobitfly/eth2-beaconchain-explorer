@@ -205,6 +205,18 @@
                         </div>
                     </div>
                     <div class="row border-bottom p-3 mx-0">
+                        <div class="col-md-3">Sync Participation:</div>
+                        <div class="col-md-9">
+                            <div>{{formatPercentageWithPrecision .SyncParticipationRate 1}} % (only counting proposed blocks)</div>
+                            <div class="progress" style="height: 5px; width: 250px;">
+                                <div class="progress-bar" role="progressbar"
+                                     style="width: {{.SyncParticipationRate | formatPercentage}}%;"
+                                     aria-valuenow="{{.SyncParticipationRate | formatPercentage}}" aria-valuemin="0"
+                                     aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row border-bottom p-3 mx-0">
                         <div class="col-md-3">Validators:</div>
                         <div class="col-md-9">{{formatAddCommas .ValidatorsCount}}</div>
                     </div>
@@ -214,11 +226,12 @@
                     </div>
                     <span class="row p-3 mx-0 collapsed">
             <div style="position:relative" class="col-md-3">Slots: </div>
-            <div class="col-md-9"></i> {{.BlocksCount}}
+            <div class="col-md-9">{{.BlocksCount}}
                 <small class="text-muted">
                     ({{if gt .ProposedCount 0}}{{.ProposedCount}} Proposed{{end}}{{if gt .MissedCount 0}}, {{.MissedCount}} Missed{{end}}{{if gt .ScheduledCount 0}}, {{.ScheduledCount}} Pending{{end}}{{if gt .OrphanedCount 0}}, {{.OrphanedCount}} Orphaned{{end}})
                 </small>
             </div>
+            <div style="position:relative" class="col-md-3">Sync Committee: </div>
         </span>
                 </div>
             </div>

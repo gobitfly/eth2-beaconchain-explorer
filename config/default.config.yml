@@ -12,6 +12,9 @@ chain:
   secondsPerSlot: 12
   genesisTimestamp: 1573489682
   minGenesisActiveValidatorCount: 16384
+  altairForkEpoch: 74240  # Oct 27, 2021, 10:56:23am UTC
+  phase0path: "./config/phase0.yml"
+  altairPath: "./config/altair.yml"
 
 # Note: It is possible to run either the frontend or the indexer or both at the same time
 # Frontend config

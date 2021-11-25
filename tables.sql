@@ -113,6 +113,25 @@ CREATE TABLE attestation_assignments_7 PARTITION OF attestation_assignments_p FO
 CREATE TABLE attestation_assignments_8 PARTITION OF attestation_assignments_p FOR VALUES IN (8);
 CREATE TABLE attestation_assignments_9 PARTITION OF attestation_assignments_p FOR VALUES IN (9);
 
+drop table if exists sync_assignments_p;
+create table sync_assignments_p
+(
+    slot           int not null,
+    validatorindex int not null,
+    status         int not null, /* Can be 0 = scheduled, 1 = executed, 2 = missed, 3 = orphaned */
+    week           int not null,
+    primary key (validatorindex, week, slot)
+) PARTITION BY LIST (week);
+
+drop table if exists sync_committees;
+create table sync_committees
+(
+    period         int not null,
+    validatorindex int not null,
+    committeeindex int not null,
+    primary key (period, validatorindex, committeeindex)
+);
+
 drop table if exists validator_balances_p;
 create table validator_balances_p
 (
@@ -162,6 +181,9 @@ create table validator_stats
     max_effective_balance   bigint,
     missed_attestations     int,
     orphaned_attestations   int,
+    participated_sync       int,
+    missed_sync             int,
+    orphaned_sync           int,
     proposed_blocks         int,
     missed_blocks           int,
     orphaned_blocks         int,
