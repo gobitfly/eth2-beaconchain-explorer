@@ -419,22 +419,20 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 	if err != nil {
 		return fmt.Errorf("error getting subscriptions for missted attestations %w", err)
 	}
-	runs := 1
-	lenKeys := len(pubkeys)
-	if lenKeys > 5000 {
-		runs = lenKeys / 5000
-		if lenKeys%5000 != 0 {
-			runs += 1
-		}
-	}
+
 	events := make([]dbResult, 0)
-	for i := 0; i < runs; i++ {
+	batchSize := 5000
+	dataLen := len(pubkeys)
+	for i := 0; i < dataLen; i += batchSize {
 		var keys [][]byte
-		if i == (runs - 1) {
-			keys = pubkeys[i*5000:]
-		} else {
-			keys = pubkeys[i*5000 : (i+1)*5000]
+		start := i
+		end := i + batchSize
+
+		if dataLen < end {
+			end = dataLen
 		}
+
+		keys = pubkeys[start:end]
 
 		var partial []dbResult
 
