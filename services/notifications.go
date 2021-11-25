@@ -419,22 +419,20 @@ func collectBlockProposalNotifications(notificationsByUserID map[uint64]map[type
 	if err != nil {
 		return fmt.Errorf("error getting subscriptions for missted attestations %w", err)
 	}
-	runs := 1
-	lenKeys := len(pubkeys)
-	if lenKeys > 5000 {
-		runs = lenKeys / 5000
-		if lenKeys%5000 != 0 {
-			runs += 1
-		}
-	}
+
 	events := make([]dbResult, 0)
-	for i := 0; i < runs; i++ {
+	batchSize := 5000
+	dataLen := len(pubkeys)
+	for i := 0; i < dataLen; i += batchSize {
 		var keys [][]byte
-		if i == (runs - 1) {
-			keys = pubkeys[i*5000:]
-		} else {
-			keys = pubkeys[i*5000 : (i+1)*5000]
+		start := i
+		end := i + batchSize
+
+		if dataLen < end {
+			end = dataLen
 		}
+
+		keys = pubkeys[start:end]
 
 		var partial []dbResult
 
@@ -557,17 +555,11 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 	latestEpoch := LatestEpoch()
 	latestSlot := LatestSlot()
 
-	runs := 1
 	pubkeys, subMap, err := db.GetSubsForEventFilter(types.ValidatorMissedAttestationEventName)
 	if err != nil {
 		return fmt.Errorf("error getting subscriptions for missted attestations %w", err)
 	}
-	if len(pubkeys) > 5000 {
-		runs = len(pubkeys) / 5000
-		if len(pubkeys)%5000 != 0 {
-			runs += 1
-		}
-	}
+
 	type dbResult struct {
 		ValidatorIndex uint64 `db:"validatorindex"`
 		Epoch          uint64 `db:"epoch"`
@@ -578,13 +570,18 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 	}
 
 	events := make([]dbResult, 0)
-	for i := 0; i < runs; i++ {
+	batchSize := 5000
+	dataLen := len(pubkeys)
+	for i := 0; i < dataLen; i += batchSize {
 		var keys [][]byte
-		if i == (runs - 1) {
-			keys = pubkeys[i*5000:]
-		} else {
-			keys = pubkeys[i*5000 : (i+1)*5000]
+		start := i
+		end := i + batchSize
+
+		if dataLen < end {
+			end = dataLen
 		}
+
+		keys = pubkeys[start:end]
 
 		var partial []dbResult
 		err = db.DB.Select(&partial, `
@@ -610,11 +607,6 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 		}
 
 		events = append(events, partial...)
-	}
-
-	name := string(types.ValidatorBalanceDecreasedEventName)
-	if utils.Config.Chain.Phase0.ConfigName != "" {
-		name = utils.Config.Chain.Phase0.ConfigName + ":" + name
 	}
 
 	for _, event := range events {
@@ -647,6 +639,15 @@ func collectAttestationNotifications(notificationsByUserID map[uint64]map[types.
 			}
 			if _, exists := notificationsByUserID[*sub.UserID][n.GetEventName()]; !exists {
 				notificationsByUserID[*sub.UserID][n.GetEventName()] = []types.Notification{}
+			}
+			isDuplicate := false
+			for _, userEvent := range notificationsByUserID[*sub.UserID][n.GetEventName()] {
+				if userEvent.GetSubscriptionID() == n.SubscriptionID {
+					isDuplicate = true
+				}
+			}
+			if isDuplicate {
+				continue
 			}
 			notificationsByUserID[*sub.UserID][n.GetEventName()] = append(notificationsByUserID[*sub.UserID][n.GetEventName()], n)
 		}
