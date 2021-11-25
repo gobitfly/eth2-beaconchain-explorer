@@ -1,6 +1,8 @@
 package types
 
-import "html/template"
+import (
+	"html/template"
+)
 
 // Config is a struct to hold the configuration data
 type Config struct {
@@ -25,9 +27,12 @@ type Config struct {
 		// Deprecated Use Phase0 config GENESIS_DELAY
 		GenesisDelay uint64 `yaml:"genesisDelay" envconfig:"CHAIN_GENESIS_DELAY"`
 		// Deprecated Use Phase0 config CONFIG_NAME == "mainnet"
-		Mainnet    bool   `yaml:"mainnet" envconfig:"CHAIN_MAINNET"`
-		Phase0Path string `yaml:"phase0path" envconfig:"CHAIN_PHASE0_PATH"`
+		Mainnet         bool   `yaml:"mainnet" envconfig:"CHAIN_MAINNET"`
+		Phase0Path      string `yaml:"phase0path" envconfig:"CHAIN_PHASE0_PATH"`
+		AltairPath      string `yaml:"altairPath" envconfig:"CHAIN_ALTAIR_PATH"`
+		AltairForkEpoch uint64 `yaml:"altairForkEpoch" envconfig:"CHAIN_ALTAIR_FORK_VERSION"`
 		Phase0
+		Altair
 	} `yaml:"chain"`
 	Indexer struct {
 		Enabled                     bool `yaml:"enabled" envconfig:"INDEXER_ENABLED"`
@@ -234,4 +239,14 @@ type Phase0 struct {
 	// DomainVoluntaryExit
 	// DomainSelectionProof
 	// DomainAggregateAndProof
+}
+
+// https://github.com/ethereum/consensus-specs/blob/dev/presets/mainnet/altair.yaml
+type Altair struct {
+	InvactivityPenaltyQuotientAltair     uint64 `yaml:"INACTIVITY_PENALTY_QUOTIENT_ALTAIR"`
+	MinSlashingPenaltyQuotientAltair     uint64 `yaml:"MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR"`
+	ProportionalSlashingMultiplierAltair uint64 `yaml:"PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR"`
+	SyncCommitteeSize                    uint64 `yaml:"SYNC_COMMITTEE_SIZE"`
+	EpochsPerSyncCommitteePeriod         uint64 `yaml:"EPOCHS_PER_SYNC_COMMITTEE_PERIOD"`
+	MinSyncCommitteeParticipants         uint64 `yaml:"MIN_SYNC_COMMITTEE_PARTICIPANTS"`
 }

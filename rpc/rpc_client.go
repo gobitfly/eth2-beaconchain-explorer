@@ -17,6 +17,7 @@ type Client interface {
 	GetNewBlockChan() chan *types.Block
 	GetBlockStatusByEpoch(slot uint64) ([]*types.CanonBlock, error)
 	GetFinalityCheckpoints(epoch uint64) (*types.FinalityCheckpoints, error)
+	GetSyncCommittee(stateID string, epoch uint64) (*StandardSyncCommittee, error)
 }
 
 var logger = logrus.New().WithField("module", "rpc")

@@ -12,14 +12,13 @@ import (
 	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
+	"eth2-exporter/version"
 	"flag"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	httpSwagger "github.com/swaggo/http-swagger"
-	"gopkg.in/yaml.v2"
 
 	"github.com/sirupsen/logrus"
 
@@ -45,33 +44,16 @@ func initStripe(http *mux.Router) error {
 }
 
 func main() {
-
-	configPath := flag.String("config", "config.yml", "Path to the config file")
+	configPath := flag.String("config", "config/default.config.yml", "Path to the config file")
 	flag.Parse()
 
-	logrus.Printf("config file path: %v", *configPath)
+	logrus.WithField("config", *configPath).WithField("version", version.Version).Printf("starting")
 	cfg := &types.Config{}
 	err := utils.ReadConfig(cfg, *configPath)
 	if err != nil {
 		logrus.Fatalf("error reading config file: %v", err)
 	}
 	utils.Config = cfg
-	// decode phase0 config
-	if len(utils.Config.Chain.Phase0Path) > 0 {
-		phase0 := &types.Phase0{}
-		f, err := os.Open(utils.Config.Chain.Phase0Path)
-		if err != nil {
-			logrus.Errorf("error opening Phase0 Config file %v: %v", utils.Config.Chain.Phase0Path, err)
-		} else {
-			decoder := yaml.NewDecoder(f)
-			err = decoder.Decode(phase0)
-			if err != nil {
-				logrus.Errorf("error decoding Phase0 Config file %v: %v", utils.Config.Chain.Phase0Path, err)
-			} else {
-				utils.Config.Chain.Phase0 = *phase0
-			}
-		}
-	}
 
 	db.MustInitDB(cfg.Database.Username, cfg.Database.Password, cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
 	defer db.DB.Close()
@@ -237,6 +219,7 @@ func main() {
 			router.HandleFunc("/index/data", handlers.IndexPageData).Methods("GET")
 			router.HandleFunc("/block/{slotOrHash}", handlers.Block).Methods("GET")
 			router.HandleFunc("/block/{slotOrHash}/deposits", handlers.BlockDepositData).Methods("GET")
+			router.HandleFunc("/block/{slotOrHash}/votes", handlers.BlockVoteData).Methods("GET")
 			router.HandleFunc("/blocks", handlers.Blocks).Methods("GET")
 			router.HandleFunc("/blocks/data", handlers.BlocksData).Methods("GET")
 			router.HandleFunc("/vis", handlers.Vis).Methods("GET")
@@ -251,6 +234,7 @@ func main() {
 			router.HandleFunc("/validator/{index}", handlers.Validator).Methods("GET")
 			router.HandleFunc("/validator/{index}/proposedblocks", handlers.ValidatorProposedBlocks).Methods("GET")
 			router.HandleFunc("/validator/{index}/attestations", handlers.ValidatorAttestations).Methods("GET")
+			router.HandleFunc("/validator/{index}/sync", handlers.ValidatorSync).Methods("GET")
 			router.HandleFunc("/validator/{index}/history", handlers.ValidatorHistory).Methods("GET")
 			router.HandleFunc("/validator/{pubkey}/deposits", handlers.ValidatorDeposits).Methods("GET")
 			router.HandleFunc("/validator/{index}/slashings", handlers.ValidatorSlashings).Methods("GET")

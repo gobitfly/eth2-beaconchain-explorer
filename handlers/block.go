@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/juliangruber/go-intersect"
+	"github.com/lib/pq"
 
 	"github.com/gorilla/mux"
 )
@@ -180,15 +180,10 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 	blockPageData.Attestations = attestations
 
-	var votes []*types.BlockVote
 	rows, err = db.DB.Query(`
-		SELECT
-			block_slot,
-			validators,
-			committeeindex
+		SELECT validators
 		FROM blocks_attestations
-		WHERE beaconblockroot = $1
-		ORDER BY committeeindex`,
+		WHERE beaconblockroot = $1`,
 		blockPageData.BlockRoot)
 	if err != nil {
 		logger.Errorf("error retrieving block votes data: %v", err)
@@ -197,25 +192,18 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
+	votesCount := 0
 	votesPerValidator := map[int64]int{}
 	for rows.Next() {
-		attestation := &types.BlockPageAttestation{}
-
-		err := rows.Scan(
-			&attestation.BlockSlot,
-			&attestation.Validators,
-			&attestation.CommitteeIndex)
+		validators := pq.Int64Array{}
+		err := rows.Scan(&validators)
 		if err != nil {
-			logger.Errorf("error scanning block votes data: %v", err)
+			logger.Errorf("error scanning votes validators data: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		for _, validator := range attestation.Validators {
-			votes = append(votes, &types.BlockVote{
-				Validator:      uint64(validator),
-				IncludedIn:     attestation.BlockSlot,
-				CommitteeIndex: attestation.CommitteeIndex,
-			})
+		for _, validator := range validators {
+			votesCount++
 			_, exists := votesPerValidator[validator]
 			if !exists {
 				votesPerValidator[validator] = 1
@@ -225,11 +213,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	blockPageData.VotingValidatorsCount = uint64(len(votesPerValidator))
-	blockPageData.Votes = votes
-	sort.Slice(blockPageData.Votes, func(i, j int) bool {
-		return blockPageData.Votes[i].Validator < blockPageData.Votes[j].Validator
-	})
-	blockPageData.VotesCount = uint64(len(blockPageData.Votes))
+	blockPageData.VotesCount = uint64(votesCount)
 
 	err = db.DB.Select(&blockPageData.VoluntaryExits, "SELECT validatorindex, signature FROM blocks_voluntaryexits WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
@@ -281,6 +265,13 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	err = db.DB.Select(&blockPageData.ProposerSlashings, "SELECT * FROM blocks_proposerslashings WHERE block_slot = $1", blockPageData.Slot)
 	if err != nil {
 		logger.Errorf("error retrieving block proposer slashings data: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = db.DB.Select(&blockPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(blockPageData.Epoch))
+	if err != nil {
+		logger.Errorf("error retrieving sync-committee of block %v: %v", blockPageData.Slot, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -426,4 +417,150 @@ func BlockDepositData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+// BlockVoteData returns the votes for a specific slot
+func BlockVoteData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
+	blockSlot := int64(-1)
+	blockRootHash, err := hex.DecodeString(slotOrHash)
+	if err != nil || len(slotOrHash) != 64 {
+		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing slotOrHash url parameter %v, err: %v", vars["slotOrHash"], err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		err = db.DB.Get(&blockRootHash, "select blocks.blockroot from blocks where blocks.slot = $1", blockSlot)
+		if err != nil {
+			logger.Errorf("error getting blockRootHash for slot %v: %v", blockSlot, err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	} else {
+		err = db.DB.Get(&blockSlot, `SELECT blocks.slot FROM blocks WHERE blocks.blockroot = $1`, blockRootHash)
+		if err != nil {
+			logger.Errorf("error querying for block slot with block root hash %v err: %v", blockRootHash, err)
+			http.Error(w, "Interal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	q := r.URL.Query()
+
+	search := q.Get("search[value]")
+	searchIsUint64 := false
+	searchUint64, err := strconv.ParseUint(search, 10, 64)
+	if err == nil {
+		searchIsUint64 = true
+	}
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	start, err := strconv.ParseUint(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	length, err := strconv.ParseUint(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if length > 100 {
+		length = 100
+	}
+
+	var count uint64
+	var votes []struct {
+		BlockSlot      uint64        `db:"block_slot"`
+		Validators     pq.Int64Array `db:"validators"`
+		CommitteeIndex uint64        `db:"committeeindex"`
+	}
+	if search == "" {
+		err = db.DB.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1`, blockRootHash)
+		if err != nil {
+			logger.Errorf("error retrieving deposit count for slot %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		err = db.DB.Select(&votes, `
+			SELECT
+				block_slot,
+				validators,
+				committeeindex
+			FROM blocks_attestations
+			WHERE beaconblockroot = $1
+			ORDER BY committeeindex
+			LIMIT $2
+			OFFSET $3`,
+			blockRootHash, length, start)
+		if err != nil {
+			logger.Errorf("error retrieving block vote data: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	} else if searchIsUint64 {
+		err = db.DB.Get(&count, `SELECT count(*) FROM blocks_attestations WHERE beaconblockroot = $1 AND $2 = ANY(validators)`, blockRootHash, searchUint64)
+		if err != nil {
+			logger.Errorf("error retrieving deposit count for slot %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		err = db.DB.Select(&votes, `
+			SELECT
+				block_slot,
+				validators,
+				committeeindex
+			FROM blocks_attestations
+			WHERE beaconblockroot = $1 AND $2 = ANY(validators)
+			ORDER BY committeeindex
+			LIMIT $3
+			OFFSET $4`,
+			blockRootHash, searchUint64, length, start)
+		if err != nil {
+			logger.Errorf("error retrieving block vote data: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	tableData := make([][]interface{}, 0, len(votes))
+
+	for _, vote := range votes {
+		formatedValidators := make([]string, len(vote.Validators))
+		for i, v := range vote.Validators {
+			formatedValidators[i] = fmt.Sprintf("<a href='/validator/%[1]d'>%[1]d</a>", v)
+		}
+		tableData = append(tableData, []interface{}{
+			vote.BlockSlot,
+			vote.CommitteeIndex,
+			strings.Join(formatedValidators, ", "),
+		})
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    count,
+		RecordsFiltered: count,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error encoding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }

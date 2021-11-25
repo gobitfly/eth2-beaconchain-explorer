@@ -49,21 +49,23 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 
 	epochPageData := types.EpochPageData{}
 
-	err = db.DB.Get(&epochPageData, `SELECT epoch, 
-											    blockscount, 
-											    proposerslashingscount, 
-											    attesterslashingscount, 
-											    attestationscount, 
-											    depositscount, 
-											    voluntaryexitscount, 
-											    validatorscount, 
-											    averagevalidatorbalance, 
-											    finalized,
-											    eligibleether,
-											    globalparticipationrate,
-											    votedether
-										FROM epochs 
-										WHERE epoch = $1`, epoch)
+	err = db.DB.Get(&epochPageData, `
+		SELECT 
+			epoch, 
+			blockscount, 
+			proposerslashingscount, 
+			attesterslashingscount, 
+			attestationscount, 
+			depositscount, 
+			voluntaryexitscount, 
+			validatorscount, 
+			averagevalidatorbalance, 
+			finalized,
+			eligibleether,
+			globalparticipationrate,
+			votedether
+		FROM epochs 
+		WHERE epoch = $1`, epoch)
 	if err != nil {
 		//logger.Errorf("error getting epoch data: %v", err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -76,20 +78,22 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.DB.Select(&epochPageData.Blocks, `SELECT blocks.slot, 
-											    blocks.proposer, 
-											    blocks.blockroot, 
-											    blocks.parentroot, 
-											    blocks.attestationscount, 
-											    blocks.depositscount, 
-											    blocks.voluntaryexitscount, 
-											    blocks.proposerslashingscount, 
-											    blocks.attesterslashingscount,
-       										blocks.status
-										FROM blocks 
-										WHERE epoch = $1
-										ORDER BY blocks.slot DESC`, epoch)
-
+	err = db.DB.Select(&epochPageData.Blocks, `
+		SELECT 
+			blocks.slot, 
+			blocks.proposer, 
+			blocks.blockroot, 
+			blocks.parentroot, 
+			blocks.attestationscount, 
+			blocks.depositscount, 
+			blocks.voluntaryexitscount, 
+			blocks.proposerslashingscount, 
+			blocks.attesterslashingscount,
+       		blocks.status,
+			blocks.syncaggregate_participation
+		FROM blocks 
+		WHERE epoch = $1
+		ORDER BY blocks.slot DESC`, epoch)
 	if err != nil {
 		logger.Errorf("error epoch blocks data: %v", err)
 		err = epochNotFoundTemplate.ExecuteTemplate(w, "layout", data)
@@ -110,12 +114,14 @@ func Epoch(w http.ResponseWriter, r *http.Request) {
 			epochPageData.ScheduledCount += 1
 		case 1:
 			epochPageData.ProposedCount += 1
+			epochPageData.SyncParticipationRate += block.SyncAggParticipation
 		case 2:
 			epochPageData.MissedCount += 1
 		case 3:
 			epochPageData.OrphanedCount += 1
 		}
 	}
+	epochPageData.SyncParticipationRate /= float64(epochPageData.ProposedCount)
 
 	epochPageData.Ts = utils.EpochToTime(epochPageData.Epoch)
 

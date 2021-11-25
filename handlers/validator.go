@@ -516,17 +516,17 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	// start = time.Now()
 
 	err = db.DB.Get(&validatorPageData.AverageAttestationInclusionDistance, `
-	SELECT COALESCE(
-		AVG(1 + inclusionslot - COALESCE((
-			SELECT MIN(slot)
-			FROM blocks
-			WHERE slot > aa.attesterslot AND blocks.status = '1'
+		SELECT COALESCE(
+			AVG(1 + inclusionslot - COALESCE((
+				SELECT MIN(slot)
+				FROM blocks
+				WHERE slot > aa.attesterslot AND blocks.status = '1'
+			), 0)
 		), 0)
-	), 0)
-	FROM attestation_assignments_p aa
-	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
-	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
-	`, int64(validatorPageData.Epoch)-100, index)
+		FROM attestation_assignments_p aa
+		INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+		WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND aa.validatorindex = $2 AND aa.inclusionslot > 0
+		`, int64(validatorPageData.Epoch)-100, index)
 	if err != nil {
 		logger.Errorf("error retrieving AverageAttestationInclusionDistance: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -556,6 +556,53 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	// logger.Infof("effectiveness data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
+
+	err = db.DB.Get(&validatorPageData.SyncCount, `SELECT count(*)*$1 FROM sync_committees WHERE validatorindex = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
+	if err != nil {
+		logger.Errorf("error retrieving syncCount for validator %v: %v", index, err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	if validatorPageData.SyncCount > 0 {
+		// get syncStats from validator_stats
+		syncStats := struct {
+			ParticipatedSync uint64 `db:"participated_sync"`
+			MissedSync       uint64 `db:"missed_sync"`
+			OrphanedSync     uint64 `db:"orphaned_sync"`
+		}{}
+		if lastStatsDay > 0 {
+			err = db.DB.Get(&syncStats, "select coalesce(sum(participated_sync), 0) as participated_sync, coalesce(sum(missed_sync), 0) as missed_sync, coalesce(sum(orphaned_sync), 0) as orphaned_sync from validator_stats where validatorindex = $1", index)
+			if err != nil {
+				logger.Errorf("error retrieving validator syncStats: %v", err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+		}
+
+		// add syncStats that are not yet in validator_stats
+		syncStatsNotInStats := struct {
+			ScheduledSync    uint64 `db:"scheduled_sync"`
+			ParticipatedSync uint64 `db:"participated_sync"`
+			MissedSync       uint64 `db:"missed_sync"`
+			OrphanedSync     uint64 `db:"orphaned_sync"`
+		}{}
+		err = db.DB.Get(&syncStatsNotInStats, "select coalesce(sum(case when status = 0 then 1 else 0 end), 0) as scheduled_sync, coalesce(sum(case when status = 1 then 1 else 0 end), 0) as participated_sync, coalesce(sum(case when status = 2 then 1 else 0 end), 0) as missed_sync, coalesce(sum(case when status = 3 then 1 else 0 end), 0) as orphaned_sync from sync_assignments_p where week >= $1/7 and slot >= ($1+1)*225*32 and validatorindex = $2", lastStatsDay, index)
+		if err != nil {
+			logger.Errorf("error retrieving validator syncStatsAfterLastStatsDay: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+
+		fmt.Printf("SyncCount: %v\nsnycStats: %+v\nsyncStatsNotInStats: %+v\n", validatorPageData.SyncCount, syncStats, syncStatsNotInStats)
+
+		validatorPageData.ScheduledSyncCount = syncStatsNotInStats.ScheduledSync
+		validatorPageData.ParticipatedSyncCount = syncStats.ParticipatedSync + syncStatsNotInStats.ParticipatedSync
+		validatorPageData.MissedSyncCount = syncStats.MissedSync + syncStatsNotInStats.MissedSync
+		validatorPageData.OrphanedSyncCount = syncStats.OrphanedSync + syncStatsNotInStats.OrphanedSync
+
+		validatorPageData.UnmissedSyncPercentage = float64(validatorPageData.SyncCount-validatorPageData.MissedSyncCount) / float64(validatorPageData.SyncCount)
+	}
 
 	// add rocketpool-data if available
 	validatorPageData.Rocketpool = &types.RocketpoolValidatorPageData{}
@@ -1404,4 +1451,131 @@ func ValidatorStatsTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func ValidatorSync(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	index, err := strconv.ParseUint(vars["index"], 10, 64)
+	if err != nil {
+		logger.Errorf("error parsing validator index: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	q := r.URL.Query()
+
+	draw, err := strconv.ParseUint(q.Get("draw"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables data draw-parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	start, err := strconv.ParseInt(q.Get("start"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables start start-parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	length, err := strconv.ParseInt(q.Get("length"), 10, 64)
+	if err != nil {
+		logger.Errorf("error converting datatables length length-parameter from string to int: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	if length > 100 {
+		length = 100
+	}
+
+	orderDir := q.Get("order[0][dir]")
+	if orderDir != "desc" && orderDir != "asc" {
+		orderDir = "desc"
+	}
+
+	orderColumn := q.Get("order[0][column]")
+	orderByMap := map[string]string{
+		"0": fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir),
+		"1": fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir),
+		"2": fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir),
+		"3": fmt.Sprintf("sa.status %[1]s", orderDir),
+	}
+	orderBy, exists := orderByMap[orderColumn]
+	if !exists {
+		orderBy = fmt.Sprintf("sa.week %[1]s, sa.slot %[1]s", orderDir)
+	}
+
+	var countData []struct {
+		TotalCount uint64 `db:"totalcount"`
+		MaxPeriod  uint64 `db:"maxperiod"`
+	}
+	err = db.DB.Select(&countData, `
+		SELECT count(*)*$1 AS totalcount, max(period) AS maxperiod 
+		FROM sync_committees 
+		WHERE validatorindex = $2`, utils.Config.Chain.EpochsPerSyncCommitteePeriod*utils.Config.Chain.SlotsPerEpoch, index)
+	if err != nil {
+		logger.WithError(err).Errorf("error getting countData of sync-assignments")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	totalCount := uint64(0)
+	tableData := [][]interface{}{}
+
+	if len(countData) > 0 {
+		// only show 1 scheduled slot in the sync-table
+		totalCount = countData[0].TotalCount
+		futureSlotsThreshold := (services.LatestEpoch()+1)*utils.Config.Chain.SlotsPerEpoch + 1
+		firstSyncSlot := countData[0].MaxPeriod * utils.Config.Chain.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
+		lastSyncSlot := (countData[0].MaxPeriod + 1) * utils.Config.Chain.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
+		if futureSlotsThreshold < lastSyncSlot {
+			totalCount = futureSlotsThreshold - firstSyncSlot
+		}
+		var dbRows []struct {
+			Slot              uint64  `db:"slot"`
+			Status            uint64  `db:"status"`
+			ParticipationRate float64 `db:"participation"`
+		}
+		err = db.DB.Select(&dbRows, `
+			SELECT sa.slot, sa.status, COALESCE(b.syncaggregate_participation,0) AS participation
+			FROM sync_assignments_p sa
+			LEFT JOIN blocks b ON sa.slot = b.slot
+			WHERE validatorindex = $1 AND sa.slot < $4
+			ORDER BY `+orderBy+`
+			LIMIT $2 OFFSET $3`, index, length, start, futureSlotsThreshold)
+		if err != nil {
+			logger.Errorf("error retrieving validator sync participations data: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		tableData = make([][]interface{}, len(dbRows))
+		for i, r := range dbRows {
+			epoch := utils.EpochOfSlot(r.Slot)
+			participation := template.HTML("-") // no participation fro scheduled and nonblock-slots
+			if r.Status != 0 && r.Status != 3 {
+				participation = utils.FormatPercentageColored(r.ParticipationRate)
+			}
+			tableData[i] = []interface{}{
+				fmt.Sprintf("%d", utils.SyncPeriodOfEpoch(epoch)),
+				utils.FormatEpoch(epoch),
+				utils.FormatBlockSlot(r.Slot),
+				utils.FormatSyncParticipationStatus(r.Status),
+				participation,
+			}
+		}
+	}
+
+	data := &types.DataTableResponse{
+		Draw:            draw,
+		RecordsTotal:    totalCount,
+		RecordsFiltered: totalCount,
+		Data:            tableData,
+	}
+
+	err = json.NewEncoder(w).Encode(data)
+	if err != nil {
+		logger.Errorf("error enconding json response for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 }
