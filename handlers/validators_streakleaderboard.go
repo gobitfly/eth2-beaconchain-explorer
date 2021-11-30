@@ -108,12 +108,12 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				v.validatorindex,
 				coalesce(vn.name, '') as name,
 				cnt.totalcount,
-				ls.rank lrank,
-				ls.start lstart,
-				ls.length llength,
-				cs.rank crank,
-				cs.start cstart,
-				cs.length clength
+				coalesce(ls.rank, 0) lrank,
+				coalesce(ls.start, 0) lstart,
+				coalesce(ls.length, 0) llength,
+				coalesce(cs.rank, 0) crank,
+				coalesce(cs.start, 0) cstart,
+				coalesce(cs.length, 0) clength
 			from longeststreaks ls
 			inner join validators v on ls.validatorindex = v.validatorindex
 			left join currentstreaks cs on cs.validatorindex = v.validatorindex
@@ -143,12 +143,12 @@ func ValidatorsStreakLeaderboardData(w http.ResponseWriter, r *http.Request) {
 				v.validatorindex,
 				coalesce(vn.name, '') as name,
 				cnt.totalcount,
-				ls.rank lrank,
-				ls.start lstart,
-				ls.length llength,
-				cs.rank crank,
-				cs.start cstart,
-				cs.length clength
+				coalesce(ls.rank, 0) lrank,
+				coalesce(ls.start, 0) lstart,
+				coalesce(ls.length, 0) llength,
+				coalesce(cs.rank, 0) crank,
+				coalesce(cs.start, 0) cstart,
+				coalesce(cs.length, 0) clength
 			from longeststreaks ls
 			inner join matched_validators mv on ls.validatorindex = mv.validatorindex
 			inner join validators v on ls.validatorindex = v.validatorindex
