@@ -594,8 +594,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Printf("SyncCount: %v\nsnycStats: %+v\nsyncStatsNotInStats: %+v\n", validatorPageData.SyncCount, syncStats, syncStatsNotInStats)
-
 		validatorPageData.ScheduledSyncCount = syncStatsNotInStats.ScheduledSync
 		validatorPageData.ParticipatedSyncCount = syncStats.ParticipatedSync + syncStatsNotInStats.ParticipatedSync
 		validatorPageData.MissedSyncCount = syncStats.MissedSync + syncStatsNotInStats.MissedSync

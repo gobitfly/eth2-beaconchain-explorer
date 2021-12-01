@@ -595,7 +595,7 @@ func updateValidatorPerformance() error {
 		Amount    int64
 	}{}
 
-	err = tx.Select(&deposits, `SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits`)
+	err = tx.Select(&deposits, `SELECT block_slot / 32 AS epoch, amount, publickey FROM blocks_deposits INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'`)
 	if err != nil {
 		return fmt.Errorf("error retrieving validator deposits data: %w", err)
 	}
@@ -806,7 +806,7 @@ func genesisDepositsExporter() {
 
 		// check if genesis-deposits have already been exported
 		var genesisDepositsCount uint64
-		err = db.DB.Get(&genesisDepositsCount, "SELECT COUNT(*) FROM blocks_deposits WHERE block_slot=0")
+		err = db.DB.Get(&genesisDepositsCount, "SELECT COUNT(*) FROM blocks_deposits INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1' WHERE block_slot=0")
 		if err != nil {
 			logger.Errorf("error retrieving genesis-deposits-count when exporting genesis-deposits: %v", err)
 			time.Sleep(time.Second * 60)
