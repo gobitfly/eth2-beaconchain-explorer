@@ -210,12 +210,7 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 
 func GetEth1DepositsCount() (uint64, error) {
 	deposits := uint64(0)
-	err := DB.Get(&deposits, `
-	SELECT 
-		Count(*)
-	FROM 
-		eth1_deposits
-	`)
+	err := DB.Get(&deposits, `SELECT COUNT(*) FROM eth1_deposits`)
 	if err != nil {
 		return 0, err
 	}
@@ -339,6 +334,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 				blocks_deposits.amount,
 				blocks_deposits.signature
 			FROM blocks_deposits
+			INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
 			WHERE ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR CAST(block_slot as varchar) LIKE $3
 			ORDER BY %s %s
 			LIMIT $1
@@ -357,6 +353,7 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 				blocks_deposits.amount,
 				blocks_deposits.signature
 			FROM blocks_deposits
+			INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
 			ORDER BY %s %s
 			LIMIT $1
 			OFFSET $2`, orderBy, orderDir), length, start)
@@ -373,20 +370,18 @@ func GetEth2DepositsCount(search string) (uint64, error) {
 	var err error
 	if search == "" {
 		err = DB.Get(&deposits, `
-		SELECT 
-			Count(*)
-		FROM 
-			blocks_deposits
-		`)
+		SELECT COUNT(*)
+		FROM blocks_deposits
+		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'`)
 	} else {
 		err = DB.Get(&deposits, `
-		SELECT 
-			Count(*)
-		FROM 
-			blocks_deposits
-		WHERE ENCODE(publickey::bytea, 'hex') LIKE $1 
-			  OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $1 
-			  OR CAST(block_slot as varchar) LIKE $1
+		SELECT COUNT(*)
+		FROM blocks_deposits
+		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
+		WHERE 
+			ENCODE(publickey::bytea, 'hex') LIKE $1 
+			OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $1 
+			OR CAST(block_slot as varchar) LIKE $1
 		`, search)
 	}
 	if err != nil {
@@ -496,7 +491,7 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	}
 	err = DB.Select(&deposits.Eth2Deposits, `
 		SELECT blocks_deposits.* FROM blocks_deposits
-		INNER JOIN blocks ON blocks_deposits.block_slot = blocks.slot AND blocks.status = '1' 
+		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
 		WHERE blocks_deposits.publickey = $1`, publicKey)
 	if err != nil {
 		return nil, err
