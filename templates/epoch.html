@@ -248,6 +248,7 @@
                                 <th>Proposer</th>
                                 <th>Root Hash</th>
                                 <th>Attestations</th>
+                                <th>Sync Participation</th>
                                 <th>Deposits</th>
                                 <th>Slashings <span data-toggle="tooltip" data-placement="top"
                                                     title="Proposers">P</span> /
@@ -272,6 +273,7 @@
                                         {{end}}
                                     </td>
                                     <td>{{.Attestations}}</td>
+                                    <td>{{formatPercentageWithPrecision .SyncAggParticipation 2}}%</td>
                                     <td>{{.Deposits}}</td>
                                     <td>{{.Proposerslashings}} / {{.Attesterslashings}}</td>
                                     <td>{{.Exits}}</td>
