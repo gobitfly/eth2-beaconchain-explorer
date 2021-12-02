@@ -326,6 +326,7 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 			Balance1d:                  validatorBalances1d[uint64(validator.Index)],
 			Balance7d:                  validatorBalances7d[uint64(validator.Index)],
 			Balance31d:                 validatorBalances31d[uint64(validator.Index)],
+			Status:                     validator.Status,
 		})
 	}
 
