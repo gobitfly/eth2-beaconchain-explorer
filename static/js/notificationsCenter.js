@@ -486,14 +486,16 @@ function loadValidatorsData(data) {
                     textColor = 'text-white'
                     break
                   case 'validator_proposal_submitted':
-                    badgeColor = 'badge-light'
+                    badgeColor = 'badge-success'
+                    textColor = 'text-white'
                     break
                   case 'validator_proposal_missed':
                     badgeColor = 'badge-warning'
                     textColor = 'text-white'
                     break
                   case 'validator_got_slashed':
-                    badgeColor = 'badge-light'
+                    badgeColor = 'badge-danger'
+                    textColor = 'text-white'
                     break
                 }
                 notifications += `<span style="font-size: 12px; font-weight: 500;" class="badge badge-pill ${badgeColor} ${textColor} badge-custom-size mr-1 my-1">${n.replace('validator', "").replaceAll('_', " ")}</span>`
