@@ -397,8 +397,8 @@ func main() {
 
 		srv := &http.Server{
 			Addr:         cfg.Frontend.Server.Host + ":" + cfg.Frontend.Server.Port,
-			WriteTimeout: time.Second * 30,
-			ReadTimeout:  time.Second * 30,
+			WriteTimeout: time.Second * 15,
+			ReadTimeout:  time.Second * 15,
 			IdleTimeout:  time.Second * 60,
 			Handler:      n,
 		}
