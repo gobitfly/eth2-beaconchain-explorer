@@ -482,20 +482,16 @@ function loadValidatorsData(data) {
                 let textColor = ""
                 switch (n) {
                   case 'validator_attestation_missed':
-                    badgeColor = 'badge-warning'
-                    textColor = 'text-white'
+                    badgeColor = 'badge-light'
                     break
                   case 'validator_proposal_submitted':
-                    badgeColor = 'badge-success'
-                    textColor = 'text-white'
+                    badgeColor = 'badge-light'
                     break
                   case 'validator_proposal_missed':
-                    badgeColor = 'badge-warning'
-                    textColor = 'text-white'
+                    badgeColor = 'badge-light'
                     break
                   case 'validator_got_slashed':
-                    badgeColor = 'badge-danger'
-                    textColor = 'text-white'
+                    badgeColor = 'badge-light'
                     break
                 }
                 notifications += `<span style="font-size: 12px; font-weight: 500;" class="badge badge-pill ${badgeColor} ${textColor} badge-custom-size mr-1 my-1">${n.replace('validator', "").replaceAll('_', " ")}</span>`
@@ -566,7 +562,7 @@ function loadValidatorsData(data) {
           if (row.Notification[0].Timestamp === 0) {
             return no_time
           }
-          return `<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-2">${ row.Notification && row.Notification.length ? row.Notification[0].Notification.replace('validator', "").replaceAll('_', " ") : 'N/A'}</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(row.Notification[0].Timestamp * 1000).toRelative({ style: "long" }) || 'N/A'}</span>`
+          return `<span class="badge badge-pill badge-light badge-custom-size mr-1 mr-sm-2">${ row.Notification && row.Notification.length ? row.Notification[0].Notification.replace(/[a-zA-Z]+:/, "").replace('validator', "").replaceAll('_', " ") : 'N/A'}</span><span class="heading-l4 d-block d-sm-inline-block mt-2 mt-sm-0">${luxon.DateTime.fromMillis(row.Notification[0].Timestamp * 1000).toRelative({ style: "long" }) || 'N/A'}</span>`
         }
       },
       {
