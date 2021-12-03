@@ -42,7 +42,7 @@ var validatorEditFlash = "edit_validator_flash"
 // Validator returns validator data using a go template
 func Validator(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
-	stats := services.GetLatestStats()
+
 	//start := time.Now()
 
 	w.Header().Set("Content-Type", "text/html")
@@ -52,6 +52,20 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	validatorPageData := types.ValidatorPageData{}
+
+	stats := services.GetLatestStats()
+	churnRate := stats.ValidatorChurnLimit
+	if churnRate == nil {
+		churnRate = new(uint64)
+	}
+
+	pendingCount := stats.PendingValidatorCount
+	if pendingCount == nil {
+		pendingCount = new(uint64)
+	}
+
+	validatorPageData.PendingCount = *pendingCount
+	validatorPageData.InclusionDelay = int64((utils.Config.Chain.Phase0.Eth1FollowDistance*utils.Config.Chain.Phase0.SecondsPerETH1Block+utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch*utils.Config.Chain.Phase0.EpochsPerEth1VotingPeriod)/3600) + 1
 
 	data := InitPageData(w, r, "validators", "/validators", "")
 	data.HeaderAd = true
@@ -75,6 +89,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 		index, err = db.GetValidatorIndex(pubKey)
 		if err != nil {
+			// the validator might only have a public key but no index yet
 			var name string
 			err = db.DB.Get(&name, `SELECT name FROM validator_names WHERE publickey = $1`, pubKey)
 			if err != nil {
@@ -114,20 +129,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			}
 			validatorPageData.Deposits = deposits
 
-			churnRate := stats.ValidatorChurnLimit
-			if churnRate == nil {
-				churnRate = new(uint64)
-			}
-
-			pendingCount := stats.PendingValidatorCount
-			if pendingCount == nil {
-				pendingCount = new(uint64)
-			}
-
-			validatorPageData.PendingCount = *pendingCount
-
-			validatorPageData.InclusionDelay = int64((utils.Config.Chain.Phase0.Eth1FollowDistance*utils.Config.Chain.Phase0.SecondsPerETH1Block+utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch*utils.Config.Chain.Phase0.EpochsPerEth1VotingPeriod)/3600) + 1
-
 			latestDeposit := time.Now().Unix()
 			if len(deposits.Eth1Deposits) > 1 {
 				latestDeposit = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
@@ -140,7 +141,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 				*churnRate = 4
 				logger.Warning("Churn rate not set in config using 4 as default please set minPerEpochChurnLimit")
 			}
-
 			activationEstimate := (*pendingCount / *churnRate)*(utils.Config.Chain.Phase0.SecondsPerSlot*utils.Config.Chain.Phase0.SlotsPerEpoch) + uint64(latestDeposit)
 			validatorPageData.EstimatedActivationTs = int64(activationEstimate)
 
@@ -258,9 +258,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.RankPercentage = float64(validatorPageData.Rank7d) / float64(validatorPageData.RankCount)
 	}
 
-	// logger.Infof("validator page data retrieved, elapsed: %v", time.Since(start))
-	// start = time.Now()
-
 	validatorPageData.Epoch = services.LatestEpoch()
 	validatorPageData.Index = index
 	if err != nil {
@@ -293,9 +290,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.Watchlist = watchlist
 
-	// logger.Infof("watchlist data retrieved, elapsed: %v", time.Since(start))
-	// start = time.Now()
-
 	deposits, err := db.GetValidatorDeposits(validatorPageData.PublicKey)
 	if err != nil {
 		logger.Errorf("error getting validator-deposits from db: %v", err)
@@ -311,9 +305,6 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-
-	// logger.Infof("deposit data retrieved, elapsed: %v", time.Since(start))
-	// start = time.Now()
 
 	validatorPageData.ActivationEligibilityTs = utils.EpochToTime(validatorPageData.ActivationEligibilityEpoch)
 	validatorPageData.ActivationTs = utils.EpochToTime(validatorPageData.ActivationEpoch)
@@ -356,7 +347,7 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.UnmissedBlocksPercentage = 1.0
 	}
 
-	// logger.Infof("proposals data retrieved, elapsed: %v", time.Since(start))
+	// logger.Infof("propoals data retrieved, elapsed: %v", time.Since(start))
 	// start = time.Now()
 
 	// Every validator is scheduled to issue an attestation once per epoch

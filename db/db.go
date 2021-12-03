@@ -489,6 +489,10 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(deposits.Eth1Deposits) > 0 {
+		deposits.LastEth1DepositTs = deposits.Eth1Deposits[len(deposits.Eth1Deposits)-1].BlockTs
+	}
+
 	err = DB.Select(&deposits.Eth2Deposits, `
 		SELECT blocks_deposits.* FROM blocks_deposits
 		INNER JOIN blocks ON (blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1') OR (blocks_deposits.block_slot = 0 AND blocks_deposits.block_slot = blocks.slot AND blocks_deposits.publickey = $1)
