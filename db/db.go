@@ -831,18 +831,17 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 	}()
 
 	batchSize := 4000
-	var lenActivatedValidators int
-	var lastActivatedValidatorIdx uint64
 
+	var lenActivatedValidators int
+	var pendingQueueSize int
+	pendingQueueIdxMap := map[uint64]int{}
 	for _, v := range validators {
-		if !(v.ActivationEpoch <= epoch && epoch < v.ExitEpoch) {
-			continue
+		if strings.HasPrefix(v.Status, "active") {
+			lenActivatedValidators++
+		} else if strings.HasPrefix(v.Status, "pending") {
+			pendingQueueSize += 1
+			pendingQueueIdxMap[v.Index] = pendingQueueSize
 		}
-		lenActivatedValidators++
-		if v.Index < lastActivatedValidatorIdx {
-			continue
-		}
-		lastActivatedValidatorIdx = v.Index
 	}
 
 	for b := 0; b < len(validators); b += batchSize {
@@ -874,11 +873,15 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 				// validator_churn_limit = max(4, len(active_set) / 2**16)
 				// validator.activationepoch = epoch + validator.positioninactivationqueue / validator_churn_limit
 				// note: this is only an estimation
-				positionInActivationQueue := v.Index - lastActivatedValidatorIdx
+				positionInActivationQueue, exists := pendingQueueIdxMap[v.Index]
+				if !exists {
+					positionInActivationQueue = pendingQueueSize
+				}
 				churnLimit := float64(lenActivatedValidators) / 65536
 				if churnLimit < 4 {
 					churnLimit = 4
 				}
+
 				if v.ActivationEligibilityEpoch > epoch {
 					v.ActivationEpoch = v.ActivationEligibilityEpoch + uint64(float64(positionInActivationQueue)/churnLimit)
 				} else {
