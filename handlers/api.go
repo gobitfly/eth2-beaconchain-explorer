@@ -1397,6 +1397,7 @@ func MobileTagedValidators(w http.ResponseWriter, r *http.Request) {
 		Validators:     nil,
 		Tag:            types.ValidatorTagsWatchlist,
 		JoinValidators: true,
+		Network:        utils.GetNetwork(),
 	}
 
 	validators, err2 := db.GetTaggedValidators(filter)
