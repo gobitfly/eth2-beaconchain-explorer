@@ -117,7 +117,7 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 		return nil, err
 	}
 	if filter.JoinValidators && filter.Validators == nil {
-		pubkeys := make([][]byte, len(list))
+		pubkeys := make([][]byte, 0, len(list))
 		for _, li := range list {
 			pubkeys = append(pubkeys, li.ValidatorPublickey)
 		}
@@ -133,6 +133,7 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 		}
 		if len(list) != len(validators) {
 			logger.Errorf("error could not get validators for watchlist. Expected to retrieve %v validators but got %v", len(list), len(validators))
+			return list, nil
 		}
 		for i, li := range list {
 			if li == nil {
