@@ -592,7 +592,7 @@ func BitAtVectorReversed(b []byte, i int) bool {
 }
 
 func GetNetwork() string {
-	if Config.Chain.Phase0.ConfigName == "" {
+	if Config.Chain.Network != "" {
 		return strings.ToLower(Config.Chain.Network)
 	}
 	return strings.ToLower(Config.Chain.Phase0.ConfigName)

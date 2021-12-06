@@ -105,8 +105,8 @@ type TaggedValidators struct {
 	UserID             uint64 `db:"user_id"`
 	Tag                string `db:"tag"`
 	ValidatorPublickey []byte `db:"validator_publickey"`
-	*Validator
-	Events []EventName `db:"events"`
+	Validator          *Validator
+	Events             []EventName `db:"events"`
 }
 
 type MinimalTaggedValidators struct {
