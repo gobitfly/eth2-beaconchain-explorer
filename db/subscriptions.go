@@ -133,6 +133,7 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 		}
 		if len(list) != len(validators) {
 			logger.Errorf("error could not get validators for watchlist. Expected to retrieve %v validators but got %v", len(list), len(validators))
+			return list, nil
 		}
 		for i, li := range list {
 			if li == nil {
