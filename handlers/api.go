@@ -1397,6 +1397,7 @@ func MobileTagedValidators(w http.ResponseWriter, r *http.Request) {
 		Validators:     nil,
 		Tag:            types.ValidatorTagsWatchlist,
 		JoinValidators: true,
+		Network:        utils.GetNetwork(),
 	}
 
 	validators, err2 := db.GetTaggedValidators(filter)
@@ -1408,8 +1409,8 @@ func MobileTagedValidators(w http.ResponseWriter, r *http.Request) {
 	data := make([]interface{}, len(validators))
 	for i, v := range validators {
 		temp := types.MinimalTaggedValidators{}
-		temp.PubKey = fmt.Sprintf("0x%v", hex.EncodeToString(v.PublicKey))
-		temp.Index = v.Index
+		temp.PubKey = fmt.Sprintf("0x%v", hex.EncodeToString(v.ValidatorPublickey))
+		temp.Index = v.Validator.Index
 		data[i] = temp
 	}
 
