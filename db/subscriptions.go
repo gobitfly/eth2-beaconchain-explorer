@@ -117,7 +117,7 @@ func GetTaggedValidators(filter WatchlistFilter) ([]*types.TaggedValidators, err
 		return nil, err
 	}
 	if filter.JoinValidators && filter.Validators == nil {
-		pubkeys := make([][]byte, len(list))
+		pubkeys := make([][]byte, 0, len(list))
 		for _, li := range list {
 			pubkeys = append(pubkeys, li.ValidatorPublickey)
 		}
