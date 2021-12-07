@@ -870,18 +870,19 @@ func saveValidators(epoch uint64, validators []*types.Validator, tx *sql.Tx) err
 			if v.ActivationEpoch == maxApiNumber {
 				v.ActivationEpoch = maxSqlNumber
 			}
-			if v.Status == "pending_queued" && v.ActivationEpoch == maxSqlNumber {
-				// see: https://github.com/ethereum/eth2.0-specs/blob/master/specs/phase0/beacon-chain.md#get_validator_churn_limit
-				// validator_churn_limit = max(MIN_PER_EPOCH_CHURN_LIMIT, len(active_validator_indices) // CHURN_LIMIT_QUOTIENT)
-				// validator_churn_limit = max(4, len(active_set) / 2**16)
-				// validator.activationepoch = epoch + validator.positioninactivationqueue / validator_churn_limit
-				// note: this is only an estimation (worst case)
-				churnLimit := float64(lenActivatedValidators) / 65536
-				if churnLimit < 4 {
-					churnLimit = 4
-				}
-				v.ActivationEpoch = lastActivationEpoch + uint64(float64(noActivationEpochPendingQueueSize)/churnLimit)
-			}
+
+			// if v.Status == "pending_queued" && v.ActivationEpoch == maxSqlNumber {
+			// 	// see: https://github.com/ethereum/eth2.0-specs/blob/master/specs/phase0/beacon-chain.md#get_validator_churn_limit
+			// 	// validator_churn_limit = max(MIN_PER_EPOCH_CHURN_LIMIT, len(active_validator_indices) // CHURN_LIMIT_QUOTIENT)
+			// 	// validator_churn_limit = max(4, len(active_set) / 2**16)
+			// 	// validator.activationepoch = epoch + validator.positioninactivationqueue / validator_churn_limit
+			// 	// note: this is only an estimation (worst case)
+			// 	churnLimit := float64(lenActivatedValidators) / 65536
+			// 	if churnLimit < 4 {
+			// 		churnLimit = 4
+			// 	}
+			// 	v.ActivationEpoch = lastActivationEpoch + uint64(float64(noActivationEpochPendingQueueSize)/churnLimit)
+			// }
 
 			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)", i*14+1, i*14+2, i*14+3, i*14+4, i*14+5, i*14+6, i*14+7, i*14+8, i*14+9, i*14+10, i*14+11, i*14+12, i*14+13, i*14+14))
 			valueArgs = append(valueArgs, v.Index)

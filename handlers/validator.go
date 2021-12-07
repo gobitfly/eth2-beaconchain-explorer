@@ -416,9 +416,13 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory)+1)
 
 	currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
+	lastIncomeHistoryDay := currentDay
+	if len(incomeHistory) > 0 {
+		lastIncomeHistoryDay = uint64(incomeHistory[len(incomeHistory)-1].Day)
+	}
 	lastDayDepositsSum := uint64(0)
 	for _, d := range deposits.Eth2Deposits {
-		if utils.DayOfSlot(d.BlockSlot) <= currentDay {
+		if utils.DayOfSlot(d.BlockSlot) <= lastIncomeHistoryDay {
 			continue
 		}
 		lastDayDepositsSum += d.Amount
