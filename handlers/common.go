@@ -92,8 +92,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 	var totalDeposits int64
 
 	for _, balance := range balances {
-
-		if int64(balance.ActivationEpoch) > latestEpoch {
+		if int64(balance.ActivationEpoch) >= latestEpoch {
 			continue
 		}
 		for epoch, deposit := range depositsMap[fmt.Sprintf("%x", balance.PublicKey)] {
@@ -122,6 +121,7 @@ func GetValidatorEarnings(validators []uint64, currency string) (*types.Validato
 		if int64(balance.ActivationEpoch) > lastMonthEpoch {
 			balance.Balance31d = balance.BalanceActivation
 		}
+
 		earningsTotal += int64(balance.Balance) - int64(balance.BalanceActivation)
 		earningsLastDay += int64(balance.Balance) - int64(balance.Balance1d)
 		earningsLastWeek += int64(balance.Balance) - int64(balance.Balance7d)
