@@ -314,7 +314,12 @@
     <div class="table-eth2">
         <h4 class="my-3">Eth2 Deposits</h4>
         {{if not .Deposits.Eth2Deposits}}
-            <h6 class="">No beacon chain deposits found for this validator. It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hours</a> for a deposit to be processed by the beacon chain.</h6>
+            <h6 class="">No beacon chain deposits found for this validator. 
+                {{ if .InclusionDelay gt 0 }}
+                    It takes <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">around {{.InclusionDelay}} hour{{if .InclusionDelay gt 1 }}s{{end}}</a> for a deposit to be processed by the beacon chain.
+                {{ else }}
+                    Your deposit should be processed by the beacon chain any moment now. For more details visit our <a href="https://kb.beaconcha.in/ethereum-2.0-and-depositing-process">knowledge base</a>.
+                {{ end }} </h6>
             <div class="wip d-flex justify-content-center p-3">
                 <svg style="width: 100%; height: auto; max-height: 200px;" id="a1bb6ffe-8d83-4899-8fa0-fcb3165ea164"
                      data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 884.595 628.60077">
