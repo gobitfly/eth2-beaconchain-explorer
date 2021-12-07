@@ -40,7 +40,7 @@
             </div>
             <div class="validator__lifecycle-progress validator__lifecycle-pending">
                 <div class="validator__lifecycle-progress-epoch">
-                        {{if not $deposited}}<div data-toggle="tooltip" title="The activation epoch is when your validator becomes active."><a href="/epoch/{{.ActivationEpoch}}">{{if eq .ActivationEpoch 0}}genesis {{else}}{{.ActivationEpoch}}{{end}}</a></div>{{end}}
+                        {{if not $deposited}}<div data-toggle="tooltip" title="The activation epoch is when your validator becomes active.">{{if ne .ActivationEpoch 9223372036854775807}}<a href="/epoch/{{.ActivationEpoch}}">{{if eq .ActivationEpoch 0}}genesis{{else}}{{.ActivationEpoch}}{{end}}</a>{{end}}</div>{{end}}
                 </div>
             </div>
             <div id="lifecycle-active" class="validator__lifecycle-node-container validator__lifecycle-active">
@@ -116,11 +116,17 @@
         <div class="col">
             <div class="px-2">
                 <div class="p-2 mx-auto" style="max-width: 50rem;">
-                    This validator has been processed by the beacon chain and is currently waiting to be activated. It will approximately be activated on <span class="font-weight-bolder" title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> during epoch <span class="font-weight-bolder">{{.ActivationEpoch}}</span>. Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
+                    {{if ne .ActivationEpoch 9223372036854775807}}
+                        This validator has been processed by the beacon chain and is currently waiting to be activated. It will approximately be activated on <span class="font-weight-bolder" title="{{.ActivationTs}}" data-toggle="tooltip" aria-ethereum-date="{{.ActivationTs.Unix}}">{{.ActivationTs}}</span> during epoch <span class="font-weight-bolder">{{.ActivationEpoch}}</span>. Make sure your nodes and your client is up and running <em>before</em> the countdown reaches zero.
+                    {{else}}
+                        This validator has been registered by the beacon chain and is currently waiting to be voted into the activation queue. You can read more about this process in the <a href="https://kb.beaconcha.in/ethereum-2.0-depositing">Ethereum 2.0 Knowledge Base</a>.
+                    {{end}}
                 </div>
+                {{if lt .ActivationEpoch 9223372036854775807}}
                 <div class="py-2" style="min-width:300px;">
                     {{ template "validatorCountdown" .}}
                 </div>
+                {{end}}
             </div>
         </div>
     </div>
