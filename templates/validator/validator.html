@@ -119,14 +119,14 @@
 							{{template "validatorIncomeTable" $}}
 						{{end}}
 					</div>
-				</div>					
+				</div>
 			</div>
 			<div class="row align-items-stretch">
 				<div class="col-lg-8 px-lg-2 my-2">
 					<div class="card h-100 px-0 py-0 card-body">
 						<ul style="margin-top: -1px;margin-left:-1px;" class="nav nav-tabs" id="chartTabs" role="tablist">
 							<li class="nav-item">
-								<a class="nav-link active" id="charts-tab" data-toggle="tab" href="#charts" role="tab" aria-controls="charts-tab-content" aria-selected="false">
+								<a class="nav-link {{if .IncomeHistoryChartData}}active{{else}}disabled{{end}}" id="charts-tab" data-toggle="tab" href="#charts" role="tab" aria-controls="charts-tab-content" aria-selected="false">
 									<i class="tab-icon mr-md-2 fas fa-chart-bar"></i>
 									<span class="tab-text">Charts</span>
 								</a>

@@ -18,7 +18,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lib/pq"
-	"github.com/sirupsen/logrus"
 
 	"github.com/gorilla/mux"
 	"github.com/juliangruber/go-intersect"
@@ -415,18 +414,15 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 
 	validatorPageData.IncomeHistoryChartData = make([]*types.ChartDataPoint, len(incomeHistory)+1)
 
-	currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
-	lastIncomeHistoryDay := currentDay
-	if len(incomeHistory) > 0 {
-		lastIncomeHistoryDay = uint64(incomeHistory[len(incomeHistory)-1].Day)
-	}
 	lastDayDepositsSum := uint64(0)
 	for _, d := range deposits.Eth2Deposits {
-		if utils.DayOfSlot(d.BlockSlot) <= lastIncomeHistoryDay {
+		if len(incomeHistory) > 0 && utils.DayOfSlot(d.BlockSlot) <= uint64(incomeHistory[len(incomeHistory)-1].Day) {
 			continue
 		}
 		lastDayDepositsSum += d.Amount
 	}
+
+	currentDay := validatorPageData.Epoch / ((24 * 60 * 60) / utils.Config.Chain.SlotsPerEpoch / utils.Config.Chain.SecondsPerSlot)
 
 	if len(incomeHistory) > 0 {
 		for i := 0; i < len(incomeHistory); i++ {
@@ -452,9 +448,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		}
 
 		validatorPageData.IncomeHistoryChartData[len(validatorPageData.IncomeHistoryChartData)-1] = &types.ChartDataPoint{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor}
-	} else if len(incomeHistory) == 0 {
-		logrus.Infof("BalanceActivation: %v, CurrentBalance: %v, deposits: %+v", validatorPageData.BalanceActivation, validatorPageData.CurrentBalance, deposits)
-		lastDayBalance := int64(validatorPageData.BalanceActivation)
+	} else if len(incomeHistory) == 0 && validatorPageData.ActivationEpoch < services.LatestEpoch() {
+		lastDayBalance := int64(0)
 		lastDayIncome := int64(validatorPageData.CurrentBalance) - lastDayBalance - int64(lastDayDepositsSum)
 		lastDayIncomeColor := "#7cb5ec"
 		if lastDayIncome < 0 {
@@ -463,6 +458,8 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		validatorPageData.IncomeHistoryChartData = []*types.ChartDataPoint{
 			{X: float64(utils.DayToTime(int64(currentDay)).Unix() * 1000), Y: utils.ExchangeRateForCurrency(currency) * (float64(lastDayIncome) / 1000000000), Color: lastDayIncomeColor},
 		}
+	} else {
+		validatorPageData.IncomeHistoryChartData = []*types.ChartDataPoint{}
 	}
 
 	// logger.Infof("balance history retrieved, elapsed: %v", time.Since(start))
