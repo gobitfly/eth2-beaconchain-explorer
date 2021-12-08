@@ -8,12 +8,13 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	gtypes "github.com/ethereum/go-ethereum/core/types"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	gtypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/protolambda/zssz/bitfields"
 
@@ -508,12 +509,10 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 
 	if payload := parsedBlock.Message.Body.ExecutionPayload; payload != nil && binary.BigEndian.Uint64(parsedBlock.Message.Body.ExecutionPayload.ParentHash) != 0 {
 		txs := make([]*types.Transaction, 0, len(payload.Transactions))
-		for _, txUnion := range payload.Transactions {
-			otx := txUnion.Value
-
-			tx := &types.Transaction{Raw: otx}
+		for _, rawTx := range payload.Transactions {
+			tx := &types.Transaction{Raw: rawTx}
 			var decTx gtypes.Transaction
-			if err := decTx.UnmarshalBinary(otx); err != nil {
+			if err := decTx.UnmarshalBinary(rawTx); err != nil {
 				h := decTx.Hash()
 				tx.TxHash = h[:]
 				tx.AccountNonce = decTx.Nonce()
@@ -944,11 +943,6 @@ type SyncAggregate struct {
 	SyncCommitteeSignature bytesHexStr `json:"sync_committee_signature"`
 }
 
-type Transaction struct {
-	Selector uint        `json:"selector"`
-	Value    bytesHexStr `json:"value"`
-}
-
 type ExecutionPayload struct {
 	ParentHash    bytesHexStr   `json:"parent_hash"`
 	CoinBase      bytesHexStr   `json:"coinbase"`
@@ -963,7 +957,7 @@ type ExecutionPayload struct {
 	ExtraData     bytesHexStr   `json:"extra_data"`
 	BaseFeePerGas uint64Str     `json:"base_fee_per_gas"`
 	BlockHash     bytesHexStr   `json:"block_hash"`
-	Transactions  []Transaction `json:"transactions"`
+	Transactions  []bytesHexStr `json:"transactions"`
 }
 
 type AnySignedBlock struct {
