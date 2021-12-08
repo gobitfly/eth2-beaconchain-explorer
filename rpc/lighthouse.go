@@ -513,10 +513,13 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 
 	if payload := parsedBlock.Message.Body.ExecutionPayload; payload != nil && !bytes.Equal(payload.ParentHash, make([]byte, 32)) {
 		txs := make([]*types.Transaction, 0, len(payload.Transactions))
-		for _, rawTx := range payload.Transactions {
+		for i, rawTx := range payload.Transactions {
 			tx := &types.Transaction{Raw: rawTx}
 			var decTx gtypes.Transaction
-			if err := decTx.UnmarshalBinary(rawTx); err == nil {
+			if err := decTx.UnmarshalBinary(rawTx); err != nil {
+				logger.Errorf("skipping tx, error parsing tx %d block %x: %v", i, payload.BlockHash, err)
+				continue
+			} else {
 				h := decTx.Hash()
 				tx.TxHash = h[:]
 				tx.AccountNonce = decTx.Nonce()
