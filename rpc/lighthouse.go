@@ -610,7 +610,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		for _, rawTx := range payload.Transactions {
 			tx := &types.Transaction{Raw: rawTx}
 			var decTx gtypes.Transaction
-			if err := decTx.UnmarshalBinary(rawTx); err != nil {
+			if err := decTx.UnmarshalBinary(rawTx); err == nil {
 				h := decTx.Hash()
 				tx.TxHash = h[:]
 				tx.AccountNonce = decTx.Nonce()
@@ -623,7 +623,11 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 					continue
 				}
 				tx.Sender = sender.Bytes()
-				tx.Recipient = decTx.To().Bytes()
+				if v := decTx.To(); v != nil {
+					tx.Recipient = v.Bytes()
+				} else {
+					tx.Recipient = []byte{}
+				}
 				tx.Amount = decTx.Value().Bytes()
 				tx.Payload = decTx.Data()
 				tx.MaxPriorityFeePerGas = decTx.GasTipCap().Uint64()
