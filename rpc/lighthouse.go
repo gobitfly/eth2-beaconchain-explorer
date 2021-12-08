@@ -1,7 +1,7 @@
 package rpc
 
 import (
-	"encoding/binary"
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -9,6 +9,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"strconv"
 	"sync"
@@ -27,13 +28,16 @@ type LighthouseClient struct {
 	endpoint            string
 	assignmentsCache    *lru.Cache
 	assignmentsCacheMux *sync.Mutex
+	signer              gtypes.Signer
 }
 
 // NewLighthouseClient is used to create a new Lighthouse client
-func NewLighthouseClient(endpoint string) (*LighthouseClient, error) {
+func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, error) {
+	signer := gtypes.NewLondonSigner(chainID)
 	client := &LighthouseClient{
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
+		signer:              signer,
 	}
 	client.assignmentsCache, _ = lru.New(128)
 
@@ -507,7 +511,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		}
 	}
 
-	if payload := parsedBlock.Message.Body.ExecutionPayload; payload != nil && binary.BigEndian.Uint64(parsedBlock.Message.Body.ExecutionPayload.ParentHash) != 0 {
+	if payload := parsedBlock.Message.Body.ExecutionPayload; payload != nil && !bytes.Equal(payload.ParentHash, make([]byte, 32)) {
 		txs := make([]*types.Transaction, 0, len(payload.Transactions))
 		for _, rawTx := range payload.Transactions {
 			tx := &types.Transaction{Raw: rawTx}
@@ -519,7 +523,12 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 				// big endian
 				tx.Price = decTx.GasPrice().Bytes()
 				tx.GasLimit = decTx.Gas()
-				//tx.Sender = TODO sender
+				sender, err := lc.signer.Sender(&decTx)
+				if err != nil {
+					logger.Errorf("skipping tx, transaction with invalid sender (tx hash: %x): %v", h, err)
+					continue
+				}
+				tx.Sender = sender.Bytes()
 				tx.Recipient = decTx.To().Bytes()
 				tx.Amount = decTx.Value().Bytes()
 				tx.Payload = decTx.Data()
