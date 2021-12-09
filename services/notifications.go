@@ -261,6 +261,21 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 				}
 				msg += fmt.Sprintf("%s\n====\n\n", event_title)
 				for _, n := range ns {
+
+					var sub types.Subscription
+					err := db.FrontendDB.Get(&sub, `SELECT * FROM users_subscriptions where id = $1`, n.GetSubscriptionID())
+					if err != nil {
+						logger.Errorf("error getting event name for subscription id err: %v", err)
+					}
+
+					logger.Infof("updating subscription: %+v with notification: id: %v, event_name: %v, event_filter: %v", sub, n.GetSubscriptionID(), n.GetEventName(), n.GetEventFilter())
+
+					ev := strings.TrimPrefix(utils.GetNetwork()+":", sub.EventName)
+					// n.GetEventName()
+					if ev != string(n.GetEventName()) {
+						logger.Errorf("invalid event name for subscription id expected %v but got %v")
+					}
+
 					msg += fmt.Sprintf("%s\n", n.GetInfo(true))
 					e := n.GetEpoch()
 					if _, exists := sentSubsByEpoch[e]; !exists {
