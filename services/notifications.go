@@ -261,27 +261,6 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 				}
 				msg += fmt.Sprintf("%s\n====\n\n", event_title)
 				for _, n := range ns {
-
-					var sub types.Subscription
-					err := db.FrontendDB.Get(&sub, `SELECT * FROM users_subscriptions where id = $1`, n.GetSubscriptionID())
-					if err != nil {
-						logger.Errorf("error getting event name for subscription id err: %v", err)
-					}
-
-					logger.Infof("notification: id: %v, event_name: %v, event_filter: %v", n.GetSubscriptionID(), n.GetEventName(), n.GetEventFilter())
-
-					logger.Infof("sending notification for subscription with \nid: %v")
-
-					ev := strings.TrimPrefix(sub.EventName, utils.GetNetwork()+":")
-					// n.GetEventName()
-					if ev != string(n.GetEventName()) {
-						logger.Errorf("invalid event name for subscription id expected %v but got %v", ev, n.GetEventName())
-					}
-
-					if sub.EventFilter != n.GetEventFilter() {
-						logger.Errorf("invalid event filter expected %v but got %v", sub.EventFilter, n.GetEventFilter())
-					}
-
 					msg += fmt.Sprintf("%s\n", n.GetInfo(true))
 					e := n.GetEpoch()
 					if _, exists := sentSubsByEpoch[e]; !exists {
@@ -835,13 +814,13 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 
 		logger.Infof("adding got slashed notification: %+v", n)
 
-		// if _, exists := notificationsByUserID[sub.UserId]; !exists {
-		// 	notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
-		// }
-		// if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
-		// 	notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
-		// }
-		// notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
+		if _, exists := notificationsByUserID[sub.UserId]; !exists {
+			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
+		}
+		if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
+			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
+		}
+		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
 	}
 
 	return nil
