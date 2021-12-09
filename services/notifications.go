@@ -268,11 +268,11 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 						logger.Errorf("error getting event name for subscription id err: %v", err)
 					}
 
-					logger.Infof("notification: id: %v, event_name: %v, event_filter: %v", sub, n.GetSubscriptionID(), n.GetEventName(), n.GetEventFilter())
+					logger.Infof("notification: id: %v, event_name: %v, event_filter: %v", n.GetSubscriptionID(), n.GetEventName(), n.GetEventFilter())
 
 					logger.Infof("sending notification for subscription with \nid: %v")
 
-					ev := strings.TrimPrefix(utils.GetNetwork()+":", sub.EventName)
+					ev := strings.TrimPrefix(sub.EventName, utils.GetNetwork()+":")
 					// n.GetEventName()
 					if ev != string(n.GetEventName()) {
 						logger.Errorf("invalid event name for subscription id expected %v but got %v", ev, n.GetEventName())
