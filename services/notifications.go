@@ -812,8 +812,6 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 			EventFilter:    hex.EncodeToString(event.SlashedValidatorPubkey),
 		}
 
-		logger.Infof("adding got slashed notification: %+v", n)
-
 		if _, exists := notificationsByUserID[sub.UserId]; !exists {
 			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
 		}
