@@ -537,7 +537,7 @@ create table users_clients
 drop table if exists users_subscriptions;
 create table users_subscriptions
 (
-    id              serial                      not null,
+    id              serial                      not null unique,
     user_id         int                         not null,
     event_name      character varying(100)      not null,
     event_filter    text                        not null default '',
