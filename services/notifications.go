@@ -771,9 +771,11 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 	if err != nil {
 		return fmt.Errorf("error getting slashed validators from database, err: %w", err)
 	}
+
 	query := ""
 	resultsLen := len(dbResult)
 	for i, event := range dbResult {
+		logger.Infof("found slashed user: %+v", event)
 		query += fmt.Sprintf(`SELECT %d as ref, id, user_id from users_subscriptions where event_name = $1 AND event_filter = '%x'  AND (last_sent_epoch > $2 OR last_sent_epoch IS NULL)`, i, event.SlashedValidatorPubkey)
 		if i < resultsLen-1 {
 			query += " UNION "
@@ -810,13 +812,15 @@ func collectValidatorGotSlashedNotifications(notificationsByUserID map[uint64]ma
 			EventFilter:    hex.EncodeToString(event.SlashedValidatorPubkey),
 		}
 
-		if _, exists := notificationsByUserID[sub.UserId]; !exists {
-			notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
-		}
-		if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
-			notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
-		}
-		notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
+		logger.Infof("adding got slashed notification: %+v", n)
+
+		// if _, exists := notificationsByUserID[sub.UserId]; !exists {
+		// 	notificationsByUserID[sub.UserId] = map[types.EventName][]types.Notification{}
+		// }
+		// if _, exists := notificationsByUserID[sub.UserId][n.GetEventName()]; !exists {
+		// 	notificationsByUserID[sub.UserId][n.GetEventName()] = []types.Notification{}
+		// }
+		// notificationsByUserID[sub.UserId][n.GetEventName()] = append(notificationsByUserID[sub.UserId][n.GetEventName()], n)
 	}
 
 	return nil
