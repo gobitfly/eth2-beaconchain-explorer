@@ -297,13 +297,13 @@ create table blocks_transactions
     txhash             bytea  not null,
     nonce              int    not null,
     gas_price          bytea  not null,
-    gas_limit          int    not null,
+    gas_limit          bigint not null,
     sender             bytea  not null,
     recipient          bytea  not null,
     amount             bytea  not null,
     payload            bytea  not null,
-    max_priority_fee_per_gas  int,
-    max_fee_per_gas           int,
+    max_priority_fee_per_gas  bigint,
+    max_fee_per_gas           bigint,
     primary key (block_slot, block_index)
 );
 
@@ -626,29 +626,29 @@ CREATE TABLE stats_meta_p (
     created_trunc       timestamp   not null,
     exporter_version    varchar(35),
     day                 int,
-	
+
 	user_id 		 	bigint	 	 		        not null,
     primary key (id, day)
-    
+
 ) PARTITION BY LIST (day);
 
 drop table if exists stats_process;
 CREATE TABLE stats_process (
 	id 				bigserial 			primary key,
-	
+
 	cpu_process_seconds_total 	bigint   			not null,
-	
+
 	memory_process_bytes	 	bigint	 	 		not null,
-	
+
 	client_name 			character varying(25)  	not null,
 	client_version		 	character varying(25)	 	not null,
 	client_build		 	int 				not null,
-	
+
 	sync_eth2_fallback_configured  bool 				not null,
 	sync_eth2_fallback_connected 	bool	 			not null,
-	
+
 	meta_id 	 		bigint    			not null,
-	
+
 	foreign key(meta_id) references stats_meta(id)
 );
 create index idx_stats_process_metaid on stats_process (meta_id);
@@ -666,9 +666,9 @@ CREATE TABLE stats_add_beaconnode (
 	sync_beacon_head_slot	 		bigint	 		not null,
     sync_eth1_fallback_configured  bool	 			not null,
 	sync_eth1_fallback_connected 	bool	 			not null,
-	
+
 	general_id		 		bigint	 		not null,
-	
+
 	foreign key(general_id) references stats_process(id)
 );
 create index idx_stats_beaconnode_generalid on stats_add_beaconnode (general_id);
@@ -678,9 +678,9 @@ CREATE TABLE stats_add_validator (
 	id		 			bigserial	 	primary key,
 	validator_total 			int	 		not null,
 	validator_active	 		int	 		not null,
-	
+
 	general_id	 			bigint		 	not null,
-	
+
 	foreign key(general_id) references stats_process(id)
 );
 create index idx_stats_beaconnode_validator on stats_add_validator (general_id);
@@ -691,33 +691,33 @@ CREATE TABLE stats_system (
 
 	cpu_cores 				int	 		not null,
 	cpu_threads 				int	 		not null,
-	
+
 	cpu_node_system_seconds_total  	bigint 		not null,
 	cpu_node_user_seconds_total 		bigint	 		not null,
 	cpu_node_iowait_seconds_total	 	bigint	 		not null,
 	cpu_node_idle_seconds_total	 	bigint	 		not null,
-	
+
 	memory_node_bytes_total 		bigint	 		not null,
 	memory_node_bytes_free	 		bigint	 		not null,
 	memory_node_bytes_cached 		bigint	 		not null,
 	memory_node_bytes_buffers 		bigint	 		not null,
-	
+
 	disk_node_bytes_total	 		bigint	 		not null,
 	disk_node_bytes_free	 		bigint	 		not null,
-	
+
 	disk_node_io_seconds	 		bigint	 		not null,
 	disk_node_reads_total	 		bigint	 		not null,
 	disk_node_writes_total	 		bigint 		not null,
-	
+
 	network_node_bytes_total_receive 	bigint	 		not null,
 	network_node_bytes_total_transmit 	bigint	 		not null,
-	
+
 	misc_node_boot_ts_seconds	 	bigint		 	not null,
 	misc_os		 		character varying(6)  	not null,
-	
+
 	meta_id	 			bigint		 	not null,
-	
-	
+
+
 	foreign key(meta_id) references stats_meta(id)
 );
 
@@ -726,11 +726,11 @@ create index idx_stats_system_meta_id on stats_system (meta_id);
 drop table if exists stake_pools_stats;
 create table stake_pools_stats
 (
-    id serial not null, 
-    address text not null, 
-    deposit int, 
-    name text not null, 
-    category text, 
+    id serial not null,
+    address text not null,
+    deposit int,
+    name text not null,
+    category text,
     PRIMARY KEY(id, address, deposit, name)
 );
 
@@ -752,9 +752,9 @@ drop table if exists staking_pools_chart;
 create table staking_pools_chart
 (
     epoch                      int  not null,
-    name                       text not null, 
-    income                     bigint not null, 
-    balance                    bigint not null, 
+    name                       text not null,
+    income                     bigint not null,
+    balance                    bigint not null,
     PRIMARY KEY(epoch, name)
 );
 
