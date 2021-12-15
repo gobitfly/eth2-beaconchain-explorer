@@ -30,7 +30,7 @@ type Config struct {
 		Mainnet         bool   `yaml:"mainnet" envconfig:"CHAIN_MAINNET"`
 		Phase0Path      string `yaml:"phase0path" envconfig:"CHAIN_PHASE0_PATH"`
 		AltairPath      string `yaml:"altairPath" envconfig:"CHAIN_ALTAIR_PATH"`
-		AltairForkEpoch uint64 `yaml:"altairForkEpoch" envconfig:"CHAIN_ALTAIR_FORK_VERSION"`
+		AltairForkEpoch uint64 `yaml:"altairForkEpoch" envconfig:"CHAIN_ALTAIR_FORK_EPOCH"`
 		Phase0
 		Altair
 	} `yaml:"chain"`

@@ -401,6 +401,43 @@ func ApiBlockVoluntaryExits(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiBlockVoluntaryExits godoc
+// @Summary Get the sync-committee for a sync-period
+// @Tags SyncCommittee
+// @Description Returns the sync-committee for a sync-period. Validators are sorted by sync-committee-index.
+// @Produce json
+// @Param period path string true "Period ('latest' for latest period or 'next' for next period in the future)"
+// @Success 200 {object} string
+// @Router /api/v1/sync_committee/{period} [get]
+func ApiSyncCommittee(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+
+	period, err := strconv.ParseUint(vars["period"], 10, 64)
+	if err != nil && vars["period"] != "latest" && vars["period"] != "next" {
+		sendErrorResponse(j, r.URL.String(), "invalid epoch provided")
+		return
+	}
+
+	if vars["period"] == "latest" {
+		period = utils.SyncPeriodOfEpoch(services.LatestEpoch())
+	} else if vars["period"] == "next" {
+		period = utils.SyncPeriodOfEpoch(services.LatestEpoch()) + 1
+	}
+
+	rows, err := db.DB.Query(`SELECT period, period*$2 AS start_epoch, (period+1)*$2-1 AS end_epoch, ARRAY_AGG(validatorindex ORDER BY committeeindex) AS validators FROM sync_committees WHERE period = $1 GROUP BY period`, period, utils.Config.Chain.EpochsPerSyncCommitteePeriod)
+	if err != nil {
+		logger.WithError(err).WithField("url", r.URL.String()).Errorf("error querying db")
+		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
+		return
+	}
+	defer rows.Close()
+
+	returnQueryResults(rows, j, r)
+}
+
 // ApiEth1Deposit godoc
 // @Summary Get an eth1 deposit by its eth1 transaction hash
 // @Tags Eth1
