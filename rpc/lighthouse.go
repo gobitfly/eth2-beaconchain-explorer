@@ -14,6 +14,7 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prysmaticlabs/go-bitfield"
+	"github.com/sirupsen/logrus"
 )
 
 // LighthouseClient holds the Lighthouse client info
@@ -263,6 +264,9 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 
 // GetEpochData will get the epoch data from Lighthouse RPC api
 func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error) {
+	wg := &sync.WaitGroup{}
+	mux := &sync.Mutex{}
+
 	var err error
 
 	data := &types.EpochData{}
@@ -281,35 +285,50 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	}
 
 	epoch1d := int64(epoch) - 225
-	if epoch1d < 0 {
-		epoch1d = 0
-	}
-	start := time.Now()
-	validatorBalances1d, err := lc.getBalancesForEpoch(epoch1d)
-	if err != nil {
-		return nil, err
-	}
-	logger.Printf("retrieved data for %v validator balances for epoch %v (1d) took %v", len(parsedValidators.Data), epoch1d, time.Since(start))
 	epoch7d := int64(epoch) - 225*7
-	if epoch7d < 0 {
-		epoch7d = 0
-	}
-	start = time.Now()
-	validatorBalances7d, err := lc.getBalancesForEpoch(epoch7d)
-	if err != nil {
-		return nil, err
-	}
-	logger.Printf("retrieved data for %v validator balances for epoch %v (7d) took %v", len(parsedValidators.Data), epoch7d, time.Since(start))
-	start = time.Now()
 	epoch31d := int64(epoch) - 225*31
-	if epoch31d < 0 {
-		epoch31d = 0
-	}
-	validatorBalances31d, err := lc.getBalancesForEpoch(epoch31d)
-	if err != nil {
-		return nil, err
-	}
-	logger.Printf("retrieved data for %v validator balances for epoch %v (31d) took %v", len(parsedValidators.Data), epoch31d, time.Since(start))
+
+	var validatorBalances1d map[uint64]uint64
+	var validatorBalances7d map[uint64]uint64
+	var validatorBalances31d map[uint64]uint64
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorBalances1d, err = lc.getBalancesForEpoch(epoch1d)
+		if err != nil {
+			logrus.Errorf("error retrieving validator balances for epoch %v (1d): %v", epoch1d, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for epoch %v (1d) took %v", len(parsedValidators.Data), epoch1d, time.Since(start))
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorBalances7d, err = lc.getBalancesForEpoch(epoch7d)
+		if err != nil {
+			logrus.Errorf("error retrieving validator balances for epoch %v (7d): %v", epoch7d, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for epoch %v (7d) took %v", len(parsedValidators.Data), epoch7d, time.Since(start))
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		start := time.Now()
+		var err error
+		validatorBalances31d, err = lc.getBalancesForEpoch(epoch31d)
+		if err != nil {
+			logrus.Errorf("error retrieving validator balances for epoch %v (31d): %v", epoch31d, err)
+			return
+		}
+		logger.Printf("retrieved data for %v validator balances for epoch %v (31d) took %v", len(parsedValidators.Data), epoch31d, time.Since(start))
+	}()
+	wg.Wait()
 
 	for _, validator := range parsedValidators.Data {
 		data.Validators = append(data.Validators, &types.Validator{
@@ -332,35 +351,62 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 
 	logger.Printf("retrieved data for %v validators for epoch %v", len(data.Validators), epoch)
 
-	data.ValidatorAssignmentes, err = lc.GetEpochAssignments(epoch)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
-	}
-	logger.Printf("retrieved validator assignment data for epoch %v", epoch)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var err error
+		data.ValidatorAssignmentes, err = lc.GetEpochAssignments(epoch)
+		if err != nil {
+			logrus.Errorf("error retrieving assignments for epoch %v: %v", epoch, err)
+			return
+		}
+		logger.Printf("retrieved validator assignment data for epoch %v", epoch)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		data.EpochParticipationStats, err = lc.GetValidatorParticipation(epoch)
+		if err != nil {
+			logger.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
+			data.EpochParticipationStats = &types.ValidatorParticipation{
+				Epoch:                   epoch,
+				Finalized:               false,
+				GlobalParticipationRate: 1.0,
+				VotedEther:              0,
+				EligibleEther:           0,
+			}
+		}
+	}()
 
 	// Retrieve all blocks for the epoch
 	data.Blocks = make(map[uint64]map[string]*types.Block)
 
 	for slot := epoch * utils.Config.Chain.SlotsPerEpoch; slot <= (epoch+1)*utils.Config.Chain.SlotsPerEpoch-1; slot++ {
-
 		if slot == 0 || utils.SlotToTime(slot).After(time.Now()) { // Currently slot 0 returns all blocks, also skip asking for future blocks
 			continue
 		}
+		wg.Add(1)
+		go func(slot uint64) {
+			defer wg.Done()
+			blocks, err := lc.GetBlocksBySlot(slot)
 
-		blocks, err := lc.GetBlocksBySlot(slot)
-
-		if err != nil {
-			logger.Errorf("error retrieving blocks for slot %v: %v", slot, err)
-			continue
-		}
-
-		for _, block := range blocks {
-			if data.Blocks[block.Slot] == nil {
-				data.Blocks[block.Slot] = make(map[string]*types.Block)
+			if err != nil {
+				logger.Errorf("error retrieving blocks for slot %v: %v", slot, err)
+				return
 			}
-			data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
-		}
+
+			for _, block := range blocks {
+				mux.Lock()
+				if data.Blocks[block.Slot] == nil {
+					data.Blocks[block.Slot] = make(map[string]*types.Block)
+				}
+				data.Blocks[block.Slot][fmt.Sprintf("%x", block.BlockRoot)] = block
+				mux.Unlock()
+			}
+		}(slot)
 	}
+	wg.Wait()
 	logger.Printf("retrieved %v blocks for epoch %v", len(data.Blocks), epoch)
 
 	// Fill up missed and scheduled blocks
@@ -399,19 +445,6 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 				data.Blocks[slot]["0x0"].Status = 2
 				data.Blocks[slot]["0x0"].BlockRoot = []byte{0x1}
 			}
-		}
-	}
-
-	data.EpochParticipationStats, err = lc.GetValidatorParticipation(epoch)
-	if err != nil {
-		logger.Errorf("error retrieving epoch participation statistics for epoch %v: %v", epoch, err)
-
-		data.EpochParticipationStats = &types.ValidatorParticipation{
-			Epoch:                   epoch,
-			Finalized:               false,
-			GlobalParticipationRate: 1.0,
-			VotedEther:              0,
-			EligibleEther:           0,
 		}
 	}
 

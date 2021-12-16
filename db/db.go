@@ -878,28 +878,6 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 	maxSqlNumber := uint64(9223372036854775807)
 
 	for _, v := range validators {
-		// if v.ExitEpoch <= data.Epoch && v.Slashed {
-		// 	v.Status = "slashed"
-		// } else if v.ExitEpoch <= data.Epoch {
-		// 	v.Status = "exited"
-		// } else if v.ActivationEligibilityEpoch == farFutureEpoch {
-		// 	v.Status = "deposited"
-		// } else if v.ActivationEpoch > data.Epoch {
-		// 	v.Status = "pending"
-		// } else if v.Slashed && v.ActivationEpoch < data.Epoch && (v.LastAttestationSlot < thresholdSlot || v.LastAttestationSlot == 0) {
-		// 	v.Status = "slashing_offline"
-		// } else if v.Slashed {
-		// 	v.Status = "slashing_online"
-		// } else if v.ExitEpoch < farFutureEpoch && (v.LastAttestationSlot < thresholdSlot || v.LastAttestationSlot == 0) {
-		// 	v.Status = "exiting_offline"
-		// } else if v.ExitEpoch < farFutureEpoch {
-		// 	v.Status = "exiting_online"
-		// } else if v.ActivationEpoch < data.Epoch && (v.LastAttestationSlot < thresholdSlot || v.LastAttestationSlot == 0) {
-		// 	v.Status = "active_offline"
-		// } else {
-		// 	v.Status = "active_online"
-		// }
-
 		if v.WithdrawableEpoch == farFutureEpoch {
 			v.WithdrawableEpoch = maxSqlNumber
 		}
@@ -992,8 +970,7 @@ func saveValidators(data *types.EpochData, tx *sql.Tx) error {
 					WHEN EXCLUDED.exitepoch < 9223372036854775807 THEN 'exiting_online'
 					WHEN EXCLUDED.activationepoch < %[1]d AND GREATEST(EXCLUDED.lastattestationslot, validators.lastattestationslot) < %[2]d THEN 'active_offline' 
 					ELSE 'active_online'
-					END
-				`,
+					END`,
 			latestBlock, thresholdSlot, strings.Join(valueStrings, ","))
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
