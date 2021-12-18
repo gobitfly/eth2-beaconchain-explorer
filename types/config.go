@@ -151,6 +151,8 @@ type Config struct {
 type Phase0 struct {
 	ConfigName string `yaml:"CONFIG_NAME"` // the name of the configuration e.g. mainnet
 
+	GenesisForkVersion string `yaml:"GENESIS_FORK_VERSION"`
+
 	// Misc constants.
 	MaxCommitteesPerSlot           uint64 `yaml:"MAX_COMMITTEES_PER_SLOT"`            // MaxCommitteesPerSlot defines the max amount of committee in a single slot.
 	TargetCommitteeSize            uint64 `yaml:"TARGET_COMMITTEE_SIZE"`              // TargetCommitteeSize is the number of validators in a committee when the chain is healthy.
