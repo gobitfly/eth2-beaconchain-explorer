@@ -795,11 +795,20 @@ func saveGraffitiwall(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) err
 	}
 	defer stmtGraffitiwall.Close()
 
-	graffitiWallRegex := regexp.MustCompile("graffitiwall:([0-9]{1,3}):([0-9]{1,3}):#([0-9a-fA-F]{6})")
+	regexes := [...]*regexp.Regexp{
+		regexp.MustCompile("graffitiwall:([0-9]{1,3}):([0-9]{1,3}):#([0-9a-fA-F]{6})"),
+		regexp.MustCompile("gw:([0-9]{3})([0-9]{3})([0-9a-fA-F]{6})"),
+	}
 
 	for _, slot := range blocks {
 		for _, block := range slot {
-			matches := graffitiWallRegex.FindStringSubmatch(string(block.Graffiti))
+			var matches []string
+			for _, regex := range regexes {
+				matches = regex.FindStringSubmatch(string(block.Graffiti))
+				if len(matches) > 0 {
+					break
+				}
+			}
 			if len(matches) == 4 {
 				x, err := strconv.Atoi(matches[1])
 				if err != nil || x >= 1000 {
