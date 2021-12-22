@@ -298,7 +298,23 @@ func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
 	} else {
 		exchangeRate := ExchangeRateForCurrency(currency)
 		balance := float64(balanceInt) / float64(1e9)
-		return template.HTML(fmt.Sprintf("%.2f %v", balance*exchangeRate, currency))
+		// return template.HTML(fmt.Sprintf("%.2f %v", balance*exchangeRate, currency))
+
+		p := message.NewPrinter(language.English)
+		decimals := "%.2f"
+
+		rb := []rune(p.Sprintf(decimals, balance*exchangeRate))
+		// remove trailing zeros
+		if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
+			for rb[len(rb)-1] == '0' {
+				rb = rb[:len(rb)-1]
+			}
+			if rb[len(rb)-1] == '.' {
+				rb = rb[:len(rb)-1]
+			}
+		}
+
+		return template.HTML(fmt.Sprintf(`%s %v`, string(rb), currency))
 	}
 }
 
