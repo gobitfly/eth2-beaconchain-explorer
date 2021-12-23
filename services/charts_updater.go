@@ -21,23 +21,28 @@ type chartHandler struct {
 }
 
 var ChartHandlers = map[string]chartHandler{
-	"blocks":             {1, blocksChartData},
-	"validators":         {2, activeValidatorsChartData},
-	"staked_ether":       {3, stakedEtherChartData},
-	"average_balance":    {4, averageBalanceChartData},
-	"network_liveness":   {5, networkLivenessChartData},
-	"participation_rate": {6, participationRateChartData},
-	// "inclusion_distance":             {7, inclusionDistanceChartData},
-	// "incorrect_attestations":         {6, incorrectAttestationsChartData},
-	// "validator_income":               {7, averageDailyValidatorIncomeChartData},
-	// "staking_rewards":                {8, stakingRewardsChartData},
-	"stake_effectiveness":            {9, stakeEffectivenessChartData},
-	"balance_distribution":           {10, balanceDistributionChartData},
-	"effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
-	"performance_distribution_365d":  {12, performanceDistribution365dChartData},
-	"deposits":                       {13, depositsChartData},
-	"deposits_distribution":          {13, depositsDistributionChartData},
-	"graffiti_wordcloud":             {14, graffitiCloudChartData},
+	// "blocks":             {1, blocksChartData},
+	// "validators":         {2, activeValidatorsChartData},
+	// "staked_ether":       {3, stakedEtherChartData},
+	// "average_balance":    {4, averageBalanceChartData},
+	// "network_liveness":   {5, networkLivenessChartData},
+	// "participation_rate": {6, participationRateChartData},
+	//
+	// // "inclusion_distance":     {7, inclusionDistanceChartData},
+	// // "incorrect_attestations": {6, incorrectAttestationsChartData},
+	// // "validator_income":       {7, averageDailyValidatorIncomeChartData},
+	// // "staking_rewards":        {8, stakingRewardsChartData},
+	//
+	// "stake_effectiveness":            {9, stakeEffectivenessChartData},
+	// "balance_distribution":           {10, balanceDistributionChartData},
+	// "effective_balance_distribution": {11, effectiveBalanceDistributionChartData},
+	// "performance_distribution_365d":  {12, performanceDistribution365dChartData},
+	// "deposits":                       {13, depositsChartData},
+	// "deposits_distribution":          {13, depositsDistributionChartData},
+	// "graffiti_wordcloud":             {14, graffitiCloudChartData},
+
+	"rocketpool_node_fee_distribution":  {15, rocketpoolNodeFeeDistributionChartData},
+	"rocketpool_rpl_stake_distribution": {16, rocketpoolRPLStakeDistributionChartData},
 }
 
 // LatestChartsPageData returns the latest chart page data
@@ -1834,6 +1839,7 @@ func graffitiCloudChartData() (*types.GenericChartData, error) {
 
 	chartData := &types.GenericChartData{
 		IsNormalChart:                true,
+		ShowGapHider:                 true,
 		Type:                         "wordcloud",
 		Title:                        "Graffiti Word Cloud",
 		Subtitle:                     "Word Cloud of the 25 most occuring graffities.",
@@ -1845,6 +1851,162 @@ func graffitiCloudChartData() (*types.GenericChartData, error) {
 				Name: "Occurences",
 				Data: rows,
 				Type: "wordcloud",
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func rocketpoolNodeFeeDistributionChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	rows := []struct {
+		Max   float64
+		Count float64
+	}{}
+
+	err = tx.Select(&rows, `
+		with
+			stats as (
+				select 
+					min(node_fee) as min,
+					max(node_fee) as max
+				from rocketpool_minipools
+			),
+			data as (
+				select node_fee
+				from rocketpool_minipools
+			),
+			histogram as (
+				select 
+					case
+						when min = max then 0
+						else width_bucket(node_fee, min, max, 999) 
+					end as bucket,
+					max(node_fee) as max,
+					count(*)
+				from data, stats
+				group by bucket
+				order by bucket
+			)
+		select max*100 as max, count
+		from histogram`)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	seriesData := make([][]float64, len(rows))
+
+	for i, row := range rows {
+		seriesData[i] = []float64{row.Max, row.Count}
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart:        true,
+		ShowGapHider:         true,
+		Title:                "Rocket Pool Node Fee Distribution",
+		Subtitle:             "Histogram of <a href='https://docs.rocketpool.net/overview/glossary.html#node-commission'>Node Fees (Commission Rate in %)</a>.",
+		XAxisTitle:           "Node Fee in %",
+		YAxisTitle:           "# of Minipools",
+		XAxisLabelsFormatter: `function(){ return this.value.toFixed(2)+'%' }`,
+		TooltipFormatter:     `function(){ return '# of Minipools: <b>'+this.y+'</b><br/>Fee: <b>'+this.x.toFixed(2)+'%</b>' }`,
+		StackingMode:         "false",
+		Type:                 "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "# of Minipools",
+				Data: seriesData,
+			},
+		},
+	}
+
+	return chartData, nil
+}
+
+func rocketpoolRPLStakeDistributionChartData() (*types.GenericChartData, error) {
+	if LatestEpoch() == 0 {
+		return nil, fmt.Errorf("chart-data not available pre-genesis")
+	}
+
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	rows := []struct {
+		Max   float64
+		Count float64
+	}{}
+
+	err = tx.Select(&rows, `
+		with
+			stats as (
+				select 
+					min(rpl_stake) as min,
+					max(rpl_stake) as max
+				from rocketpool_nodes
+			),
+			data as (
+				select rpl_stake
+				from rocketpool_nodes
+			),
+			histogram as (
+				select 
+					case
+						when min = max then 0
+						else width_bucket(rpl_stake, min, max, 999) 
+					end as bucket,
+					max(rpl_stake) as max,
+					count(*)
+				from data, stats
+				group by bucket
+				order by bucket
+			)
+		select max/1e18::int as max, count
+		from histogram`)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	seriesData := make([][]float64, len(rows))
+
+	for i, row := range rows {
+		seriesData[i] = []float64{row.Max, row.Count}
+	}
+
+	chartData := &types.GenericChartData{
+		IsNormalChart:        true,
+		ShowGapHider:         true,
+		Title:                "Rocket Pool RPL Stake Distribution",
+		Subtitle:             "Histogram of <a href='https://docs.rocketpool.net/overview/glossary.html#rpl-rocket-pool-token'>RPL Stakes</a> of all Nodes.",
+		XAxisTitle:           "Node Fee in %",
+		YAxisTitle:           "# of Nodes",
+		XAxisLabelsFormatter: `function(){ return this.value+' RPL' }`,
+		TooltipFormatter:     `function(){ return '# of Nodes: <b>'+this.y+'</b><br/>Stake: <b>'+this.x+' RPL</b>' }`,
+		StackingMode:         "false",
+		Type:                 "column",
+		Series: []*types.GenericChartDataSeries{
+			{
+				Name: "# of Nodes",
+				Data: seriesData,
 			},
 		},
 	}

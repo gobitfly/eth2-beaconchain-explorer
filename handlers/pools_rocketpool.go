@@ -62,11 +62,12 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
 		"0": "address",
-		"1": "pubkey",
-		"2": "node_address",
-		"3": "node_fee",
-		"4": "deposit_type",
-		"5": "status",
+		"1": "validator_index",
+		"2": "pubkey",
+		"3": "node_address",
+		"4": "node_fee",
+		"5": "deposit_type",
+		"6": "status",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -104,6 +105,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 			with matched_minipools as (
 				select address from rocketpool_minipools where encode(pubkey::bytea,'hex') like $3
 				union select address from rocketpool_minipools where encode(address::bytea,'hex') like $3
+				union select address from rocketpool_minipools where encode(node_address::bytea,'hex') like $3
 				union (select address from validator_names inner join rocketpool_minipools on rocketpool_minipools.pubkey = validator_names.publickey where name ilike $4)
 			)
 			select 
@@ -137,6 +139,7 @@ func PoolsRocketpoolDataMinipools(w http.ResponseWriter, r *http.Request) {
 	for _, row := range minipools {
 		entry := []interface{}{}
 		entry = append(entry, utils.FormatEth1Address(row.Address))
+		entry = append(entry, row.ValidatorIndex)
 		if c := bytes.Compare(row.Pubkey, zeroAddr); c == 0 {
 			entry = append(entry, "N/A")
 		} else {
@@ -196,10 +199,11 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	orderColumn := q.Get("order[0][column]")
 	orderByMap := map[string]string{
 		"0": "address",
-		"1": "timezone_location",
+		"1": "minipool_count",
 		"2": "rpl_stake",
 		"3": "min_rpl_stake",
 		"4": "max_rpl_stake",
+		"5": "timezone_location",
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
@@ -215,9 +219,10 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	var dbResult []types.RocketpoolPageDataNode
 	if search == "" {
 		err = db.DB.Select(&dbResult, fmt.Sprintf(`
-			select rocketpool_nodes.*, cnt.total_count
+			select rocketpool_nodes.*, coalesce(m.minipool_count,0) as minipool_count, cnt.total_count
 			from rocketpool_nodes
-			left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
+			left join (select node_address, count(*) as minipool_count from rocketpool_minipools group by node_address) m on rocketpool_nodes.address = m.node_address
+			left join (select count(*) from rocketpool_nodes) cnt(total_count) on true
 			order by %s %s
 			limit $1
 			offset $2`, orderBy, orderDir), length, start)
@@ -231,10 +236,11 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 			with matched_nodes as (
 				select address from rocketpool_nodes where encode(address::bytea,'hex') like $3
 			)
-			select rocketpool_nodes.*, cnt.total_count
+			select rocketpool_nodes.*, coalesce(m.minipool_count,0) as minipool_count, cnt.total_count
 			from rocketpool_nodes
 			inner join matched_nodes on matched_nodes.address = rocketpool_nodes.address
-			left join (select count(*) from rocketpool_nodes) cnt(total_count) ON true
+			left join (select node_address, count(*) as minipool_count from rocketpool_minipools group by node_address) m on rocketpool_nodes.address = m.node_address
+			left join (select count(*) from rocketpool_nodes) cnt(total_count) on true
 			order by %s %s
 			limit $1
 			offset $2`, orderBy, orderDir), length, start, search+"%")
@@ -255,10 +261,11 @@ func PoolsRocketpoolDataNodes(w http.ResponseWriter, r *http.Request) {
 	for _, row := range dbResult {
 		entry := []interface{}{}
 		entry = append(entry, utils.FormatEth1Address(row.Address))
-		entry = append(entry, row.TimezoneLocation)
+		entry = append(entry, row.MinipoolCount)
 		entry = append(entry, row.RPLStake)
 		entry = append(entry, row.MinRPLStake)
 		entry = append(entry, row.MaxRPLStake)
+		entry = append(entry, row.TimezoneLocation)
 		tableData = append(tableData, entry)
 	}
 
@@ -458,7 +465,7 @@ func PoolsRocketpoolDataDAOMembers(w http.ResponseWriter, r *http.Request) {
 	}
 	orderBy, exists := orderByMap[orderColumn]
 	if !exists {
-		orderBy = "id"
+		orderBy = "joined_time"
 	}
 	orderDir := q.Get("order[0][dir]")
 	if orderDir != "desc" && orderDir != "asc" {

@@ -1135,6 +1135,7 @@ type RocketpoolPageDataNode struct {
 	RPLStake                 string `db:"rpl_stake"`
 	MinRPLStake              string `db:"min_rpl_stake"`
 	MaxRPLStake              string `db:"max_rpl_stake"`
+	MinipoolCount            uint64 `db:"minipool_count"`
 }
 
 type RocketpoolPageDataDAOProposal struct {

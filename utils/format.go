@@ -331,12 +331,14 @@ func FormatEth1AddressString(addr []byte) template.HTML {
 func FormatEth1Address(addr []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(addr))
 	eth1Addr := eth1common.BytesToAddress(addr)
+	eth1AddrHex := eth1Addr.Hex()
+	eth1AddrHexLen := len(eth1AddrHex)
 
 	if !Config.Chain.Mainnet {
-		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+		return template.HTML(fmt.Sprintf("<a href=\"https://goerli.etherscan.io/address/0x%x\" class=\"text-monospace\">%s…%s</a>%s", addr, eth1AddrHex[:6], eth1AddrHex[eth1AddrHexLen-4:], copyBtn))
 	}
 
-	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…</a>%s", addr, eth1Addr.Hex()[:8], copyBtn))
+	return template.HTML(fmt.Sprintf("<a href=\"https://etherchain.org/account/0x%x\" class=\"text-monospace\">%s…%s</a>%s", addr, eth1AddrHex[:6], eth1AddrHex[eth1AddrHexLen-4:], copyBtn))
 }
 
 // FormatEth1Block will return the eth1-block formated as html
@@ -720,9 +722,9 @@ func FormatValidatorWithName(validator interface{}, name string) template.HTML {
 	}
 
 	if name != "" {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\" class=\"text-monospace\"><span class=\"text-truncate\">"+html.EscapeString(name)+"</span></a>", validatorLink))
 	} else {
-		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\">%v</a>", validatorLink, validatorRead))
+		return template.HTML(fmt.Sprintf("<i class=\"fas fa-male mr-2\"></i> <a href=\"/validator/%v\" class=\"text-monospace\">%v</a>", validatorLink, validatorRead))
 	}
 }
 
