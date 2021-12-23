@@ -568,6 +568,7 @@ type BlockPageData struct {
 	Votes             []*BlockVote // Attestations that voted for that block
 	AttesterSlashings []*BlockPageAttesterSlashing
 	ProposerSlashings []*BlockPageProposerSlashing
+	SyncCommittee     []uint64 // TODO: Setting it to contain the validator index
 }
 
 func (u *BlockPageData) MarshalJSON() ([]byte, error) {

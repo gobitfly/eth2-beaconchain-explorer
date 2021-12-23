@@ -1359,8 +1359,8 @@ func saveBlocks(blocks map[uint64]map[string]*types.Block, tx *sql.Tx) error {
 			blockLog.WithField("duration", time.Since(t)).Tracef("stmtBlock")
 			t = time.Now()
 
+			n := time.Now()
 			logger.Tracef("done, took %v", time.Since(n))
-			n = time.Now()
 			logger.Tracef("writing transactions data")
 			if payload := b.ExecutionPayload; payload != nil {
 				for i, tx := range payload.Transactions {

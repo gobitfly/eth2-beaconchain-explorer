@@ -8,6 +8,8 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"github.com/juliangruber/go-intersect"
+	"github.com/lib/pq"
 	"html/template"
 	"math/big"
 	"net/http"
@@ -15,10 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lib/pq"
-
 	"github.com/gorilla/mux"
 )
+
+// Hacky AF way to ensure intersect module is imported and not optimised away, unsure why its being optimised away
+var _ = intersect.Simple
 
 var blockTemplate = template.Must(template.New("block").Funcs(utils.GetTemplateFuncs()).ParseFiles(
 	"templates/layout.html",
@@ -193,7 +196,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		amount.SetBytes(tx.Amount)
 		price.SetBytes(tx.Price)
 		tx.AmountPretty = ToEth(&amount)
-		tx.PricePretty = ToGWei(&price)
+		tx.PricePretty = ToGWei(&amount)
 		transactions = append(transactions, tx)
 	}
 	blockPageData.Transactions = transactions
@@ -320,7 +323,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
 	if len(blockPageData.AttesterSlashings) > 0 {
 		for _, slashing := range blockPageData.AttesterSlashings {
 			inter := intersect.Simple(slashing.Attestation1Indices, slashing.Attestation2Indices)
@@ -338,6 +340,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: fix blockPageData data type to include SyncCommittee
 	err = db.DB.Select(&blockPageData.SyncCommittee, "SELECT validatorindex FROM sync_committees WHERE period = $1 ORDER BY committeeindex", utils.SyncPeriodOfEpoch(blockPageData.Epoch))
 	if err != nil {
 		logger.Errorf("error retrieving sync-committee of block %v: %v", blockPageData.Slot, err)
@@ -633,4 +636,24 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+// ToWei converts the big.Int wei to its gwei string representation.
+func ToWei(wei *big.Int) string {
+	return wei.String()
+}
+
+// ToGWei converts the big.Int wei to its gwei string representation.
+func ToGWei(wei *big.Int) string {
+	return ToEth(new(big.Int).Mul(wei, big.NewInt(1e9)))
+}
+
+// ToEth converts the big.Int wei to its ether string representation.
+func ToEth(wei *big.Int) string {
+	z, m := new(big.Int).DivMod(wei, big.NewInt(1e18), new(big.Int))
+	if m.Cmp(new(big.Int)) == 0 {
+		return z.String()
+	}
+	s := strings.TrimRight(fmt.Sprintf("%018s", m.String()), "0")
+	return z.String() + "." + s
 }

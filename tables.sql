@@ -305,7 +305,6 @@ create table blocks
     exec_transactioncount       int,
     primary key (slot, blockroot)
 );
-
 create index idx_blocks_proposer on blocks (proposer);
 create index idx_blocks_epoch on blocks (epoch);
 create index idx_blocks_graffiti_text on blocks using gin (graffiti_text gin_trgm_ops);
@@ -642,107 +641,107 @@ create table api_statistics
 
 drop table if exists stats_meta_p;
 CREATE TABLE stats_meta_p (
-	id 				    bigserial,
-	version 			int 				        not null default 1,
-	ts 				    timestamp  			        not null,
-	process 			character varying(20) 		not null,
-	machine 		 	character varying(50),
-    created_trunc       timestamp   not null,
-    exporter_version    varchar(35),
-    day                 int,
+                              id 				    bigserial,
+                              version 			int 				        not null default 1,
+                              ts 				    timestamp  			        not null,
+                              process 			character varying(20) 		not null,
+                              machine 		 	character varying(50),
+                              created_trunc       timestamp   not null,
+                              exporter_version    varchar(35),
+                              day                 int,
 
-	user_id 		 	bigint	 	 		        not null,
-    primary key (id, day)
+                              user_id 		 	bigint	 	 		        not null,
+                              primary key (id, day)
 
 ) PARTITION BY LIST (day);
 
 drop table if exists stats_process;
 CREATE TABLE stats_process (
-	id 				bigserial 			primary key,
+                               id 				bigserial 			primary key,
 
-	cpu_process_seconds_total 	bigint   			not null,
+                               cpu_process_seconds_total 	bigint   			not null,
 
-	memory_process_bytes	 	bigint	 	 		not null,
+                               memory_process_bytes	 	bigint	 	 		not null,
 
-	client_name 			character varying(25)  	not null,
-	client_version		 	character varying(25)	 	not null,
-	client_build		 	int 				not null,
+                               client_name 			character varying(25)  	not null,
+                               client_version		 	character varying(25)	 	not null,
+                               client_build		 	int 				not null,
 
-	sync_eth2_fallback_configured  bool 				not null,
-	sync_eth2_fallback_connected 	bool	 			not null,
+                               sync_eth2_fallback_configured  bool 				not null,
+                               sync_eth2_fallback_connected 	bool	 			not null,
 
-	meta_id 	 		bigint    			not null,
+                               meta_id 	 		bigint    			not null,
 
-	foreign key(meta_id) references stats_meta(id)
+                               foreign key(meta_id) references stats_meta(id)
 );
 create index idx_stats_process_metaid on stats_process (meta_id);
 
 drop table if exists stats_add_beaconnode;
 CREATE TABLE stats_add_beaconnode (
-	id 					bigserial 		primary key,
+                                      id 					bigserial 		primary key,
 
-	disk_beaconchain_bytes_total	 	bigint	 		not null,
-	network_libp2p_bytes_total_receive  	bigint	 		not null,
-	network_libp2p_bytes_total_transmit  	bigint	 		not null,
-	network_peers_connected 		int	 		not null,
-	sync_eth1_connected	 		bool	 		not null,
-	sync_eth2_synced 			bool	 		not null,
-	sync_beacon_head_slot	 		bigint	 		not null,
-    sync_eth1_fallback_configured  bool	 			not null,
-	sync_eth1_fallback_connected 	bool	 			not null,
+                                      disk_beaconchain_bytes_total	 	bigint	 		not null,
+                                      network_libp2p_bytes_total_receive  	bigint	 		not null,
+                                      network_libp2p_bytes_total_transmit  	bigint	 		not null,
+                                      network_peers_connected 		int	 		not null,
+                                      sync_eth1_connected	 		bool	 		not null,
+                                      sync_eth2_synced 			bool	 		not null,
+                                      sync_beacon_head_slot	 		bigint	 		not null,
+                                      sync_eth1_fallback_configured  bool	 			not null,
+                                      sync_eth1_fallback_connected 	bool	 			not null,
 
-	general_id		 		bigint	 		not null,
+                                      general_id		 		bigint	 		not null,
 
-	foreign key(general_id) references stats_process(id)
+                                      foreign key(general_id) references stats_process(id)
 );
 create index idx_stats_beaconnode_generalid on stats_add_beaconnode (general_id);
 
 drop table if exists stats_add_validator;
 CREATE TABLE stats_add_validator (
-	id		 			bigserial	 	primary key,
-	validator_total 			int	 		not null,
-	validator_active	 		int	 		not null,
+                                     id		 			bigserial	 	primary key,
+                                     validator_total 			int	 		not null,
+                                     validator_active	 		int	 		not null,
 
-	general_id	 			bigint		 	not null,
+                                     general_id	 			bigint		 	not null,
 
-	foreign key(general_id) references stats_process(id)
+                                     foreign key(general_id) references stats_process(id)
 );
 create index idx_stats_beaconnode_validator on stats_add_validator (general_id);
 
 drop table if exists stats_system;
 CREATE TABLE stats_system (
-	id		 			bigserial 	 	primary key,
+                              id		 			bigserial 	 	primary key,
 
-	cpu_cores 				int	 		not null,
-	cpu_threads 				int	 		not null,
+                              cpu_cores 				int	 		not null,
+                              cpu_threads 				int	 		not null,
 
-	cpu_node_system_seconds_total  	bigint 		not null,
-	cpu_node_user_seconds_total 		bigint	 		not null,
-	cpu_node_iowait_seconds_total	 	bigint	 		not null,
-	cpu_node_idle_seconds_total	 	bigint	 		not null,
+                              cpu_node_system_seconds_total  	bigint 		not null,
+                              cpu_node_user_seconds_total 		bigint	 		not null,
+                              cpu_node_iowait_seconds_total	 	bigint	 		not null,
+                              cpu_node_idle_seconds_total	 	bigint	 		not null,
 
-	memory_node_bytes_total 		bigint	 		not null,
-	memory_node_bytes_free	 		bigint	 		not null,
-	memory_node_bytes_cached 		bigint	 		not null,
-	memory_node_bytes_buffers 		bigint	 		not null,
+                              memory_node_bytes_total 		bigint	 		not null,
+                              memory_node_bytes_free	 		bigint	 		not null,
+                              memory_node_bytes_cached 		bigint	 		not null,
+                              memory_node_bytes_buffers 		bigint	 		not null,
 
-	disk_node_bytes_total	 		bigint	 		not null,
-	disk_node_bytes_free	 		bigint	 		not null,
+                              disk_node_bytes_total	 		bigint	 		not null,
+                              disk_node_bytes_free	 		bigint	 		not null,
 
-	disk_node_io_seconds	 		bigint	 		not null,
-	disk_node_reads_total	 		bigint	 		not null,
-	disk_node_writes_total	 		bigint 		not null,
+                              disk_node_io_seconds	 		bigint	 		not null,
+                              disk_node_reads_total	 		bigint	 		not null,
+                              disk_node_writes_total	 		bigint 		not null,
 
-	network_node_bytes_total_receive 	bigint	 		not null,
-	network_node_bytes_total_transmit 	bigint	 		not null,
+                              network_node_bytes_total_receive 	bigint	 		not null,
+                              network_node_bytes_total_transmit 	bigint	 		not null,
 
-	misc_node_boot_ts_seconds	 	bigint		 	not null,
-	misc_os		 		character varying(6)  	not null,
+                              misc_node_boot_ts_seconds	 	bigint		 	not null,
+                              misc_os		 		character varying(6)  	not null,
 
-	meta_id	 			bigint		 	not null,
+                              meta_id	 			bigint		 	not null,
 
 
-	foreign key(meta_id) references stats_meta(id)
+                              foreign key(meta_id) references stats_meta(id)
 );
 
 create index idx_stats_system_meta_id on stats_system (meta_id);
@@ -784,24 +783,24 @@ create table staking_pools_chart
 
 drop table if exists stats_sharing;
 CREATE TABLE stats_sharing (
-	id 				bigserial 			primary key,
-	ts 				timestamp  			not null,
-	share           bool             not null,
-	user_id 		 	bigint	 	 		not null,
-    foreign key(user_id) references users(id)
+                               id 				bigserial 			primary key,
+                               ts 				timestamp  			not null,
+                               share           bool             not null,
+                               user_id 		 	bigint	 	 		not null,
+                               foreign key(user_id) references users(id)
 );
 
 drop table if exists finality_checkpoints;
 create table finality_checkpoints (
-    head_epoch               int   not null,
-    head_root                bytea not null,
-    current_justified_epoch  int   not null,
-    current_justified_root   bytea not null,
-    previous_justified_epoch int   not null,
-    previous_justified_root  bytea not null,
-    finalized_epoch          int   not null,
-    finalized_root           bytea not null,
-    primary key (head_epoch, head_root)
+                                      head_epoch               int   not null,
+                                      head_root                bytea not null,
+                                      current_justified_epoch  int   not null,
+                                      current_justified_root   bytea not null,
+                                      previous_justified_epoch int   not null,
+                                      previous_justified_root  bytea not null,
+                                      finalized_epoch          int   not null,
+                                      finalized_root           bytea not null,
+                                      primary key (head_epoch, head_root)
 );
 
 drop table if exists rocketpool_export_status;
