@@ -1,18 +1,21 @@
 package rpc
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
-	gtypes "github.com/ethereum/go-ethereum/core/types"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	gtypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/protolambda/zssz/bitfields"
 
@@ -25,13 +28,16 @@ type LighthouseClient struct {
 	endpoint            string
 	assignmentsCache    *lru.Cache
 	assignmentsCacheMux *sync.Mutex
+	signer              gtypes.Signer
 }
 
 // NewLighthouseClient is used to create a new Lighthouse client
-func NewLighthouseClient(endpoint string) (*LighthouseClient, error) {
+func NewLighthouseClient(endpoint string, chainID *big.Int) (*LighthouseClient, error) {
+	signer := gtypes.NewLondonSigner(chainID)
 	client := &LighthouseClient{
 		endpoint:            endpoint,
 		assignmentsCacheMux: &sync.Mutex{},
+		signer:              signer,
 	}
 	client.assignmentsCache, _ = lru.New(128)
 
@@ -505,22 +511,30 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 		}
 	}
 
-	if payload := parsedBlock.Message.Body.ExecutionPayload; payload != nil {
+	if payload := parsedBlock.Message.Body.ExecutionPayload; payload != nil && !bytes.Equal(payload.ParentHash, make([]byte, 32)) {
 		txs := make([]*types.Transaction, 0, len(payload.Transactions))
-		for _, txUnion := range payload.Transactions {
-			otx := txUnion.Value
-
-			tx := &types.Transaction{Raw: otx}
+		for i, rawTx := range payload.Transactions {
+			tx := &types.Transaction{Raw: rawTx}
 			var decTx gtypes.Transaction
-			if err := decTx.UnmarshalBinary(otx); err != nil {
+			if err := decTx.UnmarshalBinary(rawTx); err != nil {
+				return nil, fmt.Errorf("error parsing tx %d block %x: %v", i, payload.BlockHash, err)
+			} else {
 				h := decTx.Hash()
 				tx.TxHash = h[:]
 				tx.AccountNonce = decTx.Nonce()
 				// big endian
 				tx.Price = decTx.GasPrice().Bytes()
 				tx.GasLimit = decTx.Gas()
-				//tx.Sender = TODO sender
-				tx.Recipient = decTx.To().Bytes()
+				sender, err := lc.signer.Sender(&decTx)
+				if err != nil {
+					return nil, fmt.Errorf("transaction with invalid sender (tx hash: %x): %v", h, err)
+				}
+				tx.Sender = sender.Bytes()
+				if v := decTx.To(); v != nil {
+					tx.Recipient = v.Bytes()
+				} else {
+					tx.Recipient = []byte{}
+				}
 				tx.Amount = decTx.Value().Bytes()
 				tx.Payload = decTx.Data()
 				tx.MaxPriorityFeePerGas = decTx.GasTipCap().Uint64()
@@ -540,7 +554,7 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 			GasUsed:       uint64(payload.GasUsed),
 			Timestamp:     uint64(payload.Timestamp),
 			ExtraData:     payload.ExtraData,
-			BaseFeePerGas: payload.BaseFeePerGas,
+			BaseFeePerGas: uint64(payload.BaseFeePerGas),
 			BlockHash:     payload.BlockHash,
 			Transactions:  txs,
 		}
@@ -699,7 +713,7 @@ func (lc *LighthouseClient) GetValidatorParticipation(epoch uint64) (*types.Vali
 func (lc *LighthouseClient) GetFinalityCheckpoints(epoch uint64) (*types.FinalityCheckpoints, error) {
 	// finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, id))
 	// if err != nil {
-	// 	return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
+	//      return nil, fmt.Errorf("error retrieving finality checkpoints of head: %v", err)
 	// }
 	return &types.FinalityCheckpoints{}, nil
 }
@@ -943,11 +957,6 @@ type SyncAggregate struct {
 	SyncCommitteeSignature bytesHexStr `json:"sync_committee_signature"`
 }
 
-type Transaction struct {
-	Selector uint        `json:"selector"`
-	Value    bytesHexStr `json:"value"`
-}
-
 type ExecutionPayload struct {
 	ParentHash    bytesHexStr   `json:"parent_hash"`
 	CoinBase      bytesHexStr   `json:"coinbase"`
@@ -960,9 +969,9 @@ type ExecutionPayload struct {
 	GasUsed       uint64Str     `json:"gas_used"`
 	Timestamp     uint64Str     `json:"timestamp"`
 	ExtraData     bytesHexStr   `json:"extra_data"`
-	BaseFeePerGas bytesHexStr   `json:"base_fee_per_gas"`
+	BaseFeePerGas uint64Str     `json:"base_fee_per_gas"`
 	BlockHash     bytesHexStr   `json:"block_hash"`
-	Transactions  []Transaction `json:"transactions"`
+	Transactions  []bytesHexStr `json:"transactions"`
 }
 
 type AnySignedBlock struct {

@@ -5,6 +5,8 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	gtypes "github.com/ethereum/go-ethereum/core/types"
+	"math/big"
 	"sync"
 	"time"
 
@@ -26,11 +28,11 @@ type PrysmClient struct {
 	assignmentsCache    *lru.Cache
 	assignmentsCacheMux *sync.Mutex
 	newBlockChan        chan *types.Block
-	//signer              gtypes.EIP155Signer
+	signer              gtypes.Signer
 }
 
 // NewPrysmClient is used for a new Prysm client connection
-func NewPrysmClient(endpoint string, chainId int64) (*PrysmClient, error) {
+func NewPrysmClient(endpoint string, chainId *big.Int) (*PrysmClient, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		// Maximum receive value 128 MB
@@ -52,7 +54,7 @@ func NewPrysmClient(endpoint string, chainId int64) (*PrysmClient, error) {
 		conn:                conn,
 		assignmentsCacheMux: &sync.Mutex{},
 		newBlockChan:        make(chan *types.Block, 1000),
-		//signer:              gtypes.NewEIP155Signer(big.NewInt(chainId)),
+		signer:              gtypes.NewLondonSigner(chainId),
 	}
 	client.assignmentsCache, _ = lru.New(10)
 

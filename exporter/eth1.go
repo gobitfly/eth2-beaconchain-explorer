@@ -2,12 +2,14 @@ package exporter
 
 import (
 	"context"
+	"encoding/hex"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -158,9 +160,13 @@ func fetchEth1Deposits(fromBlock, toBlock uint64) (depositsToSave []*types.Eth1D
 	txsToFetch := []string{}
 
 	cfg := params.BeaconConfig()
+	genForkVersion, err := hex.DecodeString(strings.Replace(utils.Config.Chain.Phase0.GenesisForkVersion, "0x", "", -1))
+	if err != nil {
+		return nil, err
+	}
 	domain, err := helpers.ComputeDomain(
 		cfg.DomainDeposit,
-		cfg.GenesisForkVersion,
+		genForkVersion,
 		cfg.ZeroHash[:],
 	)
 	if utils.Config.Chain.Network == "zinken" {
