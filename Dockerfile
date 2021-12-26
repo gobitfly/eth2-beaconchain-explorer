@@ -10,6 +10,6 @@ FROM alpine
 WORKDIR /app
 RUN apk --no-cache add libstdc++ libgcc
 COPY --from=build-env /src/bin /app/
-COPY --from=build-env /src/phase0.yml /app/phase0.yml
+COPY --from=build-env /src/eth2_config.yml /app/eth2_config.yml
 COPY  ./config-example.yml /app/config.yml
 CMD []
