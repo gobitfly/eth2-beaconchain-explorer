@@ -196,8 +196,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		amount.SetBytes(tx.Amount)
 		price.SetBytes(tx.Price)
 		tx.AmountPretty = ToEth(&amount)
-		tx.PricePretty = ToGWei(&price)
-
+		tx.PricePretty = ToGWei(&amount)
 		transactions = append(transactions, tx)
 	}
 	blockPageData.Transactions = transactions
@@ -638,7 +637,6 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
-
 
 // ToWei converts the big.Int wei to its gwei string representation.
 func ToWei(wei *big.Int) string {

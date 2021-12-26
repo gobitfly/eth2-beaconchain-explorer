@@ -305,31 +305,10 @@ create table blocks
     exec_transactioncount       int,
     primary key (slot, blockroot)
 );
-
 create index idx_blocks_proposer on blocks (proposer);
 create index idx_blocks_epoch on blocks (epoch);
 create index idx_blocks_graffiti_text on blocks using gin (graffiti_text gin_trgm_ops);
 create index idx_blocks_blockrootstatus on blocks (blockroot, status);
-
-drop table if exists blocks_transactions;
-create table blocks_transactions
-(
-    block_slot         int    not null,
-    block_index        int    not null,
-    block_root         bytea  not null default '',
-    raw                bytea  not null,
-    txhash             bytea  not null,
-    nonce              int    not null,
-    gas_price          bytea  not null,
-    gas_limit          bigint not null,
-    sender             bytea  not null,
-    recipient          bytea  not null,
-    amount             bytea  not null,
-    payload            bytea  not null,
-    max_priority_fee_per_gas  bigint,
-    max_fee_per_gas           bigint,
-    primary key (block_slot, block_index)
-);
 
 drop table if exists blocks_transactions;
 create table blocks_transactions
@@ -674,7 +653,6 @@ CREATE TABLE stats_meta_p (
                               user_id 		 	bigint	 	 		        not null,
                               primary key (id, day)
 
-
 ) PARTITION BY LIST (day);
 
 drop table if exists stats_process;
@@ -695,7 +673,6 @@ CREATE TABLE stats_process (
                                meta_id 	 		bigint    			not null,
 
                                foreign key(meta_id) references stats_meta(id)
-
 );
 create index idx_stats_process_metaid on stats_process (meta_id);
 
@@ -716,7 +693,6 @@ CREATE TABLE stats_add_beaconnode (
                                       general_id		 		bigint	 		not null,
 
                                       foreign key(general_id) references stats_process(id)
-
 );
 create index idx_stats_beaconnode_generalid on stats_add_beaconnode (general_id);
 
@@ -729,7 +705,6 @@ CREATE TABLE stats_add_validator (
                                      general_id	 			bigint		 	not null,
 
                                      foreign key(general_id) references stats_process(id)
-
 );
 create index idx_stats_beaconnode_validator on stats_add_validator (general_id);
 
@@ -767,7 +742,6 @@ CREATE TABLE stats_system (
 
 
                               foreign key(meta_id) references stats_meta(id)
-
 );
 
 create index idx_stats_system_meta_id on stats_system (meta_id);

@@ -17,9 +17,6 @@ import (
 
 	gtypes "github.com/ethereum/go-ethereum/core/types"
 
-
-	"github.com/protolambda/zssz/bitfields"
-
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prysmaticlabs/go-bitfield"
 	"github.com/sirupsen/logrus"
@@ -108,11 +105,9 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 		return nil, fmt.Errorf("error parsing chain head: %v", err)
 	}
 
-	id := hex.EncodeToString(parsedHead.Data.Header.Message.StateRoot)
+	id := parsedHead.Data.Header.Message.StateRoot
 	if parsedHead.Data.Header.Message.Slot == 0 {
 		id = "genesis"
-	} else {
-		id = "0x" + id
 	}
 	finalityResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/finality_checkpoints", lc.endpoint, id))
 	if err != nil {
@@ -128,16 +123,16 @@ func (lc *LighthouseClient) GetChainHead() (*types.ChainHead, error) {
 	return &types.ChainHead{
 		HeadSlot:                   uint64(parsedHead.Data.Header.Message.Slot),
 		HeadEpoch:                  uint64(parsedHead.Data.Header.Message.Slot) / utils.Config.Chain.SlotsPerEpoch,
-		HeadBlockRoot:              parsedHead.Data.Root,
+		HeadBlockRoot:              utils.MustParseHex(parsedHead.Data.Root),
 		FinalizedSlot:              uint64(parsedFinality.Data.Finalized.Epoch) * utils.Config.Chain.SlotsPerEpoch,
 		FinalizedEpoch:             uint64(parsedFinality.Data.Finalized.Epoch),
-		FinalizedBlockRoot:         parsedFinality.Data.Finalized.Root,
+		FinalizedBlockRoot:         utils.MustParseHex(parsedFinality.Data.Finalized.Root),
 		JustifiedSlot:              uint64(parsedFinality.Data.CurrentJustified.Epoch) * utils.Config.Chain.SlotsPerEpoch,
 		JustifiedEpoch:             uint64(parsedFinality.Data.CurrentJustified.Epoch),
-		JustifiedBlockRoot:         parsedFinality.Data.CurrentJustified.Root,
+		JustifiedBlockRoot:         utils.MustParseHex(parsedFinality.Data.CurrentJustified.Root),
 		PreviousJustifiedSlot:      uint64(parsedFinality.Data.PreviousJustified.Epoch) * utils.Config.Chain.SlotsPerEpoch,
 		PreviousJustifiedEpoch:     uint64(parsedFinality.Data.PreviousJustified.Epoch),
-		PreviousJustifiedBlockRoot: parsedFinality.Data.PreviousJustified.Root,
+		PreviousJustifiedBlockRoot: utils.MustParseHex(parsedFinality.Data.PreviousJustified.Root),
 	}, nil
 }
 
@@ -203,7 +198,7 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 	}
 
 	// fetch the block root that the proposer data is dependent on
-	headerResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/0x%x", lc.endpoint, parsedProposerResponse.DependentRoot[:]))
+	headerResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/headers/%s", lc.endpoint, parsedProposerResponse.DependentRoot))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving chain header: %v", err)
 	}
@@ -215,7 +210,7 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 	depStateRoot := parsedHeader.Data.Header.Message.StateRoot
 
 	// Now use the state root to make a consistent committee query
-	committeesResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/0x%x/committees?epoch=%d", lc.endpoint, depStateRoot, epoch))
+	committeesResp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/states/%s/committees?epoch=%d", lc.endpoint, depStateRoot, epoch))
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving committees data: %w", err)
 	}
@@ -238,8 +233,12 @@ func (lc *LighthouseClient) GetEpochAssignments(epoch uint64) (*types.EpochAssig
 	// attest
 	for _, committee := range parsedCommittees.Data {
 		for i, valIndex := range committee.Validators {
+			valIndexU64, err := strconv.ParseUint(valIndex, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("epoch %d committee %d index %d has bad validator index %q", epoch, committee.Index, i, valIndex)
+			}
 			k := utils.FormatAttestorAssignmentKey(uint64(committee.Slot), uint64(committee.Index), uint64(i))
-			assignments.AttestorAssignments[k] = uint64(valIndex)
+			assignments.AttestorAssignments[k] = valIndexU64
 		}
 	}
 
@@ -341,8 +340,8 @@ func (lc *LighthouseClient) GetEpochData(epoch uint64) (*types.EpochData, error)
 	for _, validator := range parsedValidators.Data {
 		data.Validators = append(data.Validators, &types.Validator{
 			Index:                      uint64(validator.Index),
-			PublicKey:                  validator.Validator.Pubkey,
-			WithdrawalCredentials:      validator.Validator.WithdrawalCredentials,
+			PublicKey:                  utils.MustParseHex(validator.Validator.Pubkey),
+			WithdrawalCredentials:      utils.MustParseHex(validator.Validator.WithdrawalCredentials),
 			Balance:                    uint64(validator.Balance),
 			EffectiveBalance:           uint64(validator.Validator.EffectiveBalance),
 			Slashed:                    validator.Validator.Slashed,
@@ -544,7 +543,6 @@ func (lc *LighthouseClient) GetBlocksBySlot(slot uint64) ([]*types.Block, error)
 	}
 
 	resp, err := lc.get(fmt.Sprintf("%s/eth/v1/beacon/blocks/%s", lc.endpoint, parsedHeaders.Data.Root))
-
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving block data at slot %v: %v", slot, err)
 	}
@@ -577,11 +575,10 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		Signature:    parsedBlock.Signature,
 		RandaoReveal: utils.MustParseHex(parsedBlock.Message.Body.RandaoReveal),
 		Graffiti:     utils.MustParseHex(parsedBlock.Message.Body.Graffiti),
-
 		Eth1Data: &types.Eth1Data{
-			DepositRoot:  parsedBlock.Message.Body.Eth1Data.DepositRoot,
+			DepositRoot:  utils.MustParseHex(parsedBlock.Message.Body.Eth1Data.DepositRoot),
 			DepositCount: uint64(parsedBlock.Message.Body.Eth1Data.DepositCount),
-			BlockHash:    parsedBlock.Message.Body.Eth1Data.BlockHash,
+			BlockHash:    utils.MustParseHex(parsedBlock.Message.Body.Eth1Data.BlockHash),
 		},
 		ProposerSlashings: make([]*types.ProposerSlashing, len(parsedBlock.Message.Body.ProposerSlashings)),
 		AttesterSlashings: make([]*types.AttesterSlashing, len(parsedBlock.Message.Body.AttesterSlashings)),
@@ -602,13 +599,11 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			return nil, fmt.Errorf("sync-aggregate-bits-size does not match sync-committee-size: %v != %v", len(bits)*8, utils.Config.Chain.Altair.SyncCommitteeSize)
 		}
 
-
 		block.SyncAggregate = &types.SyncAggregate{
 			SyncCommitteeValidators:    epochAssignments.SyncAssignments,
 			SyncCommitteeBits:          bits,
 			SyncAggregateParticipation: syncCommitteeParticipation(bits),
 			SyncCommitteeSignature:     utils.MustParseHex(agg.SyncCommitteeSignature),
-
 		}
 	}
 
@@ -671,17 +666,17 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 			ProposerIndex: uint64(proposerSlashing.SignedHeader1.Message.ProposerIndex),
 			Header1: &types.Block{
 				Slot:       uint64(proposerSlashing.SignedHeader1.Message.Slot),
-				ParentRoot: proposerSlashing.SignedHeader1.Message.ParentRoot,
-				StateRoot:  proposerSlashing.SignedHeader1.Message.StateRoot,
-				Signature:  proposerSlashing.SignedHeader1.Signature,
-				BodyRoot:   proposerSlashing.SignedHeader1.Message.BodyRoot,
+				ParentRoot: utils.MustParseHex(proposerSlashing.SignedHeader1.Message.ParentRoot),
+				StateRoot:  utils.MustParseHex(proposerSlashing.SignedHeader1.Message.StateRoot),
+				Signature:  utils.MustParseHex(proposerSlashing.SignedHeader1.Signature),
+				BodyRoot:   utils.MustParseHex(proposerSlashing.SignedHeader1.Message.BodyRoot),
 			},
 			Header2: &types.Block{
 				Slot:       uint64(proposerSlashing.SignedHeader2.Message.Slot),
-				ParentRoot: proposerSlashing.SignedHeader2.Message.ParentRoot,
-				StateRoot:  proposerSlashing.SignedHeader2.Message.StateRoot,
-				Signature:  proposerSlashing.SignedHeader2.Signature,
-				BodyRoot:   proposerSlashing.SignedHeader2.Message.BodyRoot,
+				ParentRoot: utils.MustParseHex(proposerSlashing.SignedHeader2.Message.ParentRoot),
+				StateRoot:  utils.MustParseHex(proposerSlashing.SignedHeader2.Message.StateRoot),
+				Signature:  utils.MustParseHex(proposerSlashing.SignedHeader2.Signature),
+				BodyRoot:   utils.MustParseHex(proposerSlashing.SignedHeader2.Message.BodyRoot),
 			},
 		}
 	}
@@ -692,34 +687,34 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 				Data: &types.AttestationData{
 					Slot:            uint64(attesterSlashing.Attestation1.Data.Slot),
 					CommitteeIndex:  uint64(attesterSlashing.Attestation1.Data.Index),
-					BeaconBlockRoot: attesterSlashing.Attestation1.Data.BeaconBlockRoot,
+					BeaconBlockRoot: utils.MustParseHex(attesterSlashing.Attestation1.Data.BeaconBlockRoot),
 					Source: &types.Checkpoint{
 						Epoch: uint64(attesterSlashing.Attestation1.Data.Source.Epoch),
-						Root:  attesterSlashing.Attestation1.Data.Source.Root,
+						Root:  utils.MustParseHex(attesterSlashing.Attestation1.Data.Source.Root),
 					},
 					Target: &types.Checkpoint{
 						Epoch: uint64(attesterSlashing.Attestation1.Data.Target.Epoch),
-						Root:  attesterSlashing.Attestation1.Data.Target.Root,
+						Root:  utils.MustParseHex(attesterSlashing.Attestation1.Data.Target.Root),
 					},
 				},
-				Signature:        attesterSlashing.Attestation1.Signature,
+				Signature:        utils.MustParseHex(attesterSlashing.Attestation1.Signature),
 				AttestingIndices: uint64List(attesterSlashing.Attestation1.AttestingIndices),
 			},
 			Attestation2: &types.IndexedAttestation{
 				Data: &types.AttestationData{
 					Slot:            uint64(attesterSlashing.Attestation2.Data.Slot),
 					CommitteeIndex:  uint64(attesterSlashing.Attestation2.Data.Index),
-					BeaconBlockRoot: attesterSlashing.Attestation2.Data.BeaconBlockRoot,
+					BeaconBlockRoot: utils.MustParseHex(attesterSlashing.Attestation2.Data.BeaconBlockRoot),
 					Source: &types.Checkpoint{
 						Epoch: uint64(attesterSlashing.Attestation2.Data.Source.Epoch),
-						Root:  attesterSlashing.Attestation2.Data.Source.Root,
+						Root:  utils.MustParseHex(attesterSlashing.Attestation2.Data.Source.Root),
 					},
 					Target: &types.Checkpoint{
 						Epoch: uint64(attesterSlashing.Attestation2.Data.Target.Epoch),
-						Root:  attesterSlashing.Attestation2.Data.Target.Root,
+						Root:  utils.MustParseHex(attesterSlashing.Attestation2.Data.Target.Root),
 					},
 				},
-				Signature:        attesterSlashing.Attestation2.Signature,
+				Signature:        utils.MustParseHex(attesterSlashing.Attestation2.Signature),
 				AttestingIndices: uint64List(attesterSlashing.Attestation2.AttestingIndices),
 			},
 		}
@@ -727,22 +722,22 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 
 	for i, attestation := range parsedBlock.Message.Body.Attestations {
 		a := &types.Attestation{
-			AggregationBits: attestation.AggregationBits,
+			AggregationBits: utils.MustParseHex(attestation.AggregationBits),
 			Attesters:       []uint64{},
 			Data: &types.AttestationData{
 				Slot:            uint64(attestation.Data.Slot),
 				CommitteeIndex:  uint64(attestation.Data.Index),
-				BeaconBlockRoot: attestation.Data.BeaconBlockRoot,
+				BeaconBlockRoot: utils.MustParseHex(attestation.Data.BeaconBlockRoot),
 				Source: &types.Checkpoint{
 					Epoch: uint64(attestation.Data.Source.Epoch),
-					Root:  attestation.Data.Source.Root,
+					Root:  utils.MustParseHex(attestation.Data.Source.Root),
 				},
 				Target: &types.Checkpoint{
 					Epoch: uint64(attestation.Data.Target.Epoch),
-					Root:  attestation.Data.Target.Root,
+					Root:  utils.MustParseHex(attestation.Data.Target.Root),
 				},
 			},
-			Signature: attestation.Signature,
+			Signature: utils.MustParseHex(attestation.Signature),
 		}
 
 		aggregationBits := bitfield.Bitlist(a.AggregationBits)
@@ -768,10 +763,10 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 	for i, deposit := range parsedBlock.Message.Body.Deposits {
 		d := &types.Deposit{
 			Proof:                 nil,
-			PublicKey:             deposit.Data.Pubkey,
-			WithdrawalCredentials: deposit.Data.WithdrawalCredentials,
+			PublicKey:             utils.MustParseHex(deposit.Data.Pubkey),
+			WithdrawalCredentials: utils.MustParseHex(deposit.Data.WithdrawalCredentials),
 			Amount:                uint64(deposit.Data.Amount),
-			Signature:             deposit.Data.Signature,
+			Signature:             utils.MustParseHex(deposit.Data.Signature),
 		}
 
 		block.Deposits[i] = d
@@ -781,7 +776,7 @@ func (lc *LighthouseClient) blockFromResponse(parsedHeaders *StandardBeaconHeade
 		block.VoluntaryExits[i] = &types.VoluntaryExit{
 			Epoch:          uint64(voluntaryExit.Message.Epoch),
 			ValidatorIndex: uint64(voluntaryExit.Message.ValidatorIndex),
-			Signature:      voluntaryExit.Signature,
+			Signature:      utils.MustParseHex(voluntaryExit.Signature),
 		}
 	}
 
@@ -912,17 +907,17 @@ func Uint64Unmarshal(v *uint64, b []byte) error {
 
 type StandardBeaconHeaderResponse struct {
 	Data struct {
-		Root      bytesHexStr `json:"root"`
-		Canonical bool        `json:"canonical"`
+		Root      string `json:"root"`
+		Canonical bool   `json:"canonical"`
 		Header    struct {
 			Message struct {
-				Slot          uint64Str   `json:"slot"`
-				ProposerIndex uint64Str   `json:"proposer_index"`
-				ParentRoot    bytesHexStr `json:"parent_root"`
-				StateRoot     bytesHexStr `json:"state_root"`
-				BodyRoot      bytesHexStr `json:"body_root"`
+				Slot          uint64Str `json:"slot"`
+				ProposerIndex uint64Str `json:"proposer_index"`
+				ParentRoot    string    `json:"parent_root"`
+				StateRoot     string    `json:"state_root"`
+				BodyRoot      string    `json:"body_root"`
 			} `json:"message"`
-			Signature bytesHexStr `json:"signature"`
+			Signature string `json:"signature"`
 		} `json:"header"`
 	} `json:"data"`
 }
@@ -930,35 +925,35 @@ type StandardBeaconHeaderResponse struct {
 type StandardFinalityCheckpointsResponse struct {
 	Data struct {
 		PreviousJustified struct {
-			Epoch uint64Str   `json:"epoch"`
-			Root  bytesHexStr `json:"root"`
+			Epoch uint64Str `json:"epoch"`
+			Root  string    `json:"root"`
 		} `json:"previous_justified"`
 		CurrentJustified struct {
-			Epoch uint64Str   `json:"epoch"`
-			Root  bytesHexStr `json:"root"`
+			Epoch uint64Str `json:"epoch"`
+			Root  string    `json:"root"`
 		} `json:"current_justified"`
 		Finalized struct {
-			Epoch uint64Str   `json:"epoch"`
-			Root  bytesHexStr `json:"root"`
+			Epoch uint64Str `json:"epoch"`
+			Root  string    `json:"root"`
 		} `json:"finalized"`
 	} `json:"data"`
 }
 
 type StandardProposerDuty struct {
-	Pubkey         bytesHexStr `json:"pubkey"`
-	ValidatorIndex uint64Str   `json:"validator_index"`
-	Slot           uint64Str   `json:"slot"`
+	Pubkey         string    `json:"pubkey"`
+	ValidatorIndex uint64Str `json:"validator_index"`
+	Slot           uint64Str `json:"slot"`
 }
 
 type StandardProposerDutiesResponse struct {
-	DependentRoot bytesHexStr            `json:"dependent_root"`
+	DependentRoot string                 `json:"dependent_root"`
 	Data          []StandardProposerDuty `json:"data"`
 }
 
 type StandardCommitteeEntry struct {
-	Index      uint64Str   `json:"index"`
-	Slot       uint64Str   `json:"slot"`
-	Validators []uint64Str `json:"validators"`
+	Index      uint64Str `json:"index"`
+	Slot       uint64Str `json:"slot"`
+	Validators []string  `json:"validators"`
 }
 
 type StandardCommitteesResponse struct {
@@ -987,88 +982,88 @@ type LighthouseValidatorParticipationResponse struct {
 type ProposerSlashing struct {
 	SignedHeader1 struct {
 		Message struct {
-			Slot          uint64Str   `json:"slot"`
-			ProposerIndex uint64Str   `json:"proposer_index"`
-			ParentRoot    bytesHexStr `json:"parent_root"`
-			StateRoot     bytesHexStr `json:"state_root"`
-			BodyRoot      bytesHexStr `json:"body_root"`
+			Slot          uint64Str `json:"slot"`
+			ProposerIndex uint64Str `json:"proposer_index"`
+			ParentRoot    string    `json:"parent_root"`
+			StateRoot     string    `json:"state_root"`
+			BodyRoot      string    `json:"body_root"`
 		} `json:"message"`
-		Signature bytesHexStr `json:"signature"`
+		Signature string `json:"signature"`
 	} `json:"signed_header_1"`
 	SignedHeader2 struct {
 		Message struct {
-			Slot          uint64Str   `json:"slot"`
-			ProposerIndex uint64Str   `json:"proposer_index"`
-			ParentRoot    bytesHexStr `json:"parent_root"`
-			StateRoot     bytesHexStr `json:"state_root"`
-			BodyRoot      bytesHexStr `json:"body_root"`
+			Slot          uint64Str `json:"slot"`
+			ProposerIndex uint64Str `json:"proposer_index"`
+			ParentRoot    string    `json:"parent_root"`
+			StateRoot     string    `json:"state_root"`
+			BodyRoot      string    `json:"body_root"`
 		} `json:"message"`
-		Signature bytesHexStr `json:"signature"`
+		Signature string `json:"signature"`
 	} `json:"signed_header_2"`
 }
 
 type AttesterSlashing struct {
 	Attestation1 struct {
 		AttestingIndices []uint64Str `json:"attesting_indices"`
-		Signature        bytesHexStr `json:"signature"`
+		Signature        string      `json:"signature"`
 		Data             struct {
-			Slot            uint64Str   `json:"slot"`
-			Index           uint64Str   `json:"index"`
-			BeaconBlockRoot bytesHexStr `json:"beacon_block_root"`
+			Slot            uint64Str `json:"slot"`
+			Index           uint64Str `json:"index"`
+			BeaconBlockRoot string    `json:"beacon_block_root"`
 			Source          struct {
-				Epoch uint64Str   `json:"epoch"`
-				Root  bytesHexStr `json:"root"`
+				Epoch uint64Str `json:"epoch"`
+				Root  string    `json:"root"`
 			} `json:"source"`
 			Target struct {
-				Epoch uint64Str   `json:"epoch"`
-				Root  bytesHexStr `json:"root"`
+				Epoch uint64Str `json:"epoch"`
+				Root  string    `json:"root"`
 			} `json:"target"`
 		} `json:"data"`
 	} `json:"attestation_1"`
 	Attestation2 struct {
 		AttestingIndices []uint64Str `json:"attesting_indices"`
-		Signature        bytesHexStr `json:"signature"`
+		Signature        string      `json:"signature"`
 		Data             struct {
-			Slot            uint64Str   `json:"slot"`
-			Index           uint64Str   `json:"index"`
-			BeaconBlockRoot bytesHexStr `json:"beacon_block_root"`
+			Slot            uint64Str `json:"slot"`
+			Index           uint64Str `json:"index"`
+			BeaconBlockRoot string    `json:"beacon_block_root"`
 			Source          struct {
-				Epoch uint64Str   `json:"epoch"`
-				Root  bytesHexStr `json:"root"`
+				Epoch uint64Str `json:"epoch"`
+				Root  string    `json:"root"`
 			} `json:"source"`
 			Target struct {
-				Epoch uint64Str   `json:"epoch"`
-				Root  bytesHexStr `json:"root"`
+				Epoch uint64Str `json:"epoch"`
+				Root  string    `json:"root"`
 			} `json:"target"`
 		} `json:"data"`
 	} `json:"attestation_2"`
 }
 
 type Attestation struct {
-	AggregationBits bytesHexStr `json:"aggregation_bits"`
-	Signature       bytesHexStr `json:"signature"`
+	AggregationBits string `json:"aggregation_bits"`
+	Signature       string `json:"signature"`
 	Data            struct {
-		Slot            uint64Str   `json:"slot"`
-		Index           uint64Str   `json:"index"`
-		BeaconBlockRoot bytesHexStr `json:"beacon_block_root"`
+		Slot            uint64Str `json:"slot"`
+		Index           uint64Str `json:"index"`
+		BeaconBlockRoot string    `json:"beacon_block_root"`
 		Source          struct {
-			Epoch uint64Str   `json:"epoch"`
-			Root  bytesHexStr `json:"root"`
+			Epoch uint64Str `json:"epoch"`
+			Root  string    `json:"root"`
 		} `json:"source"`
 		Target struct {
-			Epoch uint64Str   `json:"epoch"`
-			Root  bytesHexStr `json:"root"`
+			Epoch uint64Str `json:"epoch"`
+			Root  string    `json:"root"`
 		} `json:"target"`
 	} `json:"data"`
 }
 
 type Deposit struct {
-	Proof []bytesHexStr `json:"proof"`
+	Proof []string `json:"proof"`
 	Data  struct {
-		Pubkey                bytesHexStr `json:"pubkey"`
-		WithdrawalCredentials bytesHexStr `json:"withdrawal_credentials"`
-		Amount                uint64Str   `json:"amount"`
-		Signature             bytesHexStr `json:"signature"`
+		Pubkey                string    `json:"pubkey"`
+		WithdrawalCredentials string    `json:"withdrawal_credentials"`
+		Amount                uint64Str `json:"amount"`
+		Signature             string    `json:"signature"`
 	} `json:"data"`
 }
 
@@ -1077,35 +1072,18 @@ type VoluntaryExit struct {
 		Epoch          uint64Str `json:"epoch"`
 		ValidatorIndex uint64Str `json:"validator_index"`
 	} `json:"message"`
-	Signature bytesHexStr `json:"signature"`
+	Signature string `json:"signature"`
 }
 
 type Eth1Data struct {
-	DepositRoot  bytesHexStr `json:"deposit_root"`
-	DepositCount uint64Str   `json:"deposit_count"`
-	BlockHash    bytesHexStr `json:"block_hash"`
+	DepositRoot  string    `json:"deposit_root"`
+	DepositCount uint64Str `json:"deposit_count"`
+	BlockHash    string    `json:"block_hash"`
 }
 
 type SyncAggregate struct {
-	SyncCommitteeBits      bytesHexStr `json:"sync_committee_bits"`
-	SyncCommitteeSignature bytesHexStr `json:"sync_committee_signature"`
-}
-
-type ExecutionPayload struct {
-	ParentHash    bytesHexStr   `json:"parent_hash"`
-	CoinBase      bytesHexStr   `json:"coinbase"`
-	StateRoot     bytesHexStr   `json:"state_root"`
-	ReceiptRoot   bytesHexStr   `json:"receipt_root"`
-	LogsBloom     bytesHexStr   `json:"logs_bloom"`
-	Random        bytesHexStr   `json:"random"`
-	BlockNumber   uint64Str     `json:"block_number"`
-	GasLimit      uint64Str     `json:"gas_limit"`
-	GasUsed       uint64Str     `json:"gas_used"`
-	Timestamp     uint64Str     `json:"timestamp"`
-	ExtraData     bytesHexStr   `json:"extra_data"`
-	BaseFeePerGas uint64Str     `json:"base_fee_per_gas"`
-	BlockHash     bytesHexStr   `json:"block_hash"`
-	Transactions  []bytesHexStr `json:"transactions"`
+	SyncCommitteeBits      string `json:"sync_committee_bits"`
+	SyncCommitteeSignature string `json:"sync_committee_signature"`
 }
 
 type ExecutionPayload struct {
@@ -1127,14 +1105,14 @@ type ExecutionPayload struct {
 
 type AnySignedBlock struct {
 	Message struct {
-		Slot          uint64Str   `json:"slot"`
-		ProposerIndex uint64Str   `json:"proposer_index"`
-		ParentRoot    bytesHexStr `json:"parent_root"`
-		StateRoot     bytesHexStr `json:"state_root"`
+		Slot          uint64Str `json:"slot"`
+		ProposerIndex uint64Str `json:"proposer_index"`
+		ParentRoot    string    `json:"parent_root"`
+		StateRoot     string    `json:"state_root"`
 		Body          struct {
-			RandaoReveal      bytesHexStr        `json:"randao_reveal"`
+			RandaoReveal      string             `json:"randao_reveal"`
 			Eth1Data          Eth1Data           `json:"eth1_data"`
-			Graffiti          bytesHexStr        `json:"graffiti"`
+			Graffiti          string             `json:"graffiti"`
 			ProposerSlashings []ProposerSlashing `json:"proposer_slashings"`
 			AttesterSlashings []AttesterSlashing `json:"attester_slashings"`
 			Attestations      []Attestation      `json:"attestations"`
@@ -1158,7 +1136,7 @@ type StandardV2BlockResponse struct {
 
 type StandardV1BlockRootResponse struct {
 	Data struct {
-		Root bytesHexStr `json:"root"`
+		Root string `json:"root"`
 	} `json:"data"`
 }
 
@@ -1167,14 +1145,14 @@ type StandardValidatorEntry struct {
 	Balance   uint64Str `json:"balance"`
 	Status    string    `json:"status"`
 	Validator struct {
-		Pubkey                     bytesHexStr `json:"pubkey"`
-		WithdrawalCredentials      bytesHexStr `json:"withdrawal_credentials"`
-		EffectiveBalance           uint64Str   `json:"effective_balance"`
-		Slashed                    bool        `json:"slashed"`
-		ActivationEligibilityEpoch uint64Str   `json:"activation_eligibility_epoch"`
-		ActivationEpoch            uint64Str   `json:"activation_epoch"`
-		ExitEpoch                  uint64Str   `json:"exit_epoch"`
-		WithdrawableEpoch          uint64Str   `json:"withdrawable_epoch"`
+		Pubkey                     string    `json:"pubkey"`
+		WithdrawalCredentials      string    `json:"withdrawal_credentials"`
+		EffectiveBalance           uint64Str `json:"effective_balance"`
+		Slashed                    bool      `json:"slashed"`
+		ActivationEligibilityEpoch uint64Str `json:"activation_eligibility_epoch"`
+		ActivationEpoch            uint64Str `json:"activation_epoch"`
+		ExitEpoch                  uint64Str `json:"exit_epoch"`
+		WithdrawableEpoch          uint64Str `json:"withdrawable_epoch"`
 	} `json:"validator"`
 }
 
