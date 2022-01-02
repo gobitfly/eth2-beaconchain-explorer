@@ -34,12 +34,12 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 		logger.Errorf("error getting prices: %v", err)
 	}
 
-	lowerBound := utils.TimeToDay(start)
+	lowerBound := utils.TimeToDay(start) - 1
 	upperBound := utils.TimeToDay(end)
 
 	var income []types.ValidatorStatsTableRow
 	err = db.DB.Select(&income,
-		`select day, start_balance, end_balance
+		`select day, end_balance
 		 from validator_stats 
 		 where validatorindex=ANY($1) AND day > $2 AND day <= $3
 		 order by day desc`, validatorFilter, lowerBound, upperBound)
@@ -77,14 +77,28 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 		date := fmt.Sprintf("%v", utils.DayToTime(item.Day))
 		date = strings.Split(date, " ")[0]
 		if _, exist := totalIncomePerDay[date]; !exist {
-			totalIncomePerDay[date] = [2]int64{item.StartBalance.Int64, item.EndBalance.Int64}
+			totalIncomePerDay[date] = [2]int64{0, item.EndBalance.Int64}
 			continue
 		}
 		state := totalIncomePerDay[date]
-		state[0] += item.StartBalance.Int64
 		state[1] += item.EndBalance.Int64
 		totalIncomePerDay[date] = state
+		
+		date2 := fmt.Sprintf("%v", utils.DayToTime(item.Day + 1))
+		date2 = strings.Split(date2, " ")[0]
+		if _, exist := totalIncomePerDay[date2]; !exist {
+			totalIncomePerDay[date2] = [2]int64{item.EndBalance.Int64, 0}
+			continue
+		}
+		state2 := totalIncomePerDay[date2]
+		state2[0] += item.EndBalance.Int64
+		totalIncomePerDay[date2] = state2
 	}
+	
+	startHalfDay := fmt.Sprintf("%v", utils.DayToTime(lowerBound))
+	startHalfDay = strings.Split(startHalfDay, " ")[0]
+	endHalfDay := fmt.Sprintf("%v", utils.DayToTime(upperBound + 1))
+	endHalfDay = strings.Split(endHalfDay, " ")[0]
 
 	data := make([][]string, len(totalIncomePerDay))
 	i := 0
@@ -92,6 +106,9 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 	tCur := 0.0
 	for key, item := range totalIncomePerDay {
 		if len(item) < 2 {
+			continue
+		}
+		if key == startHalfDay || key == endHalfDay {
 			continue
 		}
 		iETH := (float64(item[1]) / 1e9) - (float64(item[0]) / 1e9)
