@@ -469,7 +469,7 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 }
 
 // ApiValidator godoc
-// @Summary Get up to 100 validators by their index
+// @Summary Get up to 100 validators
 // @Tags Validator
 // @Produce  json
 // @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
@@ -530,7 +530,7 @@ func ApiValidatorDailyStats(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param  eth1address path string true "Eth1 address from which the validator deposits were sent"
 // @Success 200 {object} string
-// @Router /api/v1/validator/eth1/{address} [get]
+// @Router /api/v1/validator/eth1/{eth1address} [get]
 func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
@@ -621,7 +621,7 @@ func ApiValidatorPerformance(w http.ResponseWriter, r *http.Request) {
 // @Summary Get the current attestation-effectiveness of up to 100 validators. 1 = all attestations are included in the next possible block, < 1 some attestations have been included after the next possible block.
 // @Tags Validator
 // @Produce  json
-// @Param  index path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} string
 // @Router /api/v1/validator/{indexOrPubkey}/attestationeffectiveness [get]
 func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request) {
@@ -674,7 +674,7 @@ func ApiValidatorAttestationEffectiveness(w http.ResponseWriter, r *http.Request
 // @Summary Get the current performance of up to 100 validators
 // @Tags Validator
 // @Produce  json
-// @Param  index path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
 // @Success 200 {object} string
 // @Router /api/v1/validator/{indexOrPubkey}/attestationefficiency [get]
 func ApiValidatorAttestationEfficiency(w http.ResponseWriter, r *http.Request) {
