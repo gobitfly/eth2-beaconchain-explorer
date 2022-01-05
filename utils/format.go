@@ -158,18 +158,6 @@ func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 
 func FormatAddCommas(n uint64) template.HTML {
 	number := FormatFloatWithRightTrim(float64(n), 2)
-
-	// p := message.NewPrinter(language.English)
-	// rb := []rune(p.Sprintf("%d", n))
-	// if len(rb) >= 3 {
-	// 	if rb[len(rb)-2] == '.' || rb[len(rb)-3] == '.' {
-	// 		if rb[len(rb)-1] == '.' {
-	// 			rb = rb[:len(rb)-1]
-
-	// 		}
-	// 	}
-	// }
-
 	return template.HTML(number)
 }
 
