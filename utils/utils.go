@@ -77,7 +77,7 @@ func GetTemplateFuncs() template.FuncMap {
 		"formatBitvectorValidators":               formatBitvectorValidators,
 		"formatParticipation":                     FormatParticipation,
 		"formatIncome":                            FormatIncome,
-		"formatMoney":                             FormatMoney,
+		"formatFloatWithRightTrim":                FormatFloatWithRightTrim,
 		"formatIncomeSql":                         FormatIncomeSql,
 		"formatSqlInt64":                          FormatSqlInt64,
 		"formatValidator":                         FormatValidator,
