@@ -83,11 +83,6 @@ type UsersNotificationsRequest struct {
 	JoinValidator bool     `json:"join_validator"`
 }
 
-type ChanResult struct {
-	Data  []interface{}
-	Error error
-}
-
 type DashboardRequest struct {
 	IndicesOrPubKey string `json:"indicesOrPubkey"`
 }
