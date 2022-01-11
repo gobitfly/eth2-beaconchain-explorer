@@ -1,0 +1,76 @@
+# Database credentials
+database:
+  user: beaconchain
+  name: prater
+  host: 104.154.151.223
+  port: 5432
+  password: rsnikK0HMLaxwOqz
+chain:
+   network: prater
+   slotsPerEpoch: 32
+   secondsPerSlot: 12
+   genesisTimestamp: 1616508000
+   minGenesisActiveValidatorCount: 16384
+   phase0path: "./config/prater0.yml"
+
+# Note: It is possible to run either the frontend or the indexer or both at the same time
+# Frontend config
+frontend:
+  enabled: true # Enable or disable to web frontend
+  disableCharts: true
+  recaptchaSiteKey: "6Lcqky0aAAAAAEvVxsSEnaQx2hk55P3LC4iKqCAw"
+  recaptchaSecretKey: "6Lcqky0aAAAAAOCUzi5jzt90NLnzdTT7c2x7K55U"
+  staticDirPath: "static"
+  imprint: 'imprint.html' # Path to the imprint page content
+  privacy: 'privacy.html'
+  tos: 'tos.html'
+  siteDomain: "beaconcha.in"
+  siteName: 'Ethereum 2.0 Beacon Chain (Phase 0) Block Chain Explorer'
+  siteSubtitle: 'Showing the ETH2.0 Mainnet'
+  server:
+    host: '0.0.0.0' # Address to listen on
+    port: '8081' # Port to listen on
+  database:
+    user: beaconchain
+    name: prater
+    host: 104.154.151.223
+    port: 5432
+    password: rsnikK0HMLaxwOqz
+  sessionSecret: "xxx"
+  jwtSigningSecret: "ff"
+  jwtIssuer: "localhost"
+  jwtValidityInMinutes: 9930999
+  maxMailsPerEmailPerDay: 10
+  mail:
+    mailgun:
+      sender: no-reply@beaconcha.in
+      domain: mg.beaconcha.in
+      privateKey: ''
+  gatag: ''
+  csrfAuthKey: ''
+  csrfInsecure: true
+  stripe:
+    secretKey: sk_test_51HYsMtBiORp9oTlKuiezVJyOw3DCv6atp7aUOTUwYyQTBCRq4CtDqCZGaXRQD3b99ODdXswrTaWZbeV0xzNainb600TeDACFWz
+    publicKey: pk_test_51HYsMtBiORp9oTlKQTthEodcR2xSQSGrEKqtuk7opacoCLGv7yC3CSgPG7L0wwTeApvrHLQqHbdlQ1dllo5i534o009rc001yw
+    sapphire: price_1HpA5uBiORp9oTlK8UBifMUx
+    emerald: price_1HpA7FBiORp9oTlKHhxWW8H9
+    diamond: price_1HpA7wBiORp9oTlKgXIxXfYf
+    webhook: whsec_E6PPV9nyshpOh1Kz2FqkO47yVzyT1kBK
+
+notifications:
+  enabled: false
+  userDbNotifications: false
+
+# Indexer config
+indexer:
+  enabled: false # Enable or disable the indexing service
+  fullIndexOnStartup: false # Perform a one time full db index on startup
+  indexMissingEpochsOnStartup: false # Check for missing epochs and export them after startup
+  node:
+    host: 'localhost' # Address of the prysm backend archive node
+    port: '4000' # gRPC port of the prysm backend archive node
+    type: 'prysm'
+    pageSize: 2000
+  eth1Endpoint: 'https://mainnet.infura.io/v3/414ec181ab9f43fd8bb81ae94a033ece'
+  eth1DepositContractAddress: '0x00000000219ab540356cbb839cbe05303d7705fa'
+  eth1DepositContractFirstBlock: 11052984
