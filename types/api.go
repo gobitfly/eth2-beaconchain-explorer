@@ -82,3 +82,7 @@ type UsersNotificationsRequest struct {
 	Offset        uint64   `json:"offset"`
 	JoinValidator bool     `json:"join_validator"`
 }
+
+type DashboardRequest struct {
+	IndicesOrPubKey string `json:"indicesOrPubkey"`
+}

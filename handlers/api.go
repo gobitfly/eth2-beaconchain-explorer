@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
@@ -19,11 +20,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/context"
+	gorillacontext "github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
+	"golang.org/x/sync/errgroup"
 )
 
 // @title Beaconcha.in ETH2 API
@@ -466,6 +468,178 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	returnQueryResults(rows, j, r)
+}
+
+/*
+	Combined validator get, performance, attestationefficency, epoch, historic epoch and rpl
+	Not public documented
+*/
+func ApiDashboard(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body | err: %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not read body")
+		return
+	}
+
+	var parsedBody types.DashboardRequest
+	err = json.Unmarshal(body, &parsedBody)
+
+	maxValidators := getUserPremium(r).MaxValidators
+
+	epoch := int64(services.LatestEpoch())
+
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(parsedBody.IndicesOrPubKey, maxValidators)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+
+	if len(queryPubkeys) > 0 {
+		err := db.DB.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
+		if err != nil {
+			logger.Errorf("dashboard could not resolve pubkeys to indices err: %v", err)
+			sendErrorResponse(j, r.URL.String(), err.Error())
+			return
+		}
+	}
+
+	g, _ := errgroup.WithContext(context.Background())
+
+	var validatorsData []interface{}
+	var validatorEffectivenessData []interface{}
+	var rocketpoolData []interface{}
+	var currentEpochData []interface{}
+	var olderEpochData []interface{}
+
+	g.Go(func() error {
+		validatorsData, err = validators(queryIndices)
+		return err
+	})
+
+	g.Go(func() error {
+		validatorEffectivenessData, err = validatorEffectiveness(epoch, queryIndices)
+		return err
+	})
+
+	g.Go(func() error {
+		rocketpoolData, err = rocketpool(queryIndices)
+		return err
+	})
+
+	g.Go(func() error {
+		currentEpochData, err = getEpoch(epoch)
+		return err
+	})
+
+	g.Go(func() error {
+		olderEpochData, err = getEpoch(epoch - 10)
+		return err
+	})
+
+	err = g.Wait()
+	if err != nil {
+		logger.Errorf("dashboard %v", err)
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+
+	data := &DashboardResponse{
+		Validators:    validatorsData,
+		Effectiveness: validatorEffectivenessData,
+		CurrentEpoch:  currentEpochData,
+		OlderEpoch:    olderEpochData,
+		Rocketpool:    rocketpoolData,
+	}
+
+	sendOKResponse(j, r.URL.String(), []interface{}{data})
+}
+
+func rocketpool(queryIndices []uint64) ([]interface{}, error) {
+	rows, err := db.DB.Query(`
+		SELECT
+			rplm.node_address      AS node_address,
+			rplm.address           AS minipool_address,
+			rplm.node_fee          AS minipool_node_fee,
+			rplm.deposit_type      AS minipool_deposit_type,
+			rplm.status            AS minipool_status,
+			rplm.status_time       AS minipool_status_time,
+			rpln.timezone_location AS node_timezone_location,
+			rpln.rpl_stake         AS node_rpl_stake,
+			rpln.max_rpl_stake     AS node_max_rpl_stake,
+			rpln.min_rpl_stake     AS node_min_rpl_stake,
+			validators.validatorindex AS index 
+		FROM rocketpool_minipools rplm 
+		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 
+		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
+		WHERE validatorindex = ANY($1)`, pq.Array(queryIndices))
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return utils.SqlRowsToJSON(rows)
+}
+
+func validators(queryIndices []uint64) ([]interface{}, error) {
+	rows, err := db.DB.Query("SELECT validators.validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, validators.balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name, performance1d, performance7d, performance31d, performance365d, rank7d FROM validators LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validators.validatorindex = ANY($1) ORDER BY validators.validatorindex", pq.Array(queryIndices))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return utils.SqlRowsToJSON(rows)
+}
+
+func validatorEffectiveness(epoch int64, indices []uint64) ([]interface{}, error) {
+	effectivenessEpochRange := epoch - 100
+	if epoch < 0 {
+		effectivenessEpochRange = 0
+	}
+
+	rows, err := db.DB.Query(`
+	SELECT aa.validatorindex, validators.pubkey, COALESCE(
+		AVG(1 + inclusionslot - COALESCE((
+			SELECT MIN(slot)
+			FROM blocks
+			WHERE slot > aa.attesterslot AND blocks.status = '1'
+		), 0)
+	), 0)::float AS attestation_efficiency
+	FROM attestation_assignments_p aa
+	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+	INNER JOIN validators ON validators.validatorindex = aa.validatorindex
+	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2)) AND aa.inclusionslot > 0
+	GROUP BY aa.validatorindex, validators.pubkey
+	ORDER BY aa.validatorindex
+	`, effectivenessEpochRange, pq.Array(indices))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return utils.SqlRowsToJSON(rows)
+}
+
+type DashboardResponse struct {
+	Validators    interface{} `json:"validators"`
+	Effectiveness interface{} `json:"effectiveness"`
+	CurrentEpoch  interface{} `json:"currentEpoch"`
+	OlderEpoch    interface{} `json:"olderEpoch"`
+	Rocketpool    interface{} `json:"rocketpool"`
+}
+
+func getEpoch(epoch int64) ([]interface{}, error) {
+	rows, err := db.DB.Query(`SELECT * FROM epochs WHERE epoch = $1`, epoch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return utils.SqlRowsToJSON(rows)
 }
 
 // ApiValidator godoc
@@ -1159,7 +1333,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 
 	var parsedBase types.MobileSubscription
-	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &parsedBase)
+	err := json.Unmarshal(gorillacontext.Get(r, utils.JsonBodyNakedKey).([]byte), &parsedBase)
 
 	if err != nil {
 		logger.Errorf("error parsing body | err: %v %v", err)
@@ -1852,12 +2026,12 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAuthClaims(r *http.Request) *utils.CustomClaims {
-	middleWare := context.Get(r, utils.MobileAuthorizedKey)
+	middleWare := gorillacontext.Get(r, utils.MobileAuthorizedKey)
 	if middleWare == nil {
 		return utils.GetAuthorizationClaims(r)
 	}
 
-	claims := context.Get(r, utils.ClaimsContextKey)
+	claims := gorillacontext.Get(r, utils.ClaimsContextKey)
 	if claims == nil {
 		return nil
 	}
