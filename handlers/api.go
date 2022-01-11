@@ -468,6 +468,236 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+/*
+	Combined validator get, performance, attestationefficency, epoch, historic epoch and rpl
+	Not public documented
+*/
+func ApiDashboard(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body | err: %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not read body")
+		return
+	}
+
+	var parsedBody types.DashboardRequest
+	err = json.Unmarshal(body, &parsedBody)
+
+	maxValidators := getUserPremium(r).MaxValidators
+
+	epoch := int64(services.LatestEpoch())
+
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(parsedBody.IndicesOrPubKey, maxValidators)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+
+	validatorsChan := make(chan types.ChanResult)
+	go validators(queryIndices, queryPubkeys, validatorsChan)
+
+	// Performance
+	performanceChan := make(chan types.ChanResult)
+	go validatorPerformance(queryIndices, queryPubkeys, performanceChan)
+
+	// Effectiveness
+	effectivenessChan := make(chan types.ChanResult)
+	go validatorEffectiveness(epoch, queryIndices, queryPubkeys, effectivenessChan)
+
+	// Rocketpool
+	rocketpoolChan := make(chan types.ChanResult)
+	go rocketpool(queryIndices, queryPubkeys, rocketpoolChan)
+
+	// Current epoch & older epoch for finalization issue detection
+
+	currentEpochChan := make(chan types.ChanResult)
+	go getEpoch(epoch, currentEpochChan)
+
+	currentEpoch := <-currentEpochChan
+	if currentEpoch.Error != nil {
+		logger.Errorf("dashboard currentEpoch %v", currentEpoch.Error)
+		sendErrorResponse(j, r.URL.String(), currentEpoch.Error.Error())
+		return
+	}
+
+	olderEpochChan := make(chan types.ChanResult)
+	go getEpoch(epoch-10, olderEpochChan)
+
+	olderEpoch := <-olderEpochChan
+	if olderEpoch.Error != nil {
+		logger.Errorf("dashboard oldepoch %v", olderEpoch.Error)
+		sendErrorResponse(j, r.URL.String(), olderEpoch.Error.Error())
+		return
+	}
+
+	// results from channels
+	validatorData := <-validatorsChan
+	if validatorData.Error != nil {
+		logger.Errorf("dashboard validator %v", validatorData.Error)
+		sendErrorResponse(j, r.URL.String(), validatorData.Error.Error())
+		return
+	}
+
+	validatorEffectiveness := <-effectivenessChan
+	if validatorEffectiveness.Error != nil {
+		logger.Errorf("dashboard validatoreffectiveness %v", validatorEffectiveness.Error)
+		sendErrorResponse(j, r.URL.String(), validatorEffectiveness.Error.Error())
+		return
+	}
+
+	validatorPerformance := <-performanceChan
+	if validatorPerformance.Error != nil {
+		logger.Errorf("dashboard validatorperformance %v", validatorPerformance.Error)
+		sendErrorResponse(j, r.URL.String(), validatorPerformance.Error.Error())
+		return
+	}
+
+	rocketpool := <-rocketpoolChan
+	if rocketpool.Error != nil {
+		logger.Errorf("dashboard rocketpool %v", rocketpool.Error)
+		sendErrorResponse(j, r.URL.String(), rocketpool.Error.Error())
+		return
+	}
+
+	data := &DashboardResponse{
+		Validators:    validatorData.Data,
+		Performance:   validatorPerformance.Data,
+		Effectiveness: validatorEffectiveness.Data,
+		CurrentEpoch:  currentEpoch.Data,
+		OlderEpoch:    olderEpoch.Data,
+		Rocketpool:    rocketpool.Data,
+	}
+
+	sendOKResponse(j, r.URL.String(), []interface{}{data})
+}
+
+func rocketpool(queryIndices []uint64, queryPubkeys pq.ByteaArray, result chan types.ChanResult) {
+	rows, err := db.DB.Query(`
+		SELECT
+			rplm.node_address      AS node_address,
+			rplm.address           AS minipool_address,
+			rplm.node_fee          AS minipool_node_fee,
+			rplm.deposit_type      AS minipool_deposit_type,
+			rplm.status            AS minipool_status,
+			rplm.status_time       AS minipool_status_time,
+			rpln.timezone_location AS node_timezone_location,
+			rpln.rpl_stake         AS node_rpl_stake,
+			rpln.max_rpl_stake     AS node_max_rpl_stake,
+			rpln.min_rpl_stake     AS node_min_rpl_stake,
+			validators.validatorindex AS index 
+		FROM rocketpool_minipools rplm 
+		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 
+		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
+		WHERE validatorindex = ANY($1) OR rplm.pubkey = ANY($2)`, pq.Array(queryIndices), queryPubkeys)
+
+	if err != nil {
+		result <- types.ChanResult{
+			Data:  nil,
+			Error: err,
+		}
+		return
+	}
+	defer rows.Close()
+
+	data, err := utils.SqlRowsToJSON(rows)
+	result <- types.ChanResult{
+		Data:  data,
+		Error: err,
+	}
+}
+
+func validators(queryIndices []uint64, queryPubkeys pq.ByteaArray, result chan types.ChanResult) {
+	rows, err := db.DB.Query("SELECT validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name FROM validators LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validatorindex = ANY($1) OR pubkey = ANY($2) ORDER BY validatorindex", pq.Array(queryIndices), queryPubkeys)
+	if err != nil {
+		result <- types.ChanResult{
+			Data:  nil,
+			Error: err,
+		}
+		return
+	}
+	defer rows.Close()
+
+	data, err := utils.SqlRowsToJSON(rows)
+	result <- types.ChanResult{
+		Data:  data,
+		Error: err,
+	}
+}
+
+func validatorPerformance(queryIndices []uint64, queryPubkeys pq.ByteaArray, result chan types.ChanResult) {
+	rows, err := db.DB.Query("SELECT validator_performance.* FROM validator_performance LEFT JOIN validators ON validators.validatorindex = validator_performance.validatorindex WHERE validator_performance.validatorindex = ANY($1) OR validators.pubkey = ANY($2) ORDER BY validatorindex", pq.Array(queryIndices), queryPubkeys)
+	if err != nil {
+		result <- types.ChanResult{
+			Data:  nil,
+			Error: err,
+		}
+		return
+	}
+	defer rows.Close()
+
+	data, err := utils.SqlRowsToJSON(rows)
+
+	result <- types.ChanResult{
+		Data:  data,
+		Error: err,
+	}
+}
+
+func validatorEffectiveness(epoch int64, indices []uint64, pubkeys pq.ByteaArray, result chan types.ChanResult) {
+	effectivenessEpochRange := epoch - 100
+	if epoch < 0 {
+		effectivenessEpochRange = 0
+	}
+
+	rows, err := getAttestationEfficiencyQuery(effectivenessEpochRange, indices, pubkeys)
+	if err != nil {
+		result <- types.ChanResult{
+			Data:  nil,
+			Error: err,
+		}
+		return
+	}
+	defer rows.Close()
+
+	data, err := utils.SqlRowsToJSON(rows)
+
+	result <- types.ChanResult{
+		Data:  data,
+		Error: err,
+	}
+}
+
+type DashboardResponse struct {
+	Validators    interface{} `json:"validators"`
+	Performance   interface{} `json:"performance"`
+	Effectiveness interface{} `json:"effectiveness"`
+	CurrentEpoch  interface{} `json:"currentEpoch"`
+	OlderEpoch    interface{} `json:"olderEpoch"`
+	Rocketpool    interface{} `json:"rocketpool"`
+}
+
+func getEpoch(epoch int64, result chan types.ChanResult) {
+	rows, err := db.DB.Query(`SELECT * FROM epochs WHERE epoch = $1`, epoch)
+	if err != nil {
+		result <- types.ChanResult{
+			Data:  nil,
+			Error: err,
+		}
+		return
+	}
+	defer rows.Close()
+	data, err := utils.SqlRowsToJSON(rows)
+	result <- types.ChanResult{
+		Data:  data,
+		Error: err,
+	}
+	return
+}
+
 // ApiValidator godoc
 // @Summary Get up to 100 validators by their index
 // @Tags Validator
