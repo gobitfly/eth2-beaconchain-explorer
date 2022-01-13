@@ -47,8 +47,8 @@ func rocketpoolExporter() {
 
 type RocketpoolNetworkStats struct {
 	RPLPrice               *big.Int
-	ClaimIntervalTime      *time.Duration
-	ClaimIntervalTimeStart *time.Time
+	ClaimIntervalTime      time.Duration
+	ClaimIntervalTimeStart time.Time
 	CurrentNodeFee         float64
 	CurrentNodeDemand      *big.Int
 	RETHSupply             *big.Int
@@ -375,8 +375,8 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 
 	rp.NetworkStats = RocketpoolNetworkStats{
 		RPLPrice:               price,
-		ClaimIntervalTime:      &claimIntervalTime,
-		ClaimIntervalTimeStart: &claimIntervalTimeStart,
+		ClaimIntervalTime:      claimIntervalTime,
+		ClaimIntervalTimeStart: claimIntervalTimeStart,
 		CurrentNodeFee:         currentNodeFee,
 		CurrentNodeDemand:      currentNodeDemand,
 		RETHSupply:             rethSupply,
@@ -715,7 +715,7 @@ func (rp *RocketpoolExporter) TagValidators() error {
 }
 
 func (rp *RocketpoolExporter) SaveNetworkStats() error {
-	_, err := db.DB.Exec("INSERT INTO rocketpool_network_stats (ts, rpl_price, claim_interval_time, claim_interval_time_start, current_node_fee, current_node_demand, reth_supply, effective_rpl_staked, node_operator_rewards, reth_exchange_rate) VALUES('now', $1, $2, $3, $4, $5, $6, $7, $8, $9)",
+	_, err := db.DB.Exec("INSERT INTO rocketpool_network_stats (ts, rpl_price, claim_interval_time, claim_interval_time_start, current_node_fee, current_node_demand, reth_supply, effective_rpl_staked, node_operator_rewards, reth_exchange_rate, node_count, minipool_count, odao_member_count) VALUES(now(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
 		rp.NetworkStats.RPLPrice.String(),
 		rp.NetworkStats.ClaimIntervalTime.String(),
 		rp.NetworkStats.ClaimIntervalTimeStart,
@@ -725,6 +725,9 @@ func (rp *RocketpoolExporter) SaveNetworkStats() error {
 		rp.NetworkStats.EffectiveRPLStake.String(),
 		rp.NetworkStats.NodeOperatorRewards.String(),
 		rp.NetworkStats.RETHPrice,
+		len(rp.NodesByAddress),
+		len(rp.MinipoolsByAddress),
+		len(rp.DAOMembersByAddress),
 	)
 	return err
 }

@@ -862,6 +862,9 @@ create table rocketpool_network_stats
     effective_rpl_staked numeric not null, 
     node_operator_rewards numeric not null,
     reth_exchange_rate float not null,
+    node_count numeric not null, 
+    minipool_count numeric not null, 
+    odao_member_count numeric not null,
 
     primary key(ts)
 );
