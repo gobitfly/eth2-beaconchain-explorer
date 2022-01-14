@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	gorillacontext "github.com/gorilla/context"
@@ -470,6 +471,67 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiRocketpoolStats godoc
+// @Summary Get global rocketpool network statistics
+// @Tags Rocketpool
+// @Produce  json
+// @Success 200 {object} string
+// @Router /api/v1/rocketpool/stats [get]
+func ApiRocketpoolStats(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+
+	stats, err := getRocketpoolStats()
+
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	sendOKResponse(j, r.URL.String(), stats)
+}
+
+// ApiRocketpoolValidators godoc
+// @Summary Get rocketpool specific data for given validators
+// @Tags Rocketpool
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Produce  json
+// @Success 200 {object} string
+// @Router /api/v1/rocketpool/validator/{indexOrPubkey} [get]
+func ApiRocketpoolValidators(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+	if len(queryPubkeys) > 0 {
+		err := db.DB.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
+		if err != nil {
+			logger.Errorf("dashboard could not resolve pubkeys to indices err: %v", err)
+			sendErrorResponse(j, r.URL.String(), err.Error())
+			return
+		}
+	}
+
+	stats, err := getRocketpoolValidators(queryIndices)
+
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	sendOKResponse(j, r.URL.String(), stats)
+}
+
 /*
 	Combined validator get, performance, attestationefficency, epoch, historic epoch and rpl
 	Not public documented
@@ -486,50 +548,58 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var getValidators bool = true
 	var parsedBody types.DashboardRequest
 	err = json.Unmarshal(body, &parsedBody)
+	if err != nil {
+		getValidators = false
+	}
 
 	maxValidators := getUserPremium(r).MaxValidators
 
 	epoch := int64(services.LatestEpoch())
 
-	queryIndices, queryPubkeys, err := parseApiValidatorParam(parsedBody.IndicesOrPubKey, maxValidators)
-	if err != nil {
-		sendErrorResponse(j, r.URL.String(), err.Error())
-		return
-	}
-
-	if len(queryPubkeys) > 0 {
-		err := db.DB.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
-		if err != nil {
-			logger.Errorf("dashboard could not resolve pubkeys to indices err: %v", err)
-			sendErrorResponse(j, r.URL.String(), err.Error())
-			return
-		}
-	}
-
 	g, _ := errgroup.WithContext(context.Background())
-
 	var validatorsData []interface{}
 	var validatorEffectivenessData []interface{}
 	var rocketpoolData []interface{}
+	var rocketpoolStats []interface{}
 	var currentEpochData []interface{}
 	var olderEpochData []interface{}
 
-	g.Go(func() error {
-		validatorsData, err = validators(queryIndices)
-		return err
-	})
+	if getValidators {
+		queryIndices, queryPubkeys, err := parseApiValidatorParam(parsedBody.IndicesOrPubKey, maxValidators)
+		if err != nil {
+			sendErrorResponse(j, r.URL.String(), err.Error())
+			return
+		}
 
-	g.Go(func() error {
-		validatorEffectivenessData, err = validatorEffectiveness(epoch, queryIndices)
-		return err
-	})
+		if len(queryPubkeys) > 0 {
+			err := db.DB.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
+			if err != nil {
+				logger.Errorf("dashboard could not resolve pubkeys to indices err: %v", err)
+				sendErrorResponse(j, r.URL.String(), err.Error())
+				return
+			}
+		}
 
-	g.Go(func() error {
-		rocketpoolData, err = rocketpool(queryIndices)
-		return err
-	})
+		if len(queryIndices) > 0 {
+			g.Go(func() error {
+				validatorsData, err = validators(queryIndices)
+				return err
+			})
+
+			g.Go(func() error {
+				validatorEffectivenessData, err = validatorEffectiveness(epoch, queryIndices)
+				return err
+			})
+			g.Go(func() error {
+				rocketpoolData, err = getRocketpoolValidators(queryIndices)
+				return err
+			})
+
+		}
+	}
 
 	g.Go(func() error {
 		currentEpochData, err = getEpoch(epoch)
@@ -541,6 +611,11 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 		return err
 	})
 
+	g.Go(func() error {
+		rocketpoolStats, err = getRocketpoolStats()
+		return err
+	})
+
 	err = g.Wait()
 	if err != nil {
 		logger.Errorf("dashboard %v", err)
@@ -549,17 +624,59 @@ func ApiDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &DashboardResponse{
-		Validators:    validatorsData,
-		Effectiveness: validatorEffectivenessData,
-		CurrentEpoch:  currentEpochData,
-		OlderEpoch:    olderEpochData,
-		Rocketpool:    rocketpoolData,
+		Validators:      validatorsData,
+		Effectiveness:   validatorEffectivenessData,
+		CurrentEpoch:    currentEpochData,
+		OlderEpoch:      olderEpochData,
+		Rocketpool:      rocketpoolData,
+		RocketpoolStats: rocketpoolStats,
 	}
 
 	sendOKResponse(j, r.URL.String(), []interface{}{data})
 }
 
-func rocketpool(queryIndices []uint64) ([]interface{}, error) {
+type Cached struct {
+	Data interface{}
+	Ts   int64
+}
+
+var rocketpoolStats atomic.Value
+
+func getRocketpoolStats() ([]interface{}, error) {
+	cached := rocketpoolStats.Load()
+	if cached != nil {
+		cachedObj := cached.(*Cached)
+		if cachedObj.Ts+10*60 > time.Now().Unix() { // cache for 30min
+			return cachedObj.Data.([]interface{}), nil
+		}
+	}
+	rows, err := db.DB.Query(`
+		SELECT claim_interval_time, claim_interval_time_start, 
+		current_node_demand, current_node_fee, effective_rpl_staked,
+		node_operator_rewards, reth_exchange_rate, reth_supply, rpl_price, total_eth_balance, total_eth_staking, 
+		minipool_count, node_count, odao_member_count, 
+		(SELECT ((1 - (min(history.reth_exchange_rate) / max(history.reth_exchange_rate))) * 52.14) FROM (SELECT ts, reth_exchange_rate FROM rocketpool_network_stats LIMIT 168) history) as reth_apr  
+		from rocketpool_network_stats ORDER BY ts desc LIMIT 1;
+			`)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	data, err := utils.SqlRowsToJSON(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	rocketpoolStats.Store(&Cached{
+		Data: data,
+		Ts:   time.Now().Unix(),
+	})
+
+	return data, nil
+}
+
+func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 	rows, err := db.DB.Query(`
 		SELECT
 			rplm.node_address      AS node_address,
@@ -626,11 +743,12 @@ func validatorEffectiveness(epoch int64, indices []uint64) ([]interface{}, error
 }
 
 type DashboardResponse struct {
-	Validators    interface{} `json:"validators"`
-	Effectiveness interface{} `json:"effectiveness"`
-	CurrentEpoch  interface{} `json:"currentEpoch"`
-	OlderEpoch    interface{} `json:"olderEpoch"`
-	Rocketpool    interface{} `json:"rocketpool"`
+	Validators      interface{} `json:"validators"`
+	Effectiveness   interface{} `json:"effectiveness"`
+	CurrentEpoch    interface{} `json:"currentEpoch"`
+	OlderEpoch      interface{} `json:"olderEpoch"`
+	Rocketpool      interface{} `json:"rocketpool_validators"`
+	RocketpoolStats interface{} `json:"rocketpool_network_stats"`
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
