@@ -55,6 +55,8 @@ type RocketpoolNetworkStats struct {
 	EffectiveRPLStake      *big.Int
 	NodeOperatorRewards    *big.Int
 	RETHPrice              float64
+	TotalEthStaking        *big.Int
+	TotalEthBalance        *big.Int
 }
 
 type RocketpoolExporter struct {
@@ -214,7 +216,7 @@ func (rp *RocketpoolExporter) Save(count int64) error {
 	if err != nil {
 		return err
 	}
-	if count%10 == 0 {
+	if count%60 == 0 { // every hour (smart contracts aren't updated that often)
 		err = rp.SaveNetworkStats()
 		if err != nil {
 			return err
@@ -373,6 +375,16 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 		return err
 	}
 
+	totalEthStaking, err := network.GetStakingETHBalance(rp.API, nil)
+	if err != nil {
+		return err
+	}
+
+	totalEthBalance, err := network.GetTotalETHBalance(rp.API, nil)
+	if err != nil {
+		return err
+	}
+
 	rp.NetworkStats = RocketpoolNetworkStats{
 		RPLPrice:               price,
 		ClaimIntervalTime:      claimIntervalTime,
@@ -383,6 +395,8 @@ func (rp *RocketpoolExporter) UpdateNetworkStats() error {
 		EffectiveRPLStake:      effectiveRplStake,
 		NodeOperatorRewards:    nodeOperatorRewards,
 		RETHPrice:              exchangeRate,
+		TotalEthStaking:        totalEthStaking,
+		TotalEthBalance:        totalEthBalance,
 	}
 	return err
 }
@@ -715,7 +729,7 @@ func (rp *RocketpoolExporter) TagValidators() error {
 }
 
 func (rp *RocketpoolExporter) SaveNetworkStats() error {
-	_, err := db.DB.Exec("INSERT INTO rocketpool_network_stats (ts, rpl_price, claim_interval_time, claim_interval_time_start, current_node_fee, current_node_demand, reth_supply, effective_rpl_staked, node_operator_rewards, reth_exchange_rate, node_count, minipool_count, odao_member_count) VALUES(now(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+	_, err := db.DB.Exec("INSERT INTO rocketpool_network_stats (ts, rpl_price, claim_interval_time, claim_interval_time_start, current_node_fee, current_node_demand, reth_supply, effective_rpl_staked, node_operator_rewards, reth_exchange_rate, node_count, minipool_count, odao_member_count, total_eth_staking, total_eth_balance) VALUES(now(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
 		rp.NetworkStats.RPLPrice.String(),
 		rp.NetworkStats.ClaimIntervalTime.String(),
 		rp.NetworkStats.ClaimIntervalTimeStart,
@@ -728,6 +742,8 @@ func (rp *RocketpoolExporter) SaveNetworkStats() error {
 		len(rp.NodesByAddress),
 		len(rp.MinipoolsByAddress),
 		len(rp.DAOMembersByAddress),
+		rp.NetworkStats.TotalEthStaking.String(),
+		rp.NetworkStats.TotalEthBalance.String(),
 	)
 	return err
 }
@@ -845,6 +861,7 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool) error {
 	if err != nil {
 		return err
 	}
+
 	this.RPLStake = stake
 	this.MinRPLStake = minStake
 	this.MaxRPLStake = maxStake

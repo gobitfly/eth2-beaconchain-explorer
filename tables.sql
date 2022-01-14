@@ -852,6 +852,7 @@ create table rocketpool_dao_members
 drop table if exists rocketpool_network_stats;
 create table rocketpool_network_stats
 (
+    id 				    bigserial,
     ts timestamp without time zone not null,
     rpl_price  numeric not null,
     claim_interval_time interval not null,
@@ -865,6 +866,8 @@ create table rocketpool_network_stats
     node_count numeric not null, 
     minipool_count numeric not null, 
     odao_member_count numeric not null,
+    total_eth_staking numeric not null, 
+    total_eth_balance numeric not null,
 
-    primary key(ts)
+    primary key(id)
 );
