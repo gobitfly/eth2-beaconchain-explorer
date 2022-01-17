@@ -33,6 +33,11 @@ const (
 	MonitoringMachineSwitchedToETH2FallbackEventName EventName = "monitoring_fallback_eth2inuse"
 	MonitoringMachineSwitchedToETH1FallbackEventName EventName = "monitoring_fallback_eth1inuse"
 	TaxReportEventName                               EventName = "user_tax_report"
+	RocketpoolCommissionThresholdEventName           EventName = "rocketpool_commision_threshold"
+	RocketpoolNewClaimRoundStartedEventName          EventName = "rocketpool_new_claimround"
+	RocketpoolColleteralMinReached                   EventName = "rocketpool_colleteral_min"
+	RocketpoolColleteralMaxReached                   EventName = "rocketpool_colleteral_max"
+	SyncCommitteeSoon                                EventName = "validator_synccommittee_soon"
 )
 
 var EventNames = []EventName{
@@ -58,6 +63,11 @@ var EventNames = []EventName{
 	MonitoringMachineSwitchedToETH1FallbackEventName,
 	MonitoringMachineMemoryUsageEventName,
 	TaxReportEventName,
+	RocketpoolCommissionThresholdEventName,
+	RocketpoolNewClaimRoundStartedEventName,
+	RocketpoolColleteralMinReached,
+	RocketpoolColleteralMaxReached,
+	SyncCommitteeSoon,
 }
 
 func GetDisplayableEventName(event EventName) string {
