@@ -1389,16 +1389,16 @@ func (n *rocketpoolNotification) GetEventName() types.EventName {
 func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	switch n.EventName {
 	case types.RocketpoolCommissionThresholdEventName:
-		return fmt.Sprintf(`Commission rate reached your threshold. Current commission: %v`, n.ExtraData)
+		return fmt.Sprintf(`The current RPL commission rate of %v has reached your configured threshold.`, n.ExtraData)
 	case types.RocketpoolNewClaimRoundStartedEventName:
-		return fmt.Sprintf(`A new reward round has started. You can claim your rewards from the previous round now.`)
+		return fmt.Sprintf(`A new reward round has started. You can now claim your rewards from the previous round.`)
 	case types.RocketpoolColleteralMaxReached:
 		return `Your RPL collateral has reached your configured threshold at 150%.`
 	case types.RocketpoolColleteralMinReached:
 		return `Your RPL collateral has reached your configured threshold at 10%.`
 	case types.SyncCommitteeSoon:
 		extras := strings.Split(n.ExtraData, "|")
-		return fmt.Sprintf(`Your validator %v has been selected for sync committee duty. Duty starts at epoch %v (roughly 24 hours from now) and lasts until epoch %v (for 24h).`, extras[0], extras[1], extras[2])
+		return fmt.Sprintf(`Your validator %v has been elected to be part of the next sync committee. The additional duties start at epoch %v, which is in roughly 24 hours and will last for a day until epoch %v.`, extras[0], extras[1], extras[2])
 	}
 
 	return ""
