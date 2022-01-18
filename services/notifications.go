@@ -10,6 +10,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math/big"
 	"net/url"
 	"strconv"
 	"strings"
@@ -1536,9 +1537,9 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 
 	type dbResult struct {
 		Address     []byte
-		RPLStake    int64 `db:"rpl_stake"`
-		RPLStakeMin int64 `db:"min_rpl_stake"`
-		RPLStakeMax int64 `db:"max_rpl_stake"`
+		RPLStake    *big.Float `db:"rpl_stake"`
+		RPLStakeMin *big.Float `db:"min_rpl_stake"`
+		RPLStakeMax *big.Float `db:"max_rpl_stake"`
 	}
 
 	events := make([]dbResult, 0)
@@ -1580,15 +1581,15 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 				threshold = 1.0
 			}
 			if eventName == types.RocketpoolColleteralMaxReached {
-				alertConditionMet = float64(r.RPLStake) > float64(r.RPLStakeMax)*threshold
+				alertConditionMet = r.RPLStake.Cmp(r.RPLStakeMax.Mul(r.RPLStakeMax, bigFloat(threshold))) >= 1
 			} else {
-				alertConditionMet = float64(r.RPLStake) < float64(r.RPLStakeMin)*threshold
+				alertConditionMet = r.RPLStake.Cmp(r.RPLStakeMin.Mul(r.RPLStakeMin, bigFloat(threshold))) <= -1
 			}
 		} else {
 			if eventName == types.RocketpoolColleteralMaxReached {
-				alertConditionMet = float64(r.RPLStake) < float64(r.RPLStakeMax)*sub.EventThreshold*-1.0
+				alertConditionMet = r.RPLStake.Cmp(r.RPLStakeMax.Mul(r.RPLStakeMax, bigFloat(sub.EventThreshold*-1))) <= -1
 			} else {
-				alertConditionMet = float64(r.RPLStake) > float64(r.RPLStakeMin)*sub.EventThreshold*-1.0
+				alertConditionMet = r.RPLStake.Cmp(r.RPLStakeMax.Mul(r.RPLStakeMin, bigFloat(sub.EventThreshold*-1))) >= -1
 			}
 		}
 
@@ -1613,6 +1614,10 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 	}
 
 	return nil
+}
+
+func bigFloat(x float64) *big.Float {
+	return new(big.Float).SetFloat64(x)
 }
 
 func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
