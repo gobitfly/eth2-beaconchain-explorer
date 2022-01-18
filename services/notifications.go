@@ -1433,7 +1433,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 	if err != nil {
 		return err
 	}
-
+	logger.Infof("fee is %v", fee)
 	if fee > 0 {
 
 		var dbResult []struct {
