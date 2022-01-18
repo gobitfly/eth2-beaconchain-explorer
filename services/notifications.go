@@ -1621,8 +1621,8 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 	currentPeriod := LatestSlot() / slotsPerSyncCommittee
 	nextPeriod := currentPeriod + 1
 
-	var validators [][]byte
-	err := db.DB.Select(&validators, `SELECT pubkey FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
+	var validators []string
+	err := db.DB.Select(&validators, `SELECT  encode(pubkey, 'hex') as pubkey FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
 
 	if err != nil {
 		return err
@@ -1644,9 +1644,9 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, validators.validatorindex                 
 				FROM users_subscriptions AS us 
 				LEFT JOIN validators ON us.event_filter = validators.pubkey 
-				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND decode(event_filter, 'hex') = ANY($2);
+				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($2);
 				`,
-		utils.GetNetwork()+":"+string(eventName), pq.ByteaArray(validators),
+		utils.GetNetwork()+":"+string(eventName), validators,
 	)
 
 	if err != nil {
