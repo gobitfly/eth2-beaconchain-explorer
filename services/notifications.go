@@ -1599,10 +1599,15 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 			continue
 		}
 
+		var lastSentEpoch uint64 = 0
+		if sub.LastEpoch != nil {
+			lastSentEpoch = *sub.LastEpoch
+		}
+
 		n := &rocketpoolNotification{
 			SubscriptionID: *sub.ID,
 			UserID:         *sub.UserID,
-			Epoch:          *sub.LastEpoch,
+			Epoch:          lastSentEpoch,
 			EventFilter:    sub.EventFilter,
 			EventName:      eventName,
 		}
