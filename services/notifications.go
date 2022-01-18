@@ -3,6 +3,7 @@ package services
 import (
 	"database/sql/driver"
 	"encoding/hex"
+	"errors"
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/mail"
@@ -1628,7 +1629,7 @@ func (b *BigFloat) Value() (driver.Value, error) {
 
 func (b *BigFloat) Scan(value interface{}) error {
 	if value == nil {
-		b = nil
+		return errors.New("Can not cast nil to BigFloat")
 	}
 
 	switch t := value.(type) {
