@@ -1644,7 +1644,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, validators.validatorindex                 
 				FROM users_subscriptions AS us 
 				LEFT JOIN validators ON us.event_filter = validators.pubkey 
-				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($2);
+				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND decode(event_filter, 'hex') = ANY($2);
 				`,
 		utils.GetNetwork()+":"+string(eventName), pq.ByteaArray(validators),
 	)
