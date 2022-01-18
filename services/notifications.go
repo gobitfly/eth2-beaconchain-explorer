@@ -1621,8 +1621,11 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 	currentPeriod := LatestSlot() / slotsPerSyncCommittee
 	nextPeriod := currentPeriod + 1
 
-	var validators []string
-	err := db.DB.Select(&validators, `SELECT  encode(pubkey, 'hex') as pubkey FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
+	var validators []struct {
+		PubKey string `db:"pubkey"`
+		Index  uint64 `db:"validatorindex"`
+	}
+	err := db.DB.Select(&validators, `SELECT encode(pubkey, 'hex'), validators.validatorindex FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
 
 	if err != nil {
 		return err
@@ -1632,21 +1635,26 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 		return nil
 	}
 
+	var pubKeys []string
+	var mapping map[string]uint64 = make(map[string]uint64)
+	for _, val := range validators {
+		mapping[val.PubKey] = val.Index
+		pubKeys = append(pubKeys, val.PubKey)
+	}
+
 	var dbResult []struct {
 		SubscriptionID uint64 `db:"id"`
 		UserID         uint64 `db:"user_id"`
 		Epoch          uint64 `db:"created_epoch"`
 		EventFilter    string `db:"event_filter"`
-		Index          int64  `db:"validatorindex"`
 	}
 
 	err = db.FrontendDB.Select(&dbResult, `
-				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, validators.validatorindex                 
+				SELECT us.id, us.user_id, us.created_epoch, us.event_filter            
 				FROM users_subscriptions AS us 
-				LEFT JOIN validators ON decode(us.event_filter, 'hex') = validators.pubkey 
 				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($2);
 				`,
-		utils.GetNetwork()+":"+string(eventName), pq.StringArray(validators),
+		utils.GetNetwork()+":"+string(eventName), pq.StringArray(pubKeys),
 	)
 
 	if err != nil {
@@ -1660,7 +1668,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 			Epoch:          r.Epoch,
 			EventFilter:    r.EventFilter,
 			EventName:      eventName,
-			ExtraData:      fmt.Sprintf("%v|%v|%v", r.Index, nextPeriod*utils.Config.Chain.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.EpochsPerSyncCommitteePeriod),
+			ExtraData:      fmt.Sprintf("%v|%v|%v", mapping[r.EventFilter], nextPeriod*utils.Config.Chain.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.EpochsPerSyncCommitteePeriod),
 		}
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
 			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
