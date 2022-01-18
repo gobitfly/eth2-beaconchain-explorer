@@ -1433,7 +1433,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 	if err != nil {
 		return err
 	}
-	logger.Infof("fee is %v", fee)
+
 	if fee > 0 {
 
 		var dbResult []struct {
@@ -1446,7 +1446,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 		err := db.FrontendDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
 			FROM users_subscriptions AS us
-			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '8 hours' OR us.last_sent_ts IS NULL) AND us.event_threshold <= $2 OR (us.event_threshold < 0 AND us.event_threshold * -1 >= $2);
+			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '8 hours' OR us.last_sent_ts IS NULL) AND (us.event_threshold <= $2 OR (us.event_threshold < 0 AND us.event_threshold * -1 >= $2));
 			`,
 			utils.GetNetwork()+":"+string(eventName), fee)
 
