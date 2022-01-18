@@ -1625,7 +1625,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 		PubKey string `db:"pubkey"`
 		Index  uint64 `db:"validatorindex"`
 	}
-	err := db.DB.Select(&validators, `SELECT encode(pubkey, 'hex'), validators.validatorindex FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
+	err := db.DB.Select(&validators, `SELECT encode(pubkey, 'hex') as pubkey, validators.validatorindex FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
 
 	if err != nil {
 		return err
