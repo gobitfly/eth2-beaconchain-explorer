@@ -1,7 +1,9 @@
 package services
 
 import (
+	"database/sql/driver"
 	"encoding/hex"
+	"errors"
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
 	"eth2-exporter/mail"
@@ -10,6 +12,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"math/big"
 	"net/url"
 	"strconv"
 	"strings"
@@ -1446,7 +1449,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 		err := db.FrontendDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
 			FROM users_subscriptions AS us
-			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '8 hours' OR us.last_sent_ts IS NULL) AND us.event_threshold >= $2 OR (us.event_threshold + 20) <= $2;
+			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '8 hours' OR us.last_sent_ts IS NULL) AND (us.event_threshold <= $2 OR (us.event_threshold < 0 AND us.event_threshold * -1 >= $2));
 			`,
 			utils.GetNetwork()+":"+string(eventName), fee)
 
@@ -1461,7 +1464,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 				Epoch:          r.Epoch,
 				EventFilter:    r.EventFilter,
 				EventName:      eventName,
-				ExtraData:      fmt.Sprintf("%v", float32(int(fee*1000))/100.0),
+				ExtraData:      strconv.FormatInt(int64(fee*100), 10) + "%",
 			}
 			if _, exists := notificationsByUserID[r.UserID]; !exists {
 				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
@@ -1536,9 +1539,9 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 
 	type dbResult struct {
 		Address     []byte
-		RPLStake    int64 `db:"rpl_stake"`
-		RPLStakeMin int64 `db:"min_rpl_stake"`
-		RPLStakeMax int64 `db:"max_rpl_stake"`
+		RPLStake    BigFloat `db:"rpl_stake"`
+		RPLStakeMin BigFloat `db:"min_rpl_stake"`
+		RPLStakeMax BigFloat `db:"max_rpl_stake"`
 	}
 
 	events := make([]dbResult, 0)
@@ -1580,15 +1583,15 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 				threshold = 1.0
 			}
 			if eventName == types.RocketpoolColleteralMaxReached {
-				alertConditionMet = float64(r.RPLStake) > float64(r.RPLStakeMax)*threshold
+				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(threshold))) >= 1
 			} else {
-				alertConditionMet = float64(r.RPLStake) < float64(r.RPLStakeMin)*threshold
+				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMin.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(threshold))) <= -1
 			}
 		} else {
 			if eventName == types.RocketpoolColleteralMaxReached {
-				alertConditionMet = float64(r.RPLStake) < float64(r.RPLStakeMax)*sub.EventThreshold*-1.0
+				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(sub.EventThreshold*-1))) <= -1
 			} else {
-				alertConditionMet = float64(r.RPLStake) > float64(r.RPLStakeMin)*sub.EventThreshold*-1.0
+				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(sub.EventThreshold*-1))) >= -1
 			}
 		}
 
@@ -1596,10 +1599,18 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 			continue
 		}
 
+		currentEpoch := LatestEpoch()
+		if sub.LastEpoch != nil {
+			lastSentEpoch := *sub.LastEpoch
+			if lastSentEpoch >= currentEpoch-80 || currentEpoch < sub.CreatedEpoch {
+				continue
+			}
+		}
+
 		n := &rocketpoolNotification{
 			SubscriptionID: *sub.ID,
 			UserID:         *sub.UserID,
-			Epoch:          *sub.LastEpoch,
+			Epoch:          currentEpoch,
 			EventFilter:    sub.EventFilter,
 			EventName:      eventName,
 		}
@@ -1615,14 +1626,58 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 	return nil
 }
 
+type BigFloat big.Float
+
+func (b *BigFloat) Value() (driver.Value, error) {
+	if b != nil {
+		return (*big.Float)(b).String(), nil
+	}
+	return nil, nil
+}
+
+func (b *BigFloat) Scan(value interface{}) error {
+	if value == nil {
+		return errors.New("Can not cast nil to BigFloat")
+	}
+
+	switch t := value.(type) {
+	case float64:
+		(*big.Float)(b).SetFloat64(value.(float64))
+	case []uint8:
+		_, ok := (*big.Float)(b).SetString(string(value.([]uint8)))
+		if !ok {
+			return fmt.Errorf("failed to load value to []uint8: %v", value)
+		}
+	case string:
+		_, ok := (*big.Float)(b).SetString(value.(string))
+		if !ok {
+			return fmt.Errorf("failed to load value to []uint8: %v", value)
+		}
+	default:
+		return fmt.Errorf("Could not scan type %T into BigFloat", t)
+	}
+
+	return nil
+}
+
+func (b *BigFloat) bigFloat() *big.Float {
+	return (*big.Float)(b)
+}
+func bigFloat(x float64) *big.Float {
+	return new(big.Float).SetFloat64(x)
+}
+
 func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 
 	slotsPerSyncCommittee := utils.Config.Chain.EpochsPerSyncCommitteePeriod * utils.Config.Chain.SlotsPerEpoch
 	currentPeriod := LatestSlot() / slotsPerSyncCommittee
 	nextPeriod := currentPeriod + 1
 
-	var validators [][]byte
-	err := db.DB.Select(&validators, `SELECT pubkey FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
+	var validators []struct {
+		PubKey string `db:"pubkey"`
+		Index  uint64 `db:"validatorindex"`
+	}
+	err := db.DB.Select(&validators, `SELECT encode(pubkey, 'hex') as pubkey, validators.validatorindex FROM sync_committees LEFT JOIN validators ON validators.validatorindex = sync_committees.validatorindex WHERE period = $1`, nextPeriod)
 
 	if err != nil {
 		return err
@@ -1632,21 +1687,26 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 		return nil
 	}
 
+	var pubKeys []string
+	var mapping map[string]uint64 = make(map[string]uint64)
+	for _, val := range validators {
+		mapping[val.PubKey] = val.Index
+		pubKeys = append(pubKeys, val.PubKey)
+	}
+
 	var dbResult []struct {
 		SubscriptionID uint64 `db:"id"`
 		UserID         uint64 `db:"user_id"`
 		Epoch          uint64 `db:"created_epoch"`
 		EventFilter    string `db:"event_filter"`
-		Index          int64  `db:"validatorindex"`
 	}
 
 	err = db.FrontendDB.Select(&dbResult, `
-				SELECT us.id, us.user_id, us.created_epoch, us.event_filter, validators.validatorindex                 
+				SELECT us.id, us.user_id, us.created_epoch, us.event_filter            
 				FROM users_subscriptions AS us 
-				LEFT JOIN validators ON us.event_filter = validators.pubkey 
-				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($1);
+				WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '26 hours' OR us.last_sent_ts IS NULL) AND event_filter = ANY($2);
 				`,
-		utils.GetNetwork()+":"+string(eventName), pq.ByteaArray(validators),
+		utils.GetNetwork()+":"+string(eventName), pq.StringArray(pubKeys),
 	)
 
 	if err != nil {
@@ -1660,7 +1720,7 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 			Epoch:          r.Epoch,
 			EventFilter:    r.EventFilter,
 			EventName:      eventName,
-			ExtraData:      fmt.Sprintf("%v|%v|%v", r.Index, nextPeriod*utils.Config.Chain.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.EpochsPerSyncCommitteePeriod),
+			ExtraData:      fmt.Sprintf("%v|%v|%v", mapping[r.EventFilter], nextPeriod*utils.Config.Chain.EpochsPerSyncCommitteePeriod, (nextPeriod+1)*utils.Config.Chain.EpochsPerSyncCommitteePeriod),
 		}
 		if _, exists := notificationsByUserID[r.UserID]; !exists {
 			notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
