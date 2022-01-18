@@ -1446,7 +1446,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 		err := db.FrontendDB.Select(&dbResult, `
 			SELECT us.id, us.user_id, us.created_epoch, us.event_filter                 
 			FROM users_subscriptions AS us
-			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '8 hours' OR us.last_sent_ts IS NULL) AND us.event_threshold >= $2 OR (us.event_threshold + 20) <= $2;
+			WHERE us.event_name=$1 AND (us.last_sent_ts <= NOW() - INTERVAL '8 hours' OR us.last_sent_ts IS NULL) AND us.event_threshold <= $2 OR (us.event_threshold < 0 AND us.event_threshold * -1 >= $2);
 			`,
 			utils.GetNetwork()+":"+string(eventName), fee)
 
@@ -1461,7 +1461,7 @@ func collectRocketpoolComissionNotifications(notificationsByUserID map[uint64]ma
 				Epoch:          r.Epoch,
 				EventFilter:    r.EventFilter,
 				EventName:      eventName,
-				ExtraData:      fmt.Sprintf("%v", float32(int(fee*1000))/100.0),
+				ExtraData:      strconv.FormatInt(int64(fee*100), 10) + "%",
 			}
 			if _, exists := notificationsByUserID[r.UserID]; !exists {
 				notificationsByUserID[r.UserID] = map[types.EventName][]types.Notification{}
