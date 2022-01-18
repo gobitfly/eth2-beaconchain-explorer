@@ -1,6 +1,7 @@
 package services
 
 import (
+	"database/sql/driver"
 	"encoding/hex"
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
@@ -1537,9 +1538,9 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 
 	type dbResult struct {
 		Address     []byte
-		RPLStake    *big.Float `db:"rpl_stake"`
-		RPLStakeMin *big.Float `db:"min_rpl_stake"`
-		RPLStakeMax *big.Float `db:"max_rpl_stake"`
+		RPLStake    BigFloat `db:"rpl_stake"`
+		RPLStakeMin BigFloat `db:"min_rpl_stake"`
+		RPLStakeMax BigFloat `db:"max_rpl_stake"`
 	}
 
 	events := make([]dbResult, 0)
@@ -1581,15 +1582,15 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 				threshold = 1.0
 			}
 			if eventName == types.RocketpoolColleteralMaxReached {
-				alertConditionMet = r.RPLStake.Cmp(r.RPLStakeMax.Mul(r.RPLStakeMax, bigFloat(threshold))) >= 1
+				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(threshold))) >= 1
 			} else {
-				alertConditionMet = r.RPLStake.Cmp(r.RPLStakeMin.Mul(r.RPLStakeMin, bigFloat(threshold))) <= -1
+				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMin.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(threshold))) <= -1
 			}
 		} else {
 			if eventName == types.RocketpoolColleteralMaxReached {
-				alertConditionMet = r.RPLStake.Cmp(r.RPLStakeMax.Mul(r.RPLStakeMax, bigFloat(sub.EventThreshold*-1))) <= -1
+				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMax.bigFloat(), bigFloat(sub.EventThreshold*-1))) <= -1
 			} else {
-				alertConditionMet = r.RPLStake.Cmp(r.RPLStakeMax.Mul(r.RPLStakeMin, bigFloat(sub.EventThreshold*-1))) >= -1
+				alertConditionMet = r.RPLStake.bigFloat().Cmp(r.RPLStakeMax.bigFloat().Mul(r.RPLStakeMin.bigFloat(), bigFloat(sub.EventThreshold*-1))) >= -1
 			}
 		}
 
@@ -1616,6 +1617,38 @@ func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint6
 	return nil
 }
 
+type BigFloat big.Float
+
+func (b *BigFloat) Value() (driver.Value, error) {
+	if b != nil {
+		return (*big.Float)(b).String(), nil
+	}
+	return nil, nil
+}
+
+func (b *BigFloat) Scan(value interface{}) error {
+	if value == nil {
+		b = nil
+	}
+
+	switch t := value.(type) {
+	case float64:
+		(*big.Float)(b).SetFloat64(value.(float64))
+	case []uint8:
+		_, ok := (*big.Float)(b).SetString(string(value.([]uint8)))
+		if !ok {
+			return fmt.Errorf("failed to load value to []uint8: %v", value)
+		}
+	default:
+		return fmt.Errorf("Could not scan type %T into BigFloat", t)
+	}
+
+	return nil
+}
+
+func (b *BigFloat) bigFloat() *big.Float {
+	return (*big.Float)(b)
+}
 func bigFloat(x float64) *big.Float {
 	return new(big.Float).SetFloat64(x)
 }
