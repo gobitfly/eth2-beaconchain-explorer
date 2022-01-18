@@ -1639,6 +1639,11 @@ func (b *BigFloat) Scan(value interface{}) error {
 		if !ok {
 			return fmt.Errorf("failed to load value to []uint8: %v", value)
 		}
+	case string:
+		_, ok := (*big.Float)(b).SetString(value.(string))
+		if !ok {
+			return fmt.Errorf("failed to load value to []uint8: %v", value)
+		}
 	default:
 		return fmt.Errorf("Could not scan type %T into BigFloat", t)
 	}
