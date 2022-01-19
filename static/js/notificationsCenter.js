@@ -1,6 +1,6 @@
 var csrfToken = ""
 
-const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed']
+const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed', 'validator_synccommittee_soon']
 
 const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
 
@@ -491,6 +491,9 @@ function loadValidatorsData(data) {
                     badgeColor = 'badge-light'
                     break
                   case 'validator_got_slashed':
+                    badgeColor = 'badge-light'
+                    break
+                  case 'validator_synccommittee_soon':
                     badgeColor = 'badge-light'
                     break
                 }
