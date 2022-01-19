@@ -3,9 +3,10 @@
     var start = oSettings._iDisplayStart
     var length = oSettings._iDisplayLength
     var visibleRecords = oSettings.fnRecordsDisplay()
-    var all = length === -1
-    var page = all ? 0 : Math.ceil(start / length)
-    var pages = all ? 1 : Math.ceil(visibleRecords / length)
+    var noEntries = length <= 0
+    var isPage0 = start <= 0
+    var page = noEntries || isPage0 ? 0 : Math.ceil(start / length)
+    var pages = noEntries || isPage0 ? 1 : Math.ceil(visibleRecords / length)
     var disableFirstPrevClass = page > 0 ? '' : oSettings.oClasses.sPageButtonDisabled
     var disableNextLastClass = page < pages - 1 ? '' : oSettings.oClasses.sPageButtonDisabled
     return { first: disableFirstPrevClass, previous: disableFirstPrevClass, next: disableNextLastClass, last: disableNextLastClass }

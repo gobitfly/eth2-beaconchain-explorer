@@ -232,6 +232,7 @@ type ValidatorsPageData struct {
 	ExitingOnlineCount   uint64
 	ExitingOfflineCount  uint64
 	ExitedCount          uint64
+	VoluntaryExitsCount  uint64
 	UnknownCount         uint64
 	Validators           []*ValidatorsPageDataValidators
 }
