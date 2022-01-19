@@ -1791,7 +1791,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 		Network:        utils.GetNetwork(),
 	}
 
-	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") && eventName != types.RocketpoolNewClaimRoundStartedEventName && eventName != types.RocketpoolCommissionThresholdEventName { // no filter = add all my watched validators
+	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") && !strings.HasPrefix(string(eventName), "rocketpool_") { // no filter = add all my watched validators
 
 		myValidators, err2 := db.GetTaggedValidators(filterWatchlist)
 		if err2 != nil {
@@ -1962,7 +1962,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 		Network:        utils.GetNetwork(),
 	}
 
-	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") && eventName != types.RocketpoolNewClaimRoundStartedEventName && eventName != types.RocketpoolCommissionThresholdEventName { // no filter = add all my watched validators
+	if filterLen == 0 && !strings.HasPrefix(string(eventName), "monitoring_") && !strings.HasPrefix(string(eventName), "rocketpool_") { // no filter = add all my watched validators
 
 		myValidators, err2 := db.GetTaggedValidators(filterWatchlist)
 		if err2 != nil {
