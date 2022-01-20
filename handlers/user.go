@@ -1822,13 +1822,8 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 				threshold = 0.6
 			} else if eventName == types.MonitoringMachineMemoryUsageEventName {
 				threshold = 0.8
-			} else if eventName == types.RocketpoolColleteralMaxReached {
-				threshold = 0
-			} else if eventName == types.RocketpoolColleteralMinReached {
-				threshold = 0
-			} else if eventName == types.RocketpoolCommissionThresholdEventName {
-				threshold = 0.19
 			}
+			// rocketpool thresholds are free
 		}
 		network := utils.GetNetwork()
 		if eventName == types.EthClientUpdateEventName {
