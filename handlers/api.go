@@ -720,13 +720,13 @@ func validatorEffectiveness(epoch int64, indices []uint64) ([]interface{}, error
 	}
 
 	rows, err := db.DB.Query(`
-	SELECT aa.validatorindex, validators.pubkey, COALESCE(
+	SELECT aa.validatorindex, validators.pubkey, TRUNC(COALESCE(
 		AVG(1 + inclusionslot - COALESCE((
 			SELECT MIN(slot)
 			FROM blocks
 			WHERE slot > aa.attesterslot AND blocks.status = '1'
 		), 0)
-	), 0)::float AS attestation_efficiency
+	), 0)::decimal, 10)::float AS attestation_efficiency
 	FROM attestation_assignments_p aa
 	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
 	INNER JOIN validators ON validators.validatorindex = aa.validatorindex
@@ -752,7 +752,10 @@ type DashboardResponse struct {
 }
 
 func getEpoch(epoch int64) ([]interface{}, error) {
-	rows, err := db.DB.Query(`SELECT * FROM epochs WHERE epoch = $1`, epoch)
+	rows, err := db.DB.Query(`SELECT attestationscount, attesterslashingscount, averagevalidatorbalance,
+	blockscount, depositscount, eligibleether, epoch, finalized, TRUNC(globalparticipationrate::decimal, 10)::float as globalparticipationrate, proposerslashingscount,
+	totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether
+	FROM epochs WHERE epoch = $1`, epoch)
 	if err != nil {
 		return nil, err
 	}
