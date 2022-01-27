@@ -652,10 +652,10 @@ func getRocketpoolStats() ([]interface{}, error) {
 	}
 	rows, err := db.DB.Query(`
 		SELECT claim_interval_time, claim_interval_time_start, 
-		current_node_demand, current_node_fee, effective_rpl_staked,
-		node_operator_rewards, reth_exchange_rate, reth_supply, rpl_price, total_eth_balance, total_eth_staking, 
+		current_node_demand, TRUNC(current_node_fee::decimal, 10)::float as current_node_fee, effective_rpl_staked,
+		node_operator_rewards, TRUNC(reth_exchange_rate::decimal, 10)::float as reth_exchange_rate, reth_supply, rpl_price, total_eth_balance, total_eth_staking, 
 		minipool_count, node_count, odao_member_count, 
-		(SELECT ((1 - (min(history.reth_exchange_rate) / max(history.reth_exchange_rate))) * 52.14) FROM (SELECT ts, reth_exchange_rate FROM rocketpool_network_stats LIMIT 168) history) as reth_apr  
+		(SELECT TRUNC(((1 - (min(history.reth_exchange_rate) / max(history.reth_exchange_rate))) * 52.14)::decimal , 10) FROM (SELECT ts, reth_exchange_rate FROM rocketpool_network_stats LIMIT 168) history)::float as reth_apr  
 		from rocketpool_network_stats ORDER BY ts desc LIMIT 1;
 			`)
 
@@ -681,7 +681,7 @@ func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
 		SELECT
 			rplm.node_address      AS node_address,
 			rplm.address           AS minipool_address,
-			rplm.node_fee          AS minipool_node_fee,
+			TRUNC(rplm.node_fee::decimal, 10)::float          AS minipool_node_fee,
 			rplm.deposit_type      AS minipool_deposit_type,
 			rplm.status            AS minipool_status,
 			rplm.status_time       AS minipool_status_time,
