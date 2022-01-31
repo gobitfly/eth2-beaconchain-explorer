@@ -1401,7 +1401,14 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 		return `Your RPL collateral has reached your configured threshold at 10%.`
 	case types.SyncCommitteeSoon:
 		extras := strings.Split(n.ExtraData, "|")
-		return fmt.Sprintf(`Your validator %v has been elected to be part of the next sync committee. The additional duties start at epoch %v, which is in roughly 24 hours and will last for a day until epoch %v.`, extras[0], extras[1], extras[2])
+		var inTime time.Duration
+		syncStartEpoch, err := strconv.ParseUint(extras[1], 10, 64)
+		if err != nil {
+			inTime = time.Duration(24 * time.Hour)
+		}
+		inTime = time.Until(utils.EpochToTime(syncStartEpoch))
+
+		return fmt.Sprintf(`Your validator %v has been elected to be part of the next sync committee. The additional duties start at epoch %v, which is in roughly %d hours and will last for a day until epoch %v.`, extras[0], extras[1], inTime.Round(time.Minute), extras[2])
 	}
 
 	return ""
