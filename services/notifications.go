@@ -1403,6 +1403,10 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolColleteralMinReached:
 		return `Your RPL collateral has reached your configured threshold at 10%.`
 	case types.SyncCommitteeSoon:
+		if len(n.ExtraData) != 3 {
+			logger.Errorf("Invalid number of arguments passed to sync committee extra data. Notification will not be sent until code is corrected.")
+			return ""
+		}
 		extras := strings.Split(n.ExtraData, "|")
 		if len(extras) != 3 {
 			logger.Errorf("Invalid number of arguments passed to sync committee extra data. Notification will not be sent until code is corrected.")
