@@ -103,32 +103,38 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	if err != nil {
 		logger.Errorf("error collecting network notifications: %v", err)
 	}
+	logger.Infof("Collecting collecting network notifications took: %v\n", time.Since(start))
 
 	// Rocketpool fee comission alert
 	err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
 	if err != nil {
 		logger.Errorf("error collecting rocketpool commision: %v", err)
 	}
+	logger.Infof("Collecting collecting rocketpool commissions took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
 	if err != nil {
 		logger.Errorf("error collecting new rocketpool claim round: %v", err)
 	}
+	logger.Infof("Collecting collecting rocketpool claim round took: %v\n", time.Since(start))
 
-	err = collectRocketpoolRPLColleteralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached)
+	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached)
 	if err != nil {
-		logger.Errorf("error collecting rocketpool max colleteral: %v", err)
+		logger.Errorf("error collecting rocketpool max collateral: %v", err)
 	}
+	logger.Infof("Collecting collecting rocketpool max collateral took: %v\n", time.Since(start))
 
-	err = collectRocketpoolRPLColleteralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached)
+	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached)
 	if err != nil {
-		logger.Errorf("error collecting rocketpool min colleteral: %v", err)
+		logger.Errorf("error collecting rocketpool min collateral: %v", err)
 	}
+	logger.Infof("Collecting collecting rocketpool min collateral took: %v\n", time.Since(start))
 
 	err = collectSyncCommittee(notificationsByUserID, types.SyncCommitteeSoon)
 	if err != nil {
 		logger.Errorf("error collecting sync committee: %v", err)
 	}
+	logger.Infof("Collecting collecting sync committee took: %v\n", time.Since(start))
 
 	return notificationsByUserID
 }
@@ -1403,11 +1409,11 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolColleteralMinReached:
 		return `Your RPL collateral has reached your configured threshold at 10%.`
 	case types.SyncCommitteeSoon:
-		if len(n.ExtraData) != 3 {
+		extras := strings.Split(n.ExtraData, "|")
+		if len(extras) != 3 {
 			logger.Errorf("Invalid number of arguments passed to sync committee extra data. Notification will not be sent until code is corrected.")
 			return ""
 		}
-		extras := strings.Split(n.ExtraData, "|")
 		var inTime time.Duration
 		syncStartEpoch, err := strconv.ParseUint(extras[1], 10, 64)
 		if err != nil {
@@ -1545,7 +1551,7 @@ func collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID map[ui
 	return nil
 }
 
-func collectRocketpoolRPLColleteralNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
+func collectRocketpoolRPLCollateralNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, eventName types.EventName) error {
 
 	pubkeys, subMap, err := db.GetSubsForEventFilter(eventName)
 	if err != nil {
