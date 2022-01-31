@@ -219,6 +219,9 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 						notification := new(messaging.Notification)
 						notification.Title = fmt.Sprintf("%s%s", getNetwork(), n.GetTitle())
 						notification.Body = n.GetInfo(false)
+						if notification.Body == "" {
+							continue
+						}
 
 						message := new(messaging.Message)
 						message.Notification = notification
@@ -1400,6 +1403,10 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 	case types.RocketpoolColleteralMinReached:
 		return `Your RPL collateral has reached your configured threshold at 10%.`
 	case types.SyncCommitteeSoon:
+		if len(n.ExtraData) != 3 {
+			logger.Errorf("Invalid number of arguments passed to sync committee extra data. Notification will not be sent until code is corrected.")
+			return ""
+		}
 		extras := strings.Split(n.ExtraData, "|")
 		var inTime time.Duration
 		syncStartEpoch, err := strconv.ParseUint(extras[1], 10, 64)
