@@ -74,6 +74,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	err = collectValidatorGotSlashedNotifications(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting validator_got_slashed notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_validator_got_slashed").Inc()
 	}
 	logger.Infof("Collecting validator got slashed notifications took: %v\n", time.Since(start))
 
@@ -81,6 +82,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	err = collectBlockProposalNotifications(notificationsByUserID, 1, types.ValidatorExecutedProposalEventName)
 	if err != nil {
 		logger.Errorf("error collecting validator_proposal_submitted notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_executed_block_proposal").Inc()
 	}
 	logger.Infof("Collecting block proposal proposed notifications took: %v\n", time.Since(start))
 
@@ -88,6 +90,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	err = collectBlockProposalNotifications(notificationsByUserID, 2, types.ValidatorMissedProposalEventName)
 	if err != nil {
 		logger.Errorf("error collecting validator_proposal_missed notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_missed_block_proposal").Inc()
 	}
 	logger.Infof("Collecting block proposal missed notifications took: %v\n", time.Since(start))
 
@@ -95,6 +98,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	err = collectAttestationNotifications(notificationsByUserID, 0, types.ValidatorMissedAttestationEventName)
 	if err != nil {
 		logger.Errorf("error collecting validator_attestation_missed notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_missed_attestation").Inc()
 	}
 	logger.Infof("Collecting attestation notifications took: %v\n", time.Since(start))
 
@@ -102,6 +106,7 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	err = collectNetworkNotifications(notificationsByUserID, types.NetworkLivenessIncreasedEventName)
 	if err != nil {
 		logger.Errorf("error collecting network notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_network").Inc()
 	}
 	logger.Infof("Collecting collecting network notifications took: %v\n", time.Since(start))
 
@@ -109,30 +114,35 @@ func collectNotifications() map[uint64]map[types.EventName][]types.Notification 
 	err = collectRocketpoolComissionNotifications(notificationsByUserID, types.RocketpoolCommissionThresholdEventName)
 	if err != nil {
 		logger.Errorf("error collecting rocketpool commision: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_comission").Inc()
 	}
 	logger.Infof("Collecting collecting rocketpool commissions took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRewardClaimRoundNotifications(notificationsByUserID, types.RocketpoolNewClaimRoundStartedEventName)
 	if err != nil {
 		logger.Errorf("error collecting new rocketpool claim round: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_reward_claim").Inc()
 	}
 	logger.Infof("Collecting collecting rocketpool claim round took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMaxReached)
 	if err != nil {
-		logger.Errorf("error collecting rocketpool max collateral: %v", err)
+		logger.Errorf("error collecting rocketpool max colleteral: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_max_reached").Inc()
 	}
 	logger.Infof("Collecting collecting rocketpool max collateral took: %v\n", time.Since(start))
 
 	err = collectRocketpoolRPLCollateralNotifications(notificationsByUserID, types.RocketpoolColleteralMinReached)
 	if err != nil {
-		logger.Errorf("error collecting rocketpool min collateral: %v", err)
+		logger.Errorf("error collecting rocketpool min colleteral: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_rocketpool_rpl_collateral_min_reached").Inc()
 	}
 	logger.Infof("Collecting collecting rocketpool min collateral took: %v\n", time.Since(start))
 
 	err = collectSyncCommittee(notificationsByUserID, types.SyncCommitteeSoon)
 	if err != nil {
 		logger.Errorf("error collecting sync committee: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_sync_committee").Inc()
 	}
 	logger.Infof("Collecting collecting sync committee took: %v\n", time.Since(start))
 
@@ -147,36 +157,42 @@ func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notific
 	err = collectMonitoringMachineOffline(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting Eth client offline notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_monitoring_machine_offline").Inc()
 	}
 
 	// Monitoring (premium): disk full warnings
 	err = collectMonitoringMachineDiskAlmostFull(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting Eth client disk full notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_monitoring_machine_disk_almost_full").Inc()
 	}
 
 	// Monitoring (premium): cpu load
 	err = collectMonitoringMachineCPULoad(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting Eth client cpu notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_monitoring_machine_cpu_load").Inc()
 	}
 
 	// Monitoring (premium): ram
 	err = collectMonitoringMachineMemoryUsage(notificationsByUserID)
 	if err != nil {
 		logger.Errorf("error collecting Eth client memory notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_monitoring_machine_memory_usage").Inc()
 	}
 
 	// New ETH clients
 	err = collectEthClientNotifications(notificationsByUserID, types.EthClientUpdateEventName)
 	if err != nil {
 		logger.Errorf("error collecting Eth client notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_eth_client").Inc()
 	}
 
 	//Tax Report
 	err = collectTaxReportNotificationNotifications(notificationsByUserID, types.TaxReportEventName)
 	if err != nil {
 		logger.Errorf("error collecting tax report notifications: %v", err)
+		metrics.Errors.WithLabelValues("notifications_collect_tax_report").Inc()
 	}
 
 	return notificationsByUserID
@@ -205,6 +221,7 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 	tokensByUserID, err := db.GetUserPushTokenByIds(userIDs)
 	if err != nil {
 		logger.Errorf("error when sending push-notificaitons: could not get tokens: %v", err)
+		metrics.Errors.WithLabelValues("notifications_send_push_notifications").Inc()
 		return
 	}
 
@@ -253,6 +270,7 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 			_, err := notify.SendPushBatch(batch)
 			if err != nil {
 				logger.Errorf("firebase batch job failed: %v", err)
+				metrics.Errors.WithLabelValues("notifications_send_push_batch").Inc()
 				return
 			}
 
@@ -260,6 +278,7 @@ func sendPushNotifications(notificationsByUserID map[uint64]map[types.EventName]
 				err = db.UpdateSubscriptionsLastSent(subIDs, time.Now(), epoch, useDB)
 				if err != nil {
 					logger.Errorf("error updating sent-time of sent notifications: %v", err)
+					metrics.Errors.WithLabelValues("notifications_updating_sent_time").Inc()
 				}
 			}
 		}(userTokens, userNotifications)
@@ -275,6 +294,7 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 	emailsByUserID, err := db.GetUserEmailsByIds(userIDs)
 	if err != nil {
 		logger.Errorf("error when sending eamil-notificaitons: could not get emails: %v", err)
+		metrics.Errors.WithLabelValues("notifications_get_user_mail_by_id").Inc()
 		return
 	}
 
@@ -282,6 +302,7 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 		userEmail, exists := emailsByUserID[userID]
 		if !exists {
 			logger.Errorf("error when sending email-notification: could not find email for user %v", userID)
+			metrics.Errors.WithLabelValues("notifications_mail_not_found").Inc()
 			continue
 		}
 		go func(userEmail string, userNotifications map[types.EventName][]types.Notification) {
@@ -327,6 +348,7 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 				err = db.UpdateSubscriptionsLastSent(subIDs, time.Now(), epoch, useDB)
 				if err != nil {
 					logger.Errorf("error updating sent-time of sent notifications: %v", err)
+					metrics.Errors.WithLabelValues("notifications_updating_sent_time").Inc()
 				}
 			}
 		}(userEmail, userNotifications)
