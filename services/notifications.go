@@ -1405,8 +1405,9 @@ func (n *rocketpoolNotification) GetInfo(includeUrl bool) string {
 		syncStartEpoch, err := strconv.ParseUint(extras[1], 10, 64)
 		if err != nil {
 			inTime = time.Duration(24 * time.Hour)
+		} else {
+			inTime = time.Until(utils.EpochToTime(syncStartEpoch))
 		}
-		inTime = time.Until(utils.EpochToTime(syncStartEpoch))
 
 		return fmt.Sprintf(`Your validator %v has been elected to be part of the next sync committee. The additional duties start at epoch %v, which is in %s and will last for a day until epoch %v.`, extras[0], extras[1], inTime.Round(time.Second), extras[2])
 	}
