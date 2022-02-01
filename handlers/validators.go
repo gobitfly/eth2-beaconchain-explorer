@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/price"
-	"eth2-exporter/services"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
@@ -17,6 +16,11 @@ import (
 )
 
 var validatorsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators.html"))
+
+type states struct {
+	Name  string `db:"s"`
+	Count uint64 `db:"c"`
+}
 
 // Validators returns the validators using a go template
 func Validators(w http.ResponseWriter, r *http.Request) {
@@ -33,46 +37,55 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	latestEpoch := services.LatestEpoch()
-	validatorOnlineThresholdSlot := GetValidatorOnlineThresholdSlot()
+	validatorsPageData.PendingCount = 0
+	validatorsPageData.ActiveOnlineCount = 0
+	validatorsPageData.ActiveOfflineCount = 0
+	validatorsPageData.ActiveCount = 0
+	validatorsPageData.SlashingOnlineCount = 0
+	validatorsPageData.SlashingOfflineCount = 0
+	validatorsPageData.SlashingCount = 0
+	validatorsPageData.ExitingOnlineCount = 0
+	validatorsPageData.ExitingOfflineCount = 0
+	validatorsPageData.ExitedCount = 0
+	validatorsPageData.VoluntaryExitsCount = 0
 
-	for _, validator := range validators {
+	var currentStateCounts []*states
 
-		if validator.ExitEpoch != 9223372036854775807 && validator.ActivationEpoch < latestEpoch && latestEpoch > validator.ExitEpoch {
-			if !validator.Slashed {
-				if validator.LastAttestationSlot != nil && uint64(*validator.LastAttestationSlot) < validatorOnlineThresholdSlot {
-					validatorsPageData.ExitingOfflineCount++
-				} else {
-					validatorsPageData.ExitingOnlineCount++
-				}
-			} else {
-				if validator.LastAttestationSlot != nil && uint64(*validator.LastAttestationSlot) < validatorOnlineThresholdSlot {
-					validatorsPageData.SlashingOfflineCount++
-				} else {
-					validatorsPageData.SlashingOnlineCount++
-				}
-			}
-		}
+	qry := "select status as s, count(*) as c from validators group by status"
+	err = db.DB.Select(&currentStateCounts, qry)
+	if err != nil {
+		logger.Errorf("error retrieving validators data: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
 
-		if latestEpoch < validator.ActivationEpoch {
-			validatorsPageData.PendingCount++
-		} else if validator.ExitEpoch != 9223372036854775807 && validator.ActivationEpoch < latestEpoch && latestEpoch > validator.ExitEpoch {
-			validatorsPageData.ExitedCount++
-			if !validator.Slashed {
-				validatorsPageData.VoluntaryExitsCount++
-			}
-		} else {
-			if validator.LastAttestationSlot != nil && uint64(*validator.LastAttestationSlot) >= validatorOnlineThresholdSlot {
-				validatorsPageData.ActiveOnlineCount++
-			} else {
-				validatorsPageData.ActiveOfflineCount++
-			}
+	for _, state := range currentStateCounts {
+		switch state.Name {
+		case "pending":
+			validatorsPageData.PendingCount = state.Count
+		case "active_online":
+			validatorsPageData.ActiveOnlineCount = state.Count
+		case "active_offline":
+			validatorsPageData.ActiveOfflineCount = state.Count
+		case "slashing_online":
+			validatorsPageData.SlashingOnlineCount = state.Count
+		case "slashing_offline":
+			validatorsPageData.SlashingOfflineCount = state.Count
+		case "slashed":
+			validatorsPageData.Slashed = state.Count
+		case "exiting_online":
+			validatorsPageData.ExitingOnlineCount = state.Count
+		case "exiting_offline":
+			validatorsPageData.ExitingOfflineCount = state.Count
+		case "exited":
+			validatorsPageData.VoluntaryExitsCount = state.Count
 		}
 	}
 
 	validatorsPageData.ActiveCount = validatorsPageData.ActiveOnlineCount + validatorsPageData.ActiveOfflineCount
 	validatorsPageData.SlashingCount = validatorsPageData.SlashingOnlineCount + validatorsPageData.SlashingOfflineCount
 	validatorsPageData.ExitingCount = validatorsPageData.ExitingOnlineCount + validatorsPageData.ExitingOfflineCount
+	validatorsPageData.ExitedCount = validatorsPageData.VoluntaryExitsCount + validatorsPageData.Slashed
 	validatorsPageData.TotalCount = validatorsPageData.ActiveCount + validatorsPageData.ExitingCount + validatorsPageData.ExitedCount + validatorsPageData.PendingCount
 
 	data := InitPageData(w, r, "validators", "/validators", "Validators")
@@ -266,7 +279,6 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 			ORDER BY %s %s
 			LIMIT $1 OFFSET $2`, dataQuery.OrderBy, dataQuery.OrderDir)
-		logger.Infof("Qry 1: %s", qry)
 
 		err = db.DB.Select(&validators, qry, dataQuery.Length, dataQuery.Start)
 		if err != nil {
