@@ -18,8 +18,8 @@ import (
 var validatorsTemplate = template.Must(template.New("validators").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validators.html"))
 
 type states struct {
-	Name  string `db:"s"`
-	Count uint64 `db:"c"`
+	Name  string `db:"statename"`
+	Count uint64 `db:"statecount"`
 }
 
 // Validators returns the validators using a go template
@@ -51,7 +51,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 
 	var currentStateCounts []*states
 
-	qry := "select status as s, count(*) as c from validators group by status"
+	qry := "select status as statename, count(*) as statecount from validators group by status"
 	err = db.DB.Select(&currentStateCounts, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
@@ -149,31 +149,31 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	var qryStateFilter string
 	switch filterByState {
 	case "pending":
-		qryStateFilter = "AND validators.status LIKE 'pending%'"
+		qryStateFilter = "WHERE validators.status LIKE 'pending%'"
 	case "active":
-		qryStateFilter = "AND validators.status LIKE 'active%'"
+		qryStateFilter = "WHERE validators.status LIKE 'active%'"
 	case "active_online":
-		qryStateFilter = "AND validators.status = 'active_online'"
+		qryStateFilter = "WHERE validators.status = 'active_online'"
 	case "active_offline":
-		qryStateFilter = "AND validators.status = 'active_offline'"
+		qryStateFilter = "WHERE validators.status = 'active_offline'"
 	case "slashing":
-		qryStateFilter = "AND validators.status LIKE 'slashing%'"
+		qryStateFilter = "WHERE validators.status LIKE 'slashing%'"
 	case "slashing_online":
-		qryStateFilter = "AND validators.status = 'slashing_online'"
+		qryStateFilter = "WHERE validators.status = 'slashing_online'"
 	case "slashing_offline":
-		qryStateFilter = "AND validators.status = 'slashing_offline'"
+		qryStateFilter = "WHERE validators.status = 'slashing_offline'"
 	case "slashed":
-		qryStateFilter = "AND validators.status = 'slashed'"
+		qryStateFilter = "WHERE validators.status = 'slashed'"
 	case "exiting":
-		qryStateFilter = "AND validators.status LIKE 'exiting%'"
+		qryStateFilter = "WHERE validators.status LIKE 'exiting%'"
 	case "exiting_online":
-		qryStateFilter = "AND validators.status = 'exiting_online'"
+		qryStateFilter = "WHERE validators.status = 'exiting_online'"
 	case "exiting_offline":
-		qryStateFilter = "AND validators.status = 'exiting_offline'"
+		qryStateFilter = "WHERE validators.status = 'exiting_offline'"
 	case "exited":
-		qryStateFilter = "AND (validators.status = 'exited' OR validators.status = 'slashed')"
+		qryStateFilter = "WHERE (validators.status = 'exited' OR validators.status = 'slashed')"
 	default:
-		qryStateFilter = " "
+		qryStateFilter = ""
 	}
 
 	orderColumn := q.Get("order[0][column]")
@@ -246,6 +246,10 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	return res, nil
 }
 
+type counts struct {
+	Total uint64 `db:"total"`
+}
+
 // ValidatorsData returns all validators and their balances
 func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
@@ -261,6 +265,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 
 	var validators []*types.ValidatorsPageDataValidators
 	qry := ""
+	isAll := bool(false)
 	if dataQuery.Search == "" && dataQuery.StateFilter == "" {
 		qry = fmt.Sprintf(`
 			SELECT
@@ -286,25 +291,41 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 			return
 		}
+		isAll = true
 	} else {
 		// for perfomance-reasons we combine multiple search results with `union`
 		args := []interface{}{}
-		searchQry := `SELECT publickey AS pubkey FROM validator_names `
+		searchQry := ``
 
 		if dataQuery.Search != "" {
 			args = append(args, "%"+strings.ToLower(dataQuery.Search)+"%")
-			searchQry += fmt.Sprintf(`WHERE LOWER(name) LIKE $%d `, len(args))
+			searchQry += fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%v`, len(args))
 		}
-		if dataQuery.SearchIndex != nil {
+		if dataQuery.StateFilter != "" {
+			if searchQry != "" {
+				searchQry += " UNION "
+			}
+			searchQry += fmt.Sprintf(`SELECT pubkey FROM validators %s`, dataQuery.StateFilter)
+		}
+		if *dataQuery.SearchIndex != 0 {
+			if searchQry != "" {
+				searchQry += " UNION "
+			}
 			args = append(args, *dataQuery.SearchIndex)
-			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE validatorindex = $%d `, len(args))
+			searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE validatorindex = $%d`, len(args))
 		}
 		if dataQuery.SearchPubkeyExact != nil {
+			if searchQry != "" {
+				searchQry += " UNION "
+			}
 			args = append(args, *dataQuery.SearchPubkeyExact)
-			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex = $%d `, len(args))
+			searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE pubkeyhex = $%d`, len(args))
 		} else if dataQuery.SearchPubkeyLike != nil {
+			if searchQry != "" {
+				searchQry += " UNION "
+			}
 			args = append(args, *dataQuery.SearchPubkeyLike+"%")
-			searchQry += fmt.Sprintf(`UNION SELECT pubkey FROM validators WHERE pubkeyhex LIKE $%d `, len(args))
+			searchQry += fmt.Sprintf(`SELECT pubkey FROM validators WHERE pubkeyhex LIKE $%d`, len(args))
 		}
 
 		args = append(args, dataQuery.Length)
@@ -394,11 +415,25 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = append(tableData[i], html.EscapeString(v.Name))
 	}
 
+	var totalValCounts []*counts
+	qry = "SELECT count(*) as total FROM validators"
+	err = db.DB.Select(&totalValCounts, qry)
+	if err != nil {
+		logger.Errorf("error retrieving validators total count: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 	data := &types.DataTableResponse{
 		Draw:            dataQuery.Draw,
-		RecordsTotal:    0,
+		RecordsTotal:    totalValCounts[0].Total,
 		RecordsFiltered: 0,
 		Data:            tableData,
+	}
+	if isAll {
+		data.RecordsFiltered = totalValCounts[0].Total
+	} else if validators != nil {
+		data.RecordsFiltered = validators[0].TotalCount
 	}
 
 	err = json.NewEncoder(w).Encode(data)
