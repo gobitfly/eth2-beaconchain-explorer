@@ -72,7 +72,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Select(result, `
 			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
 			FROM blocks 
-			WHERE CAST(slot AS text) LIKE $1 OR ENCODE(blockroot::bytea, 'hex') LIKE $1
+			WHERE CAST(slot AS text) LIKE $1 OR
+			      ENCODE(blockroot::bytea, 'hex') LIKE $1 OR
+			      ENCODE(stateroot::bytea, 'hex') LIKE $1
 			ORDER BY slot LIMIT 10`, search+"%")
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
