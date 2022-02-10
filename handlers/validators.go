@@ -172,6 +172,8 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 		qryStateFilter = "WHERE validators.status = 'exiting_offline'"
 	case "exited":
 		qryStateFilter = "WHERE (validators.status = 'exited' OR validators.status = 'slashed')"
+	case "voluntary":
+		qryStateFilter = "WHERE validators.status = 'exited'"
 	default:
 		qryStateFilter = ""
 	}
