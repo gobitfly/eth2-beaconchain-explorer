@@ -200,13 +200,11 @@
                         {{template "block_overview" .}}
                     </div>
                 </div>
-                {{if eq .VotesCount 0}}
-                    <div class="tab-pane fade" id="votes" role="tabpanel" aria-labelledby="votes-tab">
-                        <div class="card block-card">
-                            {{template "block_votes" .}}
-                        </div>
+                <div class="tab-pane fade" id="votes" role="tabpanel" aria-labelledby="votes-tab">
+                    <div class="card block-card">
+                        {{template "block_votes" .}}
                     </div>
-                {{end}}
+                </div>
                 <div class="tab-pane fade" id="attestations" role="tabpanel" aria-labelledby="attestations-tab">
                     <div class="card block-card">
                         <div style="margin-bottom: -.25rem;" class="card-body px-0 py-1">
