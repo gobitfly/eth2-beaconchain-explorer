@@ -56,7 +56,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-		whereclause = fmt.Sprintf("encode(blocks.blockroot, 'hex') = '%s' OR encode(blocks.stateroot, 'hex') = '%s'", slotOrHash, slotOrHash)
+		whereclause = fmt.Sprintf("blocks.slot = '%d'", sut)
 		blockSlot = sut
 	} else {
 		whereclause = fmt.Sprintf("blocks.slot = '%d'", blockSlot)
