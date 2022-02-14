@@ -56,10 +56,10 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-		whereclause = fmt.Sprintf("blocks.slot = '%d'", sut)
+		whereclause = fmt.Sprintf("blocks.slot = %d", sut)
 		blockSlot = sut
 	} else {
-		whereclause = fmt.Sprintf("blocks.slot = '%d'", blockSlot)
+		whereclause = fmt.Sprintf("blocks.slot = %d", blockSlot)
 	}
 
 	data := InitPageData(w, r, "blocks", "/blocks", "")
@@ -115,6 +115,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 		whereclause)
 
+	logger.Infof("RN: Query: %s", qry)
 	err = db.DB.Get(&blockPageData, qry)
 
 	blockPageData.Slot = uint64(blockSlot)
