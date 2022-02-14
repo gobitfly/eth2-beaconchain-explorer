@@ -115,7 +115,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 		whereclause)
 
-	logger.Infof("RN: Query: %s", qry)
 	err = db.DB.Get(&blockPageData, qry)
 
 	blockPageData.Slot = uint64(blockSlot)
