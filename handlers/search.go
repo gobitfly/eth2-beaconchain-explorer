@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"html/template"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -60,22 +62,41 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	searchType := vars["type"]
 	search := vars["search"]
 	search = strings.Replace(search, "0x", "", -1)
-
-	logger := logger.WithField("searchType", searchType)
-
 	var err error
+	var searchPubkeyLikeRE = regexp.MustCompile(`^[0-9a-zA-Z]{0,96}$`)
+	if !searchPubkeyLikeRE.MatchString(search) {
+		logger.Errorf("error not expected input - prevent potential sql injection: %v", err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	logger := logger.WithField("searchType", searchType)
 	var result interface{}
 
 	switch searchType {
 	case "blocks":
 		result = &types.SearchAheadBlocksResult{}
-		err = db.DB.Select(result, `
+
+		if len(search) != 64 {
+			err = db.DB.Select(result, `
 			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
 			FROM blocks 
-			WHERE CAST(slot AS text) LIKE $1 OR
-			      ENCODE(blockroot::bytea, 'hex') LIKE $1 OR
-			      ENCODE(stateroot::bytea, 'hex') LIKE $1
+			WHERE CAST(slot AS text) LIKE $1
 			ORDER BY slot LIMIT 10`, search+"%")
+		} else {
+			blockHash, err := hex.DecodeString(search)
+			if err != nil {
+				logger.Errorf("error parsing blockHash to int: %v", err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+			err = db.DB.Select(result, `
+			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
+			FROM blocks 
+			WHERE blockroot = $1 OR
+			      stateroot = $1
+			ORDER BY slot LIMIT 10`, blockHash)
+		}
+
 	case "graffiti":
 		graffiti := &types.SearchAheadGraffitiResult{}
 		err = db.DB.Select(graffiti, `
