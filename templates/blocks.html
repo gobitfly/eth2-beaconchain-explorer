@@ -69,14 +69,12 @@
                 emptygraffiticheckbox.addEventListener('change', (event) => {
                     var t = $('#blocks').DataTable()
                     if (event.currentTarget.checked) {
-                        console.log("ON  checkBox.checked")
                         window.history.replaceState(null, 'Blocks', window.location.pathname + "?g=true")
 
                         if(t) {
                             t.search('').columns(11).search('#showonlyemptygraffiti').draw(); 
                         }
                     } else {
-                        console.log("OFF  checkBox.checked")
                         window.history.replaceState(null, 'Blocks', window.location.pathname)
 
                         if(t) {
