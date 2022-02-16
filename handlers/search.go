@@ -129,6 +129,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "eth1_addresses":
+		if len(search) <= 1 {
+			break
+		}
 		result = &types.SearchAheadEth1Result{}
 		if len(search)%2 != 0 {
 			search = search[:len(search)-1]
@@ -156,6 +159,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":
+		if len(search) <= 1 {
+			break
+		}
 		if len(search)%2 != 0 {
 			search = search[:len(search)-1]
 		}
