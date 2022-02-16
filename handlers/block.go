@@ -41,28 +41,36 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
 	blockSlot := int64(-1)
-	_, err := hex.DecodeString(slotOrHash)
+	blockRootHash, err := hex.DecodeString(slotOrHash)
 	if err != nil || len(slotOrHash) != 64 {
+		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
+		if err != nil {
+			logger.Errorf("error parsing blockslot to int: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 	}
 
-	whereclause := ""
-	sut := int64(0)
+	data := InitPageData(w, r, "blocks", "/blocks", "")
+
 	if blockSlot == -1 {
-		qry := fmt.Sprintf("SELECT slot FROM blocks WHERE encode(blockroot, 'hex') = '%s' OR encode(stateroot, 'hex') = '%s'", slotOrHash, slotOrHash)
-		err = db.DB.Get(&sut, qry)
+		err = db.DB.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
+		if blockSlot == -1 {
+			err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+			return
+		}
 		if err != nil {
 			logger.Errorf("error retrieving entry count of given block or state data: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-		whereclause = fmt.Sprintf("encode(blocks.blockroot, 'hex') = '%s' OR encode(blocks.stateroot, 'hex') = '%s'", slotOrHash, slotOrHash)
-		blockSlot = sut
-	} else {
-		whereclause = fmt.Sprintf("blocks.slot = '%d'", blockSlot)
 	}
-
-	data := InitPageData(w, r, "blocks", "/blocks", "")
 
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
@@ -80,42 +88,35 @@ func Block(w http.ResponseWriter, r *http.Request) {
 
 	blockPageData := types.BlockPageData{}
 	blockPageData.Mainnet = utils.Config.Chain.Mainnet
-
-	qry := fmt.Sprintf(`SELECT blocks.epoch,
-	                           blocks.slot,
-							   blocks.blockroot,
-							   blocks.parentroot,
-							   blocks.stateroot,
-							   blocks.signature,
-							   blocks.randaoreveal,
-							   blocks.graffiti,
-							   blocks.eth1data_depositroot,
-							   blocks.eth1data_depositcount,
-							   blocks.eth1data_blockhash,
-							   blocks.syncaggregate_bits,
-							   blocks.syncaggregate_signature,
-							   blocks.syncaggregate_participation,
-							   blocks.proposerslashingscount,
-							   blocks.attesterslashingscount,
-							   blocks.attestationscount,
-							   blocks.depositscount,
-							   blocks.voluntaryexitscount,
-							   blocks.proposer,
-							   blocks.status,
-							   COALESCE(validator_names.name, '') AS name
-						
-							FROM blocks
-						
-							LEFT JOIN validators      ON blocks.proposer   = validators.validatorindex
-							LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-							
-							WHERE %s
-							
-							ORDER BY blocks.status LIMIT 1`,
-
-		whereclause)
-
-	err = db.DB.Get(&blockPageData, qry)
+	err = db.DB.Get(&blockPageData, `
+		SELECT
+			blocks.epoch,
+			blocks.slot,
+			blocks.blockroot,
+			blocks.parentroot,
+			blocks.stateroot,
+			blocks.signature,
+			blocks.randaoreveal,
+			blocks.graffiti,
+			blocks.eth1data_depositroot,
+			blocks.eth1data_depositcount,
+			blocks.eth1data_blockhash,
+			blocks.syncaggregate_bits,
+			blocks.syncaggregate_signature,
+			blocks.syncaggregate_participation,
+			blocks.proposerslashingscount,
+			blocks.attesterslashingscount,
+			blocks.attestationscount,
+			blocks.depositscount,
+			blocks.voluntaryexitscount,
+			blocks.proposer,
+			blocks.status,
+			COALESCE(validator_names.name, '') AS name
+		FROM blocks 
+		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
+		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+		WHERE blocks.slot = $1 ORDER BY blocks.status LIMIT 1`,
+		blockSlot)
 
 	blockPageData.Slot = uint64(blockSlot)
 	if err != nil {
