@@ -824,7 +824,7 @@ func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 func GetSubsForEventFilter(eventName types.EventName) ([][]byte, map[string][]types.Subscription, error) {
 	var subs []types.Subscription
 	subQuery := `
-		SELECT id, user_id, event_filter, last_sent_epoch, created_epoch from users_subscriptions where event_name = $1
+		SELECT id, user_id, event_filter, last_sent_epoch, created_epoch, event_threshold from users_subscriptions where event_name = $1
 	`
 
 	subMap := make(map[string][]types.Subscription, 0)
@@ -839,11 +839,12 @@ func GetSubsForEventFilter(eventName types.EventName) ([][]byte, map[string][]ty
 			subMap[sub.EventFilter] = make([]types.Subscription, 0)
 		}
 		subMap[sub.EventFilter] = append(subMap[sub.EventFilter], types.Subscription{
-			UserID:       sub.UserID,
-			ID:           sub.ID,
-			LastEpoch:    sub.LastEpoch,
-			EventFilter:  sub.EventFilter,
-			CreatedEpoch: sub.CreatedEpoch,
+			UserID:         sub.UserID,
+			ID:             sub.ID,
+			LastEpoch:      sub.LastEpoch,
+			EventFilter:    sub.EventFilter,
+			CreatedEpoch:   sub.CreatedEpoch,
+			EventThreshold: sub.EventThreshold,
 		})
 
 		b, _ := hex.DecodeString(sub.EventFilter)

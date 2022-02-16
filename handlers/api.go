@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
@@ -17,13 +18,15 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
-	"github.com/gorilla/context"
+	gorillacontext "github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mssola/user_agent"
+	"golang.org/x/sync/errgroup"
 )
 
 // @title Beaconcha.in ETH2 API
@@ -468,6 +471,298 @@ func ApiEth1Deposit(w http.ResponseWriter, r *http.Request) {
 	returnQueryResults(rows, j, r)
 }
 
+// ApiRocketpoolStats godoc
+// @Summary Get global rocketpool network statistics
+// @Tags Rocketpool
+// @Produce  json
+// @Success 200 {object} string
+// @Router /api/v1/rocketpool/stats [get]
+func ApiRocketpoolStats(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+
+	stats, err := getRocketpoolStats()
+
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	sendOKResponse(j, r.URL.String(), stats)
+}
+
+// ApiRocketpoolValidators godoc
+// @Summary Get rocketpool specific data for given validators
+// @Tags Rocketpool
+// @Param  indexOrPubkey path string true "Up to 100 validator indicesOrPubkeys, comma separated"
+// @Produce  json
+// @Success 200 {object} string
+// @Router /api/v1/rocketpool/validator/{indexOrPubkey} [get]
+func ApiRocketpoolValidators(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+	vars := mux.Vars(r)
+	maxValidators := getUserPremium(r).MaxValidators
+
+	queryIndices, queryPubkeys, err := parseApiValidatorParam(vars["indexOrPubkey"], maxValidators)
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+	if len(queryPubkeys) > 0 {
+		err := db.DB.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
+		if err != nil {
+			logger.Errorf("dashboard could not resolve pubkeys to indices err: %v", err)
+			sendErrorResponse(j, r.URL.String(), err.Error())
+			return
+		}
+	}
+
+	stats, err := getRocketpoolValidators(queryIndices)
+
+	if err != nil {
+		sendErrorResponse(j, r.URL.String(), "could not parse db results")
+		return
+	}
+
+	sendOKResponse(j, r.URL.String(), stats)
+}
+
+/*
+	Combined validator get, performance, attestationefficency, epoch, historic epoch and rpl
+	Not public documented
+*/
+func ApiDashboard(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	j := json.NewEncoder(w)
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Errorf("error reading body | err: %v", err)
+		sendErrorResponse(j, r.URL.String(), "could not read body")
+		return
+	}
+
+	var getValidators bool = true
+	var parsedBody types.DashboardRequest
+	err = json.Unmarshal(body, &parsedBody)
+	if err != nil {
+		getValidators = false
+	}
+
+	maxValidators := getUserPremium(r).MaxValidators
+
+	epoch := int64(services.LatestEpoch())
+
+	g, _ := errgroup.WithContext(context.Background())
+	var validatorsData []interface{}
+	var validatorEffectivenessData []interface{}
+	var rocketpoolData []interface{}
+	var rocketpoolStats []interface{}
+	var currentEpochData []interface{}
+	var olderEpochData []interface{}
+
+	if getValidators {
+		queryIndices, queryPubkeys, err := parseApiValidatorParam(parsedBody.IndicesOrPubKey, maxValidators)
+		if err != nil {
+			sendErrorResponse(j, r.URL.String(), err.Error())
+			return
+		}
+
+		if len(queryPubkeys) > 0 {
+			err := db.DB.Select(&queryIndices, "SELECT validatorindex FROM validators WHERE pubkey = ANY($1) ORDER BY validatorindex", queryPubkeys)
+			if err != nil {
+				logger.Errorf("dashboard could not resolve pubkeys to indices err: %v", err)
+				sendErrorResponse(j, r.URL.String(), err.Error())
+				return
+			}
+		}
+
+		if len(queryIndices) > 0 {
+			g.Go(func() error {
+				validatorsData, err = validators(queryIndices)
+				return err
+			})
+
+			g.Go(func() error {
+				validatorEffectivenessData, err = validatorEffectiveness(epoch, queryIndices)
+				return err
+			})
+			g.Go(func() error {
+				rocketpoolData, err = getRocketpoolValidators(queryIndices)
+				return err
+			})
+
+		}
+	}
+
+	g.Go(func() error {
+		currentEpochData, err = getEpoch(epoch)
+		return err
+	})
+
+	g.Go(func() error {
+		olderEpochData, err = getEpoch(epoch - 10)
+		return err
+	})
+
+	g.Go(func() error {
+		rocketpoolStats, err = getRocketpoolStats()
+		return err
+	})
+
+	err = g.Wait()
+	if err != nil {
+		logger.Errorf("dashboard %v", err)
+		sendErrorResponse(j, r.URL.String(), err.Error())
+		return
+	}
+
+	data := &DashboardResponse{
+		Validators:      validatorsData,
+		Effectiveness:   validatorEffectivenessData,
+		CurrentEpoch:    currentEpochData,
+		OlderEpoch:      olderEpochData,
+		Rocketpool:      rocketpoolData,
+		RocketpoolStats: rocketpoolStats,
+	}
+
+	sendOKResponse(j, r.URL.String(), []interface{}{data})
+}
+
+type Cached struct {
+	Data interface{}
+	Ts   int64
+}
+
+var rocketpoolStats atomic.Value
+
+func getRocketpoolStats() ([]interface{}, error) {
+	cached := rocketpoolStats.Load()
+	if cached != nil {
+		cachedObj := cached.(*Cached)
+		if cachedObj.Ts+10*60 > time.Now().Unix() { // cache for 30min
+			return cachedObj.Data.([]interface{}), nil
+		}
+	}
+	rows, err := db.DB.Query(`
+		SELECT claim_interval_time, claim_interval_time_start, 
+		current_node_demand, TRUNC(current_node_fee::decimal, 10)::float as current_node_fee, effective_rpl_staked,
+		node_operator_rewards, TRUNC(reth_exchange_rate::decimal, 10)::float as reth_exchange_rate, reth_supply, rpl_price, total_eth_balance, total_eth_staking, 
+		minipool_count, node_count, odao_member_count, 
+		(SELECT TRUNC(((1 - (min(history.reth_exchange_rate) / max(history.reth_exchange_rate))) * 52.14)::decimal , 10) FROM (SELECT ts, reth_exchange_rate FROM rocketpool_network_stats LIMIT 168) history)::float as reth_apr  
+		from rocketpool_network_stats ORDER BY ts desc LIMIT 1;
+			`)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	data, err := utils.SqlRowsToJSON(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	rocketpoolStats.Store(&Cached{
+		Data: data,
+		Ts:   time.Now().Unix(),
+	})
+
+	return data, nil
+}
+
+func getRocketpoolValidators(queryIndices []uint64) ([]interface{}, error) {
+	rows, err := db.DB.Query(`
+		SELECT
+			rplm.node_address      AS node_address,
+			rplm.address           AS minipool_address,
+			TRUNC(rplm.node_fee::decimal, 10)::float          AS minipool_node_fee,
+			rplm.deposit_type      AS minipool_deposit_type,
+			rplm.status            AS minipool_status,
+			rplm.status_time       AS minipool_status_time,
+			rpln.timezone_location AS node_timezone_location,
+			rpln.rpl_stake         AS node_rpl_stake,
+			rpln.max_rpl_stake     AS node_max_rpl_stake,
+			rpln.min_rpl_stake     AS node_min_rpl_stake,
+			validators.validatorindex AS index 
+		FROM rocketpool_minipools rplm 
+		LEFT JOIN validators validators ON rplm.pubkey = validators.pubkey 
+		LEFT JOIN rocketpool_nodes rpln ON rplm.node_address = rpln.address
+		WHERE validatorindex = ANY($1)`, pq.Array(queryIndices))
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return utils.SqlRowsToJSON(rows)
+}
+
+func validators(queryIndices []uint64) ([]interface{}, error) {
+	rows, err := db.DB.Query("SELECT validators.validatorindex, pubkey, withdrawableepoch, withdrawalcredentials, validators.balance, effectivebalance, slashed, activationeligibilityepoch, activationepoch, exitepoch, lastattestationslot, status, validator_names.name, performance1d, performance7d, performance31d, performance365d, rank7d FROM validators LEFT JOIN validator_performance ON validators.validatorindex = validator_performance.validatorindex LEFT JOIN validator_names ON validator_names.publickey = validators.pubkey WHERE validators.validatorindex = ANY($1) ORDER BY validators.validatorindex", pq.Array(queryIndices))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return utils.SqlRowsToJSON(rows)
+}
+
+func validatorEffectiveness(epoch int64, indices []uint64) ([]interface{}, error) {
+	effectivenessEpochRange := epoch - 100
+	if epoch < 0 {
+		effectivenessEpochRange = 0
+	}
+
+	rows, err := db.DB.Query(`
+	SELECT aa.validatorindex, validators.pubkey, TRUNC(COALESCE(
+		AVG(1 + inclusionslot - COALESCE((
+			SELECT MIN(slot)
+			FROM blocks
+			WHERE slot > aa.attesterslot AND blocks.status = '1'
+		), 0)
+	), 0)::decimal, 10)::float AS attestation_efficiency
+	FROM attestation_assignments_p aa
+	INNER JOIN blocks ON blocks.slot = aa.inclusionslot AND blocks.status <> '3'
+	INNER JOIN validators ON validators.validatorindex = aa.validatorindex
+	WHERE aa.week >= $1 / 1575 AND aa.epoch > $1 AND (validators.validatorindex = ANY($2)) AND aa.inclusionslot > 0
+	GROUP BY aa.validatorindex, validators.pubkey
+	ORDER BY aa.validatorindex
+	`, effectivenessEpochRange, pq.Array(indices))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return utils.SqlRowsToJSON(rows)
+}
+
+type DashboardResponse struct {
+	Validators      interface{} `json:"validators"`
+	Effectiveness   interface{} `json:"effectiveness"`
+	CurrentEpoch    interface{} `json:"currentEpoch"`
+	OlderEpoch      interface{} `json:"olderEpoch"`
+	Rocketpool      interface{} `json:"rocketpool_validators"`
+	RocketpoolStats interface{} `json:"rocketpool_network_stats"`
+}
+
+func getEpoch(epoch int64) ([]interface{}, error) {
+	rows, err := db.DB.Query(`SELECT attestationscount, attesterslashingscount, averagevalidatorbalance,
+	blockscount, depositscount, eligibleether, epoch, finalized, TRUNC(globalparticipationrate::decimal, 10)::float as globalparticipationrate, proposerslashingscount,
+	totalvalidatorbalance, validatorscount, voluntaryexitscount, votedether
+	FROM epochs WHERE epoch = $1`, epoch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return utils.SqlRowsToJSON(rows)
+}
+
 // ApiValidator godoc
 // @Summary Get up to 100 validators by their index
 // @Tags Validator
@@ -545,7 +840,7 @@ func ApiValidatorByEth1Address(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := db.DB.Query("SELECT publickey, validatorindex, valid_signature FROM eth1_deposits LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey WHERE from_address = $1 ORDER BY validatorindex;", eth1Address)
+	rows, err := db.DB.Query("SELECT publickey, validatorindex, valid_signature FROM eth1_deposits LEFT JOIN validators ON eth1_deposits.publickey = validators.pubkey WHERE from_address = $1 GROUP BY publickey, validatorindex, valid_signature ORDER BY validatorindex;", eth1Address)
 	if err != nil {
 		sendErrorResponse(j, r.URL.String(), "could not retrieve db results")
 		return
@@ -1159,7 +1454,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	j := json.NewEncoder(w)
 
 	var parsedBase types.MobileSubscription
-	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &parsedBase)
+	err := json.Unmarshal(gorillacontext.Get(r, utils.JsonBodyNakedKey).([]byte), &parsedBase)
 
 	if err != nil {
 		logger.Errorf("error parsing body | err: %v %v", err)
@@ -1852,12 +2147,12 @@ func APIDashboardDataBalance(w http.ResponseWriter, r *http.Request) {
 }
 
 func getAuthClaims(r *http.Request) *utils.CustomClaims {
-	middleWare := context.Get(r, utils.MobileAuthorizedKey)
+	middleWare := gorillacontext.Get(r, utils.MobileAuthorizedKey)
 	if middleWare == nil {
 		return utils.GetAuthorizationClaims(r)
 	}
 
-	claims := context.Get(r, utils.ClaimsContextKey)
+	claims := gorillacontext.Get(r, utils.ClaimsContextKey)
 	if claims == nil {
 		return nil
 	}

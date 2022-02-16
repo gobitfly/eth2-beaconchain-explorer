@@ -16,7 +16,8 @@
             monitoring_machine_offline: 'machine offline',
             monitoring_hdd_almostfull: 'machine disk full',
             monitoring_cpu_load: 'machine cpu load',
-            network_liveness_increased: 'network liveness'
+            network_liveness_increased: 'network liveness',
+            validator_synccommittee_soon: 'sync committee',
 
         }
         var evetnsArr = [
@@ -25,6 +26,7 @@
             ['validator_proposal_submitted', 'proposals submitted'],
             ['validator_proposal_missed', 'proposals missed'],
             ['validator_attestation_missed', 'attestations missed'],
+            ['validator_synccommittee_soon', 'sync committee'],
         ]
 
         function createCheckbox(filter, event, checked, text) {

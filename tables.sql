@@ -882,3 +882,26 @@ create table rocketpool_dao_members
 
     primary key(rocketpool_storage_address, address)
 );
+
+drop table if exists rocketpool_network_stats;
+create table rocketpool_network_stats
+(
+    id 				    bigserial,
+    ts timestamp without time zone not null,
+    rpl_price  numeric not null,
+    claim_interval_time interval not null,
+    claim_interval_time_start timestamp without time zone not null, 
+    current_node_fee float not null, 
+    current_node_demand numeric not null, 
+    reth_supply numeric not null, 
+    effective_rpl_staked numeric not null, 
+    node_operator_rewards numeric not null,
+    reth_exchange_rate float not null,
+    node_count numeric not null, 
+    minipool_count numeric not null, 
+    odao_member_count numeric not null,
+    total_eth_staking numeric not null, 
+    total_eth_balance numeric not null,
+
+    primary key(id)
+);

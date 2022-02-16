@@ -18,8 +18,11 @@ import (
 	rpDAO "github.com/rocket-pool/rocketpool-go/dao"
 	rpDAOTrustedNode "github.com/rocket-pool/rocketpool-go/dao/trustednode"
 	"github.com/rocket-pool/rocketpool-go/minipool"
+	"github.com/rocket-pool/rocketpool-go/network"
 	"github.com/rocket-pool/rocketpool-go/node"
+	"github.com/rocket-pool/rocketpool-go/rewards"
 	"github.com/rocket-pool/rocketpool-go/rocketpool"
+	"github.com/rocket-pool/rocketpool-go/tokens"
 	rpTypes "github.com/rocket-pool/rocketpool-go/types"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -42,6 +45,20 @@ func rocketpoolExporter() {
 	rpExporter.Run()
 }
 
+type RocketpoolNetworkStats struct {
+	RPLPrice               *big.Int
+	ClaimIntervalTime      time.Duration
+	ClaimIntervalTimeStart time.Time
+	CurrentNodeFee         float64
+	CurrentNodeDemand      *big.Int
+	RETHSupply             *big.Int
+	EffectiveRPLStake      *big.Int
+	NodeOperatorRewards    *big.Int
+	RETHPrice              float64
+	TotalEthStaking        *big.Int
+	TotalEthBalance        *big.Int
+}
+
 type RocketpoolExporter struct {
 	Eth1Client          *ethclient.Client
 	API                 *rocketpool.RocketPool
@@ -51,6 +68,7 @@ type RocketpoolExporter struct {
 	NodesByAddress      map[string]*RocketpoolNode
 	DAOProposalsByID    map[uint64]*RocketpoolDAOProposal
 	DAOMembersByAddress map[string]*RocketpoolDAOMember
+	NetworkStats        RocketpoolNetworkStats
 }
 
 func NewRocketpoolExporter(eth1Client *ethclient.Client, storageContractAddressHex string, db *sqlx.DB) (*RocketpoolExporter, error) {
@@ -143,6 +161,7 @@ func (rp *RocketpoolExporter) Run() error {
 	errorInterval := time.Second * 10
 	t := time.NewTicker(rp.UpdateInterval)
 	defer t.Stop()
+	var count int64 = 0
 	for {
 		t0 := time.Now()
 		var err error
@@ -152,7 +171,7 @@ func (rp *RocketpoolExporter) Run() error {
 			time.Sleep(errorInterval)
 			continue
 		}
-		err = rp.Save()
+		err = rp.Save(count)
 		if err != nil {
 			logger.WithError(err).Errorf("error saving rocketpool-data")
 			time.Sleep(errorInterval)
@@ -160,6 +179,7 @@ func (rp *RocketpoolExporter) Run() error {
 		}
 
 		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Infof("exported rocketpool-data")
+		count++
 		<-t.C
 	}
 }
@@ -170,10 +190,11 @@ func (rp *RocketpoolExporter) Update() error {
 	wg.Go(func() error { return rp.UpdateNodes() })
 	wg.Go(func() error { return rp.UpdateDAOProposals() })
 	wg.Go(func() error { return rp.UpdateDAOMembers() })
+	wg.Go(func() error { return rp.UpdateNetworkStats() })
 	return wg.Wait()
 }
 
-func (rp *RocketpoolExporter) Save() error {
+func (rp *RocketpoolExporter) Save(count int64) error {
 	var err error
 	err = rp.SaveMinipools()
 	if err != nil {
@@ -195,6 +216,13 @@ func (rp *RocketpoolExporter) Save() error {
 	if err != nil {
 		return err
 	}
+	if count%60 == 0 { // every hour (smart contracts aren't updated that often)
+		err = rp.SaveNetworkStats()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -301,6 +329,88 @@ func (rp *RocketpoolExporter) UpdateDAOMembers() error {
 		rp.DAOMembersByAddress[addrHex] = m
 	}
 	return nil
+}
+
+func (rp *RocketpoolExporter) UpdateNetworkStats() error {
+	price, err := network.GetRPLPrice(rp.API, nil)
+	if err != nil {
+		return err
+	}
+	claimIntervalTime, err := rewards.GetClaimIntervalTime(rp.API, nil)
+	if err != nil {
+		return err
+	}
+	claimIntervalTimeStart, err := rewards.GetClaimIntervalTimeStart(rp.API, nil)
+	if err != nil {
+		return err
+	}
+
+	currentNodeFee, err := network.GetNodeFee(rp.API, nil)
+	if err != nil {
+		return err
+	}
+
+	currentNodeDemand, err := network.GetNodeDemand(rp.API, nil)
+	if err != nil {
+		return err
+	}
+
+	exchangeRate, err := tokens.GetRETHExchangeRate(rp.API, nil)
+	if err != nil {
+		return err
+	}
+
+	rethSupply, err := network.GetTotalRETHSupply(rp.API, nil)
+	if err != nil {
+		return err
+	}
+
+	effectiveRplStake, err := getBigIntFrom(rp.API, "rocketNetworkPrices", "getEffectiveRPLStake")
+	if err != nil {
+		return err
+	}
+
+	nodeOperatorRewards, err := getBigIntFrom(rp.API, "rocketRewardsPool", "getClaimingContractAllowance", "rocketClaimNode")
+	if err != nil {
+		return err
+	}
+
+	totalEthStaking, err := network.GetStakingETHBalance(rp.API, nil)
+	if err != nil {
+		return err
+	}
+
+	totalEthBalance, err := network.GetTotalETHBalance(rp.API, nil)
+	if err != nil {
+		return err
+	}
+
+	rp.NetworkStats = RocketpoolNetworkStats{
+		RPLPrice:               price,
+		ClaimIntervalTime:      claimIntervalTime,
+		ClaimIntervalTimeStart: claimIntervalTimeStart,
+		CurrentNodeFee:         currentNodeFee,
+		CurrentNodeDemand:      currentNodeDemand,
+		RETHSupply:             rethSupply,
+		EffectiveRPLStake:      effectiveRplStake,
+		NodeOperatorRewards:    nodeOperatorRewards,
+		RETHPrice:              exchangeRate,
+		TotalEthStaking:        totalEthStaking,
+		TotalEthBalance:        totalEthBalance,
+	}
+	return err
+}
+
+func getBigIntFrom(rp *rocketpool.RocketPool, contract string, method string, args ...interface{}) (*big.Int, error) {
+	rocketRewardsPool, err := rp.GetContract(contract)
+	if err != nil {
+		return nil, err
+	}
+	perc := new(*big.Int)
+	if err = rocketRewardsPool.Call(nil, perc, method, args...); err != nil {
+		return nil, err
+	}
+	return *perc, err
 }
 
 func (rp *RocketpoolExporter) SaveMinipools() error {
@@ -618,6 +728,26 @@ func (rp *RocketpoolExporter) TagValidators() error {
 	return tx.Commit()
 }
 
+func (rp *RocketpoolExporter) SaveNetworkStats() error {
+	_, err := db.DB.Exec("INSERT INTO rocketpool_network_stats (ts, rpl_price, claim_interval_time, claim_interval_time_start, current_node_fee, current_node_demand, reth_supply, effective_rpl_staked, node_operator_rewards, reth_exchange_rate, node_count, minipool_count, odao_member_count, total_eth_staking, total_eth_balance) VALUES(now(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+		rp.NetworkStats.RPLPrice.String(),
+		rp.NetworkStats.ClaimIntervalTime.String(),
+		rp.NetworkStats.ClaimIntervalTimeStart,
+		rp.NetworkStats.CurrentNodeFee,
+		rp.NetworkStats.CurrentNodeDemand.String(),
+		rp.NetworkStats.RETHSupply.String(),
+		rp.NetworkStats.EffectiveRPLStake.String(),
+		rp.NetworkStats.NodeOperatorRewards.String(),
+		rp.NetworkStats.RETHPrice,
+		len(rp.NodesByAddress),
+		len(rp.MinipoolsByAddress),
+		len(rp.DAOMembersByAddress),
+		rp.NetworkStats.TotalEthStaking.String(),
+		rp.NetworkStats.TotalEthBalance.String(),
+	)
+	return err
+}
+
 type RocketpoolMinipool struct {
 	Address     []byte    `db:"address"`
 	Pubkey      []byte    `db:"pubkey"`
@@ -731,6 +861,7 @@ func (this *RocketpoolNode) Update(rp *rocketpool.RocketPool) error {
 	if err != nil {
 		return err
 	}
+
 	this.RPLStake = stake
 	this.MinRPLStake = minStake
 	this.MaxRPLStake = maxStake
