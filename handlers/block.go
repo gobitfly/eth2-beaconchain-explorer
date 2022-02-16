@@ -42,7 +42,6 @@ func Block(w http.ResponseWriter, r *http.Request) {
 	slotOrHash := strings.Replace(vars["slotOrHash"], "0x", "", -1)
 	blockSlot := int64(-1)
 	blockRootHash, err := hex.DecodeString(slotOrHash)
-	args := []interface{}{}
 	if err != nil || len(slotOrHash) != 64 {
 		blockRootHash = []byte{}
 		blockSlot, err = strconv.ParseInt(vars["slotOrHash"], 10, 64)
@@ -51,19 +50,27 @@ func Block(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-		args = append(args, blockSlot)
 	}
+
+	data := InitPageData(w, r, "blocks", "/blocks", "")
+
 	if blockSlot == -1 {
 		err = db.DB.Get(&blockSlot, `SELECT slot FROM blocks WHERE blockroot = $1 OR stateroot = $1 LIMIT 1`, blockRootHash)
+		if blockSlot == -1 {
+			err := searchNotFoundTemplate.ExecuteTemplate(w, "layout", data)
+			if err != nil {
+				logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+			return
+		}
 		if err != nil {
 			logger.Errorf("error retrieving entry count of given block or state data: %v", err)
 			http.Error(w, "Internal server error", 503)
 			return
 		}
-		args = append(args, blockSlot)
 	}
-
-	data := InitPageData(w, r, "blocks", "/blocks", "")
 
 	if err != nil {
 		data.Meta.Title = fmt.Sprintf("%v - Slot %v - beaconcha.in - %v", utils.Config.Frontend.SiteName, slotOrHash, time.Now().Year())
@@ -109,7 +116,7 @@ func Block(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN validators ON blocks.proposer = validators.validatorindex
 		LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		WHERE blocks.slot = $1 ORDER BY blocks.status LIMIT 1`,
-		args[0])
+		blockSlot)
 
 	blockPageData.Slot = uint64(blockSlot)
 	if err != nil {

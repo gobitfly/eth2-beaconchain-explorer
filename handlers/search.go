@@ -54,6 +54,8 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+var searchLikeRE = regexp.MustCompile(`^[0-9a-zA-Z]{0,96}$`)
+
 // SearchAhead handles responses for the frontend search boxes
 func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -63,19 +65,17 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	search := vars["search"]
 	search = strings.Replace(search, "0x", "", -1)
 	var err error
-	var searchPubkeyLikeRE = regexp.MustCompile(`^[0-9a-zA-Z]{0,96}$`)
-	if !searchPubkeyLikeRE.MatchString(search) {
-		logger.Errorf("error not expected input - prevent potential sql injection: %v", err)
-		http.Error(w, "Internal server error", 503)
-		return
-	}
 	logger := logger.WithField("searchType", searchType)
 	var result interface{}
 
 	switch searchType {
 	case "blocks":
 		result = &types.SearchAheadBlocksResult{}
-
+		if !searchLikeRE.MatchString(search) {
+			logger.Errorf("error not expected input - prevent potential sql injection: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
 		if len(search) != 64 {
 			err = db.DB.Select(result, `
 			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
@@ -130,11 +130,19 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "eth1_addresses":
 		result = &types.SearchAheadEth1Result{}
-		err = db.DB.Select(result, `
-			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
-			FROM eth1_deposits
-			WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1)
-			LIMIT 10`, search+"%")
+		if len(search)%2 == 0 {
+			eth1AddressHash, err := hex.DecodeString(search)
+			if err != nil {
+				logger.Errorf("error parsing eth1AddressHash to int: %v", err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+			err = db.DB.Select(result, `
+				SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
+				FROM eth1_deposits
+				WHERE from_address LIKE $1 || '%'::bytea 
+				LIMIT 10`, eth1AddressHash)
+		}
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
@@ -147,13 +155,20 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":
-		// find validators per eth1-address (limit result by N addresses and M validators per address)
-		result = &[]struct {
-			Eth1Address      string        `db:"from_address" json:"eth1_address"`
-			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
-			Count            uint64        `db:"count" json:"-"`
-		}{}
-		err = db.DB.Select(result, `
+		if len(search)%2 == 0 {
+			// find validators per eth1-address (limit result by N addresses and M validators per address)
+			result = &[]struct {
+				Eth1Address      string        `db:"from_address" json:"eth1_address"`
+				ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
+				Count            uint64        `db:"count" json:"-"`
+			}{}
+			eth1AddressHash, err := hex.DecodeString(search)
+			if err != nil {
+				logger.Errorf("error parsing eth1AddressHash to int: %v", err)
+				http.Error(w, "Internal server error", 503)
+				return
+			}
+			err = db.DB.Select(result, `
 			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
@@ -162,11 +177,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE ENCODE(from_address::bytea, 'hex') LIKE LOWER($1) 
+				WHERE from_address LIKE $1 || '%'::bytea
 			) a 
 			WHERE validatorrow <= $2 AND addressrow <= 10
 			GROUP BY from_address
-			ORDER BY count DESC`, search+"%", searchValidatorsResultLimit)
+			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+		}
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
 		res := []struct {
