@@ -297,19 +297,19 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// for perfomance-reasons we combine multiple search results with `union`
 		args := []interface{}{}
-		searchQry := ``
+		searchQry := ""
 
 		if dataQuery.Search != "" {
 			args = append(args, "%"+strings.ToLower(dataQuery.Search)+"%")
-			searchQry += fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%v`, len(args))
+			searchQry += fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%d`, len(args))
 		}
 		if dataQuery.StateFilter != "" {
 			if searchQry != "" {
 				searchQry += " UNION "
 			}
-			searchQry += fmt.Sprintf(`SELECT pubkey FROM validators %s`, dataQuery.StateFilter)
+			searchQry += "SELECT pubkey FROM validators"
 		}
-		if *dataQuery.SearchIndex != 0 {
+		if dataQuery.SearchIndex != nil {
 			if searchQry != "" {
 				searchQry += " UNION "
 			}
