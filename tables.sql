@@ -720,7 +720,8 @@ create table stake_pools_stats
     deposit int, 
     name text not null, 
     category text, 
-    PRIMARY KEY(id, address, deposit, name)
+    PRIMARY KEY(id, address, deposit, name),
+    UNIQUE (address)
 );
 
 drop table if exists price;
