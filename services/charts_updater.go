@@ -1642,7 +1642,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				if strings.Contains(name, drillSeries[j].ID) {
 					if len(drillSeries[j].Data) < 30 {
 						drillSeries[j].Data = append(drillSeries[j].Data,
-						[2]string{name, fmt.Sprintf("%d", count)})
+							[2]string{name, fmt.Sprintf("%d", count)})
 					} else {
 						lastIndex := len(drillSeries[j].Data) - 1
 						// check if the last index is called "Others"
@@ -1739,7 +1739,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				if strings.Contains(name, drillSeries[j].ID) {
 					if len(drillSeries[j].Data) < 30 {
 						drillSeries[j].Data = append(drillSeries[j].Data,
-						[2]string{name, fmt.Sprintf("%d", count)})
+							[2]string{name, fmt.Sprintf("%d", count)})
 					} else {
 						lastIndex := len(drillSeries[j].Data) - 1
 						// check if the last index is called "Others"

@@ -594,7 +594,7 @@ func (rp *RocketpoolExporter) SyncNodesToSPS() error {
 			valueStrings = append(valueStrings, fmt.Sprintf(valueStringsTpl, valueStringsArgs...))
 			addressString := fmt.Sprintf("%x", d.Address)
 			valueArgs = append(valueArgs, addressString)
-			valueArgs = append(valueArgs, "Rocketpool 0x" + addressString[:8])
+			valueArgs = append(valueArgs, "Rocketpool 0x"+addressString[:8])
 			valueArgs = append(valueArgs, "Staking Pool")
 			valueArgs = append(valueArgs, 32)
 		}
