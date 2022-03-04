@@ -273,6 +273,11 @@ func FormatEth1AddressString(addr []byte) template.HTML {
 	return template.HTML(fmt.Sprintf("%s", eth1Addr.Hex()))
 }
 
+// FormatEth1AddressString will return the eth1-address formated as html string
+func FormatEth1AddressStringLowerCase(addr []byte) template.HTML {
+	return template.HTML(fmt.Sprintf("0x%x", addr))
+}
+
 // FormatEth1Address will return the eth1-address formated as html
 func FormatEth1Address(addr []byte) template.HTML {
 	copyBtn := CopyButton(hex.EncodeToString(addr))
