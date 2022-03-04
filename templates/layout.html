@@ -311,8 +311,30 @@
         <nav {{if or (eq .Active "confirmation") (or (eq .Active "login") (eq .Active "register"))}}style="display:none;"{{end}} id="nav" class="navbar navbar-expand-lg navbar-light">
             <div class="container">
                 <a class=navbar-brand href="/">
-                    <i {{ if eq .Active "index"}}style="color: var(--font-color)" {{else}}style="opacity: .7"{{end}} class="fas fa-satellite-dish mr-2"></i>
-                    <span class="brand-text">beaconcha.in</span>
+                    <svg style="width: 22px; height: 22px; margin-bottom: .55rem;{{ if ne .Active "index"}}opacity: .7;{{end}}" id="Ebene_1" data-name="Ebene 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+                        <defs>
+                          <style>
+                            .cls-1 {
+                              fill: #1d1d1b;
+                            }
+                      
+                            .cls-2 {
+                              fill: #fff;
+                            }
+                            [data-theme='dark'] .cls-1 {
+                                fill: #fff;
+                            }
+
+                            [data-theme='dark'] .cls-2 {
+                                fill: #1e1c1f;
+                            }
+                            
+                          </style>
+                        </defs>
+                        <rect class="cls-1" x="-14.88" y="-19.92" width="149.75" height="146.77"/>
+                        <path class="cls-2" d="M59-12.9c-47.25,0-66.43-4.44-66.43,32.35C-7.45,45-8.17,120-8.17,120H22.56S35.78,94.52,36.41,93.86c1.36-1.42,20.81,9,22,10.23.25.26,5.4,15.91,5.4,15.91h64.48s-.15-68-.15-90.77C128.17-15.07,99.59-12.9,59-12.9ZM84.32,88c-16.59,13.26-43.13,6.9-51-15.71a36.18,36.18,0,0,1-1.21-19.85c.85-4,2.2-4.57,5.49-2.37,7,4.68,13.88,9.24,21.36,14.22.73-1.33,1.7-2.6,2.35-4.05a4.31,4.31,0,0,0,.31-2.3c-.5-3.11,1-5.85,3.83-6.55a5.18,5.18,0,0,1,6.24,4,5.48,5.48,0,0,1-3.93,6.44,2.48,2.48,0,0,0-1.24.65c-.17.26-3.07,4.92-3.07,4.92L73.72,74.5c3.47,2.39,6.91,4.76,10.41,7.1S87.52,85.42,84.32,88ZM66.2,39.23a16.16,16.16,0,0,1,16.27,9.91c.06.15.12.31.19.46.66,1.53.42,2-1.22,2.44l-.59.15c-1.08.28-1.25-.7-2.07-2.57a11.47,11.47,0,0,0-11.87-6.85c-1.65.18-2.79.48-3-.39C63.25,39.65,63.37,39.49,66.2,39.23ZM89.32,50l-.92.24c-1.68.44-2-1.13-3.25-4.13A18,18,0,0,0,66.62,35c-2.55.26-4.32.72-4.66-.67-1.05-4.37-.87-4.62,3.53-5a25.51,25.51,0,0,1,25.4,16c.09.25.18.5.29.75C92.22,48.55,91.86,49.3,89.32,50Zm11.77-3.08-1.4.36-.77.2c-2.19.57-2.68.21-3.62-1.91a42.4,42.4,0,0,0-3.91-7.76c-7.3-10-17-14.34-29.28-12.41-1.47.24-2.36-.22-2.72-1.71-.22-1-.47-1.9-.68-2.86-.38-1.72.17-2.58,1.86-2.89,10.6-2,20.2.43,28.84,6.86,6.46,4.81,10.69,11.29,13.32,19C103.34,45.49,102.85,46.39,101.09,46.89Z"/>
+                      </svg>                      
+                    <span class="brand-text" style="{{ if ne .Active "index"}}opacity: .7;{{end}}">beaconcha.in</span>
                 </a>
                 <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
