@@ -199,7 +199,7 @@
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-money-bill-wave mr-1 text-muted"></i>Minipool Commission</div>
-										<div>{{formatFloat 2 (mul .Rocketpool.MinipoolNodeFee 100)}}%</div>
+										<div>{{formatFloatWithPrecision 2 (mul .Rocketpool.MinipoolNodeFee 100)}}%</div>
 									</div>
 									<div class="w-75 border-bottom d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-sm-between ml-4 mx-lg-auto mb-4">
 										<div class="text-nowrap font-weight-bold" style="font-size: .9rem;"><i class="fas fa-wallet mr-2 text-muted"></i>Minipool Deposit Type</div>
