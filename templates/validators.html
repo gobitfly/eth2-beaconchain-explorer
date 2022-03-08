@@ -10,6 +10,7 @@
             <h6 class="dropdown-header"><span>Filter state</span> <span><span class="text-success">online</span> | <span class="text-danger">offline</span></span></h6>
             <hr style="margin:0.5rem 0">
             <a class="dropdown-item" href="#all" data-filter-validators="all"><span>All</span> <span>{{.TotalCount}}</span></a>
+            <a class="dropdown-item" href="#deposited" data-filter-validators="deposited"><span>Deposited</span> <span>{{.DepositedCount}}</span></a>
             <a class="dropdown-item" href="#pending" data-filter-validators="pending"><span>Pending</span> <span>{{.PendingCount}}</span></a>
             <a class="dropdown-item" href="#active" data-filter-validators="active"><span>Active</span><span> <span class="text-success">{{.ActiveOnlineCount}}</span> | <span class="text-danger">{{.ActiveOfflineCount}}</span></span></a>
             <a class="dropdown-item" href="#slashing" data-filter-validators="slashing"><span>Slashing</span><span> <span class="text-success">{{.SlashingOnlineCount}}</span> | <span class="text-danger">{{.SlashingOfflineCount}}</span></span></a>
@@ -24,7 +25,7 @@
             $('.filter-by-status a.dropdown-item').removeClass('active');
             $(`.filter-by-status a[data-filter-validators=${state}]`).addClass('active');
             $('.filter-by-status .btn:first-child').html($(`.filter-by-status a[data-filter-validators=${state}]`).html());
-            // 0pubkey, 1idx, 2bal, 3state, 4active, 5exit, 6withdraw, 7lastattest
+            // 0pubkey, 1idx, 2bal, 3state, 4active, 5exit, 6withdraw, 7lastattest, 8slashed
             if (state === "all") {
                 validatorsDataTable.column(3).visible(true);
                 validatorsDataTable.column(4).visible(true);
@@ -58,6 +59,13 @@
                 validatorsDataTable.column(4).visible(true);
                 validatorsDataTable.column(5).visible(true);
                 validatorsDataTable.column(6).visible(true);
+                validatorsDataTable.column(7).visible(false);
+                validatorsDataTable.column(8).visible(false);
+            } else if (state === "deposited") {
+                validatorsDataTable.column(3).visible(true);
+                validatorsDataTable.column(4).visible(false);
+                validatorsDataTable.column(5).visible(false);
+                validatorsDataTable.column(6).visible(false);
                 validatorsDataTable.column(7).visible(false);
                 validatorsDataTable.column(8).visible(false);
             }

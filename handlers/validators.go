@@ -48,6 +48,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData.ExitingOfflineCount = 0
 	validatorsPageData.ExitedCount = 0
 	validatorsPageData.VoluntaryExitsCount = 0
+	validatorsPageData.DepositedCount = 0
 
 	var currentStateCounts []*states
 
@@ -79,6 +80,8 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 			validatorsPageData.ExitingOfflineCount = state.Count
 		case "exited":
 			validatorsPageData.VoluntaryExitsCount = state.Count
+		case "deposited":
+			validatorsPageData.DepositedCount = state.Count
 		}
 	}
 
@@ -86,7 +89,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 	validatorsPageData.SlashingCount = validatorsPageData.SlashingOnlineCount + validatorsPageData.SlashingOfflineCount
 	validatorsPageData.ExitingCount = validatorsPageData.ExitingOnlineCount + validatorsPageData.ExitingOfflineCount
 	validatorsPageData.ExitedCount = validatorsPageData.VoluntaryExitsCount + validatorsPageData.Slashed
-	validatorsPageData.TotalCount = validatorsPageData.ActiveCount + validatorsPageData.ExitingCount + validatorsPageData.ExitedCount + validatorsPageData.PendingCount
+	validatorsPageData.TotalCount = validatorsPageData.ActiveCount + validatorsPageData.ExitingCount + validatorsPageData.ExitedCount + validatorsPageData.PendingCount + validatorsPageData.DepositedCount
 
 	data := InitPageData(w, r, "validators", "/validators", "Validators")
 	data.HeaderAd = true
@@ -174,6 +177,8 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 		qryStateFilter = "WHERE (validators.status = 'exited' OR validators.status = 'slashed')"
 	case "voluntary":
 		qryStateFilter = "WHERE validators.status = 'exited'"
+	case "deposited":
+		qryStateFilter = "WHERE validators.status = 'deposited'"
 	default:
 		qryStateFilter = ""
 	}
@@ -417,7 +422,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var totalValCounts []*counts
-	qry = "SELECT count(*) as total FROM validators WHERE validators.status != 'deposited'"
+	qry = "SELECT count(*) as total FROM validators"
 	err = db.DB.Select(&totalValCounts, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators total count: %v", err)
