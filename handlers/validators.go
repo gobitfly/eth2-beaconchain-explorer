@@ -51,7 +51,7 @@ func Validators(w http.ResponseWriter, r *http.Request) {
 
 	var currentStateCounts []*states
 
-	qry := "select status as statename, count(*) as statecount from validators group by status"
+	qry := "SELECT status AS statename, COUNT(*) AS statecount FROM validators GROUP BY status"
 	err = db.DB.Select(&currentStateCounts, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators data: %v", err)
@@ -149,7 +149,7 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	var qryStateFilter string
 	switch filterByState {
 	case "pending":
-		qryStateFilter = "WHERE validators.status LIKE 'pending%'"
+		qryStateFilter = "WHERE validators.status = 'pending'"
 	case "active":
 		qryStateFilter = "WHERE validators.status LIKE 'active%'"
 	case "active_online":
@@ -302,14 +302,13 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		if dataQuery.Search != "" {
 			args = append(args, "%"+strings.ToLower(dataQuery.Search)+"%")
 			searchQry += fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%d`, len(args))
-		}
-		if dataQuery.Search == "" {
+		} else {
 			if searchQry != "" {
 				searchQry += " UNION "
 			}
-			searchQry += "SELECT pubkey FROM validators"
+			searchQry += "SELECT pubkey FROM validators " + dataQuery.StateFilter
 		}
-		if dataQuery.SearchIndex != nil {
+		if dataQuery.SearchIndex != nil && *dataQuery.SearchIndex != 0 {
 			if searchQry != "" {
 				searchQry += " UNION "
 			}
@@ -418,7 +417,7 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var totalValCounts []*counts
-	qry = "SELECT count(*) as total FROM validators"
+	qry = "SELECT count(*) as total FROM validators WHERE validators.status != 'deposited'"
 	err = db.DB.Select(&totalValCounts, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators total count: %v", err)
