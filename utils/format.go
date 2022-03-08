@@ -83,7 +83,7 @@ func FormatAttestorAssignmentKey(AttesterSlot, CommitteeIndex, MemberIndex uint6
 // FormatBalance will return a string for a balance
 func FormatBalance(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
+	balance := FormatFloatWithIntNot((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
 
 	return template.HTML(balance + " " + currency)
 }
@@ -93,7 +93,7 @@ func FormatBalanceSql(balanceInt sql.NullInt64, currency string) template.HTML {
 		return template.HTML("0 " + currency)
 	}
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := FormatFloat((float64(balanceInt.Int64)/float64(1e9))*float64(exchangeRate), 2)
+	balance := FormatFloatWithIntNot((float64(balanceInt.Int64)/float64(1e9))*float64(exchangeRate), 2)
 
 	return template.HTML(balance + " " + currency)
 }
@@ -132,7 +132,7 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 			return template.HTML("<span> 0 " + currency + "</span>")
 		}
 		exchangeRate := ExchangeRateForCurrency(currency)
-		balanceFormated := FormatFloat(balanceF*float64(exchangeRate), 2)
+		balanceFormated := FormatFloatWithIntNot(balanceF*float64(exchangeRate), 2)
 
 		if *balance > 0 {
 			return template.HTML("<span class=\"text-success\">" + balanceFormated + " " + currency + "</span>")
@@ -149,13 +149,13 @@ func FormatBalanceChange(balance *int64, currency string) template.HTML {
 // FormatBalance will return a string for a balance
 func FormatBalanceShort(balanceInt uint64, currency string) template.HTML {
 	exchangeRate := ExchangeRateForCurrency(currency)
-	balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
+	balance := FormatFloatWithIntNot((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
 
 	return template.HTML(balance)
 }
 
 func FormatAddCommas(n uint64) template.HTML {
-	number := FormatFloat(float64(n), 2)
+	number := FormatFloatWithIntNot(float64(n), 2)
 
 	return template.HTML(number)
 }
@@ -242,7 +242,7 @@ func FormatCurrentBalance(balanceInt uint64, currency string) template.HTML {
 		return template.HTML(fmt.Sprintf("%.5f %v", balance*exchangeRate, currency))
 	} else {
 		exchangeRate := ExchangeRateForCurrency(currency)
-		balance := FormatFloat((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
+		balance := FormatFloatWithIntNot((float64(balanceInt)/float64(1e9))*float64(exchangeRate), 2)
 
 		return template.HTML(fmt.Sprintf(`%s %v`, balance, currency))
 	}
@@ -458,7 +458,7 @@ func FormatIncome(balanceInt int64, currency string) template.HTML {
 
 	exchangeRate := ExchangeRateForCurrency(currency)
 	balance := (float64(balanceInt) / float64(1e9)) * float64(exchangeRate)
-	balanceFormated := FormatFloat(balance, decimals)
+	balanceFormated := FormatFloatWithIntNot(balance, decimals)
 
 	if balance > 0 {
 		return template.HTML(fmt.Sprintf(`<span class="text-success"><b>+%s %v</b></span>`, balanceFormated, currency))
@@ -820,7 +820,11 @@ func FormatRPL(num string) string {
 	return fmt.Sprintf("%.2f", floatNum/math.Pow10(18)) + " RPL"
 }
 
-func FormatFloat(num float64, precision int) string {
+func FormatFloatWithPrecision(precision int, num float64) string {
+	return fmt.Sprintf("%.*f", precision, num)
+}
+
+func FormatFloatWithIntNot(num float64, precision int) string {
 	p := message.NewPrinter(language.English)
 	f := fmt.Sprintf("%%.%vf", precision)
 	s := strings.TrimRight(strings.TrimRight(p.Sprintf(f, num), "0"), ".")
