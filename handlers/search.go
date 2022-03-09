@@ -129,20 +129,24 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "eth1_addresses":
-		result = &types.SearchAheadEth1Result{}
-		if len(search)%2 == 0 {
-			eth1AddressHash, err := hex.DecodeString(search)
-			if err != nil {
-				logger.Errorf("error parsing eth1AddressHash to int: %v", err)
-				http.Error(w, "Internal server error", 503)
-				return
-			}
-			err = db.DB.Select(result, `
-				SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
-				FROM eth1_deposits
-				WHERE from_address LIKE $1 || '%'::bytea 
-				LIMIT 10`, eth1AddressHash)
+		if len(search) <= 1 {
+			break
 		}
+		result = &types.SearchAheadEth1Result{}
+		if len(search)%2 != 0 {
+			search = search[:len(search)-1]
+		}
+		eth1AddressHash, err := hex.DecodeString(search)
+		if err != nil {
+			logger.Errorf("error parsing eth1AddressHash to int: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = db.DB.Select(result, `
+			SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
+			FROM eth1_deposits
+			WHERE from_address LIKE $1 || '%'::bytea 
+			LIMIT 10`, eth1AddressHash)
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
@@ -155,34 +159,38 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":
-		if len(search)%2 == 0 {
-			// find validators per eth1-address (limit result by N addresses and M validators per address)
-			result = &[]struct {
-				Eth1Address      string        `db:"from_address" json:"eth1_address"`
-				ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
-				Count            uint64        `db:"count" json:"-"`
-			}{}
-			eth1AddressHash, err := hex.DecodeString(search)
-			if err != nil {
-				logger.Errorf("error parsing eth1AddressHash to int: %v", err)
-				http.Error(w, "Internal server error", 503)
-				return
-			}
-			err = db.DB.Select(result, `
-			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
-				SELECT 
-					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address::bytea, 'hex') as from_address,
-					DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
-					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
-				FROM eth1_deposits
-				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE from_address LIKE $1 || '%'::bytea
-			) a 
-			WHERE validatorrow <= $2 AND addressrow <= 10
-			GROUP BY from_address
-			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
+		if len(search) <= 1 {
+			break
 		}
+		if len(search)%2 != 0 {
+			search = search[:len(search)-1]
+		}
+		// find validators per eth1-address (limit result by N addresses and M validators per address)
+		result = &[]struct {
+			Eth1Address      string        `db:"from_address" json:"eth1_address"`
+			ValidatorIndices pq.Int64Array `db:"validatorindices" json:"validator_indices"`
+			Count            uint64        `db:"count" json:"-"`
+		}{}
+		eth1AddressHash, err := hex.DecodeString(search)
+		if err != nil {
+			logger.Errorf("error parsing eth1AddressHash to int: %v", err)
+			http.Error(w, "Internal server error", 503)
+			return
+		}
+		err = db.DB.Select(result, `
+		SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
+			SELECT 
+				DISTINCT ON(validatorindex) validatorindex,
+				ENCODE(from_address::bytea, 'hex') as from_address,
+				DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
+				DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
+			FROM eth1_deposits
+			INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
+			WHERE from_address LIKE $1 || '%'::bytea
+		) a 
+		WHERE validatorrow <= $2 AND addressrow <= 10
+		GROUP BY from_address
+		ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
 		res := []struct {
