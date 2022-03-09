@@ -42,6 +42,10 @@ var (
 		Name: "db_long_running_queries",
 		Help: "Counter of long-running-queries with datbase and query in labels",
 	}, []string{"database", "query"})
+	Errors = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "errors",
+		Help: "Counter of errors with name in labels",
+	}, []string{"name"})
 )
 
 var logger = logrus.New().WithField("module", "metrics")
