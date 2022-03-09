@@ -253,10 +253,6 @@ func parseValidatorsDataQueryParams(r *http.Request) (*ValidatorsDataQueryParams
 	return res, nil
 }
 
-type counts struct {
-	Total uint64 `db:"total"`
-}
-
 // ValidatorsData returns all validators and their balances
 func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 	currency := GetCurrency(r)
@@ -344,24 +340,24 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		}
 
 		qry = fmt.Sprintf(`
-			WITH matched_validators AS (%s)
-			SELECT
-				validators.validatorindex,
-				validators.pubkey,
-				validators.withdrawableepoch,
-				validators.balance,
-				validators.effectivebalance,
-				validators.slashed,
-				validators.activationepoch,
-				validators.exitepoch,
-				validators.lastattestationslot,
-				COALESCE(validator_names.name, '') AS name,
-				validators.status AS state,
-				COALESCE(cnt.total_count, 0) as total_count
+			WITH matched_validators AS (%s),
+				 total              AS (SELECT count(*) AS count FROM matched_validators)
+			SELECT validators.validatorindex,
+				   validators.pubkey,
+				   validators.withdrawableepoch,
+				   validators.balance,
+				   validators.effectivebalance,
+				   validators.slashed,
+				   validators.activationepoch,
+				   validators.exitepoch,
+				   validators.lastattestationslot,
+				   COALESCE(validator_names.name, '') AS name,
+				   validators.status AS state,
+				   total.count AS total_count
 			FROM validators
+			INNER JOIN total ON TRUE
 			INNER JOIN matched_validators ON validators.pubkey = matched_validators.pubkey
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			LEFT JOIN (select count(*) from matched_validators) cnt(total_count) ON true
 			ORDER BY %s %s
 			LIMIT $%d OFFSET $%d`, searchQry, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
 
@@ -421,9 +417,9 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		tableData[i] = append(tableData[i], html.EscapeString(v.Name))
 	}
 
-	var totalValCounts []*counts
+	countTotal := uint64(0)
 	qry = "SELECT count(*) as total FROM validators"
-	err = db.DB.Select(&totalValCounts, qry)
+	err = db.DB.Get(&countTotal, qry)
 	if err != nil {
 		logger.Errorf("error retrieving validators total count: %v", err)
 		http.Error(w, "Internal server error", 503)
@@ -432,14 +428,16 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 
 	data := &types.DataTableResponse{
 		Draw:            dataQuery.Draw,
-		RecordsTotal:    totalValCounts[0].Total,
-		RecordsFiltered: 0,
+		RecordsTotal:    countTotal,
+		RecordsFiltered: countTotal,
 		Data:            tableData,
 	}
-	if isAll {
-		data.RecordsFiltered = totalValCounts[0].Total
-	} else if validators != nil {
+
+	if !isAll && validators != nil {
 		data.RecordsFiltered = validators[0].TotalCount
+	}
+	if validators == nil {
+		data.RecordsFiltered = 0
 	}
 
 	err = json.NewEncoder(w).Encode(data)
