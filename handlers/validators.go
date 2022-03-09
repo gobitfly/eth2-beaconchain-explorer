@@ -340,24 +340,24 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		}
 
 		qry = fmt.Sprintf(`
-			WITH matched_validators AS (%s),
-				 total              AS (SELECT count(*) AS count FROM matched_validators)
-			SELECT validators.validatorindex,
-				   validators.pubkey,
-				   validators.withdrawableepoch,
-				   validators.balance,
-				   validators.effectivebalance,
-				   validators.slashed,
-				   validators.activationepoch,
-				   validators.exitepoch,
-				   validators.lastattestationslot,
-				   COALESCE(validator_names.name, '') AS name,
-				   validators.status AS state,
-				   total.count AS total_count
+			WITH matched_validators AS (%s)
+			SELECT
+					validators.validatorindex,
+					validators.pubkey,
+					validators.withdrawableepoch,
+					validators.balance,
+					validators.effectivebalance,
+					validators.slashed,
+					validators.activationepoch,
+					validators.exitepoch,
+					validators.lastattestationslot,
+					COALESCE(validator_names.name, '') AS name,
+					validators.status AS state,
+					COALESCE(cnt.total_count, 0) as total_count
 			FROM validators
-			INNER JOIN total ON TRUE
 			INNER JOIN matched_validators ON validators.pubkey = matched_validators.pubkey
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+			LEFT JOIN (select count(*) from matched_validators) cnt(total_count) ON true
 			ORDER BY %s %s
 			LIMIT $%d OFFSET $%d`, searchQry, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
 
