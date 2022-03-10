@@ -25,6 +25,10 @@
         {
             id: 'nimbus-graffiti',
             config: "./{exporter-arch} --server.address='https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}' --beaconnode.type=nimbus --beaconnode.address=http://localhost:8008/metrics"
+        },
+        {
+            id: 'teku-graffiti',
+            config: "--metrics-publish-endpoint https://beaconcha.in/api/v1/client/metrics?apikey={apiKey}{machineName}"
         }
     ]
 
@@ -661,13 +665,27 @@
                                                 </button>
                                             </h2>
                                             <div id="collapseFour" class="collapse" aria-labelledby="headingFour"
-                                                data-parent="#accordionExample" style="margin: 15px;">
-                                                <div class="accordion-body">
-                                                   
-                                                    Not yet supported, cooming soon.
+                                            data-parent="#accordionExample" style="margin: 15px;">
+                                            <div class="accordion-body">
+                                                
+                                                Copy & Paste the following flags to your Teku validator client:<br/><br/>
 
+                                                <div style="margin-left: 5px; margin-right: 5px;">
+                                                    <div style="float: left;  width: 90%;">
+                                                        <code >
+                                                            <span id="teku-graffiti"></span>
+                                                        </code>
+                                                    </div>
+                                                    <div style="float: right;">
+                                                        <a id="copy-teku-graffiti" data-toggle="tooltip" data-original-title="Copy Command"
+                                                        data-clipboard-text="" class="d-none btn btn-primary ml-2 btn-icon-inside btn-sm text-white">
+                                                        <span class="fa fa-copy icon-inside" ></span> </a>
+                                                    </div>
                                                 </div>
+                                                <div style="clear: both;"></div><br/>
+                                             
                                             </div>
+                                        </div>
                                         </div>
                                     </div>
 
