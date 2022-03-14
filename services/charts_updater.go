@@ -7,6 +7,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -1494,7 +1495,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				having sum(amount) >= 32e9
 			) a 
 			group by from_address) b
-		full outer join stake_pools_stats as sps on b.address=sps.address
+		full outer join stake_pools_stats as sps on b.address=sps.address where b.count is not null
 		order by count desc`)
 		if err != nil {
 			return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
@@ -1544,6 +1545,11 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Name:      "Defi",
 				Y:         0,
 				Drilldown: "Defi",
+			},
+			{
+				Name:      "Rocketpool",
+				Y:         0,
+				Drilldown: "Rocketpool",
 			},
 			{
 				Name:      "Guarda",
@@ -1598,6 +1604,11 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				Data: [][2]string{},
 			},
 			{
+				Name: "Rocketpool",
+				ID:   "Rocketpool",
+				Data: [][2]string{},
+			},
+			{
 				Name: "Guarda",
 				ID:   "Guarda",
 				Data: [][2]string{},
@@ -1629,8 +1640,25 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				}
 
 				if strings.Contains(name, drillSeries[j].ID) {
-					drillSeries[j].Data = append(drillSeries[j].Data,
-						[2]string{name, fmt.Sprintf("%d", count)})
+					if len(drillSeries[j].Data) < 30 {
+						drillSeries[j].Data = append(drillSeries[j].Data,
+							[2]string{name, fmt.Sprintf("%d", count)})
+					} else {
+						lastIndex := len(drillSeries[j].Data) - 1
+						// check if the last index is called "Others"
+						if drillSeries[j].Data[lastIndex][0] != "Others" {
+							// if its not, create it
+							drillSeries[j].Data = append(drillSeries[j].Data,
+								[2]string{"Others", "0"})
+							lastIndex++
+						}
+						oldCount := drillSeries[j].Data[lastIndex][1]
+						currentCount, err := strconv.ParseUint(oldCount, 10, 64)
+						if err != nil {
+							currentCount = 0
+						}
+						drillSeries[j].Data[lastIndex][1] = fmt.Sprintf("%d", currentCount+count)
+					}
 					foundMatch = true
 					break
 				}
@@ -1664,7 +1692,7 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				having sum(amount) >= 32e9
 			) a 
 			group by from_address) b
-		full outer join stake_pools_stats as sps on b.address=sps.address
+		full outer join stake_pools_stats as sps on b.address=sps.address where b.count is not null
 		order by count desc`)
 		if err != nil {
 			return nil, fmt.Errorf("error getting eth1-deposits-distribution: %w", err)
@@ -1709,8 +1737,25 @@ func depositsDistributionChartData() (*types.GenericChartData, error) {
 				}
 
 				if strings.Contains(name, drillSeries[j].ID) {
-					drillSeries[j].Data = append(drillSeries[j].Data,
-						[2]string{name, fmt.Sprintf("%d", count)})
+					if len(drillSeries[j].Data) < 30 {
+						drillSeries[j].Data = append(drillSeries[j].Data,
+							[2]string{name, fmt.Sprintf("%d", count)})
+					} else {
+						lastIndex := len(drillSeries[j].Data) - 1
+						// check if the last index is called "Others"
+						if drillSeries[j].Data[lastIndex][0] != "Others" {
+							// if its not, create it
+							drillSeries[j].Data = append(drillSeries[j].Data,
+								[2]string{"Others", "0"})
+							lastIndex++
+						}
+						oldCount := drillSeries[j].Data[lastIndex][1]
+						currentCount, err := strconv.ParseUint(oldCount, 10, 64)
+						if err != nil {
+							currentCount = 0
+						}
+						drillSeries[j].Data[lastIndex][1] = fmt.Sprintf("%d", currentCount+count)
+					}
 					foundMatch = true
 					break
 				}

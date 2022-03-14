@@ -204,6 +204,10 @@ func (rp *RocketpoolExporter) Save(count int64) error {
 	if err != nil {
 		return err
 	}
+	err = rp.SyncNodesToSPS()
+	if err != nil {
+		return err
+	}
 	err = rp.SaveDAOProposals()
 	if err != nil {
 		return err
@@ -535,6 +539,68 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 		_, err := tx.Exec(stmt, valueArgs...)
 		if err != nil {
 			return fmt.Errorf("error inserting into rocketpool_nodes: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (rp *RocketpoolExporter) SyncNodesToSPS() error {
+	if len(rp.NodesByAddress) == 0 {
+		return nil
+	}
+
+	t0 := time.Now()
+	defer func(t0 time.Time) {
+		logger.WithFields(logrus.Fields{"duration": time.Since(t0)}).Debugf("synced rocketpool-nodes to sps")
+	}(t0)
+
+	data := make([]*RocketpoolNode, len(rp.NodesByAddress))
+	i := 0
+	for _, node := range rp.NodesByAddress {
+		data[i] = node
+		i++
+	}
+
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	nArgs := 4
+	valueStringsArr := make([]string, nArgs)
+	for i := range valueStringsArr {
+		valueStringsArr[i] = "$%d"
+	}
+	valueStringsTpl := "(" + strings.Join(valueStringsArr, ",") + ")"
+	valueStringsArgs := make([]interface{}, nArgs)
+
+	batchSize := 1000
+	for b := 0; b < len(data); b += batchSize {
+		start := b
+		end := b + batchSize
+		if len(data) < end {
+			end = len(data)
+		}
+
+		valueStrings := make([]string, 0, batchSize)
+		valueArgs := make([]interface{}, 0, batchSize*nArgs)
+		for i, d := range data[start:end] {
+			for j := 0; j < nArgs; j++ {
+				valueStringsArgs[j] = i*nArgs + j + 1
+			}
+			valueStrings = append(valueStrings, fmt.Sprintf(valueStringsTpl, valueStringsArgs...))
+			addressString := fmt.Sprintf("%x", d.Address)
+			valueArgs = append(valueArgs, addressString)
+			valueArgs = append(valueArgs, "Rocketpool 0x"+addressString[:8])
+			valueArgs = append(valueArgs, "Staking Pool")
+			valueArgs = append(valueArgs, 32)
+		}
+		stmt := fmt.Sprintf(`insert into stake_pools_stats (address, name, category, deposit) values %s on conflict (address) do nothing`, strings.Join(valueStrings, ","))
+		_, err := tx.Exec(stmt, valueArgs...)
+		if err != nil {
+			return fmt.Errorf("error inserting into stake_pools_stats: %w", err)
 		}
 	}
 
