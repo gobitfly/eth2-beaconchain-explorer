@@ -546,7 +546,6 @@ func (rp *RocketpoolExporter) SaveNodes() error {
 }
 
 func (rp *RocketpoolExporter) SyncNodesToSPS() error {
-	logger.Infof("%d", len(rp.NodesByAddress))
 	if len(rp.NodesByAddress) == 0 {
 		return nil
 	}
