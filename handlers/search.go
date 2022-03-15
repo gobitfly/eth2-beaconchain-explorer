@@ -54,7 +54,7 @@ func Search(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var searchLikeRE = regexp.MustCompile(`^[0-9a-zA-Z]{0,96}$`)
+var searchLikeRE = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
 
 // SearchAhead handles responses for the frontend search boxes
 func SearchAhead(w http.ResponseWriter, r *http.Request) {
@@ -71,30 +71,27 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	switch searchType {
 	case "blocks":
 		result = &types.SearchAheadBlocksResult{}
-		if !searchLikeRE.MatchString(search) {
-			logger.Errorf("error not expected input - prevent potential sql injection: %v", err)
-			http.Error(w, "Internal server error", 503)
-			return
-		}
-		if len(search) != 64 {
-			err = db.DB.Select(result, `
-			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
-			FROM blocks 
-			WHERE CAST(slot AS text) LIKE $1
-			ORDER BY slot LIMIT 10`, search+"%")
-		} else {
-			blockHash, err := hex.DecodeString(search)
-			if err != nil {
-				logger.Errorf("error parsing blockHash to int: %v", err)
-				http.Error(w, "Internal server error", 503)
-				return
+		if searchLikeRE.MatchString(search) && len(search)%2 == 0 {
+			if len(search) < 64 {
+				err = db.DB.Select(result, `
+				SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
+				FROM blocks 
+				WHERE CAST(slot AS text) LIKE $1
+				ORDER BY slot LIMIT 10`, search+"%")
+			} else if len(search) == 64 {
+				blockHash, err := hex.DecodeString(search)
+				if err != nil {
+					logger.Errorf("error parsing blockHash to int: %v", err)
+					http.Error(w, "Internal server error", 503)
+					return
+				}
+				err = db.DB.Select(result, `
+				SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
+				FROM blocks 
+				WHERE blockroot = $1 OR
+					stateroot = $1
+				ORDER BY slot LIMIT 10`, blockHash)
 			}
-			err = db.DB.Select(result, `
-			SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
-			FROM blocks 
-			WHERE blockroot = $1 OR
-			      stateroot = $1
-			ORDER BY slot LIMIT 10`, blockHash)
 		}
 
 	case "graffiti":
@@ -130,10 +127,10 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "eth1_addresses":
 		result = &types.SearchAheadEth1Result{}
-		if len(search)%2 == 0 {
+		if searchLikeRE.MatchString(search) && len(search)%2 == 0 {
 			eth1AddressHash, err := hex.DecodeString(search)
 			if err != nil {
-				logger.Errorf("error parsing eth1AddressHash to int: %v", err)
+				logger.Errorf("error parsing eth1AddressHash to hash: %v", err)
 				http.Error(w, "Internal server error", 503)
 				return
 			}
@@ -155,7 +152,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":
-		if len(search)%2 == 0 {
+		if searchLikeRE.MatchString(search) && len(search)%2 == 0 {
 			// find validators per eth1-address (limit result by N addresses and M validators per address)
 			result = &[]struct {
 				Eth1Address      string        `db:"from_address" json:"eth1_address"`
@@ -164,10 +161,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			}{}
 			eth1AddressHash, err := hex.DecodeString(search)
 			if err != nil {
-				logger.Errorf("error parsing eth1AddressHash to int: %v", err)
+				logger.Errorf("error parsing eth1AddressHash to hex: %v", err)
 				http.Error(w, "Internal server error", 503)
 				return
 			}
+			logger.Infof("indexed_validators_by_eth1_addresses")
 			err = db.DB.Select(result, `
 			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 

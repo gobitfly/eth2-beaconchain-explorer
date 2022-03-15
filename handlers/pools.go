@@ -71,14 +71,14 @@ func GetAvgCurrentStreak(w http.ResponseWriter, r *http.Request) {
 
 	var sqlData []*string
 
+	logger.Infof("RN: pool: %s", pool)
 	err := db.DB.Select(&sqlData, `
 			with 
 				matched_validators as (
 					SELECT v.validatorindex  
 					FROM validators v 
 					LEFT JOIN eth1_deposits e ON e.publickey = v.pubkey
-					WHERE ENCODE(e.from_address::bytea, 'hex') LIKE LOWER($1)
-
+					WHERE e.from_address LIKE $1 || '%'::bytea
 				),
 				longeststreaks as (
 					select 
@@ -91,7 +91,7 @@ func GetAvgCurrentStreak(w http.ResponseWriter, r *http.Request) {
 					from validator_attestation_streaks
 					where status = 1 and start+length = (select max(start+length) from validator_attestation_streaks)
 				)
-			select  
+			select
 				AVG(coalesce(cs.length,0))
 			from longeststreaks ls
 			inner join matched_validators v on ls.validatorindex = v.validatorindex
