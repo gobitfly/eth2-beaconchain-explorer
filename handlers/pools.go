@@ -71,7 +71,6 @@ func GetAvgCurrentStreak(w http.ResponseWriter, r *http.Request) {
 
 	var sqlData []*string
 
-	logger.Infof("RN: pool: %s", pool)
 	err := db.DB.Select(&sqlData, `
 			with 
 				matched_validators as (

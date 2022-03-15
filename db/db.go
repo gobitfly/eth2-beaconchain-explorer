@@ -179,13 +179,6 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot, query)
-		logger.Infof("RN: orderBy: %s", orderBy)
-		logger.Infof("RN: orderDir: %s", orderDir)
-		logger.Infof("RN: length: %s", length)
-		logger.Infof("RN: start: %s", start)
-		logger.Infof("RN: latestEpoch: %s", latestEpoch)
-		logger.Infof("RN: validatorOnlineThresholdSlot: %s", validatorOnlineThresholdSlot)
-		logger.Infof("RN: query: %s", query)
 	} else {
 		err = DB.Select(&deposits, fmt.Sprintf(`
 		SELECT 
