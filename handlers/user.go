@@ -327,7 +327,6 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 		Threshold    *string `db:"event_threshold"`
 	}{}
 
-	logger.Infof("RN: getValidatorTableData()")
 	err := db.FrontendDB.Select(&validatordb, `
 	SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold
 		FROM users_validators_tags uvt
