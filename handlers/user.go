@@ -327,11 +327,12 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 		Threshold    *string `db:"event_threshold"`
 	}{}
 
+	logger.Infof("RN: getValidatorTableData()")
 	err := db.FrontendDB.Select(&validatordb, `
-SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold
-FROM users_validators_tags uvt
-LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey::bytea, 'hex') AND us.user_id = uvt.user_id
-WHERE uvt.user_id = $1;`, userId)
+	SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold
+		FROM users_validators_tags uvt
+		LEFT JOIN users_subscriptions us ON us.event_filter = uvt.validator_publickey::bytea AND us.user_id = uvt.user_id
+		WHERE uvt.user_id = $1;`, userId)
 
 	if err != nil {
 		return validatordb, err
