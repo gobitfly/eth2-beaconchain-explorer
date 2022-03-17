@@ -151,7 +151,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				FROM eth1_deposits
 				WHERE from_address LIKE $1 || '%'::bytea 
 				LIMIT 10`, eth1AddressHash)
-		}
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
 		result = &types.SearchAheadValidatorsResult{}
@@ -198,7 +197,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			WHERE validatorrow <= $2 AND addressrow <= 10
 			GROUP BY from_address
 			ORDER BY count DESC`, eth1AddressHash, searchValidatorsResultLimit)
-		}
 	case "indexed_validators_by_graffiti":
 		// find validators per graffiti (limit result by N graffities and M validators per graffiti)
 		res := []struct {
