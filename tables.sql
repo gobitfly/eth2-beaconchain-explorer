@@ -300,7 +300,7 @@ create table blocks
     exec_gas_used               int,
     exec_timestamp              int,
     exec_extra_data             bytea,
-    exec_base_fee_per_gas       int,
+    exec_base_fee_per_gas       bigint,
     exec_blockhash              bytea,
     exec_transactioncount       int,
     primary key (slot, blockroot)
