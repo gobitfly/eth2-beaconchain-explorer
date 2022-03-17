@@ -70,8 +70,14 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 
 	switch searchType {
 	case "blocks":
+		if len(search) <= 1 {
+			break
+		}
 		result = &types.SearchAheadBlocksResult{}
-		if searchLikeRE.MatchString(search) && len(search)%2 == 0 {
+		if len(search)%2 != 0 {
+			search = search[:len(search)-1]
+		}
+		if searchLikeRE.MatchString(search) {
 			if len(search) < 64 {
 				err = db.DB.Select(result, `
 				SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
@@ -126,8 +132,14 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "eth1_addresses":
+		if len(search) <= 1 {
+			break
+		}
 		result = &types.SearchAheadEth1Result{}
-		if searchLikeRE.MatchString(search) && len(search)%2 == 0 {
+		if len(search)%2 != 0 {
+			search = search[:len(search)-1]
+		}
+		if searchLikeRE.MatchString(search) {
 			eth1AddressHash, err := hex.DecodeString(search)
 			if err != nil {
 				logger.Errorf("error parsing eth1AddressHash to hash: %v", err)
@@ -152,7 +164,13 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				OR LOWER(validator_names.name) LIKE LOWER($2)
 			ORDER BY index LIMIT 10`, search+"%", "%"+search+"%")
 	case "indexed_validators_by_eth1_addresses":
-		if searchLikeRE.MatchString(search) && len(search)%2 == 0 {
+		if len(search) <= 1 {
+			break
+		}
+		if len(search)%2 != 0 {
+			search = search[:len(search)-1]
+		}
+		if searchLikeRE.MatchString(search) {
 			// find validators per eth1-address (limit result by N addresses and M validators per address)
 			result = &[]struct {
 				Eth1Address      string        `db:"from_address" json:"eth1_address"`
