@@ -14,6 +14,7 @@ function setValidatorStatus(state) {
   var depositedDoneSet = new Set(["pending", "active_online", "active_offline", "exiting_online", "exiting_offline", "slashing_online", "slashing_offline", "exited", "slashed"])
   var pendingDoneSet = new Set(["active_online", "active_offline", "exiting_online", "exiting_offline", "slashing_online", "slashing_offline", "exited", "slashed"])
   var activeToExitSet = new Set(["exiting_online", "exiting_offline", "slashing_online", "slashing_offline"])
+  var slashingSet = new Set(["slashing_online", "slashing_offline"])
   var activeOnlineSet = new Set(["active_online", "exiting_online", "slashing_online"])
   var activeOfflineSet = new Set(["active_offline", "exiting_offline", "slashing_offline"])
   var activeDoneSet = new Set(["exited", "slashed"])
@@ -50,6 +51,14 @@ function setValidatorStatus(state) {
 
   if (status === 'slashed') {
     exitedNode.classList.add('failed')
+  }
+
+  if (activeToExitSet.has(status)) {
+    if (slashingSet.has(status)) {
+      exitedNode.classList.add('failed')
+    } else {
+      exitedNode.classList.add('done')
+    }
   }
 
   if (status === 'exited') {

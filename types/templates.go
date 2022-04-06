@@ -228,10 +228,12 @@ type ValidatorsPageData struct {
 	SlashingCount        uint64
 	SlashingOnlineCount  uint64
 	SlashingOfflineCount uint64
+	Slashed              uint64
 	ExitingCount         uint64
 	ExitingOnlineCount   uint64
 	ExitingOfflineCount  uint64
 	ExitedCount          uint64
+	VoluntaryExitsCount  uint64
 	UnknownCount         uint64
 	Validators           []*ValidatorsPageDataValidators
 }
@@ -277,6 +279,7 @@ type ValidatorPageData struct {
 	ActivationEligibilityEpoch          uint64         `db:"activationeligibilityepoch"`
 	ActivationEpoch                     uint64         `db:"activationepoch"`
 	ExitEpoch                           uint64         `db:"exitepoch"`
+	ExitingEpoch                        uint64         `db:"exitingepoch"`
 	Index                               uint64         `db:"index"`
 	LastAttestationSlot                 *uint64        `db:"lastattestationslot"`
 	Name                                string         `db:"name"`
