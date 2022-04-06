@@ -59,7 +59,7 @@ func InitGitCoinFeed() {
 		logger.Infoln("Started GitcoinFeed service")
 		for true {
 			updateFeed()
-			time.Sleep(time.Second * 5)
+			time.Sleep(time.Second * 120)
 		}
 	}()
 }
