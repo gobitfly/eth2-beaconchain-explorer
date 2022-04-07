@@ -79,6 +79,14 @@ func Validator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if validatorPageData.ExitEpoch != 9223372036854775807 {
+		if validatorPageData.Slashed {
+			validatorPageData.ExitingEpoch = validatorPageData.ExitEpoch - 4
+		} else {
+			validatorPageData.ExitingEpoch = validatorPageData.ExitEpoch - 2025
+		}
+	}
+
 	// Request came with a hash
 	if strings.Contains(vars["index"], "0x") || len(vars["index"]) == 96 {
 		pubKey, err := hex.DecodeString(strings.Replace(vars["index"], "0x", "", -1))

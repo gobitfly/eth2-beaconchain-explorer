@@ -277,6 +277,7 @@ type ValidatorPageData struct {
 	ActivationEligibilityEpoch          uint64         `db:"activationeligibilityepoch"`
 	ActivationEpoch                     uint64         `db:"activationepoch"`
 	ExitEpoch                           uint64         `db:"exitepoch"`
+	ExitingEpoch                        uint64         `db:"exitingepoch"`
 	Index                               uint64         `db:"index"`
 	LastAttestationSlot                 *uint64        `db:"lastattestationslot"`
 	Name                                string         `db:"name"`
