@@ -29,31 +29,39 @@
     <div class="col-md-10">{{formatValidatorWithName .Proposer .ProposerName}}</div>
   </div>
   {{end}}
-  {{if (or (eq .Status 1) (eq .Status 3))}}
+  {{$br := printf "%x" .BlockRoot}}
+  {{if ne $br "01"}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash-tree-root of the BeaconBlock">Block Root:</span></div>
-    <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .BlockRoot}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .BlockRoot}}></i></div>
+    <div class="col-md-10 text-monospace text-break">0x{{$br}}<i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .BlockRoot}}></i></div>
   </div>
-  {{if ne .Slot 0}}
+  {{end}}
+  {{if .ParentRoot}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash pointing to the previous block">Parent Root:</span></div>
-    <div class="col-md-10 text-monospace text-break"><a href="/block/{{printf "%x" .ParentRoot}}">0x{{printf "%x" .ParentRoot}} </a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .ParentRoot}}></i>
+    <div class="col-md-10 text-monospace text-break"><a href="/block/{{printf "%x" .ParentRoot}}">0x{{printf "%x" .ParentRoot}}</a><i style="padding: .25rem;" class="fa fa-copy text-muted" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .ParentRoot}}></i>
     </div>
   </div>
   {{end}}
+  {{if .StateRoot}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The hash-tree-root of the BeaconState">State Root:</span></div>
     <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .StateRoot}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .StateRoot}}></i></div>
   </div>
-  {{if ne .Slot 0}}
+  {{end}}
+  {{if .Signature}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="The BLS signature obtained by using the BeaconState, BeaconBlock and private key">Signature:</span></div>
     <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .Signature}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .Signature}}></i></div>
   </div>
+  {{end}}
+  {{if .RandaoReveal}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Signature verifying the proposer">Randao Reveal:</span></div>
     <div class="col-md-10 text-monospace text-break">0x{{printf "%x" .RandaoReveal}} <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text=0x{{printf "%x" .RandaoReveal}}></i></div>
   </div>
+  {{end}}
+  {{if .Graffiti}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="32 byte long message included by the block proposer">Graffiti:</span></div>
     <div class="col-md-8 text-monospace text-break" id="graffiti" aria-graffiti="{{printf "%x" .Graffiti}}">0x{{printf "%x" .Graffiti}}</div>
@@ -68,6 +76,8 @@
       </div>
     </div>
   </div>
+  {{end}}
+  {{if .Eth1dataBlockhash}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Received Eth1 Block headers and Deposit data">Eth 1 Data:</span></div>
     <div class="col-md-10">
@@ -93,6 +103,7 @@
       </div>
     </div>
   </div>
+  {{end}}
   {{if .SyncAggregateSignature}}
     <div class="row border-bottom p-3 mx-0">
       <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Sync Aggregate (Altair Light-Client support)">Sync Aggregate:</span></div>
@@ -116,22 +127,31 @@
       </div>
     </div>
   {{end}}
+  {{if .AttestationsCount}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of attestations included in this block by the block proposer">Attestations:</span></div>
     <div class="col-md-10"><b>{{formatAddCommas .AttestationsCount}}</b></div>
   </div>
+  {{end}}
+  {{if .VotesCount}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of votes included in this block">Votes:</span></div>
     <div class="col-md-10"><b>{{formatAddCommas .VotesCount}}</b></div>
   </div>
+  {{end}}
+  {{if .VotingValidatorsCount}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voting validators">Voting Validators:</span></div>
     <div class="col-md-10"><b>{{formatAddCommas .VotingValidatorsCount}}</b></div>
   </div>
+  {{end}}
+  {{if .VoluntaryExitscount}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of voluntary Exits which have been included in this block by the block proposer">Voluntary Exits:</span></div>
     <div class="col-md-10"><b>{{formatAddCommas .VoluntaryExitscount}}</b></div>
   </div>
+  {{end}}
+  {{if .AttesterSlashingsCount}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of slashings which have been included in this block by the block proposer">Slashings:</span></div>
     <div class="col-md-10"><b>{{.AttesterSlashingsCount}}</b> attester &
@@ -139,6 +159,7 @@
     </div>
   </div>
   {{end}}
+  {{if .DepositsCount}}
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2"><span data-toggle="tooltip" data-placement="top" title="Amount of validator deposits which have been included in this block by the block proposer">Deposits:</span></div>
     <div class="col-md-10"><b>{{formatAddCommas .DepositsCount}}</b></div>
