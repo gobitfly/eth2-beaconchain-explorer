@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/price"
@@ -1970,7 +1971,9 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 			id, err = db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 		}
 		if err != nil {
-			logger.Errorf("Could not store stats (meta stats) | %v", err)
+			if err != errors.New("sql: duplicate key value violates unique constraint") {
+				logger.Errorf("Could not store stats (meta stats) | %v", err)
+			}
 			sendErrorResponse(j, r.URL.String(), "could not store meta")
 			return false
 		}
