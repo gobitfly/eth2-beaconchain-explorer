@@ -1172,3 +1172,7 @@ type RocketpoolPageDataDAOMember struct {
 	RPLBondAmount            string    `db:"rpl_bond_amount"`
 	UnbondedValidatorCount   uint64    `db:"unbonded_validator_count"`
 }
+
+type WebhookPageData struct {
+	Webhooks []UserWebhook
+}

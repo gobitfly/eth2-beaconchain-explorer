@@ -579,6 +579,38 @@ create table validator_tags
     primary key (publickey, tag)
 );
 
+drop table if exists users_webhooks;
+create table users_webhooks
+(   
+    id                serial                  not null,
+    user_id           int                     not null,
+    url               character varying(1024) not null,
+    retries           int                     not null, -- a backoff parameter that indicates if the requests was successful and when to retry it again
+    primary key (user_id, id)
+);
+
+drop table if exists users_webhooks_events;
+create table users_webhooks_events (
+    id               serial  not null,
+    webhook_id       int     not null,
+    event_names      text[]  not null,
+    primary key (id, webhook_id)
+)
+
+drop table if exists users_notifications_webhook;
+create table if exists users_notifications_webhook (
+    id                  serial              not null,
+    notification_id     int                 not null,
+    sent_ts             timestamp without   time zone,
+    primary key (notification_id, id)
+);
+
+-- drop table if exists webhook_queue;
+-- create table webhook_queue (
+--     webhook_id
+--     notification_id
+-- )
+
 drop table if exists mails_sent;
 create table mails_sent
 (

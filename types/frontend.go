@@ -173,3 +173,17 @@ type EmailAttachment struct {
 	Attachment []byte
 	Name       string
 }
+
+type UserWebhook struct {
+	ID      uint64 `db:"id"`
+	UserID  uint64 `db:"user_id"`
+	Url     string `db:"url"`
+	Retries uint64 `db:"retries"`
+}
+
+type UserWebhookSubscriptions struct {
+	ID             uint64 `db:"id"`
+	UserID         uint64 `db:"user_id"`
+	WebhookID      uint64 `db:"webhook_id"`
+	SubscriptionID uint64 `db:"subscription_id"`
+}

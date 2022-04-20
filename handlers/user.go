@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/context"
+	"context"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
@@ -2255,4 +2255,114 @@ func MobileDeviceDeletePOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendOKResponse(j, r.URL.String(), nil)
+}
+
+var webhookTemplate *template.Template = template.Must(template.New("user").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/user/webhooks.html"))
+
+// Imprint will show the imprint data using a go template
+func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(r)
+
+	data := InitPageData(w, r, "webhook", "/webhook", "webhook")
+	pageData := types.WebhookPageData{}
+
+	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	defer done()
+
+	webhooks := []types.UserWebhook{}
+	err := db.FrontendDB.SelectContext(ctx, &webhooks, `
+		SELECT 
+			id,
+			url,
+			retries
+		FROM webhooks
+		WHERE user_id = $1
+	`, user.UserID)
+	if err != nil {
+		logger.Errorf("error querying for webhooks for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+	pageData.Webhooks = webhooks
+
+	data.Data = pageData
+
+	err = webhookTemplate.ExecuteTemplate(w, "layout", data)
+	if err != nil {
+		logger.Errorf("error executing template for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+}
+
+func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	user := getUser(r)
+
+	err := r.ParseForm()
+	if err != nil {
+		logger.WithError(err).Errorf("error parsing form")
+	}
+
+	// const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed', 'validator_synccommittee_soon']
+	// const MONITORING_EVENTS = ['monitoring_machine_offline', 'monitoring_hdd_almostfull', 'monitoring_cpu_load']
+
+	url := r.FormValue("url")
+
+	validatorAttestationMissed := r.FormValue("validator_attestation_missed")
+	validatorProposalMissed := r.FormValue("validator_proposal_missed")
+	validatorProposalSubmitted := r.FormValue("validator_proposal_submitted")
+	validatorGotSlashed := r.FormValue("validator_got_slashed")
+	monitoringMachineOffline := r.FormValue("monitoring_machine_offline")
+	monitoringHddAlmostfull := r.FormValue("monitoring_hdd_almostfull")
+	monitoringCpuLoad := r.FormValue("monitoring_cpu_load")
+
+	// subscriptions := make(map[string]bool, 0)
+
+	// subscriptions["validator_attestation_missed"] = validatorAttestationMissed
+	// subscriptions["validator_proposal_missed"] = validatorProposalMissed
+	// subscriptions["validator_proposal_submitted"] = validatorProposalSubmitted
+	// subscriptions["validator_got_slashed"] = validatorGotSlashed
+	// subscriptions["monitoring_machine_offline"] = monitoringMachineOffline
+	// subscriptions["monitoring_hdd_almostfull"] = monitoringHddAlmostfull
+	// subscriptions["monitoring_cpu_load"] = monitoringCpuLoad
+
+	eventNames := []string{
+		validatorAttestationMissed,
+		validatorProposalMissed,
+		validatorProposalSubmitted,
+		validatorGotSlashed,
+		monitoringMachineOffline,
+		monitoringHddAlmostfull,
+		monitoringCpuLoad,
+	}
+
+	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
+	defer done()
+
+	tx, err := db.FrontendDB.BeginTxx(ctx, &sql.TxOptions{})
+	defer tx.Rollback()
+
+	var webhookID uint64
+	err = tx.Get(&webhookID, `INSERT INTO users_webhooks (user_id, url) VALUES ($1, $2) RETURNING id`, user.UserID, url)
+	if err != nil {
+		logger.WithError(err).Errorf("error inerting new webhook for user")
+		return
+	}
+
+	tx.Exec(`INSERT INTO users_webhooks_events (webhook_id, event_names) VALUES ($1, $2)`, webhookID, pq.StringArray(eventNames))
+	if err != nil {
+		logger.WithError(err).Errorf("error inserting into users_webhooks_events for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.WithError(err).Errorf("error for %v route: %v", r.URL.String(), err)
+		http.Error(w, "Internal server error", 503)
+		return
+	}
+
 }

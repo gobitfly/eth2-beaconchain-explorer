@@ -1,0 +1,73 @@
+{{ define "js"}}
+
+{{end}}
+{{ define "css"}}
+{{end}}
+{{ define "content"}}
+    {{with .Data}}
+        <div class="container mt-2">
+            <div class="d-md-flex py-2 justify-content-md-between">
+                <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Webhooks</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
+                        <li class="breadcrumb-item"><a href="/" title="Home">Home</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Webhooks</li>
+                    </ol>
+                </nav>
+            </div>
+            <div class="container" style="padding:0; text-align:right;">
+                <input type="checkbox" id="showonlyemptygraffiti" name="showonlyemptygraffiti" />
+                <label for="showonlyemptygraffiti">Show only empty graffiti</label>
+            </div>            
+            <div class="card">
+                <div class="card-body px-0 py-3">
+                    <div class="table-responsive px-0 py-1">
+                        <table class="table" id="blocks">
+                            <thead>
+                            <tr>
+                               <th>ID</th>
+                               <th>URL</th>
+                               <th>Events</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <form action="/user/webhook/add" method="post">
+                <div class="input-group">
+                     <input type="text" placeholder="webhook endpoint" id="webhook_endpoint" required>
+                </div>  
+                <div class="form-check form-check-inline w-100 my-2">
+                    <label class="form-check-label mr-auto font-weight-normal">Attestations missed</label>
+                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="validator_attestation_missed" value="">
+                </div>
+                <div class="form-check form-check-inline w-100 my-2">
+                    <label class="form-check-label mr-auto font-weight-normal">Proposals missed</label>
+                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="validator_proposal_missed" value="">
+                </div>
+                <div class="form-check form-check-inline w-100 my-2">
+                    <label class="form-check-label mr-auto font-weight-normal">Proposals submitted</label>
+                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="validator_proposal_submitted" value="">
+                </div>
+                <div class="form-check form-check-inline w-100 my-2">
+                    <label class="form-check-label mr-auto font-weight-normal">Validator slashed</label>
+                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="validator_got_slashed" value="">
+                </div>
+                <div class="form-check form-check-inline w-100 my-2">
+                    <label class="form-check-label mr-auto font-weight-normal">Sync Committee</label>
+                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="validator_synccommittee_soon" value="">
+                </div>
+                <hr class="my-3" />
+                <!-- <div class="form-check form-check-inline w-100 my-2">
+                    <label class="form-check-label mr-auto font-weight-normal">All events</label>
+                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="all_events" value="">
+                </div> -->
+                <button type="submit" class="btn btn-primary">Add Webhook</button>
+            </form>
+        </div>
+    {{end}}
+{{end}}
