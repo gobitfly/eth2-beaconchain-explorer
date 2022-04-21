@@ -21,6 +21,7 @@ import (
 
 	"context"
 
+	gContext "github.com/gorilla/context"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
@@ -1670,7 +1671,7 @@ func MultipleUsersNotificationsSubscribe(w http.ResponseWriter, r *http.Request)
 	}
 
 	var jsonObjects []SubIntent
-	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
+	err := json.Unmarshal(gContext.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
 	if err != nil {
 		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not parse request")
@@ -1890,7 +1891,7 @@ func MultipleUsersNotificationsUnsubscribe(w http.ResponseWriter, r *http.Reques
 	}
 
 	var jsonObjects []UnSubIntent
-	err := json.Unmarshal(context.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
+	err := json.Unmarshal(gContext.Get(r, utils.JsonBodyNakedKey).([]byte), &jsonObjects)
 	if err != nil {
 		logger.Errorf("Could not parse multiple notification subscription intent | %v", err)
 		sendErrorResponse(j, r.URL.String(), "could not parse request")
@@ -2275,7 +2276,8 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 		SELECT 
 			id,
 			url,
-			retries
+			retries,
+			event_names
 		FROM webhooks
 		WHERE user_id = $1
 	`, user.UserID)
@@ -2285,6 +2287,39 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pageData.Webhooks = webhooks
+
+	events := make([]types.WebhookPageEvent, 7)
+
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Missed Attestations",
+		EventName:  types.ValidatorMissedAttestationEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Missed Proposals",
+		EventName:  types.ValidatorMissedProposalEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Submitted Proposals",
+		EventName:  types.ValidatorExecutedProposalEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Slashed",
+		EventName:  types.ValidatorGotSlashedEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Machine Offline",
+		EventName:  types.MonitoringMachineOfflineEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Machine Disk Full",
+		EventName:  types.MonitoringMachineDiskAlmostFullEventName,
+	})
+	events = append(events, types.WebhookPageEvent{
+		EventLabel: "Machine CPU",
+		EventName:  types.MonitoringMachineCpuLoadEventName,
+	})
+
+	pageData.Events = events
 
 	data.Data = pageData
 
@@ -2310,32 +2345,31 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 
 	url := r.FormValue("url")
 
-	validatorAttestationMissed := r.FormValue("validator_attestation_missed")
-	validatorProposalMissed := r.FormValue("validator_proposal_missed")
-	validatorProposalSubmitted := r.FormValue("validator_proposal_submitted")
-	validatorGotSlashed := r.FormValue("validator_got_slashed")
-	monitoringMachineOffline := r.FormValue("monitoring_machine_offline")
-	monitoringHddAlmostfull := r.FormValue("monitoring_hdd_almostfull")
-	monitoringCpuLoad := r.FormValue("monitoring_cpu_load")
+	validatorAttestationMissed := "on" == r.FormValue(string(types.ValidatorMissedAttestationEventName))
+	validatorProposalMissed := "on" == r.FormValue(string(types.ValidatorMissedProposalEventName))
+	validatorProposalSubmitted := "on" == r.FormValue(string(types.ValidatorExecutedProposalEventName))
+	validatorGotSlashed := "on" == r.FormValue(string(types.ValidatorGotSlashedEventName))
+	monitoringMachineOffline := "on" == r.FormValue(string(types.MonitoringMachineOfflineEventName))
+	monitoringHddAlmostfull := "on" == r.FormValue(string(types.MonitoringMachineDiskAlmostFullEventName))
+	monitoringCpuLoad := "on" == r.FormValue(string(types.MonitoringMachineCpuLoadEventName))
+	all := "on" == r.FormValue("all")
 
-	// subscriptions := make(map[string]bool, 0)
+	events := make(map[string]bool, 0)
 
-	// subscriptions["validator_attestation_missed"] = validatorAttestationMissed
-	// subscriptions["validator_proposal_missed"] = validatorProposalMissed
-	// subscriptions["validator_proposal_submitted"] = validatorProposalSubmitted
-	// subscriptions["validator_got_slashed"] = validatorGotSlashed
-	// subscriptions["monitoring_machine_offline"] = monitoringMachineOffline
-	// subscriptions["monitoring_hdd_almostfull"] = monitoringHddAlmostfull
-	// subscriptions["monitoring_cpu_load"] = monitoringCpuLoad
+	events[string(types.ValidatorMissedAttestationEventName)] = validatorAttestationMissed
+	events[string(types.ValidatorMissedProposalEventName)] = validatorProposalMissed
+	events[string(types.ValidatorExecutedProposalEventName)] = validatorProposalSubmitted
+	events[string(types.ValidatorGotSlashedEventName)] = validatorGotSlashed
+	events[string(types.MonitoringMachineOfflineEventName)] = monitoringMachineOffline
+	events[string(types.MonitoringMachineDiskAlmostFullEventName)] = monitoringHddAlmostfull
+	events[string(types.MonitoringMachineCpuLoadEventName)] = monitoringCpuLoad
 
-	eventNames := []string{
-		validatorAttestationMissed,
-		validatorProposalMissed,
-		validatorProposalSubmitted,
-		validatorGotSlashed,
-		monitoringMachineOffline,
-		monitoringHddAlmostfull,
-		monitoringCpuLoad,
+	eventNames := make([]string, 0)
+
+	for eventName, active := range events {
+		if active || all {
+			eventNames = append(eventNames, eventName)
+		}
 	}
 
 	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
@@ -2344,17 +2378,9 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	tx, err := db.FrontendDB.BeginTxx(ctx, &sql.TxOptions{})
 	defer tx.Rollback()
 
-	var webhookID uint64
-	err = tx.Get(&webhookID, `INSERT INTO users_webhooks (user_id, url) VALUES ($1, $2) RETURNING id`, user.UserID, url)
+	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names) VALUES ($1, $2, $3)`, user.UserID, url, pq.StringArray(eventNames))
 	if err != nil {
-		logger.WithError(err).Errorf("error inerting new webhook for user")
-		return
-	}
-
-	tx.Exec(`INSERT INTO users_webhooks_events (webhook_id, event_names) VALUES ($1, $2)`, webhookID, pq.StringArray(eventNames))
-	if err != nil {
-		logger.WithError(err).Errorf("error inserting into users_webhooks_events for %v route: %v", r.URL.String(), err)
-		http.Error(w, "Internal server error", 503)
+		logger.WithError(err).Errorf("error inserting a new webhook for user")
 		return
 	}
 
@@ -2364,5 +2390,4 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
-
 }
