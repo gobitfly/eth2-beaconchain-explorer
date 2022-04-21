@@ -1,8 +1,10 @@
 package services
 
 import (
+	"bytes"
 	"database/sql/driver"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"eth2-exporter/db"
 	ethclients "eth2-exporter/ethClients"
@@ -13,6 +15,7 @@ import (
 	"eth2-exporter/utils"
 	"fmt"
 	"math/big"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -201,7 +204,7 @@ func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notific
 func sendNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
 	sendEmailNotifications(notificationsByUserID, useDB)
 	sendPushNotifications(notificationsByUserID, useDB)
-	// sendWebhookNotifications(notificationsByUserID)
+	sendWebhookNotifications(notificationsByUserID, useDB)
 }
 
 func getNetwork() string {
@@ -1775,4 +1778,99 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 	}
 
 	return nil
+}
+
+func sendWebhookNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
+
+	for userID, userNotifications := range notificationsByUserID {
+		// userEmail, exists := emailsByUserID[userID]
+		// if !exists {
+		// 	logger.Errorf("error when sending email-notification: could not find email for user %v", userID)
+		// 	metrics.Errors.WithLabelValues("notifications_mail_not_found").Inc()
+		// 	continue
+		// }
+
+		var webhooks []types.UserWebhook
+		err := useDB.Select(&webhooks, `
+			SELECT 
+				id,
+				user_id,
+				url,
+				retries,
+				event_names
+			FROM users_webhooks
+			where user_id = $1
+		`, userID)
+		if err != nil {
+			logger.WithError(err).Errorf("error querying users_webhooks")
+			return
+		}
+
+		for _, w := range webhooks {
+			for event, notifications := range userNotifications {
+				eventSubscribed := false
+				for _, w := range w.EventNames {
+					if w == event {
+						eventSubscribed = true
+						break
+					}
+				}
+
+				if eventSubscribed {
+					tx, err := useDB.Begin()
+					if err != nil {
+						logger.WithError(err).Errorf("error creating transaction")
+						return
+					}
+					defer tx.Rollback()
+					for _, n := range notifications {
+						body := map[string]interface{}{
+							"event":       n.GetEventName(),
+							"title":       n.GetTitle(),
+							"description": n.GetInfo(true),
+							"epoch":       n.GetEpoch(),
+							"target":      n.GetEventFilter(),
+						}
+						json_data, err := json.Marshal(body)
+
+						if w.Retries > 0 {
+							_, err := tx.Exec(`INSERT INTO webhook_queue (webhook_id, event_payload) VALUES ($1, $2);`, w.ID, json_data)
+							if err != nil {
+								logger.WithError(err).Errorf("error updating users_webhooks table")
+							}
+							continue
+						}
+
+						resp, err := http.Post(w.Url, "application/json", bytes.NewBuffer(json_data))
+						if err != nil {
+							logger.WithError(err).Error("error sending webhook")
+							continue
+						}
+
+						if resp.StatusCode == http.StatusOK {
+							_, err := tx.Exec(`UPDATE users_webhooks SET retries = 0;`)
+							if err != nil {
+								logger.WithError(err).Errorf("error updating users_webhooks table")
+								continue
+							}
+						}
+
+						if resp.StatusCode != http.StatusOK {
+							_, err := tx.Exec(`UPDATE users_webhooks SET retries = retries + 1;`)
+							if err != nil {
+								logger.WithError(err).Errorf("error updating users_webhooks table")
+								continue
+							}
+						}
+					}
+					err = tx.Commit()
+					if err != nil {
+						logger.WithError(err).Errorf("error committing tx")
+						return
+					}
+				}
+			}
+		}
+	}
+
 }

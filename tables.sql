@@ -586,16 +586,9 @@ create table users_webhooks
     user_id           int                     not null,
     url               character varying(1024) not null,
     retries           int                     not null, -- a backoff parameter that indicates if the requests was successful and when to retry it again
+    event_names       text[]                  not null,
     primary key (user_id, id)
 );
-
-drop table if exists users_webhooks_events;
-create table users_webhooks_events (
-    id               serial  not null,
-    webhook_id       int     not null,
-    event_names      text[]  not null,
-    primary key (id, webhook_id)
-)
 
 drop table if exists users_notifications_webhook;
 create table if exists users_notifications_webhook (

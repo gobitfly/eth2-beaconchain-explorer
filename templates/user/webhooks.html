@@ -31,36 +31,29 @@
                             </tr>
                             </thead>
                             <tbody>
-
+                                {{range $i, $row := .Data.Webhooks}}
+                                    <tr>
+                                        <td>{{$row.ID}}</td>
+                                        <td>{{$row.Url}}</td>
+                                        <td>{{$row.Retries}}</td>
+                                    </tr>
+                                {{end}}
                             </tbody>
+                            <p>Add up to one webhook in the free tier.</p>
                         </table>
                     </div>
                 </div>
             </div>
-            <form action="/user/webhook/add" method="post">
+            <form action="/user/webhooks/add" method="post">
                 <div class="input-group">
-                     <input type="text" placeholder="webhook endpoint" id="webhook_endpoint" required>
-                </div>  
-                <div class="form-check form-check-inline w-100 my-2">
-                    <label class="form-check-label mr-auto font-weight-normal">Attestations missed</label>
-                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="validator_attestation_missed" value="">
-                </div>
-                <div class="form-check form-check-inline w-100 my-2">
-                    <label class="form-check-label mr-auto font-weight-normal">Proposals missed</label>
-                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="validator_proposal_missed" value="">
-                </div>
-                <div class="form-check form-check-inline w-100 my-2">
-                    <label class="form-check-label mr-auto font-weight-normal">Proposals submitted</label>
-                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="validator_proposal_submitted" value="">
-                </div>
-                <div class="form-check form-check-inline w-100 my-2">
-                    <label class="form-check-label mr-auto font-weight-normal">Validator slashed</label>
-                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="validator_got_slashed" value="">
-                </div>
-                <div class="form-check form-check-inline w-100 my-2">
-                    <label class="form-check-label mr-auto font-weight-normal">Sync Committee</label>
-                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="validator_synccommittee_soon" value="">
-                </div>
+                     <input name="url" type="text" placeholder="webhook endpoint" id="webhook_endpoint" required>
+                </div> 
+                {{range $i, $event := .Data.Events }}
+                    <div class="form-check form-check-inline w-100 my-2">
+                        <label class="form-check-label mr-auto font-weight-normal">{{$event.EventLabel}}</label>
+                        <input name="{{$event.EventName}}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="{{$event.EventName}}" value="">
+                    </div>
+                {{end}}
                 <hr class="my-3" />
                 <!-- <div class="form-check form-check-inline w-100 my-2">
                     <label class="form-check-label mr-auto font-weight-normal">All events</label>

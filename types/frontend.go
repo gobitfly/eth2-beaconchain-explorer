@@ -175,10 +175,11 @@ type EmailAttachment struct {
 }
 
 type UserWebhook struct {
-	ID      uint64 `db:"id"`
-	UserID  uint64 `db:"user_id"`
-	Url     string `db:"url"`
-	Retries uint64 `db:"retries"`
+	ID         uint64      `db:"id"`
+	UserID     uint64      `db:"user_id"`
+	Url        string      `db:"url"`
+	Retries    uint64      `db:"retries"`
+	EventNames []EventName `db:"event_names"`
 }
 
 type UserWebhookSubscriptions struct {

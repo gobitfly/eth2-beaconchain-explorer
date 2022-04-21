@@ -1175,4 +1175,10 @@ type RocketpoolPageDataDAOMember struct {
 
 type WebhookPageData struct {
 	Webhooks []UserWebhook
+	Events   []WebhookPageEvent
+}
+
+type WebhookPageEvent struct {
+	EventLabel string
+	EventName
 }
