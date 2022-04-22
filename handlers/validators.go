@@ -299,15 +299,17 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 		// for perfomance-reasons we combine multiple search results with `union`
 		args := []interface{}{}
 		searchQry := ""
+		countWhere := ""
 
 		if dataQuery.Search != "" {
 			args = append(args, "%"+strings.ToLower(dataQuery.Search)+"%")
-			searchQry += fmt.Sprintf(`SELECT publickey AS pubkey FROM validator_names WHERE LOWER(name) LIKE $%d`, len(args))
+			countWhere += fmt.Sprintf(`LOWER(name) LIKE $%d`, len(args))
+			searchQry += `SELECT publickey AS pubkey FROM validator_names WHERE ` + countWhere
 		} else {
 			if searchQry != "" {
 				searchQry += " UNION "
 			}
-			searchQry += "SELECT pubkey FROM validators " + dataQuery.StateFilter
+			searchQry += "SELECT pubkey FROM validators"
 		}
 		if dataQuery.SearchIndex != nil && *dataQuery.SearchIndex != 0 {
 			if searchQry != "" {
@@ -339,6 +341,10 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		addAnd := ""
+		if countWhere != "" {
+			addAnd = "AND"
+		}
 		qry = fmt.Sprintf(`
 			WITH matched_validators AS (%s)
 			SELECT
@@ -357,9 +363,14 @@ func ValidatorsData(w http.ResponseWriter, r *http.Request) {
 			FROM validators
 			INNER JOIN matched_validators ON validators.pubkey = matched_validators.pubkey
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
-			LEFT JOIN (select count(*) from matched_validators) cnt(total_count) ON true
+			LEFT JOIN (SELECT count(*)
+						FROM validators
+						LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
+						%s %s
+    					%s) cnt(total_count) ON true
+			%s
 			ORDER BY %s %s
-			LIMIT $%d OFFSET $%d`, searchQry, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
+			LIMIT $%d OFFSET $%d`, searchQry, dataQuery.StateFilter, addAnd, countWhere, dataQuery.StateFilter, dataQuery.OrderBy, dataQuery.OrderDir, len(args)-1, len(args))
 
 		err = db.DB.Select(&validators, qry, args...)
 		if err != nil {

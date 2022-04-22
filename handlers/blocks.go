@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"eth2-exporter/db"
 	"eth2-exporter/types"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var blocksTemplate = template.Must(template.New("blocks").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/blocks.html"))
@@ -199,7 +201,9 @@ func BlocksData(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN (select count(*) from matched_slots) cnt(total_count) ON true
 			ORDER BY slot DESC LIMIT $%v OFFSET $%v`, searchBlocksQry, len(args)-1, len(args))
 
-		err = db.DB.Select(&blocks, qry, args...)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		err = db.DB.SelectContext(ctx, &blocks, qry, args...)
 		if err != nil {
 			logger.Errorf("error retrieving block data (with search): %v", err)
 			http.Error(w, "Internal server error", http.StatusServiceUnavailable)
