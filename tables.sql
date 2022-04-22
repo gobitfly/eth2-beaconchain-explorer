@@ -585,24 +585,21 @@ create table users_webhooks
     id                serial                  not null,
     user_id           int                     not null,
     url               character varying(1024) not null,
-    retries           int                     not null, -- a backoff parameter that indicates if the requests was successful and when to retry it again
+    retries           int                     not null default 0, -- a backoff parameter that indicates if the requests was successful and when to retry it again
+    last_retry        timestamp without time zone,
     event_names       text[]                  not null,
+    destination       character varying(200), -- discord for example could be a destination and the request would be adapted
     primary key (user_id, id)
 );
 
-drop table if exists users_notifications_webhook;
-create table if exists users_notifications_webhook (
+drop table if exists webhooks_queue;
+create table webhooks_queue (
     id                  serial              not null,
-    notification_id     int                 not null,
+    webhook_id          int                 not null,
+    payload             bytea               not null,
     sent_ts             timestamp without   time zone,
-    primary key (notification_id, id)
+    primary key (webhook_id, id)
 );
-
--- drop table if exists webhook_queue;
--- create table webhook_queue (
---     webhook_id
---     notification_id
--- )
 
 drop table if exists mails_sent;
 create table mails_sent

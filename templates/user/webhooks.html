@@ -6,7 +6,7 @@
 {{ define "content"}}
     {{with .Data}}
         <div class="container mt-2">
-            <div class="d-md-flex py-2 justify-content-md-between">
+            <div class="d-md-flex py-2 mb-5 justify-content-md-between">
                 <h1 class="h4 mb-1 mb-md-0"><i class="fas fa-cubes mr-2"></i>Webhooks</h1>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb font-size-1 mb-0" style="padding:0; background-color:transparent;">
@@ -14,53 +14,61 @@
                         <li class="breadcrumb-item active" aria-current="page">Webhooks</li>
                     </ol>
                 </nav>
-            </div>
-            <div class="container" style="padding:0; text-align:right;">
-                <input type="checkbox" id="showonlyemptygraffiti" name="showonlyemptygraffiti" />
-                <label for="showonlyemptygraffiti">Show only empty graffiti</label>
-            </div>            
+            </div>       
             <div class="card">
-                <div class="card-body px-0 py-3">
-                    <div class="table-responsive px-0 py-1">
+                <div class="card-body px-0 py-0">
+                    {{ if len .Webhooks}}
+                    <div class="table-responsive px-0 py-0">
                         <table class="table" id="blocks">
                             <thead>
                             <tr>
-                               <th>ID</th>
                                <th>URL</th>
                                <th>Events</th>
+                               <th>Retries</th>
+                               <!-- <th>Destination</th> -->
                             </tr>
                             </thead>
                             <tbody>
-                                {{range $i, $row := .Data.Webhooks}}
+                                {{range $i, $row := .Webhooks}}
                                     <tr>
-                                        <td>{{$row.ID}}</td>
                                         <td>{{$row.Url}}</td>
+                                        <td>{{$row.EventNames}}</td>
                                         <td>{{$row.Retries}}</td>
+                                        <!-- <td>{{$row.Destination}}</td> -->
                                     </tr>
                                 {{end}}
                             </tbody>
-                            <p>Add up to one webhook in the free tier.</p>
                         </table>
                     </div>
+                    {{else}}
+                    <div class="p-3">No webhooks registered</div>
+                    {{end}}
                 </div>
             </div>
-            <form action="/user/webhooks/add" method="post">
-                <div class="input-group">
-                     <input name="url" type="text" placeholder="webhook endpoint" id="webhook_endpoint" required>
-                </div> 
-                {{range $i, $event := .Data.Events }}
-                    <div class="form-check form-check-inline w-100 my-2">
-                        <label class="form-check-label mr-auto font-weight-normal">{{$event.EventLabel}}</label>
-                        <input name="{{$event.EventName}}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="{{$event.EventName}}" value="">
-                    </div>
-                {{end}}
-                <hr class="my-3" />
-                <!-- <div class="form-check form-check-inline w-100 my-2">
-                    <label class="form-check-label mr-auto font-weight-normal">All events</label>
-                    <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="all_events" value="">
-                </div> -->
-                <button type="submit" class="btn btn-primary">Add Webhook</button>
-            </form>
+            <p class="my-4">Add up to one webhook in the free tier.</p>
+            <div class="row justify-content-center">
+                <div class="col col-md-8 col-lg-6">
+                    <h3>Add a new Webhook</h3>
+                    <form action="/user/webhooks/add" method="post">
+                        {{.CsrfField}}
+                        <div class="input-group my-3">
+                             <input class="form-control" name="url" type="text" placeholder="https://..." id="webhook_endpoint" required>
+                        </div> 
+                        {{range $i, $event := .Events }}
+                            <div class="form-check form-check-inline w-100 my-2">
+                                <label for="{{$event.EventName}}" class="form-check-label mr-auto font-weight-normal">{{$event.EventLabel}}</label>
+                                <input name="{{$event.EventName}}" class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="{{$event.EventName}}">
+                            </div>
+                        {{end}}
+                        <hr class="my-3" />
+                        <!-- <div class="form-check form-check-inline w-100 my-2">
+                            <label class="form-check-label mr-auto font-weight-normal">All events</label>
+                            <input class="form-check-input checkbox-custom-size ml-2 mr-0" type="checkbox" id="all_events" value="">
+                        </div> -->
+                        <button type="submit" class="btn btn-outline-primary">Add Webhook</button>
+                    </form>
+                </div>
+            </div>
         </div>
     {{end}}
 {{end}}

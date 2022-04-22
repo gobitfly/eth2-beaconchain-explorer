@@ -1174,8 +1174,9 @@ type RocketpoolPageDataDAOMember struct {
 }
 
 type WebhookPageData struct {
-	Webhooks []UserWebhook
-	Events   []WebhookPageEvent
+	Webhooks  []UserWebhook
+	Events    []WebhookPageEvent
+	CsrfField template.HTML
 }
 
 type WebhookPageEvent struct {

@@ -2271,14 +2271,17 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	ctx, done := context.WithTimeout(context.Background(), time.Second*30)
 	defer done()
 
+	pageData.CsrfField = csrf.TemplateField(r)
+
 	webhooks := []types.UserWebhook{}
 	err := db.FrontendDB.SelectContext(ctx, &webhooks, `
 		SELECT 
 			id,
 			url,
 			retries,
-			event_names
-		FROM webhooks
+			event_names,
+			destination
+		FROM users_webhooks
 		WHERE user_id = $1
 	`, user.UserID)
 	if err != nil {
@@ -2288,7 +2291,9 @@ func NotificationWebhookPage(w http.ResponseWriter, r *http.Request) {
 	}
 	pageData.Webhooks = webhooks
 
-	events := make([]types.WebhookPageEvent, 7)
+	// logger.Infof("events: %+v", webhooks)
+
+	events := make([]types.WebhookPageEvent, 0, 7)
 
 	events = append(events, types.WebhookPageEvent{
 		EventLabel: "Missed Attestations",
@@ -2338,6 +2343,8 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		logger.WithError(err).Errorf("error parsing form")
+		http.Error(w, "Internal server error", 503)
+		return
 	}
 
 	// const VALIDATOR_EVENTS = ['validator_attestation_missed', 'validator_proposal_missed', 'validator_proposal_submitted', 'validator_got_slashed', 'validator_synccommittee_soon']
@@ -2378,9 +2385,12 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 	tx, err := db.FrontendDB.BeginTxx(ctx, &sql.TxOptions{})
 	defer tx.Rollback()
 
+	// logger.Infof("inserting events: %v", eventNames)
+
 	_, err = tx.Exec(`INSERT INTO users_webhooks (user_id, url, event_names) VALUES ($1, $2, $3)`, user.UserID, url, pq.StringArray(eventNames))
 	if err != nil {
 		logger.WithError(err).Errorf("error inserting a new webhook for user")
+		http.Error(w, "Internal server error", 503)
 		return
 	}
 
@@ -2390,4 +2400,5 @@ func UsersAddWebhook(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal server error", 503)
 		return
 	}
+	http.Redirect(w, r, "/user/webhooks", http.StatusSeeOther)
 }
