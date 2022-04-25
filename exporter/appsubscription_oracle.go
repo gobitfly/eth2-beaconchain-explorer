@@ -226,7 +226,7 @@ func VerifyApple(receipt *types.PremiumData) (*VerifyResponse, error) {
 }
 
 func updateValidationState(receipt *types.PremiumData, validation *VerifyResponse) {
-	err := db.UpdateUserSubscription(receipt.ID, validation.Valid, validation.ExpirationDate, validation.RejectReason)
+	err := db.UpdateUserSubscription(nil, receipt.ID, validation.Valid, validation.ExpirationDate, validation.RejectReason)
 	if err != nil {
 		fmt.Printf("error updating subscription state %v", err)
 	}

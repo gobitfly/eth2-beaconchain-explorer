@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"encoding/json"
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
@@ -45,48 +46,40 @@ func StripeRemoveCustomer(customerID string) error {
 }
 
 // StripeCreateSubscription inserts a new subscription
-func StripeCreateSubscription(customerID, priceID, subscriptionID string, payload json.RawMessage) error {
+func StripeCreateSubscription(tx *sql.Tx, customerID, priceID, subscriptionID string, payload json.RawMessage) error {
 	purchaseGroup := utils.GetPurchaseGroup(priceID)
-	tx, err := FrontendDB.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
 
-	_, err = tx.Exec("INSERT INTO users_stripe_subscriptions (subscription_id, customer_id, price_id, active, payload, purchase_group) VALUES ($1, $2, $3, 'f', $4, $5)", subscriptionID, customerID, priceID, payload, purchaseGroup)
+	_, err := tx.Exec("INSERT INTO users_stripe_subscriptions (subscription_id, customer_id, price_id, active, payload, purchase_group) VALUES ($1, $2, $3, 'f', $4, $5)", subscriptionID, customerID, priceID, payload, purchaseGroup)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Commit()
 	return err
 }
 
 // StripeUpdateSubscription inserts a new subscription
-func StripeUpdateSubscription(priceID, subscriptionID string, payload json.RawMessage) error {
+func StripeUpdateSubscription(tx *sql.Tx, priceID, subscriptionID string, payload json.RawMessage) error {
 	purchaseGroup := utils.GetPurchaseGroup(priceID)
-	tx, err := FrontendDB.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
 
-	_, err = tx.Exec("UPDATE users_stripe_subscriptions SET price_id = $2, purchase_group = $4, payload = $3 where subscription_id = $1", subscriptionID, priceID, payload, purchaseGroup)
+	_, err := tx.Exec("UPDATE users_stripe_subscriptions SET price_id = $2, purchase_group = $4, payload = $3 where subscription_id = $1", subscriptionID, priceID, payload, purchaseGroup)
 	if err != nil {
 		return err
 	}
 
-	err = tx.Commit()
 	return err
 }
 
 // StripeUpdateSubscriptionStatus sets the status of a subscription
-func StripeUpdateSubscriptionStatus(id string, status bool, payload *json.RawMessage) error {
-	tx, err := FrontendDB.Begin()
-	if err != nil {
-		return err
+func StripeUpdateSubscriptionStatus(tx *sql.Tx, id string, status bool, payload *json.RawMessage) error {
+	var err error
+	var useInternTx bool = tx == nil
+	if useInternTx {
+		tx, err := FrontendDB.Begin()
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
 	}
-	defer tx.Rollback()
 
 	if payload == nil {
 		_, err = tx.Exec("UPDATE users_stripe_subscriptions SET active = $2 WHERE subscription_id = $1", id, status)
@@ -100,7 +93,10 @@ func StripeUpdateSubscriptionStatus(id string, status bool, payload *json.RawMes
 		}
 	}
 
-	err = tx.Commit()
+	if useInternTx {
+		err = tx.Commit()
+	}
+
 	return err
 }
 
