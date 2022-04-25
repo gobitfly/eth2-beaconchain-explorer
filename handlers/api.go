@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"eth2-exporter/db"
 	"eth2-exporter/exporter"
 	"eth2-exporter/price"
@@ -1430,7 +1431,7 @@ func RegisterEthpoolSubscription(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, 0, "", "")
+	err = db.InsertMobileSubscription(nil, claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, 0, "", "")
 	if err != nil {
 		logger.Errorf("could not save subscription data %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1485,7 +1486,7 @@ func RegisterMobileSubscriptions(w http.ResponseWriter, r *http.Request) {
 	validationResult, _ := exporter.VerifyReceipt(nil, verifyPackage)
 	parsedBase.Valid = validationResult.Valid
 
-	err = db.InsertMobileSubscription(claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason, "")
+	err = db.InsertMobileSubscription(nil, claims.UserID, parsedBase, parsedBase.Transaction.Type, parsedBase.Transaction.Receipt, validationResult.ExpirationDate, validationResult.RejectReason, "")
 	if err != nil {
 		logger.Errorf("could not save subscription data %v", err)
 		sendErrorResponse(j, r.URL.String(), "Can not save subscription data")
@@ -1970,7 +1971,9 @@ func insertStats(userData *types.UserWithPremium, machine string, body *map[stri
 			id, err = db.InsertStatsMeta(tx, userData.ID, parsedMeta)
 		}
 		if err != nil {
-			logger.Errorf("Could not store stats (meta stats) | %v", err)
+			if err != errors.New("sql: duplicate key value violates unique constraint") {
+				logger.Errorf("Could not store stats (meta stats) | %v", err)
+			}
 			sendErrorResponse(j, r.URL.String(), "could not store meta")
 			return false
 		}
