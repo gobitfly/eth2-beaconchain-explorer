@@ -67,9 +67,9 @@ func GetValidatorHist(validatorArr []uint64, currency string, start uint64, end 
 		case "rub":
 			prices[date] = item.RUB
 		case "aud":
-			prices[date] = item.RUB
-		default:
 			prices[date] = item.AUD
+		default:
+			prices[date] = item.USD
 			currency = "usd"
 		}
 	}
