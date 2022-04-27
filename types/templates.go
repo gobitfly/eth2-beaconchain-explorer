@@ -228,10 +228,12 @@ type ValidatorsPageData struct {
 	SlashingCount        uint64
 	SlashingOnlineCount  uint64
 	SlashingOfflineCount uint64
+	Slashed              uint64
 	ExitingCount         uint64
 	ExitingOnlineCount   uint64
 	ExitingOfflineCount  uint64
 	ExitedCount          uint64
+	VoluntaryExitsCount  uint64
 	UnknownCount         uint64
 	Validators           []*ValidatorsPageDataValidators
 }
