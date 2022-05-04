@@ -311,7 +311,7 @@ func AddTestSubscription(userID uint64, network string, eventName types.EventNam
 // DeleteSubscription removes a subscription from the database.
 func DeleteSubscription(userID uint64, network string, eventName types.EventName, eventFilter string) error {
 	name := string(eventName)
-	if network != "" {
+	if network != "" && !types.IsUserIndexed(eventName) {
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
 
