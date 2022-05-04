@@ -307,7 +307,20 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 		}
 		go func(userEmail string, userNotifications map[types.EventName][]types.Notification) {
 			sentSubsByEpoch := map[uint64][]uint64{}
-			subject := fmt.Sprintf("%s: Notification", utils.Config.Frontend.SiteDomain)
+			notification := ""
+			othernotifications := ""
+			i := 0
+			for userNotification := range userNotifications {
+				if i == 0 {
+					notification = string(userNotification)
+				} else if i == 1 {
+					othernotifications = fmt.Sprintf(" and %s", userNotification)
+				} else {
+					othernotifications = fmt.Sprintf(",... and %d other notifications", i)
+				}
+				i++
+			}
+			subject := fmt.Sprintf("%s: %s", utils.Config.Frontend.SiteDomain, notification+othernotifications)
 			msg := ""
 			attachments := []types.EmailAttachment{}
 			for event, ns := range userNotifications {
