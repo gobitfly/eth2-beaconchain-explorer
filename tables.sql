@@ -543,8 +543,12 @@ create table users_subscriptions
     event_name      character varying(100)      not null,
     event_filter    text                        not null default '',
     event_threshold real                        default 0,
-    last_sent_ts    timestamp without time zone,
-    last_sent_epoch int,
+    last_sent_ts    timestamp without time zone, -- the timestamp when the notification is queued
+    last_sent_epoch int, -- the epoch when the notification is queued
+    email           boolean,
+    push            boolean,
+    webhook         boolean,
+    discord         boolean,
     created_ts      timestamp without time zone not null,
     created_epoch   int                         not null,
     primary key (user_id, event_name, event_filter)
@@ -586,7 +590,7 @@ create table users_webhooks
     user_id           int                     not null,
     url               character varying(1024) not null,
     retries           int                     not null default 0, -- a backoff parameter that indicates if the requests was successful and when to retry it again
-    last_retry        timestamp without time zone,
+    last_sent         timestamp without time zone,
     event_names       text[]                  not null,
     destination       character varying(200), -- discord for example could be a destination and the request would be adapted
     primary key (user_id, id)
@@ -597,8 +601,23 @@ create table webhooks_queue (
     id                  serial              not null,
     webhook_id          int                 not null,
     payload             bytea               not null,
-    sent_ts             timestamp without   time zone,
+    response            bytea,
+    code                int,
+    sent_ts             timestamp without  time zone,
+    parent_id           int,
     primary key (webhook_id, id)
+);
+
+drop table if exists emails_queue;
+create table emails_queue
+(
+
+);
+
+drop table if exists push_queue;
+create table push_queue;
+(
+
 );
 
 drop table if exists mails_sent;
