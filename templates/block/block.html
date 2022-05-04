@@ -200,7 +200,7 @@
                         {{template "block_overview" .}}
                     </div>
                 </div>
-                {{if eq .VotesCount 0}}
+                {{if gt .VotesCount 0}}
                     <div class="tab-pane fade" id="votes" role="tabpanel" aria-labelledby="votes-tab">
                         <div class="card block-card">
                             {{template "block_votes" .}}
