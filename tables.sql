@@ -726,14 +726,15 @@ create table stake_pools_stats
 drop table if exists price;
 create table price
 (
-    ts  timestamp without time zone not null,
-    eur numeric(20,10)              not null,
-    usd numeric(20,10)              not null,
-    rub numeric(20,10)              not null,
-    cny numeric(20,10)              not null,
-    cad numeric(20,10)              not null,
-    jpy numeric(20,10)              not null,
-    gbp numeric(20,10)              not null,
+    ts     timestamp without time zone not null,
+    eur numeric(20,10)                not null,
+    usd numeric(20,10)                not null,
+    rub numeric(20,10)                not null,
+    cny numeric(20,10)                not null,
+    cad numeric(20,10)                not null,
+    jpy numeric(20,10)                not null,
+    gbp numeric(20,10)                not null,
+    aud numeric(20,10)                not null,
     primary key (ts)
 );
 
