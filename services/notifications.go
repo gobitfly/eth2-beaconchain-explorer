@@ -12,6 +12,7 @@ import (
 	"eth2-exporter/types"
 	"eth2-exporter/utils"
 	"fmt"
+	"html/template"
 	"math/big"
 	"net/url"
 	"strconv"
@@ -322,19 +323,21 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 				othernotifications = fmt.Sprintf(",... and %d other notifications", i)
 			}
 			subject := fmt.Sprintf("%s: %s", utils.Config.Frontend.SiteDomain, notification+othernotifications)
-			msg := ""
 			attachments := []types.EmailAttachment{}
+
+			var msg types.Email
+
 			for event, ns := range userNotifications {
-				if len(msg) > 0 {
-					msg += "\n"
+				if len(msg.Body) > 0 {
+					msg.Body += "<br>"
 				}
 				event_title := event
 				if event == types.TaxReportEventName {
 					event_title = "income_history"
 				}
-				msg += fmt.Sprintf("%s\n====\n\n", event_title)
+				msg.Body += template.HTML(fmt.Sprintf("%s<br>====<br><br>", types.EventLabel[event_title]))
 				for _, n := range ns {
-					msg += fmt.Sprintf("%s\n", n.GetInfo(true))
+					msg.Body += template.HTML(fmt.Sprintf("%s<br>", n.GetInfo(true)))
 					e := n.GetEpoch()
 					if _, exists := sentSubsByEpoch[e]; !exists {
 						sentSubsByEpoch[e] = []uint64{n.GetSubscriptionID()}
@@ -347,10 +350,10 @@ func sendEmailNotifications(notificationsByUserID map[uint64]map[types.EventName
 
 				}
 				if event == "validator_balance_decreased" {
-					msg += "\nYou will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.\n"
+					msg.Body += template.HTML("<br>You will not receive any further balance decrease mails for these validators until the balance of a validator is increasing again.<br>")
 				}
 			}
-			msg += fmt.Sprintf("\nBest regards\n\n%s", utils.Config.Frontend.SiteDomain)
+			// msg.Body += template.HTML(fmt.Sprintf("<br>Best regards<br>\n%s", utils.Config.Frontend.SiteDomain))
 
 			err := mail.SendMailRateLimited(userEmail, subject, msg, attachments)
 			if err != nil {
@@ -760,16 +763,23 @@ func (n *validatorAttestationNotification) GetEventName() types.EventName {
 
 func (n *validatorAttestationNotification) GetInfo(includeUrl bool) string {
 	var generalPart = ""
-	switch n.Status {
-	case 0:
-		generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation at slot %[2]v.`, n.ValidatorIndex, n.Slot)
-		//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
-	case 1:
-		generalPart = fmt.Sprintf(`Validator %[1]v submitted a successfull attestation for slot %[2]v.`, n.ValidatorIndex, n.Slot)
-	}
-
 	if includeUrl {
-		return generalPart + getUrlPart(n.ValidatorIndex)
+		switch n.Status {
+		case 0:
+			generalPart = fmt.Sprintf(`Validator <a href="%[3]v/validator/%[1]v">%[1]v</a> missed an attestation at slot <a href="%[3]v/block/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+		case 1:
+			generalPart = fmt.Sprintf(`Validator <a href="%[3]v/validator/%[1]v">%[1]v</a> submitted a successfull attestation for slot  <a href="%[3]v/block/%[2]v">%[2]v</a>.`, n.ValidatorIndex, n.Slot, utils.Config.Frontend.SiteDomain)
+		}
+		// return generalPart + getUrlPart(n.ValidatorIndex)
+	} else {
+		switch n.Status {
+		case 0:
+			generalPart = fmt.Sprintf(`Validator %[1]v missed an attestation at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+			//generalPart = fmt.Sprintf(`New scheduled attestation for Validator %[1]v at slot %[2]v.`, n.ValidatorIndex, n.Slot)
+		case 1:
+			generalPart = fmt.Sprintf(`Validator %[1]v submitted a successfull attestation for slot %[2]v.`, n.ValidatorIndex, n.Slot)
+		}
 	}
 	return generalPart
 }
