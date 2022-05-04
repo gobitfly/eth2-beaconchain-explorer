@@ -98,6 +98,7 @@ type Notification interface {
 	GetTitle() string
 	GetEventFilter() string
 	GetEmailAttachment() *EmailAttachment
+	GetNotificationChannels() []string
 }
 
 type Subscription struct {

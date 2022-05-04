@@ -50,12 +50,12 @@ func notificationsSender() {
 		// 		}
 		// 	}
 		// }
-		sendNotifications(notifications, db.FrontendDB)
+		queueNotifications(notifications, db.FrontendDB)
 
 		// Network DB Notifications (user related)
 		if utils.Config.Notifications.UserDBNotifications {
 			userNotifications := collectUserDbNotifications()
-			sendNotifications(userNotifications, db.FrontendDB)
+			queueNotifications(userNotifications, db.FrontendDB)
 		}
 
 		logger.WithField("notifications", len(notifications)).WithField("duration", time.Since(start)).Info("notifications completed")
@@ -202,10 +202,63 @@ func collectUserDbNotifications() map[uint64]map[types.EventName][]types.Notific
 	return notificationsByUserID
 }
 
-func sendNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
-	sendEmailNotifications(notificationsByUserID, useDB)
-	sendPushNotifications(notificationsByUserID, useDB)
-	sendWebhookNotifications(notificationsByUserID, useDB)
+
+func queueNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
+	savedSubIDs := make([]uint64, 0)
+
+	ts := time.Now()
+	
+	for userID, events := range notificationsByUserID {
+		tx, err := useDB.Beginx()
+		if err != nil {
+			logger.WithError(err).Errorf("error beginning tx")
+			continue
+		}
+		subs := make([]uint64, 0)
+		for event, notifications := range events {
+			for _, n := range notifications {
+				subs = append(subs, n)
+				channels := n.GetNotificationChannels()
+				if len(channels) > 0 {
+					for _, channel := range channels {
+						if channel == "email" {
+							queueEmailNotification(tx, n)
+						}
+						if channel == "webhook" {
+							queueWebhookNotification(tx, n)
+						}
+	
+						if channel == "discord" {
+							queueDiscordNotification(tx, n)
+						}
+	
+						if channel == "push" {
+							queuePushNotification(tx, n)
+						}
+					}
+					db.UpdateSubscriptionLastSent(tx, ts, n.GetEpoch(), n.GetSubscriptionID())
+					if err != nil {
+						logger.WithError(err).Errorf("error updating subscription last sent")
+						tx.Rollback()
+						continue
+					}
+				}
+			}
+		}
+		err = tx.Commit()
+		if err != nil {
+			 logger.WithError(err).Errorf("error queueing notification")
+			 tx.Rollback()
+			 continue
+		}
+		savedSubIDs = append(savedSubIDs, subs...)
+	}
+
+
+
+	// sendEmailNotifications(notificationsByUserID, useDB)
+	// sendPushNotifications(notificationsByUserID, useDB)
+	// sendWebhookNotifications(notificationsByUserID, useDB)
 }
 
 func getNetwork() string {
@@ -1781,174 +1834,177 @@ func collectSyncCommittee(notificationsByUserID map[uint64]map[types.EventName][
 	return nil
 }
 
-// func sendWebhookQueues(useDB *sqlx.DB) error {
+type WebhookQueue struct {
+	NotificationID uint64         `db:"id"`
+	Url            string         `db:"url"`
+	Retries        uint64         `db:"retries"`
+	LastSent       time.Time      `db:"last_retry"`
+	Destination    sql.NullString `db:"destination"`
+	Payload        []byte         `db:"payload"`
+	LastTry        time.Time      `db:"last_try"`
+}
 
-// 	type WebhookNotification struct {
-// 		NotificationID uint64         `db:"id"`
-// 		Url            string         `db:"url"`
-// 		Retries        uint64         `db:"retries"`
-// 		LastRetry      time.Time      `db:"last_retry"`
-// 		Destination    sql.NullString `db:"destination"`
-// 		Payload        []byte         `db:"payload"`
-// 	}
-// 	for {
-// 		notifications := WebhookNotification{}
-// 		err := useDB.Select(&notifications, `
-// 				SELECT
-// 					wq.id as notification_id
-// 					wq.payload,
-// 					uw.url,
-// 					uw.retries,
-// 					uw.last_retry,
-// 					uw.destination
-// 				FROM users_webhooks uw
-// 				INNER JOIN webhooks_queue wq ON wq uw.id = wq.webhook_id
-// 			`)
-// 		if err != nil {
-// 			logger.WithError(err).Errorf("error querying users_webhooks")
-// 			return err
-// 		}
+func processWebhookQueue(useDB *sqlx.DB) error {
+	client := &http.Client{Timeout: time.Second * 30}
 
-// 		// now := time.Now()
-// 	}
-
-// 	return nil
-// }
-
-func sendWebhookNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, useDB *sqlx.DB) {
-	for userID, userNotifications := range notificationsByUserID {
-		var webhooks []types.UserWebhook
-		err := useDB.Select(&webhooks, `
-			SELECT 
-				id,
-				user_id,
-				url,
-				retries,
-				event_names
-			FROM users_webhooks
-			where user_id = $1
-		`, userID)
-		if err == sql.ErrNoRows {
-			continue
-		}
+	for {
+		notifications := WebhookNotification{}
+		err := useDB.Select(&notifications, `
+				SELECT
+					wq.id as notification_id
+					wq.payload,
+					uw.url,
+					uw.retries,
+					uw.last_sent,
+					uw.destination
+				FROM users_webhooks uw
+				INNER JOIN webhooks_queue wq ON wq uw.id = wq.webhook_id
+			`)
 		if err != nil {
 			logger.WithError(err).Errorf("error querying users_webhooks")
-			return
+			return err
 		}
-		// logger.Infof("Checking webhooks: %+v for notifications: %+v", webhooks, userNotifications)
-		for _, w := range webhooks {
-			for event, notifications := range userNotifications {
-				eventSubscribed := false
-				for _, w := range w.EventNames {
-					if w == string(event) {
-						eventSubscribed = true
-						break
-					}
-				}
 
-				if eventSubscribed {
-					tx, err := useDB.Begin()
-					if err != nil {
-						logger.WithError(err).Errorf("error creating transaction")
-						return
-					}
-					defer tx.Rollback()
-					for _, n := range notifications {
-						// body := map[string]interface{}{
-						// 	"event":       n.GetEventName(),
-						// 	"title":       n.GetTitle(),
-						// 	"description": n.GetInfo(true),
-						// 	"epoch":       n.GetEpoch(),
-						// 	"target":      n.GetEventFilter(),
-						// }
-						// data, err := json.Marshal(body)
-						// if err != nil {
-						// 	logger.WithError(err).Errorf("error serializing json")
-						// 	return
-						// }
+		resp, err := client.Post(w.Url, "application/json", bytes.NewReader(reqEnc))
+		if err != nil {
+			logger.WithError(err).Errorf("error sending request")
+		}
 
-						// if w.Retries > 0 {
-						// 	_, err := tx.Exec(`INSERT INTO webhooks_queue (webhook_id, payload) VALUES ($1, $2);`, w.ID, data)
-						// 	if err != nil {
-						// 		logger.WithError(err).Errorf("error inserting into webhooks_queue")
-						// 	}
-						// 	continue
-						// }
-						// logger.Infof("sending webhook to %v with payload %+v", w.Url, body)
-						embeds := []types.DiscordEmbed{
-							{
-								Type:        "rich",
-								Color:       "16745472",
-								Description: n.GetInfo(true),
-								Title:       n.GetTitle(),
-								Fields: []types.DiscordEmbedField{
-									{
-										Name:   "Epoch",
-										Value:  fmt.Sprintf("%v", n.GetEpoch()),
-										Inline: true,
-									},
-									{
-										Name:   "Target",
-										Value:  fmt.Sprintf("%v", n.GetEventFilter()),
-										Inline: true,
-									},
-								},
-							},
-						}
-						client := &http.Client{Timeout: time.Second * 30}
-						req := types.DiscordReq{
-							Username: "Beaconchain",
-							Embeds:   embeds,
-						}
-						reqEnc, err := json.Marshal(req)
-						if err != nil {
-							logger.WithError(err).Errorf("error sending request")
-						}
-
-						resp, err := client.Post(w.Url, "application/json", bytes.NewReader(reqEnc))
-						if err != nil {
-							logger.WithError(err).Errorf("error sending request")
-						}
-
-						// resp, err := http.Post(w.Url, "application/json", bytes.NewBuffer(data))
-						// if err != nil {
-						// 	logger.WithError(err).Error("error sending webhook")
-						// 	// _, err = tx.Exec(`INSERT INTO webhooks_queue (webhook_id, payload) VALUES ($1, $2);`, w.ID, data)
-						// 	// if err != nil {
-						// 	// 	logger.WithError(err).Errorf("error inserting into webhooks_queue")
-						// 	// }
-						// 	continue
-						// }
-
-						if resp.StatusCode == http.StatusOK {
-							_, err := tx.Exec(`UPDATE users_webhooks SET retries = 0;`)
-							if err != nil {
-								logger.WithError(err).Errorf("error updating users_webhooks table")
-								return
-							}
-						}
-
-						if resp.StatusCode != http.StatusOK {
-							_, err := tx.Exec(`UPDATE users_webhooks SET retries = retries + 1;`)
-							if err != nil {
-								logger.WithError(err).Errorf("error updating users_webhooks table")
-								return
-							}
-							// _, err = tx.Exec(`INSERT INTO webhooks_queue (webhook_id, payload) VALUES ($1, $2);`, w.ID, data)
-							// if err != nil {
-							// 	logger.WithError(err).Errorf("error inserting into webhooks_queue")
-							// 	continue
-							// }
-						}
-					}
-					err = tx.Commit()
-					if err != nil {
-						logger.WithError(err).Errorf("error committing tx")
-						return
-					}
-				}
+		if resp.StatusCode == http.StatusOK {
+			_, err := tx.Exec(`UPDATE users_webhooks SET retries = 0;`)
+			if err != nil {
+				logger.WithError(err).Errorf("error updating users_webhooks table")
+				return
 			}
 		}
+
+		if resp.StatusCode != http.StatusOK {
+			_, err := tx.Exec(`UPDATE users_webhooks SET retries = retries + 1;`)
+			if err != nil {
+				logger.WithError(err).Errorf("error updating users_webhooks table")
+				return
+			}
+		}
+
+		// now := time.Now()
 	}
 
+	return nil
+}
+
+func queueWebhookNotification(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, tx *sqlx.Tx) ([]uint64, error) {
+	// the users_subscriptions that are triggered through a webhook
+	subs := make([]uint64, 0)
+	tx, err := .Beginx()
+	if err != nil {
+		 return fmt.Errorf("error beginning transaction")
+	}
+	defer tx.Rollback()
+
+	for userID, userNotifications := range notificationsByUserID {
+	
+	}
+
+}
+
+// func queueWebhookNotifications(notificationsByUserID map[uint64]map[types.EventName][]types.Notification, tx *sqlx.Tx) ([]uint64, error) {
+// 	// the users_subscriptions that are triggered through a webhook
+// 	subs := make([]uint64, 0)
+
+// 	for userID, userNotifications := range notificationsByUserID {
+// 		var webhooks []types.UserWebhook
+// 		err := tx.Select(&webhooks, `
+// 			SELECT 
+// 				id,
+// 				user_id,
+// 				url,
+// 				retries,
+// 				event_names,
+// 				destination
+// 			FROM users_webhooks
+// 			where user_id = $1
+// 		`, userID)
+// 		// continue if the user does not have a webhook
+// 		if err == sql.ErrNoRows {
+// 			continue
+// 		}
+// 		if err != nil {
+// 			return subs, fmt.Errorf("error quering users_webhooks, err: %w", err)
+// 		}
+// 		// send the notifications to each registered webhook
+// 		for _, w := range webhooks {
+// 			for event, notifications := range userNotifications {
+// 				eventSubscribed := false
+// 				// check if the webhook is subscribed to the type of event
+// 				for _, w := range w.EventNames {
+// 					if w == string(event) {
+// 						eventSubscribed = true
+// 						break
+// 					}
+// 				}
+
+// 				if eventSubscribed {
+// 					for _, n := range notifications {
+						
+// 						subs = append(subs, n.GetSubscriptionID())
+
+// 						var reqEnc interface{}
+
+// 						if w.Destination.Valid && w.Destination.String == "discord" {
+// 							embeds := []types.DiscordEmbed{
+// 								{
+// 									Type:        "rich",
+// 									Color:       "16745472",
+// 									Description: n.GetInfo(true),
+// 									Title:       n.GetTitle(),
+// 									Fields: []types.DiscordEmbedField{
+// 										{
+// 											Name:   "Epoch",
+// 											Value:  fmt.Sprintf("%v", n.GetEpoch()),
+// 											Inline: true,
+// 										},
+// 										{
+// 											Name:   "Target",
+// 											Value:  fmt.Sprintf("%v", n.GetEventFilter()),
+// 											Inline: true,
+// 										},
+// 									},
+// 								},
+// 							}
+// 							req := types.DiscordReq{
+// 								Username: "Beaconchain",
+// 								Embeds:   embeds,
+// 							}
+// 							reqEnc, err = json.Marshal(req)
+// 							if err != nil {
+// 								logger.WithError(err).Errorf("error sending request")
+// 							}
+// 						} else {
+// 							// TODO: improve event object definition
+// 							body := map[string]interface{}{
+// 								"event":       n.GetEventName(),
+// 								"title":       n.GetTitle(),
+// 								"description": n.GetInfo(true),
+// 								"epoch":       n.GetEpoch(),
+// 								"target":      n.GetEventFilter(),
+// 							}
+
+// 							reqEnc, err = json.Marshal(body)
+// 							if err != nil {
+// 								return subs, fmt.Errorf("error serializing json, err: %w", err)
+// 							}
+// 						}
+
+// 						_, err = tx.Exec(`INSERT INTO webhooks_queue (webhook_id, payload) VALUES ($1, $2);`, w.ID, reqEnc)
+// 						if err != nil {
+// 							logger.WithError(err).Errorf("error inserting into webhooks_queue")
+// 							continue
+// 						}
+
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return subs, nil
 }
