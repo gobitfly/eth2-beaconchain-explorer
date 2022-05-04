@@ -40,6 +40,27 @@ const (
 	SyncCommitteeSoon                                EventName = "validator_synccommittee_soon"
 )
 
+var UserIndexEvents = []EventName{
+	EthClientUpdateEventName,
+	MonitoringMachineCpuLoadEventName,
+	EthClientUpdateEventName,
+	MonitoringMachineOfflineEventName,
+	MonitoringMachineDiskAlmostFullEventName,
+	MonitoringMachineCpuLoadEventName,
+	MonitoringMachineMemoryUsageEventName,
+	MonitoringMachineSwitchedToETH2FallbackEventName,
+	MonitoringMachineSwitchedToETH1FallbackEventName,
+}
+
+func IsUserIndexed(event EventName) bool {
+	for _, ev := range UserIndexEvents {
+		if ev == event {
+			return true
+		}
+	}
+	return false
+}
+
 var EventNames = []EventName{
 	ValidatorBalanceDecreasedEventName,
 	ValidatorExecutedProposalEventName,

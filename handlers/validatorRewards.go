@@ -19,7 +19,7 @@ import (
 
 var validatorRewardsServicesTemplate = template.Must(template.New("validatorRewards").Funcs(utils.GetTemplateFuncs()).ParseFiles("templates/layout.html", "templates/validatorRewards.html"))
 
-// var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub"}
+// var supportedCurrencies = []string{"eur", "usd", "gbp", "cny", "cad", "jpy", "rub", "aud"}
 
 type rewardsResp struct {
 	Currencies        []string
