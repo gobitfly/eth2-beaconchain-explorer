@@ -82,36 +82,6 @@ var EventLabel map[EventName]string = map[EventName]string{
 	SyncCommitteeSoon:                                "You will soon be part of the rocket pool sync committee",
 }
 
-// var EventLabels map[EventName]string = map[EventName]string{
-// 	ValidatorBalanceDecreasedEventName: "asdf",
-// 	ValidatorMissedProposalEventName: "asdf",
-// 	ValidatorExecutedProposalEventName: "asdf",
-// 	ValidatorMissedAttestationEventName: "asdf",
-// 	ValidatorGotSlashedEventName: "asdf",
-// 	ValidatorDidSlashEventName: "asdf",
-// 	ValidatorStateChangedEventName: "asdf",
-// 	ValidatorReceivedDepositEventName: "asdf",
-// 	NetworkSlashingEventName: "asdf",
-// 	NetworkValidatorActivationQueueFullEventName: "asdf",
-// 	NetworkValidatorActivationQueueNotFullEventName: "asdf",
-// 	NetworkValidatorExitQueueFullEventName: "asdf",
-// 	NetworkValidatorExitQueueNotFullEventName: "asdf",
-// 	NetworkLivenessIncreasedEventName: "asdf",
-// 	EthClientUpdateEventName: "asdf",
-// 	MonitoringMachineOfflineEventName: "asdf",
-// 	MonitoringMachineDiskAlmostFullEventName: "asdf",
-// 	MonitoringMachineCpuLoadEventName: "asdf",
-// 	MonitoringMachineMemoryUsageEventName: "asdf",
-// 	MonitoringMachineSwitchedToETH2FallbackEventName: "asdf",
-// 	MonitoringMachineSwitchedToETH1FallbackEventName: "asdf",
-// 	TaxReportEventName: "asdf",
-// 	RocketpoolCommissionThresholdEventName: "asdf",
-// 	RocketpoolNewClaimRoundStartedEventName: "asdf",
-// 	RocketpoolColleteralMinReached: "asdf",
-// 	RocketpoolColleteralMaxReached: "asdf",
-// 	SyncCommitteeSoon: "asdf",
-// }
-
 func IsUserIndexed(event EventName) bool {
 	for _, ev := range UserIndexEvents {
 		if ev == event {
