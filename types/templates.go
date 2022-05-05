@@ -1178,10 +1178,5 @@ type Email struct {
 	Title                 string
 	Body                  template.HTML
 	SubscriptionManageURL string
-	UnsubscribeLinks      []UnsubscribeLink
-}
-
-type UnsubscribeLink struct {
-	Link  string
-	Label string
+	UnSubURL              template.HTML
 }

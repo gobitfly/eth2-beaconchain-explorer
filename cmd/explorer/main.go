@@ -306,6 +306,8 @@ func main() {
 			router.HandleFunc("/rewards/hist", handlers.RewardsHistoricalData).Methods("GET")
 			router.HandleFunc("/rewards/hist/download", handlers.DownloadRewardsHistoricalData).Methods("GET")
 
+			router.HandleFunc("/notifications/unsubscribe", handlers.UserNotificationsUnsubscribeByHash).Methods("GET")
+
 			// router.HandleFunc("/user/validators", handlers.UserValidators).Methods("GET")
 
 			signUpRouter := router.PathPrefix("/").Subrouter()

@@ -32,7 +32,7 @@
             <div class="burger brand">
                 <a style="color: transparent !important" class="brand-link" href="https://{{ .Domain }}">
                     <img style="padding-top: 10px; padding-bottom: 1px; padding-left: 10px;"
-                        src="https://{{ .Domain }}/img/beaconchainTextLogoNoBg.png" alt="beaconchain logo">
+                        src="https://{{ .Domain }}/img/beaconchainTextLogoDark.png" alt="beaconchain logo">
                 </a>
             </div>
 
@@ -57,9 +57,15 @@
     <div style="padding-top: 5px; opacity: 0.8; padding-left: 10px; padding-right: 10px;">
         <div>
             <br />
-            {{ if .Mail.SubscriptionManageURL }} You can manage your subscriptions <a href="{{.Mail.SubscriptionManageURL}}">here</a>. {{end}}
+            {{ if .Mail.SubscriptionManageURL }} Manage your subscriptions <a href="{{.Mail.SubscriptionManageURL}}">here</a>. {{end}}
+            
+            
             <p><a href="https://{{ .Domain }}">{{ .Domain }}</a> | <a href="https://{{ .Domain }}/imprint">Imprint</a></p>
             <p>bitfly gmbh<br/>
+            <br>
+            <small>
+                <p>{{.Mail.UnSubURL}} to stop receiving notifications of this kind.</p>
+            </small>
         </div>
     </div>
 

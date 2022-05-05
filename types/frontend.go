@@ -178,18 +178,20 @@ type Notification interface {
 	GetTitle() string
 	GetEventFilter() string
 	GetEmailAttachment() *EmailAttachment
+	GetUnsubscribeHash() string
 }
 
 type Subscription struct {
-	ID             *uint64    `db:"id,omitempty"`
-	UserID         *uint64    `db:"user_id,omitempty"`
-	EventName      string     `db:"event_name"`
-	EventFilter    string     `db:"event_filter"`
-	LastSent       *time.Time `db:"last_sent_ts"`
-	LastEpoch      *uint64    `db:"last_sent_epoch"`
-	CreatedTime    time.Time  `db:"created_ts"`
-	CreatedEpoch   uint64     `db:"created_epoch"`
-	EventThreshold float64    `db:"event_threshold"`
+	ID              *uint64        `db:"id,omitempty"`
+	UserID          *uint64        `db:"user_id,omitempty"`
+	EventName       string         `db:"event_name"`
+	EventFilter     string         `db:"event_filter"`
+	LastSent        *time.Time     `db:"last_sent_ts"`
+	LastEpoch       *uint64        `db:"last_sent_epoch"`
+	CreatedTime     time.Time      `db:"created_ts"`
+	CreatedEpoch    uint64         `db:"created_epoch"`
+	EventThreshold  float64        `db:"event_threshold"`
+	UnsubscribeHash sql.NullString `db:"unsubscribe_hash"`
 }
 
 type TaggedValidators struct {
