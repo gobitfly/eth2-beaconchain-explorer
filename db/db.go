@@ -516,14 +516,14 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 
 	err = DB.Select(&deposits.Eth2Deposits, `
 		SELECT 
-			block_slot,
-			block_index,
-			block_root,
-			proof,
-			publickey,
-			withdrawalcredentials,
-			amount,
-			signature
+			blocks_deposits.block_slot,
+			blocks_deposits.block_index,
+			blocks_deposits.block_root,
+			blocks_deposits.proof,
+			blocks_deposits.publickey,
+			blocks_deposits.withdrawalcredentials,
+			blocks_deposits.amount,
+			blocks_deposits.signature
 		FROM blocks_deposits
 		INNER JOIN blocks ON (blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1') OR (blocks_deposits.block_slot = 0 AND blocks_deposits.block_slot = blocks.slot AND blocks_deposits.publickey = $1)
 		WHERE blocks_deposits.publickey = $1`, publicKey)
