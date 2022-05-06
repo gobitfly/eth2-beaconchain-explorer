@@ -1847,7 +1847,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 			var rocketpoolNodes []string
 			err = db.DB.Select(&rocketpoolNodes, `
-				SELECT DISTINCT(encode(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
+				SELECT DISTINCT(ENCODE(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
 			`, pq.ByteaArray(pubkeys))
 			if err != nil {
 				ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
@@ -1997,7 +1997,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 
 			var rocketpoolNodes []string
 			err = db.DB.Select(&rocketpoolNodes, `
-				SELECT DISTINCT(encode(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
+				SELECT DISTINCT(ENCODE(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
 			`, pq.ByteaArray(pubkeys))
 			if err != nil {
 				ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
