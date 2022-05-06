@@ -465,7 +465,7 @@ func BlockVoteData(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		err = db.DB.Get(&blockSlot, `SELECT blocks.slot FROM blocks WHERE blocks.blockroot = $1`, blockRootHash)
+		err = db.DB.Get(&blockSlot, `SELECT blocks.slot FROM blocks WHERE blocks.blockroot = $1 OR blocks.stateroot = $1`, blockRootHash)
 		if err != nil {
 			logger.Errorf("error querying for block slot with block root hash %v err: %v", blockRootHash, err)
 			http.Error(w, "Interal server error", http.StatusInternalServerError)

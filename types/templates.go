@@ -1173,3 +1173,10 @@ type RocketpoolPageDataDAOMember struct {
 	RPLBondAmount            string    `db:"rpl_bond_amount"`
 	UnbondedValidatorCount   uint64    `db:"unbonded_validator_count"`
 }
+
+type Email struct {
+	Title                 string
+	Body                  template.HTML
+	SubscriptionManageURL string
+	UnSubURL              template.HTML
+}
