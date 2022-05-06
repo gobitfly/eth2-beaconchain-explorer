@@ -1627,11 +1627,10 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 		WITH
 			slashings AS (
 				SELECT DISTINCT ON (slashedvalidator) 
+					slot,
 					epoch,
 					slasher,
-					slasher_pubkey,
 					slashedvalidator,
-					slashedvalidator_pubkey,
 					reason
 				FROM (
 					SELECT
