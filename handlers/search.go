@@ -80,7 +80,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if searchLikeRE.MatchString(search) {
 			if len(search) < 64 {
 				err = db.DB.Select(result, `
-				SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
+				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
 				WHERE CAST(slot AS text) LIKE $1
 				ORDER BY slot LIMIT 10`, search+"%")
@@ -92,7 +92,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				err = db.DB.Select(result, `
-				SELECT slot, ENCODE(blockroot::bytea, 'hex') AS blockroot 
+				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
 				WHERE blockroot = $1 OR
 					stateroot = $1
@@ -147,9 +147,9 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			err = db.DB.Select(result, `
-				SELECT DISTINCT ENCODE(from_address::bytea, 'hex') as from_address
+				SELECT DISTINCT ENCODE(from_address, 'hex') as from_address
 				FROM eth1_deposits
-				WHERE from_address LIKE $1 || '%'::bytea 
+				WHERE ENCODE(from_address, 'hex') = $1 
 				LIMIT 10`, eth1AddressHash)
 		}
 	case "indexed_validators":
@@ -188,12 +188,12 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			SELECT from_address, COUNT(*), ARRAY_AGG(validatorindex) validatorindices FROM (
 				SELECT 
 					DISTINCT ON(validatorindex) validatorindex,
-					ENCODE(from_address::bytea, 'hex') as from_address,
+					ENCODE(from_address, 'hex') as from_address,
 					DENSE_RANK() OVER (PARTITION BY from_address ORDER BY validatorindex) AS validatorrow,
 					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE from_address LIKE $1 || '%'::bytea
+				WHERE ENCODE(from_address, 'hex') = $1
 			) a 
 			WHERE validatorrow <= $2 AND addressrow <= 10
 			GROUP BY from_address

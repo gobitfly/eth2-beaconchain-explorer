@@ -89,7 +89,7 @@ func GetEth1Deposits(address string, length, start uint64) ([]*types.EthOneDepos
 	return deposits, nil
 }
 
-var searchLikeHash = regexp.MustCompile(`^0?x?[0-9a-fA-F]{2,96}`) // only search for pubkeys if string consists of 96 hex-chars
+var searchLikeHash = regexp.MustCompile(`^0?x?[0-9a-f]{2,96}`) // only search for pubkeys if string consists of 96 hex-chars
 
 func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy, orderDir string, latestEpoch, validatorOnlineThresholdSlot uint64) ([]*types.EthOneDepositsData, uint64, error) {
 	deposits := []*types.EthOneDepositsData{}
@@ -111,27 +111,33 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 
 	var totalCount uint64
 	var err error
+
+	query = strings.Replace(query, "0x", "", -1)
+
 	if searchLikeHash.MatchString(query) {
 		if query != "" {
+			logger.Infof("RN: 1")
 			err = DB.Get(&totalCount, `
 				SELECT COUNT(*) FROM eth1_deposits as eth1
 				WHERE 
-					eth1.publickey LIKE $1 || '%'::bytea
-					OR eth1.withdrawal_credentials LIKE $1 || '%'::bytea
-					OR eth1.from_address LIKE $1 || '%'::bytea
-					OR tx_hash LIKE $1 || '%'::bytea
-					OR CAST(eth1.block_number AS text) LIKE LOWER($1::text) || '%'`, query)
+					ENCODE(eth1.publickey, 'hex') = $1
+					OR ENCODE(eth1.withdrawal_credentials, 'hex') = $1
+					OR ENCODE(eth1.from_address, 'hex') = $1
+					OR ENCODE(tx_hash, 'hex') = $1
+					OR CAST(eth1.block_number AS text) = $1`, query)
 		}
 	} else {
 		if query != "" {
+			logger.Infof("RN: 2")
 			err = DB.Get(&totalCount, `
 				SELECT COUNT(*) FROM eth1_deposits as eth1
 				WHERE 
-					CAST(eth1.block_number AS text) LIKE LOWER($1::text) || '%'`, query)
+				CAST(eth1.block_number AS text) = $1`, query)
 		}
 	}
 
 	if query == "" {
+		logger.Infof("RN: 3")
 		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits")
 	}
 
@@ -140,7 +146,8 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	}
 
 	if query != "" {
-		err = DB.Select(&deposits, fmt.Sprintf(`
+		logger.Infof("RN: 4")
+		wholeQuery := fmt.Sprintf(`
 		SELECT 
 			eth1.tx_hash as tx_hash,
 			eth1.tx_input as tx_input,
@@ -173,15 +180,23 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ON
 			v.pubkey = eth1.publickey
 		WHERE
-			eth1.publickey LIKE $5 || '%%'::bytea
-			OR eth1.withdrawal_credentials LIKE $5 || '%%'::bytea
-			OR eth1.from_address LIKE $5 || '%%'::bytea
-			OR tx_hash LIKE $5 || '%%'::bytea
-			OR CAST(eth1.block_number AS text) LIKE LOWER($5::text) || '%%'
+			ENCODE(eth1.publickey, 'hex') = $5
+			OR ENCODE(eth1.withdrawal_credentials, 'hex') = $5
+			OR ENCODE(eth1.from_address, 'hex') = $5
+			OR ENCODE(tx_hash, 'hex') = $5
+			OR CAST(eth1.block_number AS text) = $5
 		ORDER BY %s %s
 		LIMIT $1
-		OFFSET $2`, orderBy, orderDir), length, start, latestEpoch, validatorOnlineThresholdSlot, query)
+		OFFSET $2`, orderBy, orderDir)
+		// logger.Infof("RN: wholeQuery: %s", wholeQuery)
+		logger.Infof("RN: length: %d", length)
+		logger.Infof("RN: start: %d", start)
+		logger.Infof("RN: latestEpoch: %d", latestEpoch)
+		logger.Infof("RN: validatorOnlineThresholdSlot: %d", validatorOnlineThresholdSlot)
+		logger.Infof("RN: query: %s", query)
+		err = DB.Select(&deposits, wholeQuery, length, start, latestEpoch, validatorOnlineThresholdSlot, query)
 	} else {
+		logger.Infof("RN: 5")
 		err = DB.Select(&deposits, fmt.Sprintf(`
 		SELECT 
 			eth1.tx_hash as tx_hash,
@@ -274,7 +289,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 					FROM
 						eth1_deposits as eth1
 					WHERE
-						eth1.from_address LIKE $1 || '%%'::bytea
+					ENCODE(eth1.from_address, 'hex') = $1
 						GROUP BY from_address
 				) as count
 		`, query+"%")
@@ -316,7 +331,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 			FROM validators
 			LEFT JOIN validator_names ON validators.pubkey = validator_names.publickey
 		) v ON v.pubkey = eth1.publickey
-		WHERE eth1.from_address LIKE $4 || '%%'::bytea
+		WHERE ENCODE(eth1.from_address, 'hex') = $4
 		GROUP BY eth1.from_address
 		ORDER BY %s %s
 		LIMIT $1
@@ -329,7 +344,7 @@ func GetEth1DepositsLeaderboard(query string, length, start uint64, orderBy, ord
 
 func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir string) ([]*types.EthTwoDepositData, error) {
 	deposits := []*types.EthTwoDepositData{}
-	// ENCODE(publickey::bytea, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials::bytea, 'hex') LIKE $3 OR
+	// ENCODE(publickey, 'hex') LIKE $3 OR ENCODE(withdrawalcredentials, 'hex') LIKE $3 OR
 	if orderDir != "desc" && orderDir != "asc" {
 		orderDir = "desc"
 	}
@@ -356,7 +371,9 @@ func GetEth2Deposits(query string, length, start uint64, orderBy, orderDir strin
 				blocks_deposits.signature
 			FROM blocks_deposits
 			INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
-			WHERE publickey LIKE $3 || '%%'::bytea OR withdrawalcredentials LIKE $3 || '%%'::bytea OR CAST(block_slot as varchar) LIKE $3
+			WHERE ENCODE(publickey, 'hex') = $3
+				OR ENCODE(withdrawalcredentials, 'hex') = $3
+				OR CAST(block_slot as varchar) = $3
 			ORDER BY %s %s
 			LIMIT $1
 			OFFSET $2`, orderBy, orderDir), length, start, query+"%")
@@ -400,9 +417,9 @@ func GetEth2DepositsCount(search string) (uint64, error) {
 		FROM blocks_deposits
 		INNER JOIN blocks ON blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1'
 		WHERE 
-			publickey LIKE $1 || '%%'::bytea
-			OR withdrawalcredentials LIKE $1 || '%%'::bytea
-			OR CAST(block_slot as varchar) LIKE $1
+			ENCODE(publickey, 'hex') = $1
+			OR ENCODE(withdrawalcredentials, 'hex') = $1
+			OR CAST(block_slot as varchar) = $1
 		`, search)
 	}
 	if err != nil {
