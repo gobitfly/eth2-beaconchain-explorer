@@ -275,14 +275,32 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 
 	var subscriptions []*types.Subscription
 	query := `
-		SELECT * 
+		SELECT
+			id,
+			user_id,
+			event_name,
+			event_filter,
+			last_sent_ts,
+			last_sent_epoch,
+			created_ts,
+			created_epoch,
+			event_threshold
 		FROM users_subscriptions
 		WHERE user_id = $1 AND event_name LIKE $2
 	`
 
 	if utils.GetNetwork() == "mainnet" {
 		query = `
-			SELECT * 
+			SELECT 
+				id,
+				user_id,
+				event_name,
+				event_filter,
+				last_sent_ts,
+				last_sent_epoch,
+				created_ts,
+				created_epoch,
+				event_threshold 
 			FROM users_subscriptions
 			WHERE user_id = $1 AND (event_name LIKE $2 OR event_name LIKE 'monitoring_%')
 		`
