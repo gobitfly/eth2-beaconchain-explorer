@@ -116,7 +116,6 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 
 	if searchLikeHash.MatchString(query) {
 		if query != "" {
-			logger.Infof("RN: 1")
 			err = DB.Get(&totalCount, `
 				SELECT COUNT(*) FROM eth1_deposits as eth1
 				WHERE 
@@ -128,7 +127,6 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		}
 	} else {
 		if query != "" {
-			logger.Infof("RN: 2")
 			err = DB.Get(&totalCount, `
 				SELECT COUNT(*) FROM eth1_deposits as eth1
 				WHERE 
@@ -137,7 +135,6 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	}
 
 	if query == "" {
-		logger.Infof("RN: 3")
 		err = DB.Get(&totalCount, "SELECT COUNT(*) FROM eth1_deposits")
 	}
 
@@ -146,7 +143,6 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 	}
 
 	if query != "" {
-		logger.Infof("RN: 4")
 		wholeQuery := fmt.Sprintf(`
 		SELECT 
 			eth1.tx_hash as tx_hash,
@@ -188,15 +184,8 @@ func GetEth1DepositsJoinEth2Deposits(query string, length, start uint64, orderBy
 		ORDER BY %s %s
 		LIMIT $1
 		OFFSET $2`, orderBy, orderDir)
-		// logger.Infof("RN: wholeQuery: %s", wholeQuery)
-		logger.Infof("RN: length: %d", length)
-		logger.Infof("RN: start: %d", start)
-		logger.Infof("RN: latestEpoch: %d", latestEpoch)
-		logger.Infof("RN: validatorOnlineThresholdSlot: %d", validatorOnlineThresholdSlot)
-		logger.Infof("RN: query: %s", query)
 		err = DB.Select(&deposits, wholeQuery, length, start, latestEpoch, validatorOnlineThresholdSlot, query)
 	} else {
-		logger.Infof("RN: 5")
 		err = DB.Select(&deposits, fmt.Sprintf(`
 		SELECT 
 			eth1.tx_hash as tx_hash,
