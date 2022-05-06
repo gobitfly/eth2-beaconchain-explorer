@@ -515,7 +515,16 @@ func GetValidatorDeposits(publicKey []byte) (*types.ValidatorDeposits, error) {
 	}
 
 	err = DB.Select(&deposits.Eth2Deposits, `
-		SELECT blocks_deposits.* FROM blocks_deposits
+		SELECT 
+			block_slot,
+			block_index,
+			block_root,
+			proof,
+			publickey,
+			withdrawalcredentials,
+			amount,
+			signature
+		FROM blocks_deposits
 		INNER JOIN blocks ON (blocks_deposits.block_root = blocks.blockroot AND blocks.status = '1') OR (blocks_deposits.block_slot = 0 AND blocks_deposits.block_slot = blocks.slot AND blocks_deposits.publickey = $1)
 		WHERE blocks_deposits.publickey = $1`, publicKey)
 	if err != nil {
@@ -1617,7 +1626,14 @@ func GetValidatorsGotSlashed(epoch uint64) ([]struct {
 	err := DB.Select(&dbResult, `
 		WITH
 			slashings AS (
-				SELECT DISTINCT ON (slashedvalidator) * FROM (
+				SELECT DISTINCT ON (slashedvalidator) 
+					epoch,
+					slasher,
+					slasher_pubkey,
+					slashedvalidator,
+					slashedvalidator_pubkey,
+					reason
+				FROM (
 					SELECT
 						blocks.slot, 
 						blocks.epoch, 
