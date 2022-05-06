@@ -329,9 +329,9 @@ func getValidatorTableData(userId uint64) (interface{}, error) {
 	}{}
 
 	err := db.FrontendDB.Select(&validatordb, `
-	SELECT ENCODE(uvt.validator_publickey::bytea, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold
+	SELECT ENCODE(uvt.validator_publickey, 'hex') AS pubkey, us.event_name, extract( epoch from last_sent_ts)::Int as last_sent_ts, us.event_threshold
 		FROM users_validators_tags uvt
-		LEFT JOIN users_subscriptions us ON us.event_filter = uvt.validator_publickey::bytea AND us.user_id = uvt.user_id
+		LEFT JOIN users_subscriptions us ON us.event_filter = ENCODE(uvt.validator_publickey, 'hex') AND us.user_id = uvt.user_id
 		WHERE uvt.user_id = $1;`, userId)
 
 	if err != nil {
@@ -1848,7 +1848,7 @@ func internUserNotificationsSubscribe(event, filter string, threshold float64, w
 
 			var rocketpoolNodes []string
 			err = db.DB.Select(&rocketpoolNodes, `
-				SELECT DISTINCT(encode(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
+				SELECT DISTINCT(ENCODE(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
 			`, pq.ByteaArray(pubkeys))
 			if err != nil {
 				ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
@@ -1998,7 +1998,7 @@ func internUserNotificationsUnsubscribe(event, filter string, w http.ResponseWri
 
 			var rocketpoolNodes []string
 			err = db.DB.Select(&rocketpoolNodes, `
-				SELECT DISTINCT(encode(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
+				SELECT DISTINCT(ENCODE(node_address, 'hex')) as node_address FROM rocketpool_minipools WHERE pubkey = ANY($1)
 			`, pq.ByteaArray(pubkeys))
 			if err != nil {
 				ErrorOrJSONResponse(w, r, "could not retrieve db results", http.StatusInternalServerError)
