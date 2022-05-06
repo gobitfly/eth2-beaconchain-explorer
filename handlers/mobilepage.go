@@ -78,7 +78,7 @@ func MobilePagePost(w http.ResponseWriter, r *http.Request) {
 	// escape html
 	msg = template.HTMLEscapeString(msg)
 
-	err = mail.SendMail("support@beaconcha.in", "New app pool support inquiry", msg, []types.EmailAttachment{})
+	err = mail.SendTextMail("support@beaconcha.in", "New app pool support inquiry", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending app pool form: %v", err)
 		utils.SetFlash(w, r, "ad_flash", "Error: unable to submit app pool request")

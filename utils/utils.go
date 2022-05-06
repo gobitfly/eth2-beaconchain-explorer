@@ -54,6 +54,8 @@ func getLocaliser() *i18n.I18n {
 	return localiser
 }
 
+var HashLikeRegex = regexp.MustCompile(`^[0-9a-fA-F]{0,96}$`)
+
 // GetTemplateFuncs will get the template functions
 func GetTemplateFuncs() template.FuncMap {
 	return template.FuncMap{

@@ -19,8 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/context"
+	ctxt "context"
 
+	"github.com/gorilla/context"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
@@ -1403,7 +1404,7 @@ Best regards,
 
 %[1]s
 `, utils.Config.Frontend.SiteDomain, emailConfirmationHash, url.QueryEscape(newEmail))
-	err = mail.SendMail(newEmail, subject, msg, []types.EmailAttachment{})
+	err = mail.SendTextMail(newEmail, subject, msg, []types.EmailAttachment{})
 	if err != nil {
 		return err
 	}
@@ -2100,6 +2101,57 @@ func UserNotificationsUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	OKResponse(w, r)
+}
+
+func UserNotificationsUnsubscribeByHash(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	q := r.URL.Query()
+
+	ctx, done := ctxt.WithTimeout(ctxt.Background(), time.Second*30)
+	defer done()
+
+	hashes, ok := q["hash"]
+	if !ok {
+		logger.Errorf("no query params given")
+		http.Error(w, "invalid request", 400)
+		return
+	}
+
+	tx, err := db.FrontendDB.Beginx()
+	if err != nil {
+		//  return fmt.Errorf("error beginning transaction")
+		logger.Errorf("error committing transacton")
+		http.Error(w, "error processing request", 500)
+		return
+	}
+	defer tx.Rollback()
+
+	bHashes := make([][]byte, 0, len(hashes))
+	for _, hash := range hashes {
+		hash = strings.Replace(hash, "0x", "", -1)
+		if !utils.HashLikeRegex.MatchString(hash) {
+			logger.Errorf("error validating unsubscribe digest hashes")
+			http.Error(w, "error processing request", 500)
+		}
+		b, _ := hex.DecodeString(hash)
+		bHashes = append(bHashes, b)
+	}
+
+	_, err = tx.ExecContext(ctx, `DELETE from users_subscriptions where unsubscribe_hash = ANY($1)`, pq.ByteaArray(bHashes))
+	if err != nil {
+		logger.Errorf("error deleting from users_subscriptions %v", err)
+		http.Error(w, "error processing request", 500)
+		return
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.Errorf("error committing transacton")
+		http.Error(w, "error processing request", 500)
+		return
+	}
+
+	fmt.Fprintf(w, "successfully unsubscribed from %v events", len(hashes))
 }
 
 type UsersNotificationsRequest struct {
