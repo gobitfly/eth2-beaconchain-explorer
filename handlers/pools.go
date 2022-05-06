@@ -77,7 +77,7 @@ func GetAvgCurrentStreak(w http.ResponseWriter, r *http.Request) {
 					SELECT v.validatorindex  
 					FROM validators v 
 					LEFT JOIN eth1_deposits e ON e.publickey = v.pubkey
-					WHERE ENCODE(e.from_address, 'hex') = $1
+					WHERE ENCODE(e.from_address, 'hex') = LOWER($1)
 				),
 				longeststreaks as (
 					select 
