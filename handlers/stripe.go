@@ -540,7 +540,7 @@ func emailCustomerAboutFailedPayment(email string) {
 	msg := fmt.Sprintf("Payment processing failed. Could not activate your subscription. Please contact support at support@beaconcha.in. Manage Subscription: https://" + utils.Config.Frontend.SiteDomain + "/user/settings")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
-	err := mail.SendMail(email, "Failed Payment", msg, []types.EmailAttachment{})
+	err := mail.SendTextMail(email, "Failed Payment", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending failed payment mail: %v", err)
 		return
@@ -563,7 +563,7 @@ func emailCustomerAboutPlanChange(email, plan string) {
 	msg := fmt.Sprintf("You have successfully changed your payment plan to " + p + " to manage your subscription go to https://" + utils.Config.Frontend.SiteDomain + "/user/settings#api")
 	// escape html
 	msg = template.HTMLEscapeString(msg)
-	err := mail.SendMail(email, "Payment Plan Change", msg, []types.EmailAttachment{})
+	err := mail.SendTextMail(email, "Payment Plan Change", msg, []types.EmailAttachment{})
 	if err != nil {
 		logger.Errorf("error sending order fulfillment email: %v", err)
 		return
