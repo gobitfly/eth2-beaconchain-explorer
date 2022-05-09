@@ -275,7 +275,7 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 
 	var subscriptions []*types.Subscription
 	query := `
-		SELECT 
+		SELECT
 			id,
 			user_id,
 			event_name,
@@ -292,7 +292,7 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 
 	if utils.GetNetwork() == "mainnet" {
 		query = `
-			SELECT
+			SELECT 
 				id,
 				user_id,
 				event_name,
@@ -302,7 +302,7 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 				created_ts,
 				created_epoch,
 				event_threshold,
-				ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash  
+				ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions
 			WHERE user_id = $1 AND (event_name LIKE $2 OR event_name LIKE 'monitoring_%')
 		`
