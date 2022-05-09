@@ -50,6 +50,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/stripe/stripe-go/v72 v72.50.0
 	github.com/swaggo/http-swagger v1.2.6
+	github.com/swaggo/swag v1.7.9 // indirect
 	github.com/urfave/negroni v1.0.0
 	github.com/zesik/proxyaddr v0.0.0-20161218060608-ec32c535184d
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
