@@ -64,6 +64,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 	searchType := vars["type"]
 	search := vars["search"]
 	search = strings.Replace(search, "0x", "", -1)
+	search = strings.Replace(search, "0X", "", -1)
 	var err error
 	logger := logger.WithField("searchType", searchType)
 	var result interface{}
@@ -82,7 +83,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				err = db.DB.Select(result, `
 				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
-				WHERE CAST(slot AS text) LIKE $1
+				WHERE CAST(slot AS text) LIKE LOWER($1)
 				ORDER BY slot LIMIT 10`, search+"%")
 			} else if len(search) == 64 {
 				blockHash, err := hex.DecodeString(search)
@@ -140,17 +141,11 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			search = search[:len(search)-1]
 		}
 		if searchLikeRE.MatchString(search) {
-			eth1AddressHash, err := hex.DecodeString(search)
-			if err != nil {
-				logger.Errorf("error parsing eth1AddressHash to hash: %v", err)
-				http.Error(w, "Internal server error", 503)
-				return
-			}
 			err = db.DB.Select(result, `
 				SELECT DISTINCT ENCODE(from_address, 'hex') as from_address
 				FROM eth1_deposits
-				WHERE ENCODE(from_address, 'hex') = $1 
-				LIMIT 10`, eth1AddressHash)
+				WHERE ENCODE(from_address, 'hex') LIKE LOWER($1)
+				LIMIT 10`, search+"%")
 		}
 	case "indexed_validators":
 		// find all validators that have a publickey or index like the search-query
@@ -193,7 +188,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE ENCODE(from_address, 'hex') = $1
+				WHERE ENCODE(from_address, 'hex') = LOWER($1)
 			) a 
 			WHERE validatorrow <= $2 AND addressrow <= 10
 			GROUP BY from_address
@@ -215,7 +210,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					DENSE_RANK() OVER(ORDER BY graffiti) AS graffitirow
 				FROM blocks 
 				LEFT JOIN validators ON blocks.proposer = validators.validatorindex
-				WHERE graffiti_text ILIKE $1
+				WHERE graffiti_text ILIKE LOWER($1)
 			) a 
 			WHERE validatorrow <= $2 AND graffitirow <= 10
 			GROUP BY graffiti
