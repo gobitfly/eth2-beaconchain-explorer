@@ -78,7 +78,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		if len(search)%2 != 0 {
 			search = search[:len(search)-1]
 		}
-		if searchLikeRE.MatchString(strings.ToLower(search)) {
+		if searchLikeRE.MatchString(search) {
 			if len(search) < 64 {
 				err = db.DB.Select(result, `
 				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
@@ -141,11 +141,6 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			search = search[:len(search)-1]
 		}
 		if searchLikeRE.MatchString(search) {
-			if err != nil {
-				logger.Errorf("error parsing eth1AddressHash to hash: %v", err)
-				http.Error(w, "Internal server error", 503)
-				return
-			}
 			err = db.DB.Select(result, `
 				SELECT DISTINCT ENCODE(from_address, 'hex') as from_address
 				FROM eth1_deposits
