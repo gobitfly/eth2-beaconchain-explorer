@@ -120,6 +120,15 @@
             }
         }
 
+        function setUtc() {
+            var dt = $("#timestamp").attr('aria-ethereum-date')
+            $("#timestamp").text(luxon.DateTime.fromMillis(dt * 1000).toFormat("MMM-dd-yyyy hh:mm"))
+        }
+        function setLocal() {
+            var dt = $("#timestamp").attr('aria-ethereum-date')
+            $("#timestamp").text(luxon.DateTime.fromMillis(dt * 1000).toFormat("MMM-dd-yyyy hh:mm:ss"))
+        }
+
         function hex2a(hexx) {
             var hex = hexx.toString();//force conversion
             var str = '';

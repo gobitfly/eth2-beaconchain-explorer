@@ -250,6 +250,10 @@ $('[aria-ethereum-date]').each(function(item) {
     $(this).text(luxon.DateTime.fromMillis(dt * 1000).toRelative({ style: "short"}))
     $(this).attr('title', luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
     $(this).attr('data-toggle', 'tooltip')
+  } else if (format === 'LOCAL') {
+    $(this).text(luxon.DateTime.fromMillis(dt * 1000).toFormat("MMM-dd-yyyy hh:mm:ss"))
+    $(this).attr('title', luxon.DateTime.fromMillis(dt * 1000).toFormat("ff"))
+    $(this).attr('data-toggle', 'tooltip')
   } else {
     $(this).text(luxon.DateTime.fromMillis(dt * 1000).toFormat(format))
   }
