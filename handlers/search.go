@@ -82,7 +82,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 				err = db.DB.Select(result, `
 				SELECT slot, ENCODE(blockroot, 'hex') AS blockroot 
 				FROM blocks 
-				WHERE CAST(slot AS text) LIKE LOWER($1)
+				WHERE CAST(slot AS text) LIKE $1
 				ORDER BY slot LIMIT 10`, search+"%")
 			} else if len(search) == 64 {
 				blockHash, err := hex.DecodeString(search)
@@ -105,7 +105,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Select(graffiti, `
 			SELECT graffiti, count(*)
 			FROM blocks
-			WHERE graffiti_text ILIKE LOWER($1)
+			WHERE graffiti_text ILIKE $1
 			GROUP BY graffiti
 			ORDER BY count desc
 			LIMIT 10`, "%"+search+"%")
@@ -149,7 +149,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 			err = db.DB.Select(result, `
 				SELECT DISTINCT ENCODE(from_address, 'hex') as from_address
 				FROM eth1_deposits
-				WHERE ENCODE(from_address, 'hex') = LOWER($1) 
+				WHERE ENCODE(from_address, 'hex') = $1 
 				LIMIT 10`, eth1AddressHash)
 		}
 	case "indexed_validators":
@@ -193,7 +193,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 					DENSE_RANK() OVER (ORDER BY from_address) AS addressrow
 				FROM eth1_deposits
 				INNER JOIN validators ON validators.pubkey = eth1_deposits.publickey
-				WHERE ENCODE(from_address, 'hex') = LOWER($1)
+				WHERE ENCODE(from_address, 'hex') = $1
 			) a 
 			WHERE validatorrow <= $2 AND addressrow <= 10
 			GROUP BY from_address
