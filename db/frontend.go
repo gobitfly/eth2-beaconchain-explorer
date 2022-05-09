@@ -284,7 +284,8 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 			last_sent_epoch,
 			created_ts,
 			created_epoch,
-			event_threshold
+			event_threshold,
+			ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash 
 		FROM users_subscriptions
 		WHERE user_id = $1 AND event_name LIKE $2
 	`
@@ -300,7 +301,8 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 				last_sent_epoch,
 				created_ts,
 				created_epoch,
-				event_threshold 
+				event_threshold,
+				ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash
 			FROM users_subscriptions
 			WHERE user_id = $1 AND (event_name LIKE $2 OR event_name LIKE 'monitoring_%')
 		`
@@ -851,7 +853,7 @@ func GetUserAPIKeyStatistics(apikey *string) (*types.ApiStatistics, error) {
 func GetSubsForEventFilter(eventName types.EventName) ([][]byte, map[string][]types.Subscription, error) {
 	var subs []types.Subscription
 	subQuery := `
-		SELECT id, user_id, event_filter, last_sent_epoch, created_epoch, event_threshold from users_subscriptions where event_name = $1
+		SELECT id, user_id, event_filter, last_sent_epoch, created_epoch, event_threshold, ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash from users_subscriptions where event_name = $1
 	`
 
 	subMap := make(map[string][]types.Subscription, 0)
