@@ -106,7 +106,7 @@ func SearchAhead(w http.ResponseWriter, r *http.Request) {
 		err = db.DB.Select(graffiti, `
 			SELECT graffiti, count(*)
 			FROM blocks
-			WHERE graffiti_text ILIKE $1
+			WHERE graffiti_text ILIKE LOWER($1)
 			GROUP BY graffiti
 			ORDER BY count desc
 			LIMIT 10`, "%"+search+"%")
