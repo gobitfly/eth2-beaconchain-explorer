@@ -20,7 +20,7 @@
   </div>
   <div class="row border-bottom p-3 mx-0">
     <div class="col-md-2">Time:</div>
-    <div class="col-md-10"><span aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW">{{.Ts}}</span> (<span id="timestamp" aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="LOCAL">{{.Ts}}</span> <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" data-clipboard-text="Test"></i>)
+    <div class="col-md-10"><span aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="FROMNOW">{{.Ts}}</span> (<span id="timestamp" aria-ethereum-date="{{.Ts.Unix}}" aria-ethereum-date-format="LOCAL">{{.Ts}}</span> <i class="fa fa-copy text-muted p-1" role="button" data-toggle="tooltip" title="Copy to clipboard" onclick="copyTs()"></i>)
       <div class="btn-group btn-group-toggle" data-toggle="buttons">
         <label class="btn btn-light text-dark active btn-sm" onclick="setUtc()">
           <input type="radio" name="options" id="optionUtc"> UTC
