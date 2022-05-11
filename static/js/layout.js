@@ -51,6 +51,59 @@ function setValidatorEffectiveness(elem, eff){
   }
 }
 
+function setUtc() {
+  if ($('#optionLocal').is(':checked')) {
+      var text = $("#timestamp").text()
+      tsArr = text.split(" ")
+      var local = luxon.DateTime.fromFormat(tsArr[0] + " " + tsArr[1], 'MMM-dd-yyyy hh:mm:ss')
+      var utc = local.toUTC()
+      var utcHour = utc['c']['hour']
+      if (utcHour < 12) {
+          $("#timestamp").text(utc.toFormat("MMM-dd-yyyy hh:mm:ss")+" AM")
+      } else {
+          $("#timestamp").text(utc.toFormat("MMM-dd-yyyy hh:mm:ss")+" PM")
+      }
+  }
+}
+function setLocal() {
+  if ($('#optionUtc').is(':checked')) {
+      var text = $("#timestamp").text()
+      tsArr = text.split(" ")
+      var utc = luxon.DateTime.fromFormat(tsArr[0] + " " + tsArr[1], 'MMM-dd-yyyy hh:mm:ss')
+      var local = utc.toLocal()
+      var utcDiff = local['o'] / 60
+      console.log(utcDiff)
+      var localHour = local['c']['hour'] + utcDiff
+      var localMinute = local['c']['minute']
+      var localSecond = local['c']['second']
+      var diff = ""
+      if (diff < 0) {
+          diff = " UTC - "+utcDiff*(-1)
+      } else {
+          diff = " UTC + "+utcDiff
+      }
+      if (tsArr[2] == "PM" && localHour < 12) {
+          localHour += 12
+      }
+      if (localHour.toString().length == 1) {
+          localHour = "0" + localHour
+      }
+      if (localMinute.toString().length == 1) {
+          localMinute = "0" + localMinute
+      }
+      if (localSecond.toString().length == 1) {
+          localSecond = "0" + localSecond
+      }
+      $("#timestamp").text(local.toFormat("MMM-dd-yyyy")+" "+localHour+":"+localMinute+":"+localSecond+diff+"h")
+  }
+}
+
+function copyTs() {
+  var text = $("#timestamp").text()
+  tsArr = text.split(" ")
+  navigator.clipboard.writeText(tsArr[0] + " " + tsArr[1])
+}
+
 // typeahead
 $(document).ready(function() {
   
