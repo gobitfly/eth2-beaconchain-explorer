@@ -2,9 +2,13 @@ package types
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
+	"html/template"
 	"strings"
 	"time"
 
+	"firebase.google.com/go/messaging"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
 )
@@ -149,9 +153,12 @@ type Notification interface {
 	GetTitle() string
 	GetEventFilter() string
 	GetEmailAttachment() *EmailAttachment
-	GetNotificationChannels() []string
+	// GetNotificationChannels() []string
 	GetUnsubscribeHash() string
+	// Marshal() []byte
 }
+
+// func UnMarschal
 
 type Subscription struct {
 	ID              *uint64        `db:"id,omitempty"`
@@ -160,6 +167,7 @@ type Subscription struct {
 	EventFilter     string         `db:"event_filter"`
 	LastSent        *time.Time     `db:"last_sent_ts"`
 	LastEpoch       *uint64        `db:"last_sent_epoch"`
+	Channels        pq.StringArray `db:"channels"`
 	CreatedTime     time.Time      `db:"created_ts"`
 	CreatedEpoch    uint64         `db:"created_epoch"`
 	EventThreshold  float64        `db:"event_threshold"`
@@ -224,9 +232,135 @@ type UserWithPremium struct {
 	Product sql.NullString `db:"product_id"`
 }
 
+type TransitEmail struct {
+	Id        uint64              `db:"id,omitempty"`
+	Created   sql.NullTime        `db:"created"`
+	Sent      sql.NullTime        `db:"sent"`
+	Delivered sql.NullTime        `db:"delivered"`
+	Channel   string              `db:"channel"`
+	Content   TransitEmailContent `db:"content"`
+}
+
+type TransitEmailContent struct {
+	Address     string            `json:"address,omitempty"`
+	Subject     string            `json:"subject,omitempty"`
+	Email       Email             `json:"email,omitempty"`
+	Attachments []EmailAttachment `json:"attachments,omitempty"`
+}
+
+func (e *TransitEmailContent) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a TransitEmailContent) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+type TransitWebhook struct {
+	Id        uint64                `db:"id,omitempty"`
+	Created   sql.NullTime          `db:"created"`
+	Sent      sql.NullTime          `db:"sent"`
+	Delivered sql.NullTime          `db:"delivered"`
+	Channel   string                `db:"channel"`
+	Content   TransitWebhookContent `db:"content"`
+}
+
+type TransitWebhookContent struct {
+	WebhookID  uint64       `json:"webhookID"`
+	WebhookURL string       `json:"webhookURL"`
+	Event      WebhookEvent `json:"event"`
+}
+
+type WebhookEvent struct {
+	Name        string `json:"event,omitempty"`
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	Epoch       uint64 `json:"epoch,omitempty"`
+	Target      string `json:"target,omitempty"`
+}
+
+func (e *TransitWebhookContent) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a TransitWebhookContent) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+type TransitDiscord struct {
+	Id        uint64                `db:"id,omitempty"`
+	Created   sql.NullTime          `db:"created"`
+	Sent      sql.NullTime          `db:"sent"`
+	Delivered sql.NullTime          `db:"delivered"`
+	Channel   string                `db:"channel"`
+	Content   TransitDiscordContent `db:"content"`
+}
+
+type TransitDiscordContent struct {
+	WebhookID      uint64     `json:"webhookID"`
+	WebhookURL     string     `json:"webhookURL"`
+	DiscordRequest DiscordReq `json:"discordRequest"`
+}
+
+func (e *TransitDiscordContent) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a TransitDiscordContent) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+type TransitPush struct {
+	Id        uint64             `db:"id,omitempty"`
+	Created   sql.NullTime       `db:"created"`
+	Sent      sql.NullTime       `db:"sent"`
+	Delivered sql.NullTime       `db:"delivered"`
+	Channel   string             `db:"channel"`
+	Content   TransitPushContent `db:"content"`
+}
+
+type TransitPushContent struct {
+	Messages []*messaging.Message
+}
+
+func (e *TransitPushContent) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(b, &e)
+}
+
+func (a TransitPushContent) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
 type EmailAttachment struct {
-	Attachment []byte
-	Name       string
+	Attachment []byte `json:"attachment"`
+	Name       string `json:"name"`
+}
+
+type Email struct {
+	Title                 string        `json:"title"`
+	Body                  template.HTML `json:"body"`
+	SubscriptionManageURL string        `json:"subscriptionManageUrl"`
+	UnSubURL              template.HTML `json:"unSubURL"`
 }
 
 type UserWebhook struct {

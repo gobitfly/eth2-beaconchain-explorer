@@ -1184,9 +1184,3 @@ type WebhookPageEvent struct {
 	EventLabel string
 	EventName
 }
-type Email struct {
-	Title                 string
-	Body                  template.HTML
-	SubscriptionManageURL string
-	UnSubURL              template.HTML
-}

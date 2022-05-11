@@ -535,6 +535,7 @@ create table users_clients
     primary key (user_id, client)
 );
 
+
 drop table if exists users_subscriptions;
 create table users_subscriptions
 (
@@ -545,6 +546,7 @@ create table users_subscriptions
     event_threshold   real                        default 0,
     last_sent_ts      timestamp without time zone,
     last_sent_epoch   int,
+    channels          text[] -- currently supported channels: webhook_discord, webhook, email, push
     created_ts        timestamp without time zone not null,
     created_epoch     int                         not null,
     unsubscribe_hash  bytea                        ,
@@ -553,17 +555,68 @@ create table users_subscriptions
 
 create index idx_users_subscriptions_unsubscribe_hash on users_subscriptions (unsubscribe_hash);
 
-drop table if exists users_notifications;
-create table users_notifications
+CREATE TYPE notification_channels as ENUM ('webhook_discord', 'webhook', 'email', 'push');
+
+drop table if exists notifications_queue;
+create table notifications_queue
 (
-    id              serial                      not null,
-    user_id         int                         not null,
-    event_name      character varying(100)      not null,
-    event_filter    text                        not null default '',
-    sent_ts         timestamp without time zone,
-    epoch           int                         not null,
-    primary key(user_id, event_name, event_filter, sent_ts)
+    id                  serial  not null,
+    subscription_id     int     not null,
+    created_ts          timestamp without time zone not null default now(),
+    created_epoch       int,
+    event_name          character varying(100),
+    sent_ts             timestamp without time zone,
+    payload             bytea          not null,
+    response            bytea,
+    channel             notification_channel not null,
+    primary key (subscription_id, id),
 );
+
+-- drop table if exists email_queue;
+-- create table email_queue
+-- (
+--     id                      serial       not null,
+--     email                   varchar(256) not null,
+--     subject                 text         not null,
+--     title                   text         not null,
+--     body                    text         not null,
+--     subscriptionManageURL   varchar(256) not null,
+--     UnsubURL                varchar(256) not null,
+--     hasAttachment           boolean default 'f' not null,
+--     sentTs                  timestamp without time zone,
+--     deliveredTs             timestamp without time zone
+-- );
+
+-- drop table if exists email_queue_attachments;
+-- create table email_queue_attachments (
+--     queue_id int references email_queue (id) on delete cascade,
+--     name varchar(256) not null,
+--     content []bytea,
+--     primary key (queue_id, name)
+-- );
+
+drop table if exists notification_queue;
+create table notification_queue(
+    id                  serial not null,
+    created             timestamp without time zone not null,
+    sent                timestamp without time zone, -- record when the transaction was dispatched
+    -- delivered           timestamp without time zone,  --record when the transaction arrived
+    channel             notification_channels not null,
+    content             jsonb not null
+);
+
+-- deprecated
+-- drop table if exists users_notifications;
+-- create table users_notifications
+-- (
+--     id              serial                      not null,
+--     user_id         int                         not null,
+--     event_name      character varying(100)      not null,
+--     event_filter    text                        not null default '',
+--     sent_ts         timestamp without time zone,
+--     epoch           int                         not null,
+--     primary key(user_id, event_name, event_filter, sent_ts)
+-- );
 
 drop table if exists users_validators_tags;
 create table users_validators_tags
@@ -593,30 +646,6 @@ create table users_webhooks
     event_names       text[]                  not null,
     destination       character varying(200), -- discord for example could be a destination and the request would be adapted
     primary key (user_id, id)
-);
-
-drop table if exists webhooks_queue;
-create table webhooks_queue (
-    id                  serial              not null,
-    webhook_id          int                 not null,
-    payload             bytea               not null,
-    response            bytea,
-    code                int,
-    sent_ts             timestamp without  time zone,
-    parent_id           int,
-    primary key (webhook_id, id)
-);
-
-drop table if exists emails_queue;
-create table emails_queue
-(
-
-);
-
-drop table if exists push_queue;
-create table push_queue;
-(
-
 );
 
 drop table if exists mails_sent;

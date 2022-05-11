@@ -267,7 +267,7 @@ func AddSubscription(userID uint64, network string, eventName types.EventName, e
 		name = strings.ToLower(network) + ":" + string(eventName)
 	}
 
-	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, nowTs, nowEpoch, eventThreshold)
+	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold, channels) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6, $7) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, nowTs, nowEpoch, eventThreshold, []string{"email", "push", "webhook", "webhook_discord"})
 	return err
 }
 
@@ -282,6 +282,7 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 			event_filter,
 			last_sent_ts,
 			last_sent_epoch,
+			channels,
 			created_ts,
 			created_epoch,
 			event_threshold,
@@ -300,6 +301,7 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 				last_sent_ts,
 				last_sent_epoch,
 				created_ts,
+				channels,
 				created_epoch,
 				event_threshold,
 				ENCODE(unsubscribe_hash, 'hex') as unsubscribe_hash
@@ -313,20 +315,20 @@ func GetMonitoringSubscriptions(userId uint64) ([]*types.Subscription, error) {
 }
 
 // AddSubscription adds a new subscription to the database.
-func AddTestSubscription(userID uint64, network string, eventName types.EventName, eventFilter string, eventThreshold float64, epoch uint64) error {
-	var onConflictDo string = "NOTHING"
-	if strings.HasPrefix(string(eventName), "monitoring_") {
-		onConflictDo = "UPDATE SET event_threshold = $6"
-	}
+// func AddTestSubscription(userID uint64, network string, eventName types.EventName, eventFilter string, eventThreshold float64, epoch uint64) error {
+// 	var onConflictDo string = "NOTHING"
+// 	if strings.HasPrefix(string(eventName), "monitoring_") {
+// 		onConflictDo = "UPDATE SET event_threshold = $6"
+// 	}
 
-	name := string(eventName)
-	if network != "" {
-		name = strings.ToLower(network) + ":" + string(eventName)
-	}
+// 	name := string(eventName)
+// 	if network != "" {
+// 		name = strings.ToLower(network) + ":" + string(eventName)
+// 	}
 
-	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, utils.EpochToTime(epoch).Unix(), epoch, eventThreshold)
-	return err
-}
+// 	_, err := FrontendDB.Exec("INSERT INTO users_subscriptions (user_id, event_name, event_filter, created_ts, created_epoch, event_threshold) VALUES ($1, $2, $3, TO_TIMESTAMP($4), $5, $6) ON CONFLICT (user_id, event_name, event_filter) DO "+onConflictDo, userID, name, eventFilter, utils.EpochToTime(epoch).Unix(), epoch, eventThreshold)
+// 	return err
+// }
 
 // DeleteSubscription removes a subscription from the database.
 func DeleteSubscription(userID uint64, network string, eventName types.EventName, eventFilter string) error {

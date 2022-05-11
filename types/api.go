@@ -88,11 +88,11 @@ type DashboardRequest struct {
 }
 
 type DiscordEmbed struct {
-	Color       string              `json:"color"`
-	Description string              `json:"description"`
-	Fields      []DiscordEmbedField `json:"fields"`
-	Title       string              `json:"title"`
-	Type        string              `json:"type"`
+	Color       string              `json:"color,omitempty"`
+	Description string              `json:"description,omitempty"`
+	Fields      []DiscordEmbedField `json:"fields,omitempty"`
+	Title       string              `json:"title,omitempty"`
+	Type        string              `json:"type,omitempty"`
 }
 
 type DiscordEmbedField struct {
@@ -102,15 +102,15 @@ type DiscordEmbedField struct {
 }
 
 type DiscordReq struct {
-	Content         string         `json:"content"`
-	Username        string         `json:"username"`
-	Avatar_url      string         `json:"avatar_url"`
-	Tts             bool           `json:"tts"`
-	Embeds          []DiscordEmbed `json:"embeds"`
-	AllowedMentions []interface{}  `json:"allowedMentions"`
-	Components      []interface{}  `json:"components"`
-	Files           interface{}    `json:"files"`
-	Payload         string         `json:"payload"`
-	Attachments     interface{}    `json:"attachments"`
-	Flags           int            `json:"flags"`
+	Content         string         `json:"content,omitempty"`
+	Username        string         `json:"username,omitempty"`
+	Avatar_url      string         `json:"avatar_url,omitempty"`
+	Tts             bool           `json:"tts,omitempty"`
+	Embeds          []DiscordEmbed `json:"embeds,omitempty"`
+	AllowedMentions []interface{}  `json:"allowedMentions,omitempty"`
+	Components      []interface{}  `json:"components,omitempty"`
+	Files           interface{}    `json:"files,omitempty"`
+	Payload         string         `json:"payload,omitempty"`
+	Attachments     interface{}    `json:"attachments,omitempty"`
+	Flags           int            `json:"flags,omitempty"`
 }
